@@ -37,8 +37,17 @@ func Probe(ctx context.Context, baseURL, apiKey string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return nil
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		// Reached the server, but the key was rejected.
+		return fmt.Errorf("API key rejected (HTTP %d)", resp.StatusCode)
+	case resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed:
+		// Endpoint is up but lacks a /models route (some OpenAI-compatible
+		// gateways) — treat as reachable rather than a false "unreachable".
+		return nil
+	default:
 		return fmt.Errorf("endpoint returned HTTP %d", resp.StatusCode)
 	}
-	return nil
 }

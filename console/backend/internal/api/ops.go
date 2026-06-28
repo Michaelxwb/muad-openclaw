@@ -83,27 +83,48 @@ func (s *Server) handleApplyLLM(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, 40001, "invalid request body")
 		return
 	}
-	// 批量应用前必须通过连通性测试：测当前全局 LLM（批量重建会注入它）。
-	g, err := s.globalLLM()
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, 50001, "read global llm")
-		return
-	}
-	if err := llm.Probe(r.Context(), g.BaseURL, g.APIKey); err != nil {
-		writeErr(w, http.StatusBadRequest, 40002, "connectivity test failed: "+err.Error())
-		return
-	}
+
 	results := map[string]string{}
+	users := make([]repo.User, 0, len(req.UserIDs))
 	for _, id := range req.UserIDs {
 		u, err := s.store.GetUser(id)
 		if errors.Is(err, repo.ErrNotFound) {
 			results[id] = "not found"
 			continue
 		}
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, 50001, "read user "+id)
+			return
+		}
+		users = append(users, u)
+	}
+
+	// Connectivity gate (test before apply): probe each user's *effective* config
+	// (global ⊕ override), not just the global. All must pass before any recreate.
+	// Dedup by endpoint+key so the common case (everyone on global) probes once.
+	gate := map[string]error{}
+	for _, u := range users {
+		eff, err := s.effectiveLLMForUser(u)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, 50001, "resolve effective llm for "+u.UserID)
+			return
+		}
+		key := eff.BaseURL + "\x00" + eff.APIKey
+		if _, done := gate[key]; !done {
+			gate[key] = llm.Probe(r.Context(), eff.BaseURL, eff.APIKey)
+		}
+		if gate[key] != nil {
+			writeErr(w, http.StatusBadRequest, 40002,
+				"connectivity test failed for "+u.UserID+": "+gate[key].Error())
+			return
+		}
+	}
+
+	for _, u := range users {
 		if err := s.recreateUser(r.Context(), u, u.ImageTag); err != nil {
-			results[id] = "failed: " + err.Error()
+			results[u.UserID] = "failed: " + err.Error()
 		} else {
-			results[id] = "applied"
+			results[u.UserID] = "applied"
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"results": results})
@@ -157,15 +178,7 @@ func (s *Server) specFromUser(u repo.User, imageTag string) (driver.UserSpec, er
 	if err != nil {
 		return driver.UserSpec{}, err
 	}
-	var override *llmRequest
-	if u.LLMOverride != "" {
-		o, err := s.decodeOverride(u.LLMOverride)
-		if err != nil {
-			return driver.UserSpec{}, err
-		}
-		override = &o
-	}
-	eff, err := s.effectiveLLM(override)
+	eff, err := s.effectiveLLMForUser(u)
 	if err != nil {
 		return driver.UserSpec{}, err
 	}
@@ -177,6 +190,20 @@ func (s *Server) specFromUser(u repo.User, imageTag string) (driver.UserSpec, er
 		ImageTag: imageTag,
 		LLM:      eff,
 	}, nil
+}
+
+// effectiveLLMForUser resolves a stored user's effective LLM config
+// (global ⊕ decrypted per-user override).
+func (s *Server) effectiveLLMForUser(u repo.User) (driver.LlmConfig, error) {
+	var override *llmRequest
+	if u.LLMOverride != "" {
+		o, err := s.decodeOverride(u.LLMOverride)
+		if err != nil {
+			return driver.LlmConfig{}, err
+		}
+		override = &o
+	}
+	return s.effectiveLLM(override)
 }
 
 func (s *Server) decodeOverride(enc string) (llmRequest, error) {

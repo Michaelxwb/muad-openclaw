@@ -18,10 +18,8 @@ export function Audit() {
     try {
       const offset = (page - 1) * pageSize;
       const res = await api.audit(actor, offset, pageSize);
-      // Support both old (array) and new ({items, total}) response formats.
-      const list = Array.isArray(res as unknown) ? (res as unknown as AuditEntry[]) : res.items;
-      setRows(list);
-      setTotal(Array.isArray(res as unknown) ? list.length : res.total);
+      setRows(res.items);
+      setTotal(res.total);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -86,12 +84,12 @@ export function Audit() {
                 </tr>
               ))
             : rows.map((r) => (
-                <tr key={r.ID}>
-                  <td className={styles.ts}>{new Date(r.TS).toLocaleString()}</td>
-                  <td>{r.Actor}</td>
-                  <td className={styles.action}>{r.Action}</td>
-                  <td>{r.Target || "—"}</td>
-                  <td>{r.Payload}</td>
+                <tr key={r.id}>
+                  <td className={styles.ts}>{new Date(r.ts).toLocaleString()}</td>
+                  <td>{r.actor}</td>
+                  <td className={styles.action}>{r.action}</td>
+                  <td>{r.target || "—"}</td>
+                  <td>{r.payload}</td>
                 </tr>
               ))}
           {!loading && rows.length === 0 && (

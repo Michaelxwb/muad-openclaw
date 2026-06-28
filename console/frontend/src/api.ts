@@ -10,6 +10,10 @@ export const token = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
+// Emitted when any request gets a 401 so the app can drop back to the login
+// screen instead of leaving a dead session on screen.
+export const UNAUTHORIZED_EVENT = "muad:unauthorized";
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const t = token.get();
@@ -29,6 +33,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   if (res.status === 401) {
     token.clear();
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     throw new Error("登录已失效，请重新登录");
   }
   if (!res.ok) {
@@ -66,12 +71,12 @@ export interface LLMConfig {
 }
 
 export interface AuditEntry {
-  ID: number;
-  Actor: string;
-  Action: string;
-  Target: string;
-  Payload: string;
-  TS: string;
+  id: number;
+  actor: string;
+  action: string;
+  target: string;
+  payload: string;
+  ts: string;
 }
 
 export interface LLMForm {
@@ -87,11 +92,9 @@ export const api = {
   login: (username: string, password: string) =>
     request<{ token: string }>("POST", "/auth/login", { username, password }),
 
-  listContainers: (offset = 0, limit = 1000) =>
-    request<{ items: Container[]; total: number }>(
-      "GET",
-      `/containers?offset=${offset}&limit=${limit}`,
-    ),
+  // Returns all containers (server-side unpaginated); the UI filters/pages
+  // client-side because status/connection are computed from live state.
+  listContainers: () => request<{ items: Container[]; total: number }>("GET", "/containers"),
   createContainer: (b: {
     userId: string;
     channel: Channel;

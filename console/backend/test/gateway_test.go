@@ -26,6 +26,10 @@ func TestParseStatus_ConnectedWithAccountAndActivity(t *testing.T) {
 	if !st.LastActiveAt.Equal(want) {
 		t.Errorf("LastActiveAt = %v, want %v", st.LastActiveAt, want)
 	}
+	// real message activity drives the reap countdown
+	if !st.LastMessageAt.Equal(want) {
+		t.Errorf("LastMessageAt = %v, want %v", st.LastMessageAt, want)
+	}
 }
 
 func TestParseStatus_WecomRunningWithStartTime(t *testing.T) {
@@ -41,6 +45,10 @@ func TestParseStatus_WecomRunningWithStartTime(t *testing.T) {
 	want := time.UnixMilli(1782557800000)
 	if !st.LastActiveAt.Equal(want) {
 		t.Errorf("LastActiveAt = %v, want %v (lastStartAt)", st.LastActiveAt, want)
+	}
+	// wecom has no message timestamps → no message activity → not reapable
+	if !st.LastMessageAt.IsZero() {
+		t.Errorf("LastMessageAt = %v, want zero (wecom reports no inbound/outbound)", st.LastMessageAt)
 	}
 }
 

@@ -87,8 +87,10 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 		if snap.MemMiB > memAlertMiB {
 			alerts = append(alerts, alert{u.UserID, "P2", "high_mem", "memory near the 2GiB limit"})
 		}
-		if !snap.LastActiveAt.IsZero() {
-			if reapWindow-time.Since(snap.LastActiveAt) < nearReapWindow {
+		// Idle/reap is measured by real message activity; channels without
+		// message timestamps (wecom) never trip near_reap.
+		if !snap.LastMessageAt.IsZero() {
+			if reapWindow-time.Since(snap.LastMessageAt) < nearReapWindow {
 				alerts = append(alerts, alert{u.UserID, "P3", "near_reap", "approaching idle reap window"})
 			}
 		}

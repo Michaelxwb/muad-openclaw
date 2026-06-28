@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { token } from "./api";
+import { useEffect, useState } from "react";
+import { token, UNAUTHORIZED_EVENT } from "./api";
 import { Sidebar } from "./components/Sidebar";
 import { Audit } from "./pages/Audit";
 import { Containers } from "./pages/Containers";
@@ -13,6 +13,13 @@ export function App() {
   const [authed, setAuthed] = useState(!!token.get());
   const [page, setPage] = useState<Page>("containers");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // A 401 from any request (e.g. expired token) drops back to the login screen.
+  useEffect(() => {
+    const onUnauthorized = () => setAuthed(false);
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+  }, []);
 
   if (!authed) {
     return <Login onLogin={() => setAuthed(true)} />;
