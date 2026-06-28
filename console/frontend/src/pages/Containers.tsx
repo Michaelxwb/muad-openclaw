@@ -23,6 +23,7 @@ const STATUS_OPTIONS = [
   { value: "stopped", label: "已停止" },
   { value: "error", label: "异常" },
   { value: "unhealthy", label: "不健康" },
+  { value: "missing", label: "已删除" },
 ];
 
 const CHANNEL_FILTER_OPTIONS = [
@@ -44,6 +45,7 @@ const STATE_LABELS: Record<string, string> = {
   archived: "已归档",
   unhealthy: "不健康",
   error: "异常",
+  missing: "已删除",
 };
 
 function stateLabel(s: string): string {

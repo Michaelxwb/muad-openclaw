@@ -291,7 +291,8 @@ h3 {
 }
 
 .badge.stopped,
-.badge.archived {
+.badge.archived,
+.badge.missing {
   color: var(--color-text-muted);
   border-color: var(--color-text-muted);
 }

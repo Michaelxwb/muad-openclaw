@@ -293,6 +293,26 @@ func TestQRCode_SkipsLoginWhenConnected(t *testing.T) {
 	}
 }
 
+func TestListContainers_MissingWhenContainerGone(t *testing.T) {
+	e := newTestEnv(t)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"ghost","botId":"b","secret":"s"}`)
+	// Container removed out-of-band (e.g. `docker rm`) while the DB record stays.
+	e.drv.removed["ghost"] = true
+
+	rr := e.do(http.MethodGet, "/api/v1/containers", "")
+	if !strings.Contains(rr.Body.String(), `"state":"missing"`) {
+		t.Fatalf("expected missing state for orphaned record: %s", rr.Body.String())
+	}
+
+	// Deleting the orphan still works (driver.Remove is idempotent in real docker).
+	if rr := e.do(http.MethodDelete, "/api/v1/containers/ghost", ""); rr.Code != http.StatusOK {
+		t.Fatalf("delete orphan = %d, want 200", rr.Code)
+	}
+	if _, err := e.store.GetUser("ghost"); err != repo.ErrNotFound {
+		t.Errorf("orphan DB record not deleted: %v", err)
+	}
+}
+
 func TestReadsNotAudited(t *testing.T) {
 	e := newTestEnv(t)
 	e.do(http.MethodGet, "/api/v1/me", "")
