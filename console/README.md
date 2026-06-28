@@ -33,38 +33,36 @@ console/
 - **监控采集**:复用容器内 `openclaw status --json`（`docker exec`），不在 Go 重写 openclaw WS 握手。
 - **网络**:gateway 端口不发布;控制台与用户容器共享 `muad-net`，按容器名 `muad-oc-<id>:18789` 访问。
 
-## 配置（全部经环境变量，无凭证入镜像）
+## 配置（唯一来源 config.yaml，无凭证入镜像）
 
-| 变量 | 必填 | 默认 | 说明 |
-|------|------|------|------|
-| `CONSOLE_MASTER_KEY` | ✅ | — | 派生 AES 加密主密钥（加密 DB 内凭证） |
-| `CONSOLE_ADMIN_USER` / `CONSOLE_ADMIN_PASSWORD` | 首启建议 | — | 初始管理员（幂等引导） |
-| `RUNTIME_DRIVER` | | `docker` | `docker` 或 `k8s`（k8s 为桩） |
-| `DEFAULT_IMAGE` | | `ghcr.io/michaelxwb/muad-openclaw:latest` | 建容器默认镜像 |
-| `MUAD_NET` | | `muad-net` | 共享 docker 网络名 |
-| `CONSOLE_SKILLS_DIR` | | `/opt/muad/skills` | 共享 skill 目录（只读挂进每个容器） |
-| `CONSOLE_LISTEN` | | `:8080` | 监听地址 |
-| `CONSOLE_DB` | | `/var/lib/muad-console/console.db` | SQLite 路径（挂卷持久化） |
-| `CONSOLE_JWT_SECRET` | | = 主密钥 | session token 签名密钥 |
-| `CONSOLE_COLLECT_INTERVAL` | | `30` | 监控采集周期（秒） |
+所有运行时配置（含机密）都在 `config.yaml`。该文件已 gitignore、运行时只读挂进容器、不入镜像。
+env 仍可作为最高优先级覆盖（`env > config.yaml > 内置默认值`），但部署不再依赖 `.env`。
+
+| 字段（config.yaml） | env 覆盖键 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|
+| `masterKey` | `CONSOLE_MASTER_KEY` | ✅ | — | 派生 AES 加密主密钥（加密 DB 内凭证） |
+| `adminUser` / `adminPassword` | `CONSOLE_ADMIN_USER` / `CONSOLE_ADMIN_PASSWORD` | 首启建议 | `admin` / — | 初始管理员（幂等引导） |
+| `runtimeDriver` | `RUNTIME_DRIVER` | | `docker` | `docker` 或 `k8s`（k8s 为桩） |
+| `defaultImage` | `DEFAULT_IMAGE` | | `ghcr.io/michaelxwb/muad-openclaw:latest` | 建容器默认镜像 |
+| `muadNet` | `MUAD_NET` | | `muad-net` | 共享 docker 网络名 |
+| `skillsDir` | `CONSOLE_SKILLS_DIR` | | `/opt/muad/skills` | 共享 skill 目录（只读挂进每个容器） |
+| `listenAddr` | `CONSOLE_LISTEN` | | `:8080` | 监听地址 |
+| `dbPath` | `CONSOLE_DB` | | `/var/lib/muad-console/console.db` | SQLite 路径（挂卷持久化） |
+| `jwtSecret` | `CONSOLE_JWT_SECRET` | | = 主密钥 | session token 签名密钥 |
+| `collectIntervalSec` | `CONSOLE_COLLECT_INTERVAL` | | `30` | 监控采集周期（秒） |
 
 ## 快速开始
 
-### Docker（生产/单机）
+### Docker Compose（生产/单机，推荐）
 
 ```bash
-# 共享网络（控制台与用户容器互通）
+# 共享网络（控制台与用户容器互通），首次部署创建一次
 docker network create muad-net
 
-docker run -d --name muad-console \
-  -e CONSOLE_MASTER_KEY="$(openssl rand -hex 32)" \
-  -e CONSOLE_ADMIN_USER=admin -e CONSOLE_ADMIN_PASSWORD='改我' \
-  -p 8080:8080 \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v muad-console-data:/var/lib/muad-console \
-  --network muad-net \
-  ghcr.io/michaelxwb/muad-console:latest
-# 浏览器打开 http://<host>:8080 登录
+cd console
+cp config.example.yaml config.yaml   # 填 masterKey / adminPassword 等
+docker compose up -d
+# 浏览器打开 http://<host>:18080 登录（端口/镜像版本在 docker-compose.yml 内编辑）
 ```
 
 > 控制台需 `docker.sock` 才能管理容器（DockerDriver）。持有 docker.sock 即 root 等价（RISK-03），
@@ -82,9 +80,9 @@ docker build -t muad-console:local .
 ```bash
 # 后端（dev 不需要前端产物）
 cd console/backend
-cp config.example.yaml config.yaml   # 按需编辑（密文从 env 注入，不写入 yaml）
+cp config.example.yaml config.yaml   # 填 masterKey 等（config.yaml 含机密，已 gitignore）
 go test ./...                        # 单测（test/ 黑盒包）
-CONSOLE_MASTER_KEY=test go run ./cmd/console   # config.yaml 自动读取；env 可覆盖任意字段
+go run ./cmd/console                 # 自动读取 config.yaml；env 可覆盖任意字段
 
 # 前端（vite dev，代理 /api → :8080）
 cd console/frontend
@@ -93,7 +91,7 @@ npm run dev                          # http://localhost:5173
 npm run build                        # tsc 类型检查 + 打包 dist/
 ```
 
-- **配置优先级:env > config.yaml > 内置默认值**。密文（`CONSOLE_MASTER_KEY`、`CONSOLE_ADMIN_PASSWORD`）仅从 env 注入，yaml 不存。
+- **配置优先级:env > config.yaml > 内置默认值**。config.yaml 是唯一配置源（含机密），已 gitignore、不入镜像；env 仅作可选覆盖。
 - 后端 HTTP 用 stdlib `net/http`；单测集中在 `backend/test/`（`package test` 黑盒）。
 - 前端构建产物 `dist/` 在镜像构建时由 `-tags prod` 内嵌进 Go 二进制（dev 构建不需要）。
 

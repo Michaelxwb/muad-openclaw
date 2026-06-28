@@ -1,0 +1,30 @@
+# muad 控制台部署配置模板（docker compose 用）。
+# 复制为 config.yaml 后填写；compose 会把 config.yaml 只读挂进容器，含机密、已 gitignore、不入镜像。
+
+# AES-GCM 加密主密钥（派生加密 DB 内凭证的 key）。生成：openssl rand -hex 32
+masterKey: ""
+
+# 初始管理员账号（首启幂等引导）
+adminUser: "admin"
+adminPassword: ""
+
+# 运行时驱动："docker" 或 "k8s"
+runtimeDriver: docker
+
+# 新建用户容器默认的 openclaw worker 镜像
+defaultImage: ghcr.io/michaelxwb/muad-openclaw:latest
+
+# 共享 docker 网络名（须与 docker-compose.yml 的 networks.muad-net 实名一致）
+muadNet: muad-net
+
+# 共享 skill 目录——【宿主机】绝对路径（用户容器经宿主 docker.sock bind-mount）
+skillsDir: /opt/muad/skills
+
+# 容器内监听地址（固定 8080，对应 compose 的 ports 映射）
+listenAddr: ":8080"
+
+# 容器内 SQLite 路径（对应 compose 的 muad-console-data 卷）
+dbPath: /var/lib/muad-console/console.db
+
+# 采集间隔（秒，默认 30）
+collectIntervalSec: 30

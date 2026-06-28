@@ -11,5 +11,8 @@ node_modules/
 # 运行态 SQLite DB（控制台），绝不入库
 console/backend/data/
 
-# console 本地 env（含密钥/密码），绝不入库
+# console 运行时配置（含 masterKey/adminPassword），绝不入库；模板见 config.example.yaml
+console/config.yaml
+console/backend/config.yaml
+# 旧 env 部署方式已弃用（如有遗留也不入库）
 console/.env

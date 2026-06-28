@@ -1,38 +1,29 @@
 # muad 控制台 compose（使用 GHCR 远程镜像）。
 #
 # 用法：
-#   1) 复制 .env.example → .env，填 CONSOLE_MASTER_KEY / CONSOLE_ADMIN_PASSWORD
+#   1) 复制 config.example.yaml → config.yaml，填 masterKey / adminPassword 等
 #   2) docker compose up -d
-#   3) 浏览器开 http://<host>:8080，用 admin / <CONSOLE_ADMIN_PASSWORD> 登录
+#   3) 浏览器开 http://<host>:18080，用 adminUser / adminPassword 登录
 #
-# 控制台用 DockerDriver 起每用户容器：挂宿主 docker.sock，并与用户容器同在 muad-net
-# 网络（按容器名互通）。镜像不烤任何凭证（NFR-SEC-02），全部运行时 env 注入。
+# 所有运行时配置（含机密）走 config.yaml——本文件运行时只读挂进容器，已 gitignore、
+# 不入镜像（NFR-SEC-02）。改控制台镜像版本 / 宿主端口直接编辑下面的 image / ports。
+# 控制台用 DockerDriver 起每用户容器：挂宿主 docker.sock，并与用户容器同在 muad-net 网络。
 name: muad-console
 
 services:
   console:
-    image: ${MUAD_CONSOLE_IMAGE:-ghcr.io/michaelxwb/muad-console:latest}
+    image: ghcr.io/michaelxwb/muad-console:latest
     container_name: muad-console
     restart: unless-stopped
     environment:
-      # 必填（.env）：AES-GCM 主密钥 + 初始管理员密码
-      CONSOLE_MASTER_KEY: ${CONSOLE_MASTER_KEY:?set CONSOLE_MASTER_KEY in .env}
-      CONSOLE_ADMIN_PASSWORD: ${CONSOLE_ADMIN_PASSWORD:?set CONSOLE_ADMIN_PASSWORD in .env}
-      CONSOLE_ADMIN_USER: ${CONSOLE_ADMIN_USER:-admin}
-      # 运行时驱动 + 新建用户容器默认镜像（远程 worker 镜像）
-      RUNTIME_DRIVER: docker
-      DEFAULT_IMAGE: ${MUAD_OC_IMAGE:-ghcr.io/michaelxwb/muad-openclaw:latest}
-      # 共享网络名（须与下方 networks.muad-net 实名一致）
-      MUAD_NET: muad-net
-      # 共享 skill 目录——这是【宿主机】绝对路径（用户容器经宿主 docker.sock bind-mount），
-      # 不是控制台容器内路径。按需改成你宿主上的 skills 目录。
-      CONSOLE_SKILLS_DIR: ${SKILLS_DIR:-/opt/muad/skills}
-      CONSOLE_LISTEN: ":8080"
-      CONSOLE_DB: /var/lib/muad-console/console.db
-      TZ: Asia/Shanghai
+      # 唯一配置入口：指向下方挂载的 config.yaml（其余配置全在该文件里）
+      CONSOLE_CONFIG: /etc/muad-console/config.yaml
     ports:
-      - "${CONSOLE_PORT:-8080}:8080"
+      # 宿主端口:容器端口（容器内固定 8080，对应 config.yaml 的 listenAddr）
+      - "18080:8080"
     volumes:
+      # 唯一配置源（含机密），只读挂载——不入镜像
+      - ./config.yaml:/etc/muad-console/config.yaml:ro
       # DockerDriver 通过宿主 docker.sock 起/管用户容器（RISK-03：等价 root）
       - /var/run/docker.sock:/var/run/docker.sock
       # 控制台 SQLite 持久化（用户/LLM/审计/管理员）
