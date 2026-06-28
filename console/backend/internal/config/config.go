@@ -51,12 +51,15 @@ var validDrivers = map[string]bool{"docker": true, "k8s": true}
 
 func defaults() *Config {
 	return &Config{
-		RuntimeDriver:      "docker",
-		DefaultImage:       "ghcr.io/michaelxwb/muad-openclaw:latest",
-		MuadNet:            "muad-net",
-		SkillsDir:          "/opt/muad/skills",
-		ListenAddr:         ":8080",
-		DBPath:             "/var/lib/muad-console/console.db",
+		RuntimeDriver: "docker",
+		DefaultImage:  "ghcr.io/michaelxwb/muad-openclaw:latest",
+		MuadNet:       "muad-net",
+		SkillsDir:     "/opt/muad/skills",
+		ListenAddr:    ":8080",
+		DBPath:        "/var/lib/muad-console/console.db",
+		// 默认管理员名，使容器化（仅 env、无 config.yaml）部署也能引导管理员：
+		// 只需提供 CONSOLE_ADMIN_PASSWORD。BootstrapAdmin 要求 user+password 均非空。
+		AdminUser:          "admin",
 		CollectIntervalSec: 30,
 	}
 }
