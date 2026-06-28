@@ -75,15 +75,24 @@ func (d *DockerDriver) Restart(ctx context.Context, userID string) error {
 // Remove force-removes the container; when !keepState the state volume is
 // deleted too (RULE-02 "删卷" is an explicit opt-in).
 func (d *DockerDriver) Remove(ctx context.Context, userID string, keepState bool) error {
-	if _, err := d.run(ctx, "rm", "-f", ContainerName(userID)); err != nil {
+	// Idempotent: tolerate an already-removed container/volume so an orphaned
+	// DB record (container deleted out-of-band) can still be cleaned up.
+	if _, err := d.run(ctx, "rm", "-f", ContainerName(userID)); err != nil && !isAbsentErr(err) {
 		return err
 	}
 	if !keepState {
-		if _, err := d.run(ctx, "volume", "rm", stateVolume(userID)); err != nil {
+		if _, err := d.run(ctx, "volume", "rm", stateVolume(userID)); err != nil && !isAbsentErr(err) {
 			return err
 		}
 	}
 	return nil
+}
+
+// isAbsentErr reports whether a docker error means the target was already gone.
+func isAbsentErr(err error) bool {
+	s := strings.ToLower(err.Error())
+	return strings.Contains(s, "no such container") || strings.Contains(s, "no such volume") ||
+		strings.Contains(s, "not found")
 }
 
 // dockerPS is one line of `docker ps --format {{json .}}`.

@@ -151,8 +151,12 @@ func (s *Server) handleListContainers(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, 50001, "list users")
 		return
 	}
+	// driver.List returns all muad-oc-* containers (docker ps -a). listOK lets us
+	// tell "container absent" (→ gone) apart from "list failed" (→ keep DB state).
 	live := map[string]driver.ContainerInfo{}
+	listOK := false
 	if infos, err := s.drv.List(r.Context()); err == nil {
+		listOK = true
 		for _, i := range infos {
 			live[i.UserID] = i
 		}
@@ -166,8 +170,13 @@ func (s *Server) handleListContainers(w http.ResponseWriter, r *http.Request) {
 		}
 		if l, ok := live[u.UserID]; ok && l.State != "" {
 			v.State = l.State
+		} else if listOK {
+			// DB record exists but no actual container (deleted out-of-band) → 已删除.
+			v.State = "missing"
 		}
-		s.fillMetrics(&v, u.UserID)
+		if v.State != "missing" {
+			s.fillMetrics(&v, u.UserID)
+		}
 		views = append(views, v)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": views, "total": total})
