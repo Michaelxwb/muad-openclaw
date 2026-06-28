@@ -24,6 +24,8 @@ export function LLM() {
   const [testOutput, setTestOutput] = useState("");
   const [testLoading, setTestLoading] = useState(false);
   const [testError, setTestError] = useState("");
+  // 连通性测试通过后才允许批量应用；全局配置一变更即失效，需重新测试。
+  const [tested, setTested] = useState(false);
 
   useEffect(() => {
     api
@@ -50,6 +52,7 @@ export function LLM() {
 
   function field(key: keyof LLMForm, value: string) {
     setForm({ ...form, [key]: value });
+    setTested(false); // 配置变更 → 之前的测试结果失效
   }
 
   async function test() {
@@ -63,6 +66,7 @@ export function LLM() {
       setTestOutput("连通性测试通过 ✓");
       setTestError("");
       setMsg("连通性测试通过");
+      setTested(true);
     } catch (e) {
       setTestOutput("");
       setTestError(`FAILED: ${(e as Error).message}`);
@@ -77,6 +81,7 @@ export function LLM() {
     try {
       await api.setLLM(form);
       setConfigured(true);
+      setTested(true); // 保存接口已重新连通性测试
       setMsg("已保存");
     } catch (e) {
       setErr((e as Error).message);
@@ -84,6 +89,10 @@ export function LLM() {
   }
 
   async function apply() {
+    if (!tested) {
+      setErr("请先通过「连通性测试」再批量应用");
+      return;
+    }
     const ids = Object.keys(selected).filter((k) => selected[k]);
     if (ids.length === 0) {
       setErr("请先勾选要应用的容器");
@@ -169,7 +178,11 @@ export function LLM() {
       {/* Card 3: Batch Apply + Per-User Override */}
       <div className={styles.card}>
         <h3 className={styles.cardTitle}>批量应用与覆盖</h3>
-        <p className="hint">改全局后只影响新建；勾选下列容器以应用当前全局 LLM（滚动重启）。</p>
+        <p className="hint">
+          改全局后只影响新建；勾选容器「应用到所选」会<b>完整重建容器</b>（保留状态卷与登录态）使新
+          LLM 生效——不是热加载、也不是 docker restart（重启不会重载 env 里的 LLM）。
+          {!tested && <span className="error"> 需先通过「连通性测试」才能批量应用。</span>}
+        </p>
         <div className={styles.checks}>
           {containers.map((c) => (
             <label key={c.userId} className={styles.check}>
@@ -183,9 +196,15 @@ export function LLM() {
           ))}
           {containers.length === 0 && <span className="hint">暂无容器</span>}
         </div>
-        <button onClick={apply}>应用到所选</button>
+        <button onClick={apply} disabled={!tested} title={tested ? "" : "请先连通性测试"}>
+          应用到所选
+        </button>
 
         <h3 className={styles.subTitle}>单用户覆盖</h3>
+        <p className="hint">
+          保存覆盖时会先做连通性测试（global ⊕
+          覆盖），不通过则不保存；保存后需对该用户「应用到所选」才生效。
+        </p>
         <div className={styles.formGrid}>
           <label>user_id</label>
           <input value={overrideId} onChange={(e) => setOverrideId(e.target.value)} />

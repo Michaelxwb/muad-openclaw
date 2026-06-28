@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/llm"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -80,6 +81,16 @@ func (s *Server) handleApplyLLM(w http.ResponseWriter, r *http.Request) {
 	var req applyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, 40001, "invalid request body")
+		return
+	}
+	// 批量应用前必须通过连通性测试：测当前全局 LLM（批量重建会注入它）。
+	g, err := s.globalLLM()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, 50001, "read global llm")
+		return
+	}
+	if err := llm.Probe(r.Context(), g.BaseURL, g.APIKey); err != nil {
+		writeErr(w, http.StatusBadRequest, 40002, "connectivity test failed: "+err.Error())
 		return
 	}
 	results := map[string]string{}
@@ -159,7 +170,12 @@ func (s *Server) specFromUser(u repo.User, imageTag string) (driver.UserSpec, er
 		return driver.UserSpec{}, err
 	}
 	return driver.UserSpec{
-		UserID: u.UserID, BotID: u.BotID, Secret: secret, ImageTag: imageTag, LLM: eff,
+		UserID:   u.UserID,
+		Channel:  driver.NormalizeChannel(u.Channel), // 不可丢：recreate 时漏掉会退回默认 wecom
+		BotID:    u.BotID,
+		Secret:   secret,
+		ImageTag: imageTag,
+		LLM:      eff,
 	}, nil
 }
 
