@@ -56,7 +56,6 @@ type RuntimeDriver interface {
 	Restart(ctx context.Context, userID string) error
 	Remove(ctx context.Context, userID string, keepState bool) error
 	List(ctx context.Context) ([]ContainerInfo, error)
-	Stats(ctx context.Context, userID string) (Stats, error)
 	// StatsAll samples CPU/MEM for all user containers in one call (collector).
 	StatsAll(ctx context.Context) (map[string]Stats, error)
 	Logs(ctx context.Context, userID string, tail int) (string, error)

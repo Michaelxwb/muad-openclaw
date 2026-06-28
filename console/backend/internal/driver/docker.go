@@ -127,15 +127,6 @@ func (d *DockerDriver) List(ctx context.Context) ([]ContainerInfo, error) {
 	return infos, nil
 }
 
-// Stats returns a one-shot CPU/MEM sample (no streaming, RULE-06).
-func (d *DockerDriver) Stats(ctx context.Context, userID string) (Stats, error) {
-	out, err := d.run(ctx, "stats", "--no-stream", "--format", "{{.CPUPerc}};{{.MemUsage}}", ContainerName(userID))
-	if err != nil {
-		return Stats{}, err
-	}
-	return ParseStats(strings.TrimSpace(out))
-}
-
 // StatsAll samples CPU/MEM for every muad-oc-* container in one `docker stats`
 // call (avoids per-container streams; RULE-06).
 func (d *DockerDriver) StatsAll(ctx context.Context) (map[string]Stats, error) {

@@ -89,6 +89,7 @@ func (c *Collector) CollectOnce(ctx context.Context) {
 			base.Healthy = status.Healthy
 			base.ChannelConnected = status.ChannelConnected
 			base.LastActiveAt = status.LastActiveAt
+			base.LastMessageAt = status.LastMessageAt
 
 			mu.Lock()
 			snaps[userID] = base

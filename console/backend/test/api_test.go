@@ -55,9 +55,6 @@ func (f *fakeDriver) List(context.Context) ([]driver.ContainerInfo, error) {
 	}
 	return out, nil
 }
-func (f *fakeDriver) Stats(context.Context, string) (driver.Stats, error) {
-	return driver.Stats{}, nil
-}
 func (f *fakeDriver) StatsAll(context.Context) (map[string]driver.Stats, error) {
 	out := map[string]driver.Stats{}
 	for id := range f.created {

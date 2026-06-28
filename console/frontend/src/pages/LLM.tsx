@@ -43,10 +43,8 @@ export function LLM() {
       })
       .catch((e) => setErr((e as Error).message));
     api
-      .listContainers(0, 1000)
-      .then((res: { items: Container[]; total: number } | Container[]) =>
-        setContainers(Array.isArray(res) ? res : res.items),
-      )
+      .listContainers()
+      .then((res) => setContainers(res.items))
       .catch(() => {});
   }, []);
 

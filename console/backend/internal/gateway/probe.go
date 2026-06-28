@@ -19,7 +19,13 @@ import (
 type Status struct {
 	Healthy          bool      // probe responded and parsed
 	ChannelConnected bool      // the message channel has a linked account
-	LastActiveAt     time.Time // newest inbound/outbound message time
+	LastActiveAt     time.Time // newest of inbound/outbound/start (display "最后活跃")
+	// LastMessageAt is the newest real message time (inbound/outbound only),
+	// excluding channel start. It drives the idle/reap countdown: ongoing
+	// conversation keeps refreshing it, so an active container never goes idle.
+	// Zero when the channel reports no message timestamps (e.g. wecom only
+	// exposes lastStartAt) — callers must not treat zero as "idle/reapable".
+	LastMessageAt time.Time
 }
 
 // Execer runs a command inside a user's container (satisfied by DockerDriver).
@@ -69,19 +75,30 @@ func ParseStatus(raw []byte) (Status, error) {
 	}
 	st := Status{Healthy: true}
 
-	var maxMs int64
+	var maxMs, maxMsgMs int64 // maxMs: any activity incl. start; maxMsgMs: messages only
 	for id, c := range s.Channels {
 		if c.Running || c.Configured || len(s.ChannelAccounts[id]) > 0 {
 			st.ChannelConnected = true
 		}
-		for _, t := range []*int64{c.LastInboundAt, c.LastOutboundAt, c.LastStartAt} {
-			if t != nil && *t > maxMs {
-				maxMs = *t
+		for _, t := range []*int64{c.LastInboundAt, c.LastOutboundAt} {
+			if t != nil {
+				if *t > maxMsgMs {
+					maxMsgMs = *t
+				}
+				if *t > maxMs {
+					maxMs = *t
+				}
 			}
+		}
+		if c.LastStartAt != nil && *c.LastStartAt > maxMs {
+			maxMs = *c.LastStartAt
 		}
 	}
 	if maxMs > 0 {
 		st.LastActiveAt = time.UnixMilli(maxMs)
+	}
+	if maxMsgMs > 0 {
+		st.LastMessageAt = time.UnixMilli(maxMsgMs)
 	}
 	return st, nil
 }

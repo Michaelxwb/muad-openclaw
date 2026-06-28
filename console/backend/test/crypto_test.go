@@ -52,12 +52,3 @@ func TestNew_EmptyKey(t *testing.T) {
 		t.Error("expected error for empty master key")
 	}
 }
-
-func TestMask(t *testing.T) {
-	if crypto.Mask("abc") != "***" {
-		t.Error("short value should fully mask")
-	}
-	if crypto.Mask("abcdefgh") != "abcd****" {
-		t.Errorf("Mask = %q", crypto.Mask("abcdefgh"))
-	}
-}

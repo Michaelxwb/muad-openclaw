@@ -91,9 +91,8 @@ export function Containers() {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await api.listContainers(0, 1000);
-      // Support both old (array) and new ({items, total}) response formats.
-      setItems(Array.isArray(res as unknown) ? (res as unknown as Container[]) : res.items);
+      const res = await api.listContainers();
+      setItems(res.items);
     } catch (e) {
       setErr((e as Error).message);
     }

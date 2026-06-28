@@ -143,10 +143,11 @@ type containerView struct {
 
 // handleListContainers returns the user list merged with live state and the
 // collector's cached metrics (API-02). Metrics read the cache, not live probes.
-// Supports ?offset=N&limit=N for pagination (default 0/20, max limit 100).
+// Returns ALL users (unpaginated): the status/connection filters are computed
+// from live-merged data (not stored in SQL), so filtering+pagination happens
+// client-side. Container counts are bounded by host capacity.
 func (s *Server) handleListContainers(w http.ResponseWriter, r *http.Request) {
-	offset, limit := parsePagination(r)
-	users, total, err := s.store.ListUsers(offset, limit)
+	users, total, err := s.store.ListUsers(0, 0)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, 50001, "list users")
 		return
@@ -193,7 +194,11 @@ func (s *Server) fillMetrics(v *containerView, userID string) {
 		if !snap.LastActiveAt.IsZero() {
 			t := snap.LastActiveAt
 			v.LastActiveAt = &t
-			eta := int64(reapWindow.Seconds()) - int64(time.Since(t).Seconds())
+		}
+		// 回收倒计时基于真实消息活跃（收/发），有持续对话就刷新、永不进入可回收；
+		// 无消息活跃数据（如 wecom 仅暴露启动时间）不显示倒计时，也不判定可回收。
+		if !snap.LastMessageAt.IsZero() {
+			eta := int64(reapWindow.Seconds()) - int64(time.Since(snap.LastMessageAt).Seconds())
 			v.ReapInSeconds = &eta
 		}
 	}

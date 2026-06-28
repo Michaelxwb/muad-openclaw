@@ -50,12 +50,12 @@ type LLMGlobal struct {
 
 // AuditEntry is one audit record (payload already redacted).
 type AuditEntry struct {
-	ID      int64
-	Actor   string
-	Action  string
-	Target  string
-	Payload string
-	TS      time.Time
+	ID      int64     `json:"id"`
+	Actor   string    `json:"actor"`
+	Action  string    `json:"action"`
+	Target  string    `json:"target"`
+	Payload string    `json:"payload"`
+	TS      time.Time `json:"ts"`
 }
 
 // Admin is an admin account.

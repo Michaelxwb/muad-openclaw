@@ -62,12 +62,3 @@ func (c *Cipher) Decrypt(encoded string) (string, error) {
 	}
 	return string(plain), nil
 }
-
-// Mask redacts a secret for safe display/logging: keeps a short prefix, masks
-// the rest. Returns "***" for very short or empty values.
-func Mask(s string) string {
-	if len(s) <= 4 {
-		return "***"
-	}
-	return s[:4] + "****"
-}

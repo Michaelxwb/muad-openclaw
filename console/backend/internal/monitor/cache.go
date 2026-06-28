@@ -13,8 +13,9 @@ type Snapshot struct {
 	CPUPercent       float64
 	MemMiB           int
 	ChannelConnected bool
-	LastActiveAt     time.Time
-	Healthy          bool // false when the last probe failed (→ unhealthy)
+	LastActiveAt     time.Time // display "最后活跃" (incl. channel start)
+	LastMessageAt    time.Time // real message activity; drives idle/reap countdown
+	Healthy          bool      // false when the last probe failed (→ unhealthy)
 	Updated          time.Time
 }
 
