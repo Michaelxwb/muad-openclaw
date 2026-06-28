@@ -2,12 +2,36 @@ package test
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 )
+
+// stubLLM is an OpenAI-compatible endpoint that accepts any key (200 on /models),
+// so connectivity probes pass in tests.
+func stubLLM(t *testing.T) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
+}
+
+// configureGlobalLLM sets a working global LLM (probed against the stub) so
+// batch-apply / override gates pass.
+func (e *testEnv) configureGlobalLLM(t *testing.T, baseURL string) {
+	t.Helper()
+	rr := e.do(http.MethodPut, "/api/v1/llm",
+		`{"provider":"deepseek","baseUrl":"`+baseURL+`","apiKey":"k","model":"m"}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("set global llm = %d: %s", rr.Code, rr.Body.String())
+	}
+}
 
 func TestLifecycleActions(t *testing.T) {
 	e := newTestEnv(t)
@@ -48,7 +72,10 @@ func TestSkillsReload_RollingRestart(t *testing.T) {
 
 func TestApplyLLM_Recreates(t *testing.T) {
 	e := newTestEnv(t)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","botId":"b","secret":"s"}`)
+	e.configureGlobalLLM(t, stubLLM(t))
+	// wechat container: recreate must preserve channel (regression for the bug
+	// where specFromUser dropped Channel → silently reverted to wecom).
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channel":"wechat"}`)
 
 	rr := e.do(http.MethodPost, "/api/v1/llm/apply", `{"userIds":["alice","ghost"]}`)
 	if rr.Code != http.StatusOK {
@@ -58,9 +85,21 @@ func TestApplyLLM_Recreates(t *testing.T) {
 	if !strings.Contains(body, "applied") || !strings.Contains(body, "not found") {
 		t.Errorf("apply results unexpected: %s", body)
 	}
-	// alice was removed (keepState) then recreated.
 	if _, ok := e.drv.created["alice"]; !ok {
 		t.Error("alice not recreated")
+	}
+	if got := e.drv.created["alice"].Channel; got != "wechat" {
+		t.Errorf("recreate dropped channel: got %q, want wechat", got)
+	}
+}
+
+func TestApplyLLM_RequiresConnectivity(t *testing.T) {
+	e := newTestEnv(t)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channel":"wechat"}`)
+	// No global LLM configured → batch-apply must fail the connectivity gate.
+	rr := e.do(http.MethodPost, "/api/v1/llm/apply", `{"userIds":["alice"]}`)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("apply without working LLM = %d, want 400", rr.Code)
 	}
 }
 

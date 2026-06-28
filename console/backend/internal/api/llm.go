@@ -89,6 +89,16 @@ func (s *Server) handleSetUserLLM(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, 40001, "invalid request body")
 		return
 	}
+	// 覆盖必须先通过连通性测试：测的是实际生效配置（global ⊕ override）。
+	eff, err := s.effectiveLLM(&req)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, 50001, "resolve effective llm")
+		return
+	}
+	if err := llm.Probe(r.Context(), eff.BaseURL, eff.APIKey); err != nil {
+		writeErr(w, http.StatusBadRequest, 40002, "connectivity test failed: "+err.Error())
+		return
+	}
 	enc, err := s.encodeOverride(req)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, 50001, "encode override")
