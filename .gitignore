@@ -10,3 +10,6 @@ node_modules/
 
 # 运行态 SQLite DB（控制台），绝不入库
 console/backend/data/
+
+# console 本地 env（含密钥/密码），绝不入库
+console/.env

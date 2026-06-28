@@ -44,7 +44,9 @@ volumes:
   muad-console-data:
 
 networks:
-  # 实名 muad-net：用户容器（控制台 DockerDriver 用 --network muad-net 创建）与
-  # 控制台同网，按容器名 muad-oc-<user>:18789 互通。compose 首次 up 时创建该网络。
+  # 共享网络 muad-net：用户容器（控制台 DockerDriver 用 --network muad-net 在 compose
+  # 之外创建）与控制台同网，按容器名 muad-oc-<user>:18789 互通。声明为 external，
+  # 首次部署前需手动创建一次：  docker network create muad-net
   muad-net:
     name: muad-net
+    external: true
