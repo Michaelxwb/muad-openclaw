@@ -1,0 +1,327 @@
+/* ===== 赛博朋克设计 tokens ===== */
+:root {
+  /* 背景 */
+  --bg-primary: #08080f;
+  --bg-panel: #0f0f1a;
+  --bg-elevated: #151525;
+
+  /* 霓虹色板 */
+  --color-neon-cyan: #00e5ff;
+  --color-neon-purple: #b347ea;
+  --color-neon-pink: #ff2d95;
+
+  /* 功能色 */
+  --color-success: #00ff88;
+  --color-danger: #ff4466;
+  --color-warning: #ffaa00;
+
+  /* 文字 */
+  --color-text-primary: #c8d6e5;
+  --color-text-muted: #5a6a80;
+
+  /* 发光 */
+  --border-glow: 0 0 8px var(--color-neon-cyan);
+  --border-glow-strong: 0 0 16px var(--color-neon-cyan);
+  --border-glow-purple: 0 0 8px var(--color-neon-purple);
+
+  /* 字体 */
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --font-ui: system-ui, -apple-system, sans-serif;
+
+  /* 动画 */
+  --transition-fast: 0.15s ease;
+}
+
+/* ===== 关键帧动画 ===== */
+@keyframes scanline {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100vh;
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 4px var(--color-neon-cyan);
+  }
+  50% {
+    box-shadow:
+      0 0 16px var(--color-neon-cyan),
+      0 0 32px var(--color-neon-purple);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ===== 全局 reset ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  background: var(--bg-primary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ===== 基础元素 ===== */
+button {
+  background: var(--bg-panel);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  transition: all var(--transition-fast);
+}
+
+button:hover {
+  border-color: var(--color-neon-cyan);
+  box-shadow: var(--border-glow);
+  color: var(--color-neon-cyan);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+button.active {
+  border-color: var(--color-neon-purple);
+  color: var(--color-neon-purple);
+  box-shadow: var(--border-glow-purple);
+}
+
+button.danger {
+  border-color: rgba(255, 68, 102, 0.3);
+  color: var(--color-danger);
+}
+
+button.danger:hover {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 8px rgba(255, 68, 102, 0.4);
+  color: var(--color-danger);
+}
+
+input,
+select {
+  background: var(--bg-primary);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0l4 6 4-6z' fill='%235a6a80'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+select option {
+  background: var(--bg-panel);
+  color: var(--color-text-primary);
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-neon-cyan);
+  box-shadow: var(--border-glow);
+}
+
+input::placeholder {
+  color: var(--color-text-muted);
+}
+
+label {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+th,
+td {
+  border-bottom: 1px solid rgba(0, 229, 255, 0.08);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+tr:hover td {
+  background: rgba(0, 229, 255, 0.03);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-text-primary);
+  margin: 0 0 12px;
+}
+
+h2 {
+  font-size: 18px;
+}
+
+h3 {
+  font-size: 15px;
+  color: var(--color-text-muted);
+}
+
+/* ===== 工具类 ===== */
+.error {
+  color: var(--color-danger);
+  padding: 8px 0;
+}
+
+.ok {
+  color: var(--color-success);
+  padding: 8px 0;
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 32px 20px;
+  font-size: 13px;
+}
+
+/* ===== 徽章 ===== */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+  border: 1px solid;
+}
+
+.badge.running {
+  color: var(--color-success);
+  border-color: var(--color-success);
+  box-shadow: 0 0 6px rgba(0, 255, 136, 0.2);
+}
+
+.badge.stopped,
+.badge.archived {
+  color: var(--color-text-muted);
+  border-color: var(--color-text-muted);
+}
+
+.badge.error {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background: rgba(255, 68, 102, 0.08);
+}
+
+.badge.unhealthy {
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+  box-shadow: 0 0 6px rgba(255, 170, 0, 0.2);
+}
+
+.badge.creating {
+  color: var(--color-neon-cyan);
+  border-color: var(--color-neon-cyan);
+}
+
+/* ===== 骨架屏 ===== */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 229, 255, 0.04) 25%,
+    rgba(0, 229, 255, 0.08) 50%,
+    rgba(0, 229, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}

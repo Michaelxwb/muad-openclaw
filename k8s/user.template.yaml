@@ -1,0 +1,58 @@
+# 每用户 k8s 清单模板（provision-user-k8s.sh 渲染 __USER__ / __IMAGE__）。
+# 复用与 Docker 版完全相同的镜像 + 环境变量契约——载体从 .env 换成 Secret，契约不变。
+# 渲染时占位：__USER__（租户）、__IMAGE__（镜像）、__SECRET_*__（base64 凭证，由脚本注入）
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: muad-oc-__USER__
+  labels: { app: muad-openclaw, muad-user: "__USER__" }
+type: Opaque
+stringData:
+  # 外部面环境变量契约（与 Docker 版一致）
+  WECOM_BOT_ID: "__WECOM_BOT_ID__"
+  WECOM_SECRET: "__WECOM_SECRET__"
+  LLM_PROVIDER: "__LLM_PROVIDER__"
+  LLM_API_KEY: "__LLM_API_KEY__"
+  LLM_MODEL: "__LLM_MODEL__"
+  LLM_BASE_URL: "__LLM_BASE_URL__"
+  OPENCLAW_GATEWAY_TOKEN: "__GATEWAY_TOKEN__"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: muad-oc-__USER__
+  labels: { app: muad-openclaw, muad-user: "__USER__" }
+spec:
+  serviceName: muad-oc-__USER__
+  replicas: 1                       # 活跃常驻；reaper 把 >10 天无活动的缩到 0
+  selector:
+    matchLabels: { app: muad-openclaw, muad-user: "__USER__" }
+  template:
+    metadata:
+      labels: { app: muad-openclaw, muad-user: "__USER__" }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, fsGroup: 1000 }
+      containers:
+        - name: openclaw
+          image: __IMAGE__
+          env:
+            - { name: PC_USER, value: "__USER__" }
+            - { name: TZ, value: "Asia/Shanghai" }
+            - { name: OPENCLAW_STATE_DIR, value: /home/node/.openclaw }
+            - { name: OPENCLAW_GATEWAY_BIND, value: lan }
+          envFrom:
+            - secretRef: { name: muad-oc-__USER__ }    # 注入外部面契约
+          resources:
+            requests: { cpu: "100m", memory: "300Mi" }  # 空闲≈269MiB（PoC 实测）→ 密集打包
+            limits:   { cpu: "1500m", memory: "2Gi" }    # 浏览器峰值≈1.38GiB → 留余量
+          volumeMounts:
+            - { name: state, mountPath: /home/node/.openclaw }
+            # TODO(FEAT-03 共享 skill 热更新)：集群建一个 RWX(NFS/CephFS) PVC `muad-skills`，
+            # 在 template.spec.volumes 加 { name: skills, persistentVolumeClaim: { claimName: muad-skills, readOnly: true } }
+            # 并在此加挂载 { name: skills, mountPath: /opt/openclaw-skills, readOnly: true }
+  volumeClaimTemplates:
+    - metadata: { name: state }       # 用户状态（记忆/习惯/登录态/插件）→ 每用户独立 PVC
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources: { requests: { storage: 2Gi } }

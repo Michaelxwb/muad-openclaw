@@ -1,0 +1,12 @@
+# 用户密钥/运行态，绝不入库
+users/*/
+!users/_template.config
+
+# 杂项
+node_modules/
+*.log
+.DS_Store
+.idea/
+
+# 运行态 SQLite DB（控制台），绝不入库
+console/backend/data/

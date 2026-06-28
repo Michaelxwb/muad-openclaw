@@ -1,0 +1,41 @@
+{
+  "_comment": "镜像内基线配置（非密钥，全用户通用）。构建期由 bin/seed-config.mjs 合并进 openclaw.json 并快照为种子。来源：2026-06-27 真机 PoC 验证可用的最小配置组合。管理员永不接触本文件。",
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "port": 18789,
+    "nodes": {
+      "browser": { "mode": "off" }
+    }
+  },
+  "tools": {
+    "profile": "coding",
+    "alsoAllow": ["browser"]
+  },
+  "browser": {
+    "enabled": true,
+    "headless": true,
+    "noSandbox": true,
+    "extraArgs": ["--disable-dev-shm-usage"]
+  },
+  "channels": {
+    "wecom": {
+      "connectionMode": "websocket"
+    },
+    "openclaw-weixin": {}
+  },
+  "models": {
+    "providers": {
+      "deepseek": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.deepseek.com"
+      }
+    }
+  },
+  "skills": {
+    "load": {
+      "extraDirs": ["/opt/openclaw-skills"],
+      "watch": true
+    }
+  }
+}
