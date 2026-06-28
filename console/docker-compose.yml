@@ -1,0 +1,50 @@
+# muad 控制台 compose（使用 GHCR 远程镜像）。
+#
+# 用法：
+#   1) 复制 .env.example → .env，填 CONSOLE_MASTER_KEY / CONSOLE_ADMIN_PASSWORD
+#   2) docker compose up -d
+#   3) 浏览器开 http://<host>:8080，用 admin / <CONSOLE_ADMIN_PASSWORD> 登录
+#
+# 控制台用 DockerDriver 起每用户容器：挂宿主 docker.sock，并与用户容器同在 muad-net
+# 网络（按容器名互通）。镜像不烤任何凭证（NFR-SEC-02），全部运行时 env 注入。
+name: muad-console
+
+services:
+  console:
+    image: ${MUAD_CONSOLE_IMAGE:-ghcr.io/michaelxwb/muad-console:latest}
+    container_name: muad-console
+    restart: unless-stopped
+    environment:
+      # 必填（.env）：AES-GCM 主密钥 + 初始管理员密码
+      CONSOLE_MASTER_KEY: ${CONSOLE_MASTER_KEY:?set CONSOLE_MASTER_KEY in .env}
+      CONSOLE_ADMIN_PASSWORD: ${CONSOLE_ADMIN_PASSWORD:?set CONSOLE_ADMIN_PASSWORD in .env}
+      CONSOLE_ADMIN_USER: ${CONSOLE_ADMIN_USER:-admin}
+      # 运行时驱动 + 新建用户容器默认镜像（远程 worker 镜像）
+      RUNTIME_DRIVER: docker
+      DEFAULT_IMAGE: ${MUAD_OC_IMAGE:-ghcr.io/michaelxwb/muad-openclaw:latest}
+      # 共享网络名（须与下方 networks.muad-net 实名一致）
+      MUAD_NET: muad-net
+      # 共享 skill 目录——这是【宿主机】绝对路径（用户容器经宿主 docker.sock bind-mount），
+      # 不是控制台容器内路径。按需改成你宿主上的 skills 目录。
+      CONSOLE_SKILLS_DIR: ${SKILLS_DIR:-/opt/muad/skills}
+      CONSOLE_LISTEN: ":8080"
+      CONSOLE_DB: /var/lib/muad-console/console.db
+      TZ: Asia/Shanghai
+    ports:
+      - "${CONSOLE_PORT:-8080}:8080"
+    volumes:
+      # DockerDriver 通过宿主 docker.sock 起/管用户容器（RISK-03：等价 root）
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 控制台 SQLite 持久化（用户/LLM/审计/管理员）
+      - muad-console-data:/var/lib/muad-console
+    networks:
+      - muad-net
+
+volumes:
+  muad-console-data:
+
+networks:
+  # 实名 muad-net：用户容器（控制台 DockerDriver 用 --network muad-net 创建）与
+  # 控制台同网，按容器名 muad-oc-<user>:18789 互通。compose 首次 up 时创建该网络。
+  muad-net:
+    name: muad-net
