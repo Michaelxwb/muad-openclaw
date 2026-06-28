@@ -1,0 +1,26 @@
+# 每用户 compose 模板。provision-user.sh 用 sed 渲染 PC_USER / MUAD_IMAGE。
+# per-user 凭证在同目录 .env（由 provision 从 config + 生成的网关 token 合成）。
+# 注意：WeCom 走出站长连接，正常运行无需映射端口；要开 Control UI 调试时临时加 ports。
+services:
+  muad-oc-${PC_USER}:
+    image: ${MUAD_IMAGE}
+    container_name: muad-oc-${PC_USER}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PC_USER: ${PC_USER}
+      TZ: Asia/Shanghai
+      OPENCLAW_STATE_DIR: /home/node/.openclaw
+      OPENCLAW_GATEWAY_BIND: lan
+    volumes:
+      # 用户全部状态（会话/记忆/习惯/登录态/已装插件）→ 命名卷，对应设计 per-user PVC
+      - muad-oc-${PC_USER}-state:/home/node/.openclaw
+      # 共享 skill（FEAT-03）：所有用户只读挂同一份；改它即热更（skills.load.watch）。
+      # 追加式（skills.load.extraDirs），不影响 openclaw 自带 bundled skill。
+      - ${SKILLS_DIR}:/opt/openclaw-skills:ro
+    # 不可信沙箱（NFR-SEC-03）
+    mem_limit: 2g
+    cpus: 1.5
+
+volumes:
+  muad-oc-${PC_USER}-state:

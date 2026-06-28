@@ -1,0 +1,9 @@
+# Frontend deps/build are produced inside the image; never copy local artifacts.
+frontend/node_modules
+frontend/dist
+# Go embed target is populated from the frontend stage during build.
+backend/internal/web/dist
+# Local junk
+**/*.db
+**/.DS_Store
+.git

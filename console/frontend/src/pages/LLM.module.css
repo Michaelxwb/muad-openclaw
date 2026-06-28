@@ -1,0 +1,93 @@
+.page {
+  /* container */
+}
+
+.card {
+  background: var(--bg-panel);
+  border: 1px solid rgba(0, 229, 255, 0.1);
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-family: var(--font-mono);
+  color: var(--color-neon-cyan);
+  font-size: 14px;
+  margin: 0 0 14px;
+  font-weight: 600;
+}
+
+.subTitle {
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  margin: 18px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 229, 255, 0.08);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 10px 12px;
+  align-items: center;
+  max-width: 560px;
+  margin: 12px 0;
+}
+
+.formGrid label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.formGrid input {
+  width: 100%;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.check {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+/* Terminal output */
+.terminal {
+  background: var(--bg-primary);
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  border-radius: 4px;
+  padding: 14px;
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--color-neon-cyan);
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.terminalError {
+  color: var(--color-danger);
+}
+
+.terminalLoading {
+  color: var(--color-neon-cyan);
+}
+
+.terminalLoading::after {
+  content: "_";
+  animation: blink 1s infinite;
+}

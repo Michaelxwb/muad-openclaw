@@ -1,0 +1,3 @@
+# code-flow 运行时数据（仅存本地，不入库）
+.session-log.jsonl
+.check-state.json

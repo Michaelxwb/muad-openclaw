@@ -1,0 +1,89 @@
+.select {
+  position: relative;
+  display: inline-block;
+}
+
+.block {
+  display: block;
+  width: 100%;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  background: var(--bg-primary);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.trigger:hover {
+  border-color: rgba(0, 229, 255, 0.4);
+  box-shadow: none;
+}
+
+.arrow {
+  font-size: 8px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 4px;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    var(--border-glow);
+  z-index: 50;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.1s ease;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  padding: 6px 10px;
+  border-radius: 2px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--color-neon-cyan);
+  box-shadow: none;
+}
+
+.option.selected {
+  color: var(--color-neon-cyan);
+}
+
+.check {
+  font-size: 11px;
+  flex-shrink: 0;
+}

@@ -1,0 +1,18 @@
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 4px;
+}
+
+.pagination button {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.info {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
