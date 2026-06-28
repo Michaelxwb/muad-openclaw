@@ -3,7 +3,10 @@
 // yaml > default.  The config file path is `config.yaml` in the working
 // directory by default and can be overridden with CONSOLE_CONFIG.
 //
-// AdminPassword ONLY comes from the environment (NFR-SEC-02).
+// config.yaml is the single source of truth, secrets included (masterKey,
+// adminPassword); it stays gitignored and is mounted at runtime, so it never
+// enters the image (NFR-SEC-02).  Env vars remain available as an optional
+// highest-priority override.
 package config
 
 import (
@@ -26,6 +29,7 @@ type yamlFile struct {
 	DBPath             *string `yaml:"dbPath"`
 	JWTSecret          *string `yaml:"jwtSecret"`
 	AdminUser          *string `yaml:"adminUser"`
+	AdminPassword      *string `yaml:"adminPassword"`
 	MasterKey          *string `yaml:"masterKey"`
 	CollectIntervalSec *int    `yaml:"collectIntervalSec"`
 }
@@ -41,7 +45,7 @@ type Config struct {
 	DBPath             string
 	JWTSecret          string
 	AdminUser          string
-	AdminPassword      string // env only (NFR-SEC-02)
+	AdminPassword      string
 	CollectIntervalSec int
 }
 
@@ -57,8 +61,8 @@ func defaults() *Config {
 		SkillsDir:     "/opt/muad/skills",
 		ListenAddr:    ":8080",
 		DBPath:        "/var/lib/muad-console/console.db",
-		// 默认管理员名，使容器化（仅 env、无 config.yaml）部署也能引导管理员：
-		// 只需提供 CONSOLE_ADMIN_PASSWORD。BootstrapAdmin 要求 user+password 均非空。
+		// 默认管理员名；只需在 config.yaml 配 adminPassword 即可引导管理员
+		// （或 env CONSOLE_ADMIN_PASSWORD）。BootstrapAdmin 要求 user+password 均非空。
 		AdminUser:          "admin",
 		CollectIntervalSec: 30,
 	}
@@ -110,6 +114,7 @@ func applyYAML(c *Config, raw []byte) error {
 	applyString(&c.DBPath, f.DBPath)
 	applyString(&c.JWTSecret, f.JWTSecret)
 	applyString(&c.AdminUser, f.AdminUser)
+	applyString(&c.AdminPassword, f.AdminPassword)
 	if f.CollectIntervalSec != nil && *f.CollectIntervalSec > 0 {
 		c.CollectIntervalSec = *f.CollectIntervalSec
 	}

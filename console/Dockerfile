@@ -1,7 +1,7 @@
 # muad 控制台镜像（多阶段，§4.2）：
 #   ① node 阶段 vite build 前端 → ② golang 阶段 go build 内嵌前端(-tags prod)
 #   → ③ alpine runtime（带 docker CLI，供 DockerDriver 调用）。
-# 镜像不烤任何凭证：主密钥/管理员初值/driver 全部运行时 env 注入（NFR-SEC-02）。
+# 镜像不烤任何凭证：主密钥/管理员初值/driver 全在运行时只读挂载的 config.yaml（NFR-SEC-02）。
 
 # ① 前端
 FROM node:24-alpine AS frontend
@@ -25,9 +25,9 @@ RUN CGO_ENABLED=0 go build -tags prod -ldflags="-s -w" -o /muad-console ./cmd/co
 FROM alpine:3.20
 RUN apk add --no-cache docker-cli ca-certificates tzdata
 COPY --from=backend /muad-console /usr/local/bin/muad-console
-ENV CONSOLE_LISTEN=:8080 \
-    CONSOLE_DB=/var/lib/muad-console/console.db \
-    TZ=Asia/Shanghai
+# 不烤 CONSOLE_* 配置 env：env > yaml 会反向覆盖 config.yaml；listenAddr/dbPath 由
+# config.yaml 或内置默认值提供。仅留 TZ（OS 级，非配置字段）。
+ENV TZ=Asia/Shanghai
 VOLUME /var/lib/muad-console
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/muad-console"]
