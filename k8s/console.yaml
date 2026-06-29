@@ -1,0 +1,117 @@
+# muad 控制台在 K8S 上的部署（console 自管 worker）。
+# console 经受限 ServiceAccount + RBAC，在 muad 命名空间内建/删/伸缩/exec/取日志
+# 每用户 worker（Deployment + PVC + Secret）——替代单机 docker.sock 的 root 风险。
+#
+# 用法：
+#   kubectl create namespace muad
+#   # 先按 console/config.example.yaml 写好 config.yaml（runtimeDriver: k8s, masterKey, adminPassword 等）
+#   kubectl -n muad create secret generic muad-console-config --from-file=config.yaml=./config.yaml
+#   kubectl apply -f k8s/console.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: muad-console
+  namespace: muad
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: muad-console
+  namespace: muad
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets", "persistentvolumeclaims"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: muad-console
+  namespace: muad
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: muad-console
+subjects:
+  - kind: ServiceAccount
+    name: muad-console
+    namespace: muad
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: muad-console-data
+  namespace: muad
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+  # storageClassName: <你的 SSD StorageClass>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: muad-console
+  namespace: muad
+  labels: { app: muad-console }
+spec:
+  replicas: 1
+  strategy: { type: Recreate } # 单实例 + RWO PVC
+  selector:
+    matchLabels: { app: muad-console }
+  template:
+    metadata:
+      labels: { app: muad-console }
+    spec:
+      serviceAccountName: muad-console
+      containers:
+        - name: console
+          image: ghcr.io/michaelxwb/muad-console:latest
+          env:
+            - name: CONSOLE_CONFIG
+              value: /etc/muad-console/config.yaml
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /etc/muad-console
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/muad-console
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+      volumes:
+        - name: config
+          secret:
+            secretName: muad-console-config # 含 config.yaml（含 masterKey/adminPassword）
+        - name: data
+          persistentVolumeClaim:
+            claimName: muad-console-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: muad-console
+  namespace: muad
+spec:
+  selector: { app: muad-console }
+  ports:
+    - port: 8080
+      targetPort: 8080
+  # 对外暴露请另配 Ingress/LoadBalancer（建议加 TLS + 访问控制）
