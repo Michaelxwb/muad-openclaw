@@ -5,9 +5,10 @@ import { Audit } from "./pages/Audit";
 import { Containers } from "./pages/Containers";
 import { LLM } from "./pages/LLM";
 import { Login } from "./pages/Login";
+import { Settings } from "./pages/Settings";
 import styles from "./App.module.css";
 
-type Page = "containers" | "llm" | "audit";
+type Page = "containers" | "llm" | "audit" | "settings";
 
 export function App() {
   const [authed, setAuthed] = useState(!!token.get());
@@ -43,6 +44,7 @@ export function App() {
         {page === "containers" && <Containers />}
         {page === "llm" && <LLM />}
         {page === "audit" && <Audit />}
+        {page === "settings" && <Settings />}
       </main>
     </div>
   );

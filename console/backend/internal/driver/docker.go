@@ -27,6 +27,13 @@ func NewDockerDriver(network, skillsDir string) *DockerDriver {
 
 func stateVolume(userID string) string { return ContainerName(userID) + "-state" }
 
+func orDefault(v, def string) string {
+	if strings.TrimSpace(v) == "" {
+		return def
+	}
+	return v
+}
+
 // Create launches a user container (detached, no published ports).
 func (d *DockerDriver) Create(ctx context.Context, spec UserSpec, gatewayToken string) error {
 	envFile, cleanup, err := writeEnvFile(BuildEnv(spec, gatewayToken))
@@ -35,15 +42,20 @@ func (d *DockerDriver) Create(ctx context.Context, spec UserSpec, gatewayToken s
 	}
 	defer cleanup()
 
+	// Resolved limits with defensive fallback to the built-in defaults.
+	mem := orDefault(spec.MemLimit, DefaultMemLimit)
+	cpus := orDefault(spec.CPULimit, DefaultCPULimit)
+	restart := orDefault(spec.RestartPolicy, DefaultRestartPolicy)
+
 	name := ContainerName(spec.UserID)
 	args := []string{
 		"run", "-d", "--name", name,
-		"--restart", "unless-stopped",
+		"--restart", restart,
 		"--env-file", envFile,
 		"-e", "TZ=Asia/Shanghai",
 		"-e", "OPENCLAW_STATE_DIR=/home/node/.openclaw",
 		"-v", stateVolume(spec.UserID) + ":/home/node/.openclaw",
-		"--memory", "2g", "--cpus", "1.5",
+		"--memory", mem, "--cpus", cpus,
 	}
 	if d.network != "" {
 		args = append(args, "--network", d.network)

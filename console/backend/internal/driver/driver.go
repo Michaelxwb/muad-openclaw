@@ -29,7 +29,27 @@ type UserSpec struct {
 	Secret   string
 	ImageTag string // full image reference
 	LLM      LlmConfig
+	// Resource limits (already resolved: per-user override ⊕ global ⊕ default).
+	// Empty values fall back to the built-in defaults below.
+	MemLimit      string // docker --memory, e.g. "2g"
+	CPULimit      string // docker --cpus, e.g. "1.5"
+	RestartPolicy string // docker --restart, e.g. "unless-stopped"
 }
+
+// Built-in resource defaults (lowest priority; used when neither per-user nor
+// global config sets a value). These match the historical hard-coded limits.
+const (
+	DefaultMemLimit      = "2g"
+	DefaultCPULimit      = "1.5"
+	DefaultRestartPolicy = "unless-stopped"
+)
+
+var validRestartPolicies = map[string]bool{
+	"no": true, "on-failure": true, "always": true, "unless-stopped": true,
+}
+
+// IsValidRestartPolicy reports whether p is a supported docker restart policy.
+func IsValidRestartPolicy(p string) bool { return validRestartPolicies[p] }
 
 // Stats is a one-shot resource sample (no streaming, RULE-06).
 type Stats struct {

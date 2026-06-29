@@ -139,6 +139,10 @@ type containerView struct {
 	ChannelConnected bool       `json:"channelConnected"`
 	LastActiveAt     *time.Time `json:"lastActiveAt,omitempty"`
 	ReapInSeconds    *int64     `json:"reapInSeconds,omitempty"`
+	// Per-user resource overrides (empty = inherit global). For the override editor.
+	MemLimit      string `json:"memLimit"`
+	CPULimit      string `json:"cpuLimit"`
+	RestartPolicy string `json:"restartPolicy"`
 }
 
 // handleListContainers returns the user list merged with live state and the
@@ -168,6 +172,7 @@ func (s *Server) handleListContainers(w http.ResponseWriter, r *http.Request) {
 		v := containerView{
 			UserID: u.UserID, Channel: driver.NormalizeChannel(u.Channel),
 			State: u.State, ImageTag: u.ImageTag,
+			MemLimit: u.MemLimit, CPULimit: u.CPULimit, RestartPolicy: u.RestartPolicy,
 		}
 		if l, ok := live[u.UserID]; ok && l.State != "" {
 			v.State = l.State
@@ -311,9 +316,15 @@ func tailLines(s string, n int) string {
 
 // --- LLM assembly helpers ---
 
-// buildSpec assembles the driver spec with the effective (decrypted) LLM.
+// buildSpec assembles the driver spec with the effective (decrypted) LLM and
+// resource limits. At create time there is no per-user override yet, so
+// resources resolve to global ◁ built-in default.
 func (s *Server) buildSpec(req createRequest, imageTag string) (driver.UserSpec, error) {
 	eff, err := s.effectiveLLM(req.LLMOverride)
+	if err != nil {
+		return driver.UserSpec{}, err
+	}
+	mem, cpu, restart, err := s.resolveResources(repo.User{})
 	if err != nil {
 		return driver.UserSpec{}, err
 	}
@@ -321,6 +332,7 @@ func (s *Server) buildSpec(req createRequest, imageTag string) (driver.UserSpec,
 		UserID: req.UserID, Channel: driver.NormalizeChannel(req.Channel),
 		BotID: req.BotID, Secret: req.Secret,
 		ImageTag: imageTag, LLM: eff,
+		MemLimit: mem, CPULimit: cpu, RestartPolicy: restart,
 	}, nil
 }
 
