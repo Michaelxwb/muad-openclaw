@@ -57,6 +57,19 @@
   animation: fadeIn 0.1s ease;
 }
 
+/* Portaled to <body>: positioned via inline top/left/width (fixed), so it is
+   never clipped by an overflow ancestor (e.g. a modal body). Sits above the
+   modal overlay (z-index 200). */
+.menuFixed {
+  position: fixed;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: 300;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
 .option {
   display: flex;
   align-items: center;
