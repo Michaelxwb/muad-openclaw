@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import styles from "./Select.module.css";
 
 interface Option {
@@ -16,16 +17,38 @@ interface Props {
 
 export function Select({ value, options, onChange, minWidth, block }: Props) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // The menu is portaled to <body> (position: fixed) so it is never clipped by a
+  // scrollable/overflow ancestor such as a modal body.
+  function placeAndToggle() {
+    if (!open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setOpen((o) => !o);
+  }
 
   useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !menuRef.current?.contains(t)) {
         setOpen(false);
       }
     };
-    if (open) document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    const close = () => setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    // Position is computed once on open; close on scroll/resize to avoid drift.
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [open]);
 
   const current = options.find((o) => o.value === value);
@@ -33,31 +56,37 @@ export function Select({ value, options, onChange, minWidth, block }: Props) {
   return (
     <div
       className={`${styles.select} ${block ? styles.block : ""}`}
-      ref={ref}
       style={minWidth ? { minWidth } : undefined}
     >
-      <button className={styles.trigger} onClick={() => setOpen(!open)} type="button">
+      <button ref={triggerRef} className={styles.trigger} onClick={placeAndToggle} type="button">
         <span>{current?.label ?? value}</span>
         <span className={styles.arrow}>▼</span>
       </button>
-      {open && (
-        <div className={styles.menu}>
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`${styles.option} ${opt.value === value ? styles.selected : ""}`}
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-            >
-              {opt.value === value && <span className={styles.check}>✓</span>}
-              <span>{opt.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className={`${styles.menu} ${styles.menuFixed}`}
+            style={{ top: pos.top, left: pos.left, width: pos.width }}
+          >
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`${styles.option} ${opt.value === value ? styles.selected : ""}`}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+              >
+                {opt.value === value && <span className={styles.check}>✓</span>}
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
