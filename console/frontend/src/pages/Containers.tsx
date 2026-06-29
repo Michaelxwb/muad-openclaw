@@ -464,10 +464,10 @@ export function Containers() {
             value={resForm.restartPolicy}
             options={[
               { value: "", label: "继承全局" },
-              { value: "unless-stopped", label: "unless-stopped" },
-              { value: "always", label: "always" },
-              { value: "on-failure", label: "on-failure" },
-              { value: "no", label: "no" },
+              { value: "unless-stopped", label: "除手动停止外总重启 (unless-stopped)" },
+              { value: "always", label: "总是重启 (always)" },
+              { value: "on-failure", label: "失败时重启 (on-failure)" },
+              { value: "no", label: "不自动重启 (no)" },
             ]}
             onChange={(v) => setResForm({ ...resForm, restartPolicy: v })}
             block
