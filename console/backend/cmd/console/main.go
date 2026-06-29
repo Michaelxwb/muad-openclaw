@@ -37,7 +37,12 @@ func main() {
 		log.Fatalf("crypto: %v", err)
 	}
 
-	drv, err := driver.New(cfg.RuntimeDriver, cfg.MuadNet, cfg.SkillsDir)
+	drv, err := driver.New(cfg.RuntimeDriver, cfg.MuadNet, cfg.SkillsDir, driver.K8sOptions{
+		Namespace:    cfg.K8sNamespace,
+		SkillsPVC:    cfg.K8sSkillsPVC,
+		StorageClass: cfg.K8sStorageClass,
+		StateSize:    cfg.K8sStateSize,
+	})
 	if err != nil {
 		log.Fatalf("driver: %v", err)
 	}

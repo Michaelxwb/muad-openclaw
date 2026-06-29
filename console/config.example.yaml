@@ -28,3 +28,10 @@ dbPath: /var/lib/muad-console/console.db
 
 # 采集间隔（秒，默认 30）
 collectIntervalSec: 30
+
+# ── k8s 运行时（仅当 runtimeDriver: k8s 时生效；docker 模式忽略）──
+# console 经 client-go 在该命名空间内建/管 worker（需配套 RBAC，见 k8s/console.yaml）
+#k8sNamespace: muad
+#k8sSkillsPVC: muad-skills        # 共享 skills 的 RWX PVC 名（只读挂入每个 worker）
+#k8sStorageClass: ""              # 每用户状态 PVC 的 StorageClass（留空用集群默认）
+#k8sStateSize: 5Gi               # 每用户状态 PVC 大小

@@ -1,8 +1,6 @@
 package test
 
 import (
-	"context"
-	"errors"
 	"testing"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
@@ -113,17 +111,12 @@ func TestMapDockerState(t *testing.T) {
 }
 
 func TestFactory(t *testing.T) {
-	if _, err := driver.New("docker", "muad-net", "/skills"); err != nil {
+	if _, err := driver.New("docker", "muad-net", "/skills", driver.K8sOptions{}); err != nil {
 		t.Errorf("docker factory: %v", err)
 	}
-	k, err := driver.New("k8s", "", "")
-	if err != nil {
-		t.Fatalf("k8s factory: %v", err)
-	}
-	if err := k.Start(context.Background(), "x"); !errors.Is(err, driver.ErrNotImplemented) {
-		t.Errorf("k8s stub Start = %v, want ErrNotImplemented", err)
-	}
-	if _, err := driver.New("swarm", "", ""); err == nil {
+	if _, err := driver.New("swarm", "", "", driver.K8sOptions{}); err == nil {
 		t.Error("expected error for unknown kind")
 	}
+	// k8s factory needs a real cluster (in-cluster/kubeconfig); its CRUD logic
+	// is covered by the white-box fake-client test in internal/driver.
 }

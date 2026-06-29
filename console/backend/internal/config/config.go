@@ -32,6 +32,11 @@ type yamlFile struct {
 	AdminPassword      *string `yaml:"adminPassword"`
 	MasterKey          *string `yaml:"masterKey"`
 	CollectIntervalSec *int    `yaml:"collectIntervalSec"`
+	// k8s driver (used when runtimeDriver=k8s)
+	K8sNamespace    *string `yaml:"k8sNamespace"`
+	K8sSkillsPVC    *string `yaml:"k8sSkillsPVC"`
+	K8sStorageClass *string `yaml:"k8sStorageClass"`
+	K8sStateSize    *string `yaml:"k8sStateSize"`
 }
 
 // Config holds the validated console configuration.
@@ -47,6 +52,10 @@ type Config struct {
 	AdminUser          string
 	AdminPassword      string
 	CollectIntervalSec int
+	K8sNamespace       string
+	K8sSkillsPVC       string
+	K8sStorageClass    string
+	K8sStateSize       string
 }
 
 var validDrivers = map[string]bool{"docker": true, "k8s": true}
@@ -65,6 +74,8 @@ func defaults() *Config {
 		// （或 env CONSOLE_ADMIN_PASSWORD）。BootstrapAdmin 要求 user+password 均非空。
 		AdminUser:          "admin",
 		CollectIntervalSec: 30,
+		K8sNamespace:       "muad",
+		K8sStateSize:       "5Gi",
 	}
 }
 
@@ -115,6 +126,10 @@ func applyYAML(c *Config, raw []byte) error {
 	applyString(&c.JWTSecret, f.JWTSecret)
 	applyString(&c.AdminUser, f.AdminUser)
 	applyString(&c.AdminPassword, f.AdminPassword)
+	applyString(&c.K8sNamespace, f.K8sNamespace)
+	applyString(&c.K8sSkillsPVC, f.K8sSkillsPVC)
+	applyString(&c.K8sStorageClass, f.K8sStorageClass)
+	applyString(&c.K8sStateSize, f.K8sStateSize)
 	if f.CollectIntervalSec != nil && *f.CollectIntervalSec > 0 {
 		c.CollectIntervalSec = *f.CollectIntervalSec
 	}
@@ -144,6 +159,10 @@ func (c *Config) overrideFromEnv() {
 	if v := os.Getenv("CONSOLE_ADMIN_PASSWORD"); v != "" {
 		c.AdminPassword = v
 	}
+	envOverride(&c.K8sNamespace, "K8S_NAMESPACE")
+	envOverride(&c.K8sSkillsPVC, "K8S_SKILLS_PVC")
+	envOverride(&c.K8sStorageClass, "K8S_STORAGE_CLASS")
+	envOverride(&c.K8sStateSize, "K8S_STATE_SIZE")
 	if v := envIntOr("CONSOLE_COLLECT_INTERVAL", 0); v > 0 {
 		c.CollectIntervalSec = v
 	}
