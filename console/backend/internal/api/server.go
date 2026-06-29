@@ -62,6 +62,11 @@ func (s *Server) Handler() http.Handler {
 	protected.HandleFunc("GET /api/v1/audit", s.handleAuditQuery)
 	protected.HandleFunc("GET /api/v1/alerts", s.handleAlerts)
 
+	// Container resource limits: global default + per-user override (dynamic config).
+	protected.HandleFunc("GET /api/v1/settings/resources", s.handleGetResources)
+	protected.HandleFunc("PUT /api/v1/settings/resources", s.handleSetResources)
+	protected.HandleFunc("PUT /api/v1/containers/{userId}/resources", s.handleSetUserResources)
+
 	mux.Handle("/api/v1/", s.authMiddleware(s.auditMiddleware(protected)))
 
 	// Serve the embedded SPA for everything else (prod build only; /healthz and

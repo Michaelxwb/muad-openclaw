@@ -35,8 +35,21 @@ type User struct {
 	LLMOverride string // encrypted JSON, empty when inheriting global
 	ImageTag    string
 	State       string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// Per-user resource overrides (plain text; empty = inherit global default).
+	MemLimit      string // docker --memory, e.g. "2g"
+	CPULimit      string // docker --cpus, e.g. "1.5"
+	RestartPolicy string // docker --restart, e.g. "unless-stopped"
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// ResourceConfig holds container resource limits (global default or per-user).
+// Empty fields mean "inherit the next layer down" (per-user → global → built-in).
+type ResourceConfig struct {
+	MemLimit      string
+	CPULimit      string
+	RestartPolicy string
+	UpdatedAt     time.Time
 }
 
 // LLMGlobal is the single-row global LLM default. APIKeyEnc holds ciphertext.
@@ -126,15 +139,28 @@ CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log (actor, ts);
 CREATE TABLE IF NOT EXISTS admins (
 	username      TEXT PRIMARY KEY,
 	password_hash TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS resource_global (
+	id             INTEGER PRIMARY KEY CHECK (id = 1),
+	mem_limit      TEXT NOT NULL DEFAULT '',
+	cpu_limit      TEXT NOT NULL DEFAULT '',
+	restart_policy TEXT NOT NULL DEFAULT '',
+	updated_at     TEXT NOT NULL
 );`
 	if _, err := s.db.Exec(ddl); err != nil {
 		return err
 	}
-	// Additive migration for DBs created before the `channel` column existed.
+	// Additive migrations for DBs created before these columns existed.
 	// SQLite lacks ADD COLUMN IF NOT EXISTS, so tolerate the duplicate error.
-	if _, err := s.db.Exec(`ALTER TABLE users ADD COLUMN channel TEXT NOT NULL DEFAULT 'wecom'`); err != nil &&
-		!strings.Contains(err.Error(), "duplicate column name") {
-		return err
+	for _, col := range []string{
+		`ALTER TABLE users ADD COLUMN channel TEXT NOT NULL DEFAULT 'wecom'`,
+		`ALTER TABLE users ADD COLUMN mem_limit TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE users ADD COLUMN cpu_limit TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE users ADD COLUMN restart_policy TEXT NOT NULL DEFAULT ''`,
+	} {
+		if _, err := s.db.Exec(col); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
 	}
 	return nil
 }
@@ -145,9 +171,11 @@ CREATE TABLE IF NOT EXISTS admins (
 func (s *Store) CreateUser(u User) error {
 	now := time.Now().UTC().Format(tsLayout)
 	_, err := s.db.Exec(
-		`INSERT INTO users (user_id, channel, bot_id, secret_enc, llm_override, image_tag, state, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		u.UserID, defaultChannel(u.Channel), u.BotID, u.SecretEnc, u.LLMOverride, u.ImageTag, defaultState(u.State), now, now,
+		`INSERT INTO users (user_id, channel, bot_id, secret_enc, llm_override, image_tag, state,
+		                    mem_limit, cpu_limit, restart_policy, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		u.UserID, defaultChannel(u.Channel), u.BotID, u.SecretEnc, u.LLMOverride, u.ImageTag, defaultState(u.State),
+		u.MemLimit, u.CPULimit, u.RestartPolicy, now, now,
 	)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
 		return ErrUserExists
@@ -158,7 +186,8 @@ func (s *Store) CreateUser(u User) error {
 // GetUser returns one user or ErrNotFound.
 func (s *Store) GetUser(userID string) (User, error) {
 	row := s.db.QueryRow(
-		`SELECT user_id, channel, bot_id, secret_enc, llm_override, image_tag, state, created_at, updated_at
+		`SELECT user_id, channel, bot_id, secret_enc, llm_override, image_tag, state,
+		        mem_limit, cpu_limit, restart_policy, created_at, updated_at
 		 FROM users WHERE user_id = ?`, userID)
 	return scanUser(row)
 }
@@ -169,7 +198,8 @@ func (s *Store) ListUsers(offset, limit int) ([]User, int, error) {
 	if err := s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	q := `SELECT user_id, channel, bot_id, secret_enc, llm_override, image_tag, state, created_at, updated_at
+	q := `SELECT user_id, channel, bot_id, secret_enc, llm_override, image_tag, state,
+		        mem_limit, cpu_limit, restart_policy, created_at, updated_at
 		 FROM users ORDER BY user_id`
 	var args []any
 	if limit > 0 {
@@ -205,6 +235,21 @@ func (s *Store) UpdateUserImageTag(userID, tag string) error {
 // UpdateUserLLMOverride sets a user's encrypted per-user LLM override (FEAT-04).
 func (s *Store) UpdateUserLLMOverride(userID, enc string) error {
 	return s.touch(`UPDATE users SET llm_override = ?, updated_at = ? WHERE user_id = ?`, enc, userID)
+}
+
+// UpdateUserResources sets a user's per-user resource overrides (empty = inherit).
+func (s *Store) UpdateUserResources(userID, mem, cpu, restart string) error {
+	now := time.Now().UTC().Format(tsLayout)
+	res, err := s.db.Exec(
+		`UPDATE users SET mem_limit = ?, cpu_limit = ?, restart_policy = ?, updated_at = ? WHERE user_id = ?`,
+		mem, cpu, restart, now, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // DeleteUser removes a user record.
@@ -260,6 +305,38 @@ func (s *Store) GetLLMGlobal() (LLMGlobal, error) {
 		return g, nil
 	default:
 		return LLMGlobal{}, err
+	}
+}
+
+// --- resource_global ---
+
+// SetResourceGlobal upserts the single global resource-limit row.
+func (s *Store) SetResourceGlobal(c ResourceConfig) error {
+	now := time.Now().UTC().Format(tsLayout)
+	_, err := s.db.Exec(
+		`INSERT INTO resource_global (id, mem_limit, cpu_limit, restart_policy, updated_at)
+		 VALUES (1, ?, ?, ?, ?)
+		 ON CONFLICT(id) DO UPDATE SET
+		   mem_limit=excluded.mem_limit, cpu_limit=excluded.cpu_limit,
+		   restart_policy=excluded.restart_policy, updated_at=excluded.updated_at`,
+		c.MemLimit, c.CPULimit, c.RestartPolicy, now,
+	)
+	return err
+}
+
+// GetResourceGlobal returns the global resource config or ErrNotFound when unset.
+func (s *Store) GetResourceGlobal() (ResourceConfig, error) {
+	row := s.db.QueryRow(`SELECT mem_limit, cpu_limit, restart_policy, updated_at FROM resource_global WHERE id = 1`)
+	var c ResourceConfig
+	var ts string
+	switch err := row.Scan(&c.MemLimit, &c.CPULimit, &c.RestartPolicy, &ts); err {
+	case sql.ErrNoRows:
+		return ResourceConfig{}, ErrNotFound
+	case nil:
+		c.UpdatedAt, _ = time.Parse(tsLayout, ts)
+		return c, nil
+	default:
+		return ResourceConfig{}, err
 	}
 }
 
@@ -364,7 +441,8 @@ type scanner interface {
 func scanUser(sc scanner) (User, error) {
 	var u User
 	var created, updated string
-	switch err := sc.Scan(&u.UserID, &u.Channel, &u.BotID, &u.SecretEnc, &u.LLMOverride, &u.ImageTag, &u.State, &created, &updated); err {
+	switch err := sc.Scan(&u.UserID, &u.Channel, &u.BotID, &u.SecretEnc, &u.LLMOverride, &u.ImageTag, &u.State,
+		&u.MemLimit, &u.CPULimit, &u.RestartPolicy, &created, &updated); err {
 	case sql.ErrNoRows:
 		return User{}, ErrNotFound
 	case nil:

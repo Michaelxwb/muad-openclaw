@@ -3,7 +3,7 @@ import { api } from "../api";
 import { NotificationBell } from "./NotificationBell";
 import styles from "./Sidebar.module.css";
 
-type Page = "containers" | "llm" | "audit";
+type Page = "containers" | "llm" | "audit" | "settings";
 
 interface Props {
   page: Page;
@@ -27,6 +27,7 @@ export function Sidebar({ page, onNavigate, onLogout, collapsed, onToggleCollaps
   const navItems: { key: Page; label: string; icon: string }[] = [
     { key: "containers", label: "容器", icon: "📦" },
     { key: "llm", label: "模型配置", icon: "🧠" },
+    { key: "settings", label: "资源配置", icon: "⚙️" },
     { key: "audit", label: "审计日志", icon: "📋" },
   ];
 

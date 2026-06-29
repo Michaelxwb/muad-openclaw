@@ -88,6 +88,8 @@ export function Containers() {
   const [upgradeTarget, setUpgradeTarget] = useState<Container | null>(null);
   const [upgradeTag, setUpgradeTag] = useState("");
   const [reloadOpen, setReloadOpen] = useState(false);
+  const [resTarget, setResTarget] = useState<Container | null>(null);
+  const [resForm, setResForm] = useState({ memLimit: "", cpuLimit: "", restartPolicy: "" });
 
   const refresh = useCallback(async () => {
     try {
@@ -214,6 +216,19 @@ export function Containers() {
     void guard(() => api.reloadSkills(), "已触发 skill 重载");
   }
 
+  function openRes(c: Container) {
+    setResTarget(c);
+    setResForm({ memLimit: c.memLimit, cpuLimit: c.cpuLimit, restartPolicy: c.restartPolicy });
+  }
+
+  function confirmRes() {
+    if (!resTarget) return;
+    const id = resTarget.userId;
+    const body = { ...resForm };
+    setResTarget(null);
+    void guard(() => api.setUserResources(id, body), "已保存资源覆盖（重建后生效）");
+  }
+
   return (
     <div className={styles.page}>
       {err && <div className="error">{err}</div>}
@@ -303,6 +318,7 @@ export function Containers() {
                 />
                 <button onClick={() => viewLogs(c.userId)}>日志</button>
                 {c.channel === "wechat" && <button onClick={() => openQr(c.userId)}>扫码</button>}
+                <button onClick={() => openRes(c)}>资源</button>
                 <button onClick={() => upgrade(c)}>升级</button>
                 <button className="danger" onClick={() => del(c.userId)}>
                   删除
@@ -407,6 +423,54 @@ export function Containers() {
             value={upgradeTag}
             onChange={(e) => setUpgradeTag(e.target.value)}
             placeholder="muad-openclaw:local"
+          />
+        </div>
+      </Modal>
+
+      {/* Per-user Resource Override Modal */}
+      <Modal
+        open={resTarget !== null}
+        title={`资源覆盖 ${resTarget?.userId ?? ""}`}
+        onClose={() => setResTarget(null)}
+        footer={
+          <>
+            <button onClick={() => setResTarget(null)}>取消</button>
+            <button className={styles.createBtn} onClick={confirmRes}>
+              保存
+            </button>
+          </>
+        }
+      >
+        <p className="hint">留空 = 继承全局默认。保存后需对该用户「升级/应用」重建才生效。</p>
+        <div className={styles.modalField}>
+          <label>内存上限（留空继承全局）</label>
+          <input
+            value={resForm.memLimit}
+            onChange={(e) => setResForm({ ...resForm, memLimit: e.target.value })}
+            placeholder="如 3g / 2560m"
+          />
+        </div>
+        <div className={styles.modalField}>
+          <label>CPU 上限（留空继承全局）</label>
+          <input
+            value={resForm.cpuLimit}
+            onChange={(e) => setResForm({ ...resForm, cpuLimit: e.target.value })}
+            placeholder="如 2"
+          />
+        </div>
+        <div className={styles.modalField}>
+          <label>重启策略</label>
+          <Select
+            value={resForm.restartPolicy}
+            options={[
+              { value: "", label: "继承全局" },
+              { value: "unless-stopped", label: "unless-stopped" },
+              { value: "always", label: "always" },
+              { value: "on-failure", label: "on-failure" },
+              { value: "no", label: "no" },
+            ]}
+            onChange={(v) => setResForm({ ...resForm, restartPolicy: v })}
+            block
           />
         </div>
       </Modal>

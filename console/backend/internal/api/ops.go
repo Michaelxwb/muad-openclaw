@@ -182,13 +182,20 @@ func (s *Server) specFromUser(u repo.User, imageTag string) (driver.UserSpec, er
 	if err != nil {
 		return driver.UserSpec{}, err
 	}
+	mem, cpu, restart, err := s.resolveResources(u)
+	if err != nil {
+		return driver.UserSpec{}, err
+	}
 	return driver.UserSpec{
-		UserID:   u.UserID,
-		Channel:  driver.NormalizeChannel(u.Channel), // 不可丢：recreate 时漏掉会退回默认 wecom
-		BotID:    u.BotID,
-		Secret:   secret,
-		ImageTag: imageTag,
-		LLM:      eff,
+		UserID:        u.UserID,
+		Channel:       driver.NormalizeChannel(u.Channel), // 不可丢：recreate 时漏掉会退回默认 wecom
+		BotID:         u.BotID,
+		Secret:        secret,
+		ImageTag:      imageTag,
+		LLM:           eff,
+		MemLimit:      mem,
+		CPULimit:      cpu,
+		RestartPolicy: restart,
 	}, nil
 }
 

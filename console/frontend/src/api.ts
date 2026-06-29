@@ -54,6 +54,16 @@ export interface Container {
   channelConnected: boolean;
   lastActiveAt?: string;
   reapInSeconds?: number;
+  memLimit: string;
+  cpuLimit: string;
+  restartPolicy: string;
+}
+
+export interface ResourceConfig {
+  configured?: boolean;
+  memLimit: string;
+  cpuLimit: string;
+  restartPolicy: string;
 }
 
 export interface Alert {
@@ -123,6 +133,11 @@ export const api = {
   setUserLLM: (id: string, b: LLMForm) => request<unknown>("PUT", `/containers/${id}/llm`, b),
   applyLLM: (userIds: string[]) =>
     request<{ results: Record<string, string> }>("POST", "/llm/apply", { userIds }),
+
+  getResources: () => request<ResourceConfig>("GET", "/settings/resources"),
+  setResources: (b: ResourceConfig) => request<unknown>("PUT", "/settings/resources", b),
+  setUserResources: (id: string, b: ResourceConfig) =>
+    request<unknown>("PUT", `/containers/${id}/resources`, b),
 
   audit: (actor: string, offset = 0, limit = 20) =>
     request<{ items: AuditEntry[]; total: number }>(
