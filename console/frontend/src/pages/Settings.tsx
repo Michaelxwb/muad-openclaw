@@ -4,10 +4,10 @@ import { Select } from "../components/Select";
 import styles from "./Settings.module.css";
 
 const RESTART_OPTIONS = [
-  { value: "unless-stopped", label: "unless-stopped" },
-  { value: "always", label: "always" },
-  { value: "on-failure", label: "on-failure" },
-  { value: "no", label: "no" },
+  { value: "unless-stopped", label: "除手动停止外总重启 (unless-stopped)" },
+  { value: "always", label: "总是重启 (always)" },
+  { value: "on-failure", label: "失败时重启 (on-failure)" },
+  { value: "no", label: "不自动重启 (no)" },
 ];
 
 const empty: ResourceConfig = { memLimit: "", cpuLimit: "", restartPolicy: "unless-stopped" };
@@ -67,9 +67,16 @@ export function Settings() {
             value={form.restartPolicy}
             options={RESTART_OPTIONS}
             onChange={(v) => field("restartPolicy", v)}
-            minWidth={180}
+            minWidth={260}
           />
         </div>
+        <p className="hint">
+          重启策略 = 容器异常退出或宿主重启后是否自动拉起：
+          <br />· <b>除手动停止外总重启</b>：崩溃/宿主重启都拉起，但你手动停的就保持停止（默认，推荐）
+          <br />· <b>总是重启</b>：连你手动停的也会被拉起
+          <br />· <b>失败时重启</b>：仅非正常退出（退出码≠0）时重启
+          <br />· <b>不自动重启</b>：退出后保持停止
+        </p>
         <div className="row">
           <button onClick={save}>保存</button>
         </div>
