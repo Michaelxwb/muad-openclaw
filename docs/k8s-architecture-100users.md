@@ -36,36 +36,39 @@ muad-openclaw 是「一个控制台（console）管理 N 个每用户 openclaw w
 
 ## 3. 目标架构
 
+![muad-openclaw K8S 目标架构](k8s-architecture.png)
+
+<details>
+<summary>架构图源码（Mermaid，可编辑后重渲染）</summary>
+
 ```mermaid
 flowchart TB
-  subgraph ext[外部]
-    WX[企业微信 / 微信 服务端]
-    LLM[远端 LLM API<br/>deepseek 等]
-    ADM[管理员浏览器]
-  end
+  ADM[管理员浏览器]
+  WX[企业微信 / 微信 服务端]
+  LLM[远端 LLM API deepseek]
 
-  subgraph cluster[Kubernetes 集群 - namespace: muad]
+  subgraph cluster[Kubernetes 集群 - namespace muad]
     ING[Ingress / LoadBalancer]
-    subgraph ctl[控制平面应用]
-      CON[console Deployment<br/>Go+React, 内嵌前端]
-      CDB[(console PVC<br/>SQLite)]
-      SA[ServiceAccount + RBAC<br/>管理 pod/deploy/pvc/secret]
-    end
-    subgraph workers[每用户 worker 工作负载 x100]
-      W1[muad-oc-userA<br/>Deployment+PVC+Secret]
-      W2[muad-oc-userB]
-      Wn[muad-oc-...]
-    end
-    SK[(共享 skills PVC<br/>RWX 只读挂载)]
+    CON[console Deployment]
+    CDB[(console PVC SQLite)]
+    SA[ServiceAccount + RBAC]
+    W1[muad-oc-userA]
+    W2[muad-oc-userB]
+    Wn[muad-oc-... x100]
+    SK[(共享 skills PVC RWX)]
   end
 
-  ADM -->|HTTPS 18080| ING --> CON
+  ADM -->|HTTPS 18080| ING
+  ING --> CON
   CON --- CDB
-  CON -->|client-go: 建/删/exec/logs| SA --> workers
-  W1 & W2 & Wn -->|出站长连接/回调| WX
-  W1 & W2 & Wn -->|HTTPS| LLM
-  SK -. 只读挂载 .-> workers
+  CON -->|k8s API| SA
+  SA -->|建/删/scale/exec/logs| W1
+  W1 -->|出站长连接/回调| WX
+  W1 -->|HTTPS 推理| LLM
+  SK -.只读挂载.-> W1
 ```
+
+</details>
 
 **要点**：
 - worker **无入站端口**（企微走出站长连接、微信走扫码登录），不需对外暴露；console 经 k8s API（exec/logs）和 ClusterIP 访问其网关 `:18789`。
