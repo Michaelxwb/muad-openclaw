@@ -129,6 +129,7 @@ export function App() {
   const [page, setPage] = useState<Page>("containers");
   const [user, setUser] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">(savedTheme);
+  const [collapsed, setCollapsed] = useState(false);
 
   // 登录页也暗色
   useEffect(() => {
@@ -177,10 +178,22 @@ export function App() {
 
   return (
     <Layout style={{ height: "100vh" }}>
-      <Sider style={{ width: 220 }}>
+      <Sider style={{ width: collapsed ? 60 : 220, transition: "width 0.2s" }}>
+        <div style={{ display: "flex", justifyContent: collapsed ? "center" : "flex-end", padding: "8px 12px" }}>
+          <Button
+            icon={collapsed ? <IconServerStroked /> : <IconServerStroked />}
+            theme="borderless"
+            size="small"
+            onClick={() => setCollapsed(!collapsed)}
+            title={collapsed ? "展开" : "收起"}
+          >
+            {collapsed ? "▶" : "◀"}
+          </Button>
+        </div>
         <Nav
-          style={{ height: "100%", width: "100%" }}
+          style={{ height: "calc(100% - 50px)", width: "100%" }}
           defaultSelectedKeys={["containers"]}
+          isCollapsed={collapsed}
           header={{
             logo: <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 2 }}>muad</span>,
             text: "控制台",
@@ -192,12 +205,13 @@ export function App() {
             <Nav.Item key={item.key} itemKey={item.key} icon={item.icon} text={item.label} />
           ))}
         </Nav>
-        <div style={{ position: "absolute", bottom: 12, left: 12, right: 12, display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ position: "absolute", bottom: 12, left: collapsed ? 6 : 12, right: collapsed ? 6 : 12, display: "flex", alignItems: "center", justifyContent: "center", gap: collapsed ? 4 : 8, flexWrap: "wrap" }}>
           <Avatar size="small">{user?.[0]?.toUpperCase()}</Avatar>
-          <span style={{ flex: 1, fontSize: 13, color: "var(--semi-color-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user ?? "..."}</span>
+          {!collapsed && <span style={{ flex: 1, fontSize: 13, color: "var(--semi-color-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user ?? "..."}</span>}
           <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
           <NotificationBell />
-          <Button size="small" type="tertiary" onClick={logout}>退出</Button>
+          {!collapsed && <Button size="small" type="tertiary" onClick={logout}>退出</Button>}
+          {collapsed && <Button size="small" icon={<IconServerStroked />} type="tertiary" onClick={logout} theme="borderless" />}
         </div>
       </Sider>
       <Content style={{ padding: "20px 24px", overflow: "auto", height: "100vh" }}>
