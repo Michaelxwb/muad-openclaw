@@ -268,7 +268,7 @@ export function Containers() {
       {/* Toolbar */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
         <Space>
-          <Button theme="solid" icon="+" onClick={() => { setCreateOpen(true); setNewUserId(""); setNewChannel("wecom"); setNewBotId(""); setNewSecret(""); setCreateErr(""); }}>创建容器</Button>
+          <Button theme="solid" onClick={() => { setCreateOpen(true); setNewUserId(""); setNewChannel("wecom"); setNewBotId(""); setNewSecret(""); setCreateErr(""); }}>创建容器</Button>
           <Button onClick={() => setReloadOpen(true)}>重载 Skill</Button>
         </Space>
         <Space>
