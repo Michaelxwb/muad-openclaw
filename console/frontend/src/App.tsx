@@ -207,12 +207,12 @@ export function App() {
     <Layout style={{ height: "100vh" }}>
       <Sider style={{ width: collapsed ? 60 : 180, transition: "width 0.2s" }}>
         {collapsed && (
-          <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
-            <Button icon={<span>▶</span>} theme="borderless" size="small" onClick={() => setCollapsed(false)} />
+          <div style={{ display: "flex", justifyContent: "center", padding: "5px 0 2px" }}>
+            <Button icon={<span style={{ fontSize: 16 }}>▶</span>} theme="borderless" size="small" onClick={() => setCollapsed(false)} />
           </div>
         )}
         <Nav
-          style={{ height: collapsed ? "calc(100% - 38px)" : "100%", width: "100%" }}
+          style={{ height: collapsed ? "calc(100% - 36px)" : "100%", width: "100%", overflow: "hidden" }}
           defaultSelectedKeys={["containers"]}
           isCollapsed={collapsed}
           header={collapsed ? undefined : {
