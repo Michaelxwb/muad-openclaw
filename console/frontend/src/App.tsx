@@ -179,22 +179,19 @@ export function App() {
   return (
     <Layout style={{ height: "100vh" }}>
       <Sider style={{ width: collapsed ? 60 : 220, transition: "width 0.2s" }}>
-        {!collapsed && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px 0" }}>
-            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 2 }}>muad</span>
-            <Button icon={<span>◀</span>} theme="borderless" size="small" onClick={() => setCollapsed(true)} />
-          </div>
-        )}
-        {collapsed && (
-          <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
-            <Button icon={<span>▶</span>} theme="borderless" size="small" onClick={() => setCollapsed(false)} />
-          </div>
-        )}
         <Nav
-          style={{ height: collapsed ? "calc(100% - 50px)" : "calc(100% - 55px)", width: "100%" }}
+          style={{ height: "100%", width: "100%" }}
           defaultSelectedKeys={["containers"]}
           isCollapsed={collapsed}
-          header={collapsed ? undefined : { logo: <span />, text: "控制台" }}
+          header={collapsed ? undefined : {
+            logo: <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 2 }}>muad</span>,
+            text: (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span>控制台</span>
+                <Button icon={<span>◀</span>} theme="borderless" size="small" onClick={() => setCollapsed(true)} />
+              </div>
+            ),
+          }}
           footer={{ collapseButton: false }}
           onClick={(e) => setPage(e.itemKey as Page)}
         >
@@ -202,20 +199,20 @@ export function App() {
             <Nav.Item key={item.key} itemKey={item.key} icon={item.icon} text={item.label} />
           ))}
         </Nav>
-        <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-          {!collapsed ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Avatar size="small">{user?.[0]?.toUpperCase()}</Avatar>
-              <span style={{ fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>
-            </div>
-          ) : (
-            <Avatar size="small">{user?.[0]?.toUpperCase()}</Avatar>
-          )}
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {collapsed && (
+          <div style={{ position: "absolute", top: 12, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
+            <Button icon={<span>▶</span>} theme="borderless" size="small" onClick={() => setCollapsed(false)} />
+          </div>
+        )}
+        <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "0 12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Avatar size="extra-small">{user?.[0]?.toUpperCase()}</Avatar>
+            {!collapsed && <span style={{ fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
             <NotificationBell />
-            {!collapsed && <Button size="small" type="tertiary" onClick={logout}>退出</Button>}
-            {collapsed && <Button size="small" icon={<IconServerStroked />} type="tertiary" onClick={logout} theme="borderless" />}
+            <Button size="small" type="tertiary" onClick={logout} theme="borderless">{collapsed ? "" : "退出"}</Button>
           </div>
         </div>
       </Sider>
