@@ -204,15 +204,15 @@ export function App() {
             <Nav.Item key={item.key} itemKey={item.key} icon={item.icon} text={item.label} />
           ))}
         </Nav>
-        <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: collapsed ? 4 : 6, padding: collapsed ? "0 4px" : "0 12px" }}>
+        <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: collapsed ? 4 : 6, padding: collapsed ? "0 4px" : "0 12px" }}>
           <Avatar size="extra-small">{user?.[0]?.toUpperCase()}</Avatar>
-          {!collapsed && <span style={{ fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>}
-          <div style={{ display: "flex", alignItems: "center", gap: 2, flexDirection: collapsed ? "column" : "row" }}>
-            <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
-            <NotificationBell />
-            {!collapsed && <Button size="small" type="tertiary" onClick={logout} theme="borderless">退出</Button>}
-            {collapsed && <Button size="small" type="tertiary" onClick={logout} theme="borderless" icon={<IconExit />} />}
-          </div>
+          {!collapsed && <span style={{ flex: 1, fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>}
+          <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
+          <NotificationBell />
+          {collapsed
+            ? <Button size="small" type="tertiary" onClick={logout} theme="borderless" icon={<IconExit />} />
+            : <Button size="small" type="tertiary" onClick={logout} theme="borderless">退出</Button>
+          }
         </div>
       </Sider>
       <Content style={{ padding: "20px 24px", overflow: "auto", height: "100vh" }}>
