@@ -65,11 +65,16 @@ html, body, #root {
 .semi-input-wrapper-focus { border-color: rgba(0,229,255,0.4) !important; }
 
 /* 下拉 */
+.semi-select { background: #151b28 !important; box-shadow: none !important; }
+.semi-select:hover { background: #151b28 !important; }
+.semi-select-focus { border-color: rgba(0,229,255,0.4) !important; box-shadow: none !important; }
 .semi-select-selection {
-  background-color: #151b28 !important;
-  border-color: rgba(255,255,255,0.10) !important;
+  background: transparent !important;
+  border: none !important;
   color: rgba(255,255,255,0.85) !important;
+  box-shadow: none !important;
 }
+.semi-select-selection:hover { border: none !important; box-shadow: none !important; }
 .semi-select-option-list-wrapper {
   background: #181c28 !important; border-color: rgba(255,255,255,0.08) !important;
 }
