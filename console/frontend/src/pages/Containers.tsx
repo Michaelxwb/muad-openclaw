@@ -287,7 +287,7 @@ export function Containers() {
       {/* Stats overview */}
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
         {statCards.map((s) => (
-          <Card key={s.label} style={{ flex: 1, minWidth: 0, background: "#11151d", borderColor: "rgba(255,255,255,0.06)" }}
+          <Card key={s.label} style={{ flex: 1, minWidth: 0 }}
             bodyStyle={{ padding: "14px 16px" }}>
             <div style={{ fontSize: 12, color: "var(--semi-color-text-2)", marginBottom: 4 }}>{s.label}</div>
             <div style={{ fontSize: 24, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
