@@ -35,9 +35,23 @@ html, body, #root {
 
 /* 导航 */
 .semi-navigation { background: #11151d !important; }
-.semi-navigation-item { color: rgba(255,255,255,0.65) !important; }
-.semi-navigation-item:hover { background: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.95) !important; }
-.semi-navigation-item-active { background: rgba(0,229,255,0.10) !important; color: rgba(255,255,255,0.95) !important; }
+.semi-navigation-header { border-bottom: 1px solid rgba(255,255,255,0.06) !important; padding-bottom: 12px !important; margin-bottom: 8px !important; }
+.semi-navigation-item {
+  color: rgba(255,255,255,0.60) !important;
+  padding: 10px 20px !important;
+  margin: 2px 8px !important;
+  border-radius: 6px !important;
+  border-left: 3px solid transparent !important;
+  transition: all 0.15s !important;
+}
+.semi-navigation-item:hover { background: rgba(255,255,255,0.05) !important; color: rgba(255,255,255,0.90) !important; border-left-color: rgba(255,255,255,0.15) !important; }
+.semi-navigation-item-active, .semi-navigation-item-active:hover {
+  background: linear-gradient(90deg, rgba(0,229,255,0.12), rgba(0,229,255,0.02)) !important;
+  color: rgba(255,255,255,0.95) !important;
+  border-left-color: #00e5ff !important;
+}
+.semi-navigation-item .semi-navigation-item-icon { font-size: 20px !important; color: rgba(255,255,255,0.70) !important; }
+.semi-navigation-item-active .semi-navigation-item-icon { color: rgba(255,255,255,0.95) !important; }
 
 /* 表格 */
 .semi-table-thead>.semi-table-row>.semi-table-row-head {
@@ -47,6 +61,7 @@ html, body, #root {
 .semi-table-tbody>.semi-table-row>.semi-table-row-cell {
   background-color: #12161e !important; color: rgba(255,255,255,0.85) !important;
   border-bottom-color: rgba(255,255,255,0.04) !important;
+  transition: background-color 0.15s ease !important;
 }
 .semi-table-tbody>.semi-table-row:hover>.semi-table-row-cell {
   background-color: #181c28 !important;
@@ -87,9 +102,16 @@ html, body, #root {
 .semi-button-tertiary:hover { color: rgba(255,255,255,0.85) !important; }
 
 /* 模态弹窗 */
-.semi-modal-content { background: #151b28 !important; border: 1px solid rgba(255,255,255,0.06) !important; }
-.semi-modal-header { border-bottom-color: rgba(255,255,255,0.06) !important; }
+.semi-modal-content { background: #151b28 !important; border: 1px solid rgba(255,255,255,0.06) !important; border-radius: 8px !important; }
+.semi-modal-header { border-bottom-color: rgba(255,255,255,0.06) !important; font-size: 16px !important; font-weight: 600 !important; }
 .semi-modal-footer { border-top-color: rgba(255,255,255,0.06) !important; }
+
+/* 通知铃铛脉冲 */
+@keyframes muadBellPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.semi-badge-count { animation: muadBellPulse 2s ease-in-out infinite; }
 
 /* 卡片 */
 .semi-card { background: #11151d !important; border-color: rgba(255,255,255,0.06) !important; }
@@ -194,7 +216,15 @@ export function App() {
           defaultSelectedKeys={["containers"]}
           isCollapsed={collapsed}
           header={collapsed ? undefined : {
-            logo: <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 2 }}>muad</span>,
+            logo: (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect width="24" height="24" rx="5" fill="rgba(0,229,255,0.15)" />
+                  <path d="M7 8h10M7 12h10M7 16h6" stroke="#00e5ff" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+                <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 2 }}>muad</span>
+              </div>
+            ),
             text: (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>控制台</span>
@@ -209,7 +239,7 @@ export function App() {
             <Nav.Item key={item.key} itemKey={item.key} icon={item.icon} text={item.label} />
           ))}
         </Nav>
-        <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "0 6px" }}>
+        <div style={{ position: "absolute", bottom: 12, left: 8, right: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 6px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Avatar size="extra-small">{user?.[0]?.toUpperCase()}</Avatar>
             {!collapsed && <span style={{ fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>}
@@ -225,10 +255,10 @@ export function App() {
         </div>
       </Sider>
       <Content style={{ padding: "20px 24px", overflow: "auto", height: "100vh" }}>
-        {page === "containers" && <Containers />}
-        {page === "llm" && <LLM />}
-        {page === "audit" && <Audit />}
-        {page === "settings" && <Settings />}
+        {page === "containers" && <><h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600, color: "var(--semi-color-text-0)" }}>容器管理</h2><Containers /></>}
+        {page === "llm" && <><h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600, color: "var(--semi-color-text-0)" }}>模型配置</h2><LLM /></>}
+        {page === "audit" && <><h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600, color: "var(--semi-color-text-0)" }}>审计日志</h2><Audit /></>}
+        {page === "settings" && <><h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600, color: "var(--semi-color-text-0)" }}>资源配置</h2><Settings /></>}
       </Content>
     </Layout>
   );
