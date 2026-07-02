@@ -239,7 +239,7 @@ export function App() {
             <Nav.Item key={item.key} itemKey={item.key} icon={item.icon} text={item.label} />
           ))}
         </Nav>
-        <div style={{ position: "absolute", bottom: 12, left: 8, right: 8, display: "flex", alignItems: "center", gap: 6, padding: "10px 6px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, display: "flex", flexDirection: collapsed ? "column" : "row", alignItems: "center", gap: collapsed ? 4 : 6, padding: collapsed ? "6px 0 0" : "10px 12px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <Avatar size="extra-small">{user?.[0]?.toUpperCase()}</Avatar>
           {!collapsed && <span style={{ flex: 1, fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>}
           {collapsed
