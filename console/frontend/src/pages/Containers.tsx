@@ -222,9 +222,9 @@ export function Containers() {
   }
 
   const columns = [
-    { title: "用户", dataIndex: "userId", key: "userId" },
+    { title: "用户", dataIndex: "userId", key: "userId", width: 100 },
     {
-      title: "消息通道", dataIndex: "channel", key: "channel", width: 120,
+      title: "消息通道", dataIndex: "channel", key: "channel", width: 110,
       render: (_: unknown, r: Container) => (
         <Tag color={r.channelConnected ? "green" : "grey"}>
           {channelMeta(r.channel).icon} {channelMeta(r.channel).label}
@@ -232,19 +232,19 @@ export function Containers() {
       ),
     },
     {
-      title: "状态", dataIndex: "state", key: "state", width: 100,
+      title: "状态", dataIndex: "state", key: "state", width: 90,
       render: (_: unknown, r: Container) => {
         const t = STATUS_TAGS[r.state] || { label: r.state, color: "grey" };
         return <Tag color={t.color}>{t.label}</Tag>;
       },
     },
-    { title: "镜像", dataIndex: "imageTag", key: "imageTag", width: 200, className: "mono" },
-    { title: "CPU", dataIndex: "cpuPercent", key: "cpu", width: 70, render: (_: unknown, r: Container) => `${r.cpuPercent.toFixed(1)}%` },
-    { title: "内存", dataIndex: "memMiB", key: "mem", width: 80, render: (_: unknown, r: Container) => `${r.memMiB} MiB` },
-    { title: "最后活跃", dataIndex: "lastActiveAt", key: "ts", width: 160, render: (_: unknown, r: Container) => fmtActive(r.lastActiveAt) },
-    { title: "回收倒计时", dataIndex: "reapInSeconds", key: "reap", width: 100, render: (_: unknown, r: Container) => fmtReap(r.reapInSeconds) },
+    { title: "镜像", dataIndex: "imageTag", key: "imageTag", width: 160, className: "mono" },
+    { title: "CPU", dataIndex: "cpuPercent", key: "cpu", width: 65, render: (_: unknown, r: Container) => `${r.cpuPercent.toFixed(1)}%` },
+    { title: "内存", dataIndex: "memMiB", key: "mem", width: 75, render: (_: unknown, r: Container) => `${r.memMiB} MiB` },
+    { title: "最后活跃", dataIndex: "lastActiveAt", key: "ts", width: 140, render: (_: unknown, r: Container) => fmtActive(r.lastActiveAt) },
+    { title: "回收倒计时", dataIndex: "reapInSeconds", key: "reap", width: 85, render: (_: unknown, r: Container) => fmtReap(r.reapInSeconds) },
     {
-      title: "操作", key: "ops", width: 340,
+      title: "操作", key: "ops", width: 310,
       render: (_: unknown, r: Container) => (
         <Space>
           <Dropdown menu={ACTIONS.map((a) => ({ node: "item", name: a.label, onClick: () => guard(() => api.action(r.userId, a.key)) }))}>
