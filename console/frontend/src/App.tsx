@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Layout, Nav, Button, Avatar, Switch } from "@douyinfe/semi-ui";
+import { Layout, Nav, Button, Avatar } from "@douyinfe/semi-ui";
 import { IconServerStroked, IconComponentStroked, IconSettingStroked, IconSearchStroked, IconMoon, IconSun } from "@douyinfe/semi-icons";
 import { api, token, UNAUTHORIZED_EVENT } from "./api";
 import { Containers } from "./pages/Containers";
@@ -159,12 +159,11 @@ export function App() {
         <Login onLogin={() => setAuthed(true)} />
         {/* 登录页也显示主题切换 */}
         <div style={{ position: "fixed", top: 16, right: 16, zIndex: 999 }}>
-          <Switch
-            checked={theme === "dark"}
-            onChange={toggleTheme}
-            checkedText={<IconMoon />}
-            uncheckedText={<IconSun />}
-            size="large"
+          <Button
+            icon={theme === "dark" ? <IconMoon /> : <IconSun />}
+            theme="borderless"
+            size="small"
+            onClick={toggleTheme}
           />
         </div>
       </>
@@ -192,20 +191,11 @@ export function App() {
           {NAV_ITEMS.map((item) => (
             <Nav.Item key={item.key} itemKey={item.key} icon={item.icon} text={item.label} />
           ))}
-          {/* 主题切换 */}
-          <div style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-            <IconSun size="small" />
-            <Switch
-              checked={theme === "dark"}
-              onChange={toggleTheme}
-              size="default"
-            />
-            <IconMoon size="small" />
-          </div>
         </Nav>
         <div style={{ position: "absolute", bottom: 12, left: 12, right: 12, display: "flex", alignItems: "center", gap: 8 }}>
           <Avatar size="small">{user?.[0]?.toUpperCase()}</Avatar>
           <span style={{ flex: 1, fontSize: 13, color: "var(--semi-color-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user ?? "..."}</span>
+          <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
           <NotificationBell />
           <Button size="small" type="tertiary" onClick={logout}>退出</Button>
         </div>
