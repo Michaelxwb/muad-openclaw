@@ -205,13 +205,20 @@ export function App() {
             <Nav.Item key={item.key} itemKey={item.key} icon={item.icon} text={item.label} />
           ))}
         </Nav>
-        <div style={{ position: "absolute", bottom: 12, left: collapsed ? 6 : 12, right: collapsed ? 6 : 12, display: "flex", alignItems: "center", justifyContent: "center", gap: collapsed ? 4 : 8, flexWrap: "wrap" }}>
-          <Avatar size="small">{user?.[0]?.toUpperCase()}</Avatar>
-          {!collapsed && <span style={{ flex: 1, fontSize: 13, color: "var(--semi-color-text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user ?? "..."}</span>}
-          <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
-          <NotificationBell />
-          {!collapsed && <Button size="small" type="tertiary" onClick={logout}>退出</Button>}
-          {collapsed && <Button size="small" icon={<IconServerStroked />} type="tertiary" onClick={logout} theme="borderless" />}
+        <div style={{ position: "absolute", bottom: 12, left: collapsed ? 6 : 12, right: collapsed ? 6 : 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          {!collapsed && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+              <Avatar size="small">{user?.[0]?.toUpperCase()}</Avatar>
+              <span style={{ fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>
+            </div>
+          )}
+          {collapsed && <Avatar size="small">{user?.[0]?.toUpperCase()}</Avatar>}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
+            <NotificationBell />
+            {!collapsed && <Button size="small" type="tertiary" onClick={logout}>退出</Button>}
+            {collapsed && <Button size="small" icon={<IconServerStroked />} type="tertiary" onClick={logout} theme="borderless" />}
+          </div>
         </div>
       </Sider>
       <Content style={{ padding: "20px 24px", overflow: "auto", height: "100vh" }}>
