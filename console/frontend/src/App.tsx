@@ -239,26 +239,24 @@ export function App() {
             <Nav.Item key={item.key} itemKey={item.key} icon={item.icon} text={item.label} />
           ))}
         </Nav>
-        <div style={{ position: "absolute", bottom: 12, left: 8, right: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 6px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Avatar size="extra-small">{user?.[0]?.toUpperCase()}</Avatar>
-            {!collapsed && <span style={{ fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: collapsed ? 2 : 4 }}>
-            <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
-            <NotificationBell />
-            {collapsed
-              ? <Button size="small" type="tertiary" onClick={logout} theme="borderless" icon={<IconExit />} />
-              : <Button size="small" type="tertiary" onClick={logout} theme="borderless">退出</Button>
-            }
-          </div>
+        <div style={{ position: "absolute", bottom: 12, left: 8, right: 8, display: "flex", alignItems: "center", gap: 6, padding: "10px 6px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <Avatar size="extra-small">{user?.[0]?.toUpperCase()}</Avatar>
+          {!collapsed && <span style={{ flex: 1, fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>}
+          {collapsed
+            ? <Button size="small" type="tertiary" onClick={logout} theme="borderless" icon={<IconExit />} />
+            : <Button size="small" type="tertiary" onClick={logout} theme="borderless">退出</Button>
+          }
         </div>
       </Sider>
-      <Content style={{ padding: "20px 24px", overflow: "auto", height: "100vh" }}>
-        {page === "containers" && <><h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600, color: "var(--semi-color-text-0)" }}>容器管理</h2><Containers /></>}
-        {page === "llm" && <><h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600, color: "var(--semi-color-text-0)" }}>模型配置</h2><LLM /></>}
-        {page === "audit" && <><h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600, color: "var(--semi-color-text-0)" }}>审计日志</h2><Audit /></>}
-        {page === "settings" && <><h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600, color: "var(--semi-color-text-0)" }}>资源配置</h2><Settings /></>}
+      <Content style={{ padding: "10px 24px 20px", overflow: "auto", height: "100vh" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4, marginBottom: 4 }}>
+          <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
+          <NotificationBell />
+        </div>
+        {page === "containers" && <Containers />}
+        {page === "llm" && <LLM />}
+        {page === "audit" && <Audit />}
+        {page === "settings" && <Settings />}
       </Content>
     </Layout>
   );
