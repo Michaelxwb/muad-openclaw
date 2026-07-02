@@ -1,13 +1,11 @@
-/* Global overrides for Semi Design dark theme. Semi's built-in dark mode
-   handles colors/spacing/typography — only app-specific helpers remain. */
+/* 暗色主题变量由 App.tsx 中 applyTheme() 动态注入 style 标签管理，
+   支持运行时亮/暗切换，本站不需要额外全局样式。 */
 
-/* Full-height layout */
 html, body, #root {
   height: 100%;
   margin: 0;
 }
 
-/* Utility */
 .mono {
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   font-size: 12px;
@@ -19,7 +17,6 @@ html, body, #root {
   margin: 0;
 }
 
-/* Log viewer / terminal output */
 .log-pre {
   margin: 0;
   padding: 12px;
@@ -33,7 +30,6 @@ html, body, #root {
   overflow: auto;
 }
 
-/* QR code image */
 .qr-img {
   display: block;
   margin: 0 auto;
