@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Layout, Nav, Button, Avatar } from "@douyinfe/semi-ui";
-import { IconServerStroked, IconComponentStroked, IconSettingStroked, IconSearchStroked, IconMoon, IconSun } from "@douyinfe/semi-icons";
+import { IconServerStroked, IconComponentStroked, IconSettingStroked, IconSearchStroked, IconMoon, IconSun, IconExit } from "@douyinfe/semi-icons";
 import { api, token, UNAUTHORIZED_EVENT } from "./api";
 import { Containers } from "./pages/Containers";
 import { LLM } from "./pages/LLM";
@@ -179,17 +179,16 @@ export function App() {
   return (
     <Layout style={{ height: "100vh" }}>
       <Sider style={{ width: collapsed ? 60 : 180, transition: "width 0.2s" }}>
+        {collapsed && (
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
+            <Button icon={<span>▶</span>} theme="borderless" size="small" onClick={() => setCollapsed(false)} />
+          </div>
+        )}
         <Nav
-          style={{ height: "100%", width: "100%" }}
+          style={{ height: collapsed ? "calc(100% - 38px)" : "100%", width: "100%" }}
           defaultSelectedKeys={["containers"]}
           isCollapsed={collapsed}
-          header={collapsed ? {
-            logo: (
-              <div style={{ display: "flex", justifyContent: "center" }}>
-                <Button icon={<span>▶</span>} theme="borderless" size="small" onClick={() => setCollapsed(false)} />
-              </div>
-            ),
-          } : {
+          header={collapsed ? undefined : {
             logo: <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 2 }}>muad</span>,
             text: (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -212,7 +211,7 @@ export function App() {
             <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
             <NotificationBell />
             {!collapsed && <Button size="small" type="tertiary" onClick={logout} theme="borderless">退出</Button>}
-            {collapsed && <Button size="small" type="tertiary" onClick={logout} theme="borderless" icon={<IconServerStroked />} />}
+            {collapsed && <Button size="small" type="tertiary" onClick={logout} theme="borderless" icon={<IconExit />} />}
           </div>
         </div>
       </Sider>
