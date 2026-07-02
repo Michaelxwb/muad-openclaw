@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Modal, Table, Tag, Select, Dropdown, Input, Space, Toast } from "@douyinfe/semi-ui";
+import { Button, Modal, Table, Tag, Select, Dropdown, Input, Space, Toast, Card } from "@douyinfe/semi-ui";
+import { IconSearch } from "@douyinfe/semi-icons";
 import type { BasicSelectValue } from "@douyinfe/semi-ui/lib/es/select";
 import QRCode from "qrcode";
 import { api, Container } from "../api";
 import { CHANNELS, channelMeta } from "../channels";
 import { Pagination } from "../components/Pagination";
 
-const STATUS_TAGS: Record<string, { label: string; color: "green" | "blue" | "red" | "orange" | "grey" | "light-blue" }> = {
-  creating: { label: "创建中", color: "light-blue" },
-  running: { label: "运行中", color: "green" },
-  stopped: { label: "已停止", color: "grey" },
-  archived: { label: "已归档", color: "grey" },
-  unhealthy: { label: "不健康", color: "orange" },
-  error: { label: "异常", color: "red" },
-  missing: { label: "已删除", color: "grey" },
+const STATUS_TAGS: Record<string, { label: string; color: "green" | "blue" | "red" | "orange" | "grey" | "light-blue"; dot: string }> = {
+  creating: { label: "创建中", color: "light-blue", dot: "#4db8ff" },
+  running: { label: "运行中", color: "green", dot: "#3cdc80" },
+  stopped: { label: "已停止", color: "grey", dot: "#8899aa" },
+  archived: { label: "已归档", color: "grey", dot: "#8899aa" },
+  unhealthy: { label: "不健康", color: "orange", dot: "#ffa940" },
+  error: { label: "异常", color: "red", dot: "#ff4d4f" },
+  missing: { label: "已删除", color: "grey", dot: "#8899aa" },
 };
 
 const STATUS_OPTIONS = [
@@ -117,6 +118,17 @@ export function Containers() {
       return matchSearch && matchStatus && matchChannel && matchConn;
     });
   }, [items, search, statusFilter, channelFilter, connFilter]);
+
+  // Stats overview
+  const stats = useMemo(() => {
+    let running = 0, stopped = 0, error = 0;
+    for (const c of items) {
+      if (c.state === "running") running++;
+      else if (c.state === "error" || c.state === "unhealthy") error++;
+      else if (c.state === "stopped" || c.state === "missing" || c.state === "archived") stopped++;
+    }
+    return { total: items.length, running, stopped, error };
+  }, [items]);
 
   const paged = useMemo(
     () => filtered.slice((page - 1) * pageSize, page * pageSize),
@@ -234,8 +246,8 @@ export function Containers() {
     {
       title: "状态", dataIndex: "state", key: "state", width: 90,
       render: (_: unknown, r: Container) => {
-        const t = STATUS_TAGS[r.state] || { label: r.state, color: "grey" };
-        return <Tag color={t.color}>{t.label}</Tag>;
+        const t = STATUS_TAGS[r.state] || { label: r.state, color: "grey" as const, dot: "#8899aa" };
+        return <Tag color={t.color}><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: t.dot, marginRight: 5, verticalAlign: "middle" }} />{t.label}</Tag>;
       },
     },
     { title: "镜像", dataIndex: "imageTag", key: "imageTag", width: 160, className: "mono" },
@@ -260,10 +272,28 @@ export function Containers() {
     },
   ];
 
+  const statCards = [
+    { label: "总容器", value: stats.total, color: "var(--semi-color-text-1)" },
+    { label: "运行中", value: stats.running, color: "#3cdc80" },
+    { label: "异常", value: stats.error, color: "#ff4d4f" },
+    { label: "已停止", value: stats.stopped, color: "#8899aa" },
+  ];
+
   return (
     <div>
       {err && <div style={{ color: "var(--semi-color-danger)", marginBottom: 8 }}>{err}</div>}
       {msg && <div style={{ color: "var(--semi-color-success)", marginBottom: 8 }}>{msg}</div>}
+
+      {/* Stats overview */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        {statCards.map((s) => (
+          <Card key={s.label} style={{ flex: 1, minWidth: 0, background: "#11151d", borderColor: "rgba(255,255,255,0.06)" }}
+            bodyStyle={{ padding: "14px 16px" }}>
+            <div style={{ fontSize: 12, color: "var(--semi-color-text-2)", marginBottom: 4 }}>{s.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
+          </Card>
+        ))}
+      </div>
 
       {/* Toolbar */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
@@ -272,7 +302,7 @@ export function Containers() {
           <Button onClick={() => setReloadOpen(true)}>重载 Skill</Button>
         </Space>
         <Space>
-          <Input placeholder="搜索 userId…" value={search} onChange={onSearch} style={{ width: 180 }} />
+          <Input prefix={<IconSearch />} placeholder="搜索…" value={search} onChange={onSearch} onEnterPress={() => {}} style={{ width: 180 }} />
           <Select value={channelFilter} optionList={CHANNEL_OPTIONS} onChange={onChannelFilter} style={{ width: 130 }} />
           <Select value={connFilter} optionList={CONN_OPTIONS} onChange={onConnFilter} style={{ width: 110 }} />
           <Select value={statusFilter} optionList={STATUS_OPTIONS} onChange={onStatusFilter} style={{ width: 120 }} />
