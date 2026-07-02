@@ -178,12 +178,18 @@ export function App() {
 
   return (
     <Layout style={{ height: "100vh" }}>
-      <Sider style={{ width: collapsed ? 60 : 220, transition: "width 0.2s" }}>
+      <Sider style={{ width: collapsed ? 60 : 180, transition: "width 0.2s" }}>
         <Nav
           style={{ height: "100%", width: "100%" }}
           defaultSelectedKeys={["containers"]}
           isCollapsed={collapsed}
-          header={collapsed ? undefined : {
+          header={collapsed ? {
+            logo: (
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <Button icon={<span>▶</span>} theme="borderless" size="small" onClick={() => setCollapsed(false)} />
+              </div>
+            ),
+          } : {
             logo: <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 2 }}>muad</span>,
             text: (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -199,20 +205,14 @@ export function App() {
             <Nav.Item key={item.key} itemKey={item.key} icon={item.icon} text={item.label} />
           ))}
         </Nav>
-        {collapsed && (
-          <div style={{ position: "absolute", top: 12, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
-            <Button icon={<span>▶</span>} theme="borderless" size="small" onClick={() => setCollapsed(false)} />
-          </div>
-        )}
-        <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "0 12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Avatar size="extra-small">{user?.[0]?.toUpperCase()}</Avatar>
-            {!collapsed && <span style={{ fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: collapsed ? 4 : 6, padding: collapsed ? "0 4px" : "0 12px" }}>
+          <Avatar size="extra-small">{user?.[0]?.toUpperCase()}</Avatar>
+          {!collapsed && <span style={{ fontSize: 13, color: "var(--semi-color-text-2)" }}>{user ?? "..."}</span>}
+          <div style={{ display: "flex", alignItems: "center", gap: 2, flexDirection: collapsed ? "column" : "row" }}>
             <Button size="small" icon={theme === "dark" ? <IconMoon /> : <IconSun />} type="tertiary" onClick={toggleTheme} theme="borderless" />
             <NotificationBell />
-            <Button size="small" type="tertiary" onClick={logout} theme="borderless">{collapsed ? "" : "退出"}</Button>
+            {!collapsed && <Button size="small" type="tertiary" onClick={logout} theme="borderless">退出</Button>}
+            {collapsed && <Button size="small" type="tertiary" onClick={logout} theme="borderless" icon={<IconServerStroked />} />}
           </div>
         </div>
       </Sider>
