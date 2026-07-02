@@ -1,60 +1,49 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { Badge, Popover, List, Empty } from "@douyinfe/semi-ui";
+import { IconBell } from "@douyinfe/semi-icons";
 import { api, Alert } from "../api";
-import styles from "./NotificationBell.module.css";
+
+const LEVEL_COLORS: Record<string, string> = {
+  P1: "var(--semi-color-danger)",
+  P2: "var(--semi-color-warning)",
+  P3: "var(--semi-color-text-2)",
+};
 
 export function NotificationBell() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchAlerts = () => {
-      api
-        .alerts()
-        .then(setAlerts)
-        .catch(() => {
-          /* silently keep previous data */
-        });
+      api.alerts().then(setAlerts).catch(() => {
+        /* silently keep previous data */
+      });
     };
     fetchAlerts();
     const t = setInterval(fetchAlerts, 30000);
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    if (open) document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [open]);
-
-  const count = alerts.length;
+  const content = alerts.length === 0 ? (
+    <Empty description="暂无告警" />
+  ) : (
+    <List
+      dataSource={alerts}
+      style={{ maxHeight: 280, overflow: "auto" }}
+      renderItem={(a) => (
+        <List.Item style={{ padding: "6px 12px" }}>
+          <span style={{ color: LEVEL_COLORS[a.level] || "inherit", fontWeight: 600, marginRight: 6 }}>[{a.level}]</span>
+          <span style={{ marginRight: 8 }}>{a.userId}</span>
+          <span style={{ color: "var(--semi-color-text-2)" }}>{a.message}</span>
+        </List.Item>
+      )}
+    />
+  );
 
   return (
-    <div className={styles.bell} ref={ref}>
-      <button className={styles.trigger} onClick={() => setOpen(!open)} title="告警通知">
-        🔔
-        {count > 0 && <span className={styles.badge}>{count > 99 ? "99+" : count}</span>}
-      </button>
-
-      {open && (
-        <div className={styles.dropdown}>
-          {alerts.length === 0 ? (
-            <div className={styles.empty}>暂无告警</div>
-          ) : (
-            alerts.map((a, i) => (
-              <div key={i} className={`${styles.item} ${styles[a.level] || ""}`}>
-                <span className={styles.level}>[{a.level}]</span>
-                <span className={styles.user}>{a.userId}</span>
-                <span className={styles.msg}>{a.message}</span>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
+    <Popover content={content} trigger="click" position="bottomRight" style={{ maxWidth: 400 }}>
+      <Badge count={alerts.length} overflowCount={99}>
+        <IconBell size="large" style={{ cursor: "pointer" }} />
+      </Badge>
+    </Popover>
   );
 }
