@@ -106,12 +106,8 @@ html, body, #root {
 .semi-modal-header { border-bottom-color: rgba(255,255,255,0.06) !important; font-size: 16px !important; font-weight: 600 !important; }
 .semi-modal-footer { border-top-color: rgba(255,255,255,0.06) !important; }
 
-/* 通知铃铛脉冲 */
-@keyframes muadBellPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-}
-.semi-badge-count { animation: muadBellPulse 2s ease-in-out infinite; }
+/* 通知铃铛 */
+.semi-badge-count { color: #fff !important; }
 
 /* 卡片 */
 .semi-card { background: #11151d !important; border-color: rgba(255,255,255,0.06) !important; }

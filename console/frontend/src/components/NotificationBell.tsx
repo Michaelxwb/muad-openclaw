@@ -42,7 +42,7 @@ export function NotificationBell() {
   return (
     <Popover content={content} trigger="click" position="bottomRight" style={{ maxWidth: 400 }}>
       <Badge count={alerts.length} overflowCount={99}>
-        <IconBell size="large" style={{ cursor: "pointer" }} />
+        <IconBell size="large" style={{ cursor: "pointer", color: "var(--semi-color-text-2)" }} />
       </Badge>
     </Popover>
   );
