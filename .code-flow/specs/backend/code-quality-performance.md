@@ -33,6 +33,7 @@ except Exception:
 - 异常必须显式处理或显式上抛，禁止 `except Exception: pass` / `catch (e) {}` 静默吞掉
 - 外部依赖调用（HTTP / RPC / DB）必须设置超时，关键调用补重试 + 指数退避
 - 单元测试覆盖核心业务路径：happy path + 边界 + 错误分支，每个需求 ≥ 1 个用例
+- **[项目] 容器外部命令（docker CLI / kubectl）必须包 driver 内部 helper**：`internal/driver/{docker,k8s}.go` 内 `d.run` / `d.runStdin` 统一做 `exec.CommandContext` + stderr 合并到 error + 错误包装（`fmt.Errorf("docker %s: %w: %s", args[0], err, stderr)`）；业务代码（任何其他包）禁止直接 `exec.Command("docker", ...)`，必须通过 `RuntimeDriver` 接口 + driver 内部 helper 调。新增 driver 实现（podman / nerdctl 等）必须自带等效 `run` / `runStdin` helper，保持 stderr 合并与错误格式一致。
 
 ## Patterns
 - 缓存可计算结果以减少重复 IO，明确缓存 key、TTL 与失效策略

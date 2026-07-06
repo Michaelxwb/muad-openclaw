@@ -33,6 +33,7 @@ export function LLM() {
             ...f,
             provider: c.provider ?? "",
             baseUrl: c.baseUrl ?? "",
+            apiKey: c.apiKey ?? "",
             model: c.model ?? "",
           }));
       })
@@ -129,7 +130,7 @@ export function LLM() {
       }}
       value={form[k]}
       onChange={(e) => field(k, e.target.value)}
-      placeholder={type === "password" && configured ? "（已配置，留空不改）" : placeholder}
+      placeholder={type === "password" && configured ? "已从服务端加载" : placeholder}
     />
   );
 
@@ -174,7 +175,7 @@ export function LLM() {
         <Button onClick={test} loading={testLoading}>
           测试连接
         </Button>
-        {testOutput && (
+        {(testOutput || testError) && (
           <pre
             style={{
               marginTop: 10,

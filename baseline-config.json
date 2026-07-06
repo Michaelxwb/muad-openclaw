@@ -12,23 +12,22 @@
   },
   "tools": {
     "profile": "coding",
-    "alsoAllow": [
-      "browser"
-    ]
+    "alsoAllow": ["browser"]
   },
   "browser": {
     "enabled": true,
     "headless": true,
     "noSandbox": true,
-    "extraArgs": [
-      "--disable-dev-shm-usage"
-    ]
+    "extraArgs": ["--disable-dev-shm-usage"]
   },
   "channels": {
     "wecom": {
       "connectionMode": "websocket"
     },
     "openclaw-weixin": {}
+  },
+  "plugins": {
+    "allow": ["wecom-openclaw-plugin", "openclaw-weixin"]
   },
   "models": {
     "providers": {
@@ -40,9 +39,7 @@
   },
   "skills": {
     "load": {
-      "extraDirs": [
-        "/opt/openclaw-skills"
-      ],
+      "extraDirs": ["/opt/openclaw-skills"],
       "watch": true
     }
   },

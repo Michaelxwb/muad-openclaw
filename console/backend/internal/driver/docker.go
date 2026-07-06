@@ -85,6 +85,19 @@ func (d *DockerDriver) Restart(ctx context.Context, userID string) error {
 	return err
 }
 
+// UpdateSpec for docker is intentionally a no-op. Docker env vars are baked
+// into the container config at `docker run`; callers that need a new spec to
+// take effect must explicitly recreate via Remove+Create. Channel hot reloads
+// update the running container through ExecStdin and must not unexpectedly
+// restart the worker.
+func (d *DockerDriver) UpdateSpec(ctx context.Context, userID string, spec UserSpec, gatewayToken string) error {
+	_ = ctx
+	_ = userID
+	_ = spec
+	_ = gatewayToken
+	return nil
+}
+
 // Remove force-removes the container; when !keepState the state volume is
 // deleted too (RULE-02 "删卷" is an explicit opt-in).
 func (d *DockerDriver) Remove(ctx context.Context, userID string, keepState bool) error {

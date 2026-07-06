@@ -1,6 +1,8 @@
 package test
 
 import (
+	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
@@ -34,11 +36,14 @@ func TestMergeLLM_EmptyOverrideInherits(t *testing.T) {
 }
 
 func TestBuildEnv_OmitsEmptyLLM(t *testing.T) {
-	spec := driver.UserSpec{UserID: "alice", BotID: "wb-1", Secret: "s"}
+	spec := driver.UserSpec{UserID: "alice", Channels: []string{"wecom"}, ChannelConfigs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"wecom": {"botId": "wb-1", "secret": "s"}}`)}}
 	env := driver.BuildEnv(spec, "tok")
 
-	if env["PC_USER"] != "alice" || env["WECOM_BOT_ID"] != "wb-1" || env["WECOM_SECRET"] != "s" {
-		t.Fatalf("missing required identity env: %+v", env)
+	if env["PC_USER"] != "alice" || env["CHANNELS"] != "wecom" {
+		t.Fatalf("missing required identity/channels env: %+v", env)
+	}
+	if env["CHANNEL_CONFIGS"] == "" {
+		t.Fatalf("missing channel configs env: %+v", env)
 	}
 	if env["OPENCLAW_GATEWAY_TOKEN"] != "tok" {
 		t.Errorf("gateway token not set")
@@ -50,7 +55,7 @@ func TestBuildEnv_OmitsEmptyLLM(t *testing.T) {
 
 func TestBuildEnv_IncludesLLM(t *testing.T) {
 	spec := driver.UserSpec{
-		UserID: "bob", BotID: "wb-2", Secret: "s2",
+		UserID: "bob", Channels: []string{"wecom"}, ChannelConfigs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"wecom": {"botId": "wb-2", "secret": "s2"}}`)},
 		LLM: driver.LlmConfig{Provider: "deepseek", BaseURL: "https://x", APIKey: "k", Model: "m"},
 	}
 	env := driver.BuildEnv(spec, "")
@@ -119,4 +124,12 @@ func TestFactory(t *testing.T) {
 	}
 	// k8s factory needs a real cluster (in-cluster/kubeconfig); its CRUD logic
 	// is covered by the white-box fake-client test in internal/driver.
+}
+
+func TestDockerUpdateSpecNoop(t *testing.T) {
+	drv := driver.NewDockerDriver("muad-net", "/skills")
+	err := drv.UpdateSpec(context.Background(), "alice", driver.UserSpec{UserID: "alice"}, "")
+	if err != nil {
+		t.Fatalf("UpdateSpec should not shell out or recreate for docker: %v", err)
+	}
 }

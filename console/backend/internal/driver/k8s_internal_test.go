@@ -21,7 +21,7 @@ func newFakeK8s() *K8sDriver {
 func TestK8s_CreateProvisionsAll(t *testing.T) {
 	d := newFakeK8s()
 	ctx := context.Background()
-	spec := UserSpec{UserID: "alice", Channel: "wechat", ImageTag: "img:1", MemLimit: "3g", CPULimit: "2"}
+	spec := UserSpec{UserID: "alice", Channels: []string{"wechat"}, ImageTag: "img:1", MemLimit: "3g", CPULimit: "2"}
 	if err := d.Create(ctx, spec, "tok"); err != nil {
 		t.Fatalf("Create: %v", err)
 	}

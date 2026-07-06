@@ -142,6 +142,41 @@ func (d *K8sDriver) upsertSecret(ctx context.Context, spec UserSpec, gatewayToke
 	}
 }
 
+// UpdateSpec rewrites the per-user Secret so a future pod restart boots with
+// the new spec (channels, LLM, image). The running pod's runtime state is
+// already kept in sync via the hot-reload path (ExecStdin → inject-channels.mjs);
+// this only updates the cluster-level Secret. Errors are returned to the
+// caller but are non-fatal at the API layer — see handleUpdateChannels.
+//
+// If the secret already exists, the existing OPENCLAW_GATEWAY_TOKEN is
+// preserved (re-using the caller's gatewayToken would rotate the token and
+// kick the user's already-connected wecom bot / wechat session offline).
+func (d *K8sDriver) UpdateSpec(ctx context.Context, userID string, spec UserSpec, gatewayToken string) error {
+	name := ContainerName(userID) + "-env"
+	api := d.client.CoreV1().Secrets(d.namespace)
+	// Preserve existing gateway token if the secret already exists.
+	token := gatewayToken
+	if cur, err := api.Get(ctx, name, metav1.GetOptions{}); err == nil {
+		if t, ok := cur.Data["OPENCLAW_GATEWAY_TOKEN"]; ok && len(t) > 0 {
+			token = string(t)
+		}
+	} else if !apierrors.IsNotFound(err) {
+		return err
+	}
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(userID)},
+		StringData: BuildEnv(spec, token),
+	}
+	if _, err := api.Update(ctx, sec, metav1.UpdateOptions{}); apierrors.IsNotFound(err) {
+		// Secret doesn't exist yet — fall back to Create so the path works
+		// even for a partially-provisioned user (e.g. Create failed mid-flight).
+		_, cerr := api.Create(ctx, sec, metav1.CreateOptions{})
+		return cerr
+	} else {
+		return err
+	}
+}
+
 func (d *K8sDriver) upsertDeployment(ctx context.Context, spec UserSpec, name string) error {
 	dep := d.deployment(spec, name)
 	api := d.client.AppsV1().Deployments(d.namespace)
@@ -187,7 +222,7 @@ func (d *K8sDriver) deployment(spec UserSpec, name string) *appsv1.Deployment {
 						Name:            "openclaw",
 						Image:           spec.ImageTag,
 						ImagePullPolicy: corev1.PullIfNotPresent,
-						EnvFrom: []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: name + "-env"}}}},
+						EnvFrom:         []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: name + "-env"}}}},
 						Env: []corev1.EnvVar{
 							{Name: "TZ", Value: "Asia/Shanghai"},
 							{Name: "OPENCLAW_STATE_DIR", Value: "/home/node/.openclaw"},

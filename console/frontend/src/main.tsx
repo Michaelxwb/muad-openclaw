@@ -13,10 +13,12 @@ import "./styles.css";
 // 实际消息在 args[1] 不是 args[0]（格式串），要把所有参数都看一遍。
 const origError = console.error;
 const origWarn = console.warn;
-const filter = (orig: (...a: unknown[]) => void) => (...args: unknown[]) => {
-  if (args.some((a) => String(a ?? "").includes("findDOMNode"))) return;
-  orig.apply(console, args);
-};
+const filter =
+  (orig: (...a: unknown[]) => void) =>
+  (...args: unknown[]) => {
+    if (args.some((a) => String(a ?? "").includes("findDOMNode"))) return;
+    orig.apply(console, args);
+  };
 console.error = filter(origError);
 console.warn = filter(origWarn);
 

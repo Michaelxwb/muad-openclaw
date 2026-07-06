@@ -57,14 +57,12 @@ export interface ChannelStatus {
 
 export interface Container {
   userId: string;
-  channel: Channel; // DEPRECATED: kept for migration, use channels
   channels?: string[];
   channelStatuses: Record<string, ChannelStatus>;
   state: string;
   imageTag: string;
   cpuPercent: number;
   memMiB: number;
-  channelConnected: boolean; // DEPRECATED: true if any channel connected
   lastActiveAt?: string;
   reapInSeconds?: number;
   memLimit: string;
@@ -90,6 +88,7 @@ export interface LLMConfig {
   configured: boolean;
   provider?: string;
   baseUrl?: string;
+  apiKey?: string;
   model?: string;
 }
 
@@ -120,27 +119,25 @@ export const api = {
   listContainers: () => request<{ items: Container[]; total: number }>("GET", "/containers"),
   createContainer: (b: {
     userId: string;
-    channel?: Channel; // DEPRECATED
     channels?: string[];
     channelConfigs?: Record<string, ChannelCredential>;
-    botId?: string;
-    secret?: string;
     imageTag?: string;
   }) => request<unknown>("POST", "/containers", b),
   deleteContainer: (id: string, deleteVolume: boolean) =>
     request<unknown>("DELETE", `/containers/${id}?deleteVolume=${deleteVolume}`),
   logs: (id: string, tail: number) =>
     request<{ logs: string }>("GET", `/containers/${id}/logs?tail=${tail}`),
-  qrcode: (id: string) =>
+  qrcode: (id: string, force = false) =>
     request<{ loginUrl: string; raw: string; connected: boolean }>(
       "GET",
-      `/containers/${id}/qrcode`,
+      `/containers/${id}/qrcode${force ? "?force=true" : ""}`,
     ),
   action: (id: string, action: string) =>
     request<unknown>("POST", `/containers/${id}/actions/${action}`),
   upgrade: (id: string, imageTag: string) =>
     request<unknown>("POST", `/containers/${id}/upgrade`, { imageTag }),
-  reloadSkills: () => request<{ results: Record<string, string> }>("POST", "/skills/reload"),
+  reloadSkills: (userIds: string[]) =>
+    request<{ results: Record<string, string> }>("POST", "/skills/reload", { userIds }),
 
   getContainer: (id: string) =>
     request<

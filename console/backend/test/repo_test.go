@@ -20,7 +20,7 @@ func newStore(t *testing.T) *repo.Store {
 
 func TestUser_CRUDAndUniqueness(t *testing.T) {
 	s := newStore(t)
-	u := repo.User{UserID: "alice", BotID: "wb-1", SecretEnc: "enc", ImageTag: "tag:1"}
+	u := repo.User{UserID: "alice", ImageTag: "tag:1"}
 	if err := s.CreateUser(u); err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestUser_CRUDAndUniqueness(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetUser: %v", err)
 	}
-	if got.State != "creating" || got.BotID != "wb-1" {
+	if got.State != "creating" {
 		t.Errorf("unexpected user: %+v", got)
 	}
 

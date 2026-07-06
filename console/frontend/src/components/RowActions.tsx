@@ -24,7 +24,7 @@ export function RowActions({
   onOpenResources,
   onAction,
 }: Props) {
-  const showQr = r.channels?.includes("wechat") || r.channel === "wechat";
+  const showQr = r.channels?.includes("wechat") ?? false;
   return (
     <Space>
       <Button size="small" onClick={() => onViewLogs(r.userId)}>

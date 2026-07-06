@@ -38,6 +38,18 @@ for (const id of Object.keys(d.channels)) {
   if (!KNOWN.has(id)) delete d.channels[id];
 }
 
+// Gate non-bundled plugin auto-load by setting `plugins.allow` to exactly the
+// currently-needed set. Without an explicit allow-list, openclaw auto-loads
+// every non-bundled plugin it can discover — even if its channel was removed
+// from `channels`, the plugin stays loaded and its long-poll session keeps
+// running. Required for clean channel removal via hot reload.
+const PLUGIN_BY_CH = {
+  wecom: "wecom-openclaw-plugin",
+  wechat: "openclaw-weixin",
+};
+d.plugins = d.plugins || {};
+d.plugins.allow = channels.map((c) => PLUGIN_BY_CH[c]).filter(Boolean);
+
 // Per-channel credentials from CHANNEL_CONFIGS JSON, with legacy fallback.
 const configsStr = v(E.CHANNEL_CONFIGS);
 if (configsStr) {
@@ -78,7 +90,9 @@ const agentDir = `${state}/agents/main`;
 const bootstrapPath = `${agentDir}/BOOTSTRAP.md`;
 if (!existsSync(bootstrapPath)) {
   mkdirSync(agentDir, { recursive: true });
-  wfs(bootstrapPath, `# Identity & Memory
+  wfs(
+    bootstrapPath,
+    `# Identity & Memory
 You serve the same user across multiple chat platforms (WeChat, WeCom, etc.).
 Each platform appears as a separate conversation session, but the person
 behind them is the same individual.
@@ -86,7 +100,8 @@ behind them is the same individual.
 ## Cross-Session Rules
 - Always check your memory first before asking for name or preferences.
 - Save new information to memory immediately for cross-session recall.
-- If the user references another platform, use memory to bridge context.`);
+- If the user references another platform, use memory to bridge context.`,
+  );
 }
 writeFileSync(p, JSON.stringify(d, null, 2));
 const enabled = ocChannels.join(",");

@@ -32,6 +32,18 @@ render(data);
 - 关键交互（提交 / 删除 / 支付）必须有错误提示与 loading 状态
 - 异步操作必须处理 loading / success / error 三态，禁止只处理成功路径
 - 提交前必须通过 lint 与 type check，禁止 `eslint-disable` / `@ts-ignore` 滥用
+- **[项目] 异步轮询必须用 `mounted` ref 守卫 setState**：`useEffect` 内 `setInterval` + 异步 fetch + `setState` 的模式（如 `pages/Containers.tsx:131-147` 5s 拉 `/containers`、`components/NotificationBell.tsx:15-33` 30s 拉 `/alerts`）必须用：
+  ```tsx
+  let mounted = true;
+  const fetch = async () => {
+    api.x().then(r => { if (mounted) setX(r); }).catch(() => {});
+  };
+  fetch();
+  const t = setInterval(fetch, N);
+  return () => { mounted = false; clearInterval(t); };
+  ```
+  否则 React 18 StrictMode 双 mount + 异步 fetch 解析会向已卸载/重挂载组件 setState，触发 `postMessage` componentStack 警告。`useCallback` 包裹 + 正确的依赖数组（`[refresh]`）也要满足——否则 effect 不会在依赖变化时重启，旧 refresh 闭包捕获过期 state。
+- **[项目] 入口处 console.error/warn filter 屏蔽**已知**上游库 deprecation 警告**（如 Semi v2.x 通过 `react-resizable@3` / `react-draggable@4` / `tooltip` 内部 `findDOMNode` 持续打 console.error）：在 `main.tsx` 顶部 import 后立即装，**必须**按 React 警告的 printf 格式 `console.error("Warning: %s\n\n%s", msg, stack)` 扫描**所有** args（`args.some(a => String(a).includes(KEYWORD))`），不能只看 `args[0]`——那是格式串，关键词在 `args[1]` 的 msg 里。filter 必须装在 React 渲染前（`createRoot` 调用之前），否则首次 render 的告警漏过。**仅**屏蔽**明确**关键词（如 `"findDOMNode"`），不要用宽泛正则以免吞掉真错误。
 
 ## Patterns
 - 跨组件状态用集中式状态管理，避免 prop drilling 超过 2 层
