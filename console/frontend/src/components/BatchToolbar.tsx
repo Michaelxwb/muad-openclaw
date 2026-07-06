@@ -1,10 +1,8 @@
-import { Button, Space, Modal, Toast, Checkbox } from "@douyinfe/semi-ui";
+import { Button, Space, Modal, Toast } from "@douyinfe/semi-ui";
 import { api } from "../api";
 
 interface Props {
   selectedIds: string[];
-  allIds: string[];
-  onSelectAll: (checked: boolean) => void;
   onReloadSkills: () => void;
   onBatchUpgrade: () => void;
   onBatchDelete: (ids: string[]) => void;
@@ -12,56 +10,41 @@ interface Props {
 
 export function BatchToolbar({
   selectedIds,
-  allIds,
-  onSelectAll,
   onReloadSkills,
   onBatchUpgrade,
   onBatchDelete,
 }: Props) {
-  const allSelected = selectedIds.length === allIds.length && allIds.length > 0;
   const someSelected = selectedIds.length > 0;
 
-  function handleSelectAll(checked: boolean) {
-    onSelectAll(checked);
-  }
-
   function handleReload() {
-    onReloadSkills();
+    if (!someSelected) return;
+    Modal.confirm({
+      title: "确认重载 Skill",
+      content: `将对 ${selectedIds.length} 个已勾选容器执行 Skill 重载。`,
+      onOk: onReloadSkills,
+    });
   }
 
   function handleUpgrade() {
-    onBatchUpgrade();
+    if (!someSelected) return;
+    Modal.confirm({
+      title: "确认批量升级",
+      content: `将对 ${selectedIds.length} 个已勾选容器执行批量升级。`,
+      onOk: onBatchUpgrade,
+    });
   }
 
   function handleDelete() {
     if (selectedIds.length === 0) return;
     Modal.warning({
       title: "确认批量删除",
-      content: (
-        <div>
-          <p>确定删除以下 {selectedIds.length} 个容器？此操作不可撤销。</p>
-          <div
-            style={{
-              margin: "8px 0 0",
-              maxHeight: 120,
-              overflowY: "auto",
-              fontFamily: "monospace",
-            }}
-          >
-            {selectedIds.map((id) => (
-              <div key={id} style={{ padding: "2px 0" }}>
-                {id}
-              </div>
-            ))}
-          </div>
-        </div>
-      ),
+      content: `确定删除 ${selectedIds.length} 个已勾选容器？此操作不可撤销。`,
       onOk: async () => {
         try {
-          const results = await Promise.all(
+          const results = await Promise.allSettled(
             selectedIds.map((id) => api.deleteContainer(id, false)),
           );
-          const failed = results.filter((r) => r === undefined);
+          const failed = results.filter((r) => r.status === "rejected");
           if (failed.length === 0) {
             Toast.success(`已删除 ${selectedIds.length} 个容器`);
           } else {
@@ -77,23 +60,16 @@ export function BatchToolbar({
     });
   }
 
-  const indeterminate = selectedIds.length > 0 && !allSelected;
-
   return (
     <Space spacing={4}>
-      <Checkbox
-        checked={allSelected}
-        indeterminate={indeterminate}
-        onChange={(e) => handleSelectAll((e.target as HTMLInputElement).checked)}
-      />
-      <Button size="small" onClick={handleReload} disabled={!someSelected}>
+      <Button onClick={handleReload} disabled={!someSelected}>
         重载 Skill
       </Button>
-      <Button size="small" onClick={handleUpgrade} disabled={!someSelected}>
+      <Button onClick={handleUpgrade} disabled={!someSelected}>
         批量升级
       </Button>
-      <Button size="small" type="danger" onClick={handleDelete} disabled={!someSelected}>
-        批量删除 ({selectedIds.length})
+      <Button type="danger" onClick={handleDelete} disabled={!someSelected}>
+        批量删除
       </Button>
     </Space>
   );

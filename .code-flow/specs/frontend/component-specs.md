@@ -11,6 +11,11 @@ checks:
     pattern: "<select"
     files: ["*pages*", "*components*"]
     message: "禁止原生 <select>，用自定义 Select 组件（原生 option 列表无法套用主题）"
+  - id: no-index-key
+    type: regex
+    pattern: "key=\\{[^}]*\\b(index|idx|i|rowIndex|itemIndex)\\b[^}]*\\}"
+    files: ["*pages*", "*components*"]
+    message: "禁止 key={index}/{i}/{idx} 等数组索引作 key，顺序变更会触发错误复用。用稳定唯一字段（如 item.id、a.userId）"
 ---
 
 # Component Specs
@@ -64,6 +69,7 @@ const OrderRow = ({ id }) => {
 - **[项目] [Modal.tsx, NotificationBell.tsx, Select.tsx] 浮层交互统一**：点击遮罩/外部关闭（`useRef` + mousedown 监听）+ Esc 关闭 + `fadeIn` 动画；z-index 分层（下拉 20–50 / 模态 200）
 - **[项目] [Modal.tsx] 通用对话框壳**：所有弹窗（创建/升级/删除/重载/日志/扫码）统一用 `components/Modal.tsx`——固定头部 + 固定底部 footer + body 单一滚动区（`max-height:85vh`，只 body 滚动）+ `wide` 变体（日志等宽内容）；禁止再自定义弹窗 DOM 结构，保证视觉一致
 - **[项目] [src/channels.ts] 通道元数据集中**：消息通道的标签/图标集中在 `channels.ts`（`CHANNELS` 列表 + `channelMeta(value)`）；前端按 channel 值渲染图标/名称/过滤项，新增通道只在此一处登记，不在组件里散落硬编码
+- **[项目] 同一表单的 create/edit 复用模式**：`ChannelForm.tsx` 一份代码同时承载新建和编辑两种用法。`mode="create"` 时所有 required 字段必填；`mode="edit"` + `initial.channelConfigs[ch].secretConfigured === true` 时**跳过该通道的 required 校验**（敏感字段已配置的不让用户重填）。提交时**空字符串 = 保留旧值**（不是清空）——后端 `mergeChannelConfig` 也按这个语义走。前后端这套约定一致：「空字符串 = 保留」对 secret 字段成立，对 botId 等非敏感字段可改成必填。表单组件需要兼顾 create/edit 时按这个约定设计 prop / validate / onSubmit 三者。
 
 ## Anti-Patterns
 - 禁止在组件内直接修改 props 或 store 内部状态

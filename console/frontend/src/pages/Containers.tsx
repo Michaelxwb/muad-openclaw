@@ -35,16 +35,15 @@ const STATUS_OPTIONS = [
   { value: "missing", label: "已删除" },
 ];
 
-const CHANNEL_OPTIONS = [
-  { value: "all", label: "全部通道" },
-  ...CHANNELS.map((c) => ({ value: c.value, label: c.icon + " " + c.label })),
-];
+const CHANNEL_OPTIONS = CHANNELS.map((c) => ({ value: c.value, label: c.icon + " " + c.label }));
 
 const CONN_OPTIONS = [
   { value: "all", label: "全部连接" },
   { value: "online", label: "在线" },
   { value: "offline", label: "离线" },
 ];
+
+const FILTER_SELECT_WIDTH = 120;
 
 const ACTIONS = [
   { key: "start", label: "启动" },
@@ -87,7 +86,7 @@ export function Containers() {
   const [qrConnected, setQrConnected] = useState(false);
   const [delTarget, setDelTarget] = useState<string | null>(null);
   const [delVolume, setDelVolume] = useState(false);
-  const [upgradeTarget, setUpgradeTarget] = useState<Container | null>(null);
+  const [upgradeIds, setUpgradeIds] = useState<string[]>([]);
   const [upgradeTag, setUpgradeTag] = useState("");
   const [resTarget, setResTarget] = useState<Container | null>(null);
   const [resForm, setResForm] = useState({ memLimit: "", cpuLimit: "", restartPolicy: "" });
@@ -101,17 +100,18 @@ export function Containers() {
 
   const USER_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-  function handleSelectAll(checked: boolean) {
-    setSelectedIds(checked ? items.map((c) => c.userId) : []);
-  }
-
   function handleReloadSkills() {
-    void guard(() => api.reloadSkills(), "已触发 skill 重载");
+    if (selectedIds.length === 0) return;
+    void guard(
+      () => api.reloadSkills(selectedIds),
+      `已触发 ${selectedIds.length} 个容器 skill 重载`,
+    );
   }
 
   function handleBatchUpgrade() {
     if (selectedIds.length === 0) return;
-    setUpgradeTarget(items.find((c) => c.userId === selectedIds[0]) || null);
+    setUpgradeIds(selectedIds);
+    setUpgradeTag("");
   }
 
   function handleBatchDelete(_ids: string[]) {
@@ -150,11 +150,13 @@ export function Containers() {
     return items.filter((c) => {
       const matchSearch = !search || c.userId.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === "all" || c.state === statusFilter;
-      const chs = c.channels?.length ? c.channels : [c.channel].filter(Boolean);
+      const chs = c.channels?.length ? c.channels : [];
       const matchChannel = channelFilter.length === 0 || chs.some((c) => channelFilter.includes(c));
+      const anyConnected = c.channelStatuses
+        ? Object.values(c.channelStatuses).some((s) => s.connected)
+        : false;
       const matchConn =
-        connFilter === "all" ||
-        (connFilter === "online" ? c.channelConnected : !c.channelConnected);
+        connFilter === "all" || (connFilter === "online" ? anyConnected : !anyConnected);
       return matchSearch && matchStatus && matchChannel && matchConn;
     });
   }, [items, search, statusFilter, channelFilter, connFilter]);
@@ -216,13 +218,14 @@ export function Containers() {
     }
   }
 
-  async function openQr(id: string) {
+  async function openQr(id: string, force = false) {
     setQrTarget(id);
     setQrDataUrl("");
     setQrConnected(false);
     setQrLoading(true);
+    setErr("");
     try {
-      const q = await api.qrcode(id);
+      const q = await api.qrcode(id, force);
       if (q.connected) {
         setQrConnected(true);
       } else if (q.loginUrl) {
@@ -271,12 +274,19 @@ export function Containers() {
     }
   }
 
-  function confirmUpgrade() {
-    if (!upgradeTarget || !upgradeTag.trim()) return;
-    const id = upgradeTarget.userId;
+  async function confirmUpgrade() {
+    if (upgradeIds.length === 0 || !upgradeTag.trim()) return;
+    const ids = [...upgradeIds];
     const tag = upgradeTag.trim();
-    setUpgradeTarget(null);
-    void guard(() => api.upgrade(id, tag), "已升级");
+    setUpgradeIds([]);
+    const results = await Promise.allSettled(ids.map((id) => api.upgrade(id, tag)));
+    const failed = results.filter((r) => r.status === "rejected").length;
+    if (failed === 0) {
+      Toast.success(`已升级 ${ids.length} 个容器`);
+    } else {
+      Toast.warning(`升级完成：${ids.length - failed} 成功，${failed} 失败`);
+    }
+    await refresh();
   }
 
   function confirmDelete() {
@@ -416,7 +426,7 @@ export function Containers() {
           flexWrap: "wrap",
         }}
       >
-        <Space>
+        <Space spacing={8}>
           <Button
             theme="solid"
             onClick={() => {
@@ -427,10 +437,17 @@ export function Containers() {
           >
             创建容器
           </Button>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 1,
+              height: 24,
+              background: "var(--semi-color-border)",
+              display: "inline-block",
+            }}
+          />
           <BatchToolbar
             selectedIds={selectedIds}
-            allIds={items.map((c) => c.userId)}
-            onSelectAll={handleSelectAll}
             onReloadSkills={handleReloadSkills}
             onBatchUpgrade={handleBatchUpgrade}
             onBatchDelete={handleBatchDelete}
@@ -450,20 +467,20 @@ export function Containers() {
             value={channelFilter}
             optionList={CHANNEL_OPTIONS}
             onChange={onChannelFilter}
-            placeholder="通道（可多选）"
-            style={{ width: 200 }}
+            placeholder="通道"
+            style={{ width: FILTER_SELECT_WIDTH }}
           />
           <Select
             value={connFilter}
             optionList={CONN_OPTIONS}
             onChange={onConnFilter}
-            style={{ width: 110 }}
+            style={{ width: FILTER_SELECT_WIDTH }}
           />
           <Select
             value={statusFilter}
             optionList={STATUS_OPTIONS}
             onChange={onStatusFilter}
-            style={{ width: 120 }}
+            style={{ width: FILTER_SELECT_WIDTH }}
           />
         </Space>
       </div>
@@ -523,9 +540,13 @@ export function Containers() {
 
       {/* Upgrade Modal */}
       <Modal
-        title={`升级容器 ${upgradeTarget?.userId ?? ""}`}
-        visible={upgradeTarget !== null}
-        onCancel={() => setUpgradeTarget(null)}
+        title={
+          upgradeIds.length === 1
+            ? `升级容器 ${upgradeIds[0]}`
+            : `批量升级 ${upgradeIds.length} 个容器`
+        }
+        visible={upgradeIds.length > 0}
+        onCancel={() => setUpgradeIds([])}
         onOk={confirmUpgrade}
         okText="确认升级"
         okButtonProps={{ disabled: !upgradeTag.trim() }}
@@ -567,9 +588,10 @@ export function Containers() {
       {/* Log Viewer */}
       {logView && (
         <Modal
+          className="log-modal"
           title={`${logView.id} 日志`}
           visible
-          width={900}
+          width="82vw"
           onCancel={() => setLogView(null)}
           footer={
             <>
@@ -593,6 +615,9 @@ export function Containers() {
               <Button onClick={() => openQr(qrTarget)} loading={qrLoading}>
                 刷新
               </Button>
+              <Button onClick={() => openQr(qrTarget, true)} loading={qrLoading} type="primary">
+                重新扫码
+              </Button>
               <Button onClick={() => setQrTarget(null)}>关闭</Button>
             </>
           }
@@ -601,7 +626,10 @@ export function Containers() {
             {qrLoading ? (
               <p className="hint">正在检查登录状态…</p>
             ) : qrConnected ? (
-              <p style={{ color: "var(--semi-color-success)" }}>微信已登录，无需扫码。</p>
+              <div>
+                <p style={{ color: "var(--semi-color-success)" }}>微信已登录，无需扫码。</p>
+                <p className="hint">如需更换绑定，请点击「重新扫码」获取新的二维码。</p>
+              </div>
             ) : qrDataUrl ? (
               <img className="qr-img" src={qrDataUrl} alt="微信登录二维码" />
             ) : (

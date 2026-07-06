@@ -27,10 +27,16 @@ func (s *Server) handleGetLLM(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, 50001, "read llm config")
 		return
 	}
+	key, err := s.cipher.Decrypt(g.APIKeyEnc)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, 50001, "decrypt llm key")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"configured": true,
 		"provider":   g.Provider,
 		"baseUrl":    g.BaseURL,
+		"apiKey":     key,
 		"model":      g.Model,
 	})
 }

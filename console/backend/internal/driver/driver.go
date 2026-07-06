@@ -25,14 +25,11 @@ type LlmConfig struct {
 
 // UserSpec is the desired state for one user's container.
 type UserSpec struct {
-	UserID   string
-	Channel  string // DEPRECATED: use Channels + ChannelConfigs
-	BotID    string // DEPRECATED: use ChannelConfigs
-	Secret   string // DEPRECATED: use ChannelConfigs
-	Channels []string // enabled channel IDs, e.g. ["wecom","wechat"]
+	UserID         string
+	Channels       []string                   // enabled channel IDs, e.g. ["wecom","wechat"]
 	ChannelConfigs map[string]json.RawMessage // per-channel credentials, keys: botId, secret (plain)
-	ImageTag string // full image reference
-	LLM      LlmConfig
+	ImageTag       string                     // full image reference
+	LLM            LlmConfig
 	// Resource limits (already resolved: per-user override ⊕ global ⊕ default).
 	// Empty values fall back to the built-in defaults below.
 	MemLimit      string // docker --memory, e.g. "2g"
@@ -91,6 +88,12 @@ type RuntimeDriver interface {
 	ExecStdin(ctx context.Context, userID string, stdin io.Reader, cmd ...string) (string, error)
 	Reap(ctx context.Context, userID string) error
 	Revive(ctx context.Context, userID string) error
+	// UpdateSpec pushes a new spec (channels, LLM, image, etc.) to the runtime
+	// so a future pod restart (crash, scale, manual) boots with up-to-date
+	// configuration. Hot-reload changes (channels/plugins) don't need this for
+	// the running pod, but the k8s Secret / docker container env needs to be
+	// in sync with DB to survive restarts.
+	UpdateSpec(ctx context.Context, userID string, spec UserSpec, gatewayToken string) error
 }
 
 // MergeLLM overlays per-user override on top of the global default. Any
@@ -116,25 +119,12 @@ func MergeLLM(global, override LlmConfig) LlmConfig {
 // entrypoint / inject-env.mjs. Only non-empty values are emitted so the image
 // baseline defaults stay in effect.
 func BuildEnv(spec UserSpec, gatewayToken string) map[string]string {
-	channels := spec.Channels
-	if len(channels) == 0 {
-		channels = []string{NormalizeChannel(spec.Channel)}
-	}
 	env := map[string]string{
 		"PC_USER":  spec.UserID,
-		"CHANNELS": strings.Join(channels, ","),
+		"CHANNELS": strings.Join(spec.Channels, ","),
 	}
-	// Legacy compat: fill CHANNEL and credential envs from old fields
-	if spec.Channel != "" {
-		putIf(env, "CHANNEL", NormalizeChannel(spec.Channel))
-	}
-	if spec.BotID != "" {
-		putIf(env, "WECOM_BOT_ID", spec.BotID)
-	}
-	if spec.Secret != "" {
-		putIf(env, "WECOM_SECRET", spec.Secret)
-	}
-	// Multi-channel credentials via JSON env
+	// Multi-channel credentials via JSON env. inject-env.mjs parses this
+	// and writes per-channel entries to openclaw.json's channels block.
 	if len(spec.ChannelConfigs) > 0 {
 		if b, err := json.Marshal(spec.ChannelConfigs); err == nil {
 			putIf(env, "CHANNEL_CONFIGS", string(b))
@@ -161,11 +151,70 @@ const (
 	DefaultChannel = ChannelWeCom
 )
 
+// OpenClaw channel IDs used in openclaw.json and CLI output.
+const (
+	OpenClawChannelWeCom  = "wecom"
+	OpenClawChannelWeChat = "openclaw-weixin"
+)
+
+// Non-bundled plugin IDs installed in the worker image.
+const (
+	PluginWeCom  = "wecom-openclaw-plugin"
+	PluginWeChat = "openclaw-weixin"
+)
+
 // validChannels is the set of accepted channel identifiers.
 var validChannels = map[string]bool{ChannelWeCom: true, ChannelWeChat: true}
 
 // IsValidChannel reports whether c is a supported channel.
 func IsValidChannel(c string) bool { return validChannels[c] }
+
+// pluginForChannel maps our external channel id (wecom/wechat) to the
+// openclaw non-bundled plugin id that implements it. Used to set
+// `plugins.allow` on hot-reload so removed channels actually unload.
+var pluginForChannel = map[string]string{
+	ChannelWeCom:  PluginWeCom,
+	ChannelWeChat: PluginWeChat,
+}
+
+// OpenClawChannelFor maps muad's external channel id to openclaw's channel id.
+func OpenClawChannelFor(channel string) string {
+	switch channel {
+	case ChannelWeCom:
+		return OpenClawChannelWeCom
+	case ChannelWeChat:
+		return OpenClawChannelWeChat
+	default:
+		return channel
+	}
+}
+
+// PluginsAllowForChannels returns the explicit `plugins.allow` list for the
+// given set of channels. Bundled plugins (e.g. browser/active) load
+// automatically and must NOT be listed here. Order matches input.
+func PluginsAllowForChannels(channels []string) []string {
+	out := make([]string, 0, len(channels))
+	seen := map[string]bool{}
+	for _, c := range channels {
+		if p, ok := pluginForChannel[c]; ok && !seen[p] {
+			out = append(out, p)
+			seen[p] = true
+		}
+	}
+	return out
+}
+
+// PluginForChannelAll exposes the full channel→plugin mapping so callers
+// (e.g. PUT /channels handler) can compute "all known non-bundled plugins
+// and which channel enables them" — needed to flip `enabled:false` on
+// removed channels' plugins so the gateway restart actually unloads them.
+func PluginForChannelAll() map[string]string {
+	out := make(map[string]string, len(pluginForChannel))
+	for k, v := range pluginForChannel {
+		out[k] = v
+	}
+	return out
+}
 
 // NormalizeChannel returns c when valid, otherwise the default channel (keeps
 // legacy records without a channel working as 企业微信).

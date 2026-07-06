@@ -47,25 +47,47 @@ func (s *Server) handleAction(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"userId": userID, "state": newState})
 }
 
-// handleSkillsReload fans out a reload to all running containers (API-10,
+// handleSkillsReload fans out a reload to selected running containers (API-10,
 // FEAT-10). Without an openclaw reload primitive, the reliable trigger is a
 // rolling restart — the explicit fallback when filesystem watch is unreliable
 // (RISK-07). Restarts are sequential to avoid taking the whole fleet down at once.
 func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
+	var req applyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, 40001, "invalid request body")
+		return
+	}
+	if len(req.UserIDs) == 0 {
+		writeErr(w, http.StatusBadRequest, 40001, "userIds must not be empty")
+		return
+	}
 	infos, err := s.drv.List(r.Context())
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, 50001, "list containers")
 		return
 	}
+	selected := map[string]bool{}
+	for _, id := range req.UserIDs {
+		selected[id] = true
+	}
 	results := map[string]string{}
 	for _, info := range infos {
+		if !selected[info.UserID] {
+			continue
+		}
 		if info.State != "running" {
+			results[info.UserID] = "skipped: not running"
 			continue
 		}
 		if err := s.drv.Restart(r.Context(), info.UserID); err != nil {
 			results[info.UserID] = "failed: " + err.Error()
 		} else {
 			results[info.UserID] = "reloaded"
+		}
+	}
+	for _, id := range req.UserIDs {
+		if _, ok := results[id]; !ok {
+			results[id] = "not found"
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"results": results})
@@ -172,12 +194,8 @@ func (s *Server) recreateUser(ctx context.Context, u repo.User, imageTag string)
 }
 
 // specFromUser rebuilds a driver spec from a stored user record (decrypting
-// secret and override, merging with the current global LLM).
+// override, merging with the current global LLM).
 func (s *Server) specFromUser(u repo.User, imageTag string) (driver.UserSpec, error) {
-	secret, err := s.cipher.Decrypt(u.SecretEnc)
-	if err != nil {
-		return driver.UserSpec{}, err
-	}
 	eff, err := s.effectiveLLMForUser(u)
 	if err != nil {
 		return driver.UserSpec{}, err
@@ -188,10 +206,7 @@ func (s *Server) specFromUser(u repo.User, imageTag string) (driver.UserSpec, er
 	}
 	return driver.UserSpec{
 		UserID:         u.UserID,
-		Channel:        driver.NormalizeChannel(u.Channel),
-		BotID:          u.BotID,
-		Secret:         secret,
-		Channels:       parseChannelList(u.Channels, u.Channel),
+		Channels:       parseChannelList(u.Channels),
 		ChannelConfigs: s.parseChannelConfigs(u.ChannelConfigs),
 		ImageTag:       imageTag,
 		LLM:            eff,
@@ -204,14 +219,14 @@ func (s *Server) specFromUser(u repo.User, imageTag string) (driver.UserSpec, er
 // effectiveLLMForUser resolves a stored user's effective LLM config
 // (global ⊕ decrypted per-user override).
 
-// parseChannelList returns the channel list from stored JSON, falling back to legacy.
-func parseChannelList(channelsJSON, legacyChannel string) []string {
+// parseChannelList returns the channel list from stored JSON.
+func parseChannelList(channelsJSON string) []string {
 	var chs []string
 	if channelsJSON != "" {
 		json.Unmarshal([]byte(channelsJSON), &chs)
 	}
-	if len(chs) == 0 && legacyChannel != "" {
-		chs = []string{driver.NormalizeChannel(legacyChannel)}
+	if chs == nil {
+		chs = []string{}
 	}
 	return chs
 }

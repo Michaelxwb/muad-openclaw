@@ -28,15 +28,45 @@ body,
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   font-size: 12px;
   line-height: 1.6;
-  white-space: pre-wrap;
+  white-space: pre;
   background: var(--semi-color-fill-0);
   border-radius: 4px;
-  max-height: 60vh;
+  height: 66vh;
   overflow: auto;
+}
+
+.log-modal .semi-modal-content {
+  max-height: calc(100vh - 116px);
+}
+
+.log-modal .semi-modal-header {
+  margin: 16px 0 12px;
+}
+
+.log-modal .semi-modal-body-wrapper {
+  margin: 0;
+}
+
+.log-modal .semi-modal-body {
+  padding: 0;
+}
+
+.log-modal .semi-modal-footer {
+  margin: 12px 0 16px;
+  padding: 0;
 }
 
 .qr-img {
   display: block;
   margin: 0 auto;
   border-radius: 4px;
+}
+
+.semi-modal {
+  top: 18vh !important;
+}
+
+.log-modal .semi-modal {
+  top: 0 !important;
+  margin: 72px auto 44px;
 }

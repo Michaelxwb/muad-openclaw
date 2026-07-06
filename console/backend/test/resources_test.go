@@ -44,7 +44,7 @@ func TestResources_Validation(t *testing.T) {
 
 func TestResources_CreateUsesDefaultsWhenUnset(t *testing.T) {
 	e := newTestEnv(t)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channel":"wechat"}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channels":["wechat"],"channelConfigs":{}}`)
 	got := e.drv.created["alice"]
 	if got.MemLimit != "2g" || got.CPULimit != "1.5" || got.RestartPolicy != "unless-stopped" {
 		t.Errorf("create should use built-in defaults, got %+v", got)
@@ -56,8 +56,8 @@ func TestResources_PerUserOverrideAppliedOnRecreate(t *testing.T) {
 	e.configureGlobalLLM(t, stubLLM(t))
 	e.do(http.MethodPut, "/api/v1/settings/resources",
 		`{"memLimit":"2g","cpuLimit":"1.5","restartPolicy":"unless-stopped"}`)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channel":"wechat"}`)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"bob","channel":"wechat"}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channels":["wechat"],"channelConfigs":{}}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"bob","channels":["wechat"],"channelConfigs":{}}`)
 
 	if rr := e.do(http.MethodPut, "/api/v1/containers/alice/resources",
 		`{"memLimit":"4g","cpuLimit":"3","restartPolicy":"always"}`); rr.Code != http.StatusOK {

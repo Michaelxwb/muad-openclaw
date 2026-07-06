@@ -12,7 +12,7 @@ type Props = {
  *   🔴 red   = 通道已配置但未连接（probe 缺失则降级为 ⚪ grey）
  */
 export function ChannelTags({ container: r }: Props) {
-  const chs = r.channels?.length ? r.channels : [r.channel].filter(Boolean);
+  const chs = r.channels?.length ? r.channels : [];
   if (!chs.length) {
     return <span style={{ color: "var(--semi-color-text-2)" }}>—</span>;
   }
@@ -21,13 +21,11 @@ export function ChannelTags({ container: r }: Props) {
       {chs.map((ch) => {
         const meta = channelMeta(ch);
         const status = r.channelStatuses?.[ch];
-        let color: "green" | "red" | "grey" = "grey";
-        if (status) {
-          color = status.connected ? "green" : "red";
-        } else if (typeof r.channelConnected === "boolean") {
-          // Legacy field: only meaningful for single-channel containers.
-          color = r.channelConnected ? "green" : "red";
-        }
+        const color: "green" | "red" | "grey" = status
+          ? status.connected
+            ? "green"
+            : "red"
+          : "grey";
         return (
           <Tag key={ch} color={color} size="small">
             {meta.icon} {meta.label}

@@ -35,7 +35,7 @@ func (e *testEnv) configureGlobalLLM(t *testing.T, baseURL string) {
 
 func TestLifecycleActions(t *testing.T) {
 	e := newTestEnv(t)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","botId":"b","secret":"s"}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channels":["wecom"],"channelConfigs":{"wecom":{"botId":"b","secret":"s"}}}`)
 
 	cases := map[string]string{"stop": "stopped", "start": "running", "restart": "running", "reap": "archived", "revive": "running"}
 	for action, wantState := range cases {
@@ -58,15 +58,22 @@ func TestLifecycleActions(t *testing.T) {
 
 func TestSkillsReload_RollingRestart(t *testing.T) {
 	e := newTestEnv(t)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","botId":"b","secret":"s"}`)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"bob","botId":"b","secret":"s"}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channels":["wecom"],"channelConfigs":{"wecom":{"botId":"b","secret":"s"}}}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"bob","channels":["wecom"],"channelConfigs":{"wecom":{"botId":"b","secret":"s"}}}`)
 
-	rr := e.do(http.MethodPost, "/api/v1/skills/reload", "")
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"userIds":["alice"]}`)
 	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "reloaded") {
 		t.Fatalf("reload = %d: %s", rr.Code, rr.Body.String())
 	}
-	if e.drv.restarted["alice"] != 1 || e.drv.restarted["bob"] != 1 {
-		t.Errorf("expected each running container restarted once: %+v", e.drv.restarted)
+	if e.drv.restarted["alice"] != 1 {
+		t.Errorf("expected alice restarted once: %+v", e.drv.restarted)
+	}
+	if e.drv.restarted["bob"] != 0 {
+		t.Errorf("bob should not be restarted when not selected: %+v", e.drv.restarted)
+	}
+
+	if rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"userIds":[]}`); rr.Code != http.StatusBadRequest {
+		t.Errorf("empty userIds = %d, want 400", rr.Code)
 	}
 }
 
@@ -75,7 +82,7 @@ func TestApplyLLM_Recreates(t *testing.T) {
 	e.configureGlobalLLM(t, stubLLM(t))
 	// wechat container: recreate must preserve channel (regression for the bug
 	// where specFromUser dropped Channel → silently reverted to wecom).
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channel":"wechat"}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channels":["wechat"],"channelConfigs":{}}`)
 
 	rr := e.do(http.MethodPost, "/api/v1/llm/apply", `{"userIds":["alice","ghost"]}`)
 	if rr.Code != http.StatusOK {
@@ -88,14 +95,14 @@ func TestApplyLLM_Recreates(t *testing.T) {
 	if _, ok := e.drv.created["alice"]; !ok {
 		t.Error("alice not recreated")
 	}
-	if got := e.drv.created["alice"].Channel; got != "wechat" {
+	if got := e.drv.created["alice"].Channels; len(got) == 0 || got[0] != "wechat" {
 		t.Errorf("recreate dropped channel: got %q, want wechat", got)
 	}
 }
 
 func TestApplyLLM_RequiresConnectivity(t *testing.T) {
 	e := newTestEnv(t)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channel":"wechat"}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channels":["wechat"],"channelConfigs":{}}`)
 	// No global LLM configured → batch-apply must fail the connectivity gate.
 	rr := e.do(http.MethodPost, "/api/v1/llm/apply", `{"userIds":["alice"]}`)
 	if rr.Code != http.StatusBadRequest {
@@ -105,7 +112,7 @@ func TestApplyLLM_RequiresConnectivity(t *testing.T) {
 
 func TestUpgrade_ChangesImageTag(t *testing.T) {
 	e := newTestEnv(t)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","botId":"b","secret":"s"}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channels":["wecom"],"channelConfigs":{"wecom":{"botId":"b","secret":"s"}}}`)
 
 	if rr := e.do(http.MethodPost, "/api/v1/containers/alice/upgrade", `{}`); rr.Code != http.StatusBadRequest {
 		t.Fatalf("empty imageTag = %d, want 400", rr.Code)
@@ -125,7 +132,7 @@ func TestUpgrade_ChangesImageTag(t *testing.T) {
 
 func TestAuditQuery(t *testing.T) {
 	e := newTestEnv(t)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","botId":"b","secret":"s"}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channels":["wecom"],"channelConfigs":{"wecom":{"botId":"b","secret":"s"}}}`)
 
 	rr := e.do(http.MethodGet, "/api/v1/audit?actor=root", "")
 	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "/api/v1/containers") {
@@ -135,7 +142,7 @@ func TestAuditQuery(t *testing.T) {
 
 func TestAlerts(t *testing.T) {
 	e := newTestEnv(t)
-	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","botId":"b","secret":"s"}`)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"alice","channels":["wecom"],"channelConfigs":{"wecom":{"botId":"b","secret":"s"}}}`)
 
 	// healthy but channel offline + high mem
 	e.cache.Replace(map[string]monitor.Snapshot{
