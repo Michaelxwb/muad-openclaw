@@ -187,20 +187,62 @@ func (s *Server) specFromUser(u repo.User, imageTag string) (driver.UserSpec, er
 		return driver.UserSpec{}, err
 	}
 	return driver.UserSpec{
-		UserID:        u.UserID,
-		Channel:       driver.NormalizeChannel(u.Channel), // 不可丢：recreate 时漏掉会退回默认 wecom
-		BotID:         u.BotID,
-		Secret:        secret,
-		ImageTag:      imageTag,
-		LLM:           eff,
-		MemLimit:      mem,
-		CPULimit:      cpu,
-		RestartPolicy: restart,
+		UserID:         u.UserID,
+		Channel:        driver.NormalizeChannel(u.Channel),
+		BotID:          u.BotID,
+		Secret:         secret,
+		Channels:       parseChannelList(u.Channels, u.Channel),
+		ChannelConfigs: s.parseChannelConfigs(u.ChannelConfigs),
+		ImageTag:       imageTag,
+		LLM:            eff,
+		MemLimit:       mem,
+		CPULimit:       cpu,
+		RestartPolicy:  restart,
 	}, nil
 }
 
 // effectiveLLMForUser resolves a stored user's effective LLM config
 // (global ⊕ decrypted per-user override).
+
+// parseChannelList returns the channel list from stored JSON, falling back to legacy.
+func parseChannelList(channelsJSON, legacyChannel string) []string {
+	var chs []string
+	if channelsJSON != "" {
+		json.Unmarshal([]byte(channelsJSON), &chs)
+	}
+	if len(chs) == 0 && legacyChannel != "" {
+		chs = []string{driver.NormalizeChannel(legacyChannel)}
+	}
+	return chs
+}
+
+// parseChannelConfigs returns decoded channel configs from stored JSON,
+// with secrets decrypted so they can be injected as plain text into the container.
+func (s *Server) parseChannelConfigs(configsJSON string) map[string]json.RawMessage {
+	out := map[string]json.RawMessage{}
+	if configsJSON != "" {
+		json.Unmarshal([]byte(configsJSON), &out)
+	}
+	// Decrypt secrets for runtime injection (container expects plain text).
+	for ch, cfg := range out {
+		if ch == driver.ChannelWeCom {
+			var w struct {
+				BotID  string `json:"botId"`
+				Secret string `json:"secret"`
+			}
+			if err := json.Unmarshal(cfg, &w); err == nil && w.Secret != "" {
+				plain, err := s.cipher.Decrypt(w.Secret)
+				if err == nil {
+					w.Secret = plain
+					b, _ := json.Marshal(w)
+					out[ch] = json.RawMessage(b)
+				}
+			}
+		}
+	}
+	return out
+}
+
 func (s *Server) effectiveLLMForUser(u repo.User) (driver.LlmConfig, error) {
 	var override *llmRequest
 	if u.LLMOverride != "" {

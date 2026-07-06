@@ -4,7 +4,9 @@ package driver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"strings"
 	"time"
 )
@@ -24,9 +26,11 @@ type LlmConfig struct {
 // UserSpec is the desired state for one user's container.
 type UserSpec struct {
 	UserID   string
-	Channel  string // message channel: "wecom" (企业微信) | "wechat" (微信)
-	BotID    string
-	Secret   string
+	Channel  string // DEPRECATED: use Channels + ChannelConfigs
+	BotID    string // DEPRECATED: use ChannelConfigs
+	Secret   string // DEPRECATED: use ChannelConfigs
+	Channels []string // enabled channel IDs, e.g. ["wecom","wechat"]
+	ChannelConfigs map[string]json.RawMessage // per-channel credentials, keys: botId, secret (plain)
 	ImageTag string // full image reference
 	LLM      LlmConfig
 	// Resource limits (already resolved: per-user override ⊕ global ⊕ default).
@@ -82,6 +86,9 @@ type RuntimeDriver interface {
 	// Exec runs a command inside a user container (used to query the in-container
 	// openclaw CLI for channel/session status — TASK-010).
 	Exec(ctx context.Context, userID string, cmd ...string) (string, error)
+	// ExecStdin runs a command inside a container, piping stdin from the reader.
+	// Used to inject configuration without exposing credentials in command-line args.
+	ExecStdin(ctx context.Context, userID string, stdin io.Reader, cmd ...string) (string, error)
 	Reap(ctx context.Context, userID string) error
 	Revive(ctx context.Context, userID string) error
 }
@@ -109,11 +116,29 @@ func MergeLLM(global, override LlmConfig) LlmConfig {
 // entrypoint / inject-env.mjs. Only non-empty values are emitted so the image
 // baseline defaults stay in effect.
 func BuildEnv(spec UserSpec, gatewayToken string) map[string]string {
+	channels := spec.Channels
+	if len(channels) == 0 {
+		channels = []string{NormalizeChannel(spec.Channel)}
+	}
 	env := map[string]string{
-		"PC_USER":      spec.UserID,
-		"CHANNEL":      NormalizeChannel(spec.Channel),
-		"WECOM_BOT_ID": spec.BotID,
-		"WECOM_SECRET": spec.Secret,
+		"PC_USER":  spec.UserID,
+		"CHANNELS": strings.Join(channels, ","),
+	}
+	// Legacy compat: fill CHANNEL and credential envs from old fields
+	if spec.Channel != "" {
+		putIf(env, "CHANNEL", NormalizeChannel(spec.Channel))
+	}
+	if spec.BotID != "" {
+		putIf(env, "WECOM_BOT_ID", spec.BotID)
+	}
+	if spec.Secret != "" {
+		putIf(env, "WECOM_SECRET", spec.Secret)
+	}
+	// Multi-channel credentials via JSON env
+	if len(spec.ChannelConfigs) > 0 {
+		if b, err := json.Marshal(spec.ChannelConfigs); err == nil {
+			putIf(env, "CHANNEL_CONFIGS", string(b))
+		}
 	}
 	putIf(env, "OPENCLAW_GATEWAY_TOKEN", gatewayToken)
 	putIf(env, "LLM_PROVIDER", spec.LLM.Provider)

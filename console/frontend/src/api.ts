@@ -44,14 +44,27 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export type Channel = "wecom" | "wechat";
 
+export interface ChannelCredential {
+  botId?: string;
+  secret?: string;
+  botToken?: string;
+  signingSecret?: string;
+}
+
+export interface ChannelStatus {
+  connected: boolean;
+}
+
 export interface Container {
   userId: string;
-  channel: Channel;
+  channel: Channel; // DEPRECATED: kept for migration, use channels
+  channels?: string[];
+  channelStatuses: Record<string, ChannelStatus>;
   state: string;
   imageTag: string;
   cpuPercent: number;
   memMiB: number;
-  channelConnected: boolean;
+  channelConnected: boolean; // DEPRECATED: true if any channel connected
   lastActiveAt?: string;
   reapInSeconds?: number;
   memLimit: string;
@@ -107,7 +120,9 @@ export const api = {
   listContainers: () => request<{ items: Container[]; total: number }>("GET", "/containers"),
   createContainer: (b: {
     userId: string;
-    channel: Channel;
+    channel?: Channel; // DEPRECATED
+    channels?: string[];
+    channelConfigs?: Record<string, ChannelCredential>;
     botId?: string;
     secret?: string;
     imageTag?: string;
@@ -126,6 +141,28 @@ export const api = {
   upgrade: (id: string, imageTag: string) =>
     request<unknown>("POST", `/containers/${id}/upgrade`, { imageTag }),
   reloadSkills: () => request<{ results: Record<string, string> }>("POST", "/skills/reload"),
+
+  getContainer: (id: string) =>
+    request<
+      Container & {
+        channelConfigs: Record<
+          string,
+          { botId?: string; secretConfigured: boolean; lastUpdated?: string }
+        >;
+      }
+    >("GET", `/containers/${id}`),
+  updateChannels: (
+    id: string,
+    b: {
+      channels?: string[];
+      channelConfigs?: Record<string, ChannelCredential>;
+    },
+  ) =>
+    request<{ userId: string; channels?: string[]; applied: boolean }>(
+      "PUT",
+      `/containers/${id}/channels`,
+      b,
+    ),
 
   getLLM: () => request<LLMConfig>("GET", "/llm"),
   setLLM: (b: LLMForm) => request<unknown>("PUT", "/llm", b),

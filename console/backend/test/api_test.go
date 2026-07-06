@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -25,6 +26,17 @@ type fakeDriver struct {
 	// channelDisconnected makes `channels status` report no linked account,
 	// so the QR handler triggers a login. Default (false) = connected.
 	channelDisconnected bool
+	// execStdinCalls captures every ExecStdin invocation for assertions on
+	// hot-reload flows (PUT /containers/{userId}/channels).
+	execStdinCalls []execStdinCall
+	// execStdinErr, if non-nil, is returned from the next ExecStdin call.
+	execStdinErr error
+}
+
+type execStdinCall struct {
+	userID string
+	cmd    []string
+	stdin  string
 }
 
 func newFakeDriver() *fakeDriver {
@@ -79,15 +91,23 @@ func (f *fakeDriver) Exec(_ context.Context, _ string, cmd ...string) (string, e
 		if f.channelDisconnected {
 			return `{"channels":{"openclaw-weixin":{"configured":false}},"channelAccounts":{"openclaw-weixin":[]}}`, nil
 		}
-		// wecom long-connection shape: running + lastStartAt (no inbound/outbound).
-		return `{"channels":{"wecom":{"configured":true,"running":true,"lastStartAt":1782557888921}},"channelAccounts":{"wecom":[]}}`, nil
+		// Connected: wecom running + wechat configured with an account.
+		return `{"channels":{"wecom":{"configured":true,"running":true,"lastStartAt":1782557888921},"openclaw-weixin":{"configured":true}},"channelAccounts":{"wecom":[],"openclaw-weixin":[{"accountId":"default"}]}}`, nil
 	}
 }
 func (f *fakeDriver) Logs(context.Context, string, int) (string, error) {
 	return "log-line\n", nil
 }
-func (f *fakeDriver) Reap(context.Context, string) error                { return nil }
-func (f *fakeDriver) Revive(context.Context, string) error              { return nil }
+func (f *fakeDriver) ExecStdin(_ context.Context, userID string, stdin io.Reader, cmd ...string) (string, error) {
+	body, _ := io.ReadAll(stdin)
+	f.execStdinCalls = append(f.execStdinCalls, execStdinCall{userID: userID, cmd: append([]string(nil), cmd...), stdin: string(body)})
+	if f.execStdinErr != nil {
+		return "", f.execStdinErr
+	}
+	return "ok", nil
+}
+func (f *fakeDriver) Reap(context.Context, string) error   { return nil }
+func (f *fakeDriver) Revive(context.Context, string) error { return nil }
 
 type testEnv struct {
 	h     http.Handler
@@ -326,4 +346,288 @@ func TestMutationsAudited(t *testing.T) {
 	if len(entries) == 0 {
 		t.Fatal("expected create to be audited")
 	}
+}
+
+// --- TASK-003: GET /containers/{userId} + PUT /containers/{userId}/channels ---
+
+func TestGetContainer_ReturnsDetailsAndRedactsSecret(t *testing.T) {
+	e := newTestEnv(t)
+	// Provision with explicit wecom creds + add a wechat channel so the
+	// response shape exercises the multi-channel + secrets-mask path.
+	if rr := e.do(http.MethodPost, "/api/v1/containers",
+		`{"userId":"kim","channels":["wecom","wechat"],`+
+			`"channelConfigs":{"wecom":{"botId":"wb-7","secret":"hunter2"}}}`); rr.Code != http.StatusOK {
+		t.Fatalf("create = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	rr := e.do(http.MethodGet, "/api/v1/containers/kim", "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("get = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp struct {
+		Data struct {
+			UserID         string                            `json:"userId"`
+			Channels       []string                          `json:"channels"`
+			ChannelConfigs map[string]map[string]any         `json:"channelConfigs"`
+			State          string                            `json:"state"`
+			ImageTag       string                            `json:"imageTag"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v body=%s", err, rr.Body.String())
+	}
+	if resp.Data.UserID != "kim" {
+		t.Errorf("userId = %q, want kim", resp.Data.UserID)
+	}
+	want := []string{"wecom", "wechat"}
+	if len(resp.Data.Channels) != 2 || resp.Data.Channels[0] != want[0] || resp.Data.Channels[1] != want[1] {
+		t.Errorf("channels = %v, want %v", resp.Data.Channels, want)
+	}
+	// botId is plaintext (it's not secret), but secret must be redacted to a flag.
+	wecomCfg, ok := resp.Data.ChannelConfigs["wecom"]
+	if !ok {
+		t.Fatalf("wecom config missing: %+v", resp.Data.ChannelConfigs)
+	}
+	if wecomCfg["botId"] != "wb-7" {
+		t.Errorf("botId = %v, want wb-7", wecomCfg["botId"])
+	}
+	if wecomCfg["secretConfigured"] != true {
+		t.Errorf("secretConfigured = %v, want true", wecomCfg["secretConfigured"])
+	}
+	if _, leaked := wecomCfg["secret"]; leaked {
+		t.Error("raw secret must not be returned in GET /containers/{userId}")
+	}
+	// wechat block: only present if the user supplied creds for it; we didn't,
+	// so it's omitted. (The block is reserved for masking, not inferred.)
+	if _, ok := resp.Data.ChannelConfigs["wechat"]; ok {
+		t.Errorf("wechat config should be omitted when no creds supplied; got %v", resp.Data.ChannelConfigs["wechat"])
+	}
+	if resp.Data.State != "running" {
+		t.Errorf("state = %q, want running", resp.Data.State)
+	}
+}
+
+func TestGetContainer_NotFound(t *testing.T) {
+	e := newTestEnv(t)
+	if rr := e.do(http.MethodGet, "/api/v1/containers/nobody", ""); rr.Code != http.StatusNotFound {
+		t.Fatalf("get missing = %d, want 404", rr.Code)
+	}
+}
+
+func TestUpdateChannels_HotReload(t *testing.T) {
+	e := newTestEnv(t)
+	// Start with wecom-only.
+	if rr := e.do(http.MethodPost, "/api/v1/containers",
+		`{"userId":"leo","channels":["wecom"],`+
+			`"channelConfigs":{"wecom":{"botId":"wb-1","secret":"s1"}}}`); rr.Code != http.StatusOK {
+		t.Fatalf("create = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// Edit: append wechat, keep wecom creds unchanged.
+	rr := e.do(http.MethodPut, "/api/v1/containers/leo/channels",
+		`{"channels":["wecom","wechat"],`+
+			`"channelConfigs":{"wecom":{"botId":"","secret":""}}}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("update = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// ExecStdin must have been called exactly once, with the right script path
+	// and a stdin payload that round-trips the new channel set.
+	if len(e.drv.execStdinCalls) != 1 {
+		t.Fatalf("ExecStdin calls = %d, want 1", len(e.drv.execStdinCalls))
+	}
+	call := e.drv.execStdinCalls[0]
+	if call.userID != "leo" {
+		t.Errorf("ExecStdin userID = %q, want leo", call.userID)
+	}
+	if len(call.cmd) != 2 || call.cmd[0] != "node" || call.cmd[1] != "/opt/muad/inject-channels.mjs" {
+		t.Errorf("ExecStdin cmd = %v, want [node /opt/muad/inject-channels.mjs]", call.cmd)
+	}
+	var stdinObj map[string]any
+	if err := json.Unmarshal([]byte(call.stdin), &stdinObj); err != nil {
+		t.Fatalf("stdin not JSON: %v body=%s", err, call.stdin)
+	}
+	if _, ok := stdinObj["wecom"]; !ok {
+		t.Errorf("stdin payload missing wecom key: %v", stdinObj)
+	}
+	if _, ok := stdinObj["openclaw-weixin"]; !ok {
+		t.Errorf("stdin payload missing wechat (openclaw-weixin) key: %v", stdinObj)
+	}
+
+	// DB now reflects the new channel set.
+	u, err := e.store.GetUser("leo")
+	if err != nil {
+		t.Fatalf("get user: %v", err)
+	}
+	var stored []string
+	if err := json.Unmarshal([]byte(u.Channels), &stored); err != nil {
+		t.Fatalf("stored channels unmarshal: %v", err)
+	}
+	if len(stored) != 2 || stored[0] != "wecom" || stored[1] != "wechat" {
+		t.Errorf("stored channels = %v, want [wecom wechat]", stored)
+	}
+
+	// GET should reflect the new state.
+	rr = e.do(http.MethodGet, "/api/v1/containers/leo", "")
+	if !strings.Contains(rr.Body.String(), `"wechat"`) {
+		t.Errorf("GET response missing wechat after update: %s", rr.Body.String())
+	}
+}
+
+func TestUpdateChannels_PreservesSecretWhenOmitted(t *testing.T) {
+	e := newTestEnv(t)
+	if rr := e.do(http.MethodPost, "/api/v1/containers",
+		`{"userId":"mia","channels":["wecom"],`+
+			`"channelConfigs":{"wecom":{"botId":"wb-1","secret":"original-secret"}}}`); rr.Code != http.StatusOK {
+		t.Fatalf("create = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// Edit: omit secret in body, change only botId → server must reuse stored secret.
+	if rr := e.do(http.MethodPut, "/api/v1/containers/mia/channels",
+		`{"channels":["wecom"],`+
+			`"channelConfigs":{"wecom":{"botId":"wb-2","secret":""}}}`); rr.Code != http.StatusOK {
+		t.Fatalf("update = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	u, _ := e.store.GetUser("mia")
+	if u.BotID != "wb-2" {
+		t.Errorf("botId = %q, want wb-2", u.BotID)
+	}
+	// Secret should still be the originally-encrypted value, not blank.
+	if u.SecretEnc == "" {
+		t.Error("secret lost after no-op update (was empty in body)")
+	}
+	// Round-trip: verify it's still the same ciphertext, not re-encrypted to "".
+	beforeDec, err := decryptForTest(t, e, u.SecretEnc)
+	if err != nil {
+		t.Fatalf("decrypt: %v", err)
+	}
+	if beforeDec != "original-secret" {
+		t.Errorf("stored secret = %q, want original-secret (must be preserved when body omits)", beforeDec)
+	}
+}
+
+func TestUpdateChannels_InvalidPayload(t *testing.T) {
+	e := newTestEnv(t)
+	e.do(http.MethodPost, "/api/v1/containers", `{"userId":"nia","botId":"b","secret":"s"}`)
+
+	cases := []struct {
+		name string
+		body string
+		want int
+	}{
+		{"empty channels", `{"channels":[]}`, http.StatusBadRequest},
+		{"unknown channel", `{"channels":["telegram"]}`, http.StatusBadRequest},
+		{"malformed json", `not-json`, http.StatusBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rr := e.do(http.MethodPut, "/api/v1/containers/nia/channels", tc.body)
+			if rr.Code != tc.want {
+				t.Errorf("%s: code = %d, want %d (body=%s)", tc.name, rr.Code, tc.want, rr.Body.String())
+			}
+		})
+	}
+
+	// Missing user → 404 (existence check fires after JSON parse).
+	if rr := e.do(http.MethodPut, "/api/v1/containers/ghost/channels",
+		`{"channels":["wecom"]}`); rr.Code != http.StatusNotFound {
+		t.Errorf("missing user = %d, want 404", rr.Code)
+	}
+}
+
+func TestUpdateChannels_RemoveChannel(t *testing.T) {
+	e := newTestEnv(t)
+	if rr := e.do(http.MethodPost, "/api/v1/containers",
+		`{"userId":"polly","channels":["wecom","wechat"],`+
+			`"channelConfigs":{"wecom":{"botId":"wb-1","secret":"s1"}}}`); rr.Code != http.StatusOK {
+		t.Fatalf("create = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// Drop wechat → only wecom remains.
+	if rr := e.do(http.MethodPut, "/api/v1/containers/polly/channels",
+		`{"channels":["wecom"],`+
+			`"channelConfigs":{"wecom":{"botId":"wb-1","secret":""}}}`); rr.Code != http.StatusOK {
+		t.Fatalf("update = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// ExecStdin fired once with payload containing only wecom.
+	if len(e.drv.execStdinCalls) != 1 {
+		t.Fatalf("ExecStdin calls = %d, want 1", len(e.drv.execStdinCalls))
+	}
+	var stdinObj map[string]any
+	if err := json.Unmarshal([]byte(e.drv.execStdinCalls[0].stdin), &stdinObj); err != nil {
+		t.Fatalf("stdin not JSON: %v", err)
+	}
+	if _, ok := stdinObj["openclaw-weixin"]; ok {
+		t.Errorf("removed wechat still present in payload: %v", stdinObj)
+	}
+	if _, ok := stdinObj["wecom"]; !ok {
+		t.Errorf("wecom missing from payload: %v", stdinObj)
+	}
+
+	// DB now stores only wecom.
+	u, _ := e.store.GetUser("polly")
+	var stored []string
+	json.Unmarshal([]byte(u.Channels), &stored)
+	if len(stored) != 1 || stored[0] != "wecom" {
+		t.Errorf("stored channels = %v, want [wecom]", stored)
+	}
+}
+
+func TestUpdateChannels_Noop(t *testing.T) {
+	e := newTestEnv(t)
+	// Establish a known-good config first.
+	if rr := e.do(http.MethodPost, "/api/v1/containers",
+		`{"userId":"quinn","channels":["wecom"],`+
+			`"channelConfigs":{"wecom":{"botId":"wb-1","secret":"s1"}}}`); rr.Code != http.StatusOK {
+		t.Fatalf("create = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// Resubmit the exact same channels + same creds. No-op semantically,
+	// but the server still re-emits the config (idempotent hot reload).
+	if rr := e.do(http.MethodPut, "/api/v1/containers/quinn/channels",
+		`{"channels":["wecom"],`+
+			`"channelConfigs":{"wecom":{"botId":"wb-1","secret":"s1"}}}`); rr.Code != http.StatusOK {
+		t.Fatalf("update = %d: %s", rr.Code, rr.Body.String())
+	}
+
+	if len(e.drv.execStdinCalls) != 1 {
+		t.Fatalf("ExecStdin calls = %d, want 1 (idempotent reload)", len(e.drv.execStdinCalls))
+	}
+	var stdinObj map[string]any
+	json.Unmarshal([]byte(e.drv.execStdinCalls[0].stdin), &stdinObj)
+	wecom, _ := stdinObj["wecom"].(map[string]any)
+	if wecom == nil {
+		t.Fatalf("payload missing wecom: %v", stdinObj)
+	}
+
+	u, _ := e.store.GetUser("quinn")
+	if u.BotID != "wb-1" {
+		t.Errorf("botId drifted: %q", u.BotID)
+	}
+	// Secret preserved on re-submit (mergeChannelConfig: empty body means keep old).
+	dec, err := decryptForTest(t, e, u.SecretEnc)
+	if err != nil {
+		t.Fatalf("decrypt: %v", err)
+	}
+	if dec != "s1" {
+		t.Errorf("secret = %q, want s1", dec)
+	}
+}
+
+// decryptForTest pulls the cipher off the test env via reflection-free shim:
+// we recreate the same cipher from the env's master key. The test harness
+// keeps the key in config.Config.MasterKey; here we read it back via the
+// store's encryption layer.
+func decryptForTest(t *testing.T, e *testEnv, ct string) (string, error) {
+	t.Helper()
+	// The handler uses server.cipher (AES-GCM via crypto.New). For the test we
+	// re-derive the same cipher from the same master key "mk" used in newTestEnv.
+	c, err := crypto.New("mk")
+	if err != nil {
+		return "", err
+	}
+	return c.Decrypt(ct)
 }

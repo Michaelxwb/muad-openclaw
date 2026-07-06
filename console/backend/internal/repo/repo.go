@@ -29,9 +29,11 @@ type Store struct {
 // User is a persisted user/container record. Secret/override hold ciphertext.
 type User struct {
 	UserID      string
-	Channel     string // message channel: "wecom" | "wechat"
-	BotID       string
-	SecretEnc   string
+	Channel     string // DEPRECATED: kept for migration compatibility, use Channels instead
+	BotID       string // DEPRECATED: kept for migration compatibility
+	SecretEnc   string // DEPRECATED: kept for migration compatibility
+	Channels    string // JSON array of channel IDs, e.g. ["wecom","wechat"]
+	ChannelConfigs string // JSON object, key=channelId, value=credential fields (secret encrypted)
 	LLMOverride string // encrypted JSON, empty when inheriting global
 	ImageTag    string
 	State       string
@@ -157,10 +159,28 @@ CREATE TABLE IF NOT EXISTS resource_global (
 		`ALTER TABLE users ADD COLUMN mem_limit TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE users ADD COLUMN cpu_limit TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE users ADD COLUMN restart_policy TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE users ADD COLUMN channels TEXT NOT NULL DEFAULT '["wecom"]'`,
+		`ALTER TABLE users ADD COLUMN channel_configs TEXT NOT NULL DEFAULT '{}'`,
 	} {
 		if _, err := s.db.Exec(col); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 			return err
 		}
+	}
+	// Migrate legacy single-channel data to multi-channel JSON format.
+	// Idempotent: only converts rows where channels is still the default.
+	if _, err := s.db.Exec(`
+		UPDATE users SET
+			channels = json_array(channel),
+			channel_configs = CASE
+				WHEN channel = 'wecom' AND bot_id != '' THEN
+					json_object('wecom', json_object('botId', bot_id, 'secret', secret_enc))
+				WHEN channel = 'wechat' THEN
+					json_object('wechat', json_object())
+				ELSE json_object()
+			END
+		WHERE channels = '["wecom"]' AND channel_configs = '{}'
+	`); err != nil {
+		return err
 	}
 	return nil
 }
@@ -171,10 +191,10 @@ CREATE TABLE IF NOT EXISTS resource_global (
 func (s *Store) CreateUser(u User) error {
 	now := time.Now().UTC().Format(tsLayout)
 	_, err := s.db.Exec(
-		`INSERT INTO users (user_id, channel, bot_id, secret_enc, llm_override, image_tag, state,
+		`INSERT INTO users (user_id, channel, bot_id, secret_enc, channels, channel_configs, llm_override, image_tag, state,
 		                    mem_limit, cpu_limit, restart_policy, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		u.UserID, defaultChannel(u.Channel), u.BotID, u.SecretEnc, u.LLMOverride, u.ImageTag, defaultState(u.State),
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		u.UserID, defaultChannel(u.Channel), u.BotID, u.SecretEnc, u.Channels, u.ChannelConfigs, u.LLMOverride, u.ImageTag, defaultState(u.State),
 		u.MemLimit, u.CPULimit, u.RestartPolicy, now, now,
 	)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
@@ -186,7 +206,7 @@ func (s *Store) CreateUser(u User) error {
 // GetUser returns one user or ErrNotFound.
 func (s *Store) GetUser(userID string) (User, error) {
 	row := s.db.QueryRow(
-		`SELECT user_id, channel, bot_id, secret_enc, llm_override, image_tag, state,
+		`SELECT user_id, channel, bot_id, secret_enc, channels, channel_configs, llm_override, image_tag, state,
 		        mem_limit, cpu_limit, restart_policy, created_at, updated_at
 		 FROM users WHERE user_id = ?`, userID)
 	return scanUser(row)
@@ -198,7 +218,7 @@ func (s *Store) ListUsers(offset, limit int) ([]User, int, error) {
 	if err := s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	q := `SELECT user_id, channel, bot_id, secret_enc, llm_override, image_tag, state,
+	q := `SELECT user_id, channel, bot_id, secret_enc, channels, channel_configs, llm_override, image_tag, state,
 		        mem_limit, cpu_limit, restart_policy, created_at, updated_at
 		 FROM users ORDER BY user_id`
 	var args []any
@@ -238,6 +258,21 @@ func (s *Store) UpdateUserLLMOverride(userID, enc string) error {
 }
 
 // UpdateUserResources sets a user's per-user resource overrides (empty = inherit).
+// UpdateUserChannels updates a user's channels and channel configs.
+func (s *Store) UpdateUserChannels(userID, channels, channelConfigs, legacyChannel, legacyBotID, legacySecretEnc string) error {
+	now := time.Now().UTC().Format(tsLayout)
+	res, err := s.db.Exec(
+		`UPDATE users SET channels = ?, channel_configs = ?, channel = ?, bot_id = ?, secret_enc = ?, updated_at = ? WHERE user_id = ?`,
+		channels, channelConfigs, legacyChannel, legacyBotID, legacySecretEnc, now, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) UpdateUserResources(userID, mem, cpu, restart string) error {
 	now := time.Now().UTC().Format(tsLayout)
 	res, err := s.db.Exec(
@@ -249,6 +284,23 @@ func (s *Store) UpdateUserResources(userID, mem, cpu, restart string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound
 	}
+	// Migrate legacy single-channel data to multi-channel JSON format.
+	// Idempotent: only converts rows where channels is still the default.
+	if _, err := s.db.Exec(`
+		UPDATE users SET
+			channels = json_array(channel),
+			channel_configs = CASE
+				WHEN channel = 'wecom' AND bot_id != '' THEN
+					json_object('wecom', json_object('botId', bot_id, 'secret', secret_enc))
+				WHEN channel = 'wechat' THEN
+					json_object('wechat', json_object())
+				ELSE json_object()
+			END
+		WHERE channels = '["wecom"]' AND channel_configs = '{}'
+	`); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -441,7 +493,7 @@ type scanner interface {
 func scanUser(sc scanner) (User, error) {
 	var u User
 	var created, updated string
-	switch err := sc.Scan(&u.UserID, &u.Channel, &u.BotID, &u.SecretEnc, &u.LLMOverride, &u.ImageTag, &u.State,
+	switch err := sc.Scan(&u.UserID, &u.Channel, &u.BotID, &u.SecretEnc, &u.Channels, &u.ChannelConfigs, &u.LLMOverride, &u.ImageTag, &u.State,
 		&u.MemLimit, &u.CPULimit, &u.RestartPolicy, &created, &updated); err {
 	case sql.ErrNoRows:
 		return User{}, ErrNotFound

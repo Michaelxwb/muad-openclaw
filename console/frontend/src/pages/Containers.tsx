@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Modal, Table, Tag, Select, Dropdown, Input, Space, Toast, Card } from "@douyinfe/semi-ui";
+import { Button, Modal, Table, Tag, Select, Input, Space, Toast, Card } from "@douyinfe/semi-ui";
 import { IconSearch } from "@douyinfe/semi-icons";
 import type { BasicSelectValue } from "@douyinfe/semi-ui/lib/es/select";
 import QRCode from "qrcode";
 import { api, Container } from "../api";
-import { CHANNELS, channelMeta } from "../channels";
+import { CHANNELS } from "../channels";
+import { ChannelForm } from "../components/ChannelForm";
+import type { ChannelCredential } from "../api";
 import { Pagination } from "../components/Pagination";
+import { EditChannelModal } from "../components/EditChannelModal";
+import { BatchToolbar } from "../components/BatchToolbar";
+import { RowActions } from "../components/RowActions";
+import { ChannelTags } from "../components/ChannelTags";
 
-const STATUS_TAGS: Record<string, { label: string; color: "green" | "blue" | "red" | "orange" | "grey" | "light-blue"; dot: string }> = {
+const STATUS_TAGS: Record<
+  string,
+  { label: string; color: "green" | "blue" | "red" | "orange" | "grey" | "light-blue"; dot: string }
+> = {
   creating: { label: "创建中", color: "light-blue", dot: "#4db8ff" },
   running: { label: "运行中", color: "green", dot: "#3cdc80" },
   stopped: { label: "已停止", color: "grey", dot: "#8899aa" },
@@ -65,7 +74,7 @@ export function Containers() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [channelFilter, setChannelFilter] = useState("all");
+  const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [connFilter, setConnFilter] = useState("all");
 
   const [page, setPage] = useState(1);
@@ -80,19 +89,35 @@ export function Containers() {
   const [delVolume, setDelVolume] = useState(false);
   const [upgradeTarget, setUpgradeTarget] = useState<Container | null>(null);
   const [upgradeTag, setUpgradeTag] = useState("");
-  const [reloadOpen, setReloadOpen] = useState(false);
   const [resTarget, setResTarget] = useState<Container | null>(null);
   const [resForm, setResForm] = useState({ memLimit: "", cpuLimit: "", restartPolicy: "" });
 
   // Create-modal form
   const [newUserId, setNewUserId] = useState("");
-  const [newChannel, setNewChannel] = useState<"wecom" | "wechat">("wecom");
-  const [newBotId, setNewBotId] = useState("");
-  const [newSecret, setNewSecret] = useState("");
   const [createBusy, setCreateBusy] = useState(false);
   const [createErr, setCreateErr] = useState("");
+  const [editTarget, setEditTarget] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const USER_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+  function handleSelectAll(checked: boolean) {
+    setSelectedIds(checked ? items.map((c) => c.userId) : []);
+  }
+
+  function handleReloadSkills() {
+    void guard(() => api.reloadSkills(), "已触发 skill 重载");
+  }
+
+  function handleBatchUpgrade() {
+    if (selectedIds.length === 0) return;
+    setUpgradeTarget(items.find((c) => c.userId === selectedIds[0]) || null);
+  }
+
+  function handleBatchDelete(_ids: string[]) {
+    setSelectedIds([]);
+    void refresh();
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -104,24 +129,41 @@ export function Containers() {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+    const refresh = async () => {
+      try {
+        const res = await api.listContainers();
+        if (mounted) setItems(res.items);
+      } catch (e) {
+        if (mounted) setErr((e as Error).message);
+      }
+    };
     refresh();
     const t = setInterval(refresh, 5000);
-    return () => clearInterval(t);
+    return () => {
+      mounted = false;
+      clearInterval(t);
+    };
   }, [refresh]);
 
   const filtered = useMemo(() => {
     return items.filter((c) => {
       const matchSearch = !search || c.userId.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === "all" || c.state === statusFilter;
-      const matchChannel = channelFilter === "all" || c.channel === channelFilter;
-      const matchConn = connFilter === "all" || (connFilter === "online" ? c.channelConnected : !c.channelConnected);
+      const chs = c.channels?.length ? c.channels : [c.channel].filter(Boolean);
+      const matchChannel = channelFilter.length === 0 || chs.some((c) => channelFilter.includes(c));
+      const matchConn =
+        connFilter === "all" ||
+        (connFilter === "online" ? c.channelConnected : !c.channelConnected);
       return matchSearch && matchStatus && matchChannel && matchConn;
     });
   }, [items, search, statusFilter, channelFilter, connFilter]);
 
   // Stats overview
   const stats = useMemo(() => {
-    let running = 0, stopped = 0, error = 0;
+    let running = 0,
+      stopped = 0,
+      error = 0;
     for (const c of items) {
       if (c.state === "running") running++;
       else if (c.state === "error" || c.state === "unhealthy") error++;
@@ -135,13 +177,27 @@ export function Containers() {
     [filtered, page, pageSize],
   );
 
-  function onSearch(v: string) { setSearch(v); setPage(1); }
-  function onStatusFilter(v: BasicSelectValue | undefined | BasicSelectValue[]) { setStatusFilter(String(v ?? "all")); setPage(1); }
-  function onChannelFilter(v: BasicSelectValue | undefined | BasicSelectValue[]) { setChannelFilter(String(v ?? "all")); setPage(1); }
-  function onConnFilter(v: BasicSelectValue | undefined | BasicSelectValue[]) { setConnFilter(String(v ?? "all")); setPage(1); }
+  function onSearch(v: string) {
+    setSearch(v);
+    setPage(1);
+  }
+  function onStatusFilter(v: BasicSelectValue | undefined | BasicSelectValue[]) {
+    setStatusFilter(String(v ?? "all"));
+    setPage(1);
+  }
+  function onChannelFilter(v: BasicSelectValue | undefined | BasicSelectValue[]) {
+    const arr = Array.isArray(v) ? v.map(String) : v !== undefined ? [String(v)] : [];
+    setChannelFilter(arr);
+    setPage(1);
+  }
+  function onConnFilter(v: BasicSelectValue | undefined | BasicSelectValue[]) {
+    setConnFilter(String(v ?? "all"));
+    setPage(1);
+  }
 
   async function guard(fn: () => Promise<unknown>, ok?: string) {
-    setErr(""); setMsg("");
+    setErr("");
+    setMsg("");
     try {
       await fn();
       if (ok) Toast.success(ok);
@@ -161,7 +217,10 @@ export function Containers() {
   }
 
   async function openQr(id: string) {
-    setQrTarget(id); setQrDataUrl(""); setQrConnected(false); setQrLoading(true);
+    setQrTarget(id);
+    setQrDataUrl("");
+    setQrConnected(false);
+    setQrLoading(true);
     try {
       const q = await api.qrcode(id);
       if (q.connected) {
@@ -181,19 +240,27 @@ export function Containers() {
     setResForm({ memLimit: c.memLimit, cpuLimit: c.cpuLimit, restartPolicy: c.restartPolicy });
   }
 
-  async function confirmCreate() {
+  async function handleCreate(channelForm: {
+    channels: string[];
+    channelConfigs: Record<string, ChannelCredential>;
+  }) {
     const uid = newUserId.trim();
     const fe: string[] = [];
     if (!uid) fe.push("user_id 必填");
     else if (!USER_ID_RE.test(uid)) fe.push("user_id 格式: 字母/数字开头");
     else if (items.find((c) => c.userId === uid)) fe.push("用户已存在");
-    if (newChannel === "wecom" && (!newBotId.trim() || !newSecret.trim())) {
-      fe.push("企业微信需填 botId 和 secret");
+    if (fe.length) {
+      setCreateErr(fe.join("; "));
+      return;
     }
-    if (fe.length) { setCreateErr(fe.join("; ")); return; }
-    setCreateBusy(true); setCreateErr("");
+    setCreateBusy(true);
+    setCreateErr("");
     try {
-      await api.createContainer({ userId: uid, channel: newChannel, botId: newBotId.trim(), secret: newSecret });
+      await api.createContainer({
+        userId: uid,
+        channels: channelForm.channels,
+        channelConfigs: channelForm.channelConfigs,
+      });
       setCreateOpen(false);
       Toast.success("创建成功");
       refresh();
@@ -202,11 +269,6 @@ export function Containers() {
     } finally {
       setCreateBusy(false);
     }
-  }
-
-  function confirmReloadSkills() {
-    setReloadOpen(false);
-    void guard(() => api.reloadSkills(), "已触发 skill 重载");
   }
 
   function confirmUpgrade() {
@@ -236,47 +298,93 @@ export function Containers() {
   const columns = [
     { title: "用户", dataIndex: "userId", key: "userId", width: 100 },
     {
-      title: "消息通道", dataIndex: "channel", key: "channel", width: 110,
-      render: (_: unknown, r: Container) => (
-        <Tag color={r.channelConnected ? "green" : "grey"}>
-          {channelMeta(r.channel).icon} {channelMeta(r.channel).label}
-        </Tag>
-      ),
+      title: "消息通道",
+      dataIndex: "channels",
+      key: "channels",
+      width: 180,
+      render: (_: unknown, r: Container) => <ChannelTags container={r} />,
     },
     {
-      title: "状态", dataIndex: "state", key: "state", width: 90,
+      title: "状态",
+      dataIndex: "state",
+      key: "state",
+      width: 90,
       render: (_: unknown, r: Container) => {
-        const t = STATUS_TAGS[r.state] || { label: r.state, color: "grey" as const, dot: "#8899aa" };
-        return <Tag color={t.color}><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: t.dot, marginRight: 5, verticalAlign: "middle" }} />{t.label}</Tag>;
+        const t = STATUS_TAGS[r.state] || {
+          label: r.state,
+          color: "grey" as const,
+          dot: "#8899aa",
+        };
+        return (
+          <Tag color={t.color}>
+            <span
+              style={{
+                display: "inline-block",
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: t.dot,
+                marginRight: 5,
+                verticalAlign: "middle",
+              }}
+            />
+            {t.label}
+          </Tag>
+        );
       },
     },
     { title: "镜像", dataIndex: "imageTag", key: "imageTag", width: 160, className: "mono" },
-    { title: "CPU", dataIndex: "cpuPercent", key: "cpu", width: 65, render: (_: unknown, r: Container) => `${r.cpuPercent.toFixed(1)}%` },
-    { title: "内存", dataIndex: "memMiB", key: "mem", width: 75, render: (_: unknown, r: Container) => `${r.memMiB} MiB` },
-    { title: "最后活跃", dataIndex: "lastActiveAt", key: "ts", width: 140, render: (_: unknown, r: Container) => fmtActive(r.lastActiveAt) },
-    { title: "回收倒计时", dataIndex: "reapInSeconds", key: "reap", width: 85, render: (_: unknown, r: Container) => fmtReap(r.reapInSeconds) },
     {
-      title: "操作", key: "ops", width: 310,
+      title: "CPU",
+      dataIndex: "cpuPercent",
+      key: "cpu",
+      width: 65,
+      render: (_: unknown, r: Container) => `${r.cpuPercent.toFixed(1)}%`,
+    },
+    {
+      title: "内存",
+      dataIndex: "memMiB",
+      key: "mem",
+      width: 75,
+      render: (_: unknown, r: Container) => `${r.memMiB} MiB`,
+    },
+    {
+      title: "最后活跃",
+      dataIndex: "lastActiveAt",
+      key: "ts",
+      width: 140,
+      render: (_: unknown, r: Container) => fmtActive(r.lastActiveAt),
+    },
+    {
+      title: "回收倒计时",
+      dataIndex: "reapInSeconds",
+      key: "reap",
+      width: 85,
+      render: (_: unknown, r: Container) => fmtReap(r.reapInSeconds),
+    },
+    {
+      title: "操作",
+      key: "ops",
+      width: 280,
       render: (_: unknown, r: Container) => (
-        <Space>
-          <Dropdown menu={ACTIONS.map((a) => ({ node: "item", name: a.label, onClick: () => guard(() => api.action(r.userId, a.key)) }))}>
-            <Button size="small">操作</Button>
-          </Dropdown>
-          <Button size="small" onClick={() => viewLogs(r.userId)}>日志</Button>
-          {r.channel === "wechat" && <Button size="small" onClick={() => openQr(r.userId)}>扫码</Button>}
-          <Button size="small" onClick={() => openRes(r)}>资源</Button>
-          <Button size="small" onClick={() => setUpgradeTarget(r)}>升级</Button>
-          <Button size="small" type="danger" onClick={() => { setDelTarget(r.userId); setDelVolume(false); }}>删除</Button>
-        </Space>
+        <RowActions
+          container={r}
+          actions={ACTIONS}
+          onViewLogs={viewLogs}
+          onOpenQr={openQr}
+          onEditChannels={setEditTarget}
+          onOpenResources={openRes}
+          onAction={(id, key) => guard(() => api.action(id, key))}
+        />
       ),
     },
   ];
 
   const statCards = [
     { label: "总容器", value: stats.total, color: "var(--semi-color-text-1)" },
-    { label: "运行中", value: stats.running, color: "#3cdc80" },
-    { label: "异常", value: stats.error, color: "#ff4d4f" },
-    { label: "已停止", value: stats.stopped, color: "#8899aa" },
+    { label: "运行中", value: stats.running, color: "var(--semi-color-success)" },
+    { label: "异常", value: stats.error, color: "var(--semi-color-danger)" },
+    { label: "已停止", value: stats.stopped, color: "var(--semi-color-text-2)" },
   ];
 
   return (
@@ -287,102 +395,277 @@ export function Containers() {
       {/* Stats overview */}
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
         {statCards.map((s) => (
-          <Card key={s.label} style={{ flex: 1, minWidth: 0 }}
-            bodyStyle={{ padding: "14px 16px" }}>
-            <div style={{ fontSize: 12, color: "var(--semi-color-text-2)", marginBottom: 4 }}>{s.label}</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
+          <Card key={s.label} style={{ flex: 1, minWidth: 0 }} bodyStyle={{ padding: "14px 16px" }}>
+            <div style={{ fontSize: 12, color: "var(--semi-color-text-2)", marginBottom: 4 }}>
+              {s.label}
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: s.color, fontFamily: "monospace" }}>
+              {s.value}
+            </div>
           </Card>
         ))}
       </div>
 
       {/* Toolbar */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 12,
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
         <Space>
-          <Button theme="solid" onClick={() => { setCreateOpen(true); setNewUserId(""); setNewChannel("wecom"); setNewBotId(""); setNewSecret(""); setCreateErr(""); }}>创建容器</Button>
-          <Button onClick={() => setReloadOpen(true)}>重载 Skill</Button>
+          <Button
+            theme="solid"
+            onClick={() => {
+              setCreateOpen(true);
+              setNewUserId("");
+              setCreateErr("");
+            }}
+          >
+            创建容器
+          </Button>
+          <BatchToolbar
+            selectedIds={selectedIds}
+            allIds={items.map((c) => c.userId)}
+            onSelectAll={handleSelectAll}
+            onReloadSkills={handleReloadSkills}
+            onBatchUpgrade={handleBatchUpgrade}
+            onBatchDelete={handleBatchDelete}
+          />
         </Space>
         <Space>
-          <Input prefix={<IconSearch />} placeholder="搜索…" value={search} onChange={onSearch} onEnterPress={() => {}} style={{ width: 180 }} />
-          <Select value={channelFilter} optionList={CHANNEL_OPTIONS} onChange={onChannelFilter} style={{ width: 130 }} />
-          <Select value={connFilter} optionList={CONN_OPTIONS} onChange={onConnFilter} style={{ width: 110 }} />
-          <Select value={statusFilter} optionList={STATUS_OPTIONS} onChange={onStatusFilter} style={{ width: 120 }} />
+          <Input
+            prefix={<IconSearch />}
+            placeholder="搜索…"
+            value={search}
+            onChange={onSearch}
+            onEnterPress={() => {}}
+            style={{ width: 180 }}
+          />
+          <Select
+            multiple
+            value={channelFilter}
+            optionList={CHANNEL_OPTIONS}
+            onChange={onChannelFilter}
+            placeholder="通道（可多选）"
+            style={{ width: 200 }}
+          />
+          <Select
+            value={connFilter}
+            optionList={CONN_OPTIONS}
+            onChange={onConnFilter}
+            style={{ width: 110 }}
+          />
+          <Select
+            value={statusFilter}
+            optionList={STATUS_OPTIONS}
+            onChange={onStatusFilter}
+            style={{ width: 120 }}
+          />
         </Space>
       </div>
 
       {/* Table */}
-      <Table columns={columns as never} dataSource={paged} pagination={false} rowKey="userId" size="small" />
+      <Table
+        columns={columns as never}
+        dataSource={paged}
+        pagination={false}
+        rowKey="userId"
+        size="small"
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys: (string | number)[] | undefined) =>
+            setSelectedIds((keys ?? []).map(String)),
+        }}
+      />
 
-      <Pagination page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1); }} />
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={filtered.length}
+        onPageChange={setPage}
+        onPageSizeChange={(s) => {
+          setPageSize(s);
+          setPage(1);
+        }}
+      />
 
       {/* Create Modal */}
-      <Modal title="创建容器" visible={createOpen} onCancel={() => setCreateOpen(false)} onOk={confirmCreate} okText="创建" confirmLoading={createBusy} width={480}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {createErr && <p style={{ color: "var(--semi-color-danger)", fontSize: 13, margin: 0 }}>{createErr}</p>}
-          <div>
+      <Modal
+        title="创建容器"
+        visible={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        footer={null}
+        width={520}
+      >
+        <div>
+          {createErr && (
+            <p style={{ color: "var(--semi-color-danger)", fontSize: 13, margin: "0 0 14px" }}>
+              {createErr}
+            </p>
+          )}
+          <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>用户 ID</label>
             <Input value={newUserId} onChange={setNewUserId} placeholder="alice" />
           </div>
-          <div>
-            <label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>消息通道</label>
-            <Select value={newChannel} optionList={CHANNELS.map((c) => ({ value: c.value, label: c.icon + " " + c.label }))} onChange={(v) => setNewChannel(v as "wecom" | "wechat")} style={{ width: "100%" }} />
-          </div>
-          {newChannel === "wecom" ? (
-            <>
-              <div><label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>Bot ID</label><Input value={newBotId} onChange={setNewBotId} placeholder="aib…" /></div>
-              <div><label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>Secret</label><Input type="password" value={newSecret} onChange={setNewSecret} placeholder="企业微信 secret" /></div>
-            </>
-          ) : (
-            <p className="hint">微信无需填凭证：创建后在列表「扫码登录」扫码。</p>
-          )}
+          <ChannelForm
+            mode="create"
+            busy={createBusy}
+            error={createErr}
+            onSubmit={handleCreate}
+            onCancel={() => setCreateOpen(false)}
+          />
         </div>
       </Modal>
 
-      {/* Reload Modal */}
-      <Modal title="重载 Skill" visible={reloadOpen} onCancel={() => setReloadOpen(false)} onOk={confirmReloadSkills} okText="确认重载">
-        <p>将滚动重启所有运行中容器以重载 skill，确认？</p>
-      </Modal>
-
       {/* Upgrade Modal */}
-      <Modal title={`升级容器 ${upgradeTarget?.userId ?? ""}`} visible={upgradeTarget !== null} onCancel={() => setUpgradeTarget(null)} onOk={confirmUpgrade} okText="确认升级" okButtonProps={{ disabled: !upgradeTag.trim() }} width={420}>
+      <Modal
+        title={`升级容器 ${upgradeTarget?.userId ?? ""}`}
+        visible={upgradeTarget !== null}
+        onCancel={() => setUpgradeTarget(null)}
+        onOk={confirmUpgrade}
+        okText="确认升级"
+        okButtonProps={{ disabled: !upgradeTag.trim() }}
+        width={420}
+      >
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>镜像 tag（保留状态卷）</label>
-          <Input autoFocus value={upgradeTag} onChange={setUpgradeTag} placeholder="muad-openclaw:local" />
+          <label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>
+            镜像 tag（保留状态卷）
+          </label>
+          <Input
+            autoFocus
+            value={upgradeTag}
+            onChange={setUpgradeTag}
+            placeholder="muad-openclaw:local"
+          />
         </div>
       </Modal>
 
       {/* Delete Modal */}
-      <Modal title={`删除容器 ${delTarget ?? ""}`} visible={delTarget !== null} onCancel={() => setDelTarget(null)} onOk={confirmDelete} okText="确认删除" okButtonProps={{ type: "danger" as const }}>
+      <Modal
+        title={`删除容器 ${delTarget ?? ""}`}
+        visible={delTarget !== null}
+        onCancel={() => setDelTarget(null)}
+        onOk={confirmDelete}
+        okText="确认删除"
+        okButtonProps={{ type: "danger" as const }}
+      >
         <p>确认删除容器 {delTarget}？此操作不可撤销。</p>
         <label style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
-          <input type="checkbox" checked={delVolume} onChange={(e) => setDelVolume(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={delVolume}
+            onChange={(e) => setDelVolume(e.target.checked)}
+          />
           同时删除状态卷（记忆/会话将永久丢失）
         </label>
       </Modal>
 
       {/* Log Viewer */}
       {logView && (
-        <Modal title={`${logView.id} 日志`} visible width={900} onCancel={() => setLogView(null)} footer={<><Button onClick={() => viewLogs(logView.id)}>刷新</Button><Button onClick={() => setLogView(null)}>关闭</Button></>}>
+        <Modal
+          title={`${logView.id} 日志`}
+          visible
+          width={900}
+          onCancel={() => setLogView(null)}
+          footer={
+            <>
+              <Button onClick={() => viewLogs(logView.id)}>刷新</Button>
+              <Button onClick={() => setLogView(null)}>关闭</Button>
+            </>
+          }
+        >
           <pre className="log-pre">{logView.text}</pre>
         </Modal>
       )}
 
       {/* QR Code */}
       {qrTarget && (
-        <Modal title={`扫码登录 ${qrTarget}`} visible onCancel={() => setQrTarget(null)} footer={<><Button onClick={() => openQr(qrTarget)} loading={qrLoading}>刷新</Button><Button onClick={() => setQrTarget(null)}>关闭</Button></>}>
+        <Modal
+          title={`扫码登录 ${qrTarget}`}
+          visible
+          onCancel={() => setQrTarget(null)}
+          footer={
+            <>
+              <Button onClick={() => openQr(qrTarget)} loading={qrLoading}>
+                刷新
+              </Button>
+              <Button onClick={() => setQrTarget(null)}>关闭</Button>
+            </>
+          }
+        >
           <div style={{ textAlign: "center" }}>
-            {qrLoading ? <p className="hint">正在检查登录状态…</p> : qrConnected ? <p style={{ color: "var(--semi-color-success)" }}>微信已登录，无需扫码。</p> : qrDataUrl ? <img className="qr-img" src={qrDataUrl} alt="微信登录二维码" /> : <p className="hint">未获取到二维码，请点刷新重试。</p>}
+            {qrLoading ? (
+              <p className="hint">正在检查登录状态…</p>
+            ) : qrConnected ? (
+              <p style={{ color: "var(--semi-color-success)" }}>微信已登录，无需扫码。</p>
+            ) : qrDataUrl ? (
+              <img className="qr-img" src={qrDataUrl} alt="微信登录二维码" />
+            ) : (
+              <p className="hint">未获取到二维码，请点刷新重试。</p>
+            )}
           </div>
         </Modal>
       )}
 
+      {/* Edit Channel Modal */}
+      <EditChannelModal
+        userId={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => {
+          setEditTarget(null);
+          refresh();
+        }}
+      />
+
       {/* Resource Override Modal */}
-      <Modal title={`资源覆盖 ${resTarget?.userId ?? ""}`} visible={resTarget !== null} onCancel={() => setResTarget(null)} onOk={confirmRes} okText="保存" width={420}>
+      <Modal
+        title={`资源覆盖 ${resTarget?.userId ?? ""}`}
+        visible={resTarget !== null}
+        onCancel={() => setResTarget(null)}
+        onOk={confirmRes}
+        okText="保存"
+        width={420}
+      >
         <p className="hint">留空 = 继承全局默认。保存后需重建生效。</p>
         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div><label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>内存上限（留空继承）</label><Input value={resForm.memLimit} onChange={(e) => setResForm({ ...resForm, memLimit: e })} placeholder="如 3g" /></div>
-          <div><label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>CPU 上限（留空继承）</label><Input value={resForm.cpuLimit} onChange={(e) => setResForm({ ...resForm, cpuLimit: e })} placeholder="如 2" /></div>
-          <div><label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>重启策略</label>
-            <Select value={resForm.restartPolicy} optionList={[{ value: "", label: "继承全局" }, { value: "unless-stopped", label: "除手动停止外总重启" }, { value: "always", label: "总是重启" }, { value: "on-failure", label: "失败时重启" }, { value: "no", label: "不自动重启" }]} onChange={(v) => setResForm({ ...resForm, restartPolicy: v as string })} style={{ width: "100%" }} />
+          <div>
+            <label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>
+              内存上限（留空继承）
+            </label>
+            <Input
+              value={resForm.memLimit}
+              onChange={(e) => setResForm({ ...resForm, memLimit: e })}
+              placeholder="如 3g"
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>
+              CPU 上限（留空继承）
+            </label>
+            <Input
+              value={resForm.cpuLimit}
+              onChange={(e) => setResForm({ ...resForm, cpuLimit: e })}
+              placeholder="如 2"
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>重启策略</label>
+            <Select
+              value={resForm.restartPolicy}
+              optionList={[
+                { value: "", label: "继承全局" },
+                { value: "unless-stopped", label: "除手动停止外总重启" },
+                { value: "always", label: "总是重启" },
+                { value: "on-failure", label: "失败时重启" },
+                { value: "no", label: "不自动重启" },
+              ]}
+              onChange={(v) => setResForm({ ...resForm, restartPolicy: v as string })}
+              style={{ width: "100%" }}
+            />
           </div>
         </div>
       </Modal>

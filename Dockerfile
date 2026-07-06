@@ -2,7 +2,7 @@
 # FROM 官方发布镜像 → 烤入：① Chromium（Playwright，含系统依赖）② WeCom 官方长连接插件
 # ③ PoC 验证的基线配置（浏览器/工具/渠道/provider）→ 起来即用，管理员只填外部面凭证。
 # 凭证一律不进镜像（NFR-SEC-02）：bot_id/secret、LLM key 运行时经 env 注入。
-ARG OPENCLAW_VERSION=latest
+ARG OPENCLAW_VERSION=2026.6.10
 FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 
 USER root
@@ -19,6 +19,7 @@ ARG WECHAT_PLUGIN_VERSION=2.4.3
 
 COPY baseline-config.json /opt/muad/baseline-config.json
 COPY bin/seed-config.mjs  /opt/muad/seed-config.mjs
+COPY seed/BOOTSTRAP.md    /opt/muad/BOOTSTRAP.md
 
 # 烤浏览器 + 装插件 + 合并基线 → 快照为种子（运行时 per-user 卷为空时播种）
 RUN set -eux; \
@@ -39,8 +40,9 @@ RUN set -eux; \
     rm -rf /home/node/.openclaw; \
     install -d -m 0700 -o node -g node /home/node/.openclaw
 
-COPY bin/inject-env.mjs /opt/muad/inject-env.mjs
-COPY entrypoint.sh      /usr/local/bin/muad-entrypoint.sh
+COPY bin/inject-env.mjs      /opt/muad/inject-env.mjs
+COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
+COPY entrypoint.sh           /usr/local/bin/muad-entrypoint.sh
 RUN chmod +x /usr/local/bin/muad-entrypoint.sh
 
 USER node

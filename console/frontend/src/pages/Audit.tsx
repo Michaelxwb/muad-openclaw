@@ -25,31 +25,82 @@ export function Audit() {
     }
   }, [actor, page, pageSize]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const columns = [
-    { title: "时间", dataIndex: "ts", key: "ts", width: 160, render: (_: unknown, r: AuditEntry) => new Date(r.ts).toLocaleString() },
+    {
+      title: "时间",
+      dataIndex: "ts",
+      key: "ts",
+      width: 160,
+      render: (_: unknown, r: AuditEntry) => new Date(r.ts).toLocaleString(),
+    },
     { title: "操作人", dataIndex: "actor", key: "actor", width: 100 },
     { title: "动作", dataIndex: "action", key: "action" },
-    { title: "目标", dataIndex: "target", key: "target", width: 100, render: (_: unknown, r: AuditEntry) => r.target || "—" },
+    {
+      title: "目标",
+      dataIndex: "target",
+      key: "target",
+      width: 100,
+      render: (_: unknown, r: AuditEntry) => r.target || "—",
+    },
     { title: "结果", dataIndex: "payload", key: "payload", width: 80 },
   ];
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12,
+        }}
+      >
         <div />
         <Space>
-          <Input placeholder="按操作人过滤" value={actor} onChange={setActor} style={{ width: 180 }} />
-          <Button onClick={() => { setPage(1); load(); }}>查询</Button>
+          <Input
+            placeholder="按操作人过滤"
+            value={actor}
+            onChange={setActor}
+            style={{ width: 180 }}
+          />
+          <Button
+            onClick={() => {
+              setPage(1);
+              load();
+            }}
+          >
+            查询
+          </Button>
         </Space>
       </div>
 
-      <Skeleton placeholder={loading ? <Skeleton.Paragraph rows={5} /> : undefined} loading={loading}>
-        <Table columns={columns as never} dataSource={rows} pagination={false} rowKey="id" size="small" />
+      <Skeleton
+        placeholder={loading ? <Skeleton.Paragraph rows={5} /> : undefined}
+        loading={loading}
+      >
+        <Table
+          columns={columns as never}
+          dataSource={rows}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
       </Skeleton>
 
-      <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1); }} />
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(s) => {
+          setPageSize(s);
+          setPage(1);
+        }}
+      />
     </div>
   );
 }

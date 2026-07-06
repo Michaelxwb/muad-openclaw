@@ -1,7 +1,7 @@
 validators:
     - name: "TypeScript 类型检查"
       trigger: "**/*.{ts,tsx}"
-      command: "npx tsc --noEmit"
+      command: "cd console/frontend && npx tsc --noEmit"
       timeout: 30000
       on_fail: "检查类型定义，参见 specs/frontend/quality-standards.md"
 

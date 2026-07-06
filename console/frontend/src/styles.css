@@ -1,9 +1,14 @@
-/* 暗色主题变量由 App.tsx 中 applyTheme() 动态注入 style 标签管理，
-   支持运行时亮/暗切换，本站不需要额外全局样式。 */
+/* 暗/亮切换：App.tsx 里给 body 写 theme-mode=dark，Semi 内部 base.css 已按
+   `body[theme-mode=dark]` 重定义全部 --semi-color-* 变量，组件自动跟随。
+   这里只需要把 body 自身 color/background 绑到变量，保证外层容器自适应。 */
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
+  color: var(--semi-color-text-0);
+  background-color: var(--semi-color-bg-0);
 }
 
 .mono {

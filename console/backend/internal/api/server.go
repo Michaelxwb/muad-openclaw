@@ -47,6 +47,8 @@ func (s *Server) Handler() http.Handler {
 	protected.HandleFunc("DELETE /api/v1/containers/{userId}", s.handleDeleteContainer)
 	protected.HandleFunc("GET /api/v1/containers/{userId}/logs", s.handleLogs)
 	protected.HandleFunc("GET /api/v1/containers/{userId}/qrcode", s.handleQRCode)
+		protected.HandleFunc("GET /api/v1/containers/{userId}", s.handleGetContainer)
+		protected.HandleFunc("PUT /api/v1/containers/{userId}/channels", s.handleUpdateChannels)
 
 	// LLM config (FEAT-04).
 	protected.HandleFunc("GET /api/v1/llm", s.handleGetLLM)
