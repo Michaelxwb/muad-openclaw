@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
@@ -168,6 +169,23 @@ func (d *DockerDriver) StatsAll(ctx context.Context) (map[string]Stats, error) {
 func (d *DockerDriver) Exec(ctx context.Context, userID string, cmd ...string) (string, error) {
 	args := append([]string{"exec", ContainerName(userID)}, cmd...)
 	return d.run(ctx, args...)
+}
+
+// ExecStdin runs a command with stdin piped from the reader.
+func (d *DockerDriver) ExecStdin(ctx context.Context, userID string, stdin io.Reader, cmd ...string) (string, error) {
+	args := append([]string{"exec", "-i", ContainerName(userID)}, cmd...)
+	return d.runStdin(ctx, stdin, args...)
+}
+
+func (d *DockerDriver) runStdin(ctx context.Context, stdin io.Reader, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, "docker", args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	cmd.Stdin = stdin
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("docker %s: %w: %s", args[0], err, strings.TrimSpace(stderr.String()))
+	}
+	return stdout.String(), nil
 }
 
 // Logs returns the last `tail` lines (combined stdout+stderr).

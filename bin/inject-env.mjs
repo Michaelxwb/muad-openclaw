@@ -1,49 +1,95 @@
-// 运行期（entrypoint 调用）：把外部面环境变量契约注入 openclaw.json。
-// 幂等：每次启动覆盖。管理员只提供这些 env，复杂配置已在镜像基线里。
-import { readFileSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+// inject-env.mjs — entrypoint runtime env injection into openclaw.json.
+// Idempotent: overwrites on every boot. Supports multi-channel via CHANNELS env.
+import { readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 
 const state = process.env.OPENCLAW_STATE_DIR || `${homedir()}/.openclaw`;
 const p = `${state}/openclaw.json`;
-const d = JSON.parse(readFileSync(p, 'utf8'));
+const d = JSON.parse(readFileSync(p, "utf8"));
 const E = process.env;
-const v = (x) => (x ?? '').trim();
+const v = (x) => (x ?? "").trim();
 
-// 网关 token（per-user，provision 生成）
+// Gateway token
 if (v(E.OPENCLAW_GATEWAY_TOKEN)) {
   d.gateway = d.gateway || {};
-  d.gateway.auth = { mode: 'token', token: v(E.OPENCLAW_GATEWAY_TOKEN) };
+  d.gateway.auth = { mode: "token", token: v(E.OPENCLAW_GATEWAY_TOKEN) };
 }
 
-// 消息通道：外部 CHANNEL（wecom 企业微信 / wechat 微信，缺省 wecom）映射到 openclaw 通道 id。
-// openclaw 里企业微信通道 id 为 "wecom"（@wecom 插件），个人微信为 "openclaw-weixin"
-// （@tencent-weixin/openclaw-weixin 插件）。凭证 env 沿用 WECOM_BOT_ID/WECOM_SECRET
-// （wecom 用；wechat 免凭证，登录靠日志二维码）。仅启用所选通道，其余关闭避免互踢。
+// Channel mapping: internal id → openclaw channel id.
+const CHANNEL_MAP = { wecom: "wecom", wechat: "openclaw-weixin" };
+const KNOWN = new Set(Object.values(CHANNEL_MAP));
+
+// Multi-channel: CHANNELS (comma-separated) is primary; legacy CHANNEL is fallback.
+const channelsStr = v(E.CHANNELS) || v(E.CHANNEL) || "wecom";
+const channels = channelsStr
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const ocChannels = channels.map((c) => CHANNEL_MAP[c] || c);
+
 d.channels = d.channels || {};
-const CHANNEL_MAP = { wecom: 'wecom', wechat: 'openclaw-weixin' };
-const channel = v(E.CHANNEL) in CHANNEL_MAP ? v(E.CHANNEL) : 'wecom';
-const ocChannel = CHANNEL_MAP[channel];
-for (const id of Object.values(CHANNEL_MAP)) {
+// Enable selected channels, disable the rest.
+for (const id of KNOWN) {
   const c = (d.channels[id] = d.channels[id] || {});
-  c.enabled = id === ocChannel;
+  c.enabled = ocChannels.includes(id);
 }
-const ch = d.channels[ocChannel];
-if (v(E.WECOM_BOT_ID)) ch.botId = v(E.WECOM_BOT_ID);
-if (v(E.WECOM_SECRET)) ch.secret = v(E.WECOM_SECRET);
+// Remove channel keys not in CHANNEL_MAP (clean up from buggy hot-updates).
+for (const id of Object.keys(d.channels)) {
+  if (!KNOWN.has(id)) delete d.channels[id];
+}
 
-// LLM provider（OpenAI 兼容；默认 deepseek，基线已配 api/baseUrl）
-const prov = v(E.LLM_PROVIDER) || 'deepseek';
+// Per-channel credentials from CHANNEL_CONFIGS JSON, with legacy fallback.
+const configsStr = v(E.CHANNEL_CONFIGS);
+if (configsStr) {
+  try {
+    const configs = JSON.parse(configsStr);
+    for (const [ch, cfg] of Object.entries(configs)) {
+      const ocID = CHANNEL_MAP[ch] || ch;
+      const c = (d.channels[ocID] = d.channels[ocID] || {});
+      if (cfg.botId) c.botId = cfg.botId;
+      if (cfg.secret) c.secret = cfg.secret;
+    }
+  } catch (_) {
+    /* ignore malformed JSON */
+  }
+} else {
+  // Legacy single-channel credential env vars
+  const ch = d.channels[ocChannels[0]] || {};
+  if (v(E.WECOM_BOT_ID)) ch.botId = v(E.WECOM_BOT_ID);
+  if (v(E.WECOM_SECRET)) ch.secret = v(E.WECOM_SECRET);
+}
+
+// LLM provider
+const prov = v(E.LLM_PROVIDER) || "deepseek";
 d.models = d.models || {};
 d.models.providers = d.models.providers || {};
 const pc = (d.models.providers[prov] = d.models.providers[prov] || {});
 if (v(E.LLM_API_KEY)) pc.apiKey = v(E.LLM_API_KEY);
 if (v(E.LLM_BASE_URL)) pc.baseUrl = v(E.LLM_BASE_URL);
-pc.api = pc.api || 'openai-completions';
+pc.api = pc.api || "openai-completions";
 const model = v(E.LLM_MODEL);
 if (model) {
   pc.models = [{ id: model, name: model }];
-  // 默认模型不在这里写：由 entrypoint 的 `openclaw models set` 写入 agents.defaults（正确 schema）
 }
 
+// Ensure cross-session identity bootstrap exists in agent workspace.
+import { mkdirSync, writeFileSync as wfs, existsSync } from "node:fs";
+const agentDir = `${state}/agents/main`;
+const bootstrapPath = `${agentDir}/BOOTSTRAP.md`;
+if (!existsSync(bootstrapPath)) {
+  mkdirSync(agentDir, { recursive: true });
+  wfs(bootstrapPath, `# Identity & Memory
+You serve the same user across multiple chat platforms (WeChat, WeCom, etc.).
+Each platform appears as a separate conversation session, but the person
+behind them is the same individual.
+
+## Cross-Session Rules
+- Always check your memory first before asking for name or preferences.
+- Save new information to memory immediately for cross-session recall.
+- If the user references another platform, use memory to bridge context.`);
+}
 writeFileSync(p, JSON.stringify(d, null, 2));
-console.log(`[inject-env] applied: channel=${channel}(${ocChannel}) provider=${prov} model=${model || '(default)'} bot=${v(E.WECOM_BOT_ID).slice(0, 10)}...`);
+const enabled = ocChannels.join(",");
+console.log(
+  `[inject-env] channels=[${enabled}] chConfigs=${!!configsStr} provider=${prov} model=${model || "(default)"}`,
+);

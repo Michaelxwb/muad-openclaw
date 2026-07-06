@@ -28,12 +28,14 @@ const maxLogTail = 2000
 const qrRawLines = 60
 
 type createRequest struct {
-	UserID      string      `json:"userId"`
-	Channel     string      `json:"channel"`
-	BotID       string      `json:"botId"`
-	Secret      string      `json:"secret"`
-	ImageTag    string      `json:"imageTag"`
-	LLMOverride *llmRequest `json:"llmOverride"`
+	UserID         string                 `json:"userId"`
+	Channel        string                 `json:"channel"`        // DEPRECATED
+	Channels       []string               `json:"channels"`       // multi-channel IDs
+	ChannelConfigs map[string]json.RawMessage `json:"channelConfigs"` // per-channel credentials
+	BotID          string                 `json:"botId"`          // DEPRECATED
+	Secret         string                 `json:"secret"`         // DEPRECATED
+	ImageTag       string                 `json:"imageTag"`
+	LLMOverride    *llmRequest            `json:"llmOverride"`
 }
 
 // handleCreateContainer provisions a user container (API-01, FEAT-01).
@@ -47,25 +49,109 @@ func (s *Server) handleCreateContainer(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, 40001, "invalid userId")
 		return
 	}
+	// Validate legacy channel field if present.
 	if req.Channel != "" && !driver.IsValidChannel(req.Channel) {
-		writeErr(w, http.StatusBadRequest, 40001, "invalid channel")
+		writeErr(w, http.StatusBadRequest, 40001, "invalid channel: "+req.Channel)
 		return
 	}
-	channel := driver.NormalizeChannel(req.Channel)
-	// 企业微信用 bot 凭证；微信（个人）免凭证，登录靠日志二维码扫码。
-	if channel == driver.ChannelWeCom && (req.BotID == "" || req.Secret == "") {
-		writeErr(w, http.StatusBadRequest, 40001, "botId and secret are required for wecom")
+	// Multi-channel: if channels provided, use that; otherwise fall back to legacy channel.
+	channels := req.Channels
+	if len(channels) == 0 && req.Channel != "" {
+		channels = []string{driver.NormalizeChannel(req.Channel)}
+	}
+	if len(channels) == 0 {
+		channels = []string{driver.ChannelWeCom} // default
+	}
+	if len(channels) == 0 {
+		writeErr(w, http.StatusBadRequest, 40001, "channels must not be empty")
 		return
+	}
+	for _, ch := range channels {
+		if !driver.IsValidChannel(ch) {
+			writeErr(w, http.StatusBadRequest, 40001, "invalid channel: "+ch)
+			return
+		}
+	}
+	// Backward compat: map legacy botId/secret into channelConfigs for wecom.
+	if req.ChannelConfigs == nil {
+		req.ChannelConfigs = map[string]json.RawMessage{}
+	}
+	if req.BotID != "" || req.Secret != "" {
+		if _, ok := req.ChannelConfigs[driver.ChannelWeCom]; !ok {
+			legacyJSON, _ := json.Marshal(map[string]string{"botId": req.BotID, "secret": req.Secret})
+			req.ChannelConfigs[driver.ChannelWeCom] = json.RawMessage(legacyJSON)
+		}
+	}
+	// Validate per-channel credentials
+	for _, ch := range channels {
+		cfg, ok := req.ChannelConfigs[ch]
+		if !ok {
+			cfg = json.RawMessage("{}")
+		}
+		if ch == driver.ChannelWeCom {
+			var wc struct {
+				BotID  string `json:"botId"`
+				Secret string `json:"secret"`
+			}
+			if err := json.Unmarshal(cfg, &wc); err != nil || wc.BotID == "" || wc.Secret == "" {
+				writeErr(w, http.StatusBadRequest, 40001, "wecom: botId and secret are required")
+				return
+			}
+		}
 	}
 
 	imageTag := req.ImageTag
 	if imageTag == "" {
 		imageTag = s.cfg.DefaultImage
 	}
-	secretEnc, err := s.cipher.Encrypt(req.Secret)
+	// Encrypt secrets inside channel configs
+	channelConfigsEnc := map[string]json.RawMessage{}
+	for ch, cfgBytes := range req.ChannelConfigs {
+		if ch == driver.ChannelWeCom {
+			var wc2 struct {
+				BotID  string `json:"botId"`
+				Secret string `json:"secret"`
+			}
+			if err := json.Unmarshal(cfgBytes, &wc2); err == nil && wc2.Secret != "" {
+				enc, err := s.cipher.Encrypt(wc2.Secret)
+				if err != nil {
+					writeErr(w, http.StatusInternalServerError, 50001, "encrypt secret")
+					return
+				}
+				encJSON, _ := json.Marshal(map[string]string{"botId": wc2.BotID, "secret": enc})
+				channelConfigsEnc[ch] = json.RawMessage(encJSON)
+				continue
+			}
+		}
+		channelConfigsEnc[ch] = cfgBytes
+	}
+	configsJSON, err := json.Marshal(channelConfigsEnc)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, 50001, "encrypt secret")
+		writeErr(w, http.StatusInternalServerError, 50001, "marshal channel configs")
 		return
+	}
+	channelsJSON, err := json.Marshal(channels)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, 50001, "marshal channels")
+		return
+	}
+	// Legacy compat: fill old columns from first wecom channel
+	legacyChannel := channels[0]
+	legacyBotID := ""
+	legacySecretEnc := ""
+	if cfg, ok := channelConfigsEnc[driver.ChannelWeCom]; ok {
+		var wc3 struct {
+			BotID  string `json:"botId"`
+			Secret string `json:"secret"`
+		}
+		if err := json.Unmarshal(cfg, &wc3); err == nil {
+			legacyBotID = wc3.BotID
+			legacySecretEnc = wc3.Secret
+		}
+	}
+	// Ensure legacy secret is never empty (causes Decrypt failure in specFromUser)
+	if legacySecretEnc == "" {
+		legacySecretEnc, _ = s.cipher.Encrypt("")
 	}
 	overrideEnc := ""
 	if req.LLMOverride != nil {
@@ -77,7 +163,8 @@ func (s *Server) handleCreateContainer(w http.ResponseWriter, r *http.Request) {
 
 	// Reserve the user row first; the unique PK enforces E-01 atomically.
 	err = s.store.CreateUser(repo.User{
-		UserID: req.UserID, Channel: channel, BotID: req.BotID, SecretEnc: secretEnc,
+		UserID: req.UserID, Channel: legacyChannel, BotID: legacyBotID, SecretEnc: legacySecretEnc,
+		Channels: string(channelsJSON), ChannelConfigs: string(configsJSON),
 		LLMOverride: overrideEnc, ImageTag: imageTag, State: "creating",
 	})
 	if errors.Is(err, repo.ErrUserExists) {
@@ -130,19 +217,25 @@ func (s *Server) handleDeleteContainer(w http.ResponseWriter, r *http.Request) {
 }
 
 type containerView struct {
-	UserID           string     `json:"userId"`
-	Channel          string     `json:"channel"`
-	State            string     `json:"state"`
-	ImageTag         string     `json:"imageTag"`
-	CPUPercent       float64    `json:"cpuPercent"`
-	MemMiB           int        `json:"memMiB"`
-	ChannelConnected bool       `json:"channelConnected"`
-	LastActiveAt     *time.Time `json:"lastActiveAt,omitempty"`
-	ReapInSeconds    *int64     `json:"reapInSeconds,omitempty"`
+	UserID           string                      `json:"userId"`
+	Channel          string                      `json:"channel"`          // DEPRECATED
+	Channels         []string                    `json:"channels"`         // enabled channel IDs
+	ChannelStatuses  map[string]channelStatusView `json:"channelStatuses"`  // per-channel connection state
+	State            string                      `json:"state"`
+	ImageTag         string                      `json:"imageTag"`
+	CPUPercent       float64                     `json:"cpuPercent"`
+	MemMiB           int                         `json:"memMiB"`
+	ChannelConnected bool                        `json:"channelConnected"` // DEPRECATED: true if any connected
+	LastActiveAt     *time.Time                  `json:"lastActiveAt,omitempty"`
+	ReapInSeconds    *int64                      `json:"reapInSeconds,omitempty"`
 	// Per-user resource overrides (empty = inherit global). For the override editor.
 	MemLimit      string `json:"memLimit"`
 	CPULimit      string `json:"cpuLimit"`
 	RestartPolicy string `json:"restartPolicy"`
+}
+
+type channelStatusView struct {
+	Connected bool `json:"connected"`
 }
 
 // handleListContainers returns the user list merged with live state and the
@@ -169,8 +262,10 @@ func (s *Server) handleListContainers(w http.ResponseWriter, r *http.Request) {
 
 	views := make([]containerView, 0, len(users))
 	for _, u := range users {
+		chs, chStatuses := parseChannels(u.Channels, u.Channel)
 		v := containerView{
 			UserID: u.UserID, Channel: driver.NormalizeChannel(u.Channel),
+			Channels: chs, ChannelStatuses: chStatuses,
 			State: u.State, ImageTag: u.ImageTag,
 			MemLimit: u.MemLimit, CPULimit: u.CPULimit, RestartPolicy: u.RestartPolicy,
 		}
@@ -193,6 +288,19 @@ func (s *Server) fillMetrics(v *containerView, userID string) {
 		v.CPUPercent = snap.CPUPercent
 		v.MemMiB = snap.MemMiB
 		v.ChannelConnected = snap.ChannelConnected
+			if snap.ChannelStatuses != nil {
+				for ch, connected := range snap.ChannelStatuses {
+					if v.ChannelStatuses == nil {
+						v.ChannelStatuses = map[string]channelStatusView{}
+					}
+					// Map OpenClaw internal IDs back to user-facing IDs
+					displayCh := ch
+					if ch == "openclaw-weixin" {
+						displayCh = "wechat"
+					}
+					v.ChannelStatuses[displayCh] = channelStatusView{Connected: connected}
+				}
+			}
 		if !snap.Healthy {
 			v.State = "unhealthy"
 		}
@@ -276,14 +384,13 @@ func (s *Server) handleQRCode(w http.ResponseWriter, r *http.Request) {
 	// Already logged in? Don't (re)trigger login — that would keep rotating QR
 	// codes and risk a duplicate session. Report connected and skip the QR.
 	if statusOut, serr := s.drv.Exec(r.Context(), userID, "openclaw", "channels", "status", "--json"); serr == nil {
-		if st, perr := gateway.ParseStatus([]byte(statusOut)); perr == nil && st.ChannelConnected {
-			writeJSON(w, http.StatusOK, map[string]any{
-				"userId":    userID,
-				"connected": true,
-				"loginUrl":  "",
-				"raw":       "",
-			})
-			return
+		if st, perr := gateway.ParseStatus([]byte(statusOut)); perr == nil {
+			if connected, ok := st.ChannelStatuses["openclaw-weixin"]; ok && connected {
+				writeJSON(w, http.StatusOK, map[string]any{
+					"userId": userID, "connected": true, "loginUrl": "", "raw": "",
+				})
+				return
+			}
 		}
 	}
 
@@ -314,6 +421,257 @@ func tailLines(s string, n int) string {
 	return strings.Join(lines, "\n")
 }
 
+// normalizeLegacyChannel returns the legacy channel: explicit channel first, then first from list, then default.
+func normalizeLegacyChannel(channel string, channels []string) string {
+	if channel != "" {
+		return driver.NormalizeChannel(channel)
+	}
+	if len(channels) > 0 {
+		return channels[0]
+	}
+	return driver.DefaultChannel
+}
+
+// --- Channel helpers ---
+
+// parseChannels extracts channel list and default statuses from stored JSON.
+func parseChannels(channelsJSON, legacyChannel string) ([]string, map[string]channelStatusView) {
+	chs := []string{}
+	if channelsJSON != "" {
+		json.Unmarshal([]byte(channelsJSON), &chs)
+	}
+	if len(chs) == 0 && legacyChannel != "" {
+		chs = []string{driver.NormalizeChannel(legacyChannel)}
+	}
+	if chs == nil {
+		chs = []string{}
+	}
+	statuses := map[string]channelStatusView{}
+	for _, ch := range chs {
+		statuses[ch] = channelStatusView{Connected: false} // updated by collector
+	}
+	return chs, statuses
+}
+
+// channelConfigsDecoded decrypts secrets in channel configs for runtime injection.
+func channelConfigsDecoded(enc map[string]json.RawMessage) map[string]json.RawMessage {
+	out := map[string]json.RawMessage{}
+	for ch, cfg := range enc {
+		out[ch] = cfg // caller handles decryption per context
+	}
+	return out
+}
+
+// handleGetContainer returns a single user's details (channels + config metadata).
+func (s *Server) handleGetContainer(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("userId")
+	u, err := s.store.GetUser(userID)
+	if errors.Is(err, repo.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, 40401, "user not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, 50001, "get user")
+		return
+	}
+	chs, _ := parseChannels(u.Channels, u.Channel)
+	cfgs := map[string]any{}
+	if u.ChannelConfigs != "" {
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(u.ChannelConfigs), &raw); err == nil {
+			for ch, cfg := range raw {
+				if ch == driver.ChannelWeCom {
+					var w struct {
+						BotID  string `json:"botId"`
+						Secret string `json:"secret"`
+					}
+					if err := json.Unmarshal(cfg, &w); err == nil {
+						cfgs[ch] = map[string]any{
+							"botId":            w.BotID,
+							"secretConfigured": w.Secret != "",
+						}
+						continue
+					}
+				}
+				cfgs[ch] = map[string]any{}
+			}
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"userId":          u.UserID,
+		"channels":        chs,
+		"channelConfigs":  cfgs,
+		"state":           u.State,
+		"imageTag":        u.ImageTag,
+	})
+}
+
+// handleUpdateChannels updates a user's channel configuration via hot reload.
+func (s *Server) handleUpdateChannels(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("userId")
+	var req createRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, 40001, "invalid request body")
+		return
+	}
+	if len(req.Channels) == 0 {
+		writeErr(w, http.StatusBadRequest, 40001, "channels must not be empty")
+		return
+	}
+	for _, ch := range req.Channels {
+		if !driver.IsValidChannel(ch) {
+			writeErr(w, http.StatusBadRequest, 40001, "invalid channel: "+ch)
+			return
+		}
+	}
+	u, err := s.store.GetUser(userID)
+	if errors.Is(err, repo.ErrNotFound) {
+		writeErr(w, http.StatusNotFound, 40401, "user not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, 50001, "get user")
+		return
+	}
+
+	// Diff: compare new channels vs stored channels
+	var oldChannels []string
+	oldConfigs := map[string]json.RawMessage{}
+	if u.Channels != "" {
+		json.Unmarshal([]byte(u.Channels), &oldChannels)
+	}
+	if u.ChannelConfigs != "" {
+		json.Unmarshal([]byte(u.ChannelConfigs), &oldConfigs)
+	}
+	// Merge legacy channel if present
+	if len(oldChannels) == 0 && u.Channel != "" {
+		oldChannels = []string{driver.NormalizeChannel(u.Channel)}
+	}
+
+	// Build new configs with encrypted secrets (merge old secrets when field is empty)
+	newConfigs := map[string]json.RawMessage{}
+	if req.ChannelConfigs != nil {
+		for ch, cfgBytes := range req.ChannelConfigs {
+			newConfigs[ch] = s.mergeChannelConfig(ch, cfgBytes, oldConfigs[ch])
+		}
+	}
+
+	channelsJSON, _ := json.Marshal(req.Channels)
+	configsJSON, _ := json.Marshal(newConfigs)
+
+	// Write openclaw.json via ExecStdin (hot reload)
+	oclConfig := map[string]any{}
+	for _, ch := range req.Channels {
+		ocID := map[string]string{"wecom": "wecom", "wechat": "openclaw-weixin"}[ch]
+		if ocID == "" {
+			ocID = ch
+		}
+		oclConfig[ocID] = s.openclawChannelConfig(ch, newConfigs[ch])
+	}
+	oclJSON, err := json.Marshal(oclConfig)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, 50001, "marshal channel config")
+		return
+	}
+	if _, err := s.drv.ExecStdin(r.Context(), userID, strings.NewReader(string(oclJSON)),
+		"node", "/opt/muad/inject-channels.mjs"); err != nil {
+		writeErr(w, http.StatusInternalServerError, 50001, "apply channel config failed: "+err.Error())
+		return
+	}
+
+	// Update DB
+	legacyChannel := req.Channels[0]
+	legacyBotID := ""
+	legacySecretEnc := ""
+	if cfg, ok := newConfigs[driver.ChannelWeCom]; ok {
+		var w struct {
+			BotID  string `json:"botId"`
+			Secret string `json:"secret"`
+		}
+		if err := json.Unmarshal(cfg, &w); err == nil {
+			legacyBotID = w.BotID
+			legacySecretEnc = w.Secret
+		}
+	}
+	if legacySecretEnc == "" {
+		legacySecretEnc, _ = s.cipher.Encrypt("")
+	}
+	if err := s.store.UpdateUserChannels(userID, string(channelsJSON), string(configsJSON), legacyChannel, legacyBotID, legacySecretEnc); err != nil {
+		writeErr(w, http.StatusInternalServerError, 50001, "update user channels: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"userId":   userID,
+		"channels": req.Channels,
+		"applied":  true,
+	})
+}
+
+// mergeChannelConfig merges new credentials with old: if a field is empty, keep the old value.
+func (s *Server) mergeChannelConfig(ch string, newCfg, oldCfg json.RawMessage) json.RawMessage {
+	var old map[string]string
+	if oldCfg != nil {
+		json.Unmarshal(oldCfg, &old)
+	}
+	var nu map[string]string
+	if err := json.Unmarshal(newCfg, &nu); err != nil {
+		return newCfg
+	}
+	merged := map[string]string{}
+	for k, v := range nu {
+		merged[k] = v
+	}
+	// For wecom: if secret is empty, keep old encrypted secret; re-encrypt if new value
+	if ch == driver.ChannelWeCom {
+		if nu["secret"] == "" && old["secret"] != "" {
+			merged["secret"] = old["secret"] // keep old encrypted value
+		} else if nu["secret"] != "" {
+			enc, err := s.cipher.Encrypt(nu["secret"])
+			if err == nil {
+				merged["secret"] = enc
+			}
+		}
+		// For wecom, also keep old botId if new is empty
+		if nu["botId"] == "" && old["botId"] != "" {
+			merged["botId"] = old["botId"]
+		}
+	}
+	out, _ := json.Marshal(merged)
+	return json.RawMessage(out)
+}
+
+// openclawChannelConfig builds the openclaw.json channels entry for a channel.
+func (s *Server) openclawChannelConfig(ch string, cfg json.RawMessage) map[string]any {
+	// Map internal channel id → openclaw channel id
+	ocID := map[string]string{"wecom": "wecom", "wechat": "openclaw-weixin"}[ch]
+	if ocID == "" {
+		ocID = ch
+	}
+	out := map[string]any{
+		"enabled": true,
+	}
+	if ch == driver.ChannelWeCom {
+		var w struct {
+			BotID  string `json:"botId"`
+			Secret string `json:"secret"`
+		}
+		if err := json.Unmarshal(cfg, &w); err == nil {
+			if w.BotID != "" {
+				out["botId"] = w.BotID
+			}
+			if w.Secret != "" {
+				// Secret is encrypted in DB; decrypt for openclaw.json
+				plain, err := s.cipher.Decrypt(w.Secret)
+				if err == nil {
+					out["secret"] = plain
+				}
+			}
+		}
+	}
+	return out
+}
+
 // --- LLM assembly helpers ---
 
 // buildSpec assembles the driver spec with the effective (decrypted) LLM and
@@ -329,8 +687,9 @@ func (s *Server) buildSpec(req createRequest, imageTag string) (driver.UserSpec,
 		return driver.UserSpec{}, err
 	}
 	return driver.UserSpec{
-		UserID: req.UserID, Channel: driver.NormalizeChannel(req.Channel),
+		UserID: req.UserID, Channel: normalizeLegacyChannel(req.Channel, req.Channels),
 		BotID: req.BotID, Secret: req.Secret,
+		Channels: req.Channels, ChannelConfigs: req.ChannelConfigs,
 		ImageTag: imageTag, LLM: eff,
 		MemLimit: mem, CPULimit: cpu, RestartPolicy: restart,
 	}, nil

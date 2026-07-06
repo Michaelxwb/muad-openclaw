@@ -184,8 +184,9 @@ func (d *K8sDriver) deployment(spec UserSpec, name string) *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					Volumes: vols,
 					Containers: []corev1.Container{{
-						Name:    "openclaw",
-						Image:   spec.ImageTag,
+						Name:            "openclaw",
+						Image:           spec.ImageTag,
+						ImagePullPolicy: corev1.PullIfNotPresent,
 						EnvFrom: []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: name + "-env"}}}},
 						Env: []corev1.EnvVar{
 							{Name: "TZ", Value: "Asia/Shanghai"},
@@ -354,6 +355,31 @@ func (d *K8sDriver) Logs(ctx context.Context, userID string, tail int) (string, 
 }
 
 // Exec runs a command in the worker pod and returns combined stdout.
+// ExecStdin runs a command in the worker pod with stdin piped from the reader.
+func (d *K8sDriver) ExecStdin(ctx context.Context, userID string, stdin io.Reader, cmd ...string) (string, error) {
+	if d.restConfig == nil {
+		return "", fmt.Errorf("k8s: exec unavailable (no rest config)")
+	}
+	pod, err := d.podName(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	req := d.client.CoreV1().RESTClient().Post().
+		Resource("pods").Name(pod).Namespace(d.namespace).SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Command: cmd, Stdout: true, Stderr: true, Stdin: true,
+		}, scheme.ParameterCodec)
+	exec, err := remotecommand.NewSPDYExecutor(d.restConfig, "POST", req.URL())
+	if err != nil {
+		return "", err
+	}
+	var stdout, stderr bytes.Buffer
+	if err := exec.StreamWithContext(ctx, remotecommand.StreamOptions{Stdout: &stdout, Stderr: &stderr, Stdin: stdin}); err != nil {
+		return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return stdout.String(), nil
+}
+
 func (d *K8sDriver) Exec(ctx context.Context, userID string, cmd ...string) (string, error) {
 	if d.restConfig == nil {
 		return "", fmt.Errorf("k8s: exec unavailable (no rest config)")
