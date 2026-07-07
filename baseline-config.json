@@ -42,10 +42,5 @@
       "extraDirs": ["/opt/openclaw-skills"],
       "watch": true
     }
-  },
-  "agents": {
-    "defaults": {
-      "systemPrompt": "You serve the same user across multiple chat platforms (WeChat, WeCom). Each platform is a separate session, but the person is the same. Always check your memory first before asking for name or preferences. When you learn new information, save it to memory immediately. If you don't recognize the user, check memory for their identity before introducing yourself."
-    }
   }
 }
