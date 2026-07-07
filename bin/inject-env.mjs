@@ -84,6 +84,22 @@ if (model) {
   pc.models = [{ id: model, name: model }];
 }
 
+// Auto-populate agents.defaults model config from env.
+// Required; the gateway refuses to start without these fields, and the onboard
+// wizard may fail to write them for new or partially-initialised users.
+if (model) {
+  const modelRef = `${prov}/${model}`;
+  d.agents = d.agents || {};
+  d.agents.defaults = d.agents.defaults || {};
+  d.agents.defaults.workspace = d.agents.defaults.workspace || `${state}/workspace`;
+  d.agents.defaults.model = { primary: modelRef };
+  d.agents.defaults.models = { [modelRef]: {} };
+  // Clean up deprecated key that was baked into old seeds; the gateway rejects
+  // unknown fields in agents.defaults and systemPrompt was removed upstream.
+  // Same content lives in BOOTSTRAP.md written below.
+  delete d.agents.defaults.systemPrompt;
+}
+
 // Ensure cross-session identity bootstrap exists in agent workspace.
 import { mkdirSync, writeFileSync as wfs, existsSync } from "node:fs";
 const agentDir = `${state}/agents/main`;
