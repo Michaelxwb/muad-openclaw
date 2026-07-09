@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1368" viewBox="0 0 2048 1368" role="img" aria-labelledby="title desc">
+  <title id="title">muad-openclaw K8S 架构图</title>
+  <desc id="desc">展示管理员、内部用户、外部客户、muad Console、K8S 用户工作空间、业务系统与 LLM 的控制链路和消息链路。</desc>
+  <defs>
+    <marker id="arrow-control" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-message" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-data" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrow-session" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#ea580c"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { fill: #0f172a; font: 700 44px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .subtitle { fill: #475569; font: 400 22px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .section-title { fill: #0f172a; font: 700 26px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .label { fill: #0f172a; font: 700 24px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .small { fill: #475569; font: 400 18px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .tiny { fill: #64748b; font: 400 16px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .legend { fill: #334155; font: 400 18px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .area { stroke: #cbd5e1; stroke-width: 2; rx: 28; }
+      .card { stroke: #94a3b8; stroke-width: 2; rx: 18; filter: url(#shadow); }
+      .inner { stroke: #cbd5e1; stroke-width: 2; rx: 14; }
+      .control { fill: none; stroke: #2563eb; stroke-width: 4; marker-end: url(#arrow-control); }
+      .message { fill: none; stroke: #16a34a; stroke-width: 4; marker-end: url(#arrow-message); }
+      .data { fill: none; stroke: #7c3aed; stroke-width: 4; marker-end: url(#arrow-data); }
+      .session { fill: none; stroke: #ea580c; stroke-width: 4; marker-end: url(#arrow-session); }
+      .dash { stroke-dasharray: 12 10; }
+      .thin { stroke-width: 3; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="2048" height="1368"/>
+
+  <text x="72" y="76" class="title">muad-openclaw K8S 架构图（100 用户）</text>
+  <text x="72" y="116" class="subtitle">控制链路、内部企业微信协作、外部微信客户触达、每用户独立 OpenClaw Worker</text>
+
+  <g transform="translate(1380 58)">
+    <line x1="0" y1="0" x2="72" y2="0" class="control thin"/>
+    <text x="88" y="7" class="legend">控制链路</text>
+    <line x1="230" y1="0" x2="302" y2="0" class="message thin"/>
+    <text x="318" y="7" class="legend">消息链路</text>
+    <line x1="460" y1="0" x2="532" y2="0" class="data thin dash"/>
+    <text x="548" y="7" class="legend">数据 / 模型调用</text>
+  </g>
+
+  <!-- External users and services -->
+  <rect x="64" y="160" width="1920" height="268" class="area" fill="#eef6ff"/>
+  <text x="96" y="204" class="section-title">外部角色与入口</text>
+
+  <rect x="108" y="240" width="270" height="118" class="card" fill="#dbeafe"/>
+  <text x="243" y="289" text-anchor="middle" class="label">管理员</text>
+  <text x="243" y="323" text-anchor="middle" class="small">浏览器访问 Console</text>
+
+  <rect x="468" y="240" width="270" height="118" class="card" fill="#dcfce7"/>
+  <text x="603" y="284" text-anchor="middle" class="label">内部用户</text>
+  <text x="603" y="318" text-anchor="middle" class="small">企业员工 / 运营人员</text>
+
+  <rect x="795" y="240" width="270" height="118" class="card" fill="#dcfce7"/>
+  <text x="930" y="284" text-anchor="middle" class="label">企业微信</text>
+  <text x="930" y="318" text-anchor="middle" class="small">内部协作通道</text>
+
+  <rect x="1138" y="240" width="270" height="118" class="card" fill="#fef3c7"/>
+  <text x="1273" y="284" text-anchor="middle" class="label">外部客户</text>
+  <text x="1273" y="318" text-anchor="middle" class="small">微信里发起服务请求</text>
+
+  <rect x="1456" y="240" width="240" height="118" class="card" fill="#fef3c7"/>
+  <text x="1576" y="284" text-anchor="middle" class="label">微信</text>
+  <text x="1576" y="318" text-anchor="middle" class="small">客户触达通道</text>
+
+  <rect x="1750" y="240" width="190" height="118" class="card" fill="#ede9fe"/>
+  <text x="1845" y="284" text-anchor="middle" class="label">LLM 供应商</text>
+  <text x="1845" y="318" text-anchor="middle" class="small">远端推理</text>
+
+  <!-- K8S cluster -->
+  <rect x="64" y="492" width="1920" height="630" class="area" fill="#f1f5f9"/>
+  <text x="96" y="536" class="section-title">K8S 集群（muad namespace）</text>
+
+  <rect x="112" y="594" width="532" height="390" class="card" fill="#e0f2fe"/>
+  <text x="378" y="640" text-anchor="middle" class="label">muad Console 控制平面</text>
+
+  <rect x="152" y="684" width="198" height="96" class="inner" fill="#ffffff"/>
+  <text x="251" y="724" text-anchor="middle" class="label">Console 前端</text>
+  <text x="251" y="754" text-anchor="middle" class="small">管理员 UI</text>
+
+  <rect x="406" y="684" width="198" height="96" class="inner" fill="#ffffff"/>
+  <text x="505" y="724" text-anchor="middle" class="label">Console 后端</text>
+  <text x="505" y="754" text-anchor="middle" class="small">API / 鉴权 / 审计</text>
+
+  <rect x="152" y="842" width="198" height="96" class="inner" fill="#ffffff"/>
+  <text x="251" y="882" text-anchor="middle" class="label">SQLite PVC</text>
+  <text x="251" y="912" text-anchor="middle" class="small">配置 / 审计 / 凭据密文</text>
+
+  <rect x="406" y="842" width="198" height="96" class="inner" fill="#ffffff"/>
+  <text x="505" y="882" text-anchor="middle" class="label">K8S API Client</text>
+  <text x="505" y="912" text-anchor="middle" class="small">受限 RBAC</text>
+
+  <rect x="725" y="594" width="936" height="390" class="card" fill="#ecfdf5"/>
+  <text x="1193" y="640" text-anchor="middle" class="label">用户工作空间（每用户一组，×100）</text>
+
+  <g transform="translate(772 682)">
+    <rect x="0" y="0" width="250" height="240" class="inner" fill="#ffffff"/>
+    <text x="125" y="44" text-anchor="middle" class="label">Worker A</text>
+    <text x="125" y="78" text-anchor="middle" class="small">OpenClaw Worker Pod</text>
+    <rect x="32" y="102" width="186" height="38" rx="10" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
+    <text x="125" y="127" text-anchor="middle" class="small">Skill Runtime</text>
+    <rect x="32" y="150" width="186" height="38" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+    <text x="125" y="175" text-anchor="middle" class="small">Session Manager</text>
+    <rect x="32" y="198" width="186" height="34" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="125" y="219" text-anchor="middle" class="tiny">State PVC / Session Store</text>
+  </g>
+
+  <g transform="translate(1080 682)">
+    <rect x="0" y="0" width="250" height="240" class="inner" fill="#ffffff"/>
+    <text x="125" y="44" text-anchor="middle" class="label">Worker B</text>
+    <text x="125" y="78" text-anchor="middle" class="small">OpenClaw Worker Pod</text>
+    <rect x="32" y="102" width="186" height="38" rx="10" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
+    <text x="125" y="127" text-anchor="middle" class="small">Skill Runtime</text>
+    <rect x="32" y="150" width="186" height="38" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+    <text x="125" y="175" text-anchor="middle" class="small">Session Manager</text>
+    <rect x="32" y="198" width="186" height="34" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="125" y="219" text-anchor="middle" class="tiny">State PVC / Session Store</text>
+  </g>
+
+  <g transform="translate(1388 682)">
+    <rect x="0" y="0" width="220" height="240" class="inner" fill="#ffffff"/>
+    <text x="110" y="50" text-anchor="middle" class="label">...</text>
+    <text x="110" y="88" text-anchor="middle" class="small">Worker N</text>
+    <text x="110" y="122" text-anchor="middle" class="small">Skill Runtime</text>
+    <text x="110" y="154" text-anchor="middle" class="small">Session Manager</text>
+    <text x="110" y="186" text-anchor="middle" class="small">Session Store</text>
+    <text x="110" y="218" text-anchor="middle" class="small">独立资源上限</text>
+  </g>
+
+  <rect x="920" y="934" width="550" height="86" class="inner" fill="#f0fdf4"/>
+  <text x="1195" y="968" text-anchor="middle" class="label">Public Skills PVC（只读）</text>
+  <text x="1195" y="998" text-anchor="middle" class="small">Public Skills / Session Manager 说明</text>
+
+  <!-- Enterprise systems -->
+  <rect x="64" y="1180" width="1430" height="132" class="area" fill="#fff7ed"/>
+  <text x="96" y="1225" class="section-title">企业业务系统 / 内网依赖</text>
+  <text x="96" y="1266" class="tiny">token API / cookie API / health check</text>
+  <rect x="400" y="1228" width="150" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+  <text x="475" y="1262" text-anchor="middle" class="small">SOAR</text>
+  <rect x="610" y="1228" width="170" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+  <text x="695" y="1262" text-anchor="middle" class="small">Sea_SOAR</text>
+  <rect x="840" y="1228" width="150" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+  <text x="915" y="1262" text-anchor="middle" class="small">MSSW</text>
+  <rect x="1050" y="1228" width="150" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+  <text x="1125" y="1262" text-anchor="middle" class="small">XDR</text>
+  <rect x="1260" y="1228" width="150" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+  <text x="1335" y="1262" text-anchor="middle" class="small">SDSP</text>
+
+  <rect x="1560" y="1180" width="424" height="132" class="area" fill="#f5f3ff"/>
+  <text x="1592" y="1225" class="section-title">远端模型服务</text>
+  <text x="1772" y="1272" text-anchor="middle" class="small">DeepSeek / OpenAI Compatible / 其他供应商</text>
+
+  <!-- Arrows: control -->
+  <path d="M243 358 C243 468, 251 550, 251 684" class="control"/>
+  <path d="M505 780 L505 842" class="control thin"/>
+  <path d="M604 890 C650 890, 700 830, 772 830" class="control"/>
+
+  <!-- Arrows: message -->
+  <path d="M738 299 L795 299" class="message"/>
+  <path d="M930 358 C930 498, 920 604, 902 682" class="message"/>
+  <path d="M1408 299 L1456 299" class="message"/>
+  <path d="M1576 358 C1576 510, 1485 604, 1498 682" class="message"/>
+
+  <!-- Arrows: skills and state -->
+  <path d="M1040 934 C1015 900, 990 860, 965 834" class="data dash thin"/>
+  <path d="M1195 934 C1195 900, 1200 860, 1205 834" class="data dash thin"/>
+  <path d="M1350 934 C1410 900, 1464 860, 1498 834" class="data dash thin"/>
+
+  <!-- Arrows: model and business calls -->
+  <path d="M1400 760 C1600 760, 1760 572, 1845 358" class="data"/>
+  <path d="M1195 922 C1160 1050, 825 1148, 695 1228" class="session"/>
+  <path d="M902 922 C820 1050, 580 1148, 475 1228" class="session dash"/>
+
+  <!-- Return labels -->
+  <text x="836" y="478" class="tiny">企业微信消息进出</text>
+  <text x="1450" y="478" class="tiny">微信客户消息进出</text>
+  <text x="1526" y="664" class="tiny">Worker 调用模型</text>
+  <text x="804" y="1146" class="tiny">Session Manager 处理业务系统登录态</text>
+  <text x="625" y="808" class="tiny">K8S API 管理 Worker</text>
+</svg>

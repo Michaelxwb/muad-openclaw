@@ -1,0 +1,14 @@
+{
+  "name": "example-long-task",
+  "runtime": "script",
+  "mode": "entrypoint",
+  "progress": { "source": "manual" },
+  "entrypoint": ["bash", "scripts/run.sh"],
+  "steps": [
+    { "id": "accepted", "title": "任务接收" },
+    { "id": "auth", "title": "鉴权" },
+    { "id": "query", "title": "查询数据" },
+    { "id": "analysis", "title": "分析结果" },
+    { "id": "done", "title": "汇总完成" }
+  ]
+}

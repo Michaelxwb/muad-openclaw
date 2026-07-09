@@ -1,0 +1,9 @@
+{
+  "name": "@muad/progress-adapter-openclaw",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/adapter.test.mjs"
+  },
+  "devDependencies": {}
+}

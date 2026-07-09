@@ -1,1 +1,1 @@
-{"session_id": "df031f88-36d1-4b06-8451-ac9fb8946e00", "injected_specs": [], "last_file": "", "prompt_count": 34, "prompt_inject_window": {"__catalog__": 31}}
+{"session_id": "eb8c6425-1c63-4ba4-9829-ad89bb75e9dd", "injected_specs": ["backend/code-quality-performance.md", "backend/database.md", "backend/logging.md"], "last_file": "", "prompt_count": 7, "prompt_inject_window": {"__catalog__": 6, "backend/logging.md": 2, "backend/database.md": 2, "backend/code-quality-performance.md": 2}}

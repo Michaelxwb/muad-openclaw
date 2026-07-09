@@ -1,0 +1,22 @@
+{
+  "name": "@muad/muad-run-skill",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "OpenClaw runner plugin for Muad script skills with progress feedback",
+  "main": "src/index.mjs",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "openclaw": {
+    "extensions": [
+      "./src/index.mjs"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.3.24-beta.2",
+      "minGatewayVersion": "2026.3.24-beta.2"
+    }
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.24-beta.2"
+  }
+}

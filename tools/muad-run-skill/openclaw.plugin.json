@@ -1,0 +1,29 @@
+{
+  "id": "muad-run-skill",
+  "name": "Muad Run Skill",
+  "description": "Runs Muad script skills and forwards progress through OpenClaw tool updates.",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "muad_run_skill"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "skillsRoot": {
+        "type": "string"
+      },
+      "stateDir": {
+        "type": "string"
+      },
+      "timeoutMs": {
+        "type": "number",
+        "minimum": 1000
+      }
+    }
+  }
+}

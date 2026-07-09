@@ -60,3 +60,4 @@ except Exception:
 - **[internal/crypto/crypto.go:68-73]** 敏感字段展示前必须脱敏：`crypto.Mask()` 保留 4 字符前缀，其余替换为 `****`；日志/UI/审计中禁止输出完整 token/secret/API key
 - **[internal/collector/collector.go]** 后台采集循环：worker pool（16 goroutines）+ per-task timeout（3s）+ atomic cache swap；单容器故障不阻塞整个采集周期，stuck probe 超时自动跳过
 - **[internal/gateway/probe.go, console/README.md]** 容器内 openclaw 探针用 `openclaw channels status --json`，**不要**用 `openclaw status --json`——后者请求 `system-presence` 需 `operator.read` scope，token 连接无此 scope 会每个采集周期刷 `missing scope: operator.read` 错误日志（gateway.auth 无 scopes 配置项，无法授权）。channel-status 字段**因通道插件而异**，解析须兼容多形态：企微 `running/lastStartAt`，微信 `lastInboundAt/lastOutboundAt`（最后活跃取三者最大值，连接判断取 `running || configured || 有账号`）
+- **[tools/muad-progress/internal/skillcheck/check.go]** 业务系统类 skill（如 XDR / SOAR / MSS / SDSP / `platform=`）必须接入 `muad-progress`，并在 `SKILL.md` 或脚本中体现 `session-manager` 使用约定。新增或修改这类 skill 后，至少运行 `muad-skill-check` 或对应单元测试，确保没有绕过进度与登录态规范。

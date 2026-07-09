@@ -10,6 +10,7 @@
 - Single responsibility per function (<= 50 lines)
 - No loose typing or silent exception handling
 - Handle errors explicitly
+- 当用户明确说“先对齐 / 先探讨 / 不要着急改代码 / 先给结论”时，先输出方案、风险和建议，不直接编辑代码、构建镜像或部署
 
 ## Forbidden Patterns
 - Hard-coded secrets or credentials
