@@ -12,7 +12,7 @@
   },
   "tools": {
     "profile": "coding",
-    "alsoAllow": ["browser"]
+    "alsoAllow": ["browser", "muad_run_skill"]
   },
   "browser": {
     "enabled": true,
@@ -27,7 +27,10 @@
     "openclaw-weixin": {}
   },
   "plugins": {
-    "allow": ["wecom-openclaw-plugin", "openclaw-weixin"]
+    "allow": ["wecom-openclaw-plugin", "openclaw-weixin", "muad-run-skill"],
+    "load": {
+      "paths": ["/opt/muad/muad-run-skill"]
+    }
   },
   "models": {
     "providers": {

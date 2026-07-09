@@ -48,7 +48,26 @@ const PLUGIN_BY_CH = {
   wechat: "openclaw-weixin",
 };
 d.plugins = d.plugins || {};
-d.plugins.allow = channels.map((c) => PLUGIN_BY_CH[c]).filter(Boolean);
+d.plugins.allow = [...channels.map((c) => PLUGIN_BY_CH[c]).filter(Boolean), "muad-run-skill"];
+d.plugins.load = d.plugins.load || {};
+const loadPaths = Array.isArray(d.plugins.load.paths) ? d.plugins.load.paths : [];
+if (!loadPaths.includes("/opt/muad/muad-run-skill")) {
+  loadPaths.push("/opt/muad/muad-run-skill");
+}
+d.plugins.load.paths = loadPaths;
+
+// The coding tool profile removes plugin tools by default. Keep the generic
+// Muad skill runner visible so /skill requests can call it instead of falling
+// back to raw exec/read attempts.
+d.tools = d.tools || {};
+d.tools.profile = d.tools.profile || "coding";
+const alsoAllow = Array.isArray(d.tools.alsoAllow) ? d.tools.alsoAllow : [];
+for (const toolName of ["browser", "muad_run_skill"]) {
+  if (!alsoAllow.includes(toolName)) {
+    alsoAllow.push(toolName);
+  }
+}
+d.tools.alsoAllow = alsoAllow;
 
 // Per-channel credentials from CHANNEL_CONFIGS JSON, with legacy fallback.
 const configsStr = v(E.CHANNEL_CONFIGS);

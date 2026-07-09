@@ -15,13 +15,27 @@ description: 【骨架·待补】MSS/SOAR 平台操作能力。用户需要在 S
 
 ## 前置 / 凭证
 
-〔TODO：平台地址、鉴权方式。凭证走外部面 env（不写进 skill），如 `SOAR_BASE_URL` / `SOAR_TOKEN`，
-在 users/<user>/config 里加，由 entrypoint 注入容器 env，本 skill 的脚本从 env 读取。〕
+本 skill 绑定 `platform=soar`。需要访问 SOAR/MSS 时，先通过 session-manager 获取或复用
+`/home/node/.openclaw/session-store/soar/cookies.json` 中的 Cookie；Cookie 不写入 skill 文件、不走
+Console 凭证管理，也不从 `SOAR_TOKEN` 这类 env 读取。
+
+当前为 mock skill：真实业务脚本补齐前，只描述“读取 Cookie -> 调 SOAR/MSS API 或浏览器操作”的流程。
 
 ## 操作步骤
 
 〔TODO：把 mss/soar 的核心操作写成可执行步骤。优先用 scripts/ 里的脚本封装真实 API 调用，
-SKILL.md 负责"何时调哪个脚本、参数怎么给、结果怎么解读"。〕
+脚本先调用 session-manager 或读取已复用的 cookie.json，再访问平台 API。SKILL.md 负责"何时调哪个脚本、
+参数怎么给、结果怎么解读"。〕
+
+长耗时操作必须通过 `muad-progress` 上报用户可见进度，避免企微/微信用户长时间无反馈。建议阶段：
+
+1. `accepted`：已收到请求，开始处理
+2. `auth`：正在检查 SOAR/MSS 登录态
+3. `query`：正在查询 SOAR/MSS 数据
+4. `analysis`：正在分析结果
+5. `done` / `error`：处理完成或返回用户可理解错误
+
+进度文案不得包含 Cookie、token、内部 URL、SQL、堆栈或原始 SDK 错误。
 
 示例结构（占位）：
 1. 查询类：`scripts/soar_query.<sh|py|mjs> <type> <args>` → 返回 JSON
