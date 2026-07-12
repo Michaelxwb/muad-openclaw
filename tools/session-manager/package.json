@@ -1,0 +1,41 @@
+{
+  "name": "@muad/session-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "openclaw-plugin.mjs",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "session-manager": "dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "26.0.1",
+    "typescript": "5.9.3"
+  },
+  "openclaw": {
+    "extensions": [
+      "./openclaw-plugin.mjs"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.3.24-beta.2",
+      "minGatewayVersion": "2026.3.24-beta.2"
+    }
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.24-beta.2"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  }
+}

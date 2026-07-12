@@ -1,0 +1,26 @@
+.section {
+  padding-bottom: 4px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 140px minmax(220px, 420px);
+  gap: 10px 12px;
+  align-items: center;
+}
+
+.formGrid label {
+  color: var(--semi-color-text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 800px) {
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .formGrid > div:empty {
+    display: none;
+  }
+}

@@ -7,7 +7,6 @@ import (
 	"io"
 	"strings"
 	"time"
-	"unicode"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,8 +22,8 @@ import (
 	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
-// K8sDriver runs each user's openclaw worker as a single-replica Deployment in
-// one namespace, with a per-user PVC (state) + Secret (env) and an optional
+// K8sDriver runs each multi-user Pod as a single-replica Deployment in one
+// namespace, with a per-Pod PVC, runtime env Secret, service-token Secret, and
 // shared read-only skills PVC. The console reaches workers via the k8s API
 // (exec/logs); workers expose no Service (channels are outbound).
 //
@@ -37,7 +36,7 @@ type K8sDriver struct {
 	namespace    string
 	skillsPVC    string // shared RWX claim name, mounted read-only (optional)
 	storageClass string // for per-user state PVC (optional → cluster default)
-	stateSize    string // per-user state PVC size, e.g. "5Gi"
+	stateSize    string // per-Pod state PVC size, e.g. "5Gi"
 }
 
 // K8sOptions configures the cluster driver.
@@ -83,26 +82,44 @@ func NewK8sDriver(o K8sOptions) (*K8sDriver, error) {
 
 func ptr[T any](v T) *T { return &v }
 
-func (d *K8sDriver) labels(userID string) map[string]string {
-	return map[string]string{"app": "muad-oc", "muad-user": userID}
+func (d *K8sDriver) labels(podID string) map[string]string {
+	return map[string]string{"app": "muad-oc", "muad-pod": podID}
 }
 
-// Create provisions the per-user PVC + Secret + Deployment (idempotent upsert).
-func (d *K8sDriver) Create(ctx context.Context, spec UserSpec, gatewayToken string) error {
-	name := ContainerName(spec.UserID)
-	if err := d.ensureStatePVC(ctx, spec.UserID); err != nil {
+// Create provisions the per-Pod PVC, Secrets, and Deployment.
+func (d *K8sDriver) Create(ctx context.Context, spec PodSpec) error {
+	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
+		return ErrInvalidPodSpec
+	}
+	if spec.MultiUser.Version != 0 {
+		if err := spec.Validate(); err != nil {
+			return err
+		}
+	}
+	name := ContainerName(spec.PodID)
+	if err := d.ensureStatePVC(ctx, spec.PodID, spec.AdoptState); err != nil {
 		return err
 	}
-	if err := d.upsertSecret(ctx, spec, gatewayToken); err != nil {
+	if err := d.upsertEnvSecret(ctx, spec); err != nil {
+		return err
+	}
+	if err := d.upsertServiceTokenSecret(ctx, spec); err != nil {
 		return err
 	}
 	return d.upsertDeployment(ctx, spec, name)
 }
 
-func (d *K8sDriver) ensureStatePVC(ctx context.Context, userID string) error {
-	name := ContainerName(userID) + "-state"
-	if _, err := d.client.CoreV1().PersistentVolumeClaims(d.namespace).Get(ctx, name, metav1.GetOptions{}); err == nil {
-		return nil // already exists; keep state
+func (d *K8sDriver) ensureStatePVC(ctx context.Context, podID string, adopt bool) error {
+	name := ContainerName(podID) + "-state"
+	api := d.client.CoreV1().PersistentVolumeClaims(d.namespace)
+	if pvc, err := api.Get(ctx, name, metav1.GetOptions{}); err == nil {
+		if pvc.Annotations["muad/state-retained"] == "true" && !adopt {
+			return ErrRetainedState
+		}
+		if adopt && pvc.Annotations["muad/state-retained"] == "true" {
+			return d.markPVCRetained(ctx, name, false)
+		}
+		return nil
 	} else if !apierrors.IsNotFound(err) {
 		return err
 	}
@@ -111,7 +128,10 @@ func (d *K8sDriver) ensureStatePVC(ctx context.Context, userID string) error {
 		return fmt.Errorf("k8s: state size %q: %w", d.stateSize, err)
 	}
 	pvc := &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(userID)},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name, Namespace: d.namespace, Labels: d.labels(podID),
+			Annotations: map[string]string{"muad/state-retained": "false"},
+		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources:   corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: qty}},
@@ -120,64 +140,91 @@ func (d *K8sDriver) ensureStatePVC(ctx context.Context, userID string) error {
 	if d.storageClass != "" {
 		pvc.Spec.StorageClassName = ptr(d.storageClass)
 	}
-	_, err = d.client.CoreV1().PersistentVolumeClaims(d.namespace).Create(ctx, pvc, metav1.CreateOptions{})
+	_, err = api.Create(ctx, pvc, metav1.CreateOptions{})
 	if apierrors.IsAlreadyExists(err) {
 		return nil
 	}
 	return err
 }
 
-func (d *K8sDriver) upsertSecret(ctx context.Context, spec UserSpec, gatewayToken string) error {
-	name := ContainerName(spec.UserID) + "-env"
+func (d *K8sDriver) upsertEnvSecret(ctx context.Context, spec PodSpec) error {
+	name := ContainerName(spec.PodID) + "-env"
 	sec := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.UserID)},
-		StringData: BuildEnv(spec, gatewayToken),
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.PodID)},
+		StringData: BuildEnv(spec),
 	}
-	api := d.client.CoreV1().Secrets(d.namespace)
-	if _, err := api.Create(ctx, sec, metav1.CreateOptions{}); apierrors.IsAlreadyExists(err) {
-		_, err = api.Update(ctx, sec, metav1.UpdateOptions{})
-		return err
-	} else {
-		return err
-	}
+	return d.upsertSecret(ctx, sec)
 }
 
-// UpdateSpec rewrites the per-user Secret so a future pod restart boots with
-// the new spec (channels, LLM, image). The running pod's runtime state is
-// already kept in sync via the hot-reload path (ExecStdin → inject-channels.mjs);
-// this only updates the cluster-level Secret. Errors are returned to the
-// caller but are non-fatal at the API layer — see handleUpdateChannels.
+func (d *K8sDriver) upsertServiceTokenSecret(ctx context.Context, spec PodSpec) error {
+	if spec.ServiceToken.Value == "" {
+		return nil
+	}
+	name := ContainerName(spec.PodID) + "-service-token"
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.PodID)},
+		StringData: map[string]string{"pod-service-token": spec.ServiceToken.Value},
+	}
+	return d.upsertSecret(ctx, sec)
+}
+
+func (d *K8sDriver) upsertSecret(ctx context.Context, desired *corev1.Secret) error {
+	api := d.client.CoreV1().Secrets(d.namespace)
+	current, err := api.Get(ctx, desired.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = api.Create(ctx, desired, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	desired.ResourceVersion = current.ResourceVersion
+	_, err = api.Update(ctx, desired, metav1.UpdateOptions{})
+	return err
+}
+
+// UpdateSpec rewrites the per-Pod Secrets so the next rollout boots from the
+// latest desired Runtime DTO and service-token material.
 //
 // If the secret already exists, the existing OPENCLAW_GATEWAY_TOKEN is
 // preserved (re-using the caller's gatewayToken would rotate the token and
 // kick the user's already-connected wecom bot / wechat session offline).
-func (d *K8sDriver) UpdateSpec(ctx context.Context, userID string, spec UserSpec, gatewayToken string) error {
-	name := ContainerName(userID) + "-env"
+func (d *K8sDriver) UpdateSpec(ctx context.Context, podID string, spec PodSpec) error {
+	if podID != spec.PodID {
+		return ErrInvalidPodSpec
+	}
+	name := ContainerName(podID) + "-env"
 	api := d.client.CoreV1().Secrets(d.namespace)
 	// Preserve existing gateway token if the secret already exists.
-	token := gatewayToken
+	token := spec.GatewayToken
 	if cur, err := api.Get(ctx, name, metav1.GetOptions{}); err == nil {
 		if t, ok := cur.Data["OPENCLAW_GATEWAY_TOKEN"]; ok && len(t) > 0 {
 			token = string(t)
+		} else if t := cur.StringData["OPENCLAW_GATEWAY_TOKEN"]; t != "" {
+			token = t
 		}
 	} else if !apierrors.IsNotFound(err) {
 		return err
 	}
 	sec := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(userID)},
-		StringData: BuildEnv(spec, token),
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(podID)},
 	}
-	if _, err := api.Update(ctx, sec, metav1.UpdateOptions{}); apierrors.IsNotFound(err) {
-		// Secret doesn't exist yet — fall back to Create so the path works
-		// even for a partially-provisioned user (e.g. Create failed mid-flight).
-		_, cerr := api.Create(ctx, sec, metav1.CreateOptions{})
-		return cerr
-	} else {
+	spec.GatewayToken = token
+	sec.StringData = BuildEnv(spec)
+	if err := d.upsertSecret(ctx, sec); err != nil {
 		return err
 	}
+	return d.upsertServiceTokenSecret(ctx, spec)
 }
 
-func (d *K8sDriver) upsertDeployment(ctx context.Context, spec UserSpec, name string) error {
+func (d *K8sDriver) UpdateServiceToken(ctx context.Context, podID string, secret SecretFileSpec) error {
+	if !podIDPattern.MatchString(podID) || secret.ContainerPath != PodServiceTokenPath || secret.Value == "" {
+		return ErrInvalidPodSpec
+	}
+	return d.upsertServiceTokenSecret(ctx, PodSpec{PodID: podID, ServiceToken: secret})
+}
+
+func (d *K8sDriver) upsertDeployment(ctx context.Context, spec PodSpec, name string) error {
 	dep := d.deployment(spec, name)
 	api := d.client.AppsV1().Deployments(d.namespace)
 	if _, err := api.Create(ctx, dep, metav1.CreateOptions{}); apierrors.IsAlreadyExists(err) {
@@ -193,12 +240,20 @@ func (d *K8sDriver) upsertDeployment(ctx context.Context, spec UserSpec, name st
 	}
 }
 
-func (d *K8sDriver) deployment(spec UserSpec, name string) *appsv1.Deployment {
+func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 	vols := []corev1.Volume{{
 		Name:         "state",
 		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: name + "-state"}},
 	}}
 	mounts := []corev1.VolumeMount{{Name: "state", MountPath: "/home/node/.openclaw"}}
+	initContainers := []corev1.Container{}
+	if spec.ServiceToken.Value != "" {
+		vols = append(vols, serviceTokenVolumes(name)...)
+		mounts = append(mounts, corev1.VolumeMount{
+			Name: "service-token-runtime", MountPath: "/run/secrets/muad", ReadOnly: true,
+		})
+		initContainers = append(initContainers, serviceTokenInitContainer(spec))
+	}
 	if d.skillsPVC != "" {
 		vols = append(vols, corev1.Volume{
 			Name:         "skills",
@@ -207,17 +262,18 @@ func (d *K8sDriver) deployment(spec UserSpec, name string) *appsv1.Deployment {
 		mounts = append(mounts, corev1.VolumeMount{Name: "skills", MountPath: "/opt/openclaw-skills", ReadOnly: true})
 	}
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.UserID)},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.PodID)},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: ptr(int32(1)),
-			Selector: &metav1.LabelSelector{MatchLabels: d.labels(spec.UserID)},
+			Selector: &metav1.LabelSelector{MatchLabels: d.labels(spec.PodID)},
 			// Recreate (not RollingUpdate): a wecom bot allows only one live
 			// connection; never run old+new pods at once or they mutually kick.
 			Strategy: appsv1.DeploymentStrategy{Type: appsv1.RecreateDeploymentStrategyType},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: d.labels(spec.UserID)},
+				ObjectMeta: metav1.ObjectMeta{Labels: d.labels(spec.PodID)},
 				Spec: corev1.PodSpec{
-					Volumes: vols,
+					Volumes:        vols,
+					InitContainers: initContainers,
 					Containers: []corev1.Container{{
 						Name:            "openclaw",
 						Image:           spec.ImageTag,
@@ -237,61 +293,21 @@ func (d *K8sDriver) deployment(spec UserSpec, name string) *appsv1.Deployment {
 	}
 }
 
-// resourceReqs maps the resolved limits to k8s requests/limits. requests are a
-// conservative idle baseline; limits come from the per-user/global config.
-func resourceReqs(spec UserSpec) corev1.ResourceRequirements {
-	req := corev1.ResourceList{
-		corev1.ResourceCPU:    resource.MustParse("100m"),
-		corev1.ResourceMemory: resource.MustParse("512Mi"),
-	}
-	lim := corev1.ResourceList{}
-	if q, err := resource.ParseQuantity(orDefault(spec.CPULimit, DefaultCPULimit)); err == nil {
-		lim[corev1.ResourceCPU] = q
-	}
-	if m := toK8sMem(orDefault(spec.MemLimit, DefaultMemLimit)); m != "" {
-		if q, err := resource.ParseQuantity(m); err == nil {
-			lim[corev1.ResourceMemory] = q
-		}
-	}
-	return corev1.ResourceRequirements{Requests: req, Limits: lim}
-}
-
-// toK8sMem converts a docker memory string (binary units b/k/m/g) to a k8s
-// quantity (Ki/Mi/Gi). "2g" → "2Gi", "512m" → "512Mi".
-func toK8sMem(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-	switch unicode.ToLower(rune(s[len(s)-1])) {
-	case 'g':
-		return s[:len(s)-1] + "Gi"
-	case 'm':
-		return s[:len(s)-1] + "Mi"
-	case 'k':
-		return s[:len(s)-1] + "Ki"
-	case 'b':
-		return s[:len(s)-1]
-	default:
-		return s // assume bytes
-	}
-}
-
-func (d *K8sDriver) scale(ctx context.Context, userID string, n int32) error {
-	name := ContainerName(userID)
+func (d *K8sDriver) scale(ctx context.Context, podID string, n int32) error {
+	name := ContainerName(podID)
 	patch := []byte(fmt.Sprintf(`{"spec":{"replicas":%d}}`, n))
 	_, err := d.client.AppsV1().Deployments(d.namespace).Patch(ctx, name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
 	return err
 }
 
-func (d *K8sDriver) Start(ctx context.Context, userID string) error  { return d.scale(ctx, userID, 1) }
-func (d *K8sDriver) Stop(ctx context.Context, userID string) error   { return d.scale(ctx, userID, 0) }
-func (d *K8sDriver) Reap(ctx context.Context, userID string) error   { return d.scale(ctx, userID, 0) }
-func (d *K8sDriver) Revive(ctx context.Context, userID string) error { return d.scale(ctx, userID, 1) }
+func (d *K8sDriver) Start(ctx context.Context, podID string) error  { return d.scale(ctx, podID, 1) }
+func (d *K8sDriver) Stop(ctx context.Context, podID string) error   { return d.scale(ctx, podID, 0) }
+func (d *K8sDriver) Reap(ctx context.Context, podID string) error   { return d.scale(ctx, podID, 0) }
+func (d *K8sDriver) Revive(ctx context.Context, podID string) error { return d.scale(ctx, podID, 1) }
 
 // Restart triggers a rollout by bumping a template annotation.
-func (d *K8sDriver) Restart(ctx context.Context, userID string) error {
-	name := ContainerName(userID)
+func (d *K8sDriver) Restart(ctx context.Context, podID string) error {
+	name := ContainerName(podID)
 	patch := []byte(fmt.Sprintf(
 		`{"spec":{"template":{"metadata":{"annotations":{"muad/restartedAt":%q}}}}}`,
 		time.Now().Format(time.RFC3339)))
@@ -301,20 +317,39 @@ func (d *K8sDriver) Restart(ctx context.Context, userID string) error {
 
 // Remove deletes the Deployment + Secret; when !keepState the state PVC too.
 // Idempotent: NotFound is tolerated so orphaned records can still be cleaned up.
-func (d *K8sDriver) Remove(ctx context.Context, userID string, keepState bool) error {
-	name := ContainerName(userID)
+func (d *K8sDriver) Remove(ctx context.Context, podID string, keepState bool) error {
+	name := ContainerName(podID)
 	if err := d.client.AppsV1().Deployments(d.namespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	if err := d.client.CoreV1().Secrets(d.namespace).Delete(ctx, name+"-env", metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
-	if !keepState {
+	if err := d.client.CoreV1().Secrets(d.namespace).Delete(ctx, name+"-service-token", metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	if keepState {
+		if err := d.markPVCRetained(ctx, name+"-state", true); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	} else {
 		if err := d.client.CoreV1().PersistentVolumeClaims(d.namespace).Delete(ctx, name+"-state", metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
 	return nil
+}
+
+func (d *K8sDriver) markPVCRetained(ctx context.Context, name string, retained bool) error {
+	value := "false"
+	if retained {
+		value = "true"
+	}
+	patch := []byte(fmt.Sprintf(`{"metadata":{"annotations":{"muad/state-retained":%q}}}`, value))
+	_, err := d.client.CoreV1().PersistentVolumeClaims(d.namespace).Patch(
+		ctx, name, types.MergePatchType, patch, metav1.PatchOptions{},
+	)
+	return err
 }
 
 // List returns all muad-oc-* worker Deployments with a normalized state.
@@ -326,9 +361,9 @@ func (d *K8sDriver) List(ctx context.Context) ([]ContainerInfo, error) {
 	var out []ContainerInfo
 	for i := range deps.Items {
 		dep := &deps.Items[i]
-		user := dep.Labels["muad-user"]
-		if user == "" {
-			user = strings.TrimPrefix(dep.Name, "muad-oc-")
+		podID := dep.Labels["muad-pod"]
+		if podID == "" {
+			podID = strings.TrimPrefix(dep.Name, "muad-oc-")
 		}
 		img := ""
 		if cs := dep.Spec.Template.Spec.Containers; len(cs) > 0 {
@@ -344,7 +379,7 @@ func (d *K8sDriver) List(ctx context.Context) ([]ContainerInfo, error) {
 		} else if dep.Status.AvailableReplicas >= 1 {
 			state = "running"
 		}
-		out = append(out, ContainerInfo{UserID: user, State: state, ImageTag: img})
+		out = append(out, ContainerInfo{PodID: podID, UserID: podID, State: state, ImageTag: img})
 	}
 	return out, nil
 }
@@ -358,8 +393,8 @@ func (d *K8sDriver) StatsAll(ctx context.Context) (map[string]Stats, error) {
 	out := map[string]Stats{}
 	for i := range list.Items {
 		pm := &list.Items[i]
-		user := pm.Labels["muad-user"]
-		if user == "" {
+		podID := pm.Labels["muad-pod"]
+		if podID == "" {
 			continue
 		}
 		var milliCPU, memBytes int64
@@ -367,14 +402,14 @@ func (d *K8sDriver) StatsAll(ctx context.Context) (map[string]Stats, error) {
 			milliCPU += c.Usage.Cpu().MilliValue()
 			memBytes += c.Usage.Memory().Value()
 		}
-		out[user] = Stats{CPUPercent: float64(milliCPU) / 10.0, MemMiB: int(memBytes / 1024 / 1024)}
+		out[podID] = Stats{CPUPercent: float64(milliCPU) / 10.0, MemMiB: int(memBytes / 1024 / 1024)}
 	}
 	return out, nil
 }
 
 // Logs returns the worker pod's last `tail` log lines.
-func (d *K8sDriver) Logs(ctx context.Context, userID string, tail int) (string, error) {
-	pod, err := d.podName(ctx, userID)
+func (d *K8sDriver) Logs(ctx context.Context, podID string, tail int) (string, error) {
+	pod, err := d.podName(ctx, podID)
 	if err != nil {
 		return "", err
 	}
@@ -389,13 +424,13 @@ func (d *K8sDriver) Logs(ctx context.Context, userID string, tail int) (string, 
 	return string(b), err
 }
 
-// Exec runs a command in the worker pod and returns combined stdout.
+// Exec runs a command in the worker Pod and returns combined stdout.
 // ExecStdin runs a command in the worker pod with stdin piped from the reader.
-func (d *K8sDriver) ExecStdin(ctx context.Context, userID string, stdin io.Reader, cmd ...string) (string, error) {
+func (d *K8sDriver) ExecStdin(ctx context.Context, podID string, stdin io.Reader, cmd ...string) (string, error) {
 	if d.restConfig == nil {
 		return "", fmt.Errorf("k8s: exec unavailable (no rest config)")
 	}
-	pod, err := d.podName(ctx, userID)
+	pod, err := d.podName(ctx, podID)
 	if err != nil {
 		return "", err
 	}
@@ -415,11 +450,11 @@ func (d *K8sDriver) ExecStdin(ctx context.Context, userID string, stdin io.Reade
 	return stdout.String(), nil
 }
 
-func (d *K8sDriver) Exec(ctx context.Context, userID string, cmd ...string) (string, error) {
+func (d *K8sDriver) Exec(ctx context.Context, podID string, cmd ...string) (string, error) {
 	if d.restConfig == nil {
 		return "", fmt.Errorf("k8s: exec unavailable (no rest config)")
 	}
-	pod, err := d.podName(ctx, userID)
+	pod, err := d.podName(ctx, podID)
 	if err != nil {
 		return "", err
 	}
@@ -439,9 +474,9 @@ func (d *K8sDriver) Exec(ctx context.Context, userID string, cmd ...string) (str
 	return stdout.String(), nil
 }
 
-// podName returns a running worker pod for the user (newest first).
-func (d *K8sDriver) podName(ctx context.Context, userID string) (string, error) {
-	pods, err := d.client.CoreV1().Pods(d.namespace).List(ctx, metav1.ListOptions{LabelSelector: "muad-user=" + userID})
+// podName returns a running worker Pod or a retryable readiness error.
+func (d *K8sDriver) podName(ctx context.Context, podID string) (string, error) {
+	pods, err := d.client.CoreV1().Pods(d.namespace).List(ctx, metav1.ListOptions{LabelSelector: "muad-pod=" + podID})
 	if err != nil {
 		return "", err
 	}
@@ -451,7 +486,8 @@ func (d *K8sDriver) podName(ctx context.Context, userID string) (string, error) 
 		}
 	}
 	if len(pods.Items) > 0 {
-		return pods.Items[0].Name, nil
+		pod := pods.Items[0]
+		return "", fmt.Errorf("%w: Pod %s phase=%s", ErrRuntimeNotReady, pod.Name, pod.Status.Phase)
 	}
-	return "", fmt.Errorf("k8s: no pod for user %q", userID)
+	return "", fmt.Errorf("%w: no workload Pod for %q", ErrRuntimeNotReady, podID)
 }

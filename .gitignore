@@ -4,6 +4,7 @@ users/*/
 
 # 杂项
 node_modules/
+tools/session-manager/dist/
 *.log
 .DS_Store
 .idea/

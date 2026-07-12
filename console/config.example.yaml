@@ -23,11 +23,25 @@ skillsDir: /opt/muad/skills
 # 容器内监听地址（固定 8080，对应 compose 的 ports 映射）
 listenAddr: ":8080"
 
+# 可选日志目录；容器部署需要将该目录挂载到持久卷
+# logDir: /var/lib/muad-console/logs
+
 # 容器内 SQLite 路径（对应 compose 的 muad-console-data 卷）
 dbPath: /var/lib/muad-console/console.db
 
+# Worker Pod 通过内部网络访问 Console internal API 的地址
+consoleInternalURL: http://muad-console:8080
+
 # 采集间隔（秒，默认 30）
 collectIntervalSec: 30
+
+# 单 Pod 未配置覆写时使用的非敏感运行时默认值。
+# 可由 CONSOLE_RUNTIME_* 环境变量覆盖。
+runtimeDefaults:
+  maxSkillConcurrency: 2
+  maxBrowserConcurrency: 2
+  browserCDPPortStart: 18802
+  browserCDPPortEnd: 65535
 
 # ── k8s 运行时（仅当 runtimeDriver: k8s 时生效；docker 模式忽略）──
 # console 经 client-go 在该命名空间内建/管 worker（需配套 RBAC，见 k8s/console.yaml）

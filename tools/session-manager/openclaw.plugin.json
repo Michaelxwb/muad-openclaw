@@ -1,0 +1,22 @@
+{
+  "id": "session-manager",
+  "name": "Session Manager",
+  "description": "Provides isolated business-platform session state for the active agent.",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "session_get_state"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "consoleInternalURL": {
+        "type": "string"
+      }
+    }
+  }
+}

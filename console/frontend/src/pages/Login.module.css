@@ -1,0 +1,24 @@
+.page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: var(--semi-color-fill-0);
+}
+
+.panel {
+  width: min(380px, 100%);
+  padding: 32px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  background: var(--semi-color-bg-2);
+}
+
+.heading {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.heading :global(.semi-typography) {
+  margin: 0;
+}

@@ -30,7 +30,7 @@ logger.error("failed")                 # 丢失原始错误与上下文
 - 统一字段命名：`request_id`、`user_id`、`route`、`status`、`latency_ms`、`error`
 - 异常日志必须带堆栈（`exc_info=True` 或等价机制）
 - 高频路径用采样日志，避免 IO 阻塞主流程
-- 日志输出到 stdout/stderr，由部署环境采集，禁止业务代码写文件
+- 日志默认输出到 stdout/stderr；Console 可通过统一 logging 模块双写按日文件，业务模块禁止自行打开日志文件
 
 ## Anti-Patterns
 - 禁止在循环或热路径中无脱敏地打印请求体
@@ -41,3 +41,4 @@ logger.error("failed")                 # 丢失原始错误与上下文
 
 - **[cmd/console/main.go]** 当前使用 `log` 标准库（`log.Printf` / `log.Fatalf`）；后续升级结构化日志建议使用 `log/slog`（Go 1.21+ 内置）
 - **[config.go]** 配置错误在启动期使用 `log.Fatalf` 直接退出（fail-fast）；运行时错误通过 HTTP 响应返回
+- **[internal/logging/daily_writer.go]** `logDir` 非空时双写 stdout 与 `<logDir>/YYYY-MM-DD/console.log`；跨天自动切换，目录 `0750`、文件 `0640`，业务代码不得绕过该模块自行写日志

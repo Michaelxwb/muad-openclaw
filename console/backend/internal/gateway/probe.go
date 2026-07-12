@@ -17,27 +17,33 @@ import (
 
 // Status is the application-layer snapshot for one container.
 type Status struct {
-	Healthy          bool               // probe responded and parsed
-	ChannelConnected bool               // DEPRECATED: true if any channel connected
-	ChannelStatuses  map[string]bool    // per-channel connected state, e.g. {"wecom":true,"wechat":false}
-	LastActiveAt     time.Time          // newest of inbound/outbound/start (display "最后活跃")
+	Healthy          bool            // probe responded and parsed
+	ChannelConnected bool            // DEPRECATED: true if any channel connected
+	ChannelStatuses  map[string]bool // per-channel connected state, e.g. {"wecom":true,"wechat":false}
+	LastActiveAt     time.Time       // newest of inbound/outbound/start (display "最后活跃")
 	// LastMessageAt is the newest real message time (inbound/outbound only),
 	// excluding channel start. It drives the idle/reap countdown: ongoing
 	// conversation keeps refreshing it, so an active container never goes idle.
 	// Zero when the channel reports no message timestamps (e.g. wecom only
 	// exposes lastStartAt) — callers must not treat zero as "idle/reapable".
-	LastMessageAt time.Time
+	LastMessageAt       time.Time
+	RuntimeGuardHealthy bool
+	RuntimeGeneration   int64
+	SkillActive         int
+	SkillQueued         int
+	BrowserActive       int
+	BrowserQueued       int
 }
 
-// Execer runs a command inside a user's container (satisfied by DockerDriver).
+// Execer runs a command inside a Pod (satisfied by each RuntimeDriver).
 type Execer interface {
-	Exec(ctx context.Context, userID string, cmd ...string) (string, error)
+	Exec(ctx context.Context, podID string, cmd ...string) (string, error)
 }
 
 // Probe queries one container. A failed exec or unparseable output yields an
 // unhealthy status (the caller treats that as the container's health signal).
-func Probe(ctx context.Context, ex Execer, userID string) Status {
-	out, err := ex.Exec(ctx, userID, "openclaw", "channels", "status", "--json")
+func Probe(ctx context.Context, ex Execer, podID string) Status {
+	out, err := ex.Exec(ctx, podID, "openclaw", "channels", "status", "--json")
 	if err != nil {
 		return Status{Healthy: false}
 	}
@@ -45,7 +51,38 @@ func Probe(ctx context.Context, ex Execer, userID string) Status {
 	if err != nil {
 		return Status{Healthy: false}
 	}
+	mergeRuntimeHealth(ctx, ex, podID, &st)
 	return st
+}
+
+type runtimeHealthJSON struct {
+	OK         bool  `json:"ok"`
+	Generation int64 `json:"generation"`
+	Skill      struct {
+		Active int `json:"active"`
+		Queued int `json:"queued"`
+	} `json:"skill"`
+	Browser struct {
+		Active int `json:"active"`
+		Queued int `json:"queued"`
+	} `json:"browser"`
+}
+
+func mergeRuntimeHealth(ctx context.Context, ex Execer, podID string, status *Status) {
+	out, err := ex.Exec(ctx, podID, "openclaw", "gateway", "call", "muad.runtime.health", "--json")
+	if err != nil {
+		return
+	}
+	var health runtimeHealthJSON
+	if err := json.Unmarshal([]byte(out), &health); err != nil {
+		return
+	}
+	status.RuntimeGuardHealthy = health.OK
+	status.RuntimeGeneration = health.Generation
+	status.SkillActive = health.Skill.Active
+	status.SkillQueued = health.Skill.Queued
+	status.BrowserActive = health.Browser.Active
+	status.BrowserQueued = health.Browser.Queued
 }
 
 // channelStatusJSON mirrors the relevant parts of `openclaw channels status --json`.

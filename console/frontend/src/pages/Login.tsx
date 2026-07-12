@@ -1,19 +1,22 @@
-import { FormEvent, useState } from "react";
-import { Input, Button } from "@douyinfe/semi-ui";
+import { useState } from "react";
+import { Banner, Button, Form, Typography } from "@douyinfe/semi-ui";
 import { api, token } from "../api";
+import styles from "./Login.module.css";
+
+interface LoginValues {
+  username: string;
+  password: string;
+}
 
 export function Login({ onLogin }: { onLogin: () => void }) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function submit(values: LoginValues) {
     setErr("");
     setBusy(true);
     try {
-      const res = await api.login(username, password);
+      const res = await api.login(values.username, values.password);
       token.set(res.token);
       onLogin();
     } catch (e) {
@@ -24,38 +27,34 @@ export function Login({ onLogin }: { onLogin: () => void }) {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-        background: "var(--semi-color-fill-0)",
-      }}
-    >
-      <div
-        style={{ width: 380, padding: 32, borderRadius: 8, background: "var(--semi-color-bg-2)" }}
-      >
-        <h2 style={{ textAlign: "center", marginBottom: 24, color: "var(--semi-color-text-0)" }}>
-          muad 控制台
-        </h2>
-        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Input placeholder="管理员账号" value={username} onChange={setUsername} size="large" />
-          <Input
-            type="password"
-            placeholder="密码"
-            value={password}
-            onChange={setPassword}
+    <div className={styles.page}>
+      <main className={styles.panel}>
+        <div className={styles.heading}>
+          <Typography.Title heading={3}>muad 控制台</Typography.Title>
+          <Typography.Text type="tertiary">管理员登录</Typography.Text>
+        </div>
+        {err && <Banner type="danger" description={err} fullMode={false} bordered />}
+        <Form<LoginValues> onSubmit={(values) => void submit(values)}>
+          <Form.Input
+            field="username"
+            label="管理员账号"
+            placeholder="请输入管理员账号"
             size="large"
+            rules={[{ required: true, message: "请输入管理员账号" }]}
           />
-          {err && (
-            <p style={{ color: "var(--semi-color-danger)", fontSize: 13, margin: 0 }}>{err}</p>
-          )}
-          <Button theme="solid" type="primary" htmlType="submit" loading={busy} size="large" block>
+          <Form.Input
+            field="password"
+            label="密码"
+            type="password"
+            placeholder="请输入密码"
+            size="large"
+            rules={[{ required: true, message: "请输入密码" }]}
+          />
+          <Button theme="solid" htmlType="submit" loading={busy} size="large" block>
             登录
           </Button>
-        </form>
-      </div>
+        </Form>
+      </main>
     </div>
   );
 }

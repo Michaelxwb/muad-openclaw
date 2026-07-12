@@ -17,12 +17,17 @@
       "skillsRoot": {
         "type": "string"
       },
-      "stateDir": {
-        "type": "string"
+      "maxConcurrency": {
+        "type": "integer",
+        "minimum": 1
       },
-      "timeoutMs": {
-        "type": "number",
-        "minimum": 1000
+      "queueTimeoutMs": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "maxQueue": {
+        "type": "integer",
+        "minimum": 1
       }
     }
   }

@@ -9,7 +9,7 @@ on:
     inputs:
       openclaw_version:
         description: 'openclaw 基础镜像版本（ghcr.io/openclaw/openclaw:<tag>）'
-        default: 'latest'
+        default: '2026.6.10'
 
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/muad-openclaw
@@ -53,4 +53,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            OPENCLAW_VERSION=${{ inputs.openclaw_version || 'latest' }}
+            OPENCLAW_VERSION=${{ inputs.openclaw_version || '2026.6.10' }}

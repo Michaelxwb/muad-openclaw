@@ -22,8 +22,14 @@ skillsDir: /opt/muad/skills
 # 监听地址（集群/宿主机用 0.0.0.0:8080）
 listenAddr: ":8080"
 
+# 可选日志目录；配置后同时输出 stdout 和 <logDir>/YYYY-MM-DD/console.log
+# logDir: /var/lib/muad-console/logs
+
 # SQLite 数据库路径（挂卷持久化）
 dbPath: /var/lib/muad-console/console.db
+
+# Worker Pod 通过内部网络访问 Console internal API 的地址
+consoleInternalURL: http://muad-console:8080
 
 # JWT session token 签名密钥（留空默认复用 masterKey）
 # jwtSecret: ""
@@ -33,3 +39,11 @@ adminUser: "admin"
 
 # 采集间隔（秒，默认 30）
 collectIntervalSec: 30
+
+# 单 Pod 未配置覆写时使用的非敏感运行时默认值。
+# 可由 CONSOLE_RUNTIME_* 环境变量覆盖。
+runtimeDefaults:
+  maxSkillConcurrency: 2
+  maxBrowserConcurrency: 2
+  browserCDPPortStart: 18802
+  browserCDPPortEnd: 65535

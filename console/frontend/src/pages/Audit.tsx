@@ -1,106 +1,196 @@
-import { useCallback, useEffect, useState } from "react";
-import { Table, Input, Button, Space, Skeleton } from "@douyinfe/semi-ui";
-import { api, AuditEntry } from "../api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Input, Skeleton, Space, Table, Tag } from "@douyinfe/semi-ui";
+import { api } from "../api";
+import type { AuditEntry, AuditQuery } from "../api";
+import { FeedbackBanner, PageHeader } from "../components/ConsolePage";
 import { Pagination } from "../components/Pagination";
+import { useMountedRef } from "../hooks/useMountedRef";
+import styles from "./Audit.module.css";
+
+interface AuditFilters {
+  actor: string;
+  action: string;
+  target: string;
+}
+
+const EMPTY_FILTERS: AuditFilters = { actor: "", action: "", target: "" };
 
 export function Audit() {
-  const [actor, setActor] = useState("");
-  const [rows, setRows] = useState<AuditEntry[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const offset = (page - 1) * pageSize;
-      const res = await api.audit(actor, offset, pageSize);
-      setRows(res.items);
-      setTotal(res.total);
-    } catch {
-      /* keep stale data */
-    } finally {
-      setLoading(false);
-    }
-  }, [actor, page, pageSize]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const columns = [
-    {
-      title: "时间",
-      dataIndex: "ts",
-      key: "ts",
-      width: 160,
-      render: (_: unknown, r: AuditEntry) => new Date(r.ts).toLocaleString(),
-    },
-    { title: "操作人", dataIndex: "actor", key: "actor", width: 100 },
-    { title: "动作", dataIndex: "action", key: "action" },
-    {
-      title: "目标",
-      dataIndex: "target",
-      key: "target",
-      width: 100,
-      render: (_: unknown, r: AuditEntry) => r.target || "—",
-    },
-    { title: "结果", dataIndex: "payload", key: "payload", width: 80 },
-  ];
-
+  const state = useAuditRecords();
+  const [inputs, setInputs] = useState<AuditFilters>(EMPTY_FILTERS);
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 12,
+      <PageHeader title="审计日志" description="查询管理员、Pod 和运行时产生的关键操作记录" />
+      <FeedbackBanner error={state.error} />
+      <AuditToolbar
+        value={inputs}
+        onChange={setInputs}
+        onSearch={() => {
+          state.setPage(1);
+          state.setFilters(inputs);
         }}
-      >
-        <div />
-        <Space>
-          <Input
-            placeholder="按操作人过滤"
-            value={actor}
-            onChange={setActor}
-            style={{ width: 180 }}
-          />
-          <Button
-            onClick={() => {
-              setPage(1);
-              load();
-            }}
-          >
-            查询
-          </Button>
-        </Space>
-      </div>
-
+      />
       <Skeleton
-        placeholder={loading ? <Skeleton.Paragraph rows={5} /> : undefined}
-        loading={loading}
+        placeholder={state.loading ? <Skeleton.Paragraph rows={5} /> : undefined}
+        loading={state.loading}
       >
         <Table
-          columns={columns as never}
-          dataSource={rows}
+          columns={auditColumns as never}
+          dataSource={state.rows}
           pagination={false}
           rowKey="id"
           size="small"
         />
       </Skeleton>
-
       <Pagination
-        page={page}
-        pageSize={pageSize}
-        total={total}
-        onPageChange={setPage}
-        onPageSizeChange={(s) => {
-          setPageSize(s);
-          setPage(1);
+        page={state.page}
+        pageSize={state.pageSize}
+        total={state.total}
+        onPageChange={state.setPage}
+        onPageSizeChange={(pageSize) => {
+          state.setPageSize(pageSize);
+          state.setPage(1);
         }}
       />
     </div>
   );
+}
+
+function useAuditRecords() {
+  const [filters, setFilters] = useState<AuditFilters>(EMPTY_FILTERS);
+  const [rows, setRows] = useState<AuditEntry[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const mountedRef = useMountedRef();
+  const requestRef = useRef(0);
+  const load = useCallback(async () => {
+    const requestId = ++requestRef.current;
+    if (mountedRef.current) {
+      setLoading(true);
+      setError("");
+    }
+    try {
+      const query: AuditQuery = {
+        ...filters,
+        offset: (page - 1) * pageSize,
+        limit: pageSize,
+      };
+      const result = await api.audit(query);
+      if (!mountedRef.current || requestId !== requestRef.current) return;
+      setRows(result.items);
+      setTotal(result.total);
+    } catch (caught) {
+      if (!mountedRef.current || requestId !== requestRef.current) return;
+      setError(caught instanceof Error ? caught.message : "加载审计记录失败");
+    } finally {
+      if (mountedRef.current && requestId === requestRef.current) setLoading(false);
+    }
+  }, [filters, mountedRef, page, pageSize]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  return { rows, total, loading, error, page, pageSize, setFilters, setPage, setPageSize };
+}
+
+function AuditToolbar({
+  value,
+  onChange,
+  onSearch,
+}: {
+  value: AuditFilters;
+  onChange: (filters: AuditFilters) => void;
+  onSearch: () => void;
+}) {
+  const field = (key: keyof AuditFilters, input: string) => onChange({ ...value, [key]: input });
+  return (
+    <div className={styles.toolbar}>
+      <Space wrap>
+        <Input
+          aria-label="按操作人过滤"
+          placeholder="操作人"
+          value={value.actor}
+          onChange={(input) => field("actor", input)}
+        />
+        <Input
+          aria-label="按动作过滤"
+          placeholder="动作"
+          value={value.action}
+          onChange={(input) => field("action", input)}
+        />
+        <Input
+          aria-label="按目标过滤"
+          placeholder="目标 ID"
+          value={value.target}
+          onChange={(input) => field("target", input)}
+          onEnterPress={onSearch}
+        />
+        <Button theme="solid" onClick={onSearch}>
+          查询
+        </Button>
+      </Space>
+    </div>
+  );
+}
+
+const auditColumns = [
+  {
+    title: "时间",
+    key: "ts",
+    width: 170,
+    render: (_: unknown, entry: AuditEntry) => new Date(entry.ts).toLocaleString(),
+  },
+  { title: "Actor", dataIndex: "actor", key: "actor", width: 150 },
+  { title: "动作", dataIndex: "action", key: "action", width: 210 },
+  {
+    title: "目标",
+    key: "target",
+    width: 210,
+    render: (_: unknown, entry: AuditEntry) => (
+      <div>
+        <span className="mono">{entry.target || "-"}</span>
+        <div>
+          <Tag size="small">{targetTypeLabel(entry.targetType)}</Tag>
+        </div>
+      </div>
+    ),
+  },
+  {
+    title: "上下文",
+    key: "metadata",
+    render: (_: unknown, entry: AuditEntry) => auditContext(entry),
+  },
+  {
+    title: "结果",
+    key: "result",
+    width: 100,
+    render: (_: unknown, entry: AuditEntry) => entry.metadata.status || entry.payload,
+  },
+];
+
+function targetTypeLabel(type: AuditEntry["targetType"]): string {
+  const labels: Record<AuditEntry["targetType"], string> = {
+    pod: "Pod",
+    human_user: "Human User",
+    identity: "Identity",
+    binding_code: "Binding Code",
+    platform: "Platform",
+    generic: "通用",
+  };
+  return labels[type];
+}
+
+function auditContext(entry: AuditEntry) {
+  const values = [
+    entry.metadata.podId && `pod=${entry.metadata.podId}`,
+    entry.metadata.humanUserId && `user=${entry.metadata.humanUserId}`,
+    entry.metadata.agentId && `agent=${entry.metadata.agentId}`,
+    entry.metadata.identityId && `identity=${entry.metadata.identityId}`,
+    entry.metadata.bindingCodeId && `code=${entry.metadata.bindingCodeId}`,
+    entry.metadata.platform && `platform=${entry.metadata.platform}`,
+    entry.metadata.generation !== undefined && `generation=${entry.metadata.generation}`,
+  ].filter((value): value is string => Boolean(value));
+  return values.length > 0 ? <span className="mono">{values.join(" · ")}</span> : "-";
 }

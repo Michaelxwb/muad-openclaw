@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { loadSkillManifest, testing } from "../src/manifest.mjs";
 
 test("validates steps mode manifests", () => {
@@ -69,6 +70,8 @@ test("loads nested manifests by manifest name", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "muad-manifest-test-"));
   const skillDir = path.join(root, "_templates", "example-long-task");
   await fs.mkdir(skillDir, { recursive: true });
+  await fs.mkdir(path.join(skillDir, "scripts"), { recursive: true });
+  await fs.writeFile(path.join(skillDir, "scripts", "run.sh"), "#!/bin/sh\nexit 0\n");
   await fs.writeFile(
     path.join(skillDir, "muad.skill.json"),
     JSON.stringify({
@@ -84,3 +87,108 @@ test("loads nested manifests by manifest name", async () => {
 
   assert.equal(manifest.skillDir, skillDir);
 });
+
+test("loads the shipped reviewed public Skill template", async () => {
+  const publicSkillsRoot = fileURLToPath(new URL("../../../skills", import.meta.url));
+  const manifest = await loadSkillManifest({
+    publicSkillsRoot, skillName: "example-long-task",
+  });
+  assert.equal(manifest.source, "public");
+  assert.equal(manifest.visibility, "public");
+  assert.equal(manifest.version, "1.0.0");
+});
+
+test("rejects arbitrary interpreters, absolute paths, and traversal", () => {
+  const base = {
+    name: "example-long-task",
+    runtime: "script",
+    mode: "entrypoint",
+    steps: [{ id: "query", title: "查询" }],
+  };
+  assert.throws(
+    () => testing.validateManifest({ ...base, entrypoint: ["curl", "scripts/run.sh"] }, "/skills/x"),
+    /not approved/u,
+  );
+  assert.throws(
+    () => testing.validateManifest({ ...base, entrypoint: ["bash", "/tmp/run.sh"] }, "/skills/x"),
+    /unsafe path/u,
+  );
+  assert.throws(
+    () => testing.validateManifest({ ...base, entrypoint: ["bash", "scripts/../run.sh"] }, "/skills/x"),
+    /unsafe path/u,
+  );
+});
+
+test("rejects script symlinks escaping the selected Skill", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "muad-manifest-symlink-"));
+  const skillDir = path.join(root, "unsafe-skill");
+  await fs.mkdir(path.join(skillDir, "scripts"), { recursive: true });
+  const outside = path.join(root, "outside.sh");
+  await fs.writeFile(outside, "#!/bin/sh\nexit 0\n");
+  await fs.symlink(outside, path.join(skillDir, "scripts", "run.sh"));
+  await writeManifest(skillDir, manifestFor("unsafe-skill"));
+  await assert.rejects(
+    () => loadSkillManifest({ publicSkillsRoot: root, skillName: "unsafe-skill" }),
+    /escapes the Skill directory/u,
+  );
+});
+
+test("private same-name override requires explicit version approval", async () => {
+  const publicRoot = await fs.mkdtemp(path.join(os.tmpdir(), "muad-public-skills-"));
+  const privateRoot = await fs.mkdtemp(path.join(os.tmpdir(), "muad-private-skills-"));
+  const publicDir = await createSkill(publicRoot, "xdr-query", manifestFor("xdr-query", {
+    visibility: "public", version: "1.0.0",
+  }));
+  const privateDir = await createSkill(privateRoot, "xdr-query", manifestFor("xdr-query", {
+    visibility: "private", version: "2.0.0",
+  }));
+  assert.ok(publicDir);
+  await assert.rejects(
+    () => loadSkillManifest({ publicSkillsRoot: publicRoot, privateSkillsRoot: privateRoot, skillName: "xdr-query" }),
+    /override is not approved/u,
+  );
+  await writeManifest(privateDir, manifestFor("xdr-query", {
+    visibility: "private",
+    version: "2.0.0",
+    override: { approved: true, publicVersion: "1.0.0", approvalId: "review-42" },
+  }));
+  const selected = await loadSkillManifest({
+    publicSkillsRoot: publicRoot, privateSkillsRoot: privateRoot, skillName: "xdr-query",
+  });
+  assert.equal(selected.source, "private");
+  assert.equal(selected.version, "2.0.0");
+});
+
+test("pure prompt Skills remain non-executable", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "muad-prompt-skill-"));
+  const skillDir = path.join(root, "prompt-only");
+  await fs.mkdir(skillDir, { recursive: true });
+  await fs.writeFile(path.join(skillDir, "SKILL.md"), "# Prompt only\n");
+  await assert.rejects(
+    () => loadSkillManifest({ publicSkillsRoot: root, skillName: "prompt-only" }),
+    /muad\.skill\.json not found/u,
+  );
+});
+
+async function createSkill(root, name, manifest) {
+  const skillDir = path.join(root, name);
+  await fs.mkdir(path.join(skillDir, "scripts"), { recursive: true });
+  await fs.writeFile(path.join(skillDir, "scripts", "run.sh"), "#!/bin/sh\nexit 0\n");
+  await writeManifest(skillDir, manifest);
+  return skillDir;
+}
+
+async function writeManifest(skillDir, manifest) {
+  await fs.writeFile(path.join(skillDir, "muad.skill.json"), JSON.stringify(manifest));
+}
+
+function manifestFor(name, metadata = {}) {
+  return {
+    name,
+    runtime: "script",
+    mode: "entrypoint",
+    entrypoint: ["bash", "scripts/run.sh"],
+    steps: [{ id: "query", title: "查询" }],
+    ...metadata,
+  };
+}

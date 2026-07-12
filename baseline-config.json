@@ -27,7 +27,7 @@
     "openclaw-weixin": {}
   },
   "plugins": {
-    "allow": ["wecom-openclaw-plugin", "openclaw-weixin", "muad-run-skill"],
+    "allow": ["browser", "wecom-openclaw-plugin", "openclaw-weixin", "muad-run-skill"],
     "load": {
       "paths": ["/opt/muad/muad-run-skill"]
     }

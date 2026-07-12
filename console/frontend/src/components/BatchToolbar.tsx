@@ -20,7 +20,7 @@ export function BatchToolbar({
     if (!someSelected) return;
     Modal.confirm({
       title: "确认重载 Skill",
-      content: `将对 ${selectedIds.length} 个已勾选容器执行 Skill 重载。`,
+      content: `将对 ${selectedIds.length} 个已勾选 Pod 执行 Skill 重载。`,
       onOk: onReloadSkills,
     });
   }
@@ -29,7 +29,7 @@ export function BatchToolbar({
     if (!someSelected) return;
     Modal.confirm({
       title: "确认批量升级",
-      content: `将对 ${selectedIds.length} 个已勾选容器执行批量升级。`,
+      content: `将对 ${selectedIds.length} 个已勾选 Pod 执行批量升级。`,
       onOk: onBatchUpgrade,
     });
   }
@@ -38,23 +38,23 @@ export function BatchToolbar({
     if (selectedIds.length === 0) return;
     Modal.warning({
       title: "确认批量删除",
-      content: `确定删除 ${selectedIds.length} 个已勾选容器？此操作不可撤销。`,
+      content: `确定删除 ${selectedIds.length} 个已勾选 Pod？此操作不可撤销。`,
       onOk: async () => {
         try {
           const results = await Promise.allSettled(
-            selectedIds.map((id) => api.deleteContainer(id, false)),
+            selectedIds.map((id) => api.deletePod(id, false)),
           );
           const failed = results.filter((r) => r.status === "rejected");
           if (failed.length === 0) {
-            Toast.success(`已删除 ${selectedIds.length} 个容器`);
+            Toast.success(`已删除 ${selectedIds.length} 个 Pod`);
           } else {
             Toast.warning(
               `删除完成：${selectedIds.length - failed.length} 成功，${failed.length} 失败`,
             );
           }
           onBatchDelete(selectedIds);
-        } catch (e) {
-          Toast.error((e as Error).message);
+        } catch (caught) {
+          Toast.error(caught instanceof Error ? caught.message : "批量删除 Pod 失败");
         }
       },
     });

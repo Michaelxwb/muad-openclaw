@@ -14,7 +14,23 @@ RUN set -eux; \
     go build -o /out/muad-progress ./cmd/muad-progress; \
     go build -o /out/muad-skill-check ./cmd/muad-skill-check
 
+FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION} AS session-manager-builder
+
+USER root
+WORKDIR /build/session-manager
+COPY tools/session-manager/package.json tools/session-manager/package-lock.json tools/session-manager/tsconfig.json ./
+RUN npm ci --include=dev
+COPY tools/session-manager/src ./src
+COPY tools/session-manager/test ./test
+COPY tools/session-manager/fixtures ./fixtures
+COPY tools/session-manager/openclaw-plugin.mjs tools/session-manager/openclaw.plugin.json ./
+RUN npm test
+
 FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
+
+ARG OPENCLAW_VERSION
+LABEL org.opencontainers.image.base.name="ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}" \
+      io.muad.openclaw.version="${OPENCLAW_VERSION}"
 
 USER root
 ENV OPENCLAW_STATE_DIR=/home/node/.openclaw \
@@ -51,16 +67,35 @@ RUN set -eux; \
     rm -rf /home/node/.openclaw; \
     install -d -m 0700 -o node -g node /home/node/.openclaw
 
-COPY bin/inject-env.mjs      /opt/muad/inject-env.mjs
+COPY bin/inject-env.mjs bin/inject-multi-user-config.mjs bin/openclaw-config-renderer.mjs \
+    bin/runtime-config-schema.mjs bin/runtime-config-transaction.mjs bin/runtime-image-self-check.mjs \
+    bin/startup-context.mjs /opt/muad/
 COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
 COPY --from=muad-progress-builder /out/muad-progress /usr/local/bin/muad-progress
 COPY --from=muad-progress-builder /out/muad-skill-check /usr/local/bin/muad-skill-check
+COPY --from=session-manager-builder /build/session-manager/dist /opt/muad/session-manager/dist
+COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \
+    tools/session-manager/openclaw.plugin.json /opt/muad/session-manager/
 COPY tools/progress-adapters /opt/muad/progress-adapters
-COPY tools/muad-run-skill /opt/muad/muad-run-skill
+COPY tools/muad-run-skill/package.json tools/muad-run-skill/openclaw.plugin.json /opt/muad/muad-run-skill/
+COPY tools/muad-run-skill/src /opt/muad/muad-run-skill/src
+COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plugin.json \
+    /opt/muad/muad-runtime-guard/
+COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
+COPY tools/runtime-concurrency /opt/muad/runtime-concurrency
 COPY skills /opt/openclaw-skills
 COPY entrypoint.sh           /usr/local/bin/muad-entrypoint.sh
-RUN chmod +x /usr/local/bin/muad-entrypoint.sh /usr/local/bin/muad-progress /usr/local/bin/muad-skill-check; \
-    chown -R node:node /opt/muad/progress-adapters /opt/muad/muad-run-skill /opt/openclaw-skills
+RUN set -eux; \
+    ln -s /opt/muad/session-manager/dist/cli.js /usr/local/bin/session-manager; \
+    chmod 0755 /usr/local/bin/muad-entrypoint.sh /usr/local/bin/muad-progress \
+      /usr/local/bin/muad-skill-check /opt/muad/session-manager/dist/cli.js \
+      /opt/muad/runtime-image-self-check.mjs; \
+    chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-run-skill /opt/muad/muad-runtime-guard \
+      /opt/muad/runtime-concurrency; \
+    chown -R node:node /opt/muad/progress-adapters /opt/muad/session-manager \
+      /opt/muad/muad-run-skill /opt/muad/muad-runtime-guard /opt/muad/runtime-concurrency \
+      /opt/openclaw-skills; \
+    su node -c "node /opt/muad/runtime-image-self-check.mjs --image-only"
 ENV MUAD_PROGRESS_ADAPTER_CMD="node /opt/muad/progress-adapters/openclaw/src/adapter.mjs"
 
 USER node
