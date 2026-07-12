@@ -4,9 +4,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -16,27 +16,81 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/config"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	consolelog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/logging"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeapply"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeconfig"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/usercleanup"
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("console: %v", err)
+	}
+}
+
+type dependencies struct {
+	cfg    *config.Config
+	store  *repo.Store
+	cipher *crypto.Cipher
+	driver driver.RuntimeDriver
+}
+
+func run() error {
+	deps, err := loadDependencies()
+	if err != nil {
+		return err
+	}
+	defer deps.store.Close()
+	logCloser, err := consolelog.Configure(consolelog.Options{Directory: deps.cfg.LogDir})
+	if err != nil {
+		return fmt.Errorf("logging: %w", err)
+	}
+	defer logCloser.Close()
+	if deps.cfg.LogDir != "" {
+		log.Printf("[console] daily file logging enabled directory=%s", deps.cfg.LogDir)
+	}
+	cache := monitor.NewCache()
+	coordinator, err := newRuntimeCoordinator(deps.cfg, deps.store, deps.cipher, deps.driver)
+	if err != nil {
+		return fmt.Errorf("runtime coordinator: %w", err)
+	}
+	cleaner, err := usercleanup.New(deps.store, deps.driver, coordinator, 0)
+	if err != nil {
+		return fmt.Errorf("Human User cleaner: %w", err)
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	startBackground(ctx, deps, cache, coordinator, cleaner)
+	srv := newHTTPServer(deps, cache, coordinator)
+	serveErr := serve(srv, deps.cfg)
+	select {
+	case <-ctx.Done():
+		if err := shutdown(srv); err != nil {
+			return err
+		}
+		log.Print("[console] stopped")
+		return nil
+	case err := <-serveErr:
+		return err
+	}
+}
+
+func loadDependencies() (*dependencies, error) {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("config: %v", err)
+		return nil, fmt.Errorf("config: %w", err)
 	}
-
 	store, err := repo.Open(cfg.DBPath)
 	if err != nil {
-		log.Fatalf("open db: %v", err)
+		return nil, fmt.Errorf("open db: %w", err)
 	}
-	defer store.Close()
-
 	cipher, err := crypto.New(cfg.MasterKey)
 	if err != nil {
-		log.Fatalf("crypto: %v", err)
+		store.Close()
+		return nil, fmt.Errorf("crypto: %w", err)
 	}
-
 	drv, err := driver.New(cfg.RuntimeDriver, cfg.MuadNet, cfg.SkillsDir, driver.K8sOptions{
 		Namespace:    cfg.K8sNamespace,
 		SkillsPVC:    cfg.K8sSkillsPVC,
@@ -44,41 +98,78 @@ func main() {
 		StateSize:    cfg.K8sStateSize,
 	})
 	if err != nil {
-		log.Fatalf("driver: %v", err)
+		store.Close()
+		return nil, fmt.Errorf("driver: %w", err)
 	}
-
 	if err := api.BootstrapAdmin(store, cfg.AdminUser, cfg.AdminPassword); err != nil {
-		log.Fatalf("bootstrap admin: %v", err)
+		store.Close()
+		return nil, fmt.Errorf("bootstrap admin: %w", err)
 	}
+	return &dependencies{cfg: cfg, store: store, cipher: cipher, driver: drv}, nil
+}
 
-	cache := monitor.NewCache()
+func startBackground(
+	ctx context.Context, deps *dependencies, cache *monitor.Cache,
+	coordinator *runtimeapply.Coordinator, cleaner *usercleanup.Cleaner,
+) {
+	monitorDefaults := driver.ResourceSpec{
+		MemLimit: driver.DefaultMemLimit, CPULimit: driver.DefaultCPULimit,
+		RestartPolicy:         driver.DefaultRestartPolicy,
+		MaxSkillConcurrency:   deps.cfg.RuntimeDefaults.MaxSkillConcurrency,
+		MaxBrowserConcurrency: deps.cfg.RuntimeDefaults.MaxBrowserConcurrency,
+	}
+	go collector.New(deps.driver, deps.store, cache, monitorDefaults,
+		time.Duration(deps.cfg.CollectIntervalSec)*time.Second).Run(ctx)
+	go coordinator.Run(ctx)
+	go cleaner.Run(ctx)
+}
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	// Background monitoring collector (TASK-011).
-	go collector.New(drv, cache, time.Duration(cfg.CollectIntervalSec)*time.Second).Run(ctx)
-
-	srv := &http.Server{
-		Addr:              cfg.ListenAddr,
-		Handler:           api.NewServer(cfg, store, cipher, drv, cache).Handler(),
+func newHTTPServer(
+	deps *dependencies, cache *monitor.Cache, coordinator *runtimeapply.Coordinator,
+) *http.Server {
+	return &http.Server{
+		Addr: deps.cfg.ListenAddr,
+		Handler: api.NewServer(
+			deps.cfg, deps.store, deps.cipher, deps.driver, cache, coordinator,
+		).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+}
 
+func serve(srv *http.Server, cfg *config.Config) <-chan error {
+	result := make(chan error, 1)
 	go func() {
 		log.Printf("[console] listening on %s (driver=%s)", cfg.ListenAddr, cfg.RuntimeDriver)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("serve: %v", err)
+			result <- fmt.Errorf("serve: %w", err)
 		}
 	}()
+	return result
+}
 
-	<-ctx.Done()
-
+func shutdown(srv *http.Server) error {
 	shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutCtx); err != nil {
-		log.Printf("[console] graceful shutdown failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("graceful shutdown: %w", err)
 	}
-	log.Print("[console] stopped")
+	return nil
+}
+
+func newRuntimeCoordinator(
+	cfg *config.Config, store *repo.Store, cipher *crypto.Cipher, drv driver.RuntimeDriver,
+) (*runtimeapply.Coordinator, error) {
+	builder, err := runtimeconfig.New(store, cipher, runtimeconfig.Options{
+		ConsoleInternalURL:    cfg.ConsoleInternalURL,
+		MaxSkillConcurrency:   cfg.RuntimeDefaults.MaxSkillConcurrency,
+		MaxBrowserConcurrency: cfg.RuntimeDefaults.MaxBrowserConcurrency,
+	})
+	if err != nil {
+		return nil, err
+	}
+	applier, err := runtimeapply.New(drv, runtimeapply.Options{})
+	if err != nil {
+		return nil, err
+	}
+	return runtimeapply.NewCoordinator(store, builder, applier, runtimeapply.CoordinatorOptions{})
 }

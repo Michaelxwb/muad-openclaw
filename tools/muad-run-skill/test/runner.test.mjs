@@ -7,6 +7,12 @@ import { runSkill } from "../src/runner.mjs";
 import { toToolUpdate } from "../src/progress-format.mjs";
 import { deliverProgressToCurrentConversation } from "../src/delivery.mjs";
 
+const trustedContext = {
+  agentId: "alice",
+  sessionKey: "agent:alice:wecom:direct:user-a",
+  workspaceDir: "/home/node/.openclaw/workspace-alice",
+};
+
 async function createTempSkill() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "muad-runner-test-"));
   const skillDir = path.join(root, "example-long-task");
@@ -26,6 +32,7 @@ test("runs steps and emits automatic progress", async () => {
       skillDir,
       steps: [{ id: "auth", title: "鉴权", command: ["bash", "scripts/auth.sh"] }],
     },
+    trustedContext,
     stateDir: os.tmpdir(),
     deliver: async (event) => events.push(event),
   });
@@ -71,19 +78,24 @@ test("receives muad-progress events from entrypoint scripts", async () => {
   const events = [];
   const oldPath = process.env.PATH;
   process.env.PATH = `${fakeBin}:${oldPath ?? ""}`;
-  const result = await runSkill({
-    manifest: {
-      name: "example-long-task",
-      runtime: "script",
-      mode: "entrypoint",
-      skillDir,
-      entrypoint: ["bash", "scripts/run.sh"],
-      steps: [{ id: "query", title: "查询" }],
-    },
-    stateDir: os.tmpdir(),
-    deliver: async (event) => events.push(event),
-  });
-  process.env.PATH = oldPath;
+  let result;
+  try {
+    result = await runSkill({
+      manifest: {
+        name: "example-long-task",
+        runtime: "script",
+        mode: "entrypoint",
+        skillDir,
+        entrypoint: ["bash", "scripts/run.sh"],
+        steps: [{ id: "query", title: "查询" }],
+      },
+      trustedContext,
+      stateDir: os.tmpdir(),
+      deliver: async (event) => events.push(event),
+    });
+  } finally {
+    process.env.PATH = oldPath;
+  }
   assert.equal(result.ok, true);
   assert(events.some((event) => event.stage === "query" && event.text === "正在查询"));
   assert(events.some((event) => event.stage === "done" && event.text === "完成"));
@@ -103,12 +115,35 @@ test("manual progress entrypoints do not emit automatic accepted and done events
       entrypoint: ["bash", "scripts/run.sh"],
       steps: [{ id: "query", title: "查询" }],
     },
+    trustedContext,
     stateDir: os.tmpdir(),
     deliver: async (event) => events.push(event),
   });
 
   assert.equal(result.ok, true);
   assert.deepEqual(events, []);
+});
+
+test("injects trusted agent, session, and workspace values over spoofed environment", async () => {
+  const { skillDir } = await createTempSkill();
+  await fs.writeFile(
+    path.join(skillDir, "scripts", "context.sh"),
+    "#!/usr/bin/env bash\nprintf '%s|%s|%s' \"$MUAD_AGENT_ID\" \"$MUAD_SESSION_KEY\" \"$MUAD_WORKSPACE_DIR\"\n",
+  );
+  const result = await runSkill({
+    manifest: {
+      name: "example-long-task", runtime: "script", mode: "entrypoint", skillDir,
+      entrypoint: ["bash", "scripts/context.sh"],
+      steps: [{ id: "context", title: "上下文" }],
+    },
+    trustedContext,
+    args: { MUAD_AGENT_ID: "bob", command: ["sh", "other.sh"] },
+    baseEnv: { MUAD_AGENT_ID: "mallory", MUAD_SESSION_KEY: "forged" },
+    stateDir: os.tmpdir(),
+    deliver: async () => {},
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.outputs[0].stdout, `${trustedContext.agentId}|${trustedContext.sessionKey}|${trustedContext.workspaceDir}`);
 });
 
 test("formats progress as OpenClaw AgentToolResult progress", () => {

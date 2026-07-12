@@ -3,226 +3,162 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
-function shellQuote(value) {
-  if (/^[A-Za-z0-9_./:=@+-]+$/u.test(value)) {
-    return value;
-  }
-  return `'${value.replaceAll("'", "'\\''")}'`;
-}
+import { buildSkillEnvironment } from "./execution-context.mjs";
 
-function commandText(command) {
-  return command.map(shellQuote).join(" ");
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function createAutoEvent({ skill, stage, text, type = "progress" }) {
-  return {
-    type,
-    skill,
-    stage,
-    text,
-    visibility: "channel",
-    privacy: "public",
-    ts: nowIso(),
-  };
-}
-
-async function readEvents(filePath, offset) {
-  let handle;
+export async function runSkill({
+  manifest,
+  trustedContext,
+  input = "",
+  args = {},
+  stateDir,
+  signal,
+  deliver,
+  baseEnv = process.env,
+}) {
+  const startedAt = Date.now();
+  const workDir = await createWorkDirectory(stateDir);
+  const eventFile = path.join(workDir, "progress.events.jsonl");
+  const env = buildSkillEnvironment({
+    baseEnv, context: trustedContext, manifest, input, args, eventFile, workDir,
+  });
+  const outputs = [];
+  const manualProgress = manifest.progress?.source === "manual";
   try {
-    handle = await fs.open(filePath, "r");
-  } catch (err) {
-    if (err && err.code === "ENOENT") {
-      return { events: [], offset };
-    }
-    throw err;
-  }
-  try {
-    const stat = await handle.stat();
-    if (stat.size <= offset) {
-      return { events: [], offset };
-    }
-    const length = stat.size - offset;
-    const buffer = Buffer.alloc(length);
-    await handle.read(buffer, 0, length, offset);
-    const text = buffer.toString("utf8");
-    const events = text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => JSON.parse(line));
-    return { events, offset: stat.size };
+    if (!manualProgress) await deliver(autoEvent(manifest.name, "accepted", "任务已接收，开始执行"));
+    const failure = manifest.mode === "steps"
+      ? await executeSteps({ manifest, env, eventFile, signal, deliver, outputs })
+      : await executeEntrypoint({ manifest, env, eventFile, signal, deliver, outputs });
+    if (failure) return result(false, manifest.name, startedAt, outputs, failure);
+    if (!manualProgress) await deliver(autoEvent(manifest.name, "done", "全部步骤完成", "done"));
+    return result(true, manifest.name, startedAt, outputs);
   } finally {
-    await handle.close();
+    await fs.rm(workDir, { recursive: true, force: true });
   }
 }
 
-async function drainEvents(filePath, state, deliver) {
-  const result = await readEvents(filePath, state.offset);
-  state.offset = result.offset;
-  for (const event of result.events) {
-    await deliver(event);
+async function executeSteps({ manifest, env, eventFile, signal, deliver, outputs }) {
+  for (const step of manifest.steps) {
+    await deliver(autoEvent(manifest.name, step.id, `正在${step.title}`));
+    const commandResult = await runCommand({
+      command: step.command, manifest, env, eventFile, signal, deliver,
+    });
+    outputs.push({ step: step.id, command: commandText(step.command), ...commandResult });
+    if (commandResult.code !== 0) {
+      await deliver(autoEvent(manifest.name, step.id, `${step.title}失败`, "error"));
+      return step.id;
+    }
+    await deliver(autoEvent(manifest.name, step.id, `${step.title}完成`, "done"));
+  }
+  return "";
+}
+
+async function executeEntrypoint({ manifest, env, eventFile, signal, deliver, outputs }) {
+  const commandResult = await runCommand({
+    command: manifest.entrypoint, manifest, env, eventFile, signal, deliver,
+  });
+  outputs.push({ step: "entrypoint", command: commandText(manifest.entrypoint), ...commandResult });
+  if (commandResult.code === 0) return "";
+  await deliver(autoEvent(manifest.name, "entrypoint", "任务执行失败", "error"));
+  return "entrypoint";
+}
+
+async function runCommand({ command, manifest, env, eventFile, signal, deliver }) {
+  const eventState = { offset: 0 };
+  const interval = setInterval(() => {
+    void drainBestEffort(eventFile, eventState, deliver);
+  }, 250);
+  try {
+    const commandResult = await runProcess({ command, cwd: manifest.skillDir, env, signal });
+    await drainEvents(eventFile, eventState, deliver);
+    return commandResult;
+  } finally {
+    clearInterval(interval);
+    await drainBestEffort(eventFile, eventState, deliver);
   }
 }
 
 function runProcess({ command, cwd, env, signal }) {
   return new Promise((resolve) => {
     const child = spawn(command[0], command.slice(1), {
-      cwd,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-      signal,
+      cwd, env, stdio: ["ignore", "pipe", "pipe"], signal,
     });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString("utf8");
+    child.stdout.on("data", (chunk) => { stdout += chunk.toString("utf8"); });
+    child.stderr.on("data", (chunk) => { stderr += chunk.toString("utf8"); });
+    child.on("error", (error) => {
+      resolve({ code: -1, stdout, stderr: `${stderr}\n${error.message}`.trim() });
     });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString("utf8");
-    });
-    child.on("error", (err) => {
-      resolve({ code: -1, stdout, stderr: `${stderr}\n${String(err.message ?? err)}`.trim() });
-    });
-    child.on("close", (code) => {
-      resolve({ code: code ?? 0, stdout, stderr });
-    });
+    child.on("close", (code) => resolve({ code: code ?? 0, stdout, stderr }));
   });
 }
 
-async function runCommand({ command, manifest, env, eventFile, signal, deliver }) {
-  const eventState = { offset: 0 };
-  const interval = setInterval(() => {
-    drainEvents(eventFile, eventState, deliver).catch(() => undefined);
-  }, 250);
+async function drainEvents(filePath, state, deliver) {
+  const read = await readEvents(filePath, state.offset);
+  state.offset = read.offset;
+  for (const event of read.events) await deliver(event);
+}
+
+async function drainBestEffort(filePath, state, deliver) {
   try {
-    const result = await runProcess({
-      command,
-      cwd: manifest.skillDir,
-      env,
-      signal,
-    });
-    await drainEvents(eventFile, eventState, deliver);
-    return result;
-  } finally {
-    clearInterval(interval);
-    await drainEvents(eventFile, eventState, deliver).catch(() => undefined);
+    await drainEvents(filePath, state, deliver);
+  } catch {
+    console.warn("[muad-run-skill] progress event drain failed");
   }
 }
 
-export async function runSkill({ manifest, input = "", args = {}, stateDir, signal, deliver }) {
-  const runId = `${manifest.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const workDir = await fs.mkdtemp(path.join(stateDir || os.tmpdir(), "muad-run-skill-"));
-  const eventFile = path.join(workDir, `${runId}.events.jsonl`);
-  const env = {
-    ...process.env,
-    MUAD_SKILL_NAME: manifest.name,
-    MUAD_SKILL_INPUT: input,
-    MUAD_SKILL_ARGS_JSON: JSON.stringify(args ?? {}),
-    MUAD_PROGRESS_EVENTS_FILE: eventFile,
-    MUAD_PROGRESS_STATE_DIR: workDir,
-  };
-  const startedAt = Date.now();
-  const outputs = [];
-  const manualProgress = manifest.progress?.source === "manual";
-  if (!manualProgress) {
-    await deliver(
-      createAutoEvent({
-        skill: manifest.name,
-        stage: "accepted",
-        text: "任务已接收，开始执行",
-      }),
-    );
+async function readEvents(filePath, offset) {
+  let handle;
+  try {
+    handle = await fs.open(filePath, "r");
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return { events: [], offset };
+    throw error;
   }
-  if (manifest.mode === "steps") {
-    for (const step of manifest.steps) {
-      await deliver(
-        createAutoEvent({
-          skill: manifest.name,
-          stage: step.id,
-          text: `正在${step.title}`,
-        }),
-      );
-      const result = await runCommand({
-        command: step.command,
-        manifest,
-        env,
-        eventFile,
-        signal,
-        deliver,
-      });
-      outputs.push({ step: step.id, command: commandText(step.command), ...result });
-      if (result.code !== 0) {
-        await deliver(
-          createAutoEvent({
-            skill: manifest.name,
-            stage: step.id,
-            text: `${step.title}失败`,
-            type: "error",
-          }),
-        );
-        return {
-          ok: false,
-          skill: manifest.name,
-          failedStep: step.id,
-          durationMs: Date.now() - startedAt,
-          outputs,
-        };
-      }
-      await deliver(
-        createAutoEvent({
-          skill: manifest.name,
-          stage: step.id,
-          text: `${step.title}完成`,
-          type: "done",
-        }),
-      );
-    }
-  } else {
-    const result = await runCommand({
-      command: manifest.entrypoint,
-      manifest,
-      env,
-      eventFile,
-      signal,
-      deliver,
-    });
-    outputs.push({ step: "entrypoint", command: commandText(manifest.entrypoint), ...result });
-    if (result.code !== 0) {
-      await deliver(
-        createAutoEvent({
-          skill: manifest.name,
-          stage: "entrypoint",
-          text: "任务执行失败",
-          type: "error",
-        }),
-      );
-      return {
-        ok: false,
-        skill: manifest.name,
-        failedStep: "entrypoint",
-        durationMs: Date.now() - startedAt,
-        outputs,
-      };
-    }
+  try {
+    const details = await handle.stat();
+    if (details.size <= offset) return { events: [], offset };
+    const buffer = Buffer.alloc(details.size - offset);
+    await handle.read(buffer, 0, buffer.length, offset);
+    const events = buffer.toString("utf8").split("\n").map((line) => line.trim())
+      .filter(Boolean).map((line) => JSON.parse(line));
+    return { events, offset: details.size };
+  } finally {
+    await handle.close();
   }
-  if (!manualProgress) {
-    await deliver(
-      createAutoEvent({
-        skill: manifest.name,
-        stage: "done",
-        text: "全部步骤完成",
-        type: "done",
-      }),
-    );
-  }
+}
+
+async function createWorkDirectory(stateDir) {
+  const root = stateDir || os.tmpdir();
+  await fs.mkdir(root, { recursive: true, mode: 0o700 });
+  return fs.mkdtemp(path.join(root, "muad-run-skill-"));
+}
+
+function autoEvent(skill, stage, text, type = "progress") {
   return {
-    ok: true,
-    skill: manifest.name,
+    type, skill, stage, text,
+    visibility: "channel", privacy: "public", ts: new Date().toISOString(),
+  };
+}
+
+function result(ok, skill, startedAt, outputs, failedStep = "") {
+  return {
+    ok, skill,
+    ...(failedStep ? { failedStep } : {}),
     durationMs: Date.now() - startedAt,
     outputs,
   };
+}
+
+function commandText(command) {
+  return command.map(shellQuote).join(" ");
+}
+
+function shellQuote(value) {
+  if (/^[A-Za-z0-9_./:=@+-]+$/u.test(value)) return value;
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function isNodeError(error) {
+  return error instanceof Error && "code" in error;
 }

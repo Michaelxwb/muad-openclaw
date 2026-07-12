@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -19,14 +20,18 @@ import (
 type DockerDriver struct {
 	network   string // shared docker network (MUAD_NET)
 	skillsDir string // host path to shared skills, mounted read-only
+	secretDir string // Console-private host directory for Pod service-token files
+	runHook   func(context.Context, []string) (string, error)
 }
+
+const defaultDockerSecretDir = "/var/lib/muad-console/runtime-secrets"
 
 // NewDockerDriver builds a DockerDriver.
 func NewDockerDriver(network, skillsDir string) *DockerDriver {
-	return &DockerDriver{network: network, skillsDir: skillsDir}
+	return &DockerDriver{network: network, skillsDir: skillsDir, secretDir: defaultDockerSecretDir}
 }
 
-func stateVolume(userID string) string { return ContainerName(userID) + "-state" }
+func stateVolume(podID string) string { return ContainerName(podID) + "-state" }
 
 func orDefault(v, def string) string {
 	if strings.TrimSpace(v) == "" {
@@ -35,37 +40,29 @@ func orDefault(v, def string) string {
 	return v
 }
 
-// Create launches a user container (detached, no published ports).
-func (d *DockerDriver) Create(ctx context.Context, spec UserSpec, gatewayToken string) error {
-	envFile, cleanup, err := writeEnvFile(BuildEnv(spec, gatewayToken))
+// Create launches a Pod container (detached, no published ports).
+func (d *DockerDriver) Create(ctx context.Context, spec PodSpec) error {
+	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
+		return ErrInvalidPodSpec
+	}
+	if spec.MultiUser.Version != 0 {
+		if err := spec.Validate(); err != nil {
+			return err
+		}
+	}
+	if err := d.ensureStateVolume(ctx, spec.PodID, spec.AdoptState); err != nil {
+		return err
+	}
+	secretPath, err := d.writeServiceToken(spec)
+	if err != nil {
+		return err
+	}
+	envFile, cleanup, err := writeEnvFile(BuildEnv(spec))
 	if err != nil {
 		return err
 	}
 	defer cleanup()
-
-	// Resolved limits with defensive fallback to the built-in defaults.
-	mem := orDefault(spec.MemLimit, DefaultMemLimit)
-	cpus := orDefault(spec.CPULimit, DefaultCPULimit)
-	restart := orDefault(spec.RestartPolicy, DefaultRestartPolicy)
-
-	name := ContainerName(spec.UserID)
-	args := []string{
-		"run", "-d", "--name", name,
-		"--restart", restart,
-		"--env-file", envFile,
-		"-e", "TZ=Asia/Shanghai",
-		"-e", "OPENCLAW_STATE_DIR=/home/node/.openclaw",
-		"-v", stateVolume(spec.UserID) + ":/home/node/.openclaw",
-		"--memory", mem, "--cpus", cpus,
-	}
-	if d.network != "" {
-		args = append(args, "--network", d.network)
-	}
-	if d.skillsDir != "" {
-		args = append(args, "-v", d.skillsDir+":/opt/openclaw-skills:ro")
-	}
-	args = append(args, spec.ImageTag)
-
+	args := d.createArgs(spec, envFile, secretPath)
 	_, err = d.run(ctx, args...)
 	return err
 }
@@ -85,29 +82,39 @@ func (d *DockerDriver) Restart(ctx context.Context, userID string) error {
 	return err
 }
 
-// UpdateSpec for docker is intentionally a no-op. Docker env vars are baked
-// into the container config at `docker run`; callers that need a new spec to
-// take effect must explicitly recreate via Remove+Create. Channel hot reloads
-// update the running container through ExecStdin and must not unexpectedly
-// restart the worker.
-func (d *DockerDriver) UpdateSpec(ctx context.Context, userID string, spec UserSpec, gatewayToken string) error {
+// UpdateSpec refreshes the bind-mounted service-token file in place. Docker env
+// changes still require explicit Remove+Create; channel hot reloads continue to
+// use ExecStdin and do not unexpectedly restart the workload.
+func (d *DockerDriver) UpdateSpec(ctx context.Context, podID string, spec PodSpec) error {
 	_ = ctx
-	_ = userID
-	_ = spec
-	_ = gatewayToken
-	return nil
+	if podID != spec.PodID {
+		return ErrInvalidPodSpec
+	}
+	_, err := d.writeServiceToken(spec)
+	return err
+}
+
+func (d *DockerDriver) UpdateServiceToken(_ context.Context, podID string, secret SecretFileSpec) error {
+	if secret.ContainerPath != PodServiceTokenPath || secret.Value == "" {
+		return ErrInvalidPodSpec
+	}
+	_, err := d.writeServiceToken(PodSpec{PodID: podID, ServiceToken: secret})
+	return err
 }
 
 // Remove force-removes the container; when !keepState the state volume is
 // deleted too (RULE-02 "删卷" is an explicit opt-in).
-func (d *DockerDriver) Remove(ctx context.Context, userID string, keepState bool) error {
+func (d *DockerDriver) Remove(ctx context.Context, podID string, keepState bool) error {
 	// Idempotent: tolerate an already-removed container/volume so an orphaned
 	// DB record (container deleted out-of-band) can still be cleaned up.
-	if _, err := d.run(ctx, "rm", "-f", ContainerName(userID)); err != nil && !isAbsentErr(err) {
+	if _, err := d.run(ctx, "rm", "-f", ContainerName(podID)); err != nil && !isAbsentErr(err) {
+		return err
+	}
+	if err := d.removeServiceToken(podID); err != nil {
 		return err
 	}
 	if !keepState {
-		if _, err := d.run(ctx, "volume", "rm", stateVolume(userID)); err != nil && !isAbsentErr(err) {
+		if _, err := d.run(ctx, "volume", "rm", stateVolume(podID)); err != nil && !isAbsentErr(err) {
 			return err
 		}
 	}
@@ -145,12 +152,94 @@ func (d *DockerDriver) List(ctx context.Context) ([]ContainerInfo, error) {
 			return nil, fmt.Errorf("parse docker ps: %w", err)
 		}
 		infos = append(infos, ContainerInfo{
+			PodID:    strings.TrimPrefix(p.Names, "muad-oc-"),
 			UserID:   strings.TrimPrefix(p.Names, "muad-oc-"),
 			State:    MapDockerState(p.State),
 			ImageTag: p.Image,
 		})
 	}
 	return infos, nil
+}
+
+func (d *DockerDriver) ensureStateVolume(ctx context.Context, podID string, adopt bool) error {
+	name := stateVolume(podID)
+	if _, err := d.run(ctx, "volume", "inspect", name); err == nil {
+		if !adopt {
+			return ErrRetainedState
+		}
+		return nil
+	} else if !isAbsentErr(err) {
+		return err
+	}
+	_, err := d.run(ctx, "volume", "create", "--label", "muad.pod-id="+podID, name)
+	return err
+}
+
+func (d *DockerDriver) createArgs(spec PodSpec, envFile, secretPath string) []string {
+	resource := spec.Resource
+	args := []string{
+		"run", "-d", "--name", ContainerName(spec.PodID),
+		"--restart", orDefault(resource.RestartPolicy, DefaultRestartPolicy),
+		"--env-file", envFile, "-e", "TZ=Asia/Shanghai",
+		"-e", "OPENCLAW_STATE_DIR=/home/node/.openclaw",
+		"-v", stateVolume(spec.PodID) + ":/home/node/.openclaw",
+		"--memory", orDefault(resource.MemLimit, DefaultMemLimit),
+		"--cpus", orDefault(resource.CPULimit, DefaultCPULimit),
+	}
+	if secretPath != "" {
+		args = append(args, "-v", secretPath+":"+PodServiceTokenPath+":ro")
+	}
+	if d.network != "" {
+		args = append(args, "--network", d.network)
+	}
+	if d.skillsDir != "" {
+		args = append(args, "-v", d.skillsDir+":/opt/openclaw-skills:ro")
+	}
+	return append(args, spec.ImageTag)
+}
+
+func (d *DockerDriver) writeServiceToken(spec PodSpec) (string, error) {
+	if spec.ServiceToken.Value == "" {
+		return "", nil
+	}
+	if !podIDPattern.MatchString(spec.PodID) {
+		return "", ErrInvalidPodSpec
+	}
+	dir := filepath.Join(d.secretDir, spec.PodID)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", fmt.Errorf("create Pod secret directory: %w", err)
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return "", fmt.Errorf("chmod Pod secret directory: %w", err)
+	}
+	path := filepath.Join(dir, "pod-service-token")
+	mode := os.FileMode(spec.ServiceToken.Mode)
+	if mode == 0 {
+		mode = 0o400
+	}
+	if err := os.Chmod(path, 0o600); err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("prepare Pod service token rotation: %w", err)
+	}
+	if err := os.WriteFile(path, []byte(spec.ServiceToken.Value), 0o600); err != nil {
+		return "", fmt.Errorf("write Pod service token: %w", err)
+	}
+	if err := os.Chmod(path, mode); err != nil {
+		return "", fmt.Errorf("chmod Pod service token: %w", err)
+	}
+	if spec.ServiceToken.UID >= 0 && spec.ServiceToken.GID >= 0 {
+		if err := os.Chown(path, int(spec.ServiceToken.UID), int(spec.ServiceToken.GID)); err != nil {
+			return "", fmt.Errorf("chown Pod service token: %w", err)
+		}
+	}
+	return path, nil
+}
+
+func (d *DockerDriver) removeServiceToken(podID string) error {
+	path := filepath.Join(d.secretDir, podID)
+	if err := os.RemoveAll(path); err != nil {
+		return fmt.Errorf("remove Pod service token: %w", err)
+	}
+	return nil
 }
 
 // StatsAll samples CPU/MEM for every muad-oc-* container in one `docker stats`
@@ -217,6 +306,9 @@ func (d *DockerDriver) Revive(ctx context.Context, userID string) error { return
 
 // run executes a docker command, combining stderr into the error on failure.
 func (d *DockerDriver) run(ctx context.Context, args ...string) (string, error) {
+	if d.runHook != nil {
+		return d.runHook(ctx, append([]string(nil), args...))
+	}
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr

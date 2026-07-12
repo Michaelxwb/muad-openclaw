@@ -1,0 +1,85 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.actionGroup,
+.filterGroup {
+  max-width: 100%;
+}
+
+.actionGroup {
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  width: 200px;
+}
+
+.statusSelect {
+  width: 132px;
+}
+
+.divider {
+  display: inline-block;
+  width: 1px;
+  height: 24px;
+  background: var(--semi-color-border);
+}
+
+.createGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.field > span {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dialogFields {
+  display: grid;
+  gap: 10px;
+}
+
+@media (max-width: 680px) {
+  .toolbar {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .filterGroup {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+  }
+
+  .searchInput,
+  .statusSelect {
+    width: 100%;
+  }
+
+  .createGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .full {
+    grid-column: auto;
+  }
+}

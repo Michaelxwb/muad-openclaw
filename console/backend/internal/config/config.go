@@ -21,17 +21,20 @@ import (
 // yamlFile mirrors the shape of config.yaml.  All fields are optional so a
 // minimal file (just listenAddr / dbPath) is valid.
 type yamlFile struct {
-	RuntimeDriver      *string `yaml:"runtimeDriver"`
-	DefaultImage       *string `yaml:"defaultImage"`
-	MuadNet            *string `yaml:"muadNet"`
-	SkillsDir          *string `yaml:"skillsDir"`
-	ListenAddr         *string `yaml:"listenAddr"`
-	DBPath             *string `yaml:"dbPath"`
-	JWTSecret          *string `yaml:"jwtSecret"`
-	AdminUser          *string `yaml:"adminUser"`
-	AdminPassword      *string `yaml:"adminPassword"`
-	MasterKey          *string `yaml:"masterKey"`
-	CollectIntervalSec *int    `yaml:"collectIntervalSec"`
+	RuntimeDriver      *string              `yaml:"runtimeDriver"`
+	DefaultImage       *string              `yaml:"defaultImage"`
+	MuadNet            *string              `yaml:"muadNet"`
+	SkillsDir          *string              `yaml:"skillsDir"`
+	ListenAddr         *string              `yaml:"listenAddr"`
+	LogDir             *string              `yaml:"logDir"`
+	DBPath             *string              `yaml:"dbPath"`
+	JWTSecret          *string              `yaml:"jwtSecret"`
+	AdminUser          *string              `yaml:"adminUser"`
+	AdminPassword      *string              `yaml:"adminPassword"`
+	MasterKey          *string              `yaml:"masterKey"`
+	CollectIntervalSec *int                 `yaml:"collectIntervalSec"`
+	ConsoleInternalURL *string              `yaml:"consoleInternalURL"`
+	RuntimeDefaults    *runtimeDefaultsYAML `yaml:"runtimeDefaults"`
 	// k8s driver (used when runtimeDriver=k8s)
 	K8sNamespace    *string `yaml:"k8sNamespace"`
 	K8sSkillsPVC    *string `yaml:"k8sSkillsPVC"`
@@ -39,19 +42,38 @@ type yamlFile struct {
 	K8sStateSize    *string `yaml:"k8sStateSize"`
 }
 
+type runtimeDefaultsYAML struct {
+	MaxSkillConcurrency   *int `yaml:"maxSkillConcurrency"`
+	MaxBrowserConcurrency *int `yaml:"maxBrowserConcurrency"`
+	BrowserCDPPortStart   *int `yaml:"browserCDPPortStart"`
+	BrowserCDPPortEnd     *int `yaml:"browserCDPPortEnd"`
+}
+
+// RuntimeDefaults contains non-secret limits inherited by Pods that do not
+// define an explicit override.
+type RuntimeDefaults struct {
+	MaxSkillConcurrency   int
+	MaxBrowserConcurrency int
+	BrowserCDPPortStart   int
+	BrowserCDPPortEnd     int
+}
+
 // Config holds the validated console configuration.
 type Config struct {
-	MasterKey string
+	MasterKey          string
 	RuntimeDriver      string
 	DefaultImage       string
 	MuadNet            string
 	SkillsDir          string
 	ListenAddr         string
+	LogDir             string
 	DBPath             string
 	JWTSecret          string
 	AdminUser          string
 	AdminPassword      string
 	CollectIntervalSec int
+	ConsoleInternalURL string
+	RuntimeDefaults    RuntimeDefaults
 	K8sNamespace       string
 	K8sSkillsPVC       string
 	K8sStorageClass    string
@@ -64,18 +86,25 @@ var validDrivers = map[string]bool{"docker": true, "k8s": true}
 
 func defaults() *Config {
 	return &Config{
-		RuntimeDriver: "docker",
-		DefaultImage:  "ghcr.io/michaelxwb/muad-openclaw:latest",
-		MuadNet:       "muad-net",
-		SkillsDir:     "/opt/muad/skills",
-		ListenAddr:    ":8080",
-		DBPath:        "/var/lib/muad-console/console.db",
+		RuntimeDriver:      "docker",
+		DefaultImage:       "ghcr.io/michaelxwb/muad-openclaw:latest",
+		MuadNet:            "muad-net",
+		SkillsDir:          "/opt/muad/skills",
+		ListenAddr:         ":8080",
+		DBPath:             "/var/lib/muad-console/console.db",
+		ConsoleInternalURL: "http://muad-console:8080",
 		// 默认管理员名；只需在 config.yaml 配 adminPassword 即可引导管理员
 		// （或 env CONSOLE_ADMIN_PASSWORD）。BootstrapAdmin 要求 user+password 均非空。
 		AdminUser:          "admin",
 		CollectIntervalSec: 30,
-		K8sNamespace:       "muad",
-		K8sStateSize:       "5Gi",
+		RuntimeDefaults: RuntimeDefaults{
+			MaxSkillConcurrency:   2,
+			MaxBrowserConcurrency: 2,
+			BrowserCDPPortStart:   18802,
+			BrowserCDPPortEnd:     65535,
+		},
+		K8sNamespace: "muad",
+		K8sStateSize: "5Gi",
 	}
 }
 
@@ -96,7 +125,9 @@ func Load() (*Config, error) {
 	// that only inject env vars).
 
 	// 2. Highest priority: environment overrides everything (including secrets).
-	c.overrideFromEnv()
+	if err := c.overrideFromEnv(); err != nil {
+		return nil, err
+	}
 
 	// 3. Post-merge fixups.
 	if c.JWTSecret == "" {
@@ -122,10 +153,12 @@ func applyYAML(c *Config, raw []byte) error {
 	applyString(&c.SkillsDir, f.SkillsDir)
 	applyString(&c.MasterKey, f.MasterKey)
 	applyString(&c.ListenAddr, f.ListenAddr)
+	applyString(&c.LogDir, f.LogDir)
 	applyString(&c.DBPath, f.DBPath)
 	applyString(&c.JWTSecret, f.JWTSecret)
 	applyString(&c.AdminUser, f.AdminUser)
 	applyString(&c.AdminPassword, f.AdminPassword)
+	applyString(&c.ConsoleInternalURL, f.ConsoleInternalURL)
 	applyString(&c.K8sNamespace, f.K8sNamespace)
 	applyString(&c.K8sSkillsPVC, f.K8sSkillsPVC)
 	applyString(&c.K8sStorageClass, f.K8sStorageClass)
@@ -133,7 +166,24 @@ func applyYAML(c *Config, raw []byte) error {
 	if f.CollectIntervalSec != nil && *f.CollectIntervalSec > 0 {
 		c.CollectIntervalSec = *f.CollectIntervalSec
 	}
+	applyRuntimeDefaultsYAML(&c.RuntimeDefaults, f.RuntimeDefaults)
 	return nil
+}
+
+func applyRuntimeDefaultsYAML(dst *RuntimeDefaults, src *runtimeDefaultsYAML) {
+	if src == nil {
+		return
+	}
+	applyInt(&dst.MaxSkillConcurrency, src.MaxSkillConcurrency)
+	applyInt(&dst.MaxBrowserConcurrency, src.MaxBrowserConcurrency)
+	applyInt(&dst.BrowserCDPPortStart, src.BrowserCDPPortStart)
+	applyInt(&dst.BrowserCDPPortEnd, src.BrowserCDPPortEnd)
+}
+
+func applyInt(dst *int, src *int) {
+	if src != nil {
+		*dst = *src
+	}
 }
 
 func applyString(dst *string, src *string) {
@@ -144,7 +194,7 @@ func applyString(dst *string, src *string) {
 
 // --- env ---
 
-func (c *Config) overrideFromEnv() {
+func (c *Config) overrideFromEnv() error {
 	if v := os.Getenv("CONSOLE_MASTER_KEY"); strings.TrimSpace(v) != "" {
 		c.MasterKey = strings.TrimSpace(v)
 	}
@@ -153,7 +203,9 @@ func (c *Config) overrideFromEnv() {
 	envOverride(&c.MuadNet, "MUAD_NET")
 	envOverride(&c.SkillsDir, "CONSOLE_SKILLS_DIR")
 	envOverride(&c.ListenAddr, "CONSOLE_LISTEN")
+	envOverride(&c.LogDir, "CONSOLE_LOG_DIR")
 	envOverride(&c.DBPath, "CONSOLE_DB")
+	envOverride(&c.ConsoleInternalURL, "CONSOLE_INTERNAL_URL")
 	envOverride(&c.JWTSecret, "CONSOLE_JWT_SECRET")
 	envOverride(&c.AdminUser, "CONSOLE_ADMIN_USER")
 	if v := os.Getenv("CONSOLE_ADMIN_PASSWORD"); v != "" {
@@ -166,12 +218,39 @@ func (c *Config) overrideFromEnv() {
 	if v := envIntOr("CONSOLE_COLLECT_INTERVAL", 0); v > 0 {
 		c.CollectIntervalSec = v
 	}
+	for _, item := range []struct {
+		dst *int
+		key string
+	}{
+		{&c.RuntimeDefaults.MaxSkillConcurrency, "CONSOLE_RUNTIME_MAX_SKILL_CONCURRENCY"},
+		{&c.RuntimeDefaults.MaxBrowserConcurrency, "CONSOLE_RUNTIME_MAX_BROWSER_CONCURRENCY"},
+		{&c.RuntimeDefaults.BrowserCDPPortStart, "CONSOLE_RUNTIME_BROWSER_CDP_PORT_START"},
+		{&c.RuntimeDefaults.BrowserCDPPortEnd, "CONSOLE_RUNTIME_BROWSER_CDP_PORT_END"},
+	} {
+		if err := envIntOverride(item.dst, item.key); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func envOverride(dst *string, key string) {
 	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
 		*dst = v
 	}
+}
+
+func envIntOverride(dst *int, key string) error {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return fmt.Errorf("%s must be an integer: %w", key, err)
+	}
+	*dst = value
+	return nil
 }
 
 // --- helpers ---
@@ -185,6 +264,28 @@ func (c *Config) validate() error {
 	}
 	if c.ListenAddr == "" {
 		return fmt.Errorf("listenAddr must not be empty")
+	}
+	if !strings.HasPrefix(c.ConsoleInternalURL, "http://") && !strings.HasPrefix(c.ConsoleInternalURL, "https://") {
+		return fmt.Errorf("consoleInternalURL must use http or https")
+	}
+	if err := c.RuntimeDefaults.validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c RuntimeDefaults) validate() error {
+	if c.MaxSkillConcurrency <= 0 {
+		return fmt.Errorf("runtimeDefaults.maxSkillConcurrency must be greater than zero")
+	}
+	if c.MaxBrowserConcurrency <= 0 {
+		return fmt.Errorf("runtimeDefaults.maxBrowserConcurrency must be greater than zero")
+	}
+	if c.BrowserCDPPortStart < 1024 || c.BrowserCDPPortStart > 65535 {
+		return fmt.Errorf("runtimeDefaults.browserCDPPortStart must be between 1024 and 65535")
+	}
+	if c.BrowserCDPPortEnd < c.BrowserCDPPortStart || c.BrowserCDPPortEnd > 65535 {
+		return fmt.Errorf("runtimeDefaults.browserCDPPortEnd must be between browserCDPPortStart and 65535")
 	}
 	return nil
 }

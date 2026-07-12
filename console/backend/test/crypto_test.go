@@ -1,6 +1,7 @@
 package test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
@@ -26,6 +27,74 @@ func TestEncryptDecrypt_RoundTrip(t *testing.T) {
 	}
 	if got != plain {
 		t.Errorf("round trip mismatch: got %q", got)
+	}
+}
+
+func TestServiceToken_GenerationFingerprintAndComparison(t *testing.T) {
+	first, err := crypto.GenerateServiceToken()
+	if err != nil {
+		t.Fatalf("GenerateServiceToken: %v", err)
+	}
+	second, err := crypto.GenerateServiceToken()
+	if err != nil {
+		t.Fatalf("GenerateServiceToken second: %v", err)
+	}
+	if first == second || len(first) < 40 {
+		t.Fatalf("generated tokens are not sufficiently distinct: %q / %q", first, second)
+	}
+	fingerprint := crypto.Fingerprint(first)
+	if !strings.HasPrefix(fingerprint, "sha256:") || len(fingerprint) != len("sha256:")+64 {
+		t.Fatalf("unexpected fingerprint %q", fingerprint)
+	}
+	if !crypto.ConstantTimeEqual(first, first) {
+		t.Fatal("equal tokens did not match")
+	}
+	if crypto.ConstantTimeEqual(first, second) {
+		t.Fatal("different tokens matched")
+	}
+	display := crypto.DisplayFingerprint(fingerprint)
+	if display == fingerprint || !strings.HasPrefix(display, "sha256:") || !strings.Contains(display, "...") {
+		t.Fatalf("unexpected display fingerprint %q", display)
+	}
+}
+
+func TestDeriveGatewayToken_IsStableAndDistinct(t *testing.T) {
+	serviceToken := "pod-service-token"
+	first := crypto.DeriveGatewayToken(serviceToken)
+	second := crypto.DeriveGatewayToken(serviceToken)
+	if first == serviceToken || first == "" || first != second {
+		t.Fatalf("derived gateway token is invalid: %q / %q", first, second)
+	}
+	if first == crypto.DeriveGatewayToken("another-service-token") {
+		t.Fatal("different service tokens derived the same Gateway token")
+	}
+}
+
+func TestBindingCodeCodec_GenerateNormalizeAndHash(t *testing.T) {
+	codec, err := crypto.NewBindingCodeCodec("master-key")
+	if err != nil {
+		t.Fatalf("NewBindingCodeCodec: %v", err)
+	}
+	code, err := codec.Generate()
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	if len(code) != 13 || !strings.HasPrefix(code, "MUAD-") {
+		t.Fatalf("unexpected code format %q", code)
+	}
+	hash, err := codec.Hash(strings.ToLower(code))
+	if err != nil {
+		t.Fatalf("Hash: %v", err)
+	}
+	if !strings.HasPrefix(hash, "hmac-sha256:") || strings.Contains(hash, code) {
+		t.Fatalf("unexpected binding-code hash %q", hash)
+	}
+	hint, err := crypto.BindingCodeHint(code)
+	if err != nil || len(hint) != 8 || !strings.HasPrefix(hint, "****") {
+		t.Fatalf("BindingCodeHint = %q, %v", hint, err)
+	}
+	if _, err := codec.Hash("MUAD-INVALID!"); err == nil {
+		t.Fatal("expected invalid alphabet to be rejected")
 	}
 }
 

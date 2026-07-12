@@ -11,9 +11,12 @@ import (
 	"time"
 )
 
-// ErrNotImplemented is returned by drivers that do not yet implement a method
-// (e.g. the k8s stub, §3.5 / RISK-05).
-var ErrNotImplemented = errors.New("driver: not implemented")
+var (
+	// ErrNotImplemented is returned by drivers that do not yet implement a method.
+	ErrNotImplemented = errors.New("driver: not implemented")
+	// ErrRuntimeNotReady indicates that the workload exists but cannot accept exec calls yet.
+	ErrRuntimeNotReady = errors.New("driver: runtime not ready")
+)
 
 // LlmConfig is an LLM provider configuration (already merged: global ⊕ override).
 type LlmConfig struct {
@@ -23,25 +26,11 @@ type LlmConfig struct {
 	Model    string
 }
 
-// UserSpec is the desired state for one user's container.
-type UserSpec struct {
-	UserID         string
-	Channels       []string                   // enabled channel IDs, e.g. ["wecom","wechat"]
-	ChannelConfigs map[string]json.RawMessage // per-channel credentials, keys: botId, secret (plain)
-	ImageTag       string                     // full image reference
-	LLM            LlmConfig
-	// Resource limits (already resolved: per-user override ⊕ global ⊕ default).
-	// Empty values fall back to the built-in defaults below.
-	MemLimit      string // docker --memory, e.g. "2g"
-	CPULimit      string // docker --cpus, e.g. "1.5"
-	RestartPolicy string // docker --restart, e.g. "unless-stopped"
-}
-
-// Built-in resource defaults (lowest priority; used when neither per-user nor
-// global config sets a value). These match the historical hard-coded limits.
+// Built-in resource defaults (lowest priority; used when neither Pod nor
+// global config sets a value). These are the validated 10-user Pod baseline.
 const (
-	DefaultMemLimit      = "2g"
-	DefaultCPULimit      = "1.5"
+	DefaultMemLimit      = "3g"
+	DefaultCPULimit      = "2"
 	DefaultRestartPolicy = "unless-stopped"
 )
 
@@ -60,6 +49,7 @@ type Stats struct {
 
 // ContainerInfo is the aggregated view of one container surfaced to the API.
 type ContainerInfo struct {
+	PodID            string
 	UserID           string
 	State            string // creating/running/stopped/archived/unhealthy
 	ImageTag         string
@@ -71,29 +61,31 @@ type ContainerInfo struct {
 
 // RuntimeDriver is the runtime-agnostic container control contract.
 type RuntimeDriver interface {
-	Create(ctx context.Context, spec UserSpec, gatewayToken string) error
-	Start(ctx context.Context, userID string) error
-	Stop(ctx context.Context, userID string) error
-	Restart(ctx context.Context, userID string) error
-	Remove(ctx context.Context, userID string, keepState bool) error
+	Create(ctx context.Context, spec PodSpec) error
+	Start(ctx context.Context, podID string) error
+	Stop(ctx context.Context, podID string) error
+	Restart(ctx context.Context, podID string) error
+	Remove(ctx context.Context, podID string, keepState bool) error
 	List(ctx context.Context) ([]ContainerInfo, error)
 	// StatsAll samples CPU/MEM for all user containers in one call (collector).
 	StatsAll(ctx context.Context) (map[string]Stats, error)
-	Logs(ctx context.Context, userID string, tail int) (string, error)
+	Logs(ctx context.Context, podID string, tail int) (string, error)
 	// Exec runs a command inside a user container (used to query the in-container
 	// openclaw CLI for channel/session status — TASK-010).
-	Exec(ctx context.Context, userID string, cmd ...string) (string, error)
+	Exec(ctx context.Context, podID string, cmd ...string) (string, error)
 	// ExecStdin runs a command inside a container, piping stdin from the reader.
 	// Used to inject configuration without exposing credentials in command-line args.
-	ExecStdin(ctx context.Context, userID string, stdin io.Reader, cmd ...string) (string, error)
-	Reap(ctx context.Context, userID string) error
-	Revive(ctx context.Context, userID string) error
+	ExecStdin(ctx context.Context, podID string, stdin io.Reader, cmd ...string) (string, error)
+	Reap(ctx context.Context, podID string) error
+	Revive(ctx context.Context, podID string) error
 	// UpdateSpec pushes a new spec (channels, LLM, image, etc.) to the runtime
 	// so a future pod restart (crash, scale, manual) boots with up-to-date
 	// configuration. Hot-reload changes (channels/plugins) don't need this for
 	// the running pod, but the k8s Secret / docker container env needs to be
 	// in sync with DB to survive restarts.
-	UpdateSpec(ctx context.Context, userID string, spec UserSpec, gatewayToken string) error
+	UpdateSpec(ctx context.Context, podID string, spec PodSpec) error
+	// UpdateServiceToken rotates only the fixed secret file/Secret resource.
+	UpdateServiceToken(ctx context.Context, podID string, secret SecretFileSpec) error
 }
 
 // MergeLLM overlays per-user override on top of the global default. Any
@@ -118,10 +110,10 @@ func MergeLLM(global, override LlmConfig) LlmConfig {
 // BuildEnv renders the container environment contract consumed by the image's
 // entrypoint / inject-env.mjs. Only non-empty values are emitted so the image
 // baseline defaults stay in effect.
-func BuildEnv(spec UserSpec, gatewayToken string) map[string]string {
+func BuildEnv(spec PodSpec) map[string]string {
 	env := map[string]string{
-		"PC_USER":  spec.UserID,
-		"CHANNELS": strings.Join(spec.Channels, ","),
+		"MUAD_POD_ID": spec.PodID,
+		"CHANNELS":    strings.Join(spec.Channels, ","),
 	}
 	// Multi-channel credentials via JSON env. inject-env.mjs parses this
 	// and writes per-channel entries to openclaw.json's channels block.
@@ -130,11 +122,17 @@ func BuildEnv(spec UserSpec, gatewayToken string) map[string]string {
 			putIf(env, "CHANNEL_CONFIGS", string(b))
 		}
 	}
-	putIf(env, "OPENCLAW_GATEWAY_TOKEN", gatewayToken)
-	putIf(env, "LLM_PROVIDER", spec.LLM.Provider)
-	putIf(env, "LLM_API_KEY", spec.LLM.APIKey)
-	putIf(env, "LLM_BASE_URL", spec.LLM.BaseURL)
-	putIf(env, "LLM_MODEL", spec.LLM.Model)
+	if spec.MultiUser.Version != 0 {
+		if raw, err := json.Marshal(spec.MultiUser); err == nil {
+			putIf(env, "MUAD_RUNTIME_CONFIG", string(raw))
+		}
+		putIf(env, "MUAD_CONSOLE_INTERNAL_URL", spec.MultiUser.ConsoleInternalURL)
+	}
+	putIf(env, "OPENCLAW_GATEWAY_TOKEN", spec.GatewayToken)
+	putIf(env, "LLM_PROVIDER", spec.LLMOverride.Provider)
+	putIf(env, "LLM_API_KEY", spec.LLMOverride.APIKey)
+	putIf(env, "LLM_BASE_URL", spec.LLMOverride.BaseURL)
+	putIf(env, "LLM_MODEL", spec.LLMOverride.Model)
 	return env
 }
 

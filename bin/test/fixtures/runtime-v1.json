@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "podId": "pod-a",
+  "generation": 7,
+  "consoleInternalUrl": "http://muad-console:8080/internal/v1",
+  "serviceTokenFile": "/run/secrets/muad/pod-service-token",
+  "concurrency": {
+    "maxSkills": 2,
+    "maxBrowser": 1
+  },
+  "channels": {
+    "enabled": ["wecom", "wechat"],
+    "configs": {
+      "wecom": {"botId": "test-bot", "secret": "test-channel-secret"},
+      "wechat": {}
+    }
+  },
+  "agents": [
+    {
+      "id": "main",
+      "default": true,
+      "status": "active",
+      "workspace": "/tmp/muad-runtime/workspace",
+      "agentDir": "/tmp/muad-runtime/agents/main/agent",
+      "model": "pod-default-deepseek/deepseek-chat",
+      "tools": {
+        "deny": ["browser", "exec", "muad_run_skill", "session_get_state"],
+        "workspaceOnly": true
+      }
+    },
+    {
+      "id": "alice",
+      "default": false,
+      "status": "active",
+      "workspace": "/tmp/muad-runtime/workspace-alice",
+      "agentDir": "/tmp/muad-runtime/agents/alice/agent",
+      "browserProfile": "alice",
+      "model": "user-alice-deepseek/deepseek-chat",
+      "tools": {
+        "allow": ["browser", "muad_run_skill", "session_get_state"],
+        "deny": ["exec", "shell"],
+        "workspaceOnly": true
+      }
+    }
+  ],
+  "routes": [
+    {
+      "agentId": "alice",
+      "channel": "wechat",
+      "accountId": "default",
+      "peerKind": "direct",
+      "externalId": "wx-alice"
+    },
+    {
+      "agentId": "alice",
+      "channel": "wecom",
+      "accountId": "corp",
+      "peerKind": "direct",
+      "externalId": "XuWenBin"
+    }
+  ],
+  "identityLinks": [
+    {
+      "agentId": "alice",
+      "identities": ["wechat:wx-alice", "wecom:XuWenBin"]
+    }
+  ],
+  "browser": {
+    "defaultProfile": "quarantine",
+    "profiles": [
+      {"id": "quarantine", "driver": "openclaw", "cdpPort": 18801},
+      {"id": "alice", "driver": "openclaw", "cdpPort": 18802}
+    ]
+  },
+  "providers": [
+    {
+      "id": "pod-default-deepseek",
+      "provider": "deepseek",
+      "baseUrl": "https://api.deepseek.com",
+      "apiKey": "global-key",
+      "model": "deepseek-chat"
+    },
+    {
+      "id": "user-alice-deepseek",
+      "provider": "deepseek",
+      "baseUrl": "https://api.deepseek.com",
+      "apiKey": "alice-key",
+      "model": "deepseek-chat"
+    }
+  ],
+  "platforms": [
+    {
+      "id": "xdr",
+      "displayName": "XDR",
+      "config": {"baseUrl": "https://xdr.internal"}
+    }
+  ],
+  "skills": {
+    "publicDirectory": "/opt/openclaw-skills",
+    "privateRoot": "/tmp/muad-runtime"
+  },
+  "sessionManager": {
+    "agents": [
+      {
+        "agentId": "alice",
+        "workspace": "/tmp/muad-runtime/workspace-alice",
+        "storeDirectory": "/tmp/muad-runtime/agents/alice/session-store"
+      }
+    ]
+  },
+  "guard": {
+    "mainAgentId": "main",
+    "quarantineProfile": "quarantine",
+    "agentProfiles": [
+      {"agentId": "alice", "profile": "alice"}
+    ]
+  }
+}

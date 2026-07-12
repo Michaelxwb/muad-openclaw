@@ -45,6 +45,15 @@ script can call `muad-progress` for coarse step updates:
 }
 ```
 
+Executable commands are manifest-owned arrays using an approved interpreter
+(`bash`, `sh`, `python3`, or `node`) and a relative `scripts/` entry. Absolute
+paths, traversal, undeclared entrypoints, and symlink escapes are rejected.
+
+Public Skills are resolved from `/opt/openclaw-skills`. Private Skills are
+resolved only from the active agent's trusted `<workspace>/skills` directory.
+A same-name private override requires both versions plus an explicit
+`override.approvalId` and matching `override.publicVersion` in its manifest.
+
 ## Tool
 
 The plugin registers:
@@ -55,3 +64,9 @@ muad_run_skill(skill_name, input?, args?)
 
 For `runtime: script` skills, prompts and slash-command routing should call this
 tool instead of directly running `exec`.
+
+At execution time the plugin injects `MUAD_AGENT_ID`, `MUAD_SESSION_KEY`, and
+`MUAD_WORKSPACE_DIR` from OpenClaw's trusted Tool Context. The Pod-level queue
+uses the rendered `maxConcurrency`; full or timed-out queues fail with
+`skill_busy` instead of creating unbounded child processes. Prompt-only Skills
+remain handled by OpenClaw and do not need a `muad.skill.json` file.

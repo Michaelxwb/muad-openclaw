@@ -5,7 +5,7 @@ import { Modal } from "@douyinfe/semi-ui";
 import { BatchToolbar } from "../src/components/BatchToolbar";
 
 describe("BatchToolbar", () => {
-  it("disables skill reload without selected containers", () => {
+  it("disables skill reload without selected Pods", () => {
     const onReloadSkills = vi.fn();
     render(
       <BatchToolbar
@@ -22,7 +22,7 @@ describe("BatchToolbar", () => {
     expect(onReloadSkills).not.toHaveBeenCalled();
   });
 
-  it("confirms skill reload for selected containers", () => {
+  it("confirms skill reload for selected Pods", () => {
     const onReloadSkills = vi.fn();
     const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
       expect(config.content).toContain("1 个");
@@ -84,7 +84,7 @@ describe("BatchToolbar", () => {
 
   it("confirms batch delete with count only", () => {
     const warning = vi.spyOn(Modal, "warning").mockImplementation((config) => {
-      expect(config.content).toBe("确定删除 2 个已勾选容器？此操作不可撤销。");
+      expect(config.content).toBe("确定删除 2 个已勾选 Pod？此操作不可撤销。");
       expect(config.content).not.toContain("alice");
       expect(config.content).not.toContain("bob");
       return {} as ReturnType<typeof Modal.warning>;

@@ -1,6 +1,5 @@
-// Package repo is the SQLite persistence layer for the console: user records,
-// global LLM config, audit log, and admin accounts (§3.3). Runtime monitoring
-// data is NOT persisted here — it lives in the collector's in-memory cache.
+// Package repo is the SQLite persistence layer for the console. Runtime
+// monitoring data is not persisted here; it lives in the monitor cache.
 package repo
 
 import (
@@ -15,65 +14,16 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// ErrUserExists is returned when creating a user_id that already exists (E-01).
-var ErrUserExists = errors.New("repo: user already exists")
-
 // ErrNotFound is returned when a row is absent.
 var ErrNotFound = errors.New("repo: not found")
+
+// ErrLegacySchema requires the development database to be reset before the
+// multi-user schema can be used.
+var ErrLegacySchema = errors.New("repo: legacy users schema detected; reset the database")
 
 // Store wraps the SQLite database.
 type Store struct {
 	db *sql.DB
-}
-
-// User is a persisted user/container record. LLMOverride holds ciphertext.
-type User struct {
-	UserID         string
-	Channels       string // JSON array of channel IDs, e.g. ["wecom","wechat"]
-	ChannelConfigs string // JSON object, key=channelId, value=credential fields (secret encrypted)
-	LLMOverride    string // encrypted JSON, empty when inheriting global
-	ImageTag       string
-	State          string
-	// Per-user resource overrides (plain text; empty = inherit global default).
-	MemLimit      string // docker --memory, e.g. "2g"
-	CPULimit      string // docker --cpus, e.g. "1.5"
-	RestartPolicy string // docker --restart, e.g. "unless-stopped"
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-}
-
-// ResourceConfig holds container resource limits (global default or per-user).
-// Empty fields mean "inherit the next layer down" (per-user → global → built-in).
-type ResourceConfig struct {
-	MemLimit      string
-	CPULimit      string
-	RestartPolicy string
-	UpdatedAt     time.Time
-}
-
-// LLMGlobal is the single-row global LLM default. APIKeyEnc holds ciphertext.
-type LLMGlobal struct {
-	Provider  string
-	BaseURL   string
-	APIKeyEnc string
-	Model     string
-	UpdatedAt time.Time
-}
-
-// AuditEntry is one audit record (payload already redacted).
-type AuditEntry struct {
-	ID      int64     `json:"id"`
-	Actor   string    `json:"actor"`
-	Action  string    `json:"action"`
-	Target  string    `json:"target"`
-	Payload string    `json:"payload"`
-	TS      time.Time `json:"ts"`
-}
-
-// Admin is an admin account.
-type Admin struct {
-	Username     string
-	PasswordHash string
 }
 
 const tsLayout = time.RFC3339Nano
@@ -87,7 +37,7 @@ func Open(path string) (*Store, error) {
 			return nil, fmt.Errorf("create db directory %s: %w", dir, err)
 		}
 	}
-	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)", path)
+	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_txlock=immediate", path)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
@@ -103,190 +53,6 @@ func Open(path string) (*Store, error) {
 
 // Close closes the database.
 func (s *Store) Close() error { return s.db.Close() }
-
-func (s *Store) migrate() error {
-	const ddl = `
-CREATE TABLE IF NOT EXISTS users (
-	user_id      TEXT PRIMARY KEY,
-	llm_override TEXT NOT NULL DEFAULT '',
-	image_tag    TEXT NOT NULL,
-	state        TEXT NOT NULL DEFAULT 'creating',
-	created_at   TEXT NOT NULL,
-	updated_at   TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS llm_global (
-	id          INTEGER PRIMARY KEY CHECK (id = 1),
-	provider    TEXT NOT NULL,
-	base_url    TEXT NOT NULL,
-	api_key_enc TEXT NOT NULL,
-	model       TEXT NOT NULL,
-	updated_at  TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS audit_log (
-	id      INTEGER PRIMARY KEY AUTOINCREMENT,
-	actor   TEXT NOT NULL,
-	action  TEXT NOT NULL,
-	target  TEXT NOT NULL DEFAULT '',
-	payload TEXT NOT NULL DEFAULT '',
-	ts      TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log (ts);
-CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log (actor, ts);
-CREATE TABLE IF NOT EXISTS admins (
-	username      TEXT PRIMARY KEY,
-	password_hash TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS resource_global (
-	id             INTEGER PRIMARY KEY CHECK (id = 1),
-	mem_limit      TEXT NOT NULL DEFAULT '',
-	cpu_limit      TEXT NOT NULL DEFAULT '',
-	restart_policy TEXT NOT NULL DEFAULT '',
-	updated_at     TEXT NOT NULL
-);`
-	if _, err := s.db.Exec(ddl); err != nil {
-		return err
-	}
-	// Additive migrations for DBs created before these columns existed.
-	// SQLite lacks ADD COLUMN IF NOT EXISTS, so tolerate the duplicate error.
-	for _, col := range []string{
-		`ALTER TABLE users ADD COLUMN mem_limit TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE users ADD COLUMN cpu_limit TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE users ADD COLUMN restart_policy TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE users ADD COLUMN channels TEXT NOT NULL DEFAULT '["wecom"]'`,
-		`ALTER TABLE users ADD COLUMN channel_configs TEXT NOT NULL DEFAULT '{}'`,
-	} {
-		if _, err := s.db.Exec(col); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
-			return err
-		}
-	}
-	return nil
-}
-
-// --- users ---
-
-// CreateUser inserts a new user; returns ErrUserExists on user_id conflict.
-func (s *Store) CreateUser(u User) error {
-	now := time.Now().UTC().Format(tsLayout)
-	_, err := s.db.Exec(
-		`INSERT INTO users (user_id, channels, channel_configs, llm_override, image_tag, state,
-		                    mem_limit, cpu_limit, restart_policy, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		u.UserID, u.Channels, u.ChannelConfigs, u.LLMOverride, u.ImageTag, defaultState(u.State),
-		u.MemLimit, u.CPULimit, u.RestartPolicy, now, now,
-	)
-	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
-		return ErrUserExists
-	}
-	return err
-}
-
-// GetUser returns one user or ErrNotFound.
-func (s *Store) GetUser(userID string) (User, error) {
-	row := s.db.QueryRow(
-		`SELECT user_id, channels, channel_configs, llm_override, image_tag, state,
-		        mem_limit, cpu_limit, restart_policy, created_at, updated_at
-		 FROM users WHERE user_id = ?`, userID)
-	return scanUser(row)
-}
-
-// ListUsers returns users with pagination. offset=0, limit=0 means "all".
-func (s *Store) ListUsers(offset, limit int) ([]User, int, error) {
-	var total int
-	if err := s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-	q := `SELECT user_id, channels, channel_configs, llm_override, image_tag, state,
-		        mem_limit, cpu_limit, restart_policy, created_at, updated_at
-		 FROM users ORDER BY user_id`
-	var args []any
-	if limit > 0 {
-		q += ` LIMIT ? OFFSET ?`
-		args = append(args, limit, offset)
-	}
-	rows, err := s.db.Query(q, args...)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-	var out []User
-	for rows.Next() {
-		u, err := scanUser(rows)
-		if err != nil {
-			return nil, 0, err
-		}
-		out = append(out, u)
-	}
-	return out, total, rows.Err()
-}
-
-// UpdateUserState sets a user's state.
-func (s *Store) UpdateUserState(userID, state string) error {
-	return s.touch(`UPDATE users SET state = ?, updated_at = ? WHERE user_id = ?`, state, userID)
-}
-
-// UpdateUserImageTag sets a user's image tag (FEAT-14 upgrade).
-func (s *Store) UpdateUserImageTag(userID, tag string) error {
-	return s.touch(`UPDATE users SET image_tag = ?, updated_at = ? WHERE user_id = ?`, tag, userID)
-}
-
-// UpdateUserLLMOverride sets a user's encrypted per-user LLM override (FEAT-04).
-func (s *Store) UpdateUserLLMOverride(userID, enc string) error {
-	return s.touch(`UPDATE users SET llm_override = ?, updated_at = ? WHERE user_id = ?`, enc, userID)
-}
-
-// UpdateUserChannels updates a user's channels and channel configs.
-func (s *Store) UpdateUserChannels(userID, channels, channelConfigs string) error {
-	now := time.Now().UTC().Format(tsLayout)
-	res, err := s.db.Exec(
-		`UPDATE users SET channels = ?, channel_configs = ?, updated_at = ? WHERE user_id = ?`,
-		channels, channelConfigs, now, userID)
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
-// UpdateUserResources sets a user's per-user resource overrides (empty = inherit).
-func (s *Store) UpdateUserResources(userID, mem, cpu, restart string) error {
-	now := time.Now().UTC().Format(tsLayout)
-	res, err := s.db.Exec(
-		`UPDATE users SET mem_limit = ?, cpu_limit = ?, restart_policy = ?, updated_at = ? WHERE user_id = ?`,
-		mem, cpu, restart, now, userID)
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
-// DeleteUser removes a user record.
-func (s *Store) DeleteUser(userID string) error {
-	res, err := s.db.Exec(`DELETE FROM users WHERE user_id = ?`, userID)
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
-func (s *Store) touch(query, value, userID string) error {
-	now := time.Now().UTC().Format(tsLayout)
-	res, err := s.db.Exec(query, value, now, userID)
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
 
 // --- llm_global ---
 
@@ -370,38 +136,26 @@ func (s *Store) AddAudit(e AuditEntry) error {
 // QueryAudit returns audit entries filtered by actor (optional) and time range,
 // newest first, with pagination. Zero-value from/to mean unbounded.
 func (s *Store) QueryAudit(actor string, from, to time.Time, offset, limit int) ([]AuditEntry, int, error) {
-	// Build WHERE clause for COUNT and SELECT
-	where := ` WHERE 1=1`
-	var whereArgs []any
-	if actor != "" {
-		where += ` AND actor = ?`
-		whereArgs = append(whereArgs, actor)
-	}
-	if !from.IsZero() {
-		where += ` AND ts >= ?`
-		whereArgs = append(whereArgs, from.UTC().Format(tsLayout))
-	}
-	if !to.IsZero() {
-		where += ` AND ts <= ?`
-		whereArgs = append(whereArgs, to.UTC().Format(tsLayout))
-	}
+	return s.QueryAuditFiltered(AuditFilter{Actor: actor, From: from, To: to, Offset: offset, Limit: limit})
+}
 
-	// COUNT
+func (s *Store) QueryAuditFiltered(filter AuditFilter) ([]AuditEntry, int, error) {
+	where, whereArgs := auditWhere(filter)
 	var total int
-	countQ := `SELECT COUNT(*) FROM audit_log` + where
-	if err := s.db.QueryRow(countQ, whereArgs...).Scan(&total); err != nil {
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM audit_log`+where, whereArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-
-	// SELECT with pagination
 	q := `SELECT id, actor, action, target, payload, ts FROM audit_log` + where + ` ORDER BY id DESC`
-	selectArgs := make([]any, len(whereArgs))
-	copy(selectArgs, whereArgs)
-	if limit > 0 {
+	selectArgs := append([]any(nil), whereArgs...)
+	if filter.Limit > 0 {
 		q += ` LIMIT ? OFFSET ?`
-		selectArgs = append(selectArgs, limit, offset)
+		selectArgs = append(selectArgs, filter.Limit, filter.Offset)
 	}
-	rows, err := s.db.Query(q, selectArgs...)
+	return s.scanAuditEntries(q, selectArgs, total)
+}
+
+func (s *Store) scanAuditEntries(q string, args []any, total int) ([]AuditEntry, int, error) {
+	rows, err := s.db.Query(q, args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -417,6 +171,66 @@ func (s *Store) QueryAudit(actor string, from, to time.Time, offset, limit int) 
 		out = append(out, e)
 	}
 	return out, total, rows.Err()
+}
+
+func auditWhere(filter AuditFilter) (string, []any) {
+	where := ` WHERE 1=1`
+	args := make([]any, 0, 12)
+	for _, item := range []struct{ clause, value string }{
+		{` AND actor = ?`, filter.Actor}, {` AND action = ?`, filter.Action}, {` AND target = ?`, filter.Target},
+	} {
+		if item.value != "" {
+			where += item.clause
+			args = append(args, item.value)
+		}
+	}
+	for _, item := range []struct{ path, value string }{
+		{"$.podId", filter.PodID}, {"$.humanUserId", filter.HumanUserID},
+		{"$.identityId", filter.IdentityID}, {"$.bindingCodeId", filter.BindingCodeID},
+	} {
+		if item.value != "" {
+			where += ` AND json_valid(payload) AND json_extract(payload, ?) = ?`
+			args = append(args, item.path, item.value)
+		}
+	}
+	if !filter.From.IsZero() {
+		where += ` AND ts >= ?`
+		args = append(args, filter.From.UTC().Format(tsLayout))
+	}
+	if !filter.To.IsZero() {
+		where += ` AND ts <= ?`
+		args = append(args, filter.To.UTC().Format(tsLayout))
+	}
+	return where, args
+}
+
+func (s *Store) CountAuditActionsSince(actions []string, since time.Time) ([]AuditActionCount, error) {
+	if len(actions) == 0 {
+		return []AuditActionCount{}, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(actions)), ",")
+	args := make([]any, 0, len(actions)+1)
+	for _, action := range actions {
+		args = append(args, action)
+	}
+	args = append(args, since.UTC().Format(tsLayout))
+	query := `SELECT action, json_extract(payload, '$.podId'), COUNT(*) FROM audit_log
+		WHERE action IN (` + placeholders + `) AND ts >= ? AND json_valid(payload)
+		AND COALESCE(json_extract(payload, '$.podId'), '') <> '' GROUP BY action, json_extract(payload, '$.podId')`
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("count audit actions: %w", err)
+	}
+	defer rows.Close()
+	var counts []AuditActionCount
+	for rows.Next() {
+		var count AuditActionCount
+		if err := rows.Scan(&count.Action, &count.PodID, &count.Count); err != nil {
+			return nil, err
+		}
+		counts = append(counts, count)
+	}
+	return counts, rows.Err()
 }
 
 // --- admins ---
@@ -442,33 +256,4 @@ func (s *Store) GetAdmin(username string) (Admin, error) {
 	default:
 		return Admin{}, err
 	}
-}
-
-// --- helpers ---
-
-type scanner interface {
-	Scan(dest ...any) error
-}
-
-func scanUser(sc scanner) (User, error) {
-	var u User
-	var created, updated string
-	switch err := sc.Scan(&u.UserID, &u.Channels, &u.ChannelConfigs, &u.LLMOverride, &u.ImageTag, &u.State,
-		&u.MemLimit, &u.CPULimit, &u.RestartPolicy, &created, &updated); err {
-	case sql.ErrNoRows:
-		return User{}, ErrNotFound
-	case nil:
-		u.CreatedAt, _ = time.Parse(tsLayout, created)
-		u.UpdatedAt, _ = time.Parse(tsLayout, updated)
-		return u, nil
-	default:
-		return User{}, err
-	}
-}
-
-func defaultState(s string) string {
-	if s == "" {
-		return "creating"
-	}
-	return s
 }

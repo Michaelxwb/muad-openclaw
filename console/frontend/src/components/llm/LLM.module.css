@@ -1,0 +1,57 @@
+.section {
+  padding: 4px 0 20px;
+  border-bottom: 1px solid var(--semi-color-border);
+}
+
+.section + .section {
+  padding-top: 20px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+  max-width: 760px;
+  margin-bottom: 12px;
+}
+
+.formGrid label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.fingerprint {
+  margin-bottom: 12px;
+  color: var(--semi-color-text-2);
+  font-size: 13px;
+}
+
+.podChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-bottom: 12px;
+}
+
+.divider {
+  margin: 18px 0;
+  border-top: 1px solid var(--semi-color-border);
+}
+
+@media (max-width: 680px) {
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wide {
+    grid-column: auto;
+  }
+}

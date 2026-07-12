@@ -30,7 +30,7 @@ git tag v0.1.0 && git push origin v0.1.0
 
 ```bash
 docker build -t muad-openclaw:local .
-# 指定 openclaw 基础版本：docker build --build-arg OPENCLAW_VERSION=latest -t muad-openclaw:local .
+# 基础版本固定为 2026.6.10；构建自检会拒绝其他版本。
 ```
 
 ## 用户容器管理（通过 `muad-console` 控制面）

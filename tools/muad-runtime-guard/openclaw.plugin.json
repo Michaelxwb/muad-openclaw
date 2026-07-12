@@ -1,0 +1,55 @@
+{
+  "id": "muad-runtime-guard",
+  "name": "Muad Runtime Guard",
+  "description": "Enforces Muad multi-user runtime bindings and trusted execution boundaries.",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "trustedToolPolicies": [
+      "muad-browser-profile",
+      "muad-main-deny",
+      "muad-agent-files"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "generation",
+      "mainAgentId",
+      "quarantineProfile",
+      "agentProfiles",
+      "sessionAgentIds",
+      "maxBrowserConcurrency",
+      "maxSkillConcurrency",
+      "consoleInternalURL",
+      "serviceTokenFile"
+    ],
+    "properties": {
+      "generation": { "type": "integer", "minimum": 1 },
+      "mainAgentId": { "type": "string" },
+      "quarantineProfile": { "type": "string" },
+      "agentProfiles": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agentId", "profile"],
+          "properties": {
+            "agentId": { "type": "string" },
+            "profile": { "type": "string" }
+          }
+        }
+      },
+      "sessionAgentIds": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "maxBrowserConcurrency": { "type": "integer", "minimum": 1 },
+      "maxSkillConcurrency": { "type": "integer", "minimum": 1 },
+      "consoleInternalURL": { "type": "string" },
+      "serviceTokenFile": { "type": "string" }
+    }
+  }
+}

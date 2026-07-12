@@ -36,10 +36,10 @@ func TestMergeLLM_EmptyOverrideInherits(t *testing.T) {
 }
 
 func TestBuildEnv_OmitsEmptyLLM(t *testing.T) {
-	spec := driver.UserSpec{UserID: "alice", Channels: []string{"wecom"}, ChannelConfigs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"wecom": {"botId": "wb-1", "secret": "s"}}`)}}
-	env := driver.BuildEnv(spec, "tok")
+	spec := driver.PodSpec{PodID: "alice", Channels: []string{"wecom"}, ChannelConfigs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"wecom": {"botId": "wb-1", "secret": "s"}}`)}, GatewayToken: "tok"}
+	env := driver.BuildEnv(spec)
 
-	if env["PC_USER"] != "alice" || env["CHANNELS"] != "wecom" {
+	if env["MUAD_POD_ID"] != "alice" || env["CHANNELS"] != "wecom" {
 		t.Fatalf("missing required identity/channels env: %+v", env)
 	}
 	if env["CHANNEL_CONFIGS"] == "" {
@@ -54,11 +54,11 @@ func TestBuildEnv_OmitsEmptyLLM(t *testing.T) {
 }
 
 func TestBuildEnv_IncludesLLM(t *testing.T) {
-	spec := driver.UserSpec{
-		UserID: "bob", Channels: []string{"wecom"}, ChannelConfigs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"wecom": {"botId": "wb-2", "secret": "s2"}}`)},
-		LLM: driver.LlmConfig{Provider: "deepseek", BaseURL: "https://x", APIKey: "k", Model: "m"},
+	spec := driver.PodSpec{
+		PodID: "bob", Channels: []string{"wecom"}, ChannelConfigs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"wecom": {"botId": "wb-2", "secret": "s2"}}`)},
+		LLMOverride: driver.LlmConfig{Provider: "deepseek", BaseURL: "https://x", APIKey: "k", Model: "m"},
 	}
-	env := driver.BuildEnv(spec, "")
+	env := driver.BuildEnv(spec)
 	for k, want := range map[string]string{
 		"LLM_PROVIDER": "deepseek", "LLM_BASE_URL": "https://x", "LLM_API_KEY": "k", "LLM_MODEL": "m",
 	} {
@@ -68,6 +68,19 @@ func TestBuildEnv_IncludesLLM(t *testing.T) {
 	}
 	if _, ok := env["OPENCLAW_GATEWAY_TOKEN"]; ok {
 		t.Errorf("empty gateway token should be omitted")
+	}
+}
+
+func TestBuildEnv_IncludesSessionManagerConsoleURL(t *testing.T) {
+	spec := driver.PodSpec{
+		PodID: "pod-a",
+		MultiUser: driver.RuntimeConfigV1{
+			Version: driver.RuntimeConfigVersion, ConsoleInternalURL: "http://muad-console:8080",
+		},
+	}
+	env := driver.BuildEnv(spec)
+	if env["MUAD_CONSOLE_INTERNAL_URL"] != "http://muad-console:8080" || env["MUAD_RUNTIME_CONFIG"] == "" {
+		t.Fatalf("session-manager runtime env = %+v", env)
 	}
 }
 
@@ -115,6 +128,23 @@ func TestMapDockerState(t *testing.T) {
 	}
 }
 
+func TestResolveResourceSpecAndMemoryLimit(t *testing.T) {
+	got := driver.ResolveResourceSpec(
+		driver.ResourceSpec{MemLimit: "2.5g", MaxSkillConcurrency: 4},
+		driver.ResourceSpec{CPULimit: "2", RestartPolicy: "always"},
+		driver.ResourceSpec{MemLimit: "1g", CPULimit: "1", RestartPolicy: "no", MaxSkillConcurrency: 1, MaxBrowserConcurrency: 2},
+	)
+	if got.MemLimit != "2.5g" || got.CPULimit != "2" || got.MaxSkillConcurrency != 4 || got.MaxBrowserConcurrency != 2 {
+		t.Errorf("unexpected effective resources: %+v", got)
+	}
+	if memory, err := driver.MemoryLimitMiB(got.MemLimit); err != nil || memory != 2560 {
+		t.Errorf("MemoryLimitMiB = %d, %v; want 2560", memory, err)
+	}
+	if _, err := driver.MemoryLimitMiB("2gb"); err == nil {
+		t.Error("invalid memory unit should fail")
+	}
+}
+
 func TestFactory(t *testing.T) {
 	if _, err := driver.New("docker", "muad-net", "/skills", driver.K8sOptions{}); err != nil {
 		t.Errorf("docker factory: %v", err)
@@ -128,7 +158,7 @@ func TestFactory(t *testing.T) {
 
 func TestDockerUpdateSpecNoop(t *testing.T) {
 	drv := driver.NewDockerDriver("muad-net", "/skills")
-	err := drv.UpdateSpec(context.Background(), "alice", driver.UserSpec{UserID: "alice"}, "")
+	err := drv.UpdateSpec(context.Background(), "alice", driver.PodSpec{PodID: "alice"})
 	if err != nil {
 		t.Fatalf("UpdateSpec should not shell out or recreate for docker: %v", err)
 	}

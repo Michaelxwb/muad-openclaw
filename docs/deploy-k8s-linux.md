@@ -46,6 +46,7 @@ defaultImage: ghcr.io/michaelxwb/muad-openclaw:0.1.1
 k8sNamespace: muad
 k8sStateSize: 3Gi
 collectIntervalSec: 30
+logDir: /var/lib/muad-console/logs
 listenAddr: ":8080"
 dbPath: /var/lib/muad-console/console.db
 EOF

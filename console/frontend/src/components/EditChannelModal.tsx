@@ -1,54 +1,49 @@
 import { useEffect, useState } from "react";
 import { Modal, Toast } from "@douyinfe/semi-ui";
-import { api, ChannelCredential } from "../api";
+import { api } from "../api";
+import type { ChannelConfigView, ChannelCredential } from "../api";
 import { ChannelForm } from "./ChannelForm";
 
 interface Props {
-  userId: string | null;
+  podId: string | null;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function EditChannelModal({ userId, onClose, onSaved }: Props) {
+export function EditChannelModal({ podId, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [initial, setInitial] = useState<{
     channels: string[];
-    channelConfigs: Record<
-      string,
-      { botId?: string; secretConfigured: boolean; lastUpdated?: string }
-    >;
+    channelConfigs: Record<string, ChannelConfigView>;
   } | null>(null);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!podId) return;
     setLoading(true);
     setError("");
     api
-      .getContainer(userId)
+      .getPod(podId)
       .then((data) =>
         setInitial({
-          channels: data.channels || [],
-          channelConfigs: data.channelConfigs as Record<
-            string,
-            { botId?: string; secretConfigured: boolean; lastUpdated?: string }
-          >,
+          channels: data.channels,
+          channelConfigs: data.channelConfigs ?? {},
         }),
       )
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, [podId]);
 
   async function handleSubmit(v: {
     channels: string[];
     channelConfigs: Record<string, ChannelCredential>;
   }) {
-    if (!userId) return;
+    if (!podId) return;
     setBusy(true);
     setError("");
     try {
-      await api.updateChannels(userId, v);
+      await api.updatePodChannels(podId, v);
       Toast.success("通道配置已更新");
       onSaved();
     } catch (e) {
@@ -60,8 +55,8 @@ export function EditChannelModal({ userId, onClose, onSaved }: Props) {
 
   return (
     <Modal
-      title={`编辑 ${userId ?? ""} 的消息通道`}
-      visible={userId !== null}
+      title={`编辑 ${podId ?? ""} 的消息通道`}
+      visible={podId !== null}
       onCancel={onClose}
       footer={null}
       width={520}

@@ -1,5 +1,7 @@
 {
   "name": "example-long-task",
+  "version": "1.0.0",
+  "visibility": "public",
   "runtime": "script",
   "mode": "entrypoint",
   "progress": { "source": "manual" },

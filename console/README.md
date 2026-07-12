@@ -47,6 +47,7 @@ env 仍可作为最高优先级覆盖（`env > config.yaml > 内置默认值`）
 | `muadNet` | `MUAD_NET` | | `muad-net` | 共享 docker 网络名 |
 | `skillsDir` | `CONSOLE_SKILLS_DIR` | | `/opt/muad/skills` | 共享 skill 目录（只读挂进每个容器） |
 | `listenAddr` | `CONSOLE_LISTEN` | | `:8080` | 监听地址 |
+| `logDir` | `CONSOLE_LOG_DIR` | | 空（仅 stdout） | 配置后双写 `<logDir>/YYYY-MM-DD/console.log` |
 | `dbPath` | `CONSOLE_DB` | | `/var/lib/muad-console/console.db` | SQLite 路径（挂卷持久化） |
 | `jwtSecret` | `CONSOLE_JWT_SECRET` | | = 主密钥 | session token 签名密钥 |
 | `collectIntervalSec` | `CONSOLE_COLLECT_INTERVAL` | | `30` | 监控采集周期（秒） |
