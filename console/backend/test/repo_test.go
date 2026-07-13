@@ -53,7 +53,7 @@ func TestPod_CRUDAndUniqueness(t *testing.T) {
 	if err := s.UpdatePod("pod-a", repo.PodUpdate{
 		DisplayName: "Pod A Updated", ImageTag: "tag:2", MaxUsers: 12,
 		Channels: `["wecom"]`, ChannelConfigsEnc: "channels-enc",
-		LLMOverrideEnc: "llm-enc", MemLimit: "4g", CPULimit: "2",
+		MemLimit: "4g", CPULimit: "2",
 		RestartPolicy: "unless-stopped", MaxSkillConcurrency: 2,
 		MaxBrowserConcurrency: 3,
 	}); err != nil {
@@ -186,20 +186,36 @@ func TestPod_ConfigGenerationRejectsStaleResults(t *testing.T) {
 	}
 }
 
-func TestLLMGlobal_Upsert(t *testing.T) {
+func TestLLMModelConfig_CreateListAndUniqueBinding(t *testing.T) {
 	s := newStore(t)
-	if _, err := s.GetLLMGlobal(); err != repo.ErrNotFound {
-		t.Fatalf("empty = %v, want ErrNotFound", err)
+	createTestPod(t, s, "pod-a", 10)
+	models, err := s.CreateLLMModelConfigs([]repo.LLMModelConfigCreate{{
+		DisplayName: "Alice Model", Provider: "deepseek", BaseURL: "https://api.deepseek.com",
+		APIKeyEnc: "encrypted-key", APIKeyFingerprint: "fingerprint", Model: "deepseek-chat",
+	}})
+	if err != nil {
+		t.Fatalf("CreateLLMModelConfigs: %v", err)
 	}
-	if err := s.SetLLMGlobal(repo.LLMGlobal{Provider: "deepseek", BaseURL: "u", APIKeyEnc: "e", Model: "m1"}); err != nil {
-		t.Fatalf("SetLLMGlobal: %v", err)
+	if len(models) != 1 || models[0].ModelConfigID == "" {
+		t.Fatalf("created models = %+v", models)
 	}
-	if err := s.SetLLMGlobal(repo.LLMGlobal{Provider: "deepseek", BaseURL: "u", APIKeyEnc: "e2", Model: "m2"}); err != nil {
-		t.Fatalf("SetLLMGlobal upsert: %v", err)
+	alice := repo.HumanUser{
+		PodID: "pod-a", ModelConfigID: models[0].ModelConfigID, DisplayName: "Alice",
+		AgentID: "alice", BrowserProfile: "alice", Status: repo.HumanUserStatusActive,
 	}
-	g, _ := s.GetLLMGlobal()
-	if g.Model != "m2" || g.APIKeyEnc != "e2" {
-		t.Errorf("upsert not applied: %+v", g)
+	if _, err := s.CreateHumanUser(alice, 18802, 18810); err != nil {
+		t.Fatalf("CreateHumanUser alice: %v", err)
+	}
+	available, err := s.ListLLMModelConfigs(repo.LLMModelConfigListFilter{AvailableOnly: true})
+	if err != nil || len(available) != 0 {
+		t.Fatalf("available models = %+v, %v", available, err)
+	}
+	bob := repo.HumanUser{
+		PodID: "pod-a", ModelConfigID: models[0].ModelConfigID, DisplayName: "Bob",
+		AgentID: "bob", BrowserProfile: "bob", Status: repo.HumanUserStatusActive,
+	}
+	if _, err := s.CreateHumanUser(bob, 18802, 18810); err != repo.ErrLLMModelAlreadyBound {
+		t.Fatalf("duplicate model binding = %v, want ErrLLMModelAlreadyBound", err)
 	}
 }
 

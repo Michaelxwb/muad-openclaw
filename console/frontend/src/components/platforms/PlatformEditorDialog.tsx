@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Input, Modal, Select, Switch, TextArea, Toast } from "@douyinfe/semi-ui";
+import { Input, Modal, Switch, TextArea, Toast } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type { Platform } from "../../api";
 import { FeedbackBanner } from "../ConsolePage";
@@ -38,6 +38,7 @@ export function PlatformEditorDialog(props: Props) {
   const editor = usePlatformEditor(props);
   return (
     <Modal
+      className="standard-modal"
       title={props.platform ? `编辑 ${props.platform.displayName}` : "增加业务平台"}
       visible={props.visible}
       onCancel={props.onClose}
@@ -126,17 +127,15 @@ function PlatformFields({
   return (
     <div className={styles.formGrid}>
       <Field label="平台">
-        <Select
+        <Input
           aria-label="业务平台"
           value={form.platform}
           disabled={editing}
-          optionList={available}
-          onChange={(value) => {
-            const platform = String(value ?? "");
+          placeholder={available.length > 0 ? available[0]?.value : "例如 custom_api"}
+          onChange={(platform) => {
             const selected = available.find((option) => option.value === platform);
             setForm({ ...form, platform, displayName: selected?.label ?? form.displayName });
           }}
-          style={{ width: "100%" }}
         />
       </Field>
       <Field label="显示名称">

@@ -31,7 +31,6 @@ type PodSpec struct {
 	Channels       []string
 	ChannelConfigs map[string]json.RawMessage
 	ImageTag       string
-	LLMOverride    LlmConfig
 	GatewayToken   string
 	MultiUser      RuntimeConfigV1
 	Resource       ResourceSpec

@@ -26,7 +26,7 @@ type Source interface {
 	ListHumanUsersByPod(podID string, filter repo.HumanUserListFilter) ([]repo.HumanUser, int, error)
 	ListIdentitiesByPod(podID string) ([]repo.UserIdentity, error)
 	ListPlatformConfigs() ([]repo.PlatformConfig, error)
-	GetLLMGlobal() (repo.LLMGlobal, error)
+	ListLLMModelConfigs(filter repo.LLMModelConfigListFilter) ([]repo.LLMModelConfig, error)
 }
 
 type Options struct {
@@ -54,7 +54,7 @@ type sourceData struct {
 	users      []repo.HumanUser
 	identities []repo.UserIdentity
 	platforms  []repo.PlatformConfig
-	globalLLM  repo.LLMGlobal
+	models     []repo.LLMModelConfig
 }
 
 func New(source Source, cipher *secretcrypto.Cipher, options Options) (*Builder, error) {
@@ -115,11 +115,14 @@ func (builder *Builder) load(podID string) (sourceData, error) {
 	if err != nil {
 		return sourceData{}, err
 	}
-	global, err := builder.source.GetLLMGlobal()
-	if err != nil && !errors.Is(err, repo.ErrNotFound) {
+	models, err := builder.source.ListLLMModelConfigs(repo.LLMModelConfigListFilter{})
+	if err != nil {
 		return sourceData{}, err
 	}
-	return sourceData{pod: pod, users: users, identities: identities, platforms: platforms, globalLLM: global}, nil
+	return sourceData{
+		pod: pod, users: users, identities: identities,
+		platforms: platforms, models: models,
+	}, nil
 }
 
 func (builder *Builder) assemble(

@@ -57,7 +57,7 @@ describe("Audit", () => {
         action: "runtime_guard",
         target: "pod-a",
         offset: 0,
-        limit: 20,
+        limit: 10,
       }),
     );
   });

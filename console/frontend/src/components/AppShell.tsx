@@ -9,21 +9,27 @@ import {
   IconSearchStroked,
   IconServerStroked,
   IconSettingStroked,
+  IconUserGroup,
 } from "@douyinfe/semi-icons";
 import { api } from "../api";
 import { Audit } from "../pages/Audit";
 import { Containers } from "../pages/Containers";
 import { LLM } from "../pages/LLM";
+import { PodDetail } from "../pages/PodDetail";
 import { Settings } from "../pages/Settings";
+import { Users } from "../pages/Users";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeButton } from "./ThemeButton";
 import type { ThemeMode } from "./ThemeButton";
 import styles from "./AppShell.module.css";
 
-type Page = "pods" | "llm" | "settings" | "audit";
+type Page = "pods" | "users" | "llm" | "settings" | "audit";
+
+const PAGE_KEY = "muad_console_page";
 
 const NAV_ITEMS: { key: Page; label: string; icon: ReactNode }[] = [
   { key: "pods", label: "Pod 管理", icon: <IconServerStroked size="large" /> },
+  { key: "users", label: "用户管理", icon: <IconUserGroup size="large" /> },
   { key: "llm", label: "模型配置", icon: <IconComponentStroked size="large" /> },
   { key: "settings", label: "资源与平台", icon: <IconSettingStroked size="large" /> },
   { key: "audit", label: "审计日志", icon: <IconSearchStroked size="large" /> },
@@ -36,16 +42,28 @@ interface Props {
 }
 
 export function AppShell({ theme, onTheme, onLogout }: Props) {
-  const [page, setPage] = useState<Page>("pods");
+  const [page, setPage] = useState<Page>(readInitialPage);
+  const [detailPodId, setDetailPodId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useResponsiveSidebar();
   const user = useCurrentUser();
+  const changePage = (next: Page) => {
+    setDetailPodId(null);
+    setPage(next);
+    writePage(next);
+  };
+  const openPodDetail = (podId: string) => {
+    setDetailPodId(podId);
+    setPage("pods");
+    writePage("pods");
+  };
+  const closePodDetail = () => setDetailPodId(null);
   return (
     <div className={styles.layout}>
       <AppSidebar
         page={page}
         user={user}
         collapsed={collapsed}
-        onPage={setPage}
+        onPage={changePage}
         onCollapsed={setCollapsed}
         onLogout={onLogout}
       />
@@ -54,10 +72,45 @@ export function AppShell({ theme, onTheme, onLogout }: Props) {
           <ThemeButton mode={theme} onClick={onTheme} />
           <NotificationBell />
         </div>
-        <PageContent page={page} />
+        <PageContent
+          page={page}
+          detailPodId={detailPodId}
+          onOpenPod={openPodDetail}
+          onClosePodDetail={closePodDetail}
+        />
       </main>
     </div>
   );
+}
+
+function readInitialPage(): Page {
+  try {
+    return normalizePage(localStorage.getItem(PAGE_KEY)) ?? "pods";
+  } catch (caught) {
+    console.warn("page_preference_read_failed", caught);
+    return "pods";
+  }
+}
+
+function writePage(page: Page) {
+  try {
+    localStorage.setItem(PAGE_KEY, page);
+  } catch (caught) {
+    console.warn("page_preference_write_failed", caught);
+  }
+}
+
+function normalizePage(value: string | null): Page | null {
+  switch (value) {
+    case "pods":
+    case "users":
+    case "llm":
+    case "settings":
+    case "audit":
+      return value;
+    default:
+      return null;
+  }
 }
 
 function useResponsiveSidebar() {
@@ -183,7 +236,21 @@ function UserFooter(props: { user: string; collapsed: boolean; onLogout: () => v
   );
 }
 
-function PageContent({ page }: { page: Page }) {
+function PageContent({
+  page,
+  detailPodId,
+  onOpenPod,
+  onClosePodDetail,
+}: {
+  page: Page;
+  detailPodId: string | null;
+  onOpenPod: (podId: string) => void;
+  onClosePodDetail: () => void;
+}) {
+  if (detailPodId) {
+    return <PodDetail podId={detailPodId} onBack={onClosePodDetail} onDeleted={onClosePodDetail} />;
+  }
+  if (page === "users") return <Users onOpenPod={onOpenPod} />;
   if (page === "llm") return <LLM />;
   if (page === "settings") return <Settings />;
   if (page === "audit") return <Audit />;

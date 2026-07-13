@@ -23,7 +23,7 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 	db := openSchemaDB(t, path)
 	expected := []string{
 		"pods", "human_users", "user_identities", "binding_codes", "platform_configs",
-		"admins", "audit_log", "llm_global", "resource_global",
+		"admins", "audit_log", "llm_model_configs", "resource_global",
 	}
 	for _, table := range expected {
 		if !schemaObjectExists(t, db, "table", table) {
@@ -35,6 +35,7 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 	}
 	indexes := []string{
 		"idx_human_users_pod_status", "idx_identities_human_user",
+		"idx_human_users_model_config",
 		"idx_binding_codes_user_status", "idx_binding_codes_scope",
 		"idx_binding_codes_expiry", "idx_audit_ts", "idx_audit_actor",
 	}
@@ -87,18 +88,19 @@ func TestOpen_EnforcesMultiUserConstraints(t *testing.T) {
 
 	insertPod(t, db, "pod-a", "fingerprint-a")
 	insertPod(t, db, "pod-b", "fingerprint-b")
+	insertLLMModel(t, db, "model-a")
 	if _, err := db.Exec(`INSERT INTO human_users (
-		human_user_id, pod_id, display_name, agent_id, browser_profile,
+		human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile,
 		browser_cdp_port, status, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"user-a", "pod-a", "Alice", "alice", "alice", 18802, "invalid", "now", "now"); err == nil {
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"user-a", "pod-a", "model-a", "Alice", "alice", "alice", 18802, "invalid", "now", "now"); err == nil {
 		t.Fatal("expected invalid Human User status to fail")
 	}
 	if _, err := db.Exec(`INSERT INTO human_users (
-		human_user_id, pod_id, display_name, agent_id, browser_profile,
+		human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile,
 		browser_cdp_port, status, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"user-a", "pod-a", "Alice", "alice", "alice", 18802, "active", "now", "now"); err != nil {
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"user-a", "pod-a", "model-a", "Alice", "alice", "alice", 18802, "active", "now", "now"); err != nil {
 		t.Fatalf("insert Human User: %v", err)
 	}
 	if _, err := db.Exec(`INSERT INTO user_identities (
@@ -163,5 +165,18 @@ func insertPod(t *testing.T, db *sql.DB, podID, fingerprint string) {
 		podID, podID, "ciphertext", fingerprint, "now", "now", "now")
 	if err != nil {
 		t.Fatalf("insert Pod %s: %v", podID, err)
+	}
+}
+
+func insertLLMModel(t *testing.T, db *sql.DB, modelConfigID string) {
+	t.Helper()
+	_, err := db.Exec(`INSERT INTO llm_model_configs (
+		model_config_id, display_name, provider, base_url, api_key_enc,
+		api_key_fingerprint, model, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		modelConfigID, modelConfigID, "deepseek", "https://api.deepseek.com",
+		"ciphertext", "fingerprint-"+modelConfigID, "deepseek-chat", "now", "now")
+	if err != nil {
+		t.Fatalf("insert LLM model %s: %v", modelConfigID, err)
 	}
 }

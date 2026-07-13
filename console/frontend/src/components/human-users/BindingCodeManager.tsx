@@ -205,6 +205,7 @@ function CreateBindingCodeDialog(props: CreateDialogProps) {
 
   return (
     <Modal
+      className="standard-modal"
       title="生成新增 IM 绑定码"
       visible={props.visible}
       onCancel={props.onClose}

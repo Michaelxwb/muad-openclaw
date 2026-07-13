@@ -120,6 +120,10 @@ func (s *Server) auditPodConfigQueued(r *http.Request, pod repo.Pod) {
 	}
 }
 
+type applyRequest struct {
+	PodIDs []string `json:"podIds"`
+}
+
 func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
 	if s.operations == nil {
 		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")

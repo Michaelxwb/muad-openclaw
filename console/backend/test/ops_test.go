@@ -52,31 +52,6 @@ func TestSkillsReload_RollingRestart(t *testing.T) {
 	}
 }
 
-func TestApplyLLMQueuesPodReconcile(t *testing.T) {
-	e := newTestEnv(t)
-	createWeChatPod(t, e, "pod-llm")
-	e.reconcile.podIDs = nil
-	rr := e.do(http.MethodPost, "/api/v1/llm/apply", `{"podIds":["pod-llm","ghost"]}`)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("apply = %d: %s", rr.Code, rr.Body.String())
-	}
-	body := rr.Body.String()
-	if !strings.Contains(body, `"pod-llm":"queued"`) || !strings.Contains(body, `"ghost":"not_found"`) {
-		t.Errorf("apply results unexpected: %s", body)
-	}
-	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-llm" {
-		t.Fatalf("LLM reconcile queue = %v", e.reconcile.podIDs)
-	}
-}
-
-func TestApplyLLMRejectsLegacyUserIDs(t *testing.T) {
-	e := newTestEnv(t)
-	rr := e.do(http.MethodPost, "/api/v1/llm/apply", `{"userIds":["alice"]}`)
-	if rr.Code != http.StatusBadRequest {
-		t.Fatalf("legacy userIds status = %d, want 400", rr.Code)
-	}
-}
-
 func TestUpgrade_ChangesImageTag(t *testing.T) {
 	e := newTestEnv(t)
 	createWeChatPod(t, e, "pod-upgrade")

@@ -29,11 +29,12 @@ export function DeleteHumanUser({ user, onDeleted }: Props) {
     }
   };
   return (
-    <div style={{ marginTop: 20, paddingTop: 14, borderTop: "1px solid var(--semi-color-border)" }}>
+    <>
       <Button type="danger" onClick={() => setVisible(true)}>
-        删除 Human User
+        删除
       </Button>
       <Modal
+        className="standard-modal"
         title={`删除 ${user.displayName}`}
         visible={visible}
         onCancel={() => setVisible(false)}
@@ -46,11 +47,11 @@ export function DeleteHumanUser({ user, onDeleted }: Props) {
         <div>删除调和完成后将清理：</div>
         <ul className={styles.dangerList}>
           <li>用户 workspace 与 private Skill</li>
-          <li>Browser Profile 与浏览器状态</li>
+          <li>浏览器配置与浏览器状态</li>
           <li>会话、记忆和 session-manager 凭证缓存</li>
           <li>该用户全部 IM Identity 和平台凭证</li>
         </ul>
       </Modal>
-    </div>
+    </>
   );
 }

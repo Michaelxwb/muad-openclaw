@@ -93,3 +93,33 @@ func TestPlatformAPI_DisableIsAuditedAndInvalidatesResolver(t *testing.T) {
 		t.Fatalf("platform disable audit = %+v/%d, %v", entries, total, err)
 	}
 }
+
+func TestPlatformAPI_DeleteRemovesConfigAndReconcilesPods(t *testing.T) {
+	e, user := createDirectHumanUser(t)
+	putCredential(t, e, user.HumanUserID, "xdr", "xdr-key")
+	e.reconcile.podIDs = nil
+
+	rr := e.do(http.MethodDelete, "/api/v1/platforms/xdr", "")
+	assertStatus(t, rr, http.StatusOK)
+	response := decodeAPIData[struct {
+		Platform       string   `json:"platform"`
+		Deleted        bool     `json:"deleted"`
+		AffectedPodIDs []string `json:"affectedPodIds"`
+	}](t, rr.Body.Bytes())
+	if response.Platform != "xdr" || !response.Deleted || len(response.AffectedPodIDs) != 1 {
+		t.Fatalf("delete response = %+v", response)
+	}
+	if _, err := e.store.GetPlatformConfig("xdr"); err != repo.ErrNotFound {
+		t.Fatalf("deleted platform error = %v, want ErrNotFound", err)
+	}
+	summaries, err := e.store.ListUserPlatformCredentials(eCipher(t), user.HumanUserID)
+	if err != nil || len(summaries) != 0 {
+		t.Fatalf("credentials after platform delete = %+v, %v", summaries, err)
+	}
+	entries, total, err := e.store.QueryAuditFiltered(repo.AuditFilter{
+		Action: "platform_config.delete", Target: "xdr", Limit: 10,
+	})
+	if err != nil || total != 1 || len(entries) != 1 {
+		t.Fatalf("platform delete audit = %+v/%d, %v", entries, total, err)
+	}
+}

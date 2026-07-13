@@ -54,7 +54,6 @@ type Pod struct {
 	MaxUsers                int
 	Channels                string
 	ChannelConfigsEnc       string
-	LLMOverrideEnc          string
 	MemLimit                string
 	CPULimit                string
 	RestartPolicy           string
@@ -77,16 +76,32 @@ type Pod struct {
 type HumanUser struct {
 	HumanUserID            string
 	PodID                  string
+	ModelConfigID          string
 	DisplayName            string
 	AgentID                string
 	BrowserProfile         string
 	BrowserCDPPort         int
 	Status                 string
-	ModelOverrideEnc       string
 	PlatformCredentialsEnc string
 	Notes                  string
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
+}
+
+// LLMModelConfig is one assignable model credential. A non-empty APIKeyEnc is
+// encrypted at rest and exposed only through the fingerprint.
+type LLMModelConfig struct {
+	ModelConfigID      string
+	DisplayName        string
+	Provider           string
+	BaseURL            string
+	APIKeyEnc          string
+	APIKeyFingerprint  string
+	Model              string
+	BoundHumanUserID   string
+	BoundHumanUserName string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // UserIdentity maps one channel-scoped sender to a Human User.
@@ -140,15 +155,6 @@ type ResourceConfig struct {
 	CPULimit      string
 	RestartPolicy string
 	UpdatedAt     time.Time
-}
-
-// LLMGlobal is the single-row global LLM default. APIKeyEnc holds ciphertext.
-type LLMGlobal struct {
-	Provider  string
-	BaseURL   string
-	APIKeyEnc string
-	Model     string
-	UpdatedAt time.Time
 }
 
 // AuditEntry is one audit record with an already-redacted payload.

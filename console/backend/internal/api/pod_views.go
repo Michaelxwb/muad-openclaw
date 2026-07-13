@@ -19,7 +19,6 @@ type podView struct {
 	Channels                []string                     `json:"channels"`
 	ChannelConfigs          map[string]channelConfigView `json:"channelConfigs,omitempty"`
 	ChannelStatuses         map[string]bool              `json:"channelStatuses,omitempty"`
-	ModelOverride           modelOverrideView            `json:"modelOverride"`
 	MaxUsers                int                          `json:"maxUsers"`
 	UserCount               int                          `json:"userCount"`
 	AvailableSlots          int                          `json:"availableSlots"`
@@ -48,13 +47,9 @@ func (s *Server) makePodView(
 	if err != nil {
 		return podView{}, err
 	}
-	model, err := s.decodeModelOverride(summary.LLMOverrideEnc)
-	if err != nil {
-		return podView{}, err
-	}
 	view := podView{
 		PodID: summary.PodID, DisplayName: summary.DisplayName, ImageTag: summary.ImageTag,
-		State: derivePodState(summary.Pod, states), Channels: channels, ModelOverride: modelToView(model),
+		State: derivePodState(summary.Pod, states), Channels: channels,
 		MaxUsers: summary.MaxUsers, UserCount: summary.UserCount, AvailableSlots: summary.AvailableSlots,
 		ConfigGeneration: summary.ConfigGeneration, AppliedGeneration: summary.AppliedGeneration,
 		GenerationLag:   max(int64(0), summary.ConfigGeneration-summary.AppliedGeneration),

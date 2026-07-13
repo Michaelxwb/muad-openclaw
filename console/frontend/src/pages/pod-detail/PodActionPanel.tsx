@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Toast } from "@douyinfe/semi-ui";
+import { Button } from "@douyinfe/semi-ui";
 import { IconDelete, IconPlay, IconRestart, IconStop } from "@douyinfe/semi-icons";
 import { api } from "../../api";
 import type { Pod, PodAction } from "../../api";
@@ -68,7 +68,6 @@ function useActionRunner(onChanged: () => Promise<void>) {
       await action();
       if (!mountedRef.current) return false;
       setMessage(success);
-      Toast.success(success);
       await onChanged();
       return true;
     } catch (caught) {

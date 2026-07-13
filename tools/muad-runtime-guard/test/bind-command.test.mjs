@@ -47,6 +47,19 @@ test("/bind accepts the channel-scoped sender emitted by WeCom command context",
   assert.equal(requests[0].externalId, "XuWenBin");
 });
 
+test("/bind accepts codes generated from the shared binding-code alphabet", async () => {
+  const requests = [];
+  const command = createBindCommand({
+    mainAgentId: "main",
+    client: { activate: async (request) => { requests.push(request); } },
+  });
+
+  const result = await command.handler(commandContext({ args: "MUAD-X1GD78W5" }));
+
+  assert.equal(result.text, "绑定成功，配置正在应用，请稍后重新发送业务消息。");
+  assert.equal(requests[0].code, "MUAD-X1GD78W5");
+});
+
 test("/bind resolves main agent from the trusted session key when command agentId is absent", async () => {
   const requests = [];
   const command = createBindCommand({

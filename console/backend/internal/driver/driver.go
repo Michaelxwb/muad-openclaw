@@ -18,14 +18,6 @@ var (
 	ErrRuntimeNotReady = errors.New("driver: runtime not ready")
 )
 
-// LlmConfig is an LLM provider configuration (already merged: global ⊕ override).
-type LlmConfig struct {
-	Provider string
-	BaseURL  string
-	APIKey   string
-	Model    string
-}
-
 // Built-in resource defaults (lowest priority; used when neither Pod nor
 // global config sets a value). These are the validated 10-user Pod baseline.
 const (
@@ -78,7 +70,7 @@ type RuntimeDriver interface {
 	ExecStdin(ctx context.Context, podID string, stdin io.Reader, cmd ...string) (string, error)
 	Reap(ctx context.Context, podID string) error
 	Revive(ctx context.Context, podID string) error
-	// UpdateSpec pushes a new spec (channels, LLM, image, etc.) to the runtime
+	// UpdateSpec pushes a new spec (channels, image, runtime config, etc.) to the runtime
 	// so a future pod restart (crash, scale, manual) boots with up-to-date
 	// configuration. Hot-reload changes (channels/plugins) don't need this for
 	// the running pod, but the k8s Secret / docker container env needs to be
@@ -86,25 +78,6 @@ type RuntimeDriver interface {
 	UpdateSpec(ctx context.Context, podID string, spec PodSpec) error
 	// UpdateServiceToken rotates only the fixed secret file/Secret resource.
 	UpdateServiceToken(ctx context.Context, podID string, secret SecretFileSpec) error
-}
-
-// MergeLLM overlays per-user override on top of the global default. Any
-// non-empty override field wins; empty fields inherit the global value.
-func MergeLLM(global, override LlmConfig) LlmConfig {
-	out := global
-	if v := strings.TrimSpace(override.Provider); v != "" {
-		out.Provider = v
-	}
-	if v := strings.TrimSpace(override.BaseURL); v != "" {
-		out.BaseURL = v
-	}
-	if v := strings.TrimSpace(override.APIKey); v != "" {
-		out.APIKey = v
-	}
-	if v := strings.TrimSpace(override.Model); v != "" {
-		out.Model = v
-	}
-	return out
 }
 
 // BuildEnv renders the container environment contract consumed by the image's
@@ -129,10 +102,6 @@ func BuildEnv(spec PodSpec) map[string]string {
 		putIf(env, "MUAD_CONSOLE_INTERNAL_URL", spec.MultiUser.ConsoleInternalURL)
 	}
 	putIf(env, "OPENCLAW_GATEWAY_TOKEN", spec.GatewayToken)
-	putIf(env, "LLM_PROVIDER", spec.LLMOverride.Provider)
-	putIf(env, "LLM_API_KEY", spec.LLMOverride.APIKey)
-	putIf(env, "LLM_BASE_URL", spec.LLMOverride.BaseURL)
-	putIf(env, "LLM_MODEL", spec.LLMOverride.Model)
 	return env
 }
 

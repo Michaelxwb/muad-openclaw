@@ -16,9 +16,9 @@ import { HumanUsersPanel } from "../src/components/human-users/HumanUsersPanel";
 const apiMocks = vi.hoisted(() => ({
   listHumanUsers: vi.fn(),
   createHumanUser: vi.fn(),
+  listLLMModels: vi.fn(),
   getHumanUser: vi.fn(),
   patchHumanUser: vi.fn(),
-  setHumanUserModel: vi.fn(),
   deleteHumanUser: vi.fn(),
   createIdentity: vi.fn(),
   setIdentityStatus: vi.fn(),
@@ -43,7 +43,6 @@ const pod: Pod = {
   imageTag: "muad-openclaw:test",
   state: "running",
   channels: ["wecom", "wechat"],
-  modelOverride: { keyConfigured: false },
   maxUsers: 10,
   userCount: 1,
   availableSlots: 9,
@@ -66,6 +65,7 @@ const pod: Pod = {
 const user: HumanUser = {
   humanUserId: "user-a",
   podId: "pod-a",
+  modelConfigId: "model-a",
   displayName: "Alice",
   agentId: "alice-agent",
   browserProfile: "alice-agent",
@@ -73,7 +73,7 @@ const user: HumanUser = {
   status: "active",
   notes: "operator",
   identityCount: 1,
-  modelOverride: {
+  modelConfig: {
     provider: "deepseek",
     baseUrl: "https://api.deepseek.com",
     model: "deepseek-chat",
@@ -145,9 +145,21 @@ beforeEach(() => {
   apiMocks.listHumanUsers.mockResolvedValue({ items: [user], total: 1, page: 1, pageSize: 20 });
   apiMocks.getHumanUser.mockResolvedValue(detail);
   apiMocks.patchHumanUser.mockResolvedValue(detail);
-  apiMocks.setHumanUserModel.mockResolvedValue({
-    humanUserId: "user-a",
-    modelOverride: user.modelOverride,
+  apiMocks.listLLMModels.mockResolvedValue({
+    items: [
+      {
+        modelConfigId: "model-new",
+        displayName: "New Model",
+        provider: "deepseek",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        keyConfigured: true,
+        keyFingerprint: "sha256:new-model-key",
+        createdAt: "2026-07-11T00:00:00Z",
+        updatedAt: "2026-07-11T00:00:00Z",
+      },
+    ],
+    total: 1,
   });
   apiMocks.deleteHumanUser.mockResolvedValue({
     humanUserId: "user-a",
@@ -200,7 +212,7 @@ async function openCreateDialog() {
 async function openUserDetail() {
   await screen.findByText("Alice");
   fireEvent.click(screen.getByRole("button", { name: "详情" }));
-  await screen.findByText("Human User ID");
+  await screen.findByText("用户 ID");
 }
 
 describe("HumanUsersPanel", () => {
@@ -214,7 +226,7 @@ describe("HumanUsersPanel", () => {
     expect(screen.queryByText("Alice")).not.toBeInTheDocument();
   });
 
-  it("shows status, agent, Identity count, Browser Profile, and capacity", async () => {
+  it("shows status, agent, identity count, browser profile, and capacity", async () => {
     renderPanel();
 
     expect(await screen.findByText("Alice")).toBeInTheDocument();
@@ -241,6 +253,7 @@ describe("HumanUsersPanel", () => {
     await waitFor(() =>
       expect(apiMocks.createHumanUser).toHaveBeenCalledWith("pod-a", {
         displayName: "Alice",
+        modelConfigId: "model-new",
         agentId: undefined,
         notes: "",
         identity: {
@@ -301,28 +314,34 @@ describe("HumanUsersPanel", () => {
       "pod-a",
       expect.objectContaining({
         displayName: "Pending Alice",
+        modelConfigId: "model-new",
         activation: { channel: "wecom", accountId: "default", expiresInMinutes: 30 },
       }),
     );
   });
 
-  it("shows only model fingerprint and never pre-fills the API key", async () => {
+  it("shows bound model metadata without exposing the API key", async () => {
     renderPanel();
     await openUserDetail();
-    fireEvent.click(screen.getByRole("tab", { name: "模型覆写" }));
 
+    expect(screen.getByText("运行 Agent")).toBeInTheDocument();
+    expect(screen.getByText("浏览器配置")).toBeInTheDocument();
+    expect(screen.getByText("已绑定 IM 数")).toBeInTheDocument();
+    expect(screen.queryByText("Human User ID")).not.toBeInTheDocument();
+    expect(screen.queryByText("Browser Profile")).not.toBeInTheDocument();
+    expect(screen.getByText("deepseek/deepseek-chat")).toBeInTheDocument();
     expect(screen.getByText(/sha256:model-key/)).toBeInTheDocument();
-    expect(screen.getByLabelText("模型 API Key")).toHaveValue("");
+    expect(screen.queryByLabelText("模型 API Key")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue(/sk-/)).not.toBeInTheDocument();
   });
 
   it("lists cleanup impact before deleting a Human User", async () => {
     const onPodChanged = renderPanel();
     await openUserDetail();
-    fireEvent.click(screen.getByRole("button", { name: "删除 Human User" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "删除" })[0]);
 
     expect(screen.getByText(/workspace 与 private Skill/)).toBeInTheDocument();
-    expect(screen.getByText(/Browser Profile 与浏览器状态/)).toBeInTheDocument();
+    expect(screen.getByText(/浏览器配置与浏览器状态/)).toBeInTheDocument();
     expect(screen.getByText(/会话、记忆和 session-manager/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
@@ -330,10 +349,21 @@ describe("HumanUsersPanel", () => {
     expect(onPodChanged).toHaveBeenCalled();
   });
 
+  it("keeps save and delete actions in the dialog footer", async () => {
+    renderPanel();
+    await openUserDetail();
+
+    expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "删除" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "关闭" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "保存基本信息" })).not.toBeInTheDocument();
+    expect(document.querySelector(".standard-modal")).toBeInTheDocument();
+  });
+
   it("shows scoped Identity fields and preserves the raw external ID", async () => {
     renderPanel();
     await openUserDetail();
-    fireEvent.click(screen.getByRole("tab", { name: "Identity" }));
+    fireEvent.click(screen.getByRole("tab", { name: "身份标识" }));
 
     expect(screen.getByText("EncryptedUserID")).toBeInTheDocument();
     expect(screen.getByText("user_id")).toBeInTheDocument();
@@ -343,7 +373,7 @@ describe("HumanUsersPanel", () => {
   it("adds an Identity without normalizing its external ID", async () => {
     renderPanel();
     await openUserDetail();
-    fireEvent.click(screen.getByRole("tab", { name: "Identity" }));
+    fireEvent.click(screen.getByRole("tab", { name: "身份标识" }));
     fireEvent.click(screen.getByRole("button", { name: "新增 Identity" }));
     fireEvent.change(screen.getByRole("textbox", { name: "新增 Identity External ID" }), {
       target: { value: "Feishu-CaseSensitive-ID" },
@@ -361,13 +391,13 @@ describe("HumanUsersPanel", () => {
   it("changes Identity status and deletes it through explicit actions", async () => {
     renderPanel();
     await openUserDetail();
-    fireEvent.click(screen.getByRole("tab", { name: "Identity" }));
+    fireEvent.click(screen.getByRole("tab", { name: "身份标识" }));
 
     fireEvent.click(screen.getByRole("button", { name: "停用" }));
     await waitFor(() =>
       expect(apiMocks.setIdentityStatus).toHaveBeenCalledWith("user-a", "identity-a", "disabled"),
     );
-    fireEvent.click(screen.getByRole("button", { name: "删除" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "删除" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
     await waitFor(() =>
       expect(apiMocks.deleteIdentity).toHaveBeenCalledWith("user-a", "identity-a"),
@@ -378,7 +408,7 @@ describe("HumanUsersPanel", () => {
     apiMocks.createIdentity.mockRejectedValue(new Error("Identity scope conflict"));
     renderPanel();
     await openUserDetail();
-    fireEvent.click(screen.getByRole("tab", { name: "Identity" }));
+    fireEvent.click(screen.getByRole("tab", { name: "身份标识" }));
     fireEvent.click(screen.getByRole("button", { name: "新增 Identity" }));
     fireEvent.change(screen.getByRole("textbox", { name: "新增 Identity External ID" }), {
       target: { value: "ExistingID" },
@@ -468,7 +498,7 @@ describe("HumanUsersPanel", () => {
     await openUserDetail();
     fireEvent.click(screen.getByRole("tab", { name: "平台凭证" }));
     await screen.findByText("sha256:user-xdr-key");
-    fireEvent.click(screen.getByRole("button", { name: "删除" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "删除" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
     await waitFor(() =>

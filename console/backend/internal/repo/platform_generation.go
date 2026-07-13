@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 )
 
 func (s *Store) CreatePlatformConfigAndMarkPods(config PlatformConfig) ([]string, error) {
@@ -48,6 +50,66 @@ func (s *Store) UpdatePlatformConfigAndMarkPods(
 		return nil, err
 	}
 	return commitPlatformGeneration(tx)
+}
+
+func (s *Store) DeletePlatformConfigAndMarkPods(
+	cipher *secretcrypto.Cipher, platform string,
+) ([]string, error) {
+	if cipher == nil || !validPlatform(platform) {
+		return nil, ErrInvalidPlatform
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("begin delete platform config: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.Exec(`DELETE FROM platform_configs WHERE platform = ?`, platform)
+	if err := affectedOrNotFound(result, err, "delete platform config"); err != nil {
+		return nil, err
+	}
+	if err := deletePlatformCredentialsTx(tx, cipher, platform); err != nil {
+		return nil, err
+	}
+	return commitPlatformGeneration(tx)
+}
+
+func deletePlatformCredentialsTx(
+	tx *sql.Tx, cipher *secretcrypto.Cipher, platform string,
+) error {
+	rows, err := tx.Query(`SELECT human_user_id, platform_credentials_enc FROM human_users`)
+	if err != nil {
+		return fmt.Errorf("list platform credentials for delete: %w", err)
+	}
+	defer rows.Close()
+	type userCredentials struct {
+		humanUserID string
+		encrypted   string
+	}
+	var users []userCredentials
+	for rows.Next() {
+		var user userCredentials
+		if err := rows.Scan(&user.humanUserID, &user.encrypted); err != nil {
+			return fmt.Errorf("scan platform credentials for delete: %w", err)
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate platform credentials for delete: %w", err)
+	}
+	for _, user := range users {
+		credentials, err := decodeCredentials(cipher, user.encrypted)
+		if err != nil {
+			return err
+		}
+		next, found := deleteCredential(credentials, platform)
+		if !found {
+			continue
+		}
+		if err := saveCredentialsTx(tx, cipher, user.humanUserID, next); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func commitPlatformGeneration(tx *sql.Tx) ([]string, error) {

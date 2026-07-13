@@ -23,11 +23,13 @@ var (
 	ErrInvalidHumanUser       = errors.New("repo: invalid Human User")
 	ErrInvalidStateTransition = errors.New("repo: invalid Human User state transition")
 	ErrBrowserPortsExhausted  = errors.New("repo: Browser CDP port range exhausted")
+	ErrLLMModelAlreadyBound   = errors.New("repo: LLM model already bound")
+	ErrInvalidLLMModel        = errors.New("repo: invalid LLM model")
 
 	runtimeIDPattern = regexp.MustCompile(`^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$`)
 )
 
-// HumanUserListFilter controls Pod-scoped user pagination.
+// HumanUserListFilter controls user pagination.
 type HumanUserListFilter struct {
 	Offset int
 	Limit  int
@@ -88,6 +90,28 @@ func (s *Store) ListHumanUsersByPod(podID string, filter HumanUserListFilter) ([
 		return nil, 0, fmt.Errorf("count Human Users: %w", err)
 	}
 	query := `SELECT ` + humanUserColumns + ` FROM human_users` + where + ` ORDER BY agent_id`
+	listArgs := append([]any(nil), args...)
+	if filter.Limit > 0 {
+		query += ` LIMIT ? OFFSET ?`
+		listArgs = append(listArgs, filter.Limit, filter.Offset)
+	}
+	rows, err := s.db.Query(query, listArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list Human Users: %w", err)
+	}
+	defer rows.Close()
+	users, err := collectHumanUsers(rows)
+	return users, total, err
+}
+
+// ListHumanUsers returns a filtered page across all Pods.
+func (s *Store) ListHumanUsers(filter HumanUserListFilter) ([]HumanUser, int, error) {
+	where, args := humanUserFilterSQL("", filter)
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM human_users`+where, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count Human Users: %w", err)
+	}
+	query := `SELECT ` + humanUserColumns + ` FROM human_users` + where + ` ORDER BY pod_id, agent_id`
 	listArgs := append([]any(nil), args...)
 	if filter.Limit > 0 {
 		query += ` LIMIT ? OFFSET ?`
@@ -191,9 +215,9 @@ func (s *Store) ListDeletingHumanUsers(podID string) ([]HumanUser, error) {
 	return collectHumanUsers(rows)
 }
 
-const humanUserColumns = `human_user_id, pod_id, display_name, agent_id,
-	browser_profile, browser_cdp_port, status, model_override_enc,
-	platform_credentials_enc, notes, created_at, updated_at`
+const humanUserColumns = `human_user_id, pod_id, model_config_id, display_name, agent_id,
+	browser_profile, browser_cdp_port, status, platform_credentials_enc,
+	notes, created_at, updated_at`
 
 func prepareNewHumanUser(user *HumanUser) error {
 	if user.HumanUserID == "" {
@@ -208,7 +232,8 @@ func prepareNewHumanUser(user *HumanUser) error {
 		user.Status = HumanUserStatusPending
 	}
 	if user.DisplayName == "" || user.PodID == "" || !validRuntimeID(user.AgentID) ||
-		!validRuntimeID(user.BrowserProfile) || !validHumanUserStatus(user.Status) {
+		!validRuntimeID(user.BrowserProfile) || !validHumanUserStatus(user.Status) ||
+		strings.TrimSpace(user.ModelConfigID) == "" {
 		return ErrInvalidHumanUser
 	}
 	now := time.Now().UTC()
@@ -283,12 +308,12 @@ func allocateBrowserPort(tx *sql.Tx, podID string, start, end int) (int, error) 
 
 func insertHumanUser(tx *sql.Tx, user HumanUser) error {
 	_, err := tx.Exec(`INSERT INTO human_users (
-		human_user_id, pod_id, display_name, agent_id, browser_profile,
-		browser_cdp_port, status, model_override_enc, platform_credentials_enc,
+		human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile,
+		browser_cdp_port, status, platform_credentials_enc,
 		notes, created_at, updated_at
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, user.HumanUserID, user.PodID,
-		user.DisplayName, user.AgentID, user.BrowserProfile, user.BrowserCDPPort,
-		user.Status, user.ModelOverrideEnc, user.PlatformCredentialsEnc, user.Notes,
+		nullIfEmpty(user.ModelConfigID), user.DisplayName, user.AgentID, user.BrowserProfile, user.BrowserCDPPort,
+		user.Status, user.PlatformCredentialsEnc, user.Notes,
 		formatTime(user.CreatedAt), formatTime(user.UpdatedAt))
 	if isUniqueConstraint(err) {
 		return ErrHumanUserExists
@@ -350,16 +375,23 @@ func getHumanUserTx(tx *sql.Tx, humanUserID string) (HumanUser, error) {
 }
 
 func humanUserFilterSQL(podID string, filter HumanUserListFilter) (string, []any) {
-	clauses := []string{"pod_id = ?"}
-	args := []any{podID}
+	var clauses []string
+	var args []any
+	if podID != "" {
+		clauses = append(clauses, "pod_id = ?")
+		args = append(args, podID)
+	}
 	if filter.Status != "" {
 		clauses = append(clauses, "status = ?")
 		args = append(args, filter.Status)
 	}
 	if query := strings.TrimSpace(filter.Query); query != "" {
-		clauses = append(clauses, "(agent_id LIKE ? OR display_name LIKE ?)")
+		clauses = append(clauses, "(agent_id LIKE ? OR display_name LIKE ? OR human_user_id LIKE ? OR pod_id LIKE ?)")
 		pattern := "%" + query + "%"
-		args = append(args, pattern, pattern)
+		args = append(args, pattern, pattern, pattern, pattern)
+	}
+	if len(clauses) == 0 {
+		return "", nil
 	}
 	return " WHERE " + strings.Join(clauses, " AND "), args
 }
@@ -378,16 +410,18 @@ func collectHumanUsers(rows *sql.Rows) ([]HumanUser, error) {
 
 func scanHumanUser(sc scanner) (HumanUser, error) {
 	var user HumanUser
+	var modelConfigID sql.NullString
 	var createdAt, updatedAt string
-	err := sc.Scan(&user.HumanUserID, &user.PodID, &user.DisplayName, &user.AgentID,
-		&user.BrowserProfile, &user.BrowserCDPPort, &user.Status, &user.ModelOverrideEnc,
-		&user.PlatformCredentialsEnc, &user.Notes, &createdAt, &updatedAt)
+	err := sc.Scan(&user.HumanUserID, &user.PodID, &modelConfigID, &user.DisplayName, &user.AgentID,
+		&user.BrowserProfile, &user.BrowserCDPPort, &user.Status, &user.PlatformCredentialsEnc,
+		&user.Notes, &createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return HumanUser{}, ErrNotFound
 	}
 	if err != nil {
 		return HumanUser{}, fmt.Errorf("scan Human User: %w", err)
 	}
+	user.ModelConfigID = modelConfigID.String
 	user.CreatedAt, err = parseRequiredTime(createdAt, "human_users.created_at")
 	if err != nil {
 		return HumanUser{}, err

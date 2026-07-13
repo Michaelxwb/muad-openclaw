@@ -8,34 +8,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 )
 
-func TestMergeLLM_OverrideWins(t *testing.T) {
-	global := driver.LlmConfig{Provider: "deepseek", BaseURL: "https://api.deepseek.com", APIKey: "g-key", Model: "deepseek-v4"}
-	override := driver.LlmConfig{Model: "deepseek-r2", APIKey: "u-key"}
-
-	got := driver.MergeLLM(global, override)
-	if got.Model != "deepseek-r2" {
-		t.Errorf("Model = %q, want override deepseek-r2", got.Model)
-	}
-	if got.APIKey != "u-key" {
-		t.Errorf("APIKey = %q, want override u-key", got.APIKey)
-	}
-	if got.Provider != "deepseek" {
-		t.Errorf("Provider = %q, want inherited deepseek", got.Provider)
-	}
-	if got.BaseURL != "https://api.deepseek.com" {
-		t.Errorf("BaseURL = %q, want inherited", got.BaseURL)
-	}
-}
-
-func TestMergeLLM_EmptyOverrideInherits(t *testing.T) {
-	global := driver.LlmConfig{Provider: "deepseek", Model: "deepseek-v4"}
-	got := driver.MergeLLM(global, driver.LlmConfig{})
-	if got != global {
-		t.Errorf("empty override should inherit global, got %+v", got)
-	}
-}
-
-func TestBuildEnv_OmitsEmptyLLM(t *testing.T) {
+func TestBuildEnv_OmitsLLMEnv(t *testing.T) {
 	spec := driver.PodSpec{PodID: "alice", Channels: []string{"wecom"}, ChannelConfigs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"wecom": {"botId": "wb-1", "secret": "s"}}`)}, GatewayToken: "tok"}
 	env := driver.BuildEnv(spec)
 
@@ -49,25 +22,7 @@ func TestBuildEnv_OmitsEmptyLLM(t *testing.T) {
 		t.Errorf("gateway token not set")
 	}
 	if _, ok := env["LLM_MODEL"]; ok {
-		t.Errorf("empty LLM_MODEL should be omitted to keep image baseline default")
-	}
-}
-
-func TestBuildEnv_IncludesLLM(t *testing.T) {
-	spec := driver.PodSpec{
-		PodID: "bob", Channels: []string{"wecom"}, ChannelConfigs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"wecom": {"botId": "wb-2", "secret": "s2"}}`)},
-		LLMOverride: driver.LlmConfig{Provider: "deepseek", BaseURL: "https://x", APIKey: "k", Model: "m"},
-	}
-	env := driver.BuildEnv(spec)
-	for k, want := range map[string]string{
-		"LLM_PROVIDER": "deepseek", "LLM_BASE_URL": "https://x", "LLM_API_KEY": "k", "LLM_MODEL": "m",
-	} {
-		if env[k] != want {
-			t.Errorf("env[%s] = %q, want %q", k, env[k], want)
-		}
-	}
-	if _, ok := env["OPENCLAW_GATEWAY_TOKEN"]; ok {
-		t.Errorf("empty gateway token should be omitted")
+		t.Errorf("LLM env should be omitted; runtime config providers carry model credentials")
 	}
 }
 

@@ -41,6 +41,12 @@ type platformView struct {
 	UpdatedAt         time.Time      `json:"updatedAt"`
 }
 
+type deletePlatformResponse struct {
+	Platform       string   `json:"platform"`
+	Deleted        bool     `json:"deleted"`
+	AffectedPodIDs []string `json:"affectedPodIds"`
+}
+
 func (s *Server) handleListPlatforms(w http.ResponseWriter, _ *http.Request) {
 	configs, err := s.store.ListPlatformConfigs()
 	if err != nil {
@@ -134,6 +140,25 @@ func (s *Server) handlePatchPlatform(w http.ResponseWriter, r *http.Request) {
 		s.auditPlatform(r, action, next, "updated")
 	}
 	s.writePlatform(w, next, http.StatusOK)
+}
+
+func (s *Server) handleDeletePlatform(w http.ResponseWriter, r *http.Request) {
+	platform := strings.TrimSpace(r.PathValue("platform"))
+	current, err := s.store.GetPlatformConfig(platform)
+	if err != nil {
+		writeRepoError(w, err)
+		return
+	}
+	podIDs, err := s.store.DeletePlatformConfigAndMarkPods(s.cipher, platform)
+	if err != nil {
+		writeRepoError(w, err)
+		return
+	}
+	s.enqueuePodIDs(podIDs)
+	s.auditPlatform(r, auditlog.ActionPlatformConfigDelete, current, "deleted")
+	writeJSON(w, http.StatusOK, deletePlatformResponse{
+		Platform: platform, Deleted: true, AffectedPodIDs: podIDs,
+	})
 }
 
 func (s *Server) applyPlatformPatch(

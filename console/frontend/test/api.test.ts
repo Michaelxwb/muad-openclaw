@@ -44,7 +44,11 @@ describe("Pod API", () => {
   });
 
   it("uses the normal QR endpoint by default and force on rescan", async () => {
-    const fetchMock = stubResponse({ loginUrl: "https://example.test/qr", raw: "", connected: false });
+    const fetchMock = stubResponse({
+      loginUrl: "https://example.test/qr",
+      raw: "",
+      connected: false,
+    });
     await api.qrcode("pod-a");
     await api.qrcode("pod-a", true);
 
@@ -60,20 +64,14 @@ describe("Pod API", () => {
     );
   });
 
-  it("posts Pod IDs for Skill reload and LLM apply", async () => {
+  it("posts Pod IDs for Skill reload", async () => {
     const fetchMock = stubResponse({ results: { "pod-a": "queued" } });
     await api.reloadSkills(["pod-a", "pod-b"]);
-    await api.applyLLM(["pod-a"]);
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "/api/v1/skills/reload",
       expect.objectContaining({ body: JSON.stringify({ podIds: ["pod-a", "pod-b"] }) }),
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      "/api/v1/llm/apply",
-      expect.objectContaining({ body: JSON.stringify({ podIds: ["pod-a"] }) }),
     );
   });
 });
@@ -83,6 +81,7 @@ describe("Human User and credential API", () => {
     const fetchMock = stubResponse({ humanUser: {}, identity: {} });
     const input = {
       displayName: "Alice",
+      modelConfigId: "model-a",
       identity: {
         channel: "wecom",
         accountId: "default",
@@ -97,6 +96,17 @@ describe("Human User and credential API", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v1/containers/pod-a/human-users",
       expect.objectContaining({ method: "POST", body: JSON.stringify(input) }),
+    );
+  });
+
+  it("encodes global Human User list filters", async () => {
+    const fetchMock = stubResponse({ items: [], total: 0, page: 2, pageSize: 20 });
+
+    await api.listAllHumanUsers({ page: 2, pageSize: 20, q: "Alice pod-a", status: "active" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/human-users?page=2&pageSize=20&q=Alice+pod-a&status=active",
+      expect.objectContaining({ method: "GET" }),
     );
   });
 
@@ -153,9 +163,11 @@ describe("request contract", () => {
     window.addEventListener(UNAUTHORIZED_EVENT, listener, { once: true });
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ code: 40101, message: "unauthorized" }), { status: 401 }),
-      ),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ code: 40101, message: "unauthorized" }), { status: 401 }),
+        ),
     );
 
     await expect(api.me()).rejects.toMatchObject({ status: 401, code: 40101 });

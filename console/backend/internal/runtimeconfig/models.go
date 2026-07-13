@@ -1,12 +1,9 @@
 package runtimeconfig
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
-	"io"
 	"slices"
 	"strings"
 
@@ -25,36 +22,18 @@ type modelConfig struct {
 func (builder *Builder) buildModels(
 	data sourceData, users []repo.HumanUser,
 ) ([]driver.RuntimeProvider, map[string]string, error) {
-	base, err := builder.globalModel(data.globalLLM)
-	if err != nil {
-		return nil, nil, err
-	}
-	podOverride, err := builder.decryptModel(data.pod.LLMOverrideEnc)
-	if err != nil {
-		return nil, nil, err
-	}
-	base = mergeModel(base, podOverride)
 	providers := make([]driver.RuntimeProvider, 0, len(users)+1)
 	models := make(map[string]string, len(users)+1)
-	if !base.empty() {
-		provider, ref, err := runtimeProvider("pod", "default", base)
-		if err != nil {
-			return nil, nil, err
-		}
-		providers = append(providers, provider)
-		models["main"] = ref
-	}
+	modelPool := modelConfigsByID(data.models)
 	for _, user := range users {
-		if user.ModelOverrideEnc == "" {
-			models[user.AgentID] = models["main"]
-			continue
+		if user.ModelConfigID == "" {
+			return nil, nil, wrapInvalid("resolve assigned model", repo.ErrInvalidLLMModel)
 		}
-		override, err := builder.decryptModel(user.ModelOverrideEnc)
+		model, err := builder.modelFromConfig(modelPool[user.ModelConfigID])
 		if err != nil {
 			return nil, nil, err
 		}
-		effective := mergeModel(base, override)
-		provider, ref, err := runtimeProvider("user", user.AgentID, effective)
+		provider, ref, err := runtimeProvider("user", user.AgentID, model)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -67,57 +46,26 @@ func (builder *Builder) buildModels(
 	return providers, models, nil
 }
 
-func (builder *Builder) globalModel(stored repo.LLMGlobal) (modelConfig, error) {
-	model := modelConfig{Provider: stored.Provider, BaseURL: stored.BaseURL, Model: stored.Model}
-	if stored.APIKeyEnc == "" {
-		return model, nil
+func modelConfigsByID(input []repo.LLMModelConfig) map[string]repo.LLMModelConfig {
+	output := make(map[string]repo.LLMModelConfig, len(input))
+	for _, model := range input {
+		output[model.ModelConfigID] = model
+	}
+	return output
+}
+
+func (builder *Builder) modelFromConfig(stored repo.LLMModelConfig) (modelConfig, error) {
+	if stored.ModelConfigID == "" {
+		return modelConfig{}, wrapInvalid("resolve assigned model", repo.ErrNotFound)
 	}
 	key, err := builder.cipher.Decrypt(stored.APIKeyEnc)
 	if err != nil {
-		return modelConfig{}, wrapInvalid("decrypt global model", err)
+		return modelConfig{}, wrapInvalid("decrypt assigned model", err)
 	}
-	model.APIKey = key
-	return model, nil
-}
-
-func (builder *Builder) decryptModel(encrypted string) (modelConfig, error) {
-	if encrypted == "" {
-		return modelConfig{}, nil
-	}
-	plain, err := builder.cipher.Decrypt(encrypted)
-	if err != nil {
-		return modelConfig{}, wrapInvalid("decrypt model override", err)
-	}
-	decoder := json.NewDecoder(bytes.NewBufferString(plain))
-	decoder.DisallowUnknownFields()
-	var model modelConfig
-	if err := decoder.Decode(&model); err != nil {
-		return modelConfig{}, wrapInvalid("decode model override", err)
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return modelConfig{}, wrapInvalid("decode model override", errors.New("trailing JSON value"))
-	}
-	return model, nil
-}
-
-func mergeModel(base, override modelConfig) modelConfig {
-	merged := base
-	applyModelField(&merged.Provider, override.Provider)
-	applyModelField(&merged.BaseURL, override.BaseURL)
-	applyModelField(&merged.APIKey, override.APIKey)
-	applyModelField(&merged.Model, override.Model)
-	applyModelField(&merged.KeyFingerprint, override.KeyFingerprint)
-	return merged
-}
-
-func applyModelField(target *string, value string) {
-	if value = strings.TrimSpace(value); value != "" {
-		*target = value
-	}
-}
-
-func (model modelConfig) empty() bool {
-	return model.Provider == "" && model.BaseURL == "" && model.APIKey == "" && model.Model == ""
+	return modelConfig{
+		Provider: stored.Provider, BaseURL: stored.BaseURL, APIKey: key, Model: stored.Model,
+		KeyFingerprint: stored.APIKeyFingerprint,
+	}, nil
 }
 
 func runtimeProvider(scope, owner string, model modelConfig) (driver.RuntimeProvider, string, error) {

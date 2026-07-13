@@ -26,12 +26,6 @@ type podAPIView struct {
 	MaxUsers       int    `json:"maxUsers"`
 	UserCount      int    `json:"userCount"`
 	AvailableSlots int    `json:"availableSlots"`
-	ModelOverride  struct {
-		Provider       string `json:"provider"`
-		Model          string `json:"model"`
-		KeyConfigured  bool   `json:"keyConfigured"`
-		KeyFingerprint string `json:"keyFingerprint"`
-	} `json:"modelOverride"`
 	ChannelConfigs map[string]struct {
 		BotID            string `json:"botId"`
 		SecretConfigured bool   `json:"secretConfigured"`

@@ -299,23 +299,6 @@ func (e *testEnv) do(method, path, body string) *httptest.ResponseRecorder {
 	return rr
 }
 
-func (e *testEnv) configureStoredLLM(t *testing.T, provider, baseURL, apiKey, model string) {
-	t.Helper()
-	c, err := crypto.New("mk")
-	if err != nil {
-		t.Fatalf("crypto: %v", err)
-	}
-	enc, err := c.Encrypt(apiKey)
-	if err != nil {
-		t.Fatalf("encrypt llm key: %v", err)
-	}
-	if err := e.store.SetLLMGlobal(repo.LLMGlobal{
-		Provider: provider, BaseURL: baseURL, APIKeyEnc: enc, Model: model,
-	}); err != nil {
-		t.Fatalf("set llm: %v", err)
-	}
-}
-
 func TestLoginAndProtectedRoute(t *testing.T) {
 	e := newTestEnv(t)
 
@@ -326,29 +309,6 @@ func TestLoginAndProtectedRoute(t *testing.T) {
 	}
 	if rr = e.do(http.MethodGet, "/api/v1/me", ""); rr.Code != http.StatusOK {
 		t.Fatalf("authed /me = %d, want 200", rr.Code)
-	}
-}
-
-func TestGetLLM_RedactsAPIKey(t *testing.T) {
-	e := newTestEnv(t)
-	e.configureStoredLLM(t, "deepseek", "https://llm.example", "plain-key", "m1")
-
-	rr := e.do(http.MethodGet, "/api/v1/llm", "")
-	if rr.Code != http.StatusOK {
-		t.Fatalf("get llm = %d: %s", rr.Code, rr.Body.String())
-	}
-	for _, want := range []string{
-		`"provider":"deepseek"`,
-		`"baseUrl":"https://llm.example"`,
-		`"apiKeyConfigured":true`,
-		`"model":"m1"`,
-	} {
-		if !strings.Contains(rr.Body.String(), want) {
-			t.Errorf("GET /llm missing %s in %s", want, rr.Body.String())
-		}
-	}
-	if strings.Contains(rr.Body.String(), "plain-key") || strings.Contains(rr.Body.String(), `"apiKey":`) {
-		t.Fatalf("GET /llm exposed API key material: %s", rr.Body.String())
 	}
 }
 

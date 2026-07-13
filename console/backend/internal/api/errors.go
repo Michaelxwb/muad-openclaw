@@ -42,11 +42,14 @@ func writeRepoError(w http.ResponseWriter, err error) {
 		writeErr(w, http.StatusConflict, codeGenerationConflict, "configuration generation conflict")
 	case errors.Is(err, repo.ErrInvalidStateTransition):
 		writeErr(w, http.StatusConflict, codePodStateConflict, "resource state does not allow this operation")
+	case errors.Is(err, repo.ErrLLMModelAlreadyBound):
+		writeErr(w, http.StatusConflict, codeConflict, "LLM model is already bound")
 	case errors.Is(err, repo.ErrBindingCodeUsed), errors.Is(err, repo.ErrBindingCodeRevoked),
 		errors.Is(err, repo.ErrBindingCodeExpired), errors.Is(err, repo.ErrBindingCodeScope):
 		writeErr(w, http.StatusConflict, codeInvalidBinding, "binding code is not usable")
 	case errors.Is(err, repo.ErrInvalidHumanUser), errors.Is(err, repo.ErrInvalidCapacity),
-		errors.Is(err, repo.ErrInvalidBindingCode), errors.Is(err, repo.ErrInvalidPlatform):
+		errors.Is(err, repo.ErrInvalidBindingCode), errors.Is(err, repo.ErrInvalidPlatform),
+		errors.Is(err, repo.ErrInvalidLLMModel):
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid field value")
 	case errors.Is(err, repo.ErrCredentialNotConfigured):
 		writeErr(w, http.StatusNotFound, codeCredentialNotConfigured, "platform credential not configured")

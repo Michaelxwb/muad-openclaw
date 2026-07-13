@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { Button, Input, Select, TextArea, Toast } from "@douyinfe/semi-ui";
+import { useCallback, useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { Input, Select, TextArea, Toast } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type { HumanUser, HumanUserStatus } from "../../api";
 import { FeedbackBanner } from "../ConsolePage";
@@ -9,12 +10,22 @@ import { Field, normalizeStatus, USER_STATUS_OPTIONS } from "./shared";
 interface Props {
   user: HumanUser;
   onSaved: () => Promise<void>;
+  formId?: string;
+  onBusyChange?: (busy: boolean) => void;
 }
 
-export function BasicUserForm({ user, onSaved }: Props) {
+export function BasicUserForm({ user, onSaved, formId, onBusyChange }: Props) {
   const form = useBasicUserForm(user, onSaved);
+  useEffect(() => {
+    onBusyChange?.(form.busy);
+    return () => onBusyChange?.(false);
+  }, [form.busy, onBusyChange]);
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void form.save();
+  };
   return (
-    <div>
+    <form id={formId} onSubmit={submit}>
       <FeedbackBanner error={form.error} />
       <BasicUserFields
         displayName={form.displayName}
@@ -24,10 +35,7 @@ export function BasicUserForm({ user, onSaved }: Props) {
         onNotes={form.setNotes}
         onStatus={form.setStatus}
       />
-      <Button theme="solid" loading={form.busy} onClick={() => void form.save()}>
-        保存基本信息
-      </Button>
-    </div>
+    </form>
   );
 }
 
@@ -46,7 +54,7 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
     if (user.status !== "deleting") setStatus(user.status);
   }, [user]);
 
-  const save = async () => {
+  const save = useCallback(async () => {
     setBusy(true);
     setError("");
     try {
@@ -58,7 +66,7 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
     } finally {
       setBusy(false);
     }
-  };
+  }, [displayName, notes, onSaved, status, user.humanUserId]);
 
   return { displayName, notes, status, busy, error, setDisplayName, setNotes, setStatus, save };
 }

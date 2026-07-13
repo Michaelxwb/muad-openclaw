@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, Toast } from "@douyinfe/semi-ui";
+import { Banner, Modal, Spin, Toast } from "@douyinfe/semi-ui";
 import { api } from "../api";
 import type { ChannelConfigView, ChannelCredential } from "../api";
 import { ChannelForm } from "./ChannelForm";
@@ -55,6 +55,7 @@ export function EditChannelModal({ podId, onClose, onSaved }: Props) {
 
   return (
     <Modal
+      className="standard-modal"
       title={`编辑 ${podId ?? ""} 的消息通道`}
       visible={podId !== null}
       onCancel={onClose}
@@ -62,9 +63,9 @@ export function EditChannelModal({ podId, onClose, onSaved }: Props) {
       width={520}
     >
       {loading ? (
-        <p className="hint">加载中…</p>
+        <Spin />
       ) : error && !initial ? (
-        <p style={{ color: "var(--semi-color-danger)" }}>{error}</p>
+        <Banner type="danger" description={error} fullMode={false} bordered />
       ) : initial ? (
         <ChannelForm
           mode="edit"

@@ -24,6 +24,7 @@ test("worker image builds session-manager and installs all runtime plugins and C
     "/opt/muad/session-manager",
     "/opt/muad/muad-run-skill",
     "/opt/muad/muad-runtime-guard",
+    "/opt/muad/muad-runtime-guard/src/binding_code_spec.json",
     "/usr/local/bin/session-manager",
     "runtime-image-self-check.mjs --image-only",
   ]) assert.equal(dockerfile.includes(expected), true, `Dockerfile missing ${expected}`);

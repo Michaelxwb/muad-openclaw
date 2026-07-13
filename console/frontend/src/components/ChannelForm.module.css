@@ -1,0 +1,52 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.channelItem {
+  margin-bottom: 8px;
+}
+
+.channelMeta,
+.secretMeta {
+  margin-left: 8px;
+  color: var(--semi-color-text-2);
+  font-size: 11px;
+}
+
+.actions {
+  justify-content: flex-end;
+}
+
+.hint {
+  margin: 4px 0 0 28px;
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+}
+
+.credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  margin-left: 28px;
+  padding-left: 12px;
+  border-left: 2px solid var(--semi-color-border);
+}
+
+.credentialLabel {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+}
+
+.configured {
+  margin-left: 4px;
+  color: var(--semi-color-success);
+  font-size: 11px;
+}

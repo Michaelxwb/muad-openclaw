@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Toast } from "@douyinfe/semi-ui";
 import { api } from "../api";
 import type { Pod, PodAction } from "../api";
-import { FeedbackBanner, PageHeader } from "../components/ConsolePage";
+import { FeedbackBanner, PageHeader, PageSection } from "../components/ConsolePage";
 import { EditChannelModal } from "../components/EditChannelModal";
-import { Pagination } from "../components/Pagination";
+import { tablePagination } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
 import { PodDetail } from "./PodDetail";
 import { ContainersToolbar } from "./containers/ContainersToolbar";
@@ -85,53 +85,53 @@ function PodListView({ state }: { state: ContainersState }) {
     <div>
       <PageHeader title="Pod 管理" description="管理运行实例、用户容量、消息通道和运行状态" />
       <FeedbackBanner error={list.error} />
-      <ContainersToolbar
-        state={list}
-        selectedIds={state.selectedIds}
-        onCreate={() => dialogs.setCreateOpen(true)}
-        onReloadSkills={() => void state.reloadSkills()}
-        onBatchUpgrade={() => dialogs.setUpgradeIds(state.selectedIds)}
-        onBatchDelete={() => {
-          state.setSelectedIds([]);
-          void list.refresh();
-        }}
-      />
-      <PodTable
-        items={list.items}
-        loading={list.loading}
-        selectedIds={state.selectedIds}
-        onSelected={state.setSelectedIds}
-        onDetail={dialogs.setDetailPodId}
-        onLogs={dialogs.setLogPodId}
-        onQr={dialogs.setQrPodId}
-        onChannels={dialogs.setEditPodId}
-        onResources={dialogs.setResourcePod}
-        onAction={(podId, action) => void state.runAction(podId, action)}
-      />
-      <PodListPagination state={state} />
+      <PageSection>
+        <ContainersToolbar
+          state={list}
+          selectedIds={state.selectedIds}
+          onCreate={() => dialogs.setCreateOpen(true)}
+          onReloadSkills={() => void state.reloadSkills()}
+          onBatchUpgrade={() => dialogs.setUpgradeIds(state.selectedIds)}
+          onBatchDelete={() => {
+            state.setSelectedIds([]);
+            void list.refresh();
+          }}
+        />
+        <PodTable
+          items={list.items}
+          loading={list.loading}
+          selectedIds={state.selectedIds}
+          pagination={podTablePagination(state)}
+          onSelected={state.setSelectedIds}
+          onDetail={dialogs.setDetailPodId}
+          onLogs={dialogs.setLogPodId}
+          onQr={dialogs.setQrPodId}
+          onChannels={dialogs.setEditPodId}
+          onResources={dialogs.setResourcePod}
+          onAction={(podId, action) => void state.runAction(podId, action)}
+        />
+      </PageSection>
       <ListDialogs state={dialogs} onCreated={state.created} onRefresh={list.refresh} />
     </div>
   );
 }
 
-function PodListPagination({ state }: { state: ContainersState }) {
+function podTablePagination(state: ContainersState) {
   const { list } = state;
-  return (
-    <Pagination
-      page={list.page}
-      pageSize={list.pageSize}
-      total={list.total}
-      onPageChange={(page) => {
-        list.setPage(page);
-        state.setSelectedIds([]);
-      }}
-      onPageSizeChange={(pageSize) => {
-        list.setPageSize(pageSize);
-        list.setPage(1);
-        state.setSelectedIds([]);
-      }}
-    />
-  );
+  return tablePagination({
+    page: list.page,
+    pageSize: list.pageSize,
+    total: list.total,
+    onPageChange: (page) => {
+      list.setPage(page);
+      state.setSelectedIds([]);
+    },
+    onPageSizeChange: (pageSize) => {
+      list.setPageSize(pageSize);
+      list.setPage(1);
+      state.setSelectedIds([]);
+    },
+  });
 }
 
 function useListDialogs() {

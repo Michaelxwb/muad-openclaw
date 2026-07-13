@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS pods (
 	max_users INTEGER NOT NULL DEFAULT 10 CHECK (max_users > 0),
 	channels TEXT NOT NULL DEFAULT '[]',
 	channel_configs_enc TEXT NOT NULL DEFAULT '',
-	llm_override_enc TEXT NOT NULL DEFAULT '',
 	mem_limit TEXT NOT NULL DEFAULT '',
 	cpu_limit TEXT NOT NULL DEFAULT '',
 	restart_policy TEXT NOT NULL DEFAULT '',
@@ -37,15 +36,27 @@ CREATE TABLE IF NOT EXISTS pods (
 	CHECK (applied_generation <= config_generation)
 );
 
+CREATE TABLE IF NOT EXISTS llm_model_configs (
+	model_config_id TEXT PRIMARY KEY,
+	display_name TEXT NOT NULL,
+	provider TEXT NOT NULL,
+	base_url TEXT NOT NULL,
+	api_key_enc TEXT NOT NULL,
+	api_key_fingerprint TEXT NOT NULL,
+	model TEXT NOT NULL,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS human_users (
 	human_user_id TEXT PRIMARY KEY,
 	pod_id TEXT NOT NULL REFERENCES pods(pod_id) ON DELETE CASCADE,
+	model_config_id TEXT NOT NULL REFERENCES llm_model_configs(model_config_id) ON DELETE RESTRICT,
 	display_name TEXT NOT NULL,
 	agent_id TEXT NOT NULL,
 	browser_profile TEXT NOT NULL,
 	browser_cdp_port INTEGER NOT NULL CHECK (browser_cdp_port BETWEEN 1024 AND 65535),
 	status TEXT NOT NULL CHECK (status IN ('pending','active','disabled','deleting')),
-	model_override_enc TEXT NOT NULL DEFAULT '',
 	platform_credentials_enc TEXT NOT NULL DEFAULT '',
 	notes TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL,
@@ -58,6 +69,8 @@ CREATE TABLE IF NOT EXISTS human_users (
 	UNIQUE (pod_id, browser_cdp_port)
 );
 CREATE INDEX IF NOT EXISTS idx_human_users_pod_status ON human_users(pod_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_human_users_model_config
+	ON human_users(model_config_id);
 
 CREATE TABLE IF NOT EXISTS user_identities (
 	identity_id TEXT PRIMARY KEY,
@@ -107,15 +120,6 @@ CREATE TABLE IF NOT EXISTS platform_configs (
 	display_name TEXT NOT NULL,
 	config_enc TEXT NOT NULL DEFAULT '',
 	enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0,1)),
-	updated_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS llm_global (
-	id INTEGER PRIMARY KEY CHECK (id = 1),
-	provider TEXT NOT NULL,
-	base_url TEXT NOT NULL,
-	api_key_enc TEXT NOT NULL,
-	model TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );
 

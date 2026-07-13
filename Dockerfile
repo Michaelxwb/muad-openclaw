@@ -82,6 +82,7 @@ COPY tools/muad-run-skill/src /opt/muad/muad-run-skill/src
 COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plugin.json \
     /opt/muad/muad-runtime-guard/
 COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
+COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
 COPY tools/runtime-concurrency /opt/muad/runtime-concurrency
 COPY skills /opt/openclaw-skills
 COPY entrypoint.sh           /usr/local/bin/muad-entrypoint.sh

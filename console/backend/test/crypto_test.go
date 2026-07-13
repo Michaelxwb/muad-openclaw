@@ -96,6 +96,9 @@ func TestBindingCodeCodec_GenerateNormalizeAndHash(t *testing.T) {
 	if _, err := codec.Hash("MUAD-INVALID!"); err == nil {
 		t.Fatal("expected invalid alphabet to be rejected")
 	}
+	if normalized, err := crypto.NormalizeBindingCode("muad-x1gd 78w5"); err != nil || normalized != "MUAD-X1GD78W5" {
+		t.Fatalf("shared alphabet code was rejected: %q, %v", normalized, err)
+	}
 }
 
 func TestEncrypt_NonDeterministic(t *testing.T) {

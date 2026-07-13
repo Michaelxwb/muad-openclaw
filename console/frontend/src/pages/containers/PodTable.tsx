@@ -1,13 +1,17 @@
 import { Button, Table, Tag, Tooltip } from "@douyinfe/semi-ui";
+import type { TablePaginationProps } from "@douyinfe/semi-ui/lib/es/table/interface";
 import type { Pod, PodAction } from "../../api";
 import { ChannelTags } from "../../components/ChannelTags";
+import { renderTablePagination } from "../../components/Pagination";
 import { RowActions } from "../../components/RowActions";
 import { APPLY_STATUS_TAGS, POD_ACTIONS, STATUS_TAGS } from "./model";
+import styles from "./PodTable.module.css";
 
 interface Props {
   items: Pod[];
   loading: boolean;
   selectedIds: string[];
+  pagination: TablePaginationProps | false;
   onSelected: (ids: string[]) => void;
   onDetail: (id: string) => void;
   onLogs: (id: string) => void;
@@ -23,7 +27,8 @@ export function PodTable(props: Props) {
       columns={podColumns(props) as never}
       dataSource={props.items}
       loading={props.loading}
-      pagination={false}
+      pagination={props.pagination}
+      renderPagination={renderTablePagination}
       rowKey="podId"
       size="small"
       rowSelection={{
@@ -65,18 +70,16 @@ function podDataColumns(onDetail: (id: string) => void) {
       key: "podId",
       width: 170,
       render: (_: unknown, pod: Pod) => (
-        <div style={{ minWidth: 0 }}>
+        <div className={styles.identityCell}>
           <Button
+            className={styles.linkButton}
             theme="borderless"
             size="small"
             onClick={() => onDetail(pod.podId)}
-            style={{ height: "auto", padding: 0, fontWeight: 600 }}
           >
             {pod.displayName}
           </Button>
-          <div className="mono" style={{ color: "var(--semi-color-text-2)", fontSize: 12 }}>
-            {pod.podId}
-          </div>
+          <div className={`mono ${styles.mutedText}`}>{pod.podId}</div>
         </div>
       ),
     },
@@ -123,18 +126,16 @@ function podDataColumns(onDetail: (id: string) => void) {
 function CapacityCell({ pod, onOpen }: { pod: Pod; onOpen: (id: string) => void }) {
   return (
     <Button
+      className={styles.capacityButton}
       theme="borderless"
       size="small"
       onClick={() => onOpen(pod.podId)}
-      style={{ height: "auto", padding: 0, textAlign: "left" }}
     >
       <div>
         <span className="mono">
           {pod.userCount}/{pod.maxUsers}
         </span>
-        <div style={{ color: "var(--semi-color-text-2)", fontSize: 12 }}>
-          剩余 {pod.availableSlots}
-        </div>
+        <div className={styles.mutedText}>剩余 {pod.availableSlots}</div>
       </div>
     </Button>
   );
@@ -150,7 +151,7 @@ function GenerationCell({ pod }: { pod: Pod }) {
       <Tag color={status.color} size="small">
         {status.label}
       </Tag>
-      <div className="mono" style={{ color: "var(--semi-color-text-2)", fontSize: 12 }}>
+      <div className={`mono ${styles.mutedText}`}>
         {pod.appliedGeneration}/{pod.configGeneration}
       </div>
     </div>
@@ -166,17 +167,7 @@ function PodStatus({ pod }: { pod: Pod }) {
   };
   return (
     <Tag color={status.color}>
-      <span
-        style={{
-          display: "inline-block",
-          width: 6,
-          height: 6,
-          marginRight: 5,
-          verticalAlign: "middle",
-          background: status.dot,
-          borderRadius: "50%",
-        }}
-      />
+      <span className={styles.statusDot} style={{ background: status.dot }} />
       {status.label}
     </Tag>
   );

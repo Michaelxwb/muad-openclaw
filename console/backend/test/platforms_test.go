@@ -36,6 +36,13 @@ func TestPlatformConfig_SeedsAndCRUD(t *testing.T) {
 	}); !errors.Is(err, repo.ErrInvalidPlatform) {
 		t.Fatalf("invalid platform error = %v, want ErrInvalidPlatform", err)
 	}
+	podIDs, err := store.DeletePlatformConfigAndMarkPods(testCipher(t), "custom_api")
+	if err != nil || len(podIDs) != 0 {
+		t.Fatalf("DeletePlatformConfigAndMarkPods = %v, %v", podIDs, err)
+	}
+	if _, err := store.GetPlatformConfig("custom_api"); !errors.Is(err, repo.ErrNotFound) {
+		t.Fatalf("deleted platform error = %v, want ErrNotFound", err)
+	}
 }
 
 func TestPlatformConfig_UpdateAndPodGenerationAreAtomic(t *testing.T) {
@@ -90,6 +97,33 @@ func TestPlatformCredential_EncryptedUpsertListResolveAndDelete(t *testing.T) {
 	}
 }
 
+func TestPlatformConfig_DeleteRemovesUserCredentialsAndMarksPods(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 10)
+	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
+	cipher := testCipher(t)
+	if _, err := store.UpsertUserPlatformCredential(cipher, alice.HumanUserID, "xdr", "xdr-key"); err != nil {
+		t.Fatalf("UpsertUserPlatformCredential: %v", err)
+	}
+	before, err := store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod before delete: %v", err)
+	}
+	podIDs, err := store.DeletePlatformConfigAndMarkPods(cipher, "xdr")
+	if err != nil || len(podIDs) != 1 || podIDs[0] != "pod-a" {
+		t.Fatalf("DeletePlatformConfigAndMarkPods = %v, %v", podIDs, err)
+	}
+	summaries, err := store.ListUserPlatformCredentials(cipher, alice.HumanUserID)
+	if err != nil || len(summaries) != 0 {
+		t.Fatalf("credentials after platform delete = %+v, %v", summaries, err)
+	}
+	pod, err := store.GetPod("pod-a")
+	if err != nil || pod.ConfigGeneration != before.ConfigGeneration+1 ||
+		pod.LastApplyStatus != repo.ApplyStatusPending {
+		t.Fatalf("pod after platform delete = %+v, %v", pod, err)
+	}
+}
+
 func TestPlatformCredential_ConcurrentUpdatesDoNotLosePlatforms(t *testing.T) {
 	store := newStore(t)
 	createTestPod(t, store, "pod-a", 10)
@@ -131,7 +165,8 @@ func TestPlatformCredential_DisabledAndCorruptDataFailClosed(t *testing.T) {
 	}
 
 	corrupt, err := store.CreateHumanUser(repo.HumanUser{
-		PodID: "pod-a", DisplayName: "Corrupt", AgentID: "corrupt",
+		PodID: "pod-a", ModelConfigID: createTestLLMModel(t, store, "corrupt-model"),
+		DisplayName: "Corrupt", AgentID: "corrupt",
 		BrowserProfile: "corrupt", Status: repo.HumanUserStatusActive,
 		PlatformCredentialsEnc: "not-ciphertext",
 	}, 18802, 18810)

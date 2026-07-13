@@ -3,7 +3,6 @@ package repo
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 )
@@ -123,6 +122,11 @@ func insertPreparedHumanUser(
 		return HumanUser{}, err
 	}
 	user.BrowserCDPPort = port
+	if user.ModelConfigID != "" {
+		if err := ensureLLMModelAvailable(tx, user.ModelConfigID); err != nil {
+			return HumanUser{}, err
+		}
+	}
 	if err := insertHumanUser(tx, user); err != nil {
 		return HumanUser{}, err
 	}
@@ -135,33 +139,6 @@ func commitBootstrap(tx *sql.Tx, cause error, label string) error {
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit Human User %s bootstrap: %w", label, err)
-	}
-	return nil
-}
-
-func (s *Store) UpdateHumanUserModelOverride(humanUserID, encrypted string) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return fmt.Errorf("begin update Human User model: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	user, err := getHumanUserTx(tx, humanUserID)
-	if err != nil {
-		return err
-	}
-	if user.Status == HumanUserStatusDeleting {
-		return ErrInvalidStateTransition
-	}
-	res, err := tx.Exec(`UPDATE human_users SET model_override_enc = ?, updated_at = ?
-		WHERE human_user_id = ?`, encrypted, formatTime(time.Now().UTC()), humanUserID)
-	if err := affectedOrNotFound(res, err, "update Human User model"); err != nil {
-		return err
-	}
-	if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
-		return err
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit update Human User model: %w", err)
 	}
 	return nil
 }

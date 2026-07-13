@@ -6,7 +6,7 @@ import {
   FeedbackBanner,
   MetricDescriptions,
   PageHeader,
-  SectionHeader,
+  PageSection,
 } from "../components/ConsolePage";
 import { PlatformSettings } from "../components/platforms/PlatformSettings";
 import { useMountedRef } from "../hooks/useMountedRef";
@@ -26,19 +26,18 @@ export function Settings() {
   return (
     <div>
       <PageHeader title="资源与平台" description="设置 Pod 默认资源，并管理业务平台接入配置" />
-      <section className={styles.section} aria-labelledby="resource-settings-title">
-        <SectionHeader
-          title="Pod 资源默认值"
-          extra={
-            <Tag color={resources.config?.configured ? "green" : "grey"}>
-              {resources.config?.configured ? "已配置" : "运行时默认"}
-            </Tag>
-          }
-        />
+      <PageSection
+        title="Pod 资源默认值"
+        extra={
+          <Tag color={resources.config?.configured ? "green" : "grey"}>
+            {resources.config?.configured ? "已配置" : "运行时默认"}
+          </Tag>
+        }
+      >
         <FeedbackBanner error={resources.error} message={resources.message} />
         <ResourceForm state={resources} />
         {resources.config && <EffectiveResources config={resources.config} />}
-      </section>
+      </PageSection>
       <PlatformSettings />
     </div>
   );

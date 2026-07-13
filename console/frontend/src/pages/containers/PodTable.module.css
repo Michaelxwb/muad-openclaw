@@ -1,0 +1,29 @@
+.identityCell {
+  min-width: 0;
+}
+
+.linkButton {
+  height: auto;
+  padding: 0;
+  font-weight: 600;
+}
+
+.capacityButton {
+  height: auto;
+  padding: 0;
+  text-align: left;
+}
+
+.mutedText {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  vertical-align: middle;
+}

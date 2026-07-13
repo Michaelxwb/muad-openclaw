@@ -1,0 +1,17 @@
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--semi-color-text-1);
+  font-size: 13px;
+}
+
+.full {
+  grid-column: 1 / -1;
+}

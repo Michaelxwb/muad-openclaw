@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Banner, Button, Form, Typography } from "@douyinfe/semi-ui";
+import { Button, Form, Typography } from "@douyinfe/semi-ui";
 import { api, token } from "../api";
+import { FeedbackBanner } from "../components/ConsolePage";
 import styles from "./Login.module.css";
 
 interface LoginValues {
@@ -33,7 +34,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           <Typography.Title heading={3}>muad 控制台</Typography.Title>
           <Typography.Text type="tertiary">管理员登录</Typography.Text>
         </div>
-        {err && <Banner type="danger" description={err} fullMode={false} bordered />}
+        <FeedbackBanner error={err} />
         <Form<LoginValues> onSubmit={(values) => void submit(values)}>
           <Form.Input
             field="username"
