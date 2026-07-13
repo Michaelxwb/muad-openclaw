@@ -54,38 +54,6 @@ func Open(path string) (*Store, error) {
 // Close closes the database.
 func (s *Store) Close() error { return s.db.Close() }
 
-// --- llm_global ---
-
-// SetLLMGlobal upserts the single global LLM row.
-func (s *Store) SetLLMGlobal(g LLMGlobal) error {
-	now := time.Now().UTC().Format(tsLayout)
-	_, err := s.db.Exec(
-		`INSERT INTO llm_global (id, provider, base_url, api_key_enc, model, updated_at)
-		 VALUES (1, ?, ?, ?, ?, ?)
-		 ON CONFLICT(id) DO UPDATE SET
-		   provider=excluded.provider, base_url=excluded.base_url,
-		   api_key_enc=excluded.api_key_enc, model=excluded.model, updated_at=excluded.updated_at`,
-		g.Provider, g.BaseURL, g.APIKeyEnc, g.Model, now,
-	)
-	return err
-}
-
-// GetLLMGlobal returns the global LLM row or ErrNotFound when unset.
-func (s *Store) GetLLMGlobal() (LLMGlobal, error) {
-	row := s.db.QueryRow(`SELECT provider, base_url, api_key_enc, model, updated_at FROM llm_global WHERE id = 1`)
-	var g LLMGlobal
-	var ts string
-	switch err := row.Scan(&g.Provider, &g.BaseURL, &g.APIKeyEnc, &g.Model, &ts); err {
-	case sql.ErrNoRows:
-		return LLMGlobal{}, ErrNotFound
-	case nil:
-		g.UpdatedAt, _ = time.Parse(tsLayout, ts)
-		return g, nil
-	default:
-		return LLMGlobal{}, err
-	}
-}
-
 // --- resource_global ---
 
 // SetResourceGlobal upserts the single global resource-limit row.

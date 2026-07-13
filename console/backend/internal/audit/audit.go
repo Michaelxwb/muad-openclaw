@@ -33,6 +33,7 @@ const (
 	ActionPlatformConfigCreate     Action = "platform_config.create"
 	ActionPlatformConfigUpdate     Action = "platform_config.update"
 	ActionPlatformConfigDisable    Action = "platform_config.disable"
+	ActionPlatformConfigDelete     Action = "platform_config.delete"
 	ActionPlatformCredentialCreate Action = "platform_credential.create"
 	ActionPlatformCredentialUpdate Action = "platform_credential.update"
 	ActionPlatformCredentialDelete Action = "platform_credential.delete"
@@ -51,6 +52,7 @@ var validActions = map[Action]struct{}{
 	ActionIdentityCreate: {}, ActionIdentityUpdate: {}, ActionIdentityDelete: {},
 	ActionBindingCodeCreate: {}, ActionBindingCodeActivate: {}, ActionBindingCodeFail: {}, ActionBindingCodeRevoke: {},
 	ActionPlatformConfigCreate: {}, ActionPlatformConfigUpdate: {}, ActionPlatformConfigDisable: {},
+	ActionPlatformConfigDelete:     {},
 	ActionPlatformCredentialCreate: {}, ActionPlatformCredentialUpdate: {}, ActionPlatformCredentialDelete: {},
 	ActionSessionResolveFail: {}, ActionPodConfigApply: {}, ActionPodConfigSuccess: {},
 	ActionPodConfigFail: {}, ActionRuntimeGuardBind: {}, ActionRuntimeGuardReject: {},

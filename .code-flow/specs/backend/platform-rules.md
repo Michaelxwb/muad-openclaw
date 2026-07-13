@@ -46,6 +46,8 @@ return {"code": 1, "message": "order not found", "data": None}
 - **[项目] 长耗时 script skill 进度走 `muad_run_skill` 执行边界** [tools/muad-run-skill/src/index.mjs, tools/muad-run-skill/src/delivery.mjs, tools/muad-progress]：业务脚本调用语言无关的 `muad-progress` CLI 上报阶段；OpenClaw 当前会话上下文只能由 `muad_run_skill` tool 持有，并由 runner 将进度通过当前会话投递为独立消息。不要让子进程 CLI 直接假设自己持有微信/企微会话上下文；旧 `progress-adapters/openclaw` 只能作为薄适配或 PoC，不作为 OpenClaw 主链路。
 - **[项目] skill 进度消息不得替代 OpenClaw 原生最终回复** [tools/muad-run-skill/src/index.mjs, tools/muad-run-skill/src/delivery.mjs]：`muad-progress`/`muad_run_skill` 只负责阶段进度，最终结果继续走 OpenClaw native final reply 链路。禁止为了调整企微/微信排序，把最终回复改成 text-only outbound；只有在完整保真附件、图片、卡片等 payload 且有测试覆盖时，才能替换 final 投递路径。
 - **[项目] session-manager 平台登录逻辑集中在 core/platform adapter** [.code-flow/tasks/2026-07-06/user-cookie-credential-import/user-cookie-credential-import.design.md]：OpenClaw/Hermes adapter 只做薄封装，不复制平台 token/cookie/storageState 逻辑；登录脚本由 `/opt/session-manager/platforms/<platform>` 统一管理，不属于业务 skill。新增平台只改 platform adapter 和配置，不新增 `service_registry` 式显式 token/cookie API 映射。
+- **[项目] 多用户 LLM 配置只走模型池最终形态** [internal/repo/llm_models.go, internal/api/human_users.go, internal/runtimeconfig/models.go]：Human User 创建必须绑定一个存在且未被其他用户占用的 `llm_model_configs.model_config_id`；运行时 provider 只从用户绑定模型生成。禁止恢复 global LLM、Pod LLM override、Human User model override 等兼容 fallback。API/UI 只暴露 `api_key_fingerprint`，不得返回完整 API key。
+- **[项目] 上游 OpenClaw/插件能力通过 adapter/wrapper 扩展** [tools/muad-run-skill, bin/inject-env.mjs, bin/inject-channels.mjs]：遇到 OpenClaw 或第三方插件限制时，优先通过 adapter、wrapper、配置注入或运行时编排解决；不要 fork 或直接修改上游插件代码。只有用户明确要求维护 fork，且有升级、回滚和测试方案时，才允许改上游代码。
 
 ## Anti-Patterns
 - 禁止在生产环境开启 `DEBUG` / 详细堆栈输出
@@ -54,3 +56,5 @@ return {"code": 1, "message": "order not found", "data": None}
 - 禁止 feature flag 长期遗留，上线稳定后必须清理
 - 禁止在 handler 里直接拼响应结构或硬编码错误 message，必须引用 `errors/` 常量并走 `success / fail` 封装
 - 禁止绕过 `muad_run_skill` 让长耗时 skill 的子进程自行向微信/企微发进度；子进程没有可靠的会话上下文
+- 禁止恢复全局模型、Pod 模型覆盖或用户模型覆盖作为多用户 LLM fallback；用户运行时模型只能来自已绑定的模型池配置
+- 禁止为修业务链路直接修改上游 OpenClaw 或第三方插件代码；先通过本项目 adapter/wrapper/注入层隔离

@@ -91,6 +91,32 @@ func (s *Store) ListIdentitiesByPod(podID string) ([]UserIdentity, error) {
 	return collectIdentities(rows)
 }
 
+// CountIdentitiesByHumanUser returns Identity counts keyed by Human User ID.
+func (s *Store) CountIdentitiesByHumanUser(podID string) (map[string]int, error) {
+	query := `SELECT human_user_id, COUNT(*) FROM user_identities`
+	var args []any
+	if podID != "" {
+		query += ` WHERE pod_id = ?`
+		args = append(args, podID)
+	}
+	query += ` GROUP BY human_user_id`
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("count Identities by Human User: %w", err)
+	}
+	defer rows.Close()
+	counts := make(map[string]int)
+	for rows.Next() {
+		var humanUserID string
+		var count int
+		if err := rows.Scan(&humanUserID, &count); err != nil {
+			return nil, fmt.Errorf("scan Identity count: %w", err)
+		}
+		counts[humanUserID] = count
+	}
+	return counts, rows.Err()
+}
+
 // UpdateIdentityStatus enables or disables one identity and reconciles user status.
 func (s *Store) UpdateIdentityStatus(identityID, status string) error {
 	if status != IdentityStatusActive && status != IdentityStatusDisabled {

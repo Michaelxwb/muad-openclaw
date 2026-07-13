@@ -4,7 +4,9 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,13 +14,21 @@ import (
 )
 
 const (
-	bindingCodePrefix   = "MUAD-"
-	bindingCodeLength   = 8
-	bindingCodeAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-	bindingCodeDomain   = "muad-binding-code-v1"
+	bindingCodeDomain = "muad-binding-code-v1"
 )
 
 var ErrInvalidBindingCodeFormat = errors.New("crypto: invalid binding code format")
+
+//go:embed binding_code_spec.json
+var bindingCodeSpecJSON []byte
+
+var bindingCodeSpec = mustLoadBindingCodeSpec(bindingCodeSpecJSON)
+
+type bindingCodeSpecData struct {
+	Prefix   string `json:"prefix"`
+	Length   int    `json:"length"`
+	Alphabet string `json:"alphabet"`
+}
 
 // BindingCodeCodec generates and hashes short-lived activation codes.
 type BindingCodeCodec struct {
@@ -42,15 +52,15 @@ func (c *BindingCodeCodec) Generate() (string, error) {
 	if c == nil {
 		return "", errors.New("crypto: nil binding-code codec")
 	}
-	raw := make([]byte, bindingCodeLength)
+	raw := make([]byte, bindingCodeSpec.Length)
 	if _, err := io.ReadFull(rand.Reader, raw); err != nil {
 		return "", fmt.Errorf("generate binding code: %w", err)
 	}
-	encoded := make([]byte, bindingCodeLength)
+	encoded := make([]byte, bindingCodeSpec.Length)
 	for index, value := range raw {
-		encoded[index] = bindingCodeAlphabet[int(value)&31]
+		encoded[index] = bindingCodeSpec.Alphabet[int(value)&31]
 	}
-	return bindingCodePrefix + string(encoded), nil
+	return bindingCodeSpec.Prefix + string(encoded), nil
 }
 
 // Hash normalizes a user-supplied code and returns its keyed lookup hash.
@@ -71,12 +81,12 @@ func (c *BindingCodeCodec) Hash(code string) (string, error) {
 func NormalizeBindingCode(code string) (string, error) {
 	normalized := strings.ToUpper(strings.TrimSpace(code))
 	normalized = strings.ReplaceAll(normalized, " ", "")
-	if len(normalized) != len(bindingCodePrefix)+bindingCodeLength ||
-		!strings.HasPrefix(normalized, bindingCodePrefix) {
+	if len(normalized) != len(bindingCodeSpec.Prefix)+bindingCodeSpec.Length ||
+		!strings.HasPrefix(normalized, bindingCodeSpec.Prefix) {
 		return "", ErrInvalidBindingCodeFormat
 	}
-	for _, char := range normalized[len(bindingCodePrefix):] {
-		if !strings.ContainsRune(bindingCodeAlphabet, char) {
+	for _, char := range normalized[len(bindingCodeSpec.Prefix):] {
+		if !strings.ContainsRune(bindingCodeSpec.Alphabet, char) {
 			return "", ErrInvalidBindingCodeFormat
 		}
 	}
@@ -90,4 +100,15 @@ func BindingCodeHint(code string) (string, error) {
 		return "", err
 	}
 	return "****" + normalized[len(normalized)-4:], nil
+}
+
+func mustLoadBindingCodeSpec(data []byte) bindingCodeSpecData {
+	var spec bindingCodeSpecData
+	if err := json.Unmarshal(data, &spec); err != nil {
+		panic(fmt.Sprintf("invalid binding_code_spec.json: %v", err))
+	}
+	if spec.Prefix == "" || spec.Length <= 0 || len(spec.Alphabet) != 32 {
+		panic("invalid binding_code_spec.json: prefix, length and 32-character alphabet are required")
+	}
+	return spec
 }

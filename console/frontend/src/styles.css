@@ -66,6 +66,24 @@ body,
   top: 18vh !important;
 }
 
+.standard-modal .semi-modal {
+  top: 72px !important;
+}
+
+.standard-modal .semi-modal-content {
+  display: flex;
+  max-height: calc(100vh - 144px);
+  flex-direction: column;
+}
+
+.standard-modal .semi-modal-body-wrapper {
+  overflow: hidden;
+}
+
+.standard-modal .semi-modal-body {
+  overflow: auto;
+}
+
 .log-modal .semi-modal {
   top: 0 !important;
   margin: 72px auto 44px;

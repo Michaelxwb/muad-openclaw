@@ -5,9 +5,22 @@
 .toolbar {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
+}
+
+.primaryText {
+  overflow: hidden;
+  color: var(--semi-color-text-0);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.secondaryText {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
 }
 
 .formGrid {
@@ -28,11 +41,24 @@
   font-size: 12px;
 }
 
-.footer {
+.detailSummary {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  background: var(--semi-color-fill-0);
+}
+
+.detailSummary :global(.semi-descriptions-item-value) {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.detailFooter {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 14px;
+  width: 100%;
 }
 
 .codeBox {

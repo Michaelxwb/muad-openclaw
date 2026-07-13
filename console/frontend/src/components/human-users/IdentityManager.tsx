@@ -189,6 +189,7 @@ function CreateIdentityDialog(props: CreateDialogProps) {
 
   return (
     <Modal
+      className="standard-modal"
       title="新增 IM Identity"
       visible={props.visible}
       onCancel={props.onClose}
@@ -271,6 +272,7 @@ function DeleteIdentityDialog({
 }) {
   return (
     <Modal
+      className="standard-modal"
       title="删除 Identity"
       visible={identity !== null}
       onCancel={onClose}

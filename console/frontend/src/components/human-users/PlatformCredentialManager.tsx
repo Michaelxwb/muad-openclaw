@@ -178,6 +178,7 @@ function CredentialEditorDialog(props: CredentialDialogProps) {
   };
   return (
     <Modal
+      className="standard-modal"
       title={`${props.row?.credential ? "覆盖" : "配置"} ${props.row?.platform.displayName ?? ""} API Key`}
       visible={props.row !== null}
       onCancel={props.onClose}
@@ -219,6 +220,7 @@ function DeleteCredentialDialog(props: CredentialDialogProps) {
   };
   return (
     <Modal
+      className="standard-modal"
       title={`删除 ${props.row?.platform.displayName ?? ""} API Key`}
       visible={props.row !== null}
       onCancel={props.onClose}

@@ -12,18 +12,19 @@ import (
 type humanUserAPIView struct {
 	HumanUserID    string `json:"humanUserId"`
 	PodID          string `json:"podId"`
+	ModelConfigID  string `json:"modelConfigId"`
 	DisplayName    string `json:"displayName"`
 	AgentID        string `json:"agentId"`
 	BrowserProfile string `json:"browserProfile"`
 	BrowserCDPPort int    `json:"browserCdpPort"`
 	Status         string `json:"status"`
 	IdentityCount  int    `json:"identityCount"`
-	ModelOverride  struct {
+	ModelConfig    struct {
 		Provider       string `json:"provider"`
 		Model          string `json:"model"`
 		KeyConfigured  bool   `json:"keyConfigured"`
 		KeyFingerprint string `json:"keyFingerprint"`
-	} `json:"modelOverride"`
+	} `json:"modelConfig"`
 }
 
 type humanUserCreateResponse struct {
@@ -40,7 +41,8 @@ type humanUserCreateResponse struct {
 func TestHumanUserAPI_CreateDirectIdentityAndList(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
-	body := `{"displayName":"Alice","agentId":"alice","identity":{` +
+	modelID := createLLMModelForAPI(t, e, "alice-model")
+	body := `{"displayName":"Alice","agentId":"alice","modelConfigId":"` + modelID + `","identity":{` +
 		`"channel":"wecom","accountId":"default","externalId":"XuWenBin",` +
 		`"externalIdType":"corp_userid"}}`
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", body)
@@ -65,10 +67,51 @@ func TestHumanUserAPI_CreateDirectIdentityAndList(t *testing.T) {
 	}
 }
 
+func TestHumanUserAPI_ListAllAcrossPodsIncludesModel(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
+	aliceModel := createLLMModelForAPI(t, e, "alice-model")
+	bobModel := createLLMModelForAPI(t, e, "bob-model")
+	aliceBody := `{"displayName":"Alice","agentId":"alice","modelConfigId":"` + aliceModel + `","identity":{` +
+		`"channel":"wecom","accountId":"default","externalId":"alice",` +
+		`"externalIdType":"corp_userid"}}`
+	bobBody := `{"displayName":"Bob","agentId":"bob","modelConfigId":"` + bobModel + `","activation":{` +
+		`"channel":"wecom","expiresInMinutes":30}}`
+	assertStatus(t, e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", aliceBody), http.StatusCreated)
+	assertStatus(t, e.do(http.MethodPost, "/api/v1/containers/pod-b/human-users", bobBody), http.StatusCreated)
+
+	rr := e.do(http.MethodGet, "/api/v1/human-users?q=pod-b", "")
+	assertStatus(t, rr, http.StatusOK)
+	list := decodeAPIData[struct {
+		Items []humanUserAPIView `json:"items"`
+		Total int                `json:"total"`
+	}](t, rr.Body.Bytes())
+	if list.Total != 1 || len(list.Items) != 1 {
+		t.Fatalf("unexpected filtered global list: %+v", list)
+	}
+	if list.Items[0].PodID != "pod-b" || list.Items[0].DisplayName != "Bob" ||
+		list.Items[0].ModelConfig.Model != "deepseek-chat" || !list.Items[0].ModelConfig.KeyConfigured {
+		t.Fatalf("global list did not include Pod/model data: %+v", list.Items[0])
+	}
+
+	rr = e.do(http.MethodGet, "/api/v1/human-users?page=1&pageSize=20", "")
+	assertStatus(t, rr, http.StatusOK)
+	all := decodeAPIData[struct {
+		Items []humanUserAPIView `json:"items"`
+		Total int                `json:"total"`
+	}](t, rr.Body.Bytes())
+	if all.Total != 2 || len(all.Items) != 2 || all.Items[0].IdentityCount != 1 {
+		t.Fatalf("unexpected global list counts: %+v", all)
+	}
+}
+
 func TestHumanUserAPI_ActivationCodeIsReturnedOnlyAtCreation(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
-	body := `{"displayName":"Charlie","activation":{"channel":"wecom","expiresInMinutes":30}}`
+	modelID := createLLMModelForAPI(t, e, "charlie-model")
+	body := `{"displayName":"Charlie","modelConfigId":"` + modelID + `",` +
+		`"activation":{"channel":"wecom","expiresInMinutes":30}}`
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", body)
 	assertStatus(t, rr, http.StatusCreated)
 	created := decodeAPIData[humanUserCreateResponse](t, rr.Body.Bytes())
@@ -91,10 +134,13 @@ func TestHumanUserAPI_ActivationCodeIsReturnedOnlyAtCreation(t *testing.T) {
 func TestHumanUserAPI_CreateEnforcesPodCapacity(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, strings.Replace(testPodBody, `"maxUsers":2`, `"maxUsers":1`, 1))
-	body := `{"displayName":"Alice","agentId":"alice","identity":{` +
+	aliceModel := createLLMModelForAPI(t, e, "alice-model")
+	bobModel := createLLMModelForAPI(t, e, "bob-model")
+	body := `{"displayName":"Alice","agentId":"alice","modelConfigId":"` + aliceModel + `","identity":{` +
 		`"channel":"wecom","externalId":"alice","externalIdType":"corp_userid"}}`
 	assertStatus(t, e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", body), http.StatusCreated)
-	body = `{"displayName":"Bob","agentId":"bob","activation":{"channel":"wecom"}}`
+	body = `{"displayName":"Bob","agentId":"bob","modelConfigId":"` + bobModel + `",` +
+		`"activation":{"channel":"wecom"}}`
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", body)
 	assertStatus(t, rr, http.StatusConflict)
 	if !strings.Contains(rr.Body.String(), `"code":40902`) {
@@ -123,31 +169,6 @@ func TestHumanUserAPI_PatchProtectsRuntimeIdentityAndGeneration(t *testing.T) {
 	}
 }
 
-func TestHumanUserAPI_ModelOverridePreservesAndClearsKey(t *testing.T) {
-	e, user := createDirectHumanUser(t)
-	modelPath := "/api/v1/human-users/" + user.HumanUserID + "/model"
-	body := `{"provider":"deepseek","baseUrl":"https://api.deepseek.com",` +
-		`"apiKey":"sk-test-model-key","model":"deepseek-chat"}`
-	rr := e.do(http.MethodPut, modelPath, body)
-	assertStatus(t, rr, http.StatusOK)
-	if strings.Contains(rr.Body.String(), "sk-test-model-key") || !strings.Contains(rr.Body.String(), `"keyConfigured":true`) {
-		t.Fatalf("unsafe model response: %s", rr.Body.String())
-	}
-	assertStoredModelKey(t, e, user.HumanUserID, "sk-test-model-key")
-	rr = e.do(http.MethodPut, modelPath, `{"model":"deepseek-reasoner"}`)
-	assertStatus(t, rr, http.StatusOK)
-	assertStoredModelKey(t, e, user.HumanUserID, "sk-test-model-key")
-	rr = e.do(http.MethodPut, modelPath, `{"apiKey":"sk-replaced-model-key"}`)
-	assertStatus(t, rr, http.StatusOK)
-	assertStoredModelKey(t, e, user.HumanUserID, "sk-replaced-model-key")
-	rr = e.do(http.MethodPut, modelPath, `{"clear":true}`)
-	assertStatus(t, rr, http.StatusOK)
-	stored, _ := e.store.GetHumanUser(user.HumanUserID)
-	if stored.ModelOverrideEnc != "" || !strings.Contains(rr.Body.String(), `"keyConfigured":false`) {
-		t.Fatalf("model override was not cleared: %+v %s", stored, rr.Body.String())
-	}
-}
-
 func TestHumanUserAPI_DeleteRemainsDeletingUntilCleanerRuns(t *testing.T) {
 	e, user := createDirectHumanUser(t)
 	e.reconcile.podIDs = nil
@@ -166,7 +187,8 @@ func createDirectHumanUser(t *testing.T) (*testEnv, humanUserAPIView) {
 	t.Helper()
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
-	body := `{"displayName":"Alice","agentId":"alice","identity":{` +
+	modelID := createLLMModelForAPI(t, e, "alice-model")
+	body := `{"displayName":"Alice","agentId":"alice","modelConfigId":"` + modelID + `","identity":{` +
 		`"channel":"wecom","externalId":"alice-external","externalIdType":"corp_userid"}}`
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", body)
 	if rr.Code != http.StatusCreated {
@@ -175,15 +197,23 @@ func createDirectHumanUser(t *testing.T) (*testEnv, humanUserAPIView) {
 	return e, decodeAPIData[humanUserCreateResponse](t, rr.Body.Bytes()).HumanUser
 }
 
-func assertStoredModelKey(t *testing.T, e *testEnv, humanUserID, key string) {
+func createLLMModelForAPI(t *testing.T, e *testEnv, name string) string {
 	t.Helper()
-	user, err := e.store.GetHumanUser(humanUserID)
-	if err != nil || strings.Contains(user.ModelOverrideEnc, key) {
-		t.Fatalf("unsafe stored model override: %v", err)
+	cipher, err := crypto.New("mk")
+	if err != nil {
+		t.Fatalf("create cipher: %v", err)
 	}
-	cipher, _ := crypto.New("mk")
-	plain, err := cipher.Decrypt(user.ModelOverrideEnc)
-	if err != nil || !strings.Contains(plain, key) || !strings.Contains(plain, crypto.Fingerprint(key)) {
-		t.Fatalf("stored model key cannot be recovered: %v", err)
+	encrypted, err := cipher.Encrypt("sk-" + name)
+	if err != nil {
+		t.Fatalf("encrypt model key: %v", err)
 	}
+	models, err := e.store.CreateLLMModelConfigs([]repo.LLMModelConfigCreate{{
+		DisplayName: name, Provider: "deepseek", BaseURL: "https://api.deepseek.com",
+		APIKeyEnc: encrypted, APIKeyFingerprint: crypto.Fingerprint("sk-" + name),
+		Model: "deepseek-chat",
+	}})
+	if err != nil {
+		t.Fatalf("create LLM model: %v", err)
+	}
+	return models[0].ModelConfigID
 }

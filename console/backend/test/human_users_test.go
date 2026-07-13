@@ -18,7 +18,8 @@ func TestHumanUser_CreateAllocatesPortsAndEnforcesCapacity(t *testing.T) {
 		t.Fatalf("ports = %d/%d, want 18802/18803", alice.BrowserCDPPort, bob.BrowserCDPPort)
 	}
 	_, err := store.CreateHumanUser(repo.HumanUser{
-		PodID: "pod-a", DisplayName: "Charlie", AgentID: "charlie",
+		PodID: "pod-a", ModelConfigID: createTestLLMModel(t, store, "charlie-model"),
+		DisplayName: "Charlie", AgentID: "charlie",
 		BrowserProfile: "charlie", Status: repo.HumanUserStatusPending,
 	}, 18802, 18810)
 	if !errors.Is(err, repo.ErrPodCapacity) {
@@ -53,13 +54,15 @@ func TestHumanUser_IdentityBootstrapIsAtomic(t *testing.T) {
 		ExternalID: "shared", ExternalIDType: "corp_userid", PeerKind: "direct",
 	}
 	result, err := store.CreateHumanUserWithIdentity(repo.HumanUser{
-		PodID: "pod-a", DisplayName: "Alice", AgentID: "alice", BrowserProfile: "alice",
+		PodID: "pod-a", ModelConfigID: createTestLLMModel(t, store, "alice-model"),
+		DisplayName: "Alice", AgentID: "alice", BrowserProfile: "alice",
 	}, identity, 18802, 18810)
 	if err != nil || result.Identity == nil || result.HumanUser.Status != repo.HumanUserStatusActive {
 		t.Fatalf("bootstrap = %+v, %v", result, err)
 	}
 	_, err = store.CreateHumanUserWithIdentity(repo.HumanUser{
-		PodID: "pod-a", DisplayName: "Bob", AgentID: "bob", BrowserProfile: "bob",
+		PodID: "pod-a", ModelConfigID: createTestLLMModel(t, store, "bob-model"),
+		DisplayName: "Bob", AgentID: "bob", BrowserProfile: "bob",
 	}, identity, 18802, 18810)
 	if !errors.Is(err, repo.ErrIdentityExists) {
 		t.Fatalf("duplicate identity error = %v", err)
@@ -76,7 +79,8 @@ func TestHumanUser_BindingBootstrapReturnsPlainCodeOnce(t *testing.T) {
 	createTestPod(t, store, "pod-a", 2)
 	codec := bindingCodec(t)
 	result, err := store.CreateHumanUserWithBindingCode(codec, repo.HumanUser{
-		PodID: "pod-a", DisplayName: "Charlie", AgentID: "charlie", BrowserProfile: "charlie",
+		PodID: "pod-a", ModelConfigID: createTestLLMModel(t, store, "charlie-model"),
+		DisplayName: "Charlie", AgentID: "charlie", BrowserProfile: "charlie",
 	}, repo.BindingCodeRequest{
 		Channel: "wecom", OpenClawChannel: "wecom", AccountID: "default",
 		Purpose: repo.BindingPurposeFirstIdentity, ExpiresAt: time.Now().Add(time.Hour),
@@ -98,7 +102,8 @@ func TestHumanUser_RejectsInvalidRuntimeIdentifiers(t *testing.T) {
 	createTestPod(t, store, "pod-a", 10)
 	for _, agentID := range []string{"main", "quarantine", "Upper", "bad/path", "-leading"} {
 		_, err := store.CreateHumanUser(repo.HumanUser{
-			PodID: "pod-a", DisplayName: agentID, AgentID: agentID,
+			PodID: "pod-a", ModelConfigID: createTestLLMModel(t, store, agentID+"-model"),
+			DisplayName: agentID, AgentID: agentID,
 			BrowserProfile: "safe-profile", Status: repo.HumanUserStatusPending,
 		}, 18802, 18810)
 		if !errors.Is(err, repo.ErrInvalidHumanUser) {
@@ -158,12 +163,17 @@ func TestHumanUser_ConcurrentCreateCannotExceedCapacity(t *testing.T) {
 	createTestPod(t, store, "pod-a", 1)
 	var wg sync.WaitGroup
 	errs := make(chan error, 2)
+	modelIDs := map[string]string{
+		"alice": createTestLLMModel(t, store, "alice-model"),
+		"bob":   createTestLLMModel(t, store, "bob-model"),
+	}
 	for _, agent := range []string{"alice", "bob"} {
 		wg.Add(1)
 		go func(agentID string) {
 			defer wg.Done()
 			_, err := store.CreateHumanUser(repo.HumanUser{
-				PodID: "pod-a", DisplayName: agentID, AgentID: agentID,
+				PodID: "pod-a", ModelConfigID: modelIDs[agentID],
+				DisplayName: agentID, AgentID: agentID,
 				BrowserProfile: agentID, Status: repo.HumanUserStatusPending,
 			}, 18802, 18810)
 			errs <- err
@@ -200,8 +210,9 @@ func createTestPod(t *testing.T, store *repo.Store, podID string, maxUsers int) 
 
 func createTestHumanUser(t *testing.T, store *repo.Store, podID, agentID, status string) repo.HumanUser {
 	t.Helper()
+	modelID := createTestLLMModel(t, store, agentID+"-model")
 	user, err := store.CreateHumanUser(repo.HumanUser{
-		PodID: podID, DisplayName: agentID, AgentID: agentID,
+		PodID: podID, ModelConfigID: modelID, DisplayName: agentID, AgentID: agentID,
 		BrowserProfile: agentID, Status: status,
 	}, 18802, 18810)
 	if err != nil {
@@ -210,12 +221,24 @@ func createTestHumanUser(t *testing.T, store *repo.Store, podID, agentID, status
 	return user
 }
 
+func createTestLLMModel(t *testing.T, store *repo.Store, name string) string {
+	t.Helper()
+	models, err := store.CreateLLMModelConfigs([]repo.LLMModelConfigCreate{{
+		DisplayName: name, Provider: "deepseek", BaseURL: "https://api.deepseek.com",
+		APIKeyEnc: "enc-" + name, APIKeyFingerprint: "sha256:" + name,
+		Model: "deepseek-chat",
+	}})
+	if err != nil {
+		t.Fatalf("CreateLLMModelConfigs %s: %v", name, err)
+	}
+	return models[0].ModelConfigID
+}
+
 func podUpdateFrom(pod repo.Pod, maxUsers int) repo.PodUpdate {
 	return repo.PodUpdate{
 		DisplayName: pod.DisplayName, ImageTag: pod.ImageTag, MaxUsers: maxUsers,
 		Channels: pod.Channels, ChannelConfigsEnc: pod.ChannelConfigsEnc,
-		LLMOverrideEnc: pod.LLMOverrideEnc, MemLimit: pod.MemLimit,
-		CPULimit: pod.CPULimit, RestartPolicy: pod.RestartPolicy,
+		MemLimit: pod.MemLimit, CPULimit: pod.CPULimit, RestartPolicy: pod.RestartPolicy,
 		MaxSkillConcurrency:   pod.MaxSkillConcurrency,
 		MaxBrowserConcurrency: pod.MaxBrowserConcurrency,
 	}

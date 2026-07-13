@@ -11,7 +11,6 @@ const basePod: Pod = {
   channelStatuses: { wecom: true },
   state: "running",
   imageTag: "img:test",
-  modelOverride: { keyConfigured: false },
   maxUsers: 10,
   userCount: 1,
   availableSlots: 9,

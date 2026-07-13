@@ -30,7 +30,6 @@ const pod: Pod = {
   channels: ["wecom", "wechat"],
   channelConfigs: { wecom: { botId: "bot-a", secretConfigured: true } },
   channelStatuses: { wecom: true, wechat: false },
-  modelOverride: { keyConfigured: true, keyFingerprint: "sha256:model" },
   maxUsers: 10,
   userCount: 2,
   availableSlots: 8,

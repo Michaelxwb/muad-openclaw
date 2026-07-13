@@ -9,6 +9,7 @@ const apiMocks = vi.hoisted(() => ({
   listPlatforms: vi.fn(),
   createPlatform: vi.fn(),
   patchPlatform: vi.fn(),
+  deletePlatform: vi.fn(),
 }));
 
 vi.mock("../src/api", async (importOriginal) => {
@@ -31,6 +32,11 @@ beforeEach(() => {
   apiMocks.listPlatforms.mockResolvedValue({ items: [xdr], total: 1 });
   apiMocks.createPlatform.mockResolvedValue(xdr);
   apiMocks.patchPlatform.mockResolvedValue(xdr);
+  apiMocks.deletePlatform.mockResolvedValue({
+    platform: "xdr",
+    deleted: true,
+    affectedPodIds: ["pod-a"],
+  });
 });
 
 afterEach(() => Toast.destroyAll());
@@ -48,6 +54,7 @@ describe("PlatformSettings", () => {
     render(<PlatformSettings />);
     await screen.findByText("sha256:xdr-config");
     fireEvent.click(screen.getByRole("button", { name: "增加平台" }));
+    expect(document.querySelector(".standard-modal")).toBeInTheDocument();
     fireEvent.change(screen.getByRole("textbox", { name: "平台配置 JSON" }), {
       target: { value: '{"baseUrl":"https://soar.internal"}' },
     });
@@ -77,5 +84,16 @@ describe("PlatformSettings", () => {
         enabled: false,
       }),
     );
+  });
+
+  it("deletes a platform after confirmation", async () => {
+    render(<PlatformSettings />);
+    await screen.findByText("sha256:xdr-config");
+
+    fireEvent.click(screen.getByRole("button", { name: "删除" }));
+    expect(await screen.findByText("删除 XDR")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    await waitFor(() => expect(apiMocks.deletePlatform).toHaveBeenCalledWith("xdr"));
   });
 });

@@ -12,21 +12,21 @@ import type {
   CreateHumanUserInput,
   CreatePlatformInput,
   CreatePodInput,
-  GlobalLLMConfig,
+  DeletePlatformResult,
   GlobalResourceConfig,
   HumanUser,
   HumanUserBootstrapResult,
   HumanUserDeleteResult,
   HumanUserDetail,
   HumanUserListQuery,
-  HumanUserModelResult,
   Identity,
   IdentityDeleteResult,
   IdentityInput,
   IdentityStatus,
   ListResult,
-  LLMForm,
-  ModelOverrideInput,
+  LLMModelConfig,
+  LLMModelInput,
+  LLMModelTestResult,
   PageResult,
   PatchHumanUserInput,
   PatchPlatformInput,
@@ -42,7 +42,6 @@ import type {
   PodChannelUpdateResult,
   PodDeleteResult,
   PodListQuery,
-  PodLLMConfig,
   PodResourceConfig,
   PodResourceInput,
   PodUpgradeResult,
@@ -195,6 +194,16 @@ export const api = {
         status: query.status,
       }),
     ),
+  listAllHumanUsers: (query: HumanUserListQuery = {}) =>
+    request<PageResult<HumanUser>>(
+      "GET",
+      withQuery("/human-users", {
+        page: query.page,
+        pageSize: query.pageSize,
+        q: query.q,
+        status: query.status,
+      }),
+    ),
   createHumanUser: (podId: string, input: CreateHumanUserInput) =>
     request<HumanUserBootstrapResult>("POST", `/containers/${segment(podId)}/human-users`, input),
   getHumanUser: (humanUserId: string) =>
@@ -203,9 +212,6 @@ export const api = {
     request<HumanUserDetail>("PATCH", humanUserPath(humanUserId), input),
   deleteHumanUser: (humanUserId: string) =>
     request<HumanUserDeleteResult>("DELETE", humanUserPath(humanUserId)),
-  setHumanUserModel: (humanUserId: string, input: ModelOverrideInput) =>
-    request<HumanUserModelResult>("PUT", `${humanUserPath(humanUserId)}/model`, input),
-
   createIdentity: (humanUserId: string, input: IdentityInput) =>
     request<Identity>("POST", `${humanUserPath(humanUserId)}/identities`, input),
   setIdentityStatus: (humanUserId: string, identityId: string, status: IdentityStatus) =>
@@ -232,6 +238,8 @@ export const api = {
   createPlatform: (input: CreatePlatformInput) => request<Platform>("POST", "/platforms", input),
   patchPlatform: (platform: string, input: PatchPlatformInput) =>
     request<Platform>("PATCH", `/platforms/${segment(platform)}`, input),
+  deletePlatform: (platform: string) =>
+    request<DeletePlatformResult>("DELETE", `/platforms/${segment(platform)}`),
   listPlatformCredentials: (humanUserId: string) =>
     request<ListResult<PlatformCredential>>(
       "GET",
@@ -249,15 +257,15 @@ export const api = {
       `${humanUserPath(humanUserId)}/platform-credentials/${segment(platform)}`,
     ),
 
-  getLLM: () => request<GlobalLLMConfig>("GET", "/llm"),
-  setLLM: (input: ModelOverrideInput) => request<GlobalLLMConfig>("PUT", "/llm", input),
-  testLLM: (input: LLMForm) => request<{ ok: boolean }>("POST", "/llm/test", input),
-  getPodLLM: (podId: string) => request<PodLLMConfig>("GET", `/containers/${segment(podId)}/llm`),
-  setPodLLM: (podId: string, input: ModelOverrideInput) =>
-    request<PodLLMConfig>("PUT", `/containers/${segment(podId)}/llm`, input),
-  applyLLM: (podIds: string[]) =>
-    request<{ results: Record<string, string> }>("POST", "/llm/apply", { podIds }),
-
+  listLLMModels: (available = false) =>
+    request<ListResult<LLMModelConfig>>(
+      "GET",
+      available ? "/llm/models?available=true" : "/llm/models",
+    ),
+  createLLMModels: (models: LLMModelInput[]) =>
+    request<ListResult<LLMModelConfig>>("POST", "/llm/models/batch", { models }),
+  testLLMModels: (modelConfigIds: string[]) =>
+    request<{ results: LLMModelTestResult[] }>("POST", "/llm/models/test", { modelConfigIds }),
   getResources: () => request<GlobalResourceConfig>("GET", "/settings/resources"),
   setResources: (input: ResourceConfig) =>
     request<{ configured: true; affectedPodIds: string[] }>("PUT", "/settings/resources", input),

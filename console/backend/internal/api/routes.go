@@ -29,12 +29,12 @@ func (s *Server) registerPodRoutes(mux *http.ServeMux) {
 }
 
 func (s *Server) registerHumanUserRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/v1/human-users", s.handleListAllHumanUsers)
 	mux.HandleFunc("GET /api/v1/containers/{podId}/human-users", s.handleListHumanUsers)
 	mux.HandleFunc("POST /api/v1/containers/{podId}/human-users", s.handleCreateHumanUser)
 	mux.HandleFunc("GET /api/v1/human-users/{humanUserId}", s.handleGetHumanUser)
 	mux.HandleFunc("PATCH /api/v1/human-users/{humanUserId}", s.handlePatchHumanUser)
 	mux.HandleFunc("DELETE /api/v1/human-users/{humanUserId}", s.handleDeleteHumanUser)
-	mux.HandleFunc("PUT /api/v1/human-users/{humanUserId}/model", s.handleSetHumanUserModel)
 	mux.HandleFunc("POST /api/v1/human-users/{humanUserId}/identities", s.handleCreateIdentity)
 	mux.HandleFunc("PATCH /api/v1/human-users/{humanUserId}/identities/{identityId}", s.handlePatchIdentity)
 	mux.HandleFunc("DELETE /api/v1/human-users/{humanUserId}/identities/{identityId}", s.handleDeleteIdentity)
@@ -47,18 +47,16 @@ func (s *Server) registerPlatformRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/platforms", s.handleListPlatforms)
 	mux.HandleFunc("POST /api/v1/platforms", s.handleCreatePlatform)
 	mux.HandleFunc("PATCH /api/v1/platforms/{platform}", s.handlePatchPlatform)
+	mux.HandleFunc("DELETE /api/v1/platforms/{platform}", s.handleDeletePlatform)
 	mux.HandleFunc("GET /api/v1/human-users/{humanUserId}/platform-credentials", s.handleListPlatformCredentials)
 	mux.HandleFunc("PUT /api/v1/human-users/{humanUserId}/platform-credentials/{platform}", s.handlePutPlatformCredential)
 	mux.HandleFunc("DELETE /api/v1/human-users/{humanUserId}/platform-credentials/{platform}", s.handleDeletePlatformCredential)
 }
 
 func (s *Server) registerExistingSettingsRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/v1/llm", s.handleGetLLM)
-	mux.HandleFunc("PUT /api/v1/llm", s.handleSetLLM)
-	mux.HandleFunc("POST /api/v1/llm/test", s.handleTestLLM)
-	mux.HandleFunc("GET /api/v1/containers/{podId}/llm", s.handleGetPodLLM)
-	mux.HandleFunc("PUT /api/v1/containers/{podId}/llm", s.handleSetPodLLM)
-	mux.HandleFunc("POST /api/v1/llm/apply", s.handleApplyLLM)
+	mux.HandleFunc("GET /api/v1/llm/models", s.handleListLLMModels)
+	mux.HandleFunc("POST /api/v1/llm/models/batch", s.handleCreateLLMModels)
+	mux.HandleFunc("POST /api/v1/llm/models/test", s.handleBatchTestLLMModels)
 	mux.HandleFunc("POST /api/v1/skills/reload", s.handleSkillsReload)
 	mux.HandleFunc("GET /api/v1/audit", s.handleAuditQuery)
 	mux.HandleFunc("GET /api/v1/alerts", s.handleAlerts)

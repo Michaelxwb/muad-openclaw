@@ -1,0 +1,38 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.primaryText {
+  overflow: hidden;
+  color: var(--semi-color-text-0);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mutedText {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+}
+
+.podLink {
+  height: auto;
+  padding: 0;
+  color: var(--semi-color-primary);
+  font-weight: 600;
+}
+
+.podLink:hover {
+  color: var(--semi-color-primary-hover);
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -62,12 +62,6 @@ export function ConfigTab({ pod }: { pod: Pod }) {
         </Tag>
       ),
     },
-    {
-      label: "模型覆盖",
-      value: pod.modelOverride.keyConfigured
-        ? pod.modelOverride.keyFingerprint || "已配置"
-        : "继承全局",
-    },
     { label: "Service Token", value: pod.serviceTokenFingerprint },
   ];
   return <DefinitionList rows={rows} />;

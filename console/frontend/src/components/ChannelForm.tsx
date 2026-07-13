@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
-import { Checkbox, Input } from "@douyinfe/semi-ui";
+import { Banner, Button, Checkbox, Input, Space, Typography } from "@douyinfe/semi-ui";
 import { CHANNEL_DEFS, ChannelDef } from "../channels";
 import { ChannelCredential } from "../api";
+import styles from "./ChannelForm.module.css";
+
+const { Text } = Typography;
 
 interface Props {
   mode: "create" | "edit";
@@ -88,33 +91,24 @@ export function ChannelForm({ mode, initial, busy, error, onSubmit, onCancel }: 
   const displayErr = error || localErr;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {displayErr && (
-        <p style={{ color: "var(--semi-color-danger)", fontSize: 13, margin: 0 }}>{displayErr}</p>
-      )}
+    <div className={styles.form}>
+      {displayErr && <Banner type="danger" description={displayErr} fullMode={false} bordered />}
       <div>
-        <label
-          style={{
-            fontSize: 12,
-            color: "var(--semi-color-text-2)",
-            marginBottom: 8,
-            display: "block",
-          }}
-        >
+        <Text className={styles.label} type="tertiary" size="small">
           消息通道
-        </label>
+        </Text>
         {CHANNEL_DEFS.map((def) => {
           const isSelected = selected.includes(def.id);
           const existing = initial?.channelConfigs?.[def.id];
           return (
-            <div key={def.id} style={{ marginBottom: 8 }}>
+            <div className={styles.channelItem} key={def.id}>
               <Checkbox
                 checked={isSelected}
                 onChange={(e) => handleToggle(def.id, (e.target as HTMLInputElement).checked)}
               >
                 {def.icon} {def.label}
                 {editMode && existing?.secretConfigured !== undefined && (
-                  <span style={{ fontSize: 11, color: "var(--semi-color-text-2)", marginLeft: 8 }}>
+                  <span className={styles.channelMeta}>
                     {existing.secretConfigured ? "· 已配置" : ""}
                   </span>
                 )}
@@ -132,24 +126,14 @@ export function ChannelForm({ mode, initial, busy, error, onSubmit, onCancel }: 
           );
         })}
       </div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button
-          type="button"
-          className="semi-button semi-button-default"
-          onClick={onCancel}
-          disabled={busy}
-        >
+      <Space className={styles.actions}>
+        <Button onClick={onCancel} disabled={busy}>
           取消
-        </button>
-        <button
-          type="button"
-          className="semi-button semi-button-primary"
-          onClick={handleSubmit}
-          disabled={busy}
-        >
-          {busy ? "提交中…" : mode === "create" ? "创建" : "保存"}
-        </button>
-      </div>
+        </Button>
+        <Button theme="solid" loading={busy} disabled={busy} onClick={handleSubmit}>
+          {mode === "create" ? "创建" : "保存"}
+        </Button>
+      </Space>
     </div>
   );
 }
@@ -174,27 +158,10 @@ function ChannelCredentialFields({
   onChange: (key: string, val: string) => void;
 }) {
   if (channelDef.credentialFields.length === 0) {
-    return (
-      <p
-        className="hint"
-        style={{ margin: "4px 0 0 28px", fontSize: 12, color: "var(--semi-color-text-2)" }}
-      >
-        {channelDef.hint}
-      </p>
-    );
+    return <p className={styles.hint}>{channelDef.hint}</p>;
   }
   return (
-    <div
-      style={{
-        marginLeft: 28,
-        paddingLeft: 12,
-        borderLeft: "2px solid var(--semi-color-border)",
-        marginTop: 4,
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-      }}
-    >
+    <div className={styles.credentials}>
       {channelDef.credentialFields.map((f) => {
         const isSecret = f.type === "password";
         const existingVal = (existingConfig?.[f.key] ?? undefined) as string | undefined;
@@ -202,15 +169,13 @@ function ChannelCredentialFields({
         const isSecretConfigured = editMode && isSecret && existingConfig?.secretConfigured;
         return (
           <div key={f.key}>
-            <label style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>
+            <label className={styles.credentialLabel}>
               {f.label}
               {hasExisting && !isSecretConfigured && (
-                <span style={{ marginLeft: 4, fontSize: 11, color: "var(--semi-color-success)" }}>
-                  已配置
-                </span>
+                <span className={styles.configured}>已配置</span>
               )}
               {isSecretConfigured && (
-                <span style={{ marginLeft: 4, fontSize: 11, color: "var(--semi-color-text-2)" }}>
+                <span className={styles.secretMeta}>
                   · 上次更新:{" "}
                   {existingConfig?.lastUpdated
                     ? new Date(existingConfig.lastUpdated).toLocaleDateString()

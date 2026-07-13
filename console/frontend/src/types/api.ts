@@ -51,7 +51,7 @@ export interface ChannelConfigView {
   lastUpdated?: string;
 }
 
-export interface ModelOverrideView {
+export interface LLMModelView {
   provider?: string;
   baseUrl?: string;
   model?: string;
@@ -67,7 +67,6 @@ export interface Pod {
   channels: string[];
   channelConfigs?: Record<string, ChannelConfigView>;
   channelStatuses?: Record<string, boolean>;
-  modelOverride: ModelOverrideView;
   maxUsers: number;
   userCount: number;
   availableSlots: number;
@@ -148,6 +147,7 @@ export interface PodUpgradeResult {
 export interface HumanUser {
   humanUserId: string;
   podId: string;
+  modelConfigId: string;
   displayName: string;
   agentId: string;
   browserProfile: string;
@@ -155,7 +155,7 @@ export interface HumanUser {
   status: HumanUserStatus;
   notes: string;
   identityCount: number;
-  modelOverride: ModelOverrideView;
+  modelConfig: LLMModelView;
   createdAt: string;
   updatedAt: string;
 }
@@ -180,6 +180,7 @@ export interface ActivationInput {
 
 interface CreateHumanUserBase {
   displayName: string;
+  modelConfigId: string;
   agentId?: string;
   notes?: string;
 }
@@ -280,6 +281,12 @@ export interface PatchPlatformInput {
   enabled?: boolean;
 }
 
+export interface DeletePlatformResult {
+  platform: string;
+  deleted: boolean;
+  affectedPodIds: string[];
+}
+
 export interface PlatformCredential {
   humanUserId: string;
   platform: string;
@@ -300,39 +307,33 @@ export interface PlatformCredentialDeleteResult {
   cacheInvalidation: "on_next_resolve";
 }
 
-export interface ModelOverrideInput {
-  clear?: boolean;
-  provider?: string;
-  baseUrl?: string;
-  apiKey?: string;
-  model?: string;
+export interface LLMModelConfig {
+  modelConfigId: string;
+  displayName: string;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  keyConfigured: boolean;
+  keyFingerprint?: string;
+  boundHumanUserId?: string;
+  boundHumanUserName?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface LLMForm {
+export interface LLMModelInput {
+  displayName: string;
   provider: string;
   baseUrl: string;
   apiKey: string;
   model: string;
 }
 
-export interface GlobalLLMConfig {
-  configured: boolean;
-  provider?: string;
-  baseUrl?: string;
-  model?: string;
-  apiKeyConfigured: boolean;
-  keyFingerprint?: string;
-}
-
-export interface PodLLMConfig {
-  podId: string;
-  configured: boolean;
-  modelOverride: ModelOverrideView;
-}
-
-export interface HumanUserModelResult {
-  humanUserId: string;
-  modelOverride: ModelOverrideView;
+export interface LLMModelTestResult {
+  modelConfigId?: string;
+  displayName: string;
+  ok: boolean;
+  error?: string;
 }
 
 export interface ResourceValues {

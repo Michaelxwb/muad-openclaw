@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Space, Table, Tag } from "@douyinfe/semi-ui";
+import { Button, Modal, Space, Table, Tag, Toast } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type { Platform } from "../../api";
 import { useMountedRef } from "../../hooks/useMountedRef";
-import { FeedbackBanner, SectionHeader } from "../ConsolePage";
-import styles from "./PlatformSettings.module.css";
+import { FeedbackBanner, ListToolbar, PageSection } from "../ConsolePage";
 import { PlatformEditorDialog } from "./PlatformEditorDialog";
 
 export const PLATFORM_OPTIONS = [
@@ -31,21 +30,20 @@ export function PlatformSettings() {
     setEditorOpen(true);
   };
   return (
-    <section className={styles.section} aria-labelledby="platform-settings-title">
-      <SectionHeader
-        title="业务平台"
-        extra={
+    <PageSection title="业务平台">
+      <FeedbackBanner error={state.error} />
+      <ListToolbar
+        actions={
           <Space>
             <Tag>{state.items.length} 个平台</Tag>
-            <Button theme="solid" disabled={available.length === 0} onClick={openCreate}>
+            <Button theme="solid" onClick={openCreate}>
               增加平台
             </Button>
           </Space>
         }
       />
-      <FeedbackBanner error={state.error} />
       <Table
-        columns={platformColumns(openEdit) as never}
+        columns={platformColumns(openEdit, state.refresh) as never}
         dataSource={state.items}
         rowKey="platform"
         loading={state.loading}
@@ -62,7 +60,7 @@ export function PlatformSettings() {
           await state.refresh();
         }}
       />
-    </section>
+    </PageSection>
   );
 }
 
@@ -94,7 +92,7 @@ function usePlatforms() {
   return { items, loading, error, refresh };
 }
 
-function platformColumns(onEdit: (platform: Platform) => void) {
+function platformColumns(onEdit: (platform: Platform) => void, onDeleted: () => Promise<void>) {
   return [
     {
       title: "平台",
@@ -128,10 +126,59 @@ function platformColumns(onEdit: (platform: Platform) => void) {
       title: "操作",
       key: "actions",
       render: (_: unknown, platform: Platform) => (
-        <Button size="small" onClick={() => onEdit(platform)}>
-          编辑
-        </Button>
+        <Space>
+          <Button size="small" onClick={() => onEdit(platform)}>
+            编辑
+          </Button>
+          <DeletePlatformButton platform={platform} onDeleted={onDeleted} />
+        </Space>
       ),
     },
   ];
+}
+
+function DeletePlatformButton({
+  platform,
+  onDeleted,
+}: {
+  platform: Platform;
+  onDeleted: () => Promise<void>;
+}) {
+  const [visible, setVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const remove = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await api.deletePlatform(platform.platform);
+      Toast.success("平台已删除");
+      setVisible(false);
+      await onDeleted();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "删除平台失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Button size="small" type="danger" onClick={() => setVisible(true)}>
+        删除
+      </Button>
+      <Modal
+        className="standard-modal"
+        title={`删除 ${platform.displayName}`}
+        visible={visible}
+        onCancel={() => setVisible(false)}
+        onOk={() => void remove()}
+        okText="删除"
+        confirmLoading={busy}
+        okButtonProps={{ type: "danger" as const }}
+      >
+        <FeedbackBanner error={error} />
+        <p className="hint">删除后会移除该平台配置，并清理所有用户绑定的该平台 API key。</p>
+      </Modal>
+    </>
+  );
 }

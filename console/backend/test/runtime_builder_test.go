@@ -18,7 +18,7 @@ type runtimeBuilderSource struct {
 	users      []repo.HumanUser
 	identities []repo.UserIdentity
 	platforms  []repo.PlatformConfig
-	global     repo.LLMGlobal
+	models     []repo.LLMModelConfig
 }
 
 func (source runtimeBuilderSource) GetPod(podID string) (repo.Pod, error) {
@@ -42,11 +42,10 @@ func (source runtimeBuilderSource) ListPlatformConfigs() ([]repo.PlatformConfig,
 	return source.platforms, nil
 }
 
-func (source runtimeBuilderSource) GetLLMGlobal() (repo.LLMGlobal, error) {
-	if source.global == (repo.LLMGlobal{}) {
-		return repo.LLMGlobal{}, repo.ErrNotFound
-	}
-	return source.global, nil
+func (source runtimeBuilderSource) ListLLMModelConfigs(
+	_ repo.LLMModelConfigListFilter,
+) ([]repo.LLMModelConfig, error) {
+	return source.models, nil
 }
 
 func TestRuntimeBuilder_DeterministicMultiUserConfig(t *testing.T) {
@@ -87,9 +86,9 @@ func TestRuntimeBuilder_RejectsInvalidStatusAndChannelAlias(t *testing.T) {
 func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBuilderSource {
 	t.Helper()
 	users := []repo.HumanUser{
-		{HumanUserID: "u-charlie", PodID: "pod-a", AgentID: "charlie", BrowserProfile: "charlie", BrowserCDPPort: 18803, Status: repo.HumanUserStatusPending, ModelOverrideEnc: encryptRuntimeJSON(t, cipher, `{"provider":"deepseek","model":"deepseek-chat","apiKey":"new-key"}`)},
+		{HumanUserID: "u-charlie", PodID: "pod-a", ModelConfigID: "model-charlie", AgentID: "charlie", BrowserProfile: "charlie", BrowserCDPPort: 18803, Status: repo.HumanUserStatusPending},
 		{HumanUserID: "u-disabled", PodID: "pod-a", AgentID: "disabled", BrowserProfile: "disabled", BrowserCDPPort: 18804, Status: repo.HumanUserStatusDisabled},
-		{HumanUserID: "u-alice", PodID: "pod-a", AgentID: "alice", BrowserProfile: "alice", BrowserCDPPort: 18802, Status: repo.HumanUserStatusActive, ModelOverrideEnc: encryptRuntimeJSON(t, cipher, `{"provider":"deepseek","model":"deepseek-chat","apiKey":"old-key"}`)},
+		{HumanUserID: "u-alice", PodID: "pod-a", ModelConfigID: "model-alice", AgentID: "alice", BrowserProfile: "alice", BrowserCDPPort: 18802, Status: repo.HumanUserStatusActive},
 	}
 	identities := []repo.UserIdentity{
 		{IdentityID: "i-wechat", HumanUserID: "u-alice", PodID: "pod-a", Channel: "wechat", OpenClawChannel: "openclaw-weixin", AccountID: "default", ExternalID: "wx-alice", PeerKind: "direct", Status: repo.IdentityStatusActive},
@@ -107,9 +106,17 @@ func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBui
 			{Platform: "sdsp", DisplayName: "SDSP", Enabled: false},
 			{Platform: "xdr", DisplayName: "XDR", Enabled: true, ConfigEnc: encryptRuntimeJSON(t, cipher, `{"a":2,"z":1}`)},
 		},
-		global: repo.LLMGlobal{
-			Provider: "deepseek", BaseURL: "https://api.deepseek.com", Model: "deepseek-chat",
-			APIKeyEnc: encryptRuntimeText(t, cipher, "global-key"),
+		models: []repo.LLMModelConfig{
+			{
+				ModelConfigID: "model-alice", DisplayName: "Alice Model",
+				Provider: "deepseek", BaseURL: "https://api.deepseek.com",
+				Model: "deepseek-chat", APIKeyEnc: encryptRuntimeText(t, cipher, "old-key"),
+			},
+			{
+				ModelConfigID: "model-charlie", DisplayName: "Charlie Model",
+				Provider: "deepseek", BaseURL: "https://api.deepseek.com",
+				Model: "deepseek-chat", APIKeyEnc: encryptRuntimeText(t, cipher, "new-key"),
+			},
 		},
 	}
 }

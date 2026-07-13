@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Button, Input, Select, Space, Table } from "@douyinfe/semi-ui";
 import { IconSearch } from "@douyinfe/semi-icons";
 import type { HumanUser, Pod } from "../../api";
-import { FeedbackBanner, MetricDescriptions } from "../ConsolePage";
-import { Pagination } from "../Pagination";
+import { FeedbackBanner, ListToolbar, MetricDescriptions } from "../ConsolePage";
+import { renderTablePagination, tablePagination } from "../Pagination";
 import styles from "../HumanUsersPanel.module.css";
 import type { HumanUsersState } from "./HumanUsersPanel";
 import {
@@ -70,53 +70,55 @@ interface ToolbarProps {
 
 function UserToolbar(props: ToolbarProps) {
   return (
-    <div className={styles.toolbar}>
-      <Button theme="solid" onClick={props.onCreate}>
-        创建用户
-      </Button>
-      <Space>
-        <Input
-          prefix={<IconSearch />}
-          value={props.search}
-          onChange={props.onSearchChange}
-          onEnterPress={props.onSearch}
-          placeholder="名称、ID 或 agent"
-          style={{ width: 200 }}
-        />
-        <Button aria-label="查询 Human User" icon={<IconSearch />} onClick={props.onSearch} />
-        <Select
-          value={props.status}
-          optionList={USER_STATUS_OPTIONS}
-          onChange={(value) => props.onStatus(normalizeStatus(String(value ?? "")))}
-          style={{ width: 120 }}
-        />
-      </Space>
-    </div>
+    <ListToolbar
+      actions={
+        <Button theme="solid" onClick={props.onCreate}>
+          创建用户
+        </Button>
+      }
+      filters={
+        <Space>
+          <Input
+            prefix={<IconSearch />}
+            value={props.search}
+            onChange={props.onSearchChange}
+            onEnterPress={props.onSearch}
+            placeholder="名称、ID 或 agent"
+            style={{ width: 200 }}
+          />
+          <Button aria-label="查询 Human User" icon={<IconSearch />} onClick={props.onSearch} />
+          <Select
+            value={props.status}
+            optionList={USER_STATUS_OPTIONS}
+            onChange={(value) => props.onStatus(normalizeStatus(String(value ?? "")))}
+            style={{ width: 120 }}
+          />
+        </Space>
+      }
+    />
   );
 }
 
 function UserTable({ users, onOpen }: { users: HumanUsersState; onOpen: (id: string) => void }) {
   return (
-    <>
-      <Table
-        columns={humanUserColumns(onOpen) as never}
-        dataSource={users.items}
-        rowKey="humanUserId"
-        loading={users.loading}
-        pagination={false}
-        size="small"
-      />
-      <Pagination
-        page={users.page}
-        pageSize={users.pageSize}
-        total={users.total}
-        onPageChange={users.setPage}
-        onPageSizeChange={(size) => {
+    <Table
+      columns={humanUserColumns(onOpen) as never}
+      dataSource={users.items}
+      rowKey="humanUserId"
+      loading={users.loading}
+      pagination={tablePagination({
+        page: users.page,
+        pageSize: users.pageSize,
+        total: users.total,
+        onPageChange: users.setPage,
+        onPageSizeChange: (size) => {
           users.setPageSize(size);
           users.setPage(1);
-        }}
-      />
-    </>
+        },
+      })}
+      renderPagination={renderTablePagination}
+      size="small"
+    />
   );
 }
 
@@ -128,10 +130,8 @@ function humanUserColumns(onOpen: (id: string) => void) {
       width: 210,
       render: (_: unknown, user: HumanUser) => (
         <div>
-          <div style={{ fontWeight: 600 }}>{user.displayName}</div>
-          <div className="mono" style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>
-            {user.humanUserId}
-          </div>
+          <div className={styles.primaryText}>{user.displayName}</div>
+          <div className={`mono ${styles.secondaryText}`}>{user.humanUserId}</div>
         </div>
       ),
     },
@@ -150,9 +150,7 @@ function humanUserColumns(onOpen: (id: string) => void) {
       render: (_: unknown, user: HumanUser) => (
         <div>
           <span className="mono">{user.browserProfile}</span>
-          <div style={{ fontSize: 12, color: "var(--semi-color-text-2)" }}>
-            CDP {user.browserCdpPort}
-          </div>
+          <div className={styles.secondaryText}>CDP {user.browserCdpPort}</div>
         </div>
       ),
     },

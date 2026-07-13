@@ -9,7 +9,9 @@ import { BindingCodeManager } from "./BindingCodeManager";
 import { DeleteHumanUser } from "./DeleteHumanUser";
 import { IdentityManager } from "./IdentityManager";
 import { PlatformCredentialManager } from "./PlatformCredentialManager";
-import { UserModelForm } from "./UserModelForm";
+import styles from "../HumanUsersPanel.module.css";
+
+const BASIC_FORM_ID = "human-user-basic-form";
 
 interface Props {
   pod: Pod;
@@ -54,16 +56,33 @@ function useHumanUserDetail(humanUserId: string | null) {
 
 export function HumanUserDetailDialog(props: Props) {
   const state = useHumanUserDetail(props.humanUserId);
+  const [basicBusy, setBasicBusy] = useState(false);
   const changed = async () => {
     await Promise.all([state.refresh(), props.onChanged()]);
   };
   return (
     <Modal
-      title={`Human User ${state.detail?.humanUser.displayName ?? ""}`}
+      className="standard-modal"
+      title={`用户详情 ${state.detail?.humanUser.displayName ?? ""}`}
       visible={props.humanUserId !== null}
       onCancel={props.onClose}
-      footer={<Button onClick={props.onClose}>关闭</Button>}
-      width={720}
+      footer={
+        <div className={styles.detailFooter}>
+          <Button
+            theme="solid"
+            htmlType="submit"
+            form={BASIC_FORM_ID}
+            loading={basicBusy}
+            disabled={!state.detail || state.loading}
+          >
+            保存
+          </Button>
+          {state.detail && (
+            <DeleteHumanUser user={state.detail.humanUser} onDeleted={props.onDeleted} />
+          )}
+        </div>
+      }
+      width={760}
     >
       <FeedbackBanner error={state.error} />
       {state.loading && !state.detail ? (
@@ -74,7 +93,7 @@ export function HumanUserDetailDialog(props: Props) {
             detail={state.detail}
             channels={props.pod.channels}
             onChanged={changed}
-            onDeleted={props.onDeleted}
+            onBasicBusyChange={setBasicBusy}
           />
         )
       )}
@@ -86,24 +105,26 @@ function DetailContent({
   detail,
   channels,
   onChanged,
-  onDeleted,
+  onBasicBusyChange,
 }: {
   detail: HumanUserDetail;
   channels: string[];
   onChanged: () => Promise<void>;
-  onDeleted: () => void;
+  onBasicBusyChange: (busy: boolean) => void;
 }) {
   return (
     <>
       <RuntimeMetadata detail={detail} />
       <Tabs type="line" defaultActiveKey="basic">
         <TabPane tab="基本信息" itemKey="basic">
-          <BasicUserForm user={detail.humanUser} onSaved={onChanged} />
+          <BasicUserForm
+            user={detail.humanUser}
+            onSaved={onChanged}
+            formId={BASIC_FORM_ID}
+            onBusyChange={onBasicBusyChange}
+          />
         </TabPane>
-        <TabPane tab="模型覆写" itemKey="model">
-          <UserModelForm user={detail.humanUser} onSaved={onChanged} />
-        </TabPane>
-        <TabPane tab="Identity" itemKey="identity">
+        <TabPane tab="身份标识" itemKey="identity">
           <IdentityManager
             user={detail.humanUser}
             identities={detail.identities}
@@ -118,24 +139,20 @@ function DetailContent({
           <PlatformCredentialManager user={detail.humanUser} />
         </TabPane>
       </Tabs>
-      <DeleteHumanUser user={detail.humanUser} onDeleted={onDeleted} />
     </>
   );
 }
 
 function RuntimeMetadata({ detail }: { detail: HumanUserDetail }) {
   const user = detail.humanUser;
-  return (
-    <Descriptions
-      size="small"
-      row
-      data={[
-        { key: "Human User ID", value: user.humanUserId },
-        { key: "Agent ID", value: user.agentId },
-        { key: "Browser Profile", value: user.browserProfile },
-        { key: "Browser CDP", value: user.browserCdpPort },
-        { key: "Identity 数量", value: detail.identities.length },
-      ]}
-    />
-  );
+  const items = [
+    { key: "用户 ID", value: user.humanUserId },
+    { key: "运行 Agent", value: user.agentId },
+    { key: "浏览器配置", value: user.browserProfile },
+    { key: "浏览器端口", value: user.browserCdpPort },
+    { key: "模型配置", value: `${user.modelConfig.provider}/${user.modelConfig.model}` },
+    { key: "模型 Key", value: user.modelConfig.keyFingerprint || "已配置" },
+    { key: "已绑定 IM 数", value: detail.identities.length },
+  ];
+  return <Descriptions className={styles.detailSummary} data={items} row size="small" column={2} />;
 }

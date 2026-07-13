@@ -64,6 +64,9 @@ const OrderRow = ({ id }) => {
 - 列表渲染必须给 `key`，且 `key` 稳定唯一，避免使用数组索引
 - 受控表单优先；非受控仅用于不需要回读值的场景
 - 样式遵循设计系统：间距用 4 的倍数，强调色 ≤ 2 种
+- **[项目] [ConsolePage.tsx, ContainersToolbar.tsx, Users.tsx, Audit.tsx, LLM.tsx] 列表工具栏统一用 `ListToolbar`**：列表页表头区域左侧只放主操作（创建、批量操作、导入等），右侧放搜索、过滤、刷新等筛选控件；不要把操作按钮散落在页面顶部、表格标题旁或各页面自定义 toolbar 中。无操作时只传 `filters`，无筛选时只传 `actions`，保持全平台一致布局。
+- **[项目] [Pagination.tsx, Pagination.test.tsx] 表格分页统一封装**：服务端分页表格统一用 `tablePagination(...)` + `renderTablePagination` 接入 Semi Table pagination；默认每页 `DEFAULT_PAGE_SIZE = 10`，页量选项固定为 `10/20/50/100`。页量切换控件必须放在底部分页条、页码左侧；禁止放在表头工具栏顶部。
+- **[项目] [ConsolePage.tsx, Settings.tsx, Users.tsx, LLM.tsx] 页面容器统一封装**：页面级列表、指标和设置块优先使用 `PageSection` / `MetricDescriptions`（基于 Semi Card）；避免每个页面手写不同的 section/card DOM 和样式，减少主题、间距、边框、暗色模式不一致。
 - **[项目] [Login.tsx, Containers.tsx] 表单提交模式**：`busy` state → `try { await api.xxx() } catch { setErr() } finally { setBusy(false) }`；提交按钮 `disabled={busy}` 防重复；成功/错误通过 `msg`/`err` state 展示
 - **[项目] [Containers.tsx] 轮询刷新**：`useCallback` 包裹 refresh → `useEffect` 中 `setInterval(refresh, 5000)` → cleanup `clearInterval`；不单独发起 fetch，统一经 `api.ts`；`useCallback`/`useEffect` 依赖数组必须含全部读取的 state（如 `[actor, page, pageSize]`），漏依赖会导致回调不更新
 - **[项目] [Modal.tsx, NotificationBell.tsx, Select.tsx] 浮层交互统一**：点击遮罩/外部关闭（`useRef` + mousedown 监听）+ Esc 关闭 + `fadeIn` 动画；z-index 分层（下拉 20–50 / 模态 200）

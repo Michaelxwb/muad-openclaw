@@ -268,7 +268,7 @@ func podUpdateFrom(pod repo.Pod) repo.PodUpdate {
 	return repo.PodUpdate{
 		DisplayName: pod.DisplayName, ImageTag: pod.ImageTag, MaxUsers: pod.MaxUsers,
 		Channels: pod.Channels, ChannelConfigsEnc: pod.ChannelConfigsEnc,
-		LLMOverrideEnc: pod.LLMOverrideEnc, MemLimit: pod.MemLimit, CPULimit: pod.CPULimit,
+		MemLimit: pod.MemLimit, CPULimit: pod.CPULimit,
 		RestartPolicy: pod.RestartPolicy, MaxSkillConcurrency: pod.MaxSkillConcurrency,
 		MaxBrowserConcurrency: pod.MaxBrowserConcurrency,
 	}

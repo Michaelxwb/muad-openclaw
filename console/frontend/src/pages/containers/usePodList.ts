@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import type { Pod } from "../../api";
+import { DEFAULT_PAGE_SIZE } from "../../components/Pagination";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import type { PodStateFilter } from "./model";
 
@@ -54,7 +55,7 @@ function usePodListState() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<PodStateFilter>("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   return {
     items,
     total,

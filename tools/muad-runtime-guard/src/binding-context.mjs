@@ -1,4 +1,12 @@
-const CODE_PATTERN = /^MUAD-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/u;
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const BINDING_CODE_SPEC = loadBindingCodeSpec();
+const CODE_PATTERN = new RegExp(
+  `^${escapeRegexLiteral(BINDING_CODE_SPEC.prefix)}[${escapeRegexCharClass(BINDING_CODE_SPEC.alphabet)}]{${BINDING_CODE_SPEC.length}}$`,
+  "u",
+);
 const ACCOUNT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 
 const CHANNELS = new Map([
@@ -117,4 +125,44 @@ function isDirectSession(sessionKey, agentId, senderId) {
     (part === "direct" || part === "group" || part === "channel"));
   return kindIndex >= 3 && parts[kindIndex] === "direct" &&
     String(parts[kindIndex + 1] ?? "").toLowerCase() === senderId.toLowerCase();
+}
+
+function loadBindingCodeSpec() {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    resolve(here, "binding_code_spec.json"),
+    resolve(here, "../../../console/backend/internal/crypto/binding_code_spec.json"),
+  ];
+  for (const candidate of candidates) {
+    try {
+      const spec = JSON.parse(readFileSync(candidate, "utf8"));
+      validateBindingCodeSpec(spec);
+      return spec;
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
+  throw new Error("binding_code_spec.json not found");
+}
+
+function validateBindingCodeSpec(spec) {
+  if (
+    !spec ||
+    typeof spec.prefix !== "string" ||
+    typeof spec.alphabet !== "string" ||
+    !Number.isInteger(spec.length) ||
+    spec.prefix.length === 0 ||
+    spec.length <= 0 ||
+    spec.alphabet.length !== 32
+  ) {
+    throw new Error("binding_code_spec.json is invalid");
+  }
+}
+
+function escapeRegexLiteral(value) {
+  return String(value).replace(/[\\^$.*+?()[\]{}|]/gu, "\\$&");
+}
+
+function escapeRegexCharClass(value) {
+  return String(value).replace(/[\\\]^/-]/gu, "\\$&");
 }

@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Input, Skeleton, Space, Table, Tag } from "@douyinfe/semi-ui";
 import { api } from "../api";
 import type { AuditEntry, AuditQuery } from "../api";
-import { FeedbackBanner, PageHeader } from "../components/ConsolePage";
-import { Pagination } from "../components/Pagination";
+import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
+import {
+  DEFAULT_PAGE_SIZE,
+  renderTablePagination,
+  tablePagination,
+} from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
-import styles from "./Audit.module.css";
 
 interface AuditFilters {
   actor: string;
@@ -22,36 +25,38 @@ export function Audit() {
     <div>
       <PageHeader title="审计日志" description="查询管理员、Pod 和运行时产生的关键操作记录" />
       <FeedbackBanner error={state.error} />
-      <AuditToolbar
-        value={inputs}
-        onChange={setInputs}
-        onSearch={() => {
-          state.setPage(1);
-          state.setFilters(inputs);
-        }}
-      />
-      <Skeleton
-        placeholder={state.loading ? <Skeleton.Paragraph rows={5} /> : undefined}
-        loading={state.loading}
-      >
-        <Table
-          columns={auditColumns as never}
-          dataSource={state.rows}
-          pagination={false}
-          rowKey="id"
-          size="small"
+      <PageSection>
+        <AuditToolbar
+          value={inputs}
+          onChange={setInputs}
+          onSearch={() => {
+            state.setPage(1);
+            state.setFilters(inputs);
+          }}
         />
-      </Skeleton>
-      <Pagination
-        page={state.page}
-        pageSize={state.pageSize}
-        total={state.total}
-        onPageChange={state.setPage}
-        onPageSizeChange={(pageSize) => {
-          state.setPageSize(pageSize);
-          state.setPage(1);
-        }}
-      />
+        <Skeleton
+          placeholder={state.loading ? <Skeleton.Paragraph rows={5} /> : undefined}
+          loading={state.loading}
+        >
+          <Table
+            columns={auditColumns as never}
+            dataSource={state.rows}
+            pagination={tablePagination({
+              page: state.page,
+              pageSize: state.pageSize,
+              total: state.total,
+              onPageChange: state.setPage,
+              onPageSizeChange: (pageSize) => {
+                state.setPageSize(pageSize);
+                state.setPage(1);
+              },
+            })}
+            renderPagination={renderTablePagination}
+            rowKey="id"
+            size="small"
+          />
+        </Skeleton>
+      </PageSection>
     </div>
   );
 }
@@ -63,7 +68,7 @@ function useAuditRecords() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
   const load = useCallback(async () => {
@@ -106,32 +111,34 @@ function AuditToolbar({
 }) {
   const field = (key: keyof AuditFilters, input: string) => onChange({ ...value, [key]: input });
   return (
-    <div className={styles.toolbar}>
-      <Space wrap>
-        <Input
-          aria-label="按操作人过滤"
-          placeholder="操作人"
-          value={value.actor}
-          onChange={(input) => field("actor", input)}
-        />
-        <Input
-          aria-label="按动作过滤"
-          placeholder="动作"
-          value={value.action}
-          onChange={(input) => field("action", input)}
-        />
-        <Input
-          aria-label="按目标过滤"
-          placeholder="目标 ID"
-          value={value.target}
-          onChange={(input) => field("target", input)}
-          onEnterPress={onSearch}
-        />
-        <Button theme="solid" onClick={onSearch}>
-          查询
-        </Button>
-      </Space>
-    </div>
+    <ListToolbar
+      filters={
+        <Space wrap>
+          <Input
+            aria-label="按操作人过滤"
+            placeholder="操作人"
+            value={value.actor}
+            onChange={(input) => field("actor", input)}
+          />
+          <Input
+            aria-label="按动作过滤"
+            placeholder="动作"
+            value={value.action}
+            onChange={(input) => field("action", input)}
+          />
+          <Input
+            aria-label="按目标过滤"
+            placeholder="目标 ID"
+            value={value.target}
+            onChange={(input) => field("target", input)}
+            onEnterPress={onSearch}
+          />
+          <Button theme="solid" onClick={onSearch}>
+            查询
+          </Button>
+        </Space>
+      }
+    />
   );
 }
 

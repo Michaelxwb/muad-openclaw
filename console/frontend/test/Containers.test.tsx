@@ -28,7 +28,6 @@ const pod: Pod = {
   state: "running",
   channels: ["wecom"],
   channelStatuses: { wecom: true },
-  modelOverride: { keyConfigured: false },
   maxUsers: 10,
   userCount: 1,
   availableSlots: 9,
@@ -77,7 +76,7 @@ describe("Containers Pod list", () => {
     await waitFor(() =>
       expect(apiMocks.listPods).toHaveBeenLastCalledWith({
         page: 1,
-        pageSize: 20,
+        pageSize: 10,
         q: "production",
         state: undefined,
       }),
@@ -87,13 +86,12 @@ describe("Containers Pod list", () => {
     await waitFor(() =>
       expect(apiMocks.listPods).toHaveBeenLastCalledWith({
         page: 2,
-        pageSize: 20,
+        pageSize: 10,
         q: "production",
         state: undefined,
       }),
     );
   });
-
 });
 
 describe("Containers create Pod flow", () => {

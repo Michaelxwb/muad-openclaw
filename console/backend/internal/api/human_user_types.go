@@ -33,14 +33,15 @@ type activationInput struct {
 }
 
 type createHumanUserRequest struct {
-	DisplayName string           `json:"displayName"`
-	AgentID     string           `json:"agentId"`
-	Notes       string           `json:"notes"`
-	Identity    *identityInput   `json:"identity"`
-	Activation  *activationInput `json:"activation"`
+	DisplayName   string           `json:"displayName"`
+	AgentID       string           `json:"agentId"`
+	ModelConfigID string           `json:"modelConfigId"`
+	Notes         string           `json:"notes"`
+	Identity      *identityInput   `json:"identity"`
+	Activation    *activationInput `json:"activation"`
 }
 
-type modelOverrideView struct {
+type assignedModelView struct {
 	Provider       string `json:"provider,omitempty"`
 	BaseURL        string `json:"baseUrl,omitempty"`
 	Model          string `json:"model,omitempty"`
@@ -51,6 +52,7 @@ type modelOverrideView struct {
 type humanUserView struct {
 	HumanUserID    string            `json:"humanUserId"`
 	PodID          string            `json:"podId"`
+	ModelConfigID  string            `json:"modelConfigId"`
 	DisplayName    string            `json:"displayName"`
 	AgentID        string            `json:"agentId"`
 	BrowserProfile string            `json:"browserProfile"`
@@ -58,7 +60,7 @@ type humanUserView struct {
 	Status         string            `json:"status"`
 	Notes          string            `json:"notes"`
 	IdentityCount  int               `json:"identityCount"`
-	ModelOverride  modelOverrideView `json:"modelOverride"`
+	ModelConfig    assignedModelView `json:"modelConfig"`
 	CreatedAt      time.Time         `json:"createdAt"`
 	UpdatedAt      time.Time         `json:"updatedAt"`
 }
@@ -176,10 +178,10 @@ func identityToView(identity repo.UserIdentity) identityView {
 	}
 }
 
-func modelToView(model modelOverride) modelOverrideView {
-	return modelOverrideView{
+func modelConfigToView(model repo.LLMModelConfig) assignedModelView {
+	return assignedModelView{
 		Provider: model.Provider, BaseURL: model.BaseURL, Model: model.Model,
-		KeyConfigured:  model.APIKey != "",
-		KeyFingerprint: secretcrypto.DisplayFingerprint(model.KeyFingerprint),
+		KeyConfigured:  model.APIKeyEnc != "",
+		KeyFingerprint: secretcrypto.DisplayFingerprint(model.APIKeyFingerprint),
 	}
 }

@@ -42,6 +42,7 @@ export function CreatePodDialog(props: Props) {
   };
   return (
     <Modal
+      className="standard-modal"
       title="创建 Pod"
       visible={props.visible}
       onCancel={props.onClose}

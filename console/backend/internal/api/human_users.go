@@ -34,7 +34,8 @@ func (s *Server) handleCreateHumanUser(w http.ResponseWriter, r *http.Request) {
 	}
 	user := repo.HumanUser{
 		PodID: pod.PodID, DisplayName: strings.TrimSpace(request.DisplayName),
-		AgentID: agentID, BrowserProfile: agentID, Notes: request.Notes,
+		AgentID: agentID, BrowserProfile: agentID, ModelConfigID: strings.TrimSpace(request.ModelConfigID),
+		Notes: request.Notes,
 	}
 	result, err := s.bootstrapHumanUser(pod, user, request)
 	if err != nil {
@@ -49,6 +50,7 @@ func (s *Server) handleCreateHumanUser(w http.ResponseWriter, r *http.Request) {
 func validHumanUserCreateRequest(request createHumanUserRequest) bool {
 	displayName := strings.TrimSpace(request.DisplayName)
 	return displayName != "" && len(displayName) <= 128 && len(request.Notes) <= 4000 &&
+		strings.TrimSpace(request.ModelConfigID) != "" &&
 		(request.Identity == nil) != (request.Activation == nil)
 }
 
@@ -75,10 +77,13 @@ func (s *Server) bootstrapHumanUser(
 
 func (s *Server) writeHumanUserCreateError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, repo.ErrPodCapacity), errors.Is(err, repo.ErrHumanUserExists),
-		errors.Is(err, repo.ErrIdentityExists):
+	case errors.Is(err, repo.ErrNotFound):
 		writeRepoError(w, err)
-	case errors.Is(err, repo.ErrInvalidHumanUser), errors.Is(err, repo.ErrInvalidBindingCode):
+	case errors.Is(err, repo.ErrPodCapacity), errors.Is(err, repo.ErrHumanUserExists),
+		errors.Is(err, repo.ErrIdentityExists), errors.Is(err, repo.ErrLLMModelAlreadyBound):
+		writeRepoError(w, err)
+	case errors.Is(err, repo.ErrInvalidHumanUser), errors.Is(err, repo.ErrInvalidBindingCode),
+		errors.Is(err, repo.ErrInvalidLLMModel):
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Human User configuration")
 	default:
 		writeErr(w, http.StatusInternalServerError, codeInternal, "create Human User")
@@ -110,26 +115,60 @@ func (s *Server) handleListHumanUsers(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, err)
 		return
 	}
-	page, pageSize := parsePodPagination(r)
-	status := strings.TrimSpace(r.URL.Query().Get("status"))
-	if status != "" && !validHumanUserStatus(status) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Human User status")
+	filter, page, pageSize, ok := humanUserListFilterFromRequest(w, r)
+	if !ok {
 		return
 	}
-	users, total, err := s.store.ListHumanUsersByPod(podID, repo.HumanUserListFilter{
-		Offset: (page - 1) * pageSize, Limit: pageSize, Status: status,
-		Query: strings.TrimSpace(r.URL.Query().Get("q")),
-	})
+	users, total, err := s.store.ListHumanUsersByPod(podID, filter)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, codeInternal, "list Human Users")
 		return
 	}
-	identities, err := s.store.ListIdentitiesByPod(podID)
+	counts, err := s.store.CountIdentitiesByHumanUser(podID)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list Human User identities")
+		writeErr(w, http.StatusInternalServerError, codeInternal, "count Human User identities")
 		return
 	}
-	views, err := s.makeHumanUserViews(users, identityCounts(identities))
+	s.writeHumanUserPage(w, users, counts, total, page, pageSize)
+}
+
+func (s *Server) handleListAllHumanUsers(w http.ResponseWriter, r *http.Request) {
+	filter, page, pageSize, ok := humanUserListFilterFromRequest(w, r)
+	if !ok {
+		return
+	}
+	users, total, err := s.store.ListHumanUsers(filter)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, codeInternal, "list Human Users")
+		return
+	}
+	counts, err := s.store.CountIdentitiesByHumanUser("")
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, codeInternal, "count Human User identities")
+		return
+	}
+	s.writeHumanUserPage(w, users, counts, total, page, pageSize)
+}
+
+func humanUserListFilterFromRequest(
+	w http.ResponseWriter, r *http.Request,
+) (repo.HumanUserListFilter, int, int, bool) {
+	page, pageSize := parsePodPagination(r)
+	status := strings.TrimSpace(r.URL.Query().Get("status"))
+	if status != "" && !validHumanUserStatus(status) {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Human User status")
+		return repo.HumanUserListFilter{}, 0, 0, false
+	}
+	return repo.HumanUserListFilter{
+		Offset: (page - 1) * pageSize, Limit: pageSize, Status: status,
+		Query: strings.TrimSpace(r.URL.Query().Get("q")),
+	}, page, pageSize, true
+}
+
+func (s *Server) writeHumanUserPage(
+	w http.ResponseWriter, users []repo.HumanUser, counts map[string]int, total, page, pageSize int,
+) {
+	views, err := s.makeHumanUserViews(users, counts)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, codeInternal, "render Human Users")
 		return
@@ -272,14 +311,6 @@ func validHumanUserStatus(status string) bool {
 	}
 }
 
-func identityCounts(identities []repo.UserIdentity) map[string]int {
-	counts := make(map[string]int)
-	for _, identity := range identities {
-		counts[identity.HumanUserID]++
-	}
-	return counts
-}
-
 func (s *Server) makeHumanUserViews(
 	users []repo.HumanUser, counts map[string]int,
 ) ([]humanUserView, error) {
@@ -295,15 +326,18 @@ func (s *Server) makeHumanUserViews(
 }
 
 func (s *Server) makeHumanUserView(user repo.HumanUser, identityCount int) (humanUserView, error) {
-	model, err := s.decodeModelOverride(user.ModelOverrideEnc)
+	if user.ModelConfigID == "" {
+		return humanUserView{}, repo.ErrInvalidLLMModel
+	}
+	config, err := s.store.GetLLMModelConfig(user.ModelConfigID)
 	if err != nil {
 		return humanUserView{}, err
 	}
 	return humanUserView{
 		HumanUserID: user.HumanUserID, PodID: user.PodID, DisplayName: user.DisplayName,
-		AgentID: user.AgentID, BrowserProfile: user.BrowserProfile,
+		ModelConfigID: user.ModelConfigID, AgentID: user.AgentID, BrowserProfile: user.BrowserProfile,
 		BrowserCDPPort: user.BrowserCDPPort, Status: user.Status, Notes: user.Notes,
-		IdentityCount: identityCount, ModelOverride: modelToView(model),
+		IdentityCount: identityCount, ModelConfig: modelConfigToView(config),
 		CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
 	}, nil
 }

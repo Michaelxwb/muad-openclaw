@@ -62,7 +62,9 @@ func TestIdentityAPI_StatusAndLastIdentityDeletionUpdateUser(t *testing.T) {
 
 func TestIdentityAPI_ScopedConflictRollsBack(t *testing.T) {
 	e, alice := createDirectHumanUser(t)
-	body := `{"displayName":"Bob","agentId":"bob","activation":{"channel":"wecom"}}`
+	modelID := createLLMModelForAPI(t, e, "bob-model")
+	body := `{"displayName":"Bob","agentId":"bob","modelConfigId":"` + modelID + `",` +
+		`"activation":{"channel":"wecom"}}`
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", body)
 	assertStatus(t, rr, http.StatusCreated)
 	bob := decodeAPIData[humanUserCreateResponse](t, rr.Body.Bytes()).HumanUser
@@ -84,7 +86,9 @@ func createPendingHumanUser(t *testing.T) (*testEnv, humanUserAPIView) {
 	t.Helper()
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
-	body := `{"displayName":"Charlie","agentId":"charlie","activation":{"channel":"wecom"}}`
+	modelID := createLLMModelForAPI(t, e, "charlie-model")
+	body := `{"displayName":"Charlie","agentId":"charlie","modelConfigId":"` + modelID + `",` +
+		`"activation":{"channel":"wecom"}}`
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", body)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("create pending Human User status = %d", rr.Code)

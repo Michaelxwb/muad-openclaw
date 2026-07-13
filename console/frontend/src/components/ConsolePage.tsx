@@ -1,5 +1,6 @@
+import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import { Banner, Descriptions, Space, Typography } from "@douyinfe/semi-ui";
+import { Card, Descriptions, Space, Toast, Typography } from "@douyinfe/semi-ui";
 import styles from "./ConsolePage.module.css";
 
 const { Title, Text } = Typography;
@@ -31,17 +32,56 @@ export function SectionHeader({ title, extra }: { title: string; extra?: ReactNo
   );
 }
 
-export function FeedbackBanner({ error, message }: { error?: string; message?: string }) {
-  if (!error && !message) return null;
+export function PageSection({
+  title,
+  extra,
+  children,
+}: {
+  title?: string;
+  extra?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <Banner
-      className={styles.feedback}
-      type={error ? "danger" : "success"}
-      description={error || message}
-      fullMode={false}
-      bordered
-    />
+    <Card className={styles.pageSection} bordered shadows="hover">
+      {(title || extra) && (
+        <div className={styles.pageSectionHeader}>
+          {title && <strong>{title}</strong>}
+          {extra}
+        </div>
+      )}
+      {children}
+    </Card>
   );
+}
+
+export function ListToolbar({ actions, filters }: { actions?: ReactNode; filters?: ReactNode }) {
+  if (!actions && !filters) return null;
+  return (
+    <div className={styles.listToolbar}>
+      <div className={styles.listToolbarActions}>{actions}</div>
+      <div className={styles.listToolbarFilters}>{filters}</div>
+    </div>
+  );
+}
+
+export function FeedbackBanner({ error, message }: { error?: string; message?: string }) {
+  const lastKeyRef = useRef("");
+  useEffect(() => {
+    const content = error || message || "";
+    if (content === "") {
+      lastKeyRef.current = "";
+      return;
+    }
+    const key = `${error ? "error" : "success"}:${content}`;
+    if (lastKeyRef.current === key) return;
+    lastKeyRef.current = key;
+    if (error) {
+      Toast.error(content);
+    } else {
+      Toast.success(content);
+    }
+  }, [error, message]);
+  return null;
 }
 
 export interface MetricItem {
@@ -57,12 +97,13 @@ export function MetricDescriptions({
   columns?: number;
 }) {
   return (
-    <Descriptions
-      className={styles.metrics}
-      data={items.map((item) => ({ key: item.label, value: item.value }))}
-      row
-      size="small"
-      column={columns}
-    />
+    <Card className={styles.metrics} bordered>
+      <Descriptions
+        data={items.map((item) => ({ key: item.label, value: item.value }))}
+        row
+        size="small"
+        column={columns}
+      />
+    </Card>
   );
 }

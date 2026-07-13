@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Input, InputNumber, Modal, RadioGroup, Select, TextArea } from "@douyinfe/semi-ui";
 import { api } from "../../api";
-import type { CreateHumanUserInput, HumanUserBootstrapResult, Pod } from "../../api";
+import type {
+  CreateHumanUserInput,
+  HumanUserBootstrapResult,
+  LLMModelConfig,
+  Pod,
+} from "../../api";
 import { channelMeta } from "../../channels";
 import { FeedbackBanner } from "../ConsolePage";
 import styles from "../HumanUsersPanel.module.css";
@@ -12,6 +17,7 @@ type CreateMode = "identity" | "activation";
 interface CreateUserForm {
   mode: CreateMode;
   displayName: string;
+  modelConfigId: string;
   agentId: string;
   notes: string;
   channel: string;
@@ -32,6 +38,7 @@ function initialForm(pod: Pod): CreateUserForm {
   return {
     mode: "identity",
     displayName: "",
+    modelConfigId: "",
     agentId: "",
     notes: "",
     channel: pod.channels[0] ?? "",
@@ -44,6 +51,7 @@ function initialForm(pod: Pod): CreateUserForm {
 
 function validate(form: CreateUserForm): string {
   if (form.displayName.trim() === "") return "显示名称必填";
+  if (form.modelConfigId.trim() === "") return "模型配置必选";
   if (form.channel === "") return "消息通道必填";
   if (form.mode === "identity" && form.externalId === "") return "external ID 必填";
   if (form.mode === "identity" && !/^[a-z][a-z0-9_]{0,63}$/.test(form.externalIdType))
@@ -56,6 +64,7 @@ function validate(form: CreateUserForm): string {
 function createInput(form: CreateUserForm): CreateHumanUserInput {
   const common = {
     displayName: form.displayName.trim(),
+    modelConfigId: form.modelConfigId.trim(),
     agentId: form.agentId.trim() || undefined,
     notes: form.notes,
   };
@@ -83,6 +92,7 @@ function createInput(form: CreateUserForm): CreateHumanUserInput {
 
 export function CreateHumanUserDialog({ pod, visible, onClose, onCreated }: Props) {
   const [form, setForm] = useState<CreateUserForm>(() => initialForm(pod));
+  const [models, setModels] = useState<LLMModelConfig[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const previousVisibleRef = useRef(visible);
@@ -93,7 +103,22 @@ export function CreateHumanUserDialog({ pod, visible, onClose, onCreated }: Prop
     if (!opened) return;
     setForm(initialForm(pod));
     setError("");
+    void loadAvailableModels();
   }, [pod, visible]);
+
+  const loadAvailableModels = async () => {
+    try {
+      const result = await api.listLLMModels(true);
+      setModels(result.items);
+      setForm((previous) => ({
+        ...previous,
+        modelConfigId: previous.modelConfigId || result.items[0]?.modelConfigId || "",
+      }));
+    } catch (caught) {
+      setModels([]);
+      setError(caught instanceof Error ? caught.message : "加载可用模型失败");
+    }
+  };
 
   const submit = async () => {
     const validation = validate(form);
@@ -110,28 +135,37 @@ export function CreateHumanUserDialog({ pod, visible, onClose, onCreated }: Prop
   };
 
   return (
-    <Modal title="创建 Human User" visible={visible} onCancel={onClose} footer={null} width={640}>
+    <Modal
+      className="standard-modal"
+      title="创建 Human User"
+      visible={visible}
+      onCancel={onClose}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={busy}>
+            取消
+          </Button>
+          <Button theme="solid" loading={busy} onClick={() => void submit()}>
+            创建
+          </Button>
+        </>
+      }
+      width={640}
+    >
       <FeedbackBanner error={error} />
-      <CreateForm pod={pod} form={form} setForm={setForm} />
-      <div className={styles.footer}>
-        <Button onClick={onClose} disabled={busy}>
-          取消
-        </Button>
-        <Button theme="solid" loading={busy} onClick={() => void submit()}>
-          创建
-        </Button>
-      </div>
+      <CreateForm pod={pod} models={models} form={form} setForm={setForm} />
     </Modal>
   );
 }
 
 interface FormProps {
   pod: Pod;
+  models: LLMModelConfig[];
   form: CreateUserForm;
   setForm: (update: (previous: CreateUserForm) => CreateUserForm) => void;
 }
 
-function CreateForm({ pod, form, setForm }: FormProps) {
+function CreateForm({ pod, models, form, setForm }: FormProps) {
   const set = (key: keyof CreateUserForm, value: string | number) =>
     setForm((previous) => ({ ...previous, [key]: value }));
   return (
@@ -149,7 +183,7 @@ function CreateForm({ pod, form, setForm }: FormProps) {
         }
       />
       <div className={styles.formGrid}>
-        <CommonFields pod={pod} form={form} set={set} />
+        <CommonFields pod={pod} models={models} form={form} set={set} />
         {form.mode === "identity" ? (
           <IdentityFields form={form} set={set} />
         ) : (
@@ -172,7 +206,17 @@ function CreateForm({ pod, form, setForm }: FormProps) {
 
 type SetField = (key: keyof CreateUserForm, value: string | number) => void;
 
-function CommonFields({ pod, form, set }: { pod: Pod; form: CreateUserForm; set: SetField }) {
+function CommonFields({
+  pod,
+  models,
+  form,
+  set,
+}: {
+  pod: Pod;
+  models: LLMModelConfig[];
+  form: CreateUserForm;
+  set: SetField;
+}) {
   return (
     <>
       <Field label="显示名称">
@@ -188,6 +232,19 @@ function CommonFields({ pod, form, set }: { pod: Pod; form: CreateUserForm; set:
           value={form.agentId}
           onChange={(value) => set("agentId", value)}
           placeholder="留空自动生成"
+        />
+      </Field>
+      <Field label="模型配置">
+        <Select
+          aria-label="模型配置"
+          value={form.modelConfigId}
+          placeholder={models.length === 0 ? "暂无可用模型" : "选择未绑定模型"}
+          optionList={models.map((model) => ({
+            value: model.modelConfigId,
+            label: `${model.displayName} (${model.provider}/${model.model})`,
+          }))}
+          onChange={(value) => set("modelConfigId", String(value ?? ""))}
+          style={{ width: "100%" }}
         />
       </Field>
       <Field label="消息通道">

@@ -95,7 +95,9 @@ func createBindingTarget(t *testing.T) (*testEnv, humanUserAPIView, string) {
 	t.Helper()
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
-	body := `{"displayName":"Charlie","agentId":"charlie","activation":{"channel":"wecom"}}`
+	modelID := createLLMModelForAPI(t, e, "charlie-model")
+	body := `{"displayName":"Charlie","agentId":"charlie","modelConfigId":"` + modelID + `",` +
+		`"activation":{"channel":"wecom"}}`
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", body)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("create binding target status = %d", rr.Code)

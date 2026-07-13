@@ -24,6 +24,7 @@ export function ActivationCodeDialog({ activation, onClose }: Props) {
   };
   return (
     <Modal
+      className="standard-modal"
       title="一次性绑定码"
       visible={activation !== null}
       onCancel={onClose}

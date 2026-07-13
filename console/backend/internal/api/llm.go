@@ -1,181 +1,194 @@
 package api
 
 import (
-	"errors"
 	"net/http"
+	"sync"
 
 	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/llm"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
-// llmRequest remains for legacy, unrouted container helpers until cleanup.
-type llmRequest struct {
-	Provider string `json:"provider"`
-	BaseURL  string `json:"baseUrl"`
-	APIKey   string `json:"apiKey"`
-	Model    string `json:"model"`
+type llmModelInput struct {
+	DisplayName string `json:"displayName"`
+	Provider    string `json:"provider"`
+	BaseURL     string `json:"baseUrl"`
+	APIKey      string `json:"apiKey"`
+	Model       string `json:"model"`
 }
 
-func (s *Server) handleGetLLM(w http.ResponseWriter, _ *http.Request) {
-	model, configured, err := s.readGlobalModel()
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "read LLM configuration")
-		return
-	}
-	if !configured {
-		writeJSON(w, http.StatusOK, map[string]any{"configured": false, "apiKeyConfigured": false})
-		return
-	}
-	writeJSON(w, http.StatusOK, globalModelView(model))
+type llmModelBatchRequest struct {
+	Models []llmModelInput `json:"models"`
 }
 
-func (s *Server) handleSetLLM(w http.ResponseWriter, r *http.Request) {
-	current, _, err := s.readGlobalModel()
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "read LLM configuration")
-		return
-	}
-	var request modelOverrideRequest
-	if err := decodeJSONBody(w, r, &request); err != nil || request.Clear {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
-		return
-	}
-	next, err := applyModelOverrideRequest(current, request)
-	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid LLM configuration")
-		return
-	}
-	if next == current {
-		writeJSON(w, http.StatusOK, globalModelView(next))
-		return
-	}
-	if err := llm.Probe(r.Context(), next.BaseURL, next.APIKey); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "LLM connectivity test failed")
-		return
-	}
-	encryptedKey, err := s.encryptOptionalKey(next.APIKey)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "encrypt LLM key")
-		return
-	}
-	podIDs, err := s.store.SetLLMGlobalAndMarkPods(repo.LLMGlobal{
-		Provider: next.Provider, BaseURL: next.BaseURL, APIKeyEnc: encryptedKey, Model: next.Model,
+type llmModelBatchTestRequest struct {
+	ModelConfigIDs []string        `json:"modelConfigIds"`
+	Models         []llmModelInput `json:"models"`
+}
+
+type llmModelTestResult struct {
+	ModelConfigID string `json:"modelConfigId,omitempty"`
+	DisplayName   string `json:"displayName"`
+	OK            bool   `json:"ok"`
+	Error         string `json:"error,omitempty"`
+}
+
+func (s *Server) handleListLLMModels(w http.ResponseWriter, r *http.Request) {
+	models, err := s.store.ListLLMModelConfigs(repo.LLMModelConfigListFilter{
+		AvailableOnly: r.URL.Query().Get("available") == "true",
 	})
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "save LLM configuration")
+		writeErr(w, http.StatusInternalServerError, codeInternal, "list LLM models")
 		return
 	}
-	s.enqueuePodIDs(podIDs)
-	writeJSON(w, http.StatusOK, globalModelView(next))
+	views := make([]map[string]any, 0, len(models))
+	for _, model := range models {
+		views = append(views, llmModelView(model))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": views, "total": len(views)})
 }
 
-func (s *Server) handleTestLLM(w http.ResponseWriter, r *http.Request) {
-	var request llmRequest
-	if err := decodeJSONBody(w, r, &request); err != nil {
+func (s *Server) handleCreateLLMModels(w http.ResponseWriter, r *http.Request) {
+	var request llmModelBatchRequest
+	if err := decodeJSONBody(w, r, &request); err != nil || len(request.Models) == 0 || len(request.Models) > 100 {
 		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
 		return
 	}
-	model := modelOverride{
-		Provider: request.Provider, BaseURL: request.BaseURL, APIKey: request.APIKey, Model: request.Model,
-	}
-	if err := validateModelOverride(model); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid LLM configuration")
-		return
-	}
-	if err := llm.Probe(r.Context(), model.BaseURL, model.APIKey); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "LLM connectivity test failed")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-}
-
-func (s *Server) handleGetPodLLM(w http.ResponseWriter, r *http.Request) {
-	pod, err := s.store.GetPod(r.PathValue("podId"))
-	if err != nil {
-		writeRepoError(w, err)
-		return
-	}
-	model, err := s.decodeModelOverride(pod.LLMOverrideEnc)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "decode Pod model override")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"podId": pod.PodID, "configured": pod.LLMOverrideEnc != "", "modelOverride": modelToView(model),
-	})
-}
-
-func (s *Server) handleSetPodLLM(w http.ResponseWriter, r *http.Request) {
-	pod, err := s.store.GetPod(r.PathValue("podId"))
-	if err != nil {
-		writeRepoError(w, err)
-		return
-	}
-	var request modelOverrideRequest
-	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
-		return
-	}
-	current, err := s.decodeModelOverride(pod.LLMOverrideEnc)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "decode Pod model override")
-		return
-	}
-	next, encrypted, err := s.prepareModelOverride(current, request)
-	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Pod model override")
-		return
-	}
-	if next != current {
-		update := podUpdateFrom(pod)
-		update.LLMOverrideEnc = encrypted
-		if err := s.store.UpdatePod(pod.PodID, update); err != nil {
-			writeRepoError(w, err)
+	createItems := make([]repo.LLMModelConfigCreate, 0, len(request.Models))
+	for _, input := range request.Models {
+		create, err := s.prepareLLMModelCreate(input)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid LLM model")
 			return
 		}
-		s.enqueueReconcile(pod.PodID)
+		createItems = append(createItems, create)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"podId": pod.PodID, "configured": encrypted != "", "modelOverride": modelToView(next),
-	})
-}
-
-func (s *Server) readGlobalModel() (modelOverride, bool, error) {
-	global, err := s.store.GetLLMGlobal()
-	if errors.Is(err, repo.ErrNotFound) {
-		return modelOverride{}, false, nil
-	}
+	models, err := s.store.CreateLLMModelConfigs(createItems)
 	if err != nil {
-		return modelOverride{}, false, err
+		writeRepoError(w, err)
+		return
 	}
-	key := ""
-	if global.APIKeyEnc != "" {
-		key, err = s.cipher.Decrypt(global.APIKeyEnc)
+	views := make([]map[string]any, 0, len(models))
+	for _, model := range models {
+		views = append(views, llmModelView(model))
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"items": views, "total": len(views)})
+}
+
+func (s *Server) handleBatchTestLLMModels(w http.ResponseWriter, r *http.Request) {
+	var request llmModelBatchTestRequest
+	if err := decodeJSONBody(w, r, &request); err != nil || len(request.ModelConfigIDs)+len(request.Models) == 0 {
+		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		return
+	}
+	targets, err := s.llmModelTestTargets(request)
+	if err != nil {
+		writeRepoError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"results": runLLMModelTests(r, targets)})
+}
+
+type llmModelTestTarget struct {
+	ModelConfigID string
+	DisplayName   string
+	BaseURL       string
+	APIKey        string
+}
+
+func (s *Server) prepareLLMModelCreate(input llmModelInput) (repo.LLMModelConfigCreate, error) {
+	model := llmModelDefinition{
+		Provider: input.Provider, BaseURL: input.BaseURL, APIKey: input.APIKey, Model: input.Model,
+	}
+	if err := validateLLMModelDefinition(model); err != nil {
+		return repo.LLMModelConfigCreate{}, err
+	}
+	encrypted, err := s.cipher.Encrypt(model.APIKey)
+	if err != nil {
+		return repo.LLMModelConfigCreate{}, err
+	}
+	displayName := input.DisplayName
+	if displayName == "" {
+		displayName = input.Provider + "/" + input.Model
+	}
+	return repo.LLMModelConfigCreate{
+		DisplayName: displayName, Provider: model.Provider, BaseURL: model.BaseURL,
+		APIKeyEnc: encrypted, APIKeyFingerprint: secretcrypto.Fingerprint(model.APIKey),
+		Model: model.Model,
+	}, nil
+}
+
+func (s *Server) llmModelTestTargets(request llmModelBatchTestRequest) ([]llmModelTestTarget, error) {
+	targets := make([]llmModelTestTarget, 0, len(request.ModelConfigIDs)+len(request.Models))
+	for _, id := range request.ModelConfigIDs {
+		model, err := s.store.GetLLMModelConfig(id)
 		if err != nil {
-			return modelOverride{}, false, err
+			return nil, err
 		}
+		key, err := s.cipher.Decrypt(model.APIKeyEnc)
+		if err != nil {
+			return nil, err
+		}
+		targets = append(targets, llmModelTestTarget{
+			ModelConfigID: model.ModelConfigID, DisplayName: model.DisplayName,
+			BaseURL: model.BaseURL, APIKey: key,
+		})
 	}
-	model := modelOverride{
-		Provider: global.Provider, BaseURL: global.BaseURL, APIKey: key, Model: global.Model,
+	for _, input := range request.Models {
+		model := llmModelDefinition{
+			Provider: input.Provider, BaseURL: input.BaseURL, APIKey: input.APIKey, Model: input.Model,
+		}
+		if err := validateLLMModelDefinition(model); err != nil {
+			return nil, repo.ErrInvalidLLMModel
+		}
+		targets = append(targets, llmModelTestTarget{
+			DisplayName: input.DisplayName, BaseURL: model.BaseURL, APIKey: model.APIKey,
+		})
 	}
-	if key != "" {
-		model.KeyFingerprint = secretcrypto.Fingerprint(key)
-	}
-	return model, true, validateModelOverride(model)
+	return targets, nil
 }
 
-func globalModelView(model modelOverride) map[string]any {
+func runLLMModelTests(r *http.Request, targets []llmModelTestTarget) []llmModelTestResult {
+	results := make([]llmModelTestResult, len(targets))
+	workers := 4
+	if len(targets) < workers {
+		workers = len(targets)
+	}
+	jobs := make(chan int)
+	var wg sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for index := range jobs {
+				target := targets[index]
+				result := llmModelTestResult{
+					ModelConfigID: target.ModelConfigID, DisplayName: target.DisplayName, OK: true,
+				}
+				if err := llm.Probe(r.Context(), target.BaseURL, target.APIKey); err != nil {
+					result.OK = false
+					result.Error = err.Error()
+				}
+				results[index] = result
+			}
+		}()
+	}
+	for index := range targets {
+		jobs <- index
+	}
+	close(jobs)
+	wg.Wait()
+	return results
+}
+
+func llmModelView(model repo.LLMModelConfig) map[string]any {
 	return map[string]any{
-		"configured": true, "provider": model.Provider, "baseUrl": model.BaseURL,
-		"model": model.Model, "apiKeyConfigured": model.APIKey != "",
-		"keyFingerprint": secretcrypto.DisplayFingerprint(model.KeyFingerprint),
+		"modelConfigId": model.ModelConfigID, "displayName": model.DisplayName,
+		"provider": model.Provider, "baseUrl": model.BaseURL, "model": model.Model,
+		"keyConfigured":    model.APIKeyEnc != "",
+		"keyFingerprint":   secretcrypto.DisplayFingerprint(model.APIKeyFingerprint),
+		"boundHumanUserId": model.BoundHumanUserID, "createdAt": model.CreatedAt,
+		"boundHumanUserName": model.BoundHumanUserName,
+		"updatedAt":          model.UpdatedAt,
 	}
-}
-
-func (s *Server) encryptOptionalKey(key string) (string, error) {
-	if key == "" {
-		return "", nil
-	}
-	return s.cipher.Encrypt(key)
 }

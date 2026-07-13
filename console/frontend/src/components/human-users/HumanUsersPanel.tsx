@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HumanUser, HumanUserActivation, HumanUserBootstrapResult, Pod } from "../../api";
 import { api } from "../../api";
+import { DEFAULT_PAGE_SIZE } from "../Pagination";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import styles from "../HumanUsersPanel.module.css";
 import { ActivationCodeDialog } from "./ActivationCodeDialog";
@@ -33,7 +34,7 @@ export interface HumanUsersState {
 function useHumanUsers(podId: string): HumanUsersState {
   const [items, setItems] = useState<HumanUser[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<UserStatusFilter>("");
