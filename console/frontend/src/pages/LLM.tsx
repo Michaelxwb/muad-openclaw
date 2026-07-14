@@ -1,13 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Space, Table, Tag, Typography } from "@douyinfe/semi-ui";
-import { IconPlus, IconPulse } from "@douyinfe/semi-icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Input, Select, Space, Table, Tag, Typography } from "@douyinfe/semi-ui";
+import { IconPlus, IconPulse, IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../api";
 import type { LLMModelConfig, LLMModelInput, LLMModelTestResult } from "../api";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
+import {
+  DEFAULT_PAGE_SIZE,
+  renderTablePagination,
+  tablePagination,
+} from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
 import { LLMCreateDialog } from "./llm/LLMCreateDialog";
 
 const { Text } = Typography;
+type ModelBoundFilter = "" | "bound" | "available";
+
+const MODEL_BOUND_OPTIONS = [
+  { label: "全部状态", value: "" },
+  { label: "已绑定", value: "bound" },
+  { label: "可分配", value: "available" },
+];
 
 export function LLM() {
   const state = useLLMModels();
@@ -22,6 +34,7 @@ export function LLM() {
       <PageSection title="模型池">
         <ListToolbar
           actions={<ModelActions state={state} onCreate={() => setCreateOpen(true)} />}
+          filters={<ModelFilters state={state} />}
         />
         <ModelTable state={state} />
       </PageSection>
@@ -42,6 +55,10 @@ function useLLMModels() {
   const [models, setModels] = useState<LLMModelConfig[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [testResults, setTestResults] = useState<Record<string, LLMModelTestResult>>({});
+  const [query, setQuery] = useState("");
+  const [boundFilter, setBoundFilter] = useState<ModelBoundFilter>("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [busy, setBusy] = useState<BusyState>("load");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -68,6 +85,15 @@ function useLLMModels() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const filteredModels = useMemo(
+    () => filterModels(models, query, boundFilter),
+    [boundFilter, models, query],
+  );
+  const pageModels = useMemo(
+    () => filteredModels.slice((page - 1) * pageSize, page * pageSize),
+    [filteredModels, page, pageSize],
+  );
 
   const createBatch = async (input: LLMModelInput[]) => {
     setBusy("create");
@@ -108,12 +134,22 @@ function useLLMModels() {
 
   return {
     models,
+    pageModels,
+    filteredTotal: filteredModels.length,
+    page,
+    pageSize,
+    query,
+    boundFilter,
     selected,
     testResults,
     busy,
     error,
     message,
     setSelected,
+    setPage,
+    setPageSize,
+    setQuery,
+    setBoundFilter,
     setError,
     createBatch,
     testSelected,
@@ -137,6 +173,38 @@ function ModelActions({ state, onCreate }: { state: LLMModelsState; onCreate: ()
       >
         批量测试连通性
       </Button>
+    </Space>
+  );
+}
+
+function ModelFilters({ state }: { state: LLMModelsState }) {
+  const [search, setSearch] = useState(state.query);
+  const submit = () => {
+    state.setPage(1);
+    state.setQuery(search.trim());
+  };
+  return (
+    <Space>
+      <Input
+        aria-label="搜索模型配置"
+        prefix={<IconSearch />}
+        value={search}
+        onChange={setSearch}
+        onEnterPress={submit}
+        placeholder="显示名、模型或 Key"
+        style={{ width: 240 }}
+      />
+      <Button aria-label="查询模型配置" icon={<IconSearch />} onClick={submit} />
+      <Select
+        aria-label="模型绑定状态"
+        value={state.boundFilter}
+        optionList={MODEL_BOUND_OPTIONS}
+        onChange={(value) => {
+          state.setPage(1);
+          state.setBoundFilter(String(value ?? "") as ModelBoundFilter);
+        }}
+        style={{ width: 120 }}
+      />
     </Space>
   );
 }
@@ -207,7 +275,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       rowKey="modelConfigId"
       loading={state.busy === "load"}
       columns={columns}
-      dataSource={state.models}
+      dataSource={state.pageModels}
       rowSelection={{
         selectedRowKeys: selectedModelIds(state.selected, state.models),
         getCheckboxProps: (model) => ({ "aria-label": `选择模型 ${model.displayName}` }),
@@ -217,11 +285,46 @@ function ModelTable({ state }: { state: LLMModelsState }) {
           state.setSelected(next);
         },
       }}
-      pagination={false}
+      pagination={tablePagination({
+        page: state.page,
+        pageSize: state.pageSize,
+        total: state.filteredTotal,
+        onPageChange: state.setPage,
+        onPageSizeChange: (pageSize) => {
+          state.setPageSize(pageSize);
+          state.setPage(1);
+        },
+      })}
+      renderPagination={renderTablePagination}
       empty="暂无模型配置"
       size="small"
     />
   );
+}
+
+function filterModels(
+  models: LLMModelConfig[],
+  query: string,
+  boundFilter: ModelBoundFilter,
+): LLMModelConfig[] {
+  const keyword = query.trim().toLowerCase();
+  return models.filter((model) => {
+    if (boundFilter === "bound" && !model.boundHumanUserId) return false;
+    if (boundFilter === "available" && model.boundHumanUserId) return false;
+    if (keyword === "") return true;
+    return [
+      model.displayName,
+      model.modelConfigId,
+      model.provider,
+      model.model,
+      model.baseUrl,
+      model.keyFingerprint,
+      model.boundHumanUserName,
+      model.boundHumanUserId,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .some((value) => value.toLowerCase().includes(keyword));
+  });
 }
 
 function selectedModelIds(selected: Record<string, boolean>, models: LLMModelConfig[]) {

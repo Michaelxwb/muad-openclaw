@@ -27,6 +27,16 @@ const xdr: Platform = {
   updatedAt: "2026-07-11T00:00:00Z",
 };
 
+const sdsp: Platform = {
+  platform: "sdsp",
+  displayName: "SDSP",
+  config: { baseUrl: "https://sdsp.internal" },
+  configFingerprint: "sha256:sdsp-config",
+  enabled: false,
+  adapterInstalled: true,
+  updatedAt: "2026-07-11T00:00:00Z",
+};
+
 beforeEach(() => {
   for (const mock of Object.values(apiMocks)) mock.mockReset();
   apiMocks.listPlatforms.mockResolvedValue({ items: [xdr], total: 1 });
@@ -68,6 +78,20 @@ describe("PlatformSettings", () => {
         enabled: true,
       }),
     );
+  });
+
+  it("filters platforms from the list toolbar", async () => {
+    apiMocks.listPlatforms.mockResolvedValueOnce({ items: [xdr, sdsp], total: 2 });
+    render(<PlatformSettings />);
+    expect(await screen.findByText("sha256:xdr-config")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("搜索业务平台"), {
+      target: { value: "sdsp" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "查询业务平台" }));
+
+    expect(screen.getByText("sha256:sdsp-config")).toBeInTheDocument();
+    expect(screen.queryByText("sha256:xdr-config")).not.toBeInTheDocument();
   });
 
   it("edits and disables an existing platform", async () => {

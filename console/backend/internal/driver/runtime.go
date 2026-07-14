@@ -143,8 +143,20 @@ type RuntimePlatform struct {
 }
 
 type RuntimeSkills struct {
-	PublicDirectory string `json:"publicDirectory"`
-	PrivateRoot     string `json:"privateRoot"`
+	PublicDirectory string               `json:"publicDirectory"`
+	PrivateRoot     string               `json:"privateRoot"`
+	Agents          []RuntimeAgentSkills `json:"agents"`
+}
+
+type RuntimeAgentSkills struct {
+	AgentID string              `json:"agentId"`
+	Allowed []RuntimeSkillGrant `json:"allowed"`
+}
+
+type RuntimeSkillGrant struct {
+	Name    string `json:"name"`
+	Source  string `json:"source"`
+	SkillID string `json:"skillId"`
 }
 
 type RuntimeSessionManager struct {
@@ -347,6 +359,9 @@ func validateRuntimeReferences(config RuntimeConfigV1) error {
 	if err := validatePlatforms(config.Platforms); err != nil {
 		return err
 	}
+	if err := validateRuntimeSkills(config.Skills, agents); err != nil {
+		return err
+	}
 	return validateRuntimeMappings(config, agents)
 }
 
@@ -398,6 +413,42 @@ func validatePlatforms(platforms []RuntimePlatform) error {
 			return ErrInvalidRuntimeConfig
 		}
 		seen[platform.ID] = struct{}{}
+	}
+	return nil
+}
+
+func validateRuntimeSkills(skills RuntimeSkills, agents map[string]RuntimeAgent) error {
+	if strings.TrimSpace(skills.PublicDirectory) == "" || strings.TrimSpace(skills.PrivateRoot) == "" {
+		return ErrInvalidRuntimeConfig
+	}
+	seenAgents := make(map[string]struct{}, len(skills.Agents))
+	for _, policy := range skills.Agents {
+		agent, exists := agents[policy.AgentID]
+		if !exists || agent.Default {
+			return ErrInvalidRuntimeConfig
+		}
+		if _, duplicate := seenAgents[policy.AgentID]; duplicate {
+			return ErrInvalidRuntimeConfig
+		}
+		seenAgents[policy.AgentID] = struct{}{}
+		seenSkills := make(map[string]struct{}, len(policy.Allowed))
+		for _, grant := range policy.Allowed {
+			if !podIDPattern.MatchString(grant.Name) || strings.TrimSpace(grant.SkillID) == "" {
+				return ErrInvalidRuntimeConfig
+			}
+			switch grant.Source {
+			case "system", "public", "private":
+			default:
+				return ErrInvalidRuntimeConfig
+			}
+			if _, duplicate := seenSkills[grant.Name]; duplicate {
+				return ErrInvalidRuntimeConfig
+			}
+			seenSkills[grant.Name] = struct{}{}
+		}
+	}
+	if len(seenAgents) != len(agents)-1 {
+		return ErrInvalidRuntimeConfig
 	}
 	return nil
 }

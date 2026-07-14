@@ -52,7 +52,7 @@ export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: P
   return (
     <Modal
       className="standard-modal"
-      title="创建模型配置"
+      title="批量创建模型配置"
       visible={visible}
       onCancel={onClose}
       footer={
@@ -61,7 +61,7 @@ export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: P
             取消
           </Button>
           <Button theme="solid" loading={busy} onClick={() => void submit()}>
-            批量创建
+            创建
           </Button>
         </>
       }

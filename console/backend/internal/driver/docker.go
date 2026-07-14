@@ -19,16 +19,24 @@ import (
 // on the shared network (§3.2).
 type DockerDriver struct {
 	network   string // shared docker network (MUAD_NET)
-	skillsDir string // host path to shared skills, mounted read-only
+	skillsDir string // host path to Console-managed skills storage
+	runtime   RuntimeOptions
 	secretDir string // Console-private host directory for Pod service-token files
 	runHook   func(context.Context, []string) (string, error)
 }
 
-const defaultDockerSecretDir = "/var/lib/muad-console/runtime-secrets"
+const (
+	defaultDockerSecretDir      = "/var/lib/muad-console/runtime-secrets"
+	dockerActivePublicSkillsDir = ".muad-active-public-skills"
+	dockerPublicSkillsDirMode   = 0o700
+)
 
 // NewDockerDriver builds a DockerDriver.
-func NewDockerDriver(network, skillsDir string) *DockerDriver {
-	return &DockerDriver{network: network, skillsDir: skillsDir, secretDir: defaultDockerSecretDir}
+func NewDockerDriver(network, skillsDir string, runtime RuntimeOptions) *DockerDriver {
+	return &DockerDriver{
+		network: network, skillsDir: skillsDir, runtime: runtime.withDefaults(),
+		secretDir: defaultDockerSecretDir,
+	}
 }
 
 func stateVolume(podID string) string { return ContainerName(podID) + "-state" }
@@ -51,6 +59,9 @@ func (d *DockerDriver) Create(ctx context.Context, spec PodSpec) error {
 		}
 	}
 	if err := d.ensureStateVolume(ctx, spec.PodID, spec.AdoptState); err != nil {
+		return err
+	}
+	if err := d.ensurePublicSkillsDir(); err != nil {
 		return err
 	}
 	secretPath, err := d.writeServiceToken(spec)
@@ -177,14 +188,15 @@ func (d *DockerDriver) ensureStateVolume(ctx context.Context, podID string, adop
 
 func (d *DockerDriver) createArgs(spec PodSpec, envFile, secretPath string) []string {
 	resource := spec.Resource
+	runtime := d.runtime.withDefaults()
 	args := []string{
 		"run", "-d", "--name", ContainerName(spec.PodID),
-		"--restart", orDefault(resource.RestartPolicy, DefaultRestartPolicy),
-		"--env-file", envFile, "-e", "TZ=Asia/Shanghai",
-		"-e", "OPENCLAW_STATE_DIR=/home/node/.openclaw",
-		"-v", stateVolume(spec.PodID) + ":/home/node/.openclaw",
-		"--memory", orDefault(resource.MemLimit, DefaultMemLimit),
-		"--cpus", orDefault(resource.CPULimit, DefaultCPULimit),
+		"--restart", orDefault(resource.RestartPolicy, fallbackRestartPolicy),
+		"--env-file", envFile, "-e", "TZ=" + runtime.Timezone,
+		"-e", "OPENCLAW_STATE_DIR=" + runtime.StateDir,
+		"-v", stateVolume(spec.PodID) + ":" + runtime.StateDir,
+		"--memory", orDefault(resource.MemLimit, fallbackMemLimit),
+		"--cpus", orDefault(resource.CPULimit, fallbackCPULimit),
 	}
 	if secretPath != "" {
 		args = append(args, "-v", secretPath+":"+PodServiceTokenPath+":ro")
@@ -192,10 +204,29 @@ func (d *DockerDriver) createArgs(spec PodSpec, envFile, secretPath string) []st
 	if d.network != "" {
 		args = append(args, "--network", d.network)
 	}
-	if d.skillsDir != "" {
-		args = append(args, "-v", d.skillsDir+":/opt/openclaw-skills:ro")
+	if hostDir := d.publicSkillsHostDir(); hostDir != "" {
+		args = append(args, "-v", hostDir+":"+runtime.PublicSkillsDir+":ro")
 	}
 	return append(args, spec.ImageTag)
+}
+
+func (d *DockerDriver) publicSkillsHostDir() string {
+	root := strings.TrimSpace(d.skillsDir)
+	if root == "" {
+		return ""
+	}
+	return filepath.Join(root, dockerActivePublicSkillsDir)
+}
+
+func (d *DockerDriver) ensurePublicSkillsDir() error {
+	hostDir := d.publicSkillsHostDir()
+	if hostDir == "" {
+		return nil
+	}
+	if err := os.MkdirAll(hostDir, dockerPublicSkillsDirMode); err != nil {
+		return fmt.Errorf("create Docker public Skill directory: %w", err)
+	}
+	return os.Chmod(hostDir, dockerPublicSkillsDirMode)
 }
 
 func (d *DockerDriver) writeServiceToken(spec PodSpec) (string, error) {

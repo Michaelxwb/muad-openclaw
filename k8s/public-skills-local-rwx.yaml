@@ -1,0 +1,48 @@
+# 本地单节点测试专用：用 hostPath 静态 PV 模拟 Public Skill 的 RWX PVC。
+#
+# 用法：
+#   kubectl create namespace muad
+#   kubectl apply -f k8s/public-skills-local-rwx.yaml
+#   kubectl -n muad get pvc muad-skills
+#
+# 说明：
+# - 这个清单用于本地/单节点 K8s 验证，不是正式环境方案。
+# - hostPath 不提供真正的多节点共享能力；多节点正式环境请使用 NFS/CephFS/Longhorn RWX/EFS 等 RWX StorageClass。
+# - PVC 名称对齐 Console 配置：k8sSkillsPVC: muad-skills。
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: muad-skills-local-rwx
+  labels:
+    app.kubernetes.io/name: muad-openclaw
+    app.kubernetes.io/component: public-skills
+    muad.storage/scope: local-test
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: muad-local-rwx
+  hostPath:
+    path: /data/muad-skills
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: muad-skills
+  namespace: muad
+  labels:
+    app.kubernetes.io/name: muad-openclaw
+    app.kubernetes.io/component: public-skills
+    muad.storage/scope: local-test
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: muad-local-rwx
+  resources:
+    requests:
+      storage: 5Gi

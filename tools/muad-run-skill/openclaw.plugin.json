@@ -28,6 +28,15 @@
       "maxQueue": {
         "type": "integer",
         "minimum": 1
+      },
+      "skillPolicies": {
+        "type": "array"
+      },
+      "consoleInternalURL": {
+        "type": "string"
+      },
+      "serviceTokenFile": {
+        "type": "string"
       }
     }
   }

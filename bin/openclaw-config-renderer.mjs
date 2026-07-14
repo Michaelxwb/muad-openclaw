@@ -157,6 +157,9 @@ function renderPlugins(output, runtime) {
         enabled: true,
         config: {
           skillsRoot: runtime.skills.publicDirectory,
+          skillPolicies: runtime.skills.agents,
+          consoleInternalURL: runtime.consoleInternalUrl,
+          serviceTokenFile: runtime.serviceTokenFile,
           maxConcurrency: runtime.concurrency.maxSkills,
         },
       },

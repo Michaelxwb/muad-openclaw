@@ -18,12 +18,12 @@ var (
 	ErrRuntimeNotReady = errors.New("driver: runtime not ready")
 )
 
-// Built-in resource defaults (lowest priority; used when neither Pod nor
-// global config sets a value). These are the validated 10-user Pod baseline.
+// Built-in resource defaults are defensive fallbacks only. Deployment defaults
+// should come from config.yaml.
 const (
-	DefaultMemLimit      = "3g"
-	DefaultCPULimit      = "2"
-	DefaultRestartPolicy = "unless-stopped"
+	fallbackMemLimit      = "3g"
+	fallbackCPULimit      = "2"
+	fallbackRestartPolicy = "unless-stopped"
 )
 
 var validRestartPolicies = map[string]bool{
@@ -49,6 +49,41 @@ type ContainerInfo struct {
 	MemMiB           int
 	ChannelConnected bool
 	LastActiveAt     time.Time
+}
+
+// PublicSkillsStorageStatus describes the shared storage used by public Skills.
+type PublicSkillsStorageStatus struct {
+	Driver       string
+	Name         string
+	Namespace    string
+	Configured   bool
+	Ready        bool
+	Phase        string
+	AccessMode   string
+	StorageClass string
+	Size         string
+	Message      string
+}
+
+// RuntimeOptions contains worker runtime paths and environment values that are
+// deployment-specific but must stay consistent across Docker, K8s, and the DTO.
+type RuntimeOptions struct {
+	Timezone        string
+	StateDir        string
+	PublicSkillsDir string
+}
+
+func (options RuntimeOptions) withDefaults() RuntimeOptions {
+	if strings.TrimSpace(options.Timezone) == "" {
+		options.Timezone = "Asia/Shanghai"
+	}
+	if strings.TrimSpace(options.StateDir) == "" {
+		options.StateDir = "/home/node/.openclaw"
+	}
+	if strings.TrimSpace(options.PublicSkillsDir) == "" {
+		options.PublicSkillsDir = "/opt/openclaw-skills"
+	}
+	return options
 }
 
 // RuntimeDriver is the runtime-agnostic container control contract.
@@ -78,6 +113,11 @@ type RuntimeDriver interface {
 	UpdateSpec(ctx context.Context, podID string, spec PodSpec) error
 	// UpdateServiceToken rotates only the fixed secret file/Secret resource.
 	UpdateServiceToken(ctx context.Context, podID string, secret SecretFileSpec) error
+	// SyncPublicSkills makes Console-managed public Skill files visible to the
+	// running runtime before the Runtime DTO is applied.
+	SyncPublicSkills(ctx context.Context, podID, sourceDir string) error
+	PublicSkillsStorageStatus(ctx context.Context) (PublicSkillsStorageStatus, error)
+	EnsurePublicSkillsStorage(ctx context.Context) (PublicSkillsStorageStatus, error)
 }
 
 // BuildEnv renders the container environment contract consumed by the image's

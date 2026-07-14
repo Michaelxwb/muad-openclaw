@@ -12,9 +12,9 @@
 # 1. 启动 OrbStack k8s
 orbctl start k8s
 
-# 2. 准备配置（runtimeDriver: k8s）
-cp console/config.example.yaml workspace/muad_k8s_demo/config.yaml
-# 编辑: runtimeDriver=k8s, masterKey, adminPassword, k8sNamespace=muad
+# 2. 准备配置（runtime.driver: k8s）
+cp console/backend/config.example.yaml workspace/muad_k8s_demo/config.yaml
+# 编辑: runtime.driver=k8s, security.masterKey, admin.password, k8s.namespace=muad
 
 # 3. 部署
 export KUBECONFIG=$HOME/.orbstack/k8s/config.yml
@@ -38,7 +38,7 @@ kubectl --context orbstack -n muad port-forward svc/muad-console 18080:8080
 | 容器列表 API 返回 running | ✅ |
 
 ## 关键配置
-- console: `runtimeDriver: k8s`, `k8sNamespace: muad`, `k8sStateSize: 3Gi`
+- console: `runtime.driver: k8s`, `k8s.namespace: muad`, `k8s.stateSize: 3Gi`
 - worker: Deployment (1 副本, Recreate 策略), 状态 PVC (RWO), env Secret
 - 镜像: console `0.1.9`, worker `0.1.1`
 

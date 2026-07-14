@@ -59,10 +59,10 @@ func resourceReqs(spec PodSpec) corev1.ResourceRequirements {
 		corev1.ResourceMemory: resource.MustParse("512Mi"),
 	}
 	limits := corev1.ResourceList{}
-	if cpu, err := resource.ParseQuantity(orDefault(spec.Resource.CPULimit, DefaultCPULimit)); err == nil {
+	if cpu, err := resource.ParseQuantity(orDefault(spec.Resource.CPULimit, fallbackCPULimit)); err == nil {
 		limits[corev1.ResourceCPU] = cpu
 	}
-	if memory := toK8sMem(orDefault(spec.Resource.MemLimit, DefaultMemLimit)); memory != "" {
+	if memory := toK8sMem(orDefault(spec.Resource.MemLimit, fallbackMemLimit)); memory != "" {
 		if quantity, err := resource.ParseQuantity(memory); err == nil {
 			limits[corev1.ResourceMemory] = quantity
 		}

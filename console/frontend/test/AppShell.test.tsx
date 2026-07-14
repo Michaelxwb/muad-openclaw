@@ -23,6 +23,7 @@ vi.mock("../src/pages/Users", () => ({
 vi.mock("../src/pages/PodDetail", () => ({
   PodDetail: ({ podId }: { podId: string }) => <div>Pod Detail {podId}</div>,
 }));
+vi.mock("../src/pages/Skills", () => ({ Skills: () => <div>Skills Page</div> }));
 vi.mock("../src/pages/LLM", () => ({ LLM: () => <div>LLM Page</div> }));
 vi.mock("../src/pages/Settings", () => ({ Settings: () => <div>Settings Page</div> }));
 vi.mock("../src/pages/Audit", () => ({ Audit: () => <div>Audit Page</div> }));
@@ -43,6 +44,8 @@ describe("AppShell", () => {
     fireEvent.click(screen.getByText("用户管理"));
     expect(screen.getByText("Users Page")).toBeInTheDocument();
     expect(localStorage.getItem("muad_console_page")).toBe("users");
+    fireEvent.click(screen.getByText("Skill 管理"));
+    expect(screen.getByText("Skills Page")).toBeInTheDocument();
     fireEvent.click(screen.getByText("模型配置"));
     expect(screen.getByText("LLM Page")).toBeInTheDocument();
     fireEvent.click(screen.getByText("资源与平台"));

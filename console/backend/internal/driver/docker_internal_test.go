@@ -1,8 +1,12 @@
 package driver
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -31,8 +35,9 @@ func (r *dockerCallRecorder) run(_ context.Context, args []string) (string, erro
 
 func TestDockerCreate_UsesPrivateSecretFileAndReadOnlyMount(t *testing.T) {
 	recorder := &dockerCallRecorder{}
+	skillsRoot := t.TempDir()
 	driver := &DockerDriver{
-		network: "muad-net", skillsDir: "/skills", secretDir: t.TempDir(), runHook: recorder.run,
+		network: "muad-net", skillsDir: skillsRoot, secretDir: t.TempDir(), runHook: recorder.run,
 	}
 	spec := dockerTestPodSpec("pod-a", "token-value")
 	if err := driver.Create(context.Background(), spec); err != nil {
@@ -58,6 +63,112 @@ func TestDockerCreate_UsesPrivateSecretFileAndReadOnlyMount(t *testing.T) {
 	wantMount := secretPath + ":" + PodServiceTokenPath + ":ro"
 	if !slices.Contains(runArgs, wantMount) {
 		t.Fatalf("docker run missing read-only token mount %q: %v", wantMount, runArgs)
+	}
+	wantSkillsMount := filepath.Join(skillsRoot, dockerActivePublicSkillsDir) + ":/opt/openclaw-skills:ro"
+	if !slices.Contains(runArgs, wantSkillsMount) {
+		t.Fatalf("docker run missing active-only public Skill mount %q: %v", wantSkillsMount, runArgs)
+	}
+	if _, err := os.Stat(filepath.Join(skillsRoot, dockerActivePublicSkillsDir)); err != nil {
+		t.Fatalf("active-only public Skill directory was not created: %v", err)
+	}
+}
+
+func TestDockerSyncPublicSkills_MirrorsActiveSkillsOnly(t *testing.T) {
+	skillsRoot := t.TempDir()
+	source := t.TempDir()
+	driver := &DockerDriver{skillsDir: skillsRoot}
+	writeDockerSkillFile(t, source, "enabled-skill", "SKILL.md", "# enabled\n")
+	activeRoot := filepath.Join(skillsRoot, dockerActivePublicSkillsDir)
+	writeDockerSkillFile(t, activeRoot, "stale-skill", "SKILL.md", "# stale\n")
+	before, err := os.Stat(activeRoot)
+	if err != nil {
+		t.Fatalf("stat active root before sync: %v", err)
+	}
+
+	if err := driver.SyncPublicSkills(context.Background(), "pod-a", source); err != nil {
+		t.Fatalf("SyncPublicSkills: %v", err)
+	}
+	after, err := os.Stat(activeRoot)
+	if err != nil {
+		t.Fatalf("stat active root after sync: %v", err)
+	}
+	if !os.SameFile(before, after) {
+		t.Fatal("runtime mount directory was replaced instead of updated in place")
+	}
+	if _, err := os.Stat(filepath.Join(activeRoot, "enabled-skill", "SKILL.md")); err != nil {
+		t.Fatalf("enabled Skill was not mirrored: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(activeRoot, "stale-skill")); !os.IsNotExist(err) {
+		t.Fatalf("stale Skill should be removed from runtime mount: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(source, "enabled-skill", "SKILL.md")); err != nil {
+		t.Fatalf("source Skill should stay intact: %v", err)
+	}
+}
+
+func TestBuildPublicSkillsArchive_KeepsManagedIndexSeparateFromActiveFiles(t *testing.T) {
+	source := t.TempDir()
+	writeDockerSkillFile(t, source, "enabled-skill", "SKILL.md", "# enabled\n")
+	if err := os.WriteFile(
+		filepath.Join(source, publicSkillIndexFile),
+		[]byte("disabled-skill\nenabled-skill\n"),
+		0o600,
+	); err != nil {
+		t.Fatalf("write managed index: %v", err)
+	}
+
+	payload, err := buildPublicSkillsArchive(source)
+	if err != nil {
+		t.Fatalf("buildPublicSkillsArchive: %v", err)
+	}
+	files := readPublicSkillArchive(t, payload)
+	if files[publicSkillIndexFile] != "disabled-skill\nenabled-skill\n" {
+		t.Fatalf("managed index = %q", files[publicSkillIndexFile])
+	}
+	if files["enabled-skill/SKILL.md"] != "# enabled\n" {
+		t.Fatalf("enabled Skill file = %q", files["enabled-skill/SKILL.md"])
+	}
+	if _, exists := files["disabled-skill/SKILL.md"]; exists {
+		t.Fatal("disabled Skill files should not be included in active archive")
+	}
+}
+
+func TestDockerPublicSkillsStorageStatusReadyBeforeRuntimeDirExists(t *testing.T) {
+	driver := &DockerDriver{skillsDir: t.TempDir()}
+	status, err := driver.PublicSkillsStorageStatus(context.Background())
+	if err != nil {
+		t.Fatalf("PublicSkillsStorageStatus: %v", err)
+	}
+	if !status.Configured || !status.Ready || status.Phase != "Pending" {
+		t.Fatalf("unexpected Docker public Skill status: %+v", status)
+	}
+}
+
+func readPublicSkillArchive(t *testing.T, payload []byte) map[string]string {
+	t.Helper()
+	gz, err := gzip.NewReader(bytes.NewReader(payload))
+	if err != nil {
+		t.Fatalf("open gzip: %v", err)
+	}
+	defer gz.Close()
+	reader := tar.NewReader(gz)
+	files := map[string]string{}
+	for {
+		header, err := reader.Next()
+		if errors.Is(err, io.EOF) {
+			return files
+		}
+		if err != nil {
+			t.Fatalf("read tar: %v", err)
+		}
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			t.Fatalf("read tar body: %v", err)
+		}
+		files[header.Name] = string(body)
 	}
 }
 
@@ -102,7 +213,7 @@ func dockerTestPodSpec(podID, token string) PodSpec {
 	return PodSpec{
 		PodID: podID, ImageTag: "image:test", GatewayToken: "gateway-token",
 		Resource: ResourceSpec{
-			MemLimit: "4g", CPULimit: "2", RestartPolicy: DefaultRestartPolicy,
+			MemLimit: "4g", CPULimit: "2", RestartPolicy: "unless-stopped",
 			MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1,
 		},
 		ServiceToken: SecretFileSpec{
@@ -121,4 +232,15 @@ func findDockerCall(t *testing.T, calls [][]string, command string) []string {
 	}
 	t.Fatalf("docker command %q not found in %v", command, calls)
 	return nil
+}
+
+func writeDockerSkillFile(t *testing.T, root, skillName, fileName, body string) {
+	t.Helper()
+	dir := filepath.Join(root, skillName)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatalf("mkdir Skill %s: %v", skillName, err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, fileName), []byte(body), 0o600); err != nil {
+		t.Fatalf("write Skill %s: %v", skillName, err)
+	}
 }

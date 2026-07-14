@@ -74,6 +74,17 @@ describe("Pod API", () => {
       expect.objectContaining({ body: JSON.stringify({ podIds: ["pod-a", "pod-b"] }) }),
     );
   });
+
+  it("posts an empty body for global Skill apply", async () => {
+    const fetchMock = stubResponse({ results: { "pod-a": "queued" } });
+    await api.applySkills();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/skills/reload",
+      expect.objectContaining({ body: JSON.stringify({}) }),
+    );
+  });
 });
 
 describe("Human User and credential API", () => {
@@ -139,6 +150,112 @@ describe("Human User and credential API", () => {
     );
     expect(result.credential).toEqual(credential);
     expect(result.credential).not.toHaveProperty("apiKey");
+  });
+});
+
+describe("Skill API", () => {
+  it("encodes Skill list filters and execution query filters", async () => {
+    const fetchMock = stubResponse({ items: [], total: 0, page: 1, pageSize: 10 });
+
+    await api.listSkills({
+      page: 1,
+      pageSize: 10,
+      q: "xdr",
+      scope: "private",
+      status: "active",
+      humanUserId: "user/a",
+      podId: "pod-a",
+    });
+    await api.listSkillExecutions({
+      page: 2,
+      pageSize: 50,
+      humanUserId: "user-a",
+      agentId: "alice",
+      skillName: "xdr-query",
+      status: "failed",
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/skills?page=1&pageSize=10&q=xdr&scope=private&status=active&humanUserId=user%2Fa&podId=pod-a",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/skill-executions?page=2&pageSize=50&humanUserId=user-a&agentId=alice&skillName=xdr-query&status=failed",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("uploads private Skill bundles as multipart with auth but without JSON content type", async () => {
+    const fetchMock = stubResponse({ skill: { skillId: "skill-a", name: "xdr-query" } });
+    token.set("console-token");
+
+    await api.uploadPrivateSkill("user-a", {
+      bundle: new Blob(["bundle"]),
+      filename: "xdr-query.tar.gz",
+      expectedName: "xdr-query",
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/human-users/user-a/skills/private");
+    expect(init.method).toBe("POST");
+    expect(init.headers).toEqual({ Authorization: "Bearer console-token" });
+    expect(init.body).toBeInstanceOf(FormData);
+  });
+
+  it("uploads public Skill bundles through the global endpoint", async () => {
+    const fetchMock = stubResponse({
+      skill: { skillId: "skill-a", name: "xdr-public" },
+      affectedPodIds: ["pod-a"],
+    });
+    token.set("console-token");
+
+    await api.uploadPublicSkill({
+      bundle: new Blob(["bundle"]),
+      filename: "xdr-public.zip",
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/skills/public");
+    expect(init.method).toBe("POST");
+    expect(init.headers).toEqual({ Authorization: "Bearer console-token" });
+    expect(init.body).toBeInstanceOf(FormData);
+  });
+
+  it("posts Skill status and user policies through the typed client", async () => {
+    const fetchMock = stubResponse({});
+
+    await api.updateSkill("skill/a", { status: "disabled" });
+    await api.createSkillPolicy("user/a", {
+      skillName: "xdr-query",
+      action: "allow_override",
+      reason: "approved",
+    });
+    await api.deleteSkillPolicy("user/a", "policy/a");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/skills/skill%2Fa",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ status: "disabled" }) }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/human-users/user%2Fa/skill-policies",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          skillName: "xdr-query",
+          action: "allow_override",
+          reason: "approved",
+        }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "/api/v1/human-users/user%2Fa/skill-policies/policy%2Fa",
+      expect.objectContaining({ method: "DELETE" }),
+    );
   });
 });
 

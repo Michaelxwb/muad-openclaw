@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -63,6 +64,164 @@ func TestK8s_CreateProvisionsAll(t *testing.T) {
 	}
 	if !hasVolumeMount(c.VolumeMounts, "service-token-runtime", "/run/secrets/muad") {
 		t.Fatal("main container is missing read-only service-token runtime mount")
+	}
+}
+
+func TestK8s_EnsurePublicSkillsStorageCreatesRWXPVC(t *testing.T) {
+	d := newFakeK8s()
+	d.skillsStorageClass = "nfs-rwx"
+	d.skillsSize = "7Gi"
+	ctx := context.Background()
+
+	status, err := d.PublicSkillsStorageStatus(ctx)
+	if err != nil {
+		t.Fatalf("PublicSkillsStorageStatus: %v", err)
+	}
+	if status.Ready || status.Phase != "Missing" {
+		t.Fatalf("initial public Skill storage status = %+v", status)
+	}
+
+	status, err = d.EnsurePublicSkillsStorage(ctx)
+	if err != nil {
+		t.Fatalf("EnsurePublicSkillsStorage: %v", err)
+	}
+	if status.Name != "muad-skills" || status.AccessMode != "ReadWriteMany" || status.Size != "7Gi" {
+		t.Fatalf("ensured public Skill storage status = %+v", status)
+	}
+	pvc, err := d.client.CoreV1().PersistentVolumeClaims("muad").Get(
+		ctx, "muad-skills", metav1.GetOptions{},
+	)
+	if err != nil {
+		t.Fatalf("public Skill PVC: %v", err)
+	}
+	if got := pvc.Spec.AccessModes[0]; got != corev1.ReadWriteMany {
+		t.Fatalf("access mode = %s", got)
+	}
+	if pvc.Spec.StorageClassName == nil || *pvc.Spec.StorageClassName != "nfs-rwx" {
+		t.Fatalf("storage class = %v", pvc.Spec.StorageClassName)
+	}
+}
+
+func TestK8s_PublicSkillsStorageRejectsBoundNonRWXPVC(t *testing.T) {
+	d := newFakeK8s()
+	ctx := context.Background()
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "muad-skills", Namespace: "muad"},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+		},
+		Status: corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimBound},
+	}
+	if _, err := d.client.CoreV1().PersistentVolumeClaims("muad").Create(ctx, pvc, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("create public Skill PVC: %v", err)
+	}
+
+	status, err := d.PublicSkillsStorageStatus(ctx)
+	if err != nil {
+		t.Fatalf("PublicSkillsStorageStatus: %v", err)
+	}
+	if status.Ready || status.AccessMode != string(corev1.ReadWriteOnce) {
+		t.Fatalf("RWO public Skill PVC should not be ready: %+v", status)
+	}
+	if status.Message != "Public Skill PVC 必须支持 ReadWriteMany" {
+		t.Fatalf("message = %q", status.Message)
+	}
+}
+
+func TestK8s_SyncPublicSkillsFailsFastWhenPVCNotReady(t *testing.T) {
+	d := newFakeK8s()
+	err := d.SyncPublicSkills(context.Background(), "pod-a", t.TempDir())
+	if !errors.Is(err, ErrRuntimeNotReady) {
+		t.Fatalf("SyncPublicSkills without ready PVC = %v, want ErrRuntimeNotReady", err)
+	}
+}
+
+func TestK8s_EnsurePublicSkillsMountPatchesExistingDeployment(t *testing.T) {
+	d := newFakeK8s()
+	ctx := context.Background()
+	name := ContainerName("legacy")
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "muad"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: d.labels("legacy")},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: d.labels("legacy")},
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{{
+						Name: "state",
+						VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: name + "-state",
+						}},
+					}},
+					Containers: []corev1.Container{{
+						Name: "openclaw", Image: "img:1",
+						VolumeMounts: []corev1.VolumeMount{{Name: "state", MountPath: "/home/node/.openclaw"}},
+					}},
+				},
+			},
+		},
+	}
+	if _, err := d.client.AppsV1().Deployments("muad").Create(ctx, dep, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("create legacy deployment: %v", err)
+	}
+	if err := d.ensurePublicSkillsMount(ctx, "legacy"); err != nil {
+		t.Fatalf("ensurePublicSkillsMount: %v", err)
+	}
+	got, err := d.client.AppsV1().Deployments("muad").Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get patched deployment: %v", err)
+	}
+	if !hasPVCVolume(got.Spec.Template.Spec.Volumes, "skills", "muad-skills", true) {
+		t.Fatal("deployment is missing read-only public Skill PVC volume")
+	}
+	if !hasVolumeMount(got.Spec.Template.Spec.Containers[0].VolumeMounts, "skills", "/opt/openclaw-skills") {
+		t.Fatal("deployment is missing read-only public Skill mount")
+	}
+}
+
+func TestK8s_EnsurePublicSkillsMountReplacesStaleVolumeAndMount(t *testing.T) {
+	d := newFakeK8s()
+	ctx := context.Background()
+	name := ContainerName("legacy")
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "muad"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: d.labels("legacy")},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: d.labels("legacy")},
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{{
+						Name: "skills",
+						VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "old-skills", ReadOnly: false,
+						}},
+					}},
+					Containers: []corev1.Container{{
+						Name: "openclaw", Image: "img:1",
+						VolumeMounts: []corev1.VolumeMount{{
+							Name: "old-skills", MountPath: "/opt/openclaw-skills", ReadOnly: false,
+						}},
+					}},
+				},
+			},
+		},
+	}
+	if _, err := d.client.AppsV1().Deployments("muad").Create(ctx, dep, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("create stale deployment: %v", err)
+	}
+
+	if err := d.ensurePublicSkillsMount(ctx, "legacy"); err != nil {
+		t.Fatalf("ensurePublicSkillsMount: %v", err)
+	}
+	got, err := d.client.AppsV1().Deployments("muad").Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get patched deployment: %v", err)
+	}
+	if !hasPVCVolume(got.Spec.Template.Spec.Volumes, "skills", "muad-skills", true) {
+		t.Fatal("stale public Skill PVC volume was not replaced")
+	}
+	if !hasVolumeMount(got.Spec.Template.Spec.Containers[0].VolumeMounts, "skills", "/opt/openclaw-skills") {
+		t.Fatal("stale public Skill mount was not replaced")
 	}
 }
 
@@ -224,7 +383,7 @@ func testPodSpec(podID, image string) PodSpec {
 	return PodSpec{
 		PodID: podID, ImageTag: image, GatewayToken: "gateway-token",
 		Resource: ResourceSpec{
-			MemLimit: "2g", CPULimit: "1", RestartPolicy: DefaultRestartPolicy,
+			MemLimit: "2g", CPULimit: "1", RestartPolicy: "unless-stopped",
 			MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1,
 		},
 		ServiceToken: SecretFileSpec{
@@ -237,6 +396,19 @@ func testPodSpec(podID, image string) PodSpec {
 func hasVolumeMount(mounts []corev1.VolumeMount, name, path string) bool {
 	for _, mount := range mounts {
 		if mount.Name == name && mount.MountPath == path && mount.ReadOnly {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPVCVolume(volumes []corev1.Volume, name, claimName string, readOnly bool) bool {
+	for _, volume := range volumes {
+		if volume.Name != name || volume.PersistentVolumeClaim == nil {
+			continue
+		}
+		pvc := volume.PersistentVolumeClaim
+		if pvc.ClaimName == claimName && pvc.ReadOnly == readOnly {
 			return true
 		}
 	}

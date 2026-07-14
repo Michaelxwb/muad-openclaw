@@ -36,19 +36,20 @@ func TestSkillsReload_RollingRestart(t *testing.T) {
 	e := newTestEnv(t)
 	createWeChatPod(t, e, "pod-alice")
 	createWeChatPod(t, e, "pod-bob")
+	e.reconcile.podIDs = nil
 
 	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-alice"]}`)
-	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "reloaded") {
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "queued") {
 		t.Fatalf("reload = %d: %s", rr.Code, rr.Body.String())
 	}
-	if e.drv.restarted["pod-alice"] != 1 {
-		t.Errorf("expected pod-alice restarted once: %+v", e.drv.restarted)
+	if e.drv.restarted["pod-alice"] != 0 {
+		t.Errorf("Skill reload should not directly restart Pods: %+v", e.drv.restarted)
 	}
-	if e.drv.restarted["pod-bob"] != 0 {
-		t.Errorf("pod-bob should not restart when not selected: %+v", e.drv.restarted)
+	if strings.Join(e.reconcile.podIDs, ",") != "pod-alice" {
+		t.Errorf("expected pod-alice queued for config apply: %+v", e.reconcile.podIDs)
 	}
-	if rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":[]}`); rr.Code != http.StatusBadRequest {
-		t.Errorf("empty podIds = %d, want 400", rr.Code)
+	if rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":[]}`); rr.Code != http.StatusOK {
+		t.Errorf("empty podIds = %d, want 200", rr.Code)
 	}
 }
 

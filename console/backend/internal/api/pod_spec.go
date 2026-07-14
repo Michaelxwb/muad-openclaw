@@ -38,6 +38,8 @@ func (s *Server) buildDesiredPodRuntime(pod repo.Pod) (desiredPodRuntime, error)
 func (s *Server) newRuntimeBuilder() (*runtimeconfig.Builder, error) {
 	builder, err := runtimeconfig.New(s.store, s.cipher, runtimeconfig.Options{
 		ConsoleInternalURL:    s.cfg.ConsoleInternalURL,
+		StateDirectory:        s.cfg.RuntimeStateDir,
+		PublicSkillsDirectory: s.cfg.RuntimePublicSkillsDir,
 		MaxSkillConcurrency:   s.cfg.RuntimeDefaults.MaxSkillConcurrency,
 		MaxBrowserConcurrency: s.cfg.RuntimeDefaults.MaxBrowserConcurrency,
 	})

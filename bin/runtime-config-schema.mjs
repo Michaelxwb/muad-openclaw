@@ -45,7 +45,7 @@ export function validateRuntimeConfig(value) {
   const providers = validateProviders(value.providers);
   validateAgentModels(value.agents, providers);
   validatePlatforms(value.platforms);
-  validateSkills(value.skills);
+  validateSkills(value.skills, agents);
   validateSessionManager(value.sessionManager, agents);
   validateGuard(value.guard, agents, profiles);
   return value;
@@ -200,11 +200,35 @@ function validatePlatforms(value) {
   });
 }
 
-function validateSkills(value) {
+function validateSkills(value, agents) {
   assertRecord(value, "runtime.skills");
-  assertExactKeys(value, ["publicDirectory", "privateRoot"], "runtime.skills");
+  assertExactKeys(value, ["publicDirectory", "privateRoot", "agents"], "runtime.skills");
   assertAbsolutePath(value.publicDirectory, "runtime.skills.publicDirectory");
   assertAbsolutePath(value.privateRoot, "runtime.skills.privateRoot");
+  assertArray(value.agents, "runtime.skills.agents");
+  const mapped = new Set();
+  value.agents.forEach((policy, index) => {
+    const label = `runtime.skills.agents[${index}]`;
+    assertRecord(policy, label);
+    assertExactKeys(policy, ["agentId", "allowed"], label);
+    if (!agents.has(policy.agentId) || policy.agentId === "main" || mapped.has(policy.agentId)) {
+      throw new Error(`${label}.agentId is invalid`);
+    }
+    mapped.add(policy.agentId);
+    assertArray(policy.allowed, `${label}.allowed`);
+    const names = new Set();
+    policy.allowed.forEach((skill, skillIndex) => {
+      const skillLabel = `${label}.allowed[${skillIndex}]`;
+      assertRecord(skill, skillLabel);
+      assertExactKeys(skill, ["name", "source", "skillId"], skillLabel);
+      assertString(skill.name, `${skillLabel}.name`);
+      assertString(skill.skillId, `${skillLabel}.skillId`);
+      if (!["system", "public", "private"].includes(skill.source)) throw new Error(`${skillLabel}.source is invalid`);
+      if (names.has(skill.name)) throw new Error(`duplicate Skill grant: ${skill.name}`);
+      names.add(skill.name);
+    });
+  });
+  if (mapped.size !== agents.size - 1) throw new Error("runtime.skills must map every business agent");
 }
 
 function validateSessionManager(value, agents) {

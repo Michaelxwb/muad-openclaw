@@ -6,8 +6,8 @@ import { useMountedRef } from "../../hooks/useMountedRef";
 import { FeedbackBanner } from "../ConsolePage";
 import { BasicUserForm } from "./BasicUserForm";
 import { BindingCodeManager } from "./BindingCodeManager";
-import { DeleteHumanUser } from "./DeleteHumanUser";
 import { IdentityManager } from "./IdentityManager";
+import { HumanUserSkillsTab } from "./HumanUserSkillsTab";
 import { PlatformCredentialManager } from "./PlatformCredentialManager";
 import styles from "../HumanUsersPanel.module.css";
 
@@ -18,7 +18,6 @@ interface Props {
   humanUserId: string | null;
   onClose: () => void;
   onChanged: () => Promise<void>;
-  onDeleted: () => void;
 }
 
 function useHumanUserDetail(humanUserId: string | null) {
@@ -77,9 +76,6 @@ export function HumanUserDetailDialog(props: Props) {
           >
             保存
           </Button>
-          {state.detail && (
-            <DeleteHumanUser user={state.detail.humanUser} onDeleted={props.onDeleted} />
-          )}
         </div>
       }
       width={760}
@@ -115,7 +111,7 @@ function DetailContent({
   return (
     <>
       <RuntimeMetadata detail={detail} />
-      <Tabs type="line" defaultActiveKey="basic">
+      <Tabs type="line" defaultActiveKey="basic" tabPaneMotion={false}>
         <TabPane tab="基本信息" itemKey="basic">
           <BasicUserForm
             user={detail.humanUser}
@@ -137,6 +133,9 @@ function DetailContent({
         </TabPane>
         <TabPane tab="平台凭证" itemKey="platform-credential">
           <PlatformCredentialManager user={detail.humanUser} />
+        </TabPane>
+        <TabPane tab="Skill" itemKey="skills">
+          <HumanUserSkillsTab user={detail.humanUser} onChanged={onChanged} />
         </TabPane>
       </Tabs>
     </>

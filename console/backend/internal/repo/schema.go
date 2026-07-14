@@ -123,6 +123,85 @@ CREATE TABLE IF NOT EXISTS platform_configs (
 	updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS skill_assets (
+	skill_id TEXT PRIMARY KEY,
+	name TEXT NOT NULL,
+	scope TEXT NOT NULL CHECK (scope IN ('system','public','private')),
+	human_user_id TEXT,
+	pod_id TEXT,
+	display_name TEXT NOT NULL,
+	version TEXT NOT NULL DEFAULT '',
+	status TEXT NOT NULL DEFAULT 'active'
+		CHECK (status IN ('active','disabled','deleted')),
+	source_path TEXT NOT NULL,
+	manifest_hash TEXT NOT NULL,
+	manifest_json TEXT NOT NULL DEFAULT '{}',
+	entry_type TEXT NOT NULL DEFAULT 'script',
+	platforms_json TEXT NOT NULL DEFAULT '[]',
+	browser_required INTEGER NOT NULL DEFAULT 0 CHECK (browser_required IN (0,1)),
+	progress_supported INTEGER NOT NULL DEFAULT 0 CHECK (progress_supported IN (0,1)),
+	system_protected INTEGER NOT NULL DEFAULT 0 CHECK (system_protected IN (0,1)),
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	FOREIGN KEY (human_user_id, pod_id)
+		REFERENCES human_users(human_user_id, pod_id) ON DELETE CASCADE,
+	CHECK (
+		(scope = 'private' AND human_user_id IS NOT NULL AND pod_id IS NOT NULL)
+		OR (scope IN ('system','public') AND human_user_id IS NULL AND pod_id IS NULL)
+	)
+);
+CREATE INDEX IF NOT EXISTS idx_skill_assets_scope_name ON skill_assets(scope, name);
+CREATE INDEX IF NOT EXISTS idx_skill_assets_human_user ON skill_assets(human_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_skill_assets_pod ON skill_assets(pod_id, status);
+CREATE INDEX IF NOT EXISTS idx_skill_assets_status ON skill_assets(status, updated_at);
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_skill_public_name
+	ON skill_assets(name) WHERE scope IN ('system','public') AND status != 'deleted';
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_skill_private_user_name
+	ON skill_assets(human_user_id, name) WHERE scope = 'private' AND status != 'deleted';
+
+CREATE TABLE IF NOT EXISTS skill_policies (
+	policy_id TEXT PRIMARY KEY,
+	human_user_id TEXT NOT NULL REFERENCES human_users(human_user_id) ON DELETE CASCADE,
+	skill_name TEXT NOT NULL,
+	action TEXT NOT NULL CHECK (action IN ('disable','allow_override')),
+	reason TEXT NOT NULL DEFAULT '',
+	created_by TEXT NOT NULL,
+	expires_at TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_skill_policies_human_user ON skill_policies(human_user_id);
+CREATE INDEX IF NOT EXISTS idx_skill_policies_skill_name ON skill_policies(skill_name);
+
+CREATE TABLE IF NOT EXISTS skill_execution_records (
+	execution_id TEXT PRIMARY KEY,
+	pod_id TEXT NOT NULL REFERENCES pods(pod_id) ON DELETE CASCADE,
+	human_user_id TEXT NOT NULL,
+	agent_id TEXT NOT NULL,
+	skill_name TEXT NOT NULL,
+	skill_scope TEXT NOT NULL CHECK (skill_scope IN ('system','public','private')),
+	skill_version TEXT NOT NULL DEFAULT '',
+	status TEXT NOT NULL CHECK (status IN ('running','succeeded','failed','cancelled')),
+	started_at TEXT NOT NULL,
+	ended_at TEXT NOT NULL DEFAULT '',
+	duration_ms INTEGER NOT NULL DEFAULT 0 CHECK (duration_ms >= 0),
+	progress_json TEXT NOT NULL DEFAULT '[]',
+	error_code TEXT NOT NULL DEFAULT '',
+	error_message TEXT NOT NULL DEFAULT '',
+	input_summary TEXT NOT NULL DEFAULT '',
+	output_summary TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL,
+	FOREIGN KEY (human_user_id, pod_id)
+		REFERENCES human_users(human_user_id, pod_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_skill_executions_human_user_started
+	ON skill_execution_records(human_user_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_skill_executions_pod_started
+	ON skill_execution_records(pod_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_skill_executions_skill_started
+	ON skill_execution_records(skill_name, started_at);
+CREATE INDEX IF NOT EXISTS idx_skill_executions_status_started
+	ON skill_execution_records(status, started_at);
+
 CREATE TABLE IF NOT EXISTS audit_log (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	actor TEXT NOT NULL,

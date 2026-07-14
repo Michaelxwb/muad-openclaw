@@ -67,14 +67,14 @@ describe("LLM", () => {
     await screen.findByText("Alice Model");
     expect(screen.queryByLabelText("API Key 列表")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "创建模型" }));
-    expect(await screen.findByText("创建模型配置")).toBeInTheDocument();
+    expect(await screen.findByText("批量创建模型配置")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("显示名称"), {
       target: { value: "Batch Model" },
     });
     fireEvent.change(screen.getByLabelText("API Key 列表"), {
       target: { value: "sk-one\nsk-two" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "批量创建" }));
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
 
     await waitFor(() =>
       expect(apiMocks.createLLMModels).toHaveBeenCalledWith([
@@ -104,5 +104,18 @@ describe("LLM", () => {
 
     await waitFor(() => expect(apiMocks.testLLMModels).toHaveBeenCalledWith(["model-a"]));
     expect(await screen.findByText("通过")).toBeInTheDocument();
+  });
+
+  it("filters model configs from the list toolbar", async () => {
+    render(<LLM />);
+    expect(await screen.findByText("Alice Model")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("搜索模型配置"), {
+      target: { value: "bob" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "查询模型配置" }));
+
+    expect(screen.getByText("Bob Model")).toBeInTheDocument();
+    expect(screen.queryByText("Alice Model")).not.toBeInTheDocument();
   });
 });

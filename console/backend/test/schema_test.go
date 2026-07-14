@@ -24,6 +24,7 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 	expected := []string{
 		"pods", "human_users", "user_identities", "binding_codes", "platform_configs",
 		"admins", "audit_log", "llm_model_configs", "resource_global",
+		"skill_assets", "skill_policies", "skill_execution_records",
 	}
 	for _, table := range expected {
 		if !schemaObjectExists(t, db, "table", table) {
@@ -38,6 +39,12 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 		"idx_human_users_model_config",
 		"idx_binding_codes_user_status", "idx_binding_codes_scope",
 		"idx_binding_codes_expiry", "idx_audit_ts", "idx_audit_actor",
+		"idx_skill_assets_scope_name", "idx_skill_assets_human_user",
+		"idx_skill_assets_pod", "idx_skill_assets_status",
+		"uidx_skill_public_name", "uidx_skill_private_user_name",
+		"idx_skill_policies_human_user", "idx_skill_policies_skill_name",
+		"idx_skill_executions_human_user_started", "idx_skill_executions_pod_started",
+		"idx_skill_executions_skill_started", "idx_skill_executions_status_started",
 	}
 	for _, index := range indexes {
 		if !schemaObjectExists(t, db, "index", index) {

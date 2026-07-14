@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HumanUser, HumanUserDetail, Identity, Pod } from "../src/api";
@@ -7,6 +7,8 @@ import { Users } from "../src/pages/Users";
 const apiMocks = vi.hoisted(() => ({
   listAllHumanUsers: vi.fn(),
   listPods: vi.fn(),
+  listLLMModels: vi.fn(),
+  createHumanUser: vi.fn(),
   getHumanUser: vi.fn(),
   patchHumanUser: vi.fn(),
   deleteHumanUser: vi.fn(),
@@ -50,6 +52,22 @@ const pod: Pod = {
   runtimeGuardHealthy: true,
   createdAt: "2026-07-11T00:00:00Z",
   updatedAt: "2026-07-11T00:00:00Z",
+};
+
+const fullPod: Pod = {
+  ...pod,
+  podId: "pod-full",
+  displayName: "Full Pod",
+  userCount: 10,
+  availableSlots: 0,
+};
+
+const sparePod: Pod = {
+  ...pod,
+  podId: "pod-b",
+  displayName: "Pod B",
+  userCount: 0,
+  availableSlots: 10,
 };
 
 const user: HumanUser = {
@@ -98,6 +116,23 @@ beforeEach(() => {
     pageSize: 20,
   });
   apiMocks.listPods.mockResolvedValue({ items: [pod], total: 1, page: 1, pageSize: 100 });
+  apiMocks.listLLMModels.mockResolvedValue({
+    items: [
+      {
+        modelConfigId: "model-new",
+        displayName: "New Model",
+        provider: "deepseek",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        keyConfigured: true,
+        keyFingerprint: "sha256:new-model-key",
+        createdAt: "2026-07-11T00:00:00Z",
+        updatedAt: "2026-07-11T00:00:00Z",
+      },
+    ],
+    total: 1,
+  });
+  apiMocks.createHumanUser.mockResolvedValue({ humanUser: user, identity });
   apiMocks.getHumanUser.mockResolvedValue(detail);
   apiMocks.patchHumanUser.mockResolvedValue(detail);
   apiMocks.deleteHumanUser.mockResolvedValue({
@@ -119,7 +154,7 @@ describe("Users", () => {
     expect(screen.getByText("Pod A")).toBeInTheDocument();
     expect(screen.getByText("deepseek/deepseek-chat")).toBeInTheDocument();
     expect(screen.getByText("sha256:model-key")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "创建用户" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "创建用户" })).toBeInTheDocument();
     expect(apiMocks.listAllHumanUsers).toHaveBeenCalledWith({
       page: 1,
       pageSize: 10,
@@ -128,6 +163,44 @@ describe("Users", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Pod A" }));
     expect(onOpenPod).toHaveBeenCalledWith("pod-a");
+  });
+
+  it("creates a user from the global list and skips full Pods", async () => {
+    apiMocks.listPods.mockResolvedValue({
+      items: [fullPod, sparePod],
+      total: 2,
+      page: 1,
+      pageSize: 100,
+    });
+    render(<Users onOpenPod={vi.fn()} />);
+
+    await screen.findByText("Alice");
+    fireEvent.click(screen.getByRole("button", { name: "创建用户" }));
+
+    expect(await screen.findByText("Pod B (pod-b) 0/10")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "显示名称" }), {
+      target: { value: "Bob" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "External ID" }), {
+      target: { value: "ExternalBob" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+
+    await waitFor(() =>
+      expect(apiMocks.createHumanUser).toHaveBeenCalledWith("pod-b", {
+        displayName: "Bob",
+        modelConfigId: "model-new",
+        agentId: undefined,
+        notes: "",
+        identity: {
+          channel: "wecom",
+          accountId: "default",
+          externalId: "ExternalBob",
+          externalIdType: "user_id",
+          peerKind: "direct",
+        },
+      }),
+    );
   });
 
   it("opens the same detail operations used by the Pod-scoped list", async () => {
@@ -140,5 +213,17 @@ describe("Users", () => {
     expect(screen.getByText("已绑定 IM 数")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "身份标识" })).toBeInTheDocument();
     expect(apiMocks.getHumanUser).toHaveBeenCalledWith("user-a");
+  });
+
+  it("deletes a Human User from the list actions", async () => {
+    render(<Users onOpenPod={vi.fn()} />);
+
+    await screen.findByText("Alice");
+    fireEvent.click(screen.getByRole("button", { name: "删除用户 Alice" }));
+    expect(screen.getByText(/workspace 与 private Skill/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    await waitFor(() => expect(apiMocks.deleteHumanUser).toHaveBeenCalledWith("user-a"));
+    await waitFor(() => expect(apiMocks.listAllHumanUsers).toHaveBeenCalledTimes(2));
   });
 });

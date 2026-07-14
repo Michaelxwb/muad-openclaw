@@ -18,7 +18,7 @@ func TestDockerIntegration_RetainedStateAndTokenLifecycle(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	driver := NewDockerDriver("", "")
+	driver := NewDockerDriver("", "", RuntimeOptions{})
 	driver.secretDir = t.TempDir()
 	podID := "contract-retain-" + time.Now().UTC().Format("150405")
 	spec := integrationPodSpec(podID, image, "token-one")

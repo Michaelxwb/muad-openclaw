@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, InputNumber, Modal, RadioGroup, Select, TextArea } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type {
@@ -29,6 +29,7 @@ interface CreateUserForm {
 
 interface Props {
   pod: Pod;
+  podOptions?: Pod[];
   visible: boolean;
   onClose: () => void;
   onCreated: (result: HumanUserBootstrapResult) => Promise<void>;
@@ -90,21 +91,27 @@ function createInput(form: CreateUserForm): CreateHumanUserInput {
   };
 }
 
-export function CreateHumanUserDialog({ pod, visible, onClose, onCreated }: Props) {
+export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCreated }: Props) {
+  const [selectedPodId, setSelectedPodId] = useState(pod.podId);
   const [form, setForm] = useState<CreateUserForm>(() => initialForm(pod));
   const [models, setModels] = useState<LLMModelConfig[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const previousVisibleRef = useRef(visible);
+  const selectablePods = useMemo(() => podOptions ?? [pod], [pod, podOptions]);
+  const canSwitchPod = Boolean(podOptions);
+  const selectedPod = selectablePods.find((item) => item.podId === selectedPodId) ?? pod;
 
   useEffect(() => {
     const opened = visible && !previousVisibleRef.current;
     previousVisibleRef.current = visible;
     if (!opened) return;
-    setForm(initialForm(pod));
+    const nextPod = firstAvailablePod(selectablePods) ?? pod;
+    setSelectedPodId(nextPod.podId);
+    setForm(initialForm(nextPod));
     setError("");
     void loadAvailableModels();
-  }, [pod, visible]);
+  }, [pod, selectablePods, visible]);
 
   const loadAvailableModels = async () => {
     try {
@@ -121,12 +128,13 @@ export function CreateHumanUserDialog({ pod, visible, onClose, onCreated }: Prop
   };
 
   const submit = async () => {
+    if (canSwitchPod && selectedPod.availableSlots <= 0) return setError("请选择有剩余容量的 Pod");
     const validation = validate(form);
     if (validation) return setError(validation);
     setBusy(true);
     setError("");
     try {
-      await onCreated(await api.createHumanUser(pod.podId, createInput(form)));
+      await onCreated(await api.createHumanUser(selectedPod.podId, createInput(form)));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "创建 Human User 失败");
     } finally {
@@ -153,19 +161,48 @@ export function CreateHumanUserDialog({ pod, visible, onClose, onCreated }: Prop
       width={640}
     >
       <FeedbackBanner error={error} />
-      <CreateForm pod={pod} models={models} form={form} setForm={setForm} />
+      <CreateForm
+        pod={selectedPod}
+        podOptions={selectablePods}
+        canSwitchPod={canSwitchPod}
+        models={models}
+        form={form}
+        setForm={setForm}
+        onPodChange={(nextPod) => {
+          setSelectedPodId(nextPod.podId);
+          setForm((previous) => ({
+            ...initialForm(nextPod),
+            modelConfigId: previous.modelConfigId,
+          }));
+        }}
+      />
     </Modal>
   );
 }
 
+function firstAvailablePod(pods: Pod[]): Pod | undefined {
+  return pods.find((item) => item.availableSlots > 0) ?? pods[0];
+}
+
 interface FormProps {
   pod: Pod;
+  podOptions: Pod[];
+  canSwitchPod: boolean;
   models: LLMModelConfig[];
   form: CreateUserForm;
   setForm: (update: (previous: CreateUserForm) => CreateUserForm) => void;
+  onPodChange: (pod: Pod) => void;
 }
 
-function CreateForm({ pod, models, form, setForm }: FormProps) {
+function CreateForm({
+  pod,
+  podOptions,
+  canSwitchPod,
+  models,
+  form,
+  setForm,
+  onPodChange,
+}: FormProps) {
   const set = (key: keyof CreateUserForm, value: string | number) =>
     setForm((previous) => ({ ...previous, [key]: value }));
   return (
@@ -183,6 +220,7 @@ function CreateForm({ pod, models, form, setForm }: FormProps) {
         }
       />
       <div className={styles.formGrid}>
+        <PodField pod={pod} pods={podOptions} disabled={!canSwitchPod} onPodChange={onPodChange} />
         <CommonFields pod={pod} models={models} form={form} set={set} />
         {form.mode === "identity" ? (
           <IdentityFields form={form} set={set} />
@@ -201,6 +239,38 @@ function CreateForm({ pod, models, form, setForm }: FormProps) {
         </div>
       </div>
     </>
+  );
+}
+
+function PodField({
+  pod,
+  pods,
+  disabled,
+  onPodChange,
+}: {
+  pod: Pod;
+  pods: Pod[];
+  disabled: boolean;
+  onPodChange: (pod: Pod) => void;
+}) {
+  return (
+    <Field label="Pod">
+      <Select
+        aria-label="Pod"
+        value={pod.podId}
+        disabled={disabled}
+        optionList={pods.map((item) => ({
+          value: item.podId,
+          label: `${item.displayName} (${item.podId}) ${item.userCount}/${item.maxUsers}`,
+          disabled: item.availableSlots <= 0,
+        }))}
+        onChange={(value) => {
+          const nextPod = pods.find((item) => item.podId === String(value ?? ""));
+          if (nextPod && nextPod.availableSlots > 0) onPodChange(nextPod);
+        }}
+        style={{ width: "100%" }}
+      />
+    </Field>
   );
 }
 

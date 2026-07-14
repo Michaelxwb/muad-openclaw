@@ -91,12 +91,19 @@ func loadDependencies() (*dependencies, error) {
 		store.Close()
 		return nil, fmt.Errorf("crypto: %w", err)
 	}
+	runtimeOptions := driver.RuntimeOptions{
+		Timezone:        cfg.RuntimeTimezone,
+		StateDir:        cfg.RuntimeStateDir,
+		PublicSkillsDir: cfg.RuntimePublicSkillsDir,
+	}
 	drv, err := driver.New(cfg.RuntimeDriver, cfg.MuadNet, cfg.SkillsDir, driver.K8sOptions{
-		Namespace:    cfg.K8sNamespace,
-		SkillsPVC:    cfg.K8sSkillsPVC,
-		StorageClass: cfg.K8sStorageClass,
-		StateSize:    cfg.K8sStateSize,
-	})
+		Namespace:          cfg.K8sNamespace,
+		SkillsPVC:          cfg.K8sSkillsPVC,
+		SkillsStorageClass: cfg.K8sSkillsStorageClass,
+		SkillsSize:         cfg.K8sSkillsSize,
+		StorageClass:       cfg.K8sStorageClass,
+		StateSize:          cfg.K8sStateSize,
+	}, runtimeOptions)
 	if err != nil {
 		store.Close()
 		return nil, fmt.Errorf("driver: %w", err)
@@ -113,8 +120,9 @@ func startBackground(
 	coordinator *runtimeapply.Coordinator, cleaner *usercleanup.Cleaner,
 ) {
 	monitorDefaults := driver.ResourceSpec{
-		MemLimit: driver.DefaultMemLimit, CPULimit: driver.DefaultCPULimit,
-		RestartPolicy:         driver.DefaultRestartPolicy,
+		MemLimit:              deps.cfg.RuntimeDefaults.MemLimit,
+		CPULimit:              deps.cfg.RuntimeDefaults.CPULimit,
+		RestartPolicy:         deps.cfg.RuntimeDefaults.RestartPolicy,
 		MaxSkillConcurrency:   deps.cfg.RuntimeDefaults.MaxSkillConcurrency,
 		MaxBrowserConcurrency: deps.cfg.RuntimeDefaults.MaxBrowserConcurrency,
 	}

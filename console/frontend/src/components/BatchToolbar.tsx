@@ -3,27 +3,12 @@ import { api } from "../api";
 
 interface Props {
   selectedIds: string[];
-  onReloadSkills: () => void;
   onBatchUpgrade: () => void;
   onBatchDelete: (ids: string[]) => void;
 }
 
-export function BatchToolbar({
-  selectedIds,
-  onReloadSkills,
-  onBatchUpgrade,
-  onBatchDelete,
-}: Props) {
+export function BatchToolbar({ selectedIds, onBatchUpgrade, onBatchDelete }: Props) {
   const someSelected = selectedIds.length > 0;
-
-  function handleReload() {
-    if (!someSelected) return;
-    Modal.confirm({
-      title: "确认重载 Skill",
-      content: `将对 ${selectedIds.length} 个已勾选 Pod 执行 Skill 重载。`,
-      onOk: onReloadSkills,
-    });
-  }
 
   function handleUpgrade() {
     if (!someSelected) return;
@@ -62,9 +47,6 @@ export function BatchToolbar({
 
   return (
     <Space spacing={4}>
-      <Button onClick={handleReload} disabled={!someSelected}>
-        重载 Skill
-      </Button>
       <Button onClick={handleUpgrade} disabled={!someSelected}>
         批量升级
       </Button>

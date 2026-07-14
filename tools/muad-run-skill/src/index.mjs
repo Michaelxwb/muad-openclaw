@@ -1,6 +1,7 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { jsonResult } from "openclaw/plugin-sdk/core";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { SharedSkillQueue } from "./concurrency.mjs";
 import { trustedExecutionContext } from "./execution-context.mjs";
 import { loadSkillManifest } from "./manifest.mjs";
@@ -8,6 +9,12 @@ import { runSkill } from "./runner.mjs";
 import { readToolParams } from "./tool-params.mjs";
 import { toToolUpdate } from "./progress-format.mjs";
 import { deliverProgressToCurrentConversation } from "./delivery.mjs";
+import {
+  manifestSourceForGrant,
+  normalizeSkillPolicies,
+  resolveSkillGrant,
+} from "./skill-policy.mjs";
+import { createSkillExecutionReporter, progressSummary } from "./telemetry.mjs";
 
 const ParamsSchema = {
   type: "object",
@@ -30,6 +37,9 @@ function resolveConfig(pluginConfig) {
     maxConcurrency: positiveInteger(cfg.maxConcurrency, 1),
     queueTimeoutMs: positiveInteger(cfg.queueTimeoutMs, 30_000),
     maxQueue: positiveInteger(cfg.maxQueue, 10),
+    skillPolicies: normalizeSkillPolicies(cfg.skillPolicies),
+    consoleInternalURL: typeof cfg.consoleInternalURL === "string" ? cfg.consoleInternalURL.trim() : "",
+    serviceTokenFile: typeof cfg.serviceTokenFile === "string" ? cfg.serviceTokenFile.trim() : "",
   };
 }
 
@@ -55,17 +65,43 @@ function createTool({ config, toolContext, queue }) {
     execute: async (_toolCallId, rawParams, signal, onUpdate) => {
       const params = readToolParams(rawParams);
       const trustedContext = trustedExecutionContext(toolContext);
+      const grant = resolveSkillGrant(config.skillPolicies, trustedContext.agentId, params.skillName);
       const manifest = await loadSkillManifest({
         publicSkillsRoot: config.publicSkillsRoot,
         privateSkillsRoot: path.join(trustedContext.workspaceDir, "skills"),
         skillName: params.skillName,
+        allowedSource: manifestSourceForGrant(grant.source),
+      });
+      const startedAt = new Date().toISOString();
+      const reporter = createSkillExecutionReporter({
+        consoleInternalURL: config.consoleInternalURL,
+        serviceTokenFile: config.serviceTokenFile,
+        execution: {
+          executionId: randomUUID(),
+          agentId: trustedContext.agentId,
+          skillName: manifest.name,
+          skillScope: grant.source,
+          skillVersion: manifest.version ?? "",
+          startedAt,
+        },
       });
       const release = await queue.acquire(signal);
       try {
+        void reporter.report({ status: "running" });
         const result = await runSkill({
           manifest, trustedContext, input: params.input, args: params.args,
           stateDir: path.join(trustedContext.workspaceDir, ".muad-runs"), signal,
-          deliver: (event) => deliverProgress({ event, toolContext, signal, onUpdate }),
+          deliver: (event) => {
+            void reporter.report({ status: "running", progress: progressSummary(event) });
+            return deliverProgress({ event, toolContext, signal, onUpdate });
+          },
+        });
+        void reporter.report({
+          status: result.ok ? "succeeded" : "failed",
+          endedAt: new Date().toISOString(),
+          durationMs: result.durationMs,
+          ...(result.ok ? {} : { errorCode: "skill_failed", errorMessage: result.failedStep }),
+          outputSummary: result.ok ? "completed" : `failed at ${result.failedStep}`,
         });
         return jsonResult({
           summary: result.ok

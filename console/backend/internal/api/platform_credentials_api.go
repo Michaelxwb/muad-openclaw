@@ -81,11 +81,14 @@ func (s *Server) handlePutPlatformCredential(w http.ResponseWriter, r *http.Requ
 		writeErr(w, http.StatusInternalServerError, codeInternal, "inspect platform credential")
 		return
 	}
-	summary, err := s.store.UpsertUserPlatformCredential(s.cipher, user.HumanUserID, platform, request.APIKey)
+	summary, podID, err := s.store.UpsertUserPlatformCredentialAndMarkPod(
+		s.cipher, user.HumanUserID, platform, request.APIKey,
+	)
 	if err != nil {
 		writeRepoError(w, err)
 		return
 	}
+	s.enqueueReconcile(podID)
 	action := auditlog.ActionPlatformCredentialCreate
 	if existed {
 		action = auditlog.ActionPlatformCredentialUpdate
@@ -118,10 +121,12 @@ func (s *Server) handleDeletePlatformCredential(w http.ResponseWriter, r *http.R
 		writeRepoError(w, repo.ErrCredentialNotConfigured)
 		return
 	}
-	if err := s.store.DeleteUserPlatformCredential(s.cipher, user.HumanUserID, platform); err != nil {
+	podID, err := s.store.DeleteUserPlatformCredentialAndMarkPod(s.cipher, user.HumanUserID, platform)
+	if err != nil {
 		writeRepoError(w, err)
 		return
 	}
+	s.enqueueReconcile(podID)
 	s.auditPlatformCredential(r, auditlog.ActionPlatformCredentialDelete, user, summary)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"humanUserId": user.HumanUserID, "platform": platform, "deleted": true,

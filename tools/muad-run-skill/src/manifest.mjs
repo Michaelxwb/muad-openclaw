@@ -8,7 +8,9 @@ const STEP_RE = /^[a-z0-9][a-z0-9_-]{0,80}$/u;
 const VERSION_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/u;
 const APPROVAL_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 
-export async function loadSkillManifest({ skillsRoot, publicSkillsRoot, privateSkillsRoot, skillName }) {
+export async function loadSkillManifest({
+  skillsRoot, publicSkillsRoot, privateSkillsRoot, skillName, allowedSource = "",
+}) {
   const name = requireString(skillName, "skill_name");
   if (!NAME_RE.test(name)) throw new Error("skill_name must be kebab-case");
   const publicRoot = publicSkillsRoot ?? skillsRoot;
@@ -16,13 +18,21 @@ export async function loadSkillManifest({ skillsRoot, publicSkillsRoot, privateS
     loadFromRoot(publicRoot, name, "public", true),
     loadFromRoot(privateSkillsRoot, name, "private", false),
   ]);
-  const selected = selectVisibleManifest(publicManifest, privateManifest, name);
+  const selected = selectVisibleManifest(publicManifest, privateManifest, name, allowedSource);
   await verifyManifestCommands(selected);
   return selected;
 }
 
-function selectVisibleManifest(publicManifest, privateManifest, name) {
+function selectVisibleManifest(publicManifest, privateManifest, name, allowedSource = "") {
   if (!publicManifest && !privateManifest) throw new Error(`muad.skill.json not found for ${name}`);
+  if (allowedSource === "public") {
+    if (!publicManifest) throw new Error(`public Skill is not installed for ${name}`);
+    return publicManifest;
+  }
+  if (allowedSource === "private") {
+    if (!privateManifest) throw new Error(`private Skill is not installed for ${name}`);
+    return privateManifest;
+  }
   if (!publicManifest) return privateManifest;
   if (!privateManifest) return publicManifest;
   if (!approvedOverride(publicManifest, privateManifest)) {

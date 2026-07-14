@@ -41,12 +41,12 @@ docker build -t muad-openclaw:local .
 
 ```bash
 # 启动 console（默认 docker driver）
-cd console && cp config.example.yaml config.yaml
-# 编辑 config.yaml 填 masterKey / adminPassword 等
+cd console/backend && cp config.example.yaml config.yaml
+# 编辑 config.yaml 填 security.masterKey / admin.password 等
 go run ./cmd/console
 
 # 或切换到 k8s driver（已写实）
-# config.yaml: runtimeDriver: k8s + k8sNamespace: muad
+# config.yaml: runtime.driver: k8s + k8s.namespace: muad
 ```
 
 打开 `http://localhost:8080`，管理员在 UI 上：

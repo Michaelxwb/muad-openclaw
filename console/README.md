@@ -40,17 +40,24 @@ env 仍可作为最高优先级覆盖（`env > config.yaml > 内置默认值`）
 
 | 字段（config.yaml） | env 覆盖键 | 必填 | 默认 | 说明 |
 |------|------|------|------|------|
-| `masterKey` | `CONSOLE_MASTER_KEY` | ✅ | — | 派生 AES 加密主密钥（加密 DB 内凭证） |
-| `adminUser` / `adminPassword` | `CONSOLE_ADMIN_USER` / `CONSOLE_ADMIN_PASSWORD` | 首启建议 | `admin` / — | 初始管理员（幂等引导） |
-| `runtimeDriver` | `RUNTIME_DRIVER` | | `docker` | `docker` 或 `k8s`（k8s 为桩） |
-| `defaultImage` | `DEFAULT_IMAGE` | | `ghcr.io/michaelxwb/muad-openclaw:latest` | 建容器默认镜像 |
-| `muadNet` | `MUAD_NET` | | `muad-net` | 共享 docker 网络名 |
-| `skillsDir` | `CONSOLE_SKILLS_DIR` | | `/opt/muad/skills` | 共享 skill 目录（只读挂进每个容器） |
-| `listenAddr` | `CONSOLE_LISTEN` | | `:8080` | 监听地址 |
-| `logDir` | `CONSOLE_LOG_DIR` | | 空（仅 stdout） | 配置后双写 `<logDir>/YYYY-MM-DD/console.log` |
-| `dbPath` | `CONSOLE_DB` | | `/var/lib/muad-console/console.db` | SQLite 路径（挂卷持久化） |
-| `jwtSecret` | `CONSOLE_JWT_SECRET` | | = 主密钥 | session token 签名密钥 |
-| `collectIntervalSec` | `CONSOLE_COLLECT_INTERVAL` | | `30` | 监控采集周期（秒） |
+| `security.masterKey` | `CONSOLE_MASTER_KEY` | ✅ | — | 派生 AES 加密主密钥（加密 DB 内凭证） |
+| `security.jwtSecret` | `CONSOLE_JWT_SECRET` | | = 主密钥 | session token 签名密钥 |
+| `admin.user` / `admin.password` | `CONSOLE_ADMIN_USER` / `CONSOLE_ADMIN_PASSWORD` | 首启建议 | `admin` / — | 初始管理员（幂等引导） |
+| `server.listenAddr` | `CONSOLE_LISTEN` | | `:8080` | 监听地址 |
+| `server.logDir` | `CONSOLE_LOG_DIR` | | 空（仅 stdout） | 配置后双写 `<logDir>/YYYY-MM-DD/console.log` |
+| `server.dbPath` | `CONSOLE_DB` | | `/var/lib/muad-console/console.db` | SQLite 路径（挂卷持久化） |
+| `server.collectIntervalSec` | `CONSOLE_COLLECT_INTERVAL` | | `30` | 监控采集周期（秒） |
+| `server.consoleInternalURL` | `CONSOLE_INTERNAL_URL` | | `http://muad-console:8080` | Worker 访问 Console internal API 的地址 |
+| `runtime.driver` | `RUNTIME_DRIVER` | | `docker` | `docker` 或 `k8s` |
+| `runtime.defaultImage` | `DEFAULT_IMAGE` | | `ghcr.io/michaelxwb/muad-openclaw:latest` | 建 Pod/容器默认镜像 |
+| `runtime.skillsDir` | `CONSOLE_SKILLS_DIR` | | `/var/lib/muad-console/skills` | Console Public Skill 原始资产库目录；docker 模式会从该目录派生 `.muad-active-public-skills` 运行视图 |
+| `runtime.timezone` | `CONSOLE_RUNTIME_TIMEZONE` | | `Asia/Shanghai` | 注入 worker 的时区 |
+| `runtime.stateDir` | `CONSOLE_RUNTIME_STATE_DIR` | | `/home/node/.openclaw` | worker 状态目录挂载点 |
+| `runtime.publicSkillsDir` | `CONSOLE_RUNTIME_PUBLIC_SKILLS_DIR` | | `/opt/openclaw-skills` | worker 内 public skill 目录 |
+| `docker.network` | `MUAD_NET` | | `muad-net` | 共享 docker 网络名 |
+| `resources.*` | `CONSOLE_RESOURCE_*` / `CONSOLE_RUNTIME_MAX_*` | | `3g` / `2` / `unless-stopped` / `2` / `2` | Pod 资源和并发默认值 |
+| `browser.cdpPortStart` / `browser.cdpPortEnd` | `CONSOLE_RUNTIME_BROWSER_CDP_PORT_START` / `CONSOLE_RUNTIME_BROWSER_CDP_PORT_END` | | `18802` / `65535` | 浏览器 CDP 端口分配范围 |
+| `k8s.*` | `K8S_*` | | 见模板 | K8s namespace、PVC、StorageClass 和容量配置 |
 
 ## 快速开始
 
@@ -59,12 +66,16 @@ env 仍可作为最高优先级覆盖（`env > config.yaml > 内置默认值`）
 ```bash
 # 共享网络（控制台与用户容器互通），首次部署创建一次
 docker network create muad-net
+# DockerDriver 通过 docker.sock 创建 worker，bind mount 源路径必须是宿主可见路径
+sudo mkdir -p /var/lib/muad-console
 
 cd console
-cp config.example.yaml config.yaml   # 填 masterKey / adminPassword 等
+cp backend/config.example.yaml backend/config.yaml   # 填 security.masterKey / admin.password 等
 docker compose up -d
 # 浏览器打开 http://<host>:18080 登录（端口/镜像版本在 docker-compose.yml 内编辑）
 ```
+
+`console/backend/config.yaml` 是统一配置入口：Docker Compose 会把它只读挂载到容器内 `/etc/muad-console/config.yaml`，backend 本地开发则从当前目录直接读取它。
 
 > 控制台需 `docker.sock` 才能管理容器（DockerDriver）。持有 docker.sock 即 root 等价（RISK-03），
 > 请将控制台与不可信用户容器隔离部署。
