@@ -159,6 +159,31 @@ test("private same-name override requires explicit version approval", async () =
   assert.equal(selected.version, "2.0.0");
 });
 
+test("control-plane allowed source forces visible manifest selection", async () => {
+  const publicRoot = await fs.mkdtemp(path.join(os.tmpdir(), "muad-public-forced-"));
+  const privateRoot = await fs.mkdtemp(path.join(os.tmpdir(), "muad-private-forced-"));
+  await createSkill(publicRoot, "xdr-query", manifestFor("xdr-query", {
+    visibility: "public", version: "1.0.0",
+  }));
+  await createSkill(privateRoot, "xdr-query", manifestFor("xdr-query", {
+    visibility: "private", version: "2.0.0",
+  }));
+
+  const privateManifest = await loadSkillManifest({
+    publicSkillsRoot: publicRoot, privateSkillsRoot: privateRoot,
+    skillName: "xdr-query", allowedSource: "private",
+  });
+  assert.equal(privateManifest.source, "private");
+  assert.equal(privateManifest.version, "2.0.0");
+
+  const publicManifest = await loadSkillManifest({
+    publicSkillsRoot: publicRoot, privateSkillsRoot: privateRoot,
+    skillName: "xdr-query", allowedSource: "public",
+  });
+  assert.equal(publicManifest.source, "public");
+  assert.equal(publicManifest.version, "1.0.0");
+});
+
 test("pure prompt Skills remain non-executable", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "muad-prompt-skill-"));
   const skillDir = path.join(root, "prompt-only");

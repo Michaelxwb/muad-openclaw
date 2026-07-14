@@ -11,7 +11,6 @@ interface Props {
   state: PodListState;
   selectedIds: string[];
   onCreate: () => void;
-  onReloadSkills: () => void;
   onBatchUpgrade: () => void;
   onBatchDelete: (ids: string[]) => void;
 }
@@ -37,7 +36,6 @@ export function ContainersToolbar(props: Props) {
           <span aria-hidden="true" className={styles.divider} />
           <BatchToolbar
             selectedIds={props.selectedIds}
-            onReloadSkills={props.onReloadSkills}
             onBatchUpgrade={props.onBatchUpgrade}
             onBatchDelete={props.onBatchDelete}
           />

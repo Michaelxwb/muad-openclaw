@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
@@ -74,6 +75,33 @@ func TestAlertsExposeGenerationQueuesAndFailureThresholdsWithoutSecrets(t *testi
 		`"kind":"runtime_guard_rejections"`, `"kind":"runtime_guard_unhealthy"`)
 	if strings.Contains(body, "sk-alertsecret") {
 		t.Fatalf("alert response leaked apply secret: %s", body)
+	}
+}
+
+func TestAlertsDoNotReportGenerationMismatchWhenRuntimeGuardProbeFails(t *testing.T) {
+	env := newTestEnv(t)
+	createTestPod(t, env.store, "pod-a", 10)
+	if err := env.store.UpdatePodState("pod-a", repo.PodStateRunning); err != nil {
+		t.Fatalf("mark Pod running: %v", err)
+	}
+	if err := env.store.StartPodConfigApply("pod-a", 1); err != nil {
+		t.Fatalf("start apply: %v", err)
+	}
+	if err := env.store.CompletePodConfigApply("pod-a", 1, "sha256:applied", time.Now().UTC()); err != nil {
+		t.Fatalf("complete apply: %v", err)
+	}
+	env.cache.Replace(map[string]monitor.Snapshot{
+		"pod-a": {
+			PodID: "pod-a", Healthy: true, ChannelConnected: true,
+			RuntimeGuardHealthy: false, RuntimeGeneration: 0,
+		},
+	})
+
+	response := env.do(http.MethodGet, "/api/v1/alerts", "")
+	body := response.Body.String()
+	assertBodyContains(t, response.Code, body, http.StatusOK, `"kind":"runtime_guard_unhealthy"`)
+	if strings.Contains(body, `"kind":"runtime_generation_mismatch"`) {
+		t.Fatalf("runtime health probe failure should not also report generation mismatch: %s", body)
 	}
 }
 

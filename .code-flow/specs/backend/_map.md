@@ -4,7 +4,7 @@
 
 ## Purpose
 
-muad 管理/监控控制面后端。以 Pod 为运行时聚合根，管理 Human User、IM Identity、绑定码、业务平台凭证、配置代次调和、Docker/K8s 生命周期、审计和管理员认证。
+muad 管理/监控控制面后端。以 Pod 为运行时聚合根，管理 Human User、IM Identity、绑定码、业务平台凭证、Skill 资产、模型池配置、配置代次调和、Docker/K8s 生命周期、审计和管理员认证。
 
 ## Architecture
 
@@ -27,16 +27,19 @@ muad 管理/监控控制面后端。以 Pod 为运行时聚合根，管理 Human
 | `internal/api/pods.go` / `pod_*.go` | Pod CRUD、容量、通道、资源、服务令牌、配置应用和生命周期 |
 | `internal/api/human_users.go` / `identities_api.go` / `binding_codes_api.go` | Human User、IM Identity 和绑定码管理 |
 | `internal/api/platforms_api.go` / `platform_credentials_api.go` / `internal_credentials.go` | 平台配置、用户凭证和 Pod 内 Resolver |
+| `internal/api/skills.go` / `skill_bundle.go` / `skill_executions.go` | Skill 资产、Public/Private 上传、用户生效 Skill 视图、策略和执行记录 API |
 | `internal/api/containers.go` | Pod 日志和微信扫码登录入口 |
-| `internal/api/llm.go` | 全局、Pod、Human User 模型配置与连通性探测 API |
+| `internal/api/llm.go` | 模型池配置、批量导入、连通性探测和用户绑定状态 API |
 | `internal/api/audit.go` / `audit_query.go` | 审计日志写入与查询 |
-| `internal/api/ops.go` / `pod_operations.go` / `pod_upgrade.go` | 批量调和、Skill reload、Pod 操作和升级回滚 |
+| `internal/api/pod_operations.go` / `pod_upgrade.go` | 批量调和、Skill apply、Pod 操作和升级回滚 |
 | `internal/auth/auth.go` | bcrypt 验证 + JWT 签发/校验 |
 | `internal/driver/driver.go` | 容器运行时抽象接口 |
 | `internal/driver/docker.go` | Docker 驱动实现 |
 | `internal/driver/k8s.go` | Kubernetes 驱动实现 |
+| `internal/driver/public_skills_sync.go` | Public Skill active-only 目录/PVC 同步，Docker/K8s 双实现 |
 | `internal/repo/schema.go` / `pods.go` / `human_users.go` | 全新多用户 schema、Pod 聚合、容量和 Human User 生命周期 Repository |
 | `internal/repo/identities.go` / `binding_codes.go` / `platforms.go` | Identity、一次性绑定码、平台配置和加密用户凭证 Repository |
+| `internal/repo/skills.go` / `skill_resolver.go` | Skill 资产/策略/执行记录 Repository 与用户最终生效 Skill resolver |
 | `internal/crypto/crypto.go` | AES-GCM 加密（DB 内凭证加密存储） |
 | `internal/collector/collector.go` | 有界并发采集 Pod 运行状态、容量、资源和 Guard/队列指标 |
 | `internal/monitor/cache.go` | Pod 状态原子快照缓存 |
@@ -92,7 +95,7 @@ HTTP Request
   → api.Server (mux + middleware)
     → auth package (JWT validation)
     → api handler (请求解析、参数校验)
-      → repo (SQLite CRUD)
+      → repo (SQLite CRUD / effective resolver)
       → crypto (凭证加解密)
       → driver (Docker/K8s 容器操作)
     → JSON Response ({ code, message, data })
@@ -106,11 +109,22 @@ collector.Run (ticker)
   → monitor.Cache (atomic update)
 ```
 
+Skill 应用:
+```
+Admin upload/enable/disable/delete
+  → api skills handler
+    → repo skill asset/policy metadata + mark Pod generation
+    → driver.SyncPublicSkills(active-only public dir)
+    → runtime apply queue
+  → Runtime Pod loads system/public/private according to generated policy
+```
+
 ## Navigation Guide
 
 - 新增 API → `internal/api/` 添加 handler + 在 `routes.go` 注册路由
 - 新增数据库操作 → 按聚合放入 `internal/repo/<domain>.go`，schema 放 `schema.go`
 - 新增容器运行时 → `internal/driver/` 实现 `RuntimeDriver` 接口 + `factory.go` 注册
+- 新增 Skill 管理能力 → `internal/api/skills.go` 暴露 API，`internal/repo/skills.go` 保存元数据，用户最终生效逻辑放 `skill_resolver.go`，运行时同步放 `internal/driver/public_skills_sync.go`
 - 配置项 → `internal/config/config.go`，添加 yaml field + env override + defaults
 - 测试 → `test/` 目录，文件命名 `<package>_test.go`
 - 前端嵌入 → dev 模式 `web/embed_dev.go` 读文件系统；prod 模式 `embed_prod.go` 用 `//go:embed`

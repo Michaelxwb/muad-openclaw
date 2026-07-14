@@ -215,19 +215,14 @@ func (s *Server) readGlobalResources() (driver.ResourceSpec, bool, error) {
 }
 
 func (s *Server) resourceFallback() driver.ResourceSpec {
-	maxSkills, maxBrowser := 1, 1
-	if s.cfg != nil {
-		if s.cfg.RuntimeDefaults.MaxSkillConcurrency > 0 {
-			maxSkills = s.cfg.RuntimeDefaults.MaxSkillConcurrency
-		}
-		if s.cfg.RuntimeDefaults.MaxBrowserConcurrency > 0 {
-			maxBrowser = s.cfg.RuntimeDefaults.MaxBrowserConcurrency
-		}
+	if s.cfg == nil {
+		return driver.ResourceSpec{}
 	}
 	return driver.ResourceSpec{
-		MemLimit: driver.DefaultMemLimit, CPULimit: driver.DefaultCPULimit,
-		RestartPolicy:       driver.DefaultRestartPolicy,
-		MaxSkillConcurrency: maxSkills, MaxBrowserConcurrency: maxBrowser,
+		MemLimit: s.cfg.RuntimeDefaults.MemLimit, CPULimit: s.cfg.RuntimeDefaults.CPULimit,
+		RestartPolicy:         s.cfg.RuntimeDefaults.RestartPolicy,
+		MaxSkillConcurrency:   s.cfg.RuntimeDefaults.MaxSkillConcurrency,
+		MaxBrowserConcurrency: s.cfg.RuntimeDefaults.MaxBrowserConcurrency,
 	}
 }
 

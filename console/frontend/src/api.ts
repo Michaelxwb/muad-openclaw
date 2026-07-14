@@ -13,6 +13,7 @@ import type {
   CreatePlatformInput,
   CreatePodInput,
   DeletePlatformResult,
+  EffectiveSkill,
   GlobalResourceConfig,
   HumanUser,
   HumanUserBootstrapResult,
@@ -45,7 +46,20 @@ import type {
   PodResourceConfig,
   PodResourceInput,
   PodUpgradeResult,
+  PrivateSkillDeleteResult,
+  PrivateSkillUploadInput,
+  PrivateSkillUploadResult,
+  PublicSkillStorageStatus,
+  PublicSkillUploadInput,
+  PublicSkillUploadResult,
   ResourceConfig,
+  SkillAsset,
+  SkillAssetQuery,
+  SkillAssetUpdateInput,
+  SkillExecution,
+  SkillExecutionQuery,
+  SkillPolicy,
+  SkillPolicyInput,
 } from "./types/api";
 
 export type * from "./types/api";
@@ -125,6 +139,22 @@ async function request<T>(method: HttpMethod, path: string, body?: unknown): Pro
   return unwrapResponse<T>(payload, response.status);
 }
 
+async function requestForm<T>(path: string, form: FormData): Promise<T> {
+  const headers: Record<string, string> = {};
+  const currentToken = token.get();
+  if (currentToken) headers.Authorization = `Bearer ${currentToken}`;
+  const response = await fetch(BASE + path, { method: "POST", headers, body: form });
+  const raw = await response.text();
+  if (response.status === 401) {
+    token.clear();
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    throw new ApiError("登录已失效，请重新登录", response.status, 40101);
+  }
+  const payload = parseResponseBody(raw, response.status);
+  if (!response.ok) throw errorFromResponse(payload, response.status);
+  return unwrapResponse<T>(payload, response.status);
+}
+
 function segment(value: string): string {
   return encodeURIComponent(value);
 }
@@ -183,6 +213,7 @@ export const api = {
     request<PodUpgradeResult>("POST", `/containers/${segment(podId)}/upgrade`, { imageTag }),
   reloadSkills: (podIds: string[]) =>
     request<{ results: Record<string, string> }>("POST", "/skills/reload", { podIds }),
+  applySkills: () => request<{ results: Record<string, string> }>("POST", "/skills/reload", {}),
 
   listHumanUsers: (podId: string, query: HumanUserListQuery = {}) =>
     request<PageResult<HumanUser>>(
@@ -266,6 +297,83 @@ export const api = {
     request<ListResult<LLMModelConfig>>("POST", "/llm/models/batch", { models }),
   testLLMModels: (modelConfigIds: string[]) =>
     request<{ results: LLMModelTestResult[] }>("POST", "/llm/models/test", { modelConfigIds }),
+
+  listSkills: (query: SkillAssetQuery = {}) =>
+    request<PageResult<SkillAsset>>(
+      "GET",
+      withQuery("/skills", {
+        page: query.page,
+        pageSize: query.pageSize,
+        q: query.q,
+        scope: query.scope,
+        status: query.status,
+        humanUserId: query.humanUserId,
+        podId: query.podId,
+      }),
+    ),
+  getSkill: (skillId: string) => request<SkillAsset>("GET", `/skills/${segment(skillId)}`),
+  scanSkills: () => request<{ scanned: number; items: SkillAsset[] }>("POST", "/skills/scan"),
+  getPublicSkillStorage: () => request<PublicSkillStorageStatus>("GET", "/skills/public-storage"),
+  ensurePublicSkillStorage: () =>
+    request<PublicSkillStorageStatus>("POST", "/skills/public-storage"),
+  uploadPublicSkill: (input: PublicSkillUploadInput) => {
+    const form = new FormData();
+    const filename =
+      input.filename ?? (input.bundle instanceof File ? input.bundle.name : "skill.tar.gz");
+    form.set("bundle", input.bundle, filename);
+    return requestForm<PublicSkillUploadResult>("/skills/public", form);
+  },
+  updateSkill: (skillId: string, input: SkillAssetUpdateInput) =>
+    request<{ skill: SkillAsset; affectedPodIds: string[] }>(
+      "PATCH",
+      `/skills/${segment(skillId)}`,
+      input,
+    ),
+  listHumanUserSkills: (humanUserId: string, query: { q?: string; status?: string } = {}) =>
+    request<ListResult<EffectiveSkill>>(
+      "GET",
+      withQuery(`${humanUserPath(humanUserId)}/skills`, {
+        q: query.q,
+        status: query.status,
+      }),
+    ),
+  uploadPrivateSkill: (humanUserId: string, input: PrivateSkillUploadInput) => {
+    const form = new FormData();
+    const filename =
+      input.filename ?? (input.bundle instanceof File ? input.bundle.name : "skill.tar.gz");
+    form.set("bundle", input.bundle, filename);
+    if (input.expectedName) form.set("expectedName", input.expectedName);
+    return requestForm<PrivateSkillUploadResult>(
+      `${humanUserPath(humanUserId)}/skills/private`,
+      form,
+    );
+  },
+  deletePrivateSkill: (humanUserId: string, skillId: string) =>
+    request<PrivateSkillDeleteResult>(
+      "DELETE",
+      `${humanUserPath(humanUserId)}/skills/private/${segment(skillId)}`,
+    ),
+  createSkillPolicy: (humanUserId: string, input: SkillPolicyInput) =>
+    request<SkillPolicy>("POST", `${humanUserPath(humanUserId)}/skill-policies`, input),
+  deleteSkillPolicy: (humanUserId: string, policyId: string) =>
+    request<{ deleted: boolean; policyId: string }>(
+      "DELETE",
+      `${humanUserPath(humanUserId)}/skill-policies/${segment(policyId)}`,
+    ),
+  listSkillExecutions: (query: SkillExecutionQuery = {}) =>
+    request<PageResult<SkillExecution>>(
+      "GET",
+      withQuery("/skill-executions", {
+        page: query.page,
+        pageSize: query.pageSize,
+        q: query.q,
+        podId: query.podId,
+        humanUserId: query.humanUserId,
+        agentId: query.agentId,
+        skillName: query.skillName,
+        status: query.status,
+      }),
+    ),
   getResources: () => request<GlobalResourceConfig>("GET", "/settings/resources"),
   setResources: (input: ResourceConfig) =>
     request<{ configured: true; affectedPodIds: string[] }>("PUT", "/settings/resources", input),

@@ -15,7 +15,10 @@ import (
 
 const (
 	defaultWorkers = 16
-	probeTimeout   = 3 * time.Second
+	// A K8s probe runs two execs (`channels status` and runtime health). Each
+	// exec often takes ~1s under kubectl/SPDY, so 3s causes false runtime guard
+	// alerts on normal cluster jitter.
+	probeTimeout = 8 * time.Second
 )
 
 // Collector samples runtime state on an interval.

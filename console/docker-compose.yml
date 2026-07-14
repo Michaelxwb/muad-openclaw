@@ -1,9 +1,9 @@
 # muad 控制台 compose（使用 GHCR 远程镜像）。
 #
 # 用法：
-#   1) 复制 config.example.yaml → config.yaml，填 masterKey / adminPassword 等
+#   1) 复制 backend/config.example.yaml → backend/config.yaml，填 security.masterKey / admin.password 等
 #   2) docker compose up -d
-#   3) 浏览器开 http://<host>:18080，用 adminUser / adminPassword 登录
+#   3) 浏览器开 http://<host>:18080，用 admin.user / admin.password 登录
 #
 # 所有运行时配置（含机密）走 config.yaml——本文件运行时只读挂进容器，已 gitignore、
 # 不入镜像（NFR-SEC-02）。改控制台镜像版本 / 宿主端口直接编辑下面的 image / ports。
@@ -23,16 +23,15 @@ services:
       - "18080:8080"
     volumes:
       # 唯一配置源（含机密），只读挂载——不入镜像
-      - ./config.yaml:/etc/muad-console/config.yaml:ro
+      - ./backend/config.yaml:/etc/muad-console/config.yaml:ro
       # DockerDriver 通过宿主 docker.sock 起/管用户容器（RISK-03：等价 root）
       - /var/run/docker.sock:/var/run/docker.sock
-      # 控制台 SQLite 持久化（用户/LLM/审计/管理员）
-      - muad-console-data:/var/lib/muad-console
+      # 控制台数据持久化。DockerDriver 通过宿主 docker.sock 创建 worker，
+      # 因此 service-token 与 Public Skill bind mount 源路径必须在宿主和 Console
+      # 容器内保持同一个绝对路径。
+      - /var/lib/muad-console:/var/lib/muad-console
     networks:
       - muad-net
-
-volumes:
-  muad-console-data:
 
 networks:
   # 共享网络 muad-net：用户容器（控制台 DockerDriver 用 --network muad-net 在 compose

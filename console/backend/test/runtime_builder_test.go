@@ -19,6 +19,7 @@ type runtimeBuilderSource struct {
 	identities []repo.UserIdentity
 	platforms  []repo.PlatformConfig
 	models     []repo.LLMModelConfig
+	skills     map[string][]repo.EffectiveSkill
 }
 
 func (source runtimeBuilderSource) GetPod(podID string) (repo.Pod, error) {
@@ -48,6 +49,13 @@ func (source runtimeBuilderSource) ListLLMModelConfigs(
 	return source.models, nil
 }
 
+func (source runtimeBuilderSource) ResolveEffectiveSkills(
+	_ *secretcrypto.Cipher, humanUserID string, _ repo.EffectiveSkillFilter,
+) ([]repo.EffectiveSkill, int, error) {
+	skills := source.skills[humanUserID]
+	return skills, len(skills), nil
+}
+
 func TestRuntimeBuilder_DeterministicMultiUserConfig(t *testing.T) {
 	cipher := mustRuntimeCipher(t)
 	source := runtimeBuilderFixture(t, cipher)
@@ -65,6 +73,7 @@ func TestRuntimeBuilder_DeterministicMultiUserConfig(t *testing.T) {
 	}
 	assertRuntimeUsers(t, first.Config)
 	assertRuntimeModels(t, first.Config)
+	assertRuntimeSkills(t, first.Config)
 	assertRuntimeRoutes(t, first.Config)
 }
 
@@ -116,6 +125,32 @@ func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBui
 				ModelConfigID: "model-charlie", DisplayName: "Charlie Model",
 				Provider: "deepseek", BaseURL: "https://api.deepseek.com",
 				Model: "deepseek-chat", APIKeyEnc: encryptRuntimeText(t, cipher, "new-key"),
+			},
+		},
+		skills: map[string][]repo.EffectiveSkill{
+			"u-alice": {
+				{
+					Name: "xdr-query", Effective: true, Status: repo.EffectiveSkillStatusEffective,
+					EffectiveSource: repo.SkillScopePublic, PublicSkillID: "skill-public-xdr",
+					EntryType: "script",
+				},
+				{
+					Name: "web-tools-guide", Effective: true, Status: repo.EffectiveSkillStatusEffective,
+					EffectiveSource: repo.SkillScopePublic, PublicSkillID: "skill-public-web",
+					EntryType: "prompt-only",
+				},
+				{
+					Name: "soar-sync", Effective: false, Status: repo.EffectiveSkillStatusConflict,
+					EffectiveSource: repo.SkillScopePublic, PublicSkillID: "skill-public-soar",
+					PrivateSkillID: "skill-private-soar",
+				},
+			},
+			"u-charlie": {
+				{
+					Name: "sdsp-report", Effective: true, Status: repo.EffectiveSkillStatusEffective,
+					EffectiveSource: repo.SkillScopePrivate, PrivateSkillID: "skill-private-sdsp",
+					EntryType: "script",
+				},
 			},
 		},
 	}
@@ -172,6 +207,24 @@ func assertRuntimeModels(t *testing.T, config driver.RuntimeConfigV1) {
 	charlieID := strings.SplitN(config.Agents[2].Model, "/", 2)[0]
 	if aliceID == charlieID || providers[aliceID].APIKey != "old-key" || providers[charlieID].APIKey != "new-key" {
 		t.Fatalf("per-user providers were mixed: %+v", config.Providers)
+	}
+}
+
+func assertRuntimeSkills(t *testing.T, config driver.RuntimeConfigV1) {
+	t.Helper()
+	if len(config.Skills.Agents) != 2 || config.Skills.Agents[0].AgentID != "alice" ||
+		config.Skills.Agents[1].AgentID != "charlie" {
+		t.Fatalf("runtime Skill policies = %+v", config.Skills.Agents)
+	}
+	alice := config.Skills.Agents[0].Allowed
+	if len(alice) != 1 || alice[0].Name != "xdr-query" ||
+		alice[0].Source != repo.SkillScopePublic || alice[0].SkillID != "skill-public-xdr" {
+		t.Fatalf("alice Skill grants = %+v", alice)
+	}
+	charlie := config.Skills.Agents[1].Allowed
+	if len(charlie) != 1 || charlie[0].Name != "sdsp-report" ||
+		charlie[0].Source != repo.SkillScopePrivate || charlie[0].SkillID != "skill-private-sdsp" {
+		t.Fatalf("charlie Skill grants = %+v", charlie)
 	}
 }
 

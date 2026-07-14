@@ -57,7 +57,20 @@ func (s *Server) registerExistingSettingsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/llm/models", s.handleListLLMModels)
 	mux.HandleFunc("POST /api/v1/llm/models/batch", s.handleCreateLLMModels)
 	mux.HandleFunc("POST /api/v1/llm/models/test", s.handleBatchTestLLMModels)
+	mux.HandleFunc("GET /api/v1/skills", s.handleListSkills)
+	mux.HandleFunc("GET /api/v1/skills/public-storage", s.handleGetPublicSkillStorage)
+	mux.HandleFunc("POST /api/v1/skills/public-storage", s.handleEnsurePublicSkillStorage)
+	mux.HandleFunc("POST /api/v1/skills/scan", s.handleScanSkills)
+	mux.HandleFunc("GET /api/v1/skills/{skillId}", s.handleGetSkill)
+	mux.HandleFunc("POST /api/v1/skills/public", s.handleUploadPublicSkill)
+	mux.HandleFunc("PATCH /api/v1/skills/{skillId}", s.handlePatchSkill)
 	mux.HandleFunc("POST /api/v1/skills/reload", s.handleSkillsReload)
+	mux.HandleFunc("GET /api/v1/human-users/{humanUserId}/skills", s.handleListHumanUserSkills)
+	mux.HandleFunc("POST /api/v1/human-users/{humanUserId}/skills/private", s.handleUploadPrivateSkill)
+	mux.HandleFunc("DELETE /api/v1/human-users/{humanUserId}/skills/private/{skillId}", s.handleDeletePrivateSkill)
+	mux.HandleFunc("POST /api/v1/human-users/{humanUserId}/skill-policies", s.handleCreateSkillPolicy)
+	mux.HandleFunc("DELETE /api/v1/human-users/{humanUserId}/skill-policies/{policyId}", s.handleDeleteSkillPolicy)
+	mux.HandleFunc("GET /api/v1/skill-executions", s.handleListSkillExecutions)
 	mux.HandleFunc("GET /api/v1/audit", s.handleAuditQuery)
 	mux.HandleFunc("GET /api/v1/alerts", s.handleAlerts)
 	mux.HandleFunc("GET /api/v1/settings/resources", s.handleGetResources)
@@ -67,6 +80,7 @@ func (s *Server) registerExistingSettingsRoutes(mux *http.ServeMux) {
 func (s *Server) registerInternalRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /internal/v1/bindings/activate", s.handleActivateBinding)
 	mux.HandleFunc("POST /internal/v1/session-credentials/resolve", s.handleResolveSessionCredential)
+	mux.HandleFunc("POST /internal/v1/skill-executions", s.handleUpsertSkillExecution)
 }
 
 func (s *Server) handleNotImplemented(w http.ResponseWriter, _ *http.Request) {

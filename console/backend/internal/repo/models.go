@@ -28,6 +28,50 @@ const (
 	HumanUserStatusDeleting = "deleting"
 )
 
+// Skill scopes describe where a Skill is sourced from.
+const (
+	SkillScopeSystem  = "system"
+	SkillScopePublic  = "public"
+	SkillScopePrivate = "private"
+)
+
+// Skill asset states persisted by the control plane.
+const (
+	SkillStatusActive   = "active"
+	SkillStatusDisabled = "disabled"
+	SkillStatusDeleted  = "deleted"
+)
+
+// Skill policy actions are scoped to one Human User in the first version.
+const (
+	SkillPolicyDisable       = "disable"
+	SkillPolicyAllowOverride = "allow_override"
+)
+
+// Skill execution lifecycle states.
+const (
+	SkillExecutionRunning   = "running"
+	SkillExecutionSucceeded = "succeeded"
+	SkillExecutionFailed    = "failed"
+	SkillExecutionCancelled = "cancelled"
+)
+
+// Effective Skill view states used by the Human User resolver.
+const (
+	EffectiveSkillStatusEffective         = "effective"
+	EffectiveSkillStatusConflict          = "conflict"
+	EffectiveSkillStatusDisabled          = "disabled"
+	EffectiveSkillStatusMissingCredential = "missing_credential"
+)
+
+// Skill platform credential states are safe to expose to administrators.
+const (
+	SkillCredentialConfigured       = "configured"
+	SkillCredentialMissing          = "missing"
+	SkillCredentialPlatformDisabled = "platform_disabled"
+	SkillCredentialPlatformMissing  = "platform_missing"
+)
+
 // Identity and binding-code states.
 const (
 	IdentityStatusActive   = "active"
@@ -147,6 +191,90 @@ type PlatformConfig struct {
 	ConfigEnc   string
 	Enabled     bool
 	UpdatedAt   time.Time
+}
+
+// SkillAsset is metadata for a system, public, or Human User private Skill.
+type SkillAsset struct {
+	SkillID           string
+	Name              string
+	Scope             string
+	HumanUserID       string
+	PodID             string
+	DisplayName       string
+	Version           string
+	Status            string
+	SourcePath        string
+	ManifestHash      string
+	ManifestJSON      string
+	EntryType         string
+	PlatformsJSON     string
+	BrowserRequired   bool
+	ProgressSupported bool
+	SystemProtected   bool
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+// SkillPolicy allows or denies one Skill for one Human User.
+type SkillPolicy struct {
+	PolicyID    string
+	HumanUserID string
+	SkillName   string
+	Action      string
+	Reason      string
+	CreatedBy   string
+	ExpiresAt   time.Time
+	CreatedAt   time.Time
+}
+
+// SkillExecutionRecord stores a redacted, queryable Skill execution summary.
+type SkillExecutionRecord struct {
+	ExecutionID   string
+	PodID         string
+	HumanUserID   string
+	AgentID       string
+	SkillName     string
+	SkillScope    string
+	SkillVersion  string
+	Status        string
+	StartedAt     time.Time
+	EndedAt       time.Time
+	DurationMS    int64
+	ProgressJSON  string
+	ErrorCode     string
+	ErrorMessage  string
+	InputSummary  string
+	OutputSummary string
+	CreatedAt     time.Time
+}
+
+// EffectiveSkill is the final per-Human User Skill state after merging assets,
+// policies, platform credentials, and recent execution state.
+type EffectiveSkill struct {
+	Name              string
+	DisplayName       string
+	Effective         bool
+	EffectiveSource   string
+	Status            string
+	Version           string
+	EntryType         string
+	SystemSkillID     string
+	PublicSkillID     string
+	PrivateSkillID    string
+	Conflict          bool
+	ConflictReason    string
+	Platforms         []SkillPlatformStatus
+	ProgressSupported bool
+	BrowserRequired   bool
+	RuntimePending    bool
+	LastExecution     *SkillExecutionRecord
+}
+
+// SkillPlatformStatus reports whether one Skill dependency is usable for a user.
+type SkillPlatformStatus struct {
+	Platform         string
+	CredentialStatus string
+	PlatformEnabled  bool
 }
 
 // ResourceConfig holds global or Pod-level resource limits.

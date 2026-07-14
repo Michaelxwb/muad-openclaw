@@ -84,6 +84,26 @@
   padding-left: 20px;
 }
 
+.errorText {
+  color: var(--semi-color-danger);
+}
+
+.uploadTrigger {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  color: var(--semi-color-primary);
+  font-weight: 600;
+  background: var(--semi-color-fill-0);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.uploadTrigger:hover {
+  background: var(--semi-color-fill-1);
+}
+
 @media (max-width: 680px) {
   .formGrid {
     grid-template-columns: 1fr;

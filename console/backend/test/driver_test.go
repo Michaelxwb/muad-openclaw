@@ -101,10 +101,10 @@ func TestResolveResourceSpecAndMemoryLimit(t *testing.T) {
 }
 
 func TestFactory(t *testing.T) {
-	if _, err := driver.New("docker", "muad-net", "/skills", driver.K8sOptions{}); err != nil {
+	if _, err := driver.New("docker", "muad-net", "/skills", driver.K8sOptions{}, driver.RuntimeOptions{}); err != nil {
 		t.Errorf("docker factory: %v", err)
 	}
-	if _, err := driver.New("swarm", "", "", driver.K8sOptions{}); err == nil {
+	if _, err := driver.New("swarm", "", "", driver.K8sOptions{}, driver.RuntimeOptions{}); err == nil {
 		t.Error("expected error for unknown kind")
 	}
 	// k8s factory needs a real cluster (in-cluster/kubeconfig); its CRUD logic
@@ -112,7 +112,7 @@ func TestFactory(t *testing.T) {
 }
 
 func TestDockerUpdateSpecNoop(t *testing.T) {
-	drv := driver.NewDockerDriver("muad-net", "/skills")
+	drv := driver.NewDockerDriver("muad-net", "/skills", driver.RuntimeOptions{})
 	err := drv.UpdateSpec(context.Background(), "alice", driver.PodSpec{PodID: "alice"})
 	if err != nil {
 		t.Fatalf("UpdateSpec should not shell out or recreate for docker: %v", err)

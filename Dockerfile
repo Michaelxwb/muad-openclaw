@@ -51,7 +51,7 @@ COPY seed/BOOTSTRAP.md    /opt/muad/BOOTSTRAP.md
 # 烤浏览器 + 装插件 + 合并基线 → 快照为种子（运行时 per-user 卷为空时播种）
 RUN set -eux; \
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends unzip xvfb; \
     mkdir -p "$PLAYWRIGHT_BROWSERS_PATH"; \
     node /app/node_modules/playwright-core/cli.js install --with-deps chromium; \
     rm -rf /var/lib/apt/lists/*; \
@@ -69,7 +69,7 @@ RUN set -eux; \
 
 COPY bin/inject-env.mjs bin/inject-multi-user-config.mjs bin/openclaw-config-renderer.mjs \
     bin/runtime-config-schema.mjs bin/runtime-config-transaction.mjs bin/runtime-image-self-check.mjs \
-    bin/startup-context.mjs /opt/muad/
+    bin/startup-context.mjs bin/private-skill-installer.mjs /opt/muad/
 COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
 COPY --from=muad-progress-builder /out/muad-progress /usr/local/bin/muad-progress
 COPY --from=muad-progress-builder /out/muad-skill-check /usr/local/bin/muad-skill-check
@@ -90,7 +90,7 @@ RUN set -eux; \
     ln -s /opt/muad/session-manager/dist/cli.js /usr/local/bin/session-manager; \
     chmod 0755 /usr/local/bin/muad-entrypoint.sh /usr/local/bin/muad-progress \
       /usr/local/bin/muad-skill-check /opt/muad/session-manager/dist/cli.js \
-      /opt/muad/runtime-image-self-check.mjs; \
+      /opt/muad/runtime-image-self-check.mjs /opt/muad/private-skill-installer.mjs; \
     chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-run-skill /opt/muad/muad-runtime-guard \
       /opt/muad/runtime-concurrency; \
     chown -R node:node /opt/muad/progress-adapters /opt/muad/session-manager \

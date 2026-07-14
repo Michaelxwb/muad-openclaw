@@ -15,7 +15,7 @@ type platformCredentialAPIView struct {
 	KeyFingerprint string `json:"keyFingerprint"`
 }
 
-func TestPlatformCredentialAPI_ReplaceAndDeleteDoNotReconcilePod(t *testing.T) {
+func TestPlatformCredentialAPI_ReplaceAndDeleteQueuesRuntimeApply(t *testing.T) {
 	e, user := createDirectHumanUser(t)
 	podBefore, _ := e.store.GetPod("pod-a")
 	e.reconcile.podIDs = nil
@@ -24,7 +24,7 @@ func TestPlatformCredentialAPI_ReplaceAndDeleteDoNotReconcilePod(t *testing.T) {
 	if first.KeyFingerprint == second.KeyFingerprint {
 		t.Fatal("credential replacement did not change fingerprint")
 	}
-	assertCredentialControlPlaneUnchanged(t, e, podBefore.ConfigGeneration)
+	assertCredentialQueuedRuntimeApply(t, e, podBefore.ConfigGeneration+2, 2)
 	path := "/api/v1/human-users/" + user.HumanUserID + "/platform-credentials"
 	rr := e.do(http.MethodGet, path, "")
 	assertStatus(t, rr, http.StatusOK)
@@ -40,7 +40,7 @@ func TestPlatformCredentialAPI_ReplaceAndDeleteDoNotReconcilePod(t *testing.T) {
 	if !strings.Contains(rr.Body.String(), `"cacheInvalidation":"on_next_resolve"`) {
 		t.Fatalf("delete response = %s", rr.Body.String())
 	}
-	assertCredentialControlPlaneUnchanged(t, e, podBefore.ConfigGeneration)
+	assertCredentialQueuedRuntimeApply(t, e, podBefore.ConfigGeneration+3, 3)
 	for _, action := range []string{
 		"platform_credential.create", "platform_credential.update", "platform_credential.delete",
 	} {
@@ -91,11 +91,11 @@ func putCredential(
 	return data.Credential
 }
 
-func assertCredentialControlPlaneUnchanged(t *testing.T, e *testEnv, generation int64) {
+func assertCredentialQueuedRuntimeApply(t *testing.T, e *testEnv, generation int64, queued int) {
 	t.Helper()
 	pod, _ := e.store.GetPod("pod-a")
-	if pod.ConfigGeneration != generation || len(e.reconcile.podIDs) != 0 {
-		t.Fatalf("credential mutation changed Pod control plane: gen=%d queue=%v",
+	if pod.ConfigGeneration != generation || len(e.reconcile.podIDs) != queued {
+		t.Fatalf("credential mutation did not queue runtime apply: gen=%d queue=%v",
 			pod.ConfigGeneration, e.reconcile.podIDs)
 	}
 }

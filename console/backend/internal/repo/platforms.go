@@ -122,20 +122,39 @@ func (s *Store) UpdatePlatformConfig(platform, displayName, configEnc string, en
 func (s *Store) UpsertUserPlatformCredential(
 	cipher *secretcrypto.Cipher, humanUserID, platform, apiKey string,
 ) (PlatformCredentialSummary, error) {
+	summary, _, err := s.upsertUserPlatformCredential(cipher, humanUserID, platform, apiKey, false)
+	return summary, err
+}
+
+// UpsertUserPlatformCredentialAndMarkPod replaces one platform key and marks
+// the owning Pod pending because Skill availability may depend on credentials.
+func (s *Store) UpsertUserPlatformCredentialAndMarkPod(
+	cipher *secretcrypto.Cipher, humanUserID, platform, apiKey string,
+) (PlatformCredentialSummary, string, error) {
+	return s.upsertUserPlatformCredential(cipher, humanUserID, platform, apiKey, true)
+}
+
+func (s *Store) upsertUserPlatformCredential(
+	cipher *secretcrypto.Cipher, humanUserID, platform, apiKey string, markPod bool,
+) (PlatformCredentialSummary, string, error) {
 	if cipher == nil || !validPlatform(platform) || strings.TrimSpace(apiKey) == "" {
-		return PlatformCredentialSummary{}, ErrInvalidPlatform
+		return PlatformCredentialSummary{}, "", ErrInvalidPlatform
 	}
 	tx, err := s.db.Begin()
 	if err != nil {
-		return PlatformCredentialSummary{}, fmt.Errorf("begin upsert platform credential: %w", err)
+		return PlatformCredentialSummary{}, "", fmt.Errorf("begin upsert platform credential: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	user, err := getHumanUserTx(tx, humanUserID)
+	if err != nil {
+		return PlatformCredentialSummary{}, "", err
+	}
 	if err := requirePlatformTx(tx, platform, true); err != nil {
-		return PlatformCredentialSummary{}, err
+		return PlatformCredentialSummary{}, "", err
 	}
 	credentials, err := loadCredentialsTx(tx, cipher, humanUserID)
 	if err != nil {
-		return PlatformCredentialSummary{}, err
+		return PlatformCredentialSummary{}, "", err
 	}
 	now := time.Now().UTC()
 	credential := storedPlatformCredential{
@@ -144,12 +163,18 @@ func (s *Store) UpsertUserPlatformCredential(
 	}
 	credentials = upsertCredential(credentials, credential)
 	if err := saveCredentialsTx(tx, cipher, humanUserID, credentials); err != nil {
-		return PlatformCredentialSummary{}, err
+		return PlatformCredentialSummary{}, "", err
+	}
+	if markPod {
+		if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
+			return PlatformCredentialSummary{}, "", err
+		}
 	}
 	if err := tx.Commit(); err != nil {
-		return PlatformCredentialSummary{}, fmt.Errorf("commit platform credential: %w", err)
+		return PlatformCredentialSummary{}, "", fmt.Errorf("commit platform credential: %w", err)
 	}
-	return credentialSummary(credential)
+	summary, err := credentialSummary(credential)
+	return summary, user.PodID, err
 }
 
 // ListUserPlatformCredentials returns redacted credential summaries.
@@ -205,32 +230,56 @@ func (s *Store) ResolveUserPlatformCredential(
 func (s *Store) DeleteUserPlatformCredential(
 	cipher *secretcrypto.Cipher, humanUserID, platform string,
 ) error {
+	_, err := s.deleteUserPlatformCredential(cipher, humanUserID, platform, false)
+	return err
+}
+
+// DeleteUserPlatformCredentialAndMarkPod removes one platform key and marks
+// the owning Pod pending because Skill availability may depend on credentials.
+func (s *Store) DeleteUserPlatformCredentialAndMarkPod(
+	cipher *secretcrypto.Cipher, humanUserID, platform string,
+) (string, error) {
+	return s.deleteUserPlatformCredential(cipher, humanUserID, platform, true)
+}
+
+func (s *Store) deleteUserPlatformCredential(
+	cipher *secretcrypto.Cipher, humanUserID, platform string, markPod bool,
+) (string, error) {
 	if cipher == nil || !validPlatform(platform) {
-		return ErrInvalidPlatform
+		return "", ErrInvalidPlatform
 	}
 	tx, err := s.db.Begin()
 	if err != nil {
-		return fmt.Errorf("begin delete platform credential: %w", err)
+		return "", fmt.Errorf("begin delete platform credential: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	user, err := getHumanUserTx(tx, humanUserID)
+	if err != nil {
+		return "", err
+	}
 	if err := requirePlatformTx(tx, platform, false); err != nil {
-		return err
+		return "", err
 	}
 	credentials, err := loadCredentialsTx(tx, cipher, humanUserID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	credentials, found := deleteCredential(credentials, platform)
 	if !found {
-		return ErrCredentialNotConfigured
+		return "", ErrCredentialNotConfigured
 	}
 	if err := saveCredentialsTx(tx, cipher, humanUserID, credentials); err != nil {
-		return err
+		return "", err
+	}
+	if markPod {
+		if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
+			return "", err
+		}
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit delete platform credential: %w", err)
+		return "", fmt.Errorf("commit delete platform credential: %w", err)
 	}
-	return nil
+	return user.PodID, nil
 }
 
 func validatePlatformConfig(config PlatformConfig) error {

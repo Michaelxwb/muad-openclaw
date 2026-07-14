@@ -27,6 +27,9 @@ type Source interface {
 	ListIdentitiesByPod(podID string) ([]repo.UserIdentity, error)
 	ListPlatformConfigs() ([]repo.PlatformConfig, error)
 	ListLLMModelConfigs(filter repo.LLMModelConfigListFilter) ([]repo.LLMModelConfig, error)
+	ResolveEffectiveSkills(
+		cipher *secretcrypto.Cipher, humanUserID string, filter repo.EffectiveSkillFilter,
+	) ([]repo.EffectiveSkill, int, error)
 }
 
 type Options struct {
@@ -86,6 +89,10 @@ func (builder *Builder) Build(podID string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	skillPolicies, err := builder.buildSkillPolicies(users)
+	if err != nil {
+		return Result{}, err
+	}
 	platforms, err := builder.buildPlatforms(data.platforms)
 	if err != nil {
 		return Result{}, err
@@ -94,7 +101,7 @@ func (builder *Builder) Build(podID string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	config := builder.assemble(data.pod, users, routes, links, providers, models, platforms, channels)
+	config := builder.assemble(data.pod, users, routes, links, providers, models, platforms, channels, skillPolicies)
 	return finish(config)
 }
 
@@ -129,7 +136,7 @@ func (builder *Builder) assemble(
 	pod repo.Pod, users []repo.HumanUser, routes []driver.RuntimeRoute,
 	links []driver.RuntimeIdentityLink, providers []driver.RuntimeProvider,
 	models map[string]string, platforms []driver.RuntimePlatform,
-	channels driver.RuntimeChannels,
+	channels driver.RuntimeChannels, skillPolicies []driver.RuntimeAgentSkills,
 ) driver.RuntimeConfigV1 {
 	agents := buildAgents(builder.options.StateDirectory, users, models)
 	browser, sessions, guard := buildUserMappings(builder.options.StateDirectory, users)
@@ -146,8 +153,58 @@ func (builder *Builder) assemble(
 		Skills: driver.RuntimeSkills{
 			PublicDirectory: builder.options.PublicSkillsDirectory,
 			PrivateRoot:     builder.options.StateDirectory,
+			Agents:          skillPolicies,
 		},
 		SessionManager: sessions, Guard: guard,
+	}
+}
+
+func (builder *Builder) buildSkillPolicies(
+	users []repo.HumanUser,
+) ([]driver.RuntimeAgentSkills, error) {
+	policies := make([]driver.RuntimeAgentSkills, 0, len(users))
+	for _, user := range users {
+		effective, _, err := builder.source.ResolveEffectiveSkills(
+			builder.cipher, user.HumanUserID, repo.EffectiveSkillFilter{},
+		)
+		if err != nil {
+			return nil, err
+		}
+		policies = append(policies, driver.RuntimeAgentSkills{
+			AgentID: user.AgentID,
+			Allowed: runtimeSkillGrants(effective),
+		})
+	}
+	return policies, nil
+}
+
+func runtimeSkillGrants(skills []repo.EffectiveSkill) []driver.RuntimeSkillGrant {
+	grants := make([]driver.RuntimeSkillGrant, 0, len(skills))
+	for _, skill := range skills {
+		if !skill.Effective || skill.Status != repo.EffectiveSkillStatusEffective {
+			continue
+		}
+		if skill.EntryType != "" && skill.EntryType != "script" {
+			continue
+		}
+		grants = append(grants, driver.RuntimeSkillGrant{
+			Name: skill.Name, Source: skill.EffectiveSource, SkillID: effectiveSkillID(skill),
+		})
+	}
+	slices.SortFunc(grants, func(left, right driver.RuntimeSkillGrant) int {
+		return strings.Compare(left.Name, right.Name)
+	})
+	return grants
+}
+
+func effectiveSkillID(skill repo.EffectiveSkill) string {
+	switch skill.EffectiveSource {
+	case repo.SkillScopeSystem:
+		return skill.SystemSkillID
+	case repo.SkillScopePrivate:
+		return skill.PrivateSkillID
+	default:
+		return skill.PublicSkillID
 	}
 }
 

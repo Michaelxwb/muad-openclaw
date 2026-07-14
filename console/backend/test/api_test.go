@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -53,6 +56,10 @@ type fakeDriver struct {
 	updateSpecErr         error
 	serviceTokens         map[string]driver.SecretFileSpec
 	updateServiceTokenErr error
+	syncPublicSkillCalls  []syncPublicSkillCall
+	syncPublicSkillErr    error
+	publicSkillStorage    driver.PublicSkillsStorageStatus
+	publicSkillStorageErr error
 	startErr              error
 	stopErr               error
 	startErrors           []error
@@ -78,11 +85,21 @@ type execCall struct {
 	cmd   []string
 }
 
+type syncPublicSkillCall struct {
+	podID            string
+	sourceDir        string
+	sourceSkillNames []string
+	sourceIndex      string
+}
+
 func newFakeDriver() *fakeDriver {
 	return &fakeDriver{
 		created: map[string]driver.PodSpec{}, removed: map[string]bool{}, restarted: map[string]int{},
 		keepState: map[string]bool{}, restartErrors: map[string]error{},
 		serviceTokens: map[string]driver.SecretFileSpec{},
+		publicSkillStorage: driver.PublicSkillsStorageStatus{
+			Driver: "docker", Name: "test-skills", Configured: true, Ready: true, Phase: "directory",
+		},
 	}
 }
 
@@ -207,6 +224,22 @@ func (f *fakeDriver) ExecStdin(_ context.Context, userID string, stdin io.Reader
 	if f.execStdinErr != nil {
 		return "", f.execStdinErr
 	}
+	joined := strings.Join(cmd, " ")
+	if strings.Contains(joined, "/opt/muad/private-skill-installer.mjs install") {
+		name := "xdr-private"
+		for i, value := range cmd {
+			if value == "--expected-name" && i+1 < len(cmd) {
+				name = cmd[i+1]
+			}
+		}
+		return fmt.Sprintf(`{"ok":true,"name":%q,"version":"1.0.0",`+
+			`"platforms":["xdr"],"progressSupported":true,"browserRequired":false,`+
+			`"entryType":"script","manifestHash":"sha256:test","manifestJson":"{}",`+
+			`"targetDir":"/home/node/.openclaw/workspace-agent/skills/%s"}`, name, name), nil
+	}
+	if strings.Contains(joined, "/opt/muad/private-skill-installer.mjs delete") {
+		return `{"ok":true,"deleted":true}`, nil
+	}
 	return "ok", nil
 }
 func (f *fakeDriver) Reap(context.Context, string) error   { return nil }
@@ -232,6 +265,53 @@ func (f *fakeDriver) UpdateServiceToken(_ context.Context, podID string, secret 
 	return nil
 }
 
+func (f *fakeDriver) SyncPublicSkills(_ context.Context, podID, sourceDir string) error {
+	f.syncPublicSkillCalls = append(f.syncPublicSkillCalls, syncPublicSkillCall{
+		podID: podID, sourceDir: sourceDir, sourceSkillNames: snapshotSourceSkillNames(sourceDir),
+		sourceIndex: snapshotSourceIndex(sourceDir),
+	})
+	return f.syncPublicSkillErr
+}
+
+func snapshotSourceSkillNames(sourceDir string) []string {
+	entries, err := os.ReadDir(sourceDir)
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(sourceDir, entry.Name(), "SKILL.md")); err == nil {
+			names = append(names, entry.Name())
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func snapshotSourceIndex(sourceDir string) string {
+	body, err := os.ReadFile(filepath.Join(sourceDir, ".muad-public-index"))
+	if err != nil {
+		return ""
+	}
+	return string(body)
+}
+
+func (f *fakeDriver) PublicSkillsStorageStatus(context.Context) (driver.PublicSkillsStorageStatus, error) {
+	return f.publicSkillStorage, f.publicSkillStorageErr
+}
+
+func (f *fakeDriver) EnsurePublicSkillsStorage(context.Context) (driver.PublicSkillsStorageStatus, error) {
+	if f.publicSkillStorageErr != nil {
+		return driver.PublicSkillsStorageStatus{}, f.publicSkillStorageErr
+	}
+	f.publicSkillStorage.Ready = true
+	f.publicSkillStorage.Phase = "Bound"
+	return f.publicSkillStorage, nil
+}
+
 type testEnv struct {
 	h         http.Handler
 	store     *repo.Store
@@ -239,6 +319,7 @@ type testEnv struct {
 	cache     *monitor.Cache
 	reconcile *fakeReconcileQueue
 	token     string
+	skillsDir string
 }
 
 type fakeReconcileQueue struct{ podIDs []string }
@@ -256,10 +337,16 @@ func (queue *fakeReconcileQueue) RunExclusive(
 func newTestEnv(t *testing.T) *testEnv {
 	t.Helper()
 	store := newStore(t)
+	skillsDir := t.TempDir()
 	cfg := &config.Config{
 		MasterKey: "mk", JWTSecret: "test-secret", DefaultImage: "img:test",
-		ConsoleInternalURL: "http://console.internal:8080",
-		RuntimeDefaults:    config.RuntimeDefaults{MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1},
+		ConsoleInternalURL: "http://console.internal:8080", SkillsDir: skillsDir,
+		RuntimeStateDir: "/home/node/.openclaw", RuntimePublicSkillsDir: "/opt/openclaw-skills",
+		RuntimeDefaults: config.RuntimeDefaults{
+			MemLimit: "3g", CPULimit: "2", RestartPolicy: "unless-stopped",
+			MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1,
+			BrowserCDPPortStart: 18802, BrowserCDPPortEnd: 65535,
+		},
 	}
 	cipher, _ := crypto.New("mk")
 	drv := newFakeDriver()
@@ -270,7 +357,8 @@ func newTestEnv(t *testing.T) *testEnv {
 	}
 	h := api.NewServer(cfg, store, cipher, drv, cache, reconcile).Handler()
 	return &testEnv{
-		h: h, store: store, drv: drv, cache: cache, reconcile: reconcile, token: login(t, h),
+		h: h, store: store, drv: drv, cache: cache, reconcile: reconcile,
+		token: login(t, h), skillsDir: skillsDir,
 	}
 }
 

@@ -30,21 +30,27 @@ import (
 // Note on restart policy: a Deployment always restarts its Pod; the per-user
 // "restartPolicy" knob (a docker concept) is not applied here — Stop = scale to 0.
 type K8sDriver struct {
-	client       kubernetes.Interface
-	metrics      metricsv.Interface
-	restConfig   *rest.Config // for exec; nil in unit tests
-	namespace    string
-	skillsPVC    string // shared RWX claim name, mounted read-only (optional)
-	storageClass string // for per-user state PVC (optional → cluster default)
-	stateSize    string // per-Pod state PVC size, e.g. "5Gi"
+	client             kubernetes.Interface
+	metrics            metricsv.Interface
+	restConfig         *rest.Config // for exec; nil in unit tests
+	namespace          string
+	skillsPVC          string // shared RWX claim name, mounted read-only (optional)
+	skillsStorageClass string
+	skillsSize         string
+	runtime            RuntimeOptions
+	storageClass       string // for per-user state PVC (optional → cluster default)
+	stateSize          string // per-Pod state PVC size, e.g. "5Gi"
 }
 
 // K8sOptions configures the cluster driver.
 type K8sOptions struct {
-	Namespace    string
-	SkillsPVC    string
-	StorageClass string
-	StateSize    string
+	Namespace          string
+	SkillsPVC          string
+	SkillsStorageClass string
+	SkillsSize         string
+	Runtime            RuntimeOptions
+	StorageClass       string
+	StateSize          string
 }
 
 // NewK8sDriver builds a cluster driver from in-cluster config, falling back to
@@ -74,9 +80,15 @@ func NewK8sDriver(o K8sOptions) (*K8sDriver, error) {
 	if size == "" {
 		size = "5Gi"
 	}
+	skillsSize := o.SkillsSize
+	if skillsSize == "" {
+		skillsSize = "5Gi"
+	}
 	return &K8sDriver{
 		client: cs, metrics: mc, restConfig: cfg,
-		namespace: ns, skillsPVC: o.SkillsPVC, storageClass: o.StorageClass, stateSize: size,
+		namespace: ns, skillsPVC: o.SkillsPVC, skillsStorageClass: o.SkillsStorageClass,
+		skillsSize: skillsSize, runtime: o.Runtime.withDefaults(),
+		storageClass: o.StorageClass, stateSize: size,
 	}, nil
 }
 
@@ -241,11 +253,12 @@ func (d *K8sDriver) upsertDeployment(ctx context.Context, spec PodSpec, name str
 }
 
 func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
+	runtime := d.runtime.withDefaults()
 	vols := []corev1.Volume{{
 		Name:         "state",
 		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: name + "-state"}},
 	}}
-	mounts := []corev1.VolumeMount{{Name: "state", MountPath: "/home/node/.openclaw"}}
+	mounts := []corev1.VolumeMount{{Name: "state", MountPath: runtime.StateDir}}
 	initContainers := []corev1.Container{}
 	if spec.ServiceToken.Value != "" {
 		vols = append(vols, serviceTokenVolumes(name)...)
@@ -255,11 +268,8 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 		initContainers = append(initContainers, serviceTokenInitContainer(spec))
 	}
 	if d.skillsPVC != "" {
-		vols = append(vols, corev1.Volume{
-			Name:         "skills",
-			VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: d.skillsPVC, ReadOnly: true}},
-		})
-		mounts = append(mounts, corev1.VolumeMount{Name: "skills", MountPath: "/opt/openclaw-skills", ReadOnly: true})
+		vols = append(vols, publicSkillsVolume(d.skillsPVC))
+		mounts = append(mounts, d.publicSkillsVolumeMount())
 	}
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.PodID)},
@@ -280,8 +290,8 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						EnvFrom:         []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: name + "-env"}}}},
 						Env: []corev1.EnvVar{
-							{Name: "TZ", Value: "Asia/Shanghai"},
-							{Name: "OPENCLAW_STATE_DIR", Value: "/home/node/.openclaw"},
+							{Name: "TZ", Value: runtime.Timezone},
+							{Name: "OPENCLAW_STATE_DIR", Value: runtime.StateDir},
 						},
 						Ports:        []corev1.ContainerPort{{ContainerPort: GatewayPort}},
 						VolumeMounts: mounts,
@@ -290,6 +300,26 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 				},
 			},
 		},
+	}
+}
+
+func publicSkillsVolume(claimName string) corev1.Volume {
+	return corev1.Volume{
+		Name: "skills",
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: claimName,
+				ReadOnly:  true,
+			},
+		},
+	}
+}
+
+func (d *K8sDriver) publicSkillsVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      "skills",
+		MountPath: d.runtime.withDefaults().PublicSkillsDir,
+		ReadOnly:  true,
 	}
 }
 
@@ -433,6 +463,13 @@ func (d *K8sDriver) ExecStdin(ctx context.Context, podID string, stdin io.Reader
 	pod, err := d.podName(ctx, podID)
 	if err != nil {
 		return "", err
+	}
+	return d.execStdinInPod(ctx, pod, stdin, cmd...)
+}
+
+func (d *K8sDriver) execStdinInPod(ctx context.Context, pod string, stdin io.Reader, cmd ...string) (string, error) {
+	if d.restConfig == nil {
+		return "", fmt.Errorf("k8s: exec unavailable (no rest config)")
 	}
 	req := d.client.CoreV1().RESTClient().Post().
 		Resource("pods").Name(pod).Namespace(d.namespace).SubResource("exec").

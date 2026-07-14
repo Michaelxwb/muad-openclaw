@@ -97,7 +97,15 @@
   ],
   "skills": {
     "publicDirectory": "/opt/openclaw-skills",
-    "privateRoot": "/tmp/muad-runtime"
+    "privateRoot": "/tmp/muad-runtime",
+    "agents": [
+      {
+        "agentId": "alice",
+        "allowed": [
+          {"name": "xdr-query", "source": "public", "skillId": "skill-public-xdr"}
+        ]
+      }
+    ]
   },
   "sessionManager": {
     "agents": [

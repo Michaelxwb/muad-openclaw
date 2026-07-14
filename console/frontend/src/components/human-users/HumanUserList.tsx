@@ -6,6 +6,7 @@ import { FeedbackBanner, ListToolbar, MetricDescriptions } from "../ConsolePage"
 import { renderTablePagination, tablePagination } from "../Pagination";
 import styles from "../HumanUsersPanel.module.css";
 import type { HumanUsersState } from "./HumanUsersPanel";
+import { DeleteHumanUser } from "./DeleteHumanUser";
 import {
   normalizeStatus,
   USER_STATUS_OPTIONS,
@@ -18,9 +19,10 @@ interface Props {
   users: HumanUsersState;
   onCreate: () => void;
   onOpen: (id: string) => void;
+  onDeleted: () => Promise<void>;
 }
 
-export function HumanUserList({ pod, users, onCreate, onOpen }: Props) {
+export function HumanUserList({ pod, users, onCreate, onOpen, onDeleted }: Props) {
   const [search, setSearch] = useState("");
   const submitSearch = () => {
     users.setPage(1);
@@ -42,7 +44,7 @@ export function HumanUserList({ pod, users, onCreate, onOpen }: Props) {
         onStatus={filterStatus}
         onCreate={onCreate}
       />
-      <UserTable users={users} onOpen={onOpen} />
+      <UserTable users={users} onOpen={onOpen} onDeleted={onDeleted} />
     </>
   );
 }
@@ -99,10 +101,18 @@ function UserToolbar(props: ToolbarProps) {
   );
 }
 
-function UserTable({ users, onOpen }: { users: HumanUsersState; onOpen: (id: string) => void }) {
+function UserTable({
+  users,
+  onOpen,
+  onDeleted,
+}: {
+  users: HumanUsersState;
+  onOpen: (id: string) => void;
+  onDeleted: () => Promise<void>;
+}) {
   return (
     <Table
-      columns={humanUserColumns(onOpen) as never}
+      columns={humanUserColumns(onOpen, onDeleted) as never}
       dataSource={users.items}
       rowKey="humanUserId"
       loading={users.loading}
@@ -122,7 +132,7 @@ function UserTable({ users, onOpen }: { users: HumanUsersState; onOpen: (id: str
   );
 }
 
-function humanUserColumns(onOpen: (id: string) => void) {
+function humanUserColumns(onOpen: (id: string) => void, onDeleted: () => Promise<void>) {
   return [
     {
       title: "用户",
@@ -141,10 +151,10 @@ function humanUserColumns(onOpen: (id: string) => void) {
       width: 90,
       render: (_: unknown, user: HumanUser) => <UserStatusTag status={user.status} />,
     },
-    { title: "Agent", dataIndex: "agentId", key: "agentId", width: 150, className: "mono" },
-    { title: "Identity", dataIndex: "identityCount", key: "identityCount", width: 80 },
+    { title: "运行 Agent", dataIndex: "agentId", key: "agentId", width: 150, className: "mono" },
+    { title: "身份标识", dataIndex: "identityCount", key: "identityCount", width: 80 },
     {
-      title: "Browser",
+      title: "浏览器",
       key: "browser",
       width: 190,
       render: (_: unknown, user: HumanUser) => (
@@ -157,11 +167,14 @@ function humanUserColumns(onOpen: (id: string) => void) {
     {
       title: "操作",
       key: "actions",
-      width: 90,
+      width: 140,
       render: (_: unknown, user: HumanUser) => (
-        <Button size="small" onClick={() => onOpen(user.humanUserId)}>
-          详情
-        </Button>
+        <Space spacing={4}>
+          <Button size="small" onClick={() => onOpen(user.humanUserId)}>
+            详情
+          </Button>
+          <DeleteHumanUser user={user} compact onDeleted={() => void onDeleted()} />
+        </Space>
       ),
     },
   ];

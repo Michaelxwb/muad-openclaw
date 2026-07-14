@@ -49,7 +49,7 @@ describe("Audit", () => {
     fireEvent.change(screen.getByLabelText("按操作人过滤"), { target: { value: "pod:pod-a" } });
     fireEvent.change(screen.getByLabelText("按动作过滤"), { target: { value: "runtime_guard" } });
     fireEvent.change(screen.getByLabelText("按目标过滤"), { target: { value: "pod-a" } });
-    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    fireEvent.click(screen.getByRole("button", { name: "查询审计日志" }));
 
     await waitFor(() =>
       expect(auditMock).toHaveBeenLastCalledWith({
@@ -60,5 +60,14 @@ describe("Audit", () => {
         limit: 10,
       }),
     );
+  });
+
+  it("keeps audit filters compact in the list toolbar", async () => {
+    render(<Audit />);
+    await screen.findByText("admin:root");
+
+    expect(screen.getByLabelText("按操作人过滤").parentElement).toHaveStyle({ width: "160px" });
+    expect(screen.getByLabelText("按动作过滤").parentElement).toHaveStyle({ width: "180px" });
+    expect(screen.getByLabelText("按目标过滤").parentElement).toHaveStyle({ width: "160px" });
   });
 });

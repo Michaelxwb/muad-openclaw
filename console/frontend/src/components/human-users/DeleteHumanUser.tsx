@@ -8,9 +8,10 @@ import styles from "../HumanUsersPanel.module.css";
 interface Props {
   user: HumanUser;
   onDeleted: () => void;
+  compact?: boolean;
 }
 
-export function DeleteHumanUser({ user, onDeleted }: Props) {
+export function DeleteHumanUser({ user, onDeleted, compact = false }: Props) {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -30,7 +31,12 @@ export function DeleteHumanUser({ user, onDeleted }: Props) {
   };
   return (
     <>
-      <Button type="danger" onClick={() => setVisible(true)}>
+      <Button
+        aria-label={`删除用户 ${user.displayName}`}
+        size={compact ? "small" : "default"}
+        type="danger"
+        onClick={() => setVisible(true)}
+      >
         删除
       </Button>
       <Modal

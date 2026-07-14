@@ -12,8 +12,7 @@ tools/session-manager/dist/
 # 运行态 SQLite DB（控制台），绝不入库
 console/backend/data/
 
-# console 运行时配置（含 masterKey/adminPassword），绝不入库；模板见 config.example.yaml
-console/config.yaml
+# console 运行时配置（含 security.masterKey/admin.password），绝不入库；模板见 console/backend/config.example.yaml
 console/backend/config.yaml
 # 旧 env 部署方式已弃用（如有遗留也不入库）
 console/.env

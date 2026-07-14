@@ -110,7 +110,15 @@ func validRuntimeConfig() driver.RuntimeConfigV1 {
 			{ID: "provider-a", Provider: "deepseek", BaseURL: "https://example.invalid", APIKey: "secret", Model: "chat"},
 		},
 		Platforms: []driver.RuntimePlatform{{ID: "xdr", DisplayName: "XDR", Config: json.RawMessage(`{}`)}},
-		Skills:    driver.RuntimeSkills{PublicDirectory: "/opt/openclaw-skills", PrivateRoot: "/state"},
+		Skills: driver.RuntimeSkills{
+			PublicDirectory: "/opt/openclaw-skills", PrivateRoot: "/state",
+			Agents: []driver.RuntimeAgentSkills{{
+				AgentID: "alice",
+				Allowed: []driver.RuntimeSkillGrant{{
+					Name: "xdr-query", Source: "public", SkillID: "skill-public-xdr",
+				}},
+			}},
+		},
 		SessionManager: driver.RuntimeSessionManager{Agents: []driver.RuntimeSessionAgent{
 			{AgentID: "alice", Workspace: "/state/alice/workspace", StoreDirectory: "/state/alice/session-store"},
 		}},

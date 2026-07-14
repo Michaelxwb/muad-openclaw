@@ -112,6 +112,7 @@ export function HumanUsersPanel({ pod, onPodChanged }: Props) {
         users={users}
         onCreate={() => setCreateOpen(true)}
         onOpen={setSelectedUserId}
+        onDeleted={changed}
       />
       <CreateHumanUserDialog
         pod={pod}
@@ -125,10 +126,6 @@ export function HumanUsersPanel({ pod, onPodChanged }: Props) {
         humanUserId={selectedUserId}
         onClose={() => setSelectedUserId(null)}
         onChanged={changed}
-        onDeleted={() => {
-          setSelectedUserId(null);
-          void changed();
-        }}
       />
     </div>
   );

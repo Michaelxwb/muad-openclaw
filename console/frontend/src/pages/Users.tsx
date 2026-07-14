@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, Select, Space, Table, Tag } from "@douyinfe/semi-ui";
-import { IconSearch } from "@douyinfe/semi-icons";
+import { IconPlus, IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../api";
-import type { HumanUser, Pod } from "../api";
-import {
-  FeedbackBanner,
-  ListToolbar,
-  MetricDescriptions,
-  PageHeader,
-  PageSection,
-} from "../components/ConsolePage";
+import type { HumanUser, HumanUserActivation, HumanUserBootstrapResult, Pod } from "../api";
+import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
+import { ActivationCodeDialog } from "../components/human-users/ActivationCodeDialog";
+import { CreateHumanUserDialog } from "../components/human-users/CreateHumanUserDialog";
 import { HumanUserDetailDialog } from "../components/human-users/HumanUserDetailDialog";
+import { DeleteHumanUser } from "../components/human-users/DeleteHumanUser";
 import {
   normalizeStatus,
   USER_STATUS_OPTIONS,
@@ -38,42 +35,53 @@ export function Users({ onOpenPod }: UsersProps) {
   const users = useGlobalHumanUsers();
   const pods = useGlobalUserPods();
   const [selectedUser, setSelectedUser] = useState<SelectedUser | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [activation, setActivation] = useState<HumanUserActivation | null>(null);
   const selectedPod = useSelectedPod(selectedUser?.podId ?? "", pods.byId);
 
   const changed = async () => {
     await Promise.all([users.refresh(), pods.refresh()]);
   };
+  const created = async (result: HumanUserBootstrapResult) => {
+    setCreateOpen(false);
+    if (result.activation) setActivation(result.activation);
+    await changed();
+  };
 
   return (
     <div>
       <PageHeader title="用户管理" description="跨 Pod 查看和管理 Human User、绑定模型与身份状态" />
-      <MetricDescriptions
-        items={[
-          { label: "用户总数", value: users.total },
-          { label: "Pod 数", value: pods.items.length },
-          { label: "当前页", value: `${users.items.length}/${users.pageSize}` },
-        ]}
-      />
       <FeedbackBanner error={users.error || pods.error || selectedPod.error} />
       <PageSection>
-        <GlobalUserToolbar users={users} />
+        <GlobalUserToolbar
+          users={users}
+          createDisabled={pods.items.length === 0}
+          onCreate={() => setCreateOpen(true)}
+        />
         <GlobalUserTable
           users={users}
           pods={pods.byId}
           onOpen={(user) => setSelectedUser({ humanUserId: user.humanUserId, podId: user.podId })}
           onOpenPod={onOpenPod}
+          onDeleted={changed}
         />
       </PageSection>
+      {pods.items.length > 0 && (
+        <CreateHumanUserDialog
+          pod={pods.items[0]}
+          podOptions={pods.items}
+          visible={createOpen}
+          onClose={() => setCreateOpen(false)}
+          onCreated={created}
+        />
+      )}
+      <ActivationCodeDialog activation={activation} onClose={() => setActivation(null)} />
       {selectedPod.pod && (
         <HumanUserDetailDialog
           pod={selectedPod.pod}
           humanUserId={selectedUser?.humanUserId ?? null}
           onClose={() => setSelectedUser(null)}
           onChanged={changed}
-          onDeleted={() => {
-            setSelectedUser(null);
-            void changed();
-          }}
         />
       )}
     </div>
@@ -212,7 +220,15 @@ function useSelectedPod(podId: string, pods: Map<string, Pod>) {
   return { pod, error };
 }
 
-function GlobalUserToolbar({ users }: { users: GlobalUsersState }) {
+function GlobalUserToolbar({
+  users,
+  createDisabled,
+  onCreate,
+}: {
+  users: GlobalUsersState;
+  createDisabled: boolean;
+  onCreate: () => void;
+}) {
   const [search, setSearch] = useState("");
   const submitSearch = () => {
     users.setPage(1);
@@ -224,6 +240,17 @@ function GlobalUserToolbar({ users }: { users: GlobalUsersState }) {
   };
   return (
     <ListToolbar
+      actions={
+        <Button
+          aria-label="创建用户"
+          theme="solid"
+          icon={<IconPlus />}
+          disabled={createDisabled}
+          onClick={onCreate}
+        >
+          创建用户
+        </Button>
+      }
       filters={
         <Space>
           <Input
@@ -252,15 +279,17 @@ function GlobalUserTable({
   pods,
   onOpen,
   onOpenPod,
+  onDeleted,
 }: {
   users: GlobalUsersState;
   pods: Map<string, Pod>;
   onOpen: (user: HumanUser) => void;
   onOpenPod: (podId: string) => void;
+  onDeleted: () => Promise<void>;
 }) {
   return (
     <Table
-      columns={globalUserColumns(pods, onOpen, onOpenPod) as never}
+      columns={globalUserColumns(pods, onOpen, onOpenPod, onDeleted) as never}
       dataSource={users.items}
       rowKey="humanUserId"
       loading={users.loading}
@@ -284,6 +313,7 @@ function globalUserColumns(
   pods: Map<string, Pod>,
   onOpen: (user: HumanUser) => void,
   onOpenPod: (podId: string) => void,
+  onDeleted: () => Promise<void>,
 ) {
   return [
     {
@@ -337,15 +367,15 @@ function globalUserColumns(
         </div>
       ),
     },
-    { title: "Agent", dataIndex: "agentId", key: "agentId", width: 150, className: "mono" },
+    { title: "运行 Agent", dataIndex: "agentId", key: "agentId", width: 150, className: "mono" },
     {
-      title: "Identity",
+      title: "身份标识",
       key: "identityCount",
       width: 90,
       render: (_: unknown, user: HumanUser) => <Tag>{user.identityCount}</Tag>,
     },
     {
-      title: "Browser",
+      title: "浏览器",
       key: "browser",
       width: 170,
       render: (_: unknown, user: HumanUser) => (
@@ -358,11 +388,14 @@ function globalUserColumns(
     {
       title: "操作",
       key: "actions",
-      width: 90,
+      width: 140,
       render: (_: unknown, user: HumanUser) => (
-        <Button size="small" onClick={() => onOpen(user)}>
-          详情
-        </Button>
+        <Space spacing={4}>
+          <Button size="small" onClick={() => onOpen(user)}>
+            详情
+          </Button>
+          <DeleteHumanUser user={user} compact onDeleted={() => void onDeleted()} />
+        </Space>
       ),
     },
   ];

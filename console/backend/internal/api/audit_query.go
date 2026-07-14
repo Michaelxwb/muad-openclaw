@@ -84,6 +84,8 @@ func auditTargetType(action string, metadata auditlog.Metadata) string {
 		return "binding_code"
 	case metadata.HumanUserID != "" || strings.HasPrefix(action, "human_user."):
 		return "human_user"
+	case metadata.SkillID != "" || metadata.SkillName != "" || strings.HasPrefix(action, "skill."):
+		return "skill"
 	case metadata.PodID != "" || strings.HasPrefix(action, "pod") || strings.HasPrefix(action, "runtime_guard."):
 		return "pod"
 	case strings.HasPrefix(action, "platform_config."):
@@ -206,7 +208,8 @@ func runtimeAlerts(pod repo.Pod, snapshot monitor.Snapshot) []alert {
 	if !snapshot.RuntimeGuardHealthy {
 		alerts = append(alerts, alert{PodID: pod.PodID, Level: "P1", Kind: "runtime_guard_unhealthy", Message: "Runtime Guard health check failed"})
 	}
-	if pod.AppliedGeneration > 0 && snapshot.RuntimeGeneration != pod.AppliedGeneration {
+	if snapshot.RuntimeGuardHealthy && pod.AppliedGeneration > 0 &&
+		snapshot.RuntimeGeneration > 0 && snapshot.RuntimeGeneration != pod.AppliedGeneration {
 		alerts = append(alerts, alert{
 			PodID: pod.PodID, Level: "P1", Kind: "runtime_generation_mismatch",
 			Message: "runtime reports a different applied generation",

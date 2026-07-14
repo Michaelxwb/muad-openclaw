@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Modal, Space, Table, Tag, Toast } from "@douyinfe/semi-ui";
+import { Button, Input, Modal, Select, Space, Table, Tag, Toast } from "@douyinfe/semi-ui";
+import { IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../../api";
 import type { Platform } from "../../api";
 import { useMountedRef } from "../../hooks/useMountedRef";
+import { DEFAULT_PAGE_SIZE, renderTablePagination, tablePagination } from "../Pagination";
 import { FeedbackBanner, ListToolbar, PageSection } from "../ConsolePage";
 import { PlatformEditorDialog } from "./PlatformEditorDialog";
 
@@ -12,6 +14,15 @@ export const PLATFORM_OPTIONS = [
   { value: "mssw", label: "MSSW" },
   { value: "xdr", label: "XDR" },
   { value: "sdsp", label: "SDSP" },
+];
+
+type PlatformStatusFilter = "" | "enabled" | "disabled" | "adapter_missing";
+
+const PLATFORM_STATUS_OPTIONS = [
+  { value: "", label: "全部状态" },
+  { value: "enabled", label: "已启用" },
+  { value: "disabled", label: "已停用" },
+  { value: "adapter_missing", label: "Adapter 缺失" },
 ];
 
 export function PlatformSettings() {
@@ -41,13 +52,24 @@ export function PlatformSettings() {
             </Button>
           </Space>
         }
+        filters={<PlatformFilters state={state} />}
       />
       <Table
         columns={platformColumns(openEdit, state.refresh) as never}
-        dataSource={state.items}
+        dataSource={state.pageItems}
         rowKey="platform"
         loading={state.loading}
-        pagination={false}
+        pagination={tablePagination({
+          page: state.page,
+          pageSize: state.pageSize,
+          total: state.filteredTotal,
+          onPageChange: state.setPage,
+          onPageSizeChange: (pageSize) => {
+            state.setPageSize(pageSize);
+            state.setPage(1);
+          },
+        })}
+        renderPagination={renderTablePagination}
         size="small"
       />
       <PlatformEditorDialog
@@ -66,6 +88,10 @@ export function PlatformSettings() {
 
 function usePlatforms() {
   const [items, setItems] = useState<Platform[]>([]);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<PlatformStatusFilter>("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const mountedRef = useMountedRef();
@@ -89,7 +115,75 @@ function usePlatforms() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
-  return { items, loading, error, refresh };
+  const filtered = filterPlatforms(items, query, status);
+  const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize);
+  return {
+    items,
+    pageItems,
+    filteredTotal: filtered.length,
+    query,
+    status,
+    page,
+    pageSize,
+    loading,
+    error,
+    setQuery,
+    setStatus,
+    setPage,
+    setPageSize,
+    refresh,
+  };
+}
+
+type PlatformState = ReturnType<typeof usePlatforms>;
+
+function PlatformFilters({ state }: { state: PlatformState }) {
+  const [search, setSearch] = useState(state.query);
+  const submit = () => {
+    state.setPage(1);
+    state.setQuery(search.trim());
+  };
+  return (
+    <Space>
+      <Input
+        aria-label="搜索业务平台"
+        prefix={<IconSearch />}
+        value={search}
+        onChange={setSearch}
+        onEnterPress={submit}
+        placeholder="平台名称或 ID"
+        style={{ width: 220 }}
+      />
+      <Button aria-label="查询业务平台" icon={<IconSearch />} onClick={submit} />
+      <Select
+        aria-label="业务平台状态"
+        value={state.status}
+        optionList={PLATFORM_STATUS_OPTIONS}
+        onChange={(value) => {
+          state.setPage(1);
+          state.setStatus(String(value ?? "") as PlatformStatusFilter);
+        }}
+        style={{ width: 130 }}
+      />
+    </Space>
+  );
+}
+
+function filterPlatforms(
+  platforms: Platform[],
+  query: string,
+  status: PlatformStatusFilter,
+): Platform[] {
+  const keyword = query.trim().toLowerCase();
+  return platforms.filter((platform) => {
+    if (status === "enabled" && !platform.enabled) return false;
+    if (status === "disabled" && platform.enabled) return false;
+    if (status === "adapter_missing" && platform.adapterInstalled) return false;
+    if (keyword === "") return true;
+    return [platform.platform, platform.displayName, platform.configFingerprint]
+      .filter((value): value is string => Boolean(value))
+      .some((value) => value.toLowerCase().includes(keyword));
+  });
 }
 
 function platformColumns(onEdit: (platform: Platform) => void, onDeleted: () => Promise<void>) {

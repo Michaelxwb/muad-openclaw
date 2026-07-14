@@ -5,7 +5,10 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"sync"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
@@ -13,8 +16,7 @@ import (
 )
 
 const (
-	maxSkillReloadPods        = 100
-	maxSkillReloadConcurrency = 4
+	maxSkillReloadPods = 100
 )
 
 func (s *Server) handleAction(w http.ResponseWriter, r *http.Request) {
@@ -125,8 +127,8 @@ type applyRequest struct {
 }
 
 func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
-	if s.operations == nil {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")
+	if s.reconcile == nil {
+		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime reconciler unavailable")
 		return
 	}
 	var request applyRequest
@@ -134,17 +136,40 @@ func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
 		return
 	}
-	podIDs, ok := validPodIDs(request.PodIDs)
-	if !ok {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "podIds must contain valid unique Pod IDs")
-		return
+	podIDs := request.PodIDs
+	if len(podIDs) == 0 {
+		var err error
+		podIDs, err = s.allPodIDs()
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, codeInternal, "list Pods failed")
+			return
+		}
+	} else {
+		var ok bool
+		podIDs, ok = validPodIDs(request.PodIDs)
+		if !ok {
+			writeErr(w, http.StatusBadRequest, codeInvalidField, "podIds must contain valid unique Pod IDs")
+			return
+		}
 	}
-	results, err := s.reloadSkills(r.Context(), podIDs)
+	results, err := s.enqueueSkillConfigApply(r.Context(), podIDs)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "inspect Pod runtimes failed")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+func (s *Server) allPodIDs() ([]string, error) {
+	pods, _, err := s.store.ListPods(repo.PodListFilter{})
+	if err != nil {
+		return nil, err
+	}
+	podIDs := make([]string, 0, len(pods))
+	for _, pod := range pods {
+		podIDs = append(podIDs, pod.PodID)
+	}
+	return podIDs, nil
 }
 
 func validPodIDs(input []string) ([]string, bool) {
@@ -164,7 +189,7 @@ func validPodIDs(input []string) ([]string, bool) {
 	return append([]string(nil), input...), true
 }
 
-func (s *Server) reloadSkills(ctx context.Context, podIDs []string) (map[string]string, error) {
+func (s *Server) enqueueSkillConfigApply(ctx context.Context, podIDs []string) (map[string]string, error) {
 	pods, _, err := s.store.ListPods(repo.PodListFilter{})
 	if err != nil {
 		return nil, err
@@ -175,8 +200,90 @@ func (s *Server) reloadSkills(ctx context.Context, podIDs []string) (map[string]
 	}
 	known, running := podSets(pods, infos)
 	results, reload := classifyReloadTargets(podIDs, known, running)
-	s.restartForSkillReload(ctx, reload, results)
+	syncDir, cleanup, err := s.activePublicSkillSyncDir()
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+	for _, podID := range reload {
+		if err := s.drv.SyncPublicSkills(ctx, podID, syncDir); err != nil {
+			results[podID] = "failed_sync"
+			continue
+		}
+		s.enqueueReconcile(podID)
+		results[podID] = "queued"
+	}
 	return results, nil
+}
+
+func (s *Server) activePublicSkillSyncDir() (string, func(), error) {
+	root, err := resolvePublicSkillRoot(s.cfg.SkillsDir)
+	if err != nil {
+		return "", func() {}, err
+	}
+	assets, managedNames, err := s.publicSkillAssetsForSync()
+	if err != nil {
+		return "", func() {}, err
+	}
+	tempRoot, err := os.MkdirTemp("", "muad-active-public-skills-")
+	if err != nil {
+		return "", func() {}, err
+	}
+	cleanup := func() { _ = os.RemoveAll(tempRoot) }
+	for _, asset := range assets {
+		source := activePublicSkillSource(root, asset)
+		target := filepath.Join(tempRoot, asset.Name)
+		if err := copySkillDirectory(source, target); err != nil {
+			cleanup()
+			return "", func() {}, err
+		}
+	}
+	if err := writePublicSkillManagedIndex(tempRoot, managedNames); err != nil {
+		cleanup()
+		return "", func() {}, err
+	}
+	return tempRoot, cleanup, nil
+}
+
+func (s *Server) publicSkillAssetsForSync() ([]repo.SkillAsset, []string, error) {
+	var active []repo.SkillAsset
+	managed := map[string]struct{}{}
+	for _, status := range []string{repo.SkillStatusActive, repo.SkillStatusDisabled, repo.SkillStatusDeleted} {
+		assets, _, err := s.store.ListSkillAssets(repo.SkillAssetListFilter{
+			Scope: repo.SkillScopePublic, Status: status,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, asset := range assets {
+			managed[asset.Name] = struct{}{}
+			if asset.Status == repo.SkillStatusActive {
+				active = append(active, asset)
+			}
+		}
+	}
+	names := make([]string, 0, len(managed))
+	for name := range managed {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return active, names, nil
+}
+
+func writePublicSkillManagedIndex(root string, names []string) error {
+	body := strings.Join(names, "\n")
+	if body != "" {
+		body += "\n"
+	}
+	return os.WriteFile(filepath.Join(root, ".muad-public-index"), []byte(body), 0o600)
+}
+
+func activePublicSkillSource(root string, asset repo.SkillAsset) string {
+	source := filepath.Clean(strings.TrimSpace(asset.SourcePath))
+	if source != "" && filepath.IsAbs(source) && pathWithin(root, source) {
+		return source
+	}
+	return filepath.Join(root, asset.Name)
 }
 
 func podSets(pods []repo.PodSummary, infos []driver.ContainerInfo) (map[string]bool, map[string]bool) {
@@ -206,29 +313,4 @@ func classifyReloadTargets(
 		}
 	}
 	return results, reload
-}
-
-func (s *Server) restartForSkillReload(ctx context.Context, podIDs []string, results map[string]string) {
-	var wait sync.WaitGroup
-	var lock sync.Mutex
-	limit := make(chan struct{}, maxSkillReloadConcurrency)
-	for _, podID := range podIDs {
-		wait.Add(1)
-		go func(id string) {
-			defer wait.Done()
-			limit <- struct{}{}
-			defer func() { <-limit }()
-			status := "reloaded"
-			err := s.runPodExclusive(ctx, id, func(runCtx context.Context) error {
-				return s.drv.Restart(runCtx, id)
-			})
-			if err != nil {
-				status = "failed"
-			}
-			lock.Lock()
-			results[id] = status
-			lock.Unlock()
-		}(podID)
-	}
-	wait.Wait()
 }

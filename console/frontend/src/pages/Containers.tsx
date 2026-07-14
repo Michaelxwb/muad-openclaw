@@ -45,16 +45,6 @@ function useContainersController() {
         Toast.error(caught instanceof Error ? caught.message : "Pod 操作失败");
     }
   };
-  const reloadSkills = async () => {
-    if (selectedIds.length === 0) return;
-    try {
-      await api.reloadSkills(selectedIds);
-      Toast.success(`已触发 ${selectedIds.length} 个 Pod Skill 重载`);
-      await list.refresh();
-    } catch (caught) {
-      Toast.error(caught instanceof Error ? caught.message : "Skill 重载失败");
-    }
-  };
   const detailDeleted = async () => {
     dialogs.setDetailPodId(null);
     await list.refresh();
@@ -71,7 +61,6 @@ function useContainersController() {
     selectedIds,
     setSelectedIds,
     runAction,
-    reloadSkills,
     detailDeleted,
     created,
   };
@@ -90,7 +79,6 @@ function PodListView({ state }: { state: ContainersState }) {
           state={list}
           selectedIds={state.selectedIds}
           onCreate={() => dialogs.setCreateOpen(true)}
-          onReloadSkills={() => void state.reloadSkills()}
           onBatchUpgrade={() => dialogs.setUpgradeIds(state.selectedIds)}
           onBatchDelete={() => {
             state.setSelectedIds([]);

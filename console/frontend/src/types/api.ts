@@ -9,6 +9,11 @@ export type IdentityStatus = "active" | "disabled";
 export type BindingCodeStatus = "pending" | "used" | "expired" | "revoked";
 export type BindingCodePurpose = "create_user_first_identity" | "add_identity_to_existing_user";
 export type PodAction = "start" | "stop" | "restart";
+export type SkillScope = "system" | "public" | "private";
+export type SkillStatus = "active" | "disabled" | "deleted";
+export type EffectiveSkillStatus = "effective" | "conflict" | "disabled" | "missing_credential";
+export type SkillPolicyAction = "disable" | "allow_override";
+export type SkillExecutionStatus = "running" | "succeeded" | "failed" | "cancelled";
 
 export interface ApiSuccessResponse<T> {
   code: 0;
@@ -336,6 +341,154 @@ export interface LLMModelTestResult {
   error?: string;
 }
 
+export interface SkillAsset {
+  skillId: string;
+  name: string;
+  scope: SkillScope;
+  humanUserId?: string;
+  podId?: string;
+  displayName: string;
+  version: string;
+  status: SkillStatus;
+  sourcePath: string;
+  manifestHash: string;
+  manifestJson: string;
+  entryType: string;
+  platformsJson: string;
+  browserRequired: boolean;
+  progressSupported: boolean;
+  systemProtected: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SkillAssetQuery extends PageQuery {
+  scope?: SkillScope;
+  status?: SkillStatus;
+  humanUserId?: string;
+  podId?: string;
+}
+
+export interface SkillAssetUpdateInput {
+  status: SkillStatus;
+}
+
+export interface SkillPlatformStatus {
+  platform: string;
+  credentialStatus: "configured" | "missing" | "platform_disabled" | "platform_missing";
+  platformEnabled: boolean;
+}
+
+export interface SkillExecutionSummary {
+  executionId: string;
+  status: SkillExecutionStatus;
+  startedAt: string;
+  durationMs: number;
+}
+
+export interface EffectiveSkill {
+  name: string;
+  displayName: string;
+  effective: boolean;
+  effectiveSource: SkillScope;
+  status: EffectiveSkillStatus;
+  version: string;
+  systemSkillId?: string;
+  publicSkillId?: string;
+  privateSkillId?: string;
+  conflict: boolean;
+  conflictReason?: string;
+  platforms: SkillPlatformStatus[];
+  progressSupported: boolean;
+  browserRequired: boolean;
+  runtimePending: boolean;
+  lastExecution?: SkillExecutionSummary;
+}
+
+export interface SkillPolicy {
+  policyId: string;
+  humanUserId: string;
+  skillName: string;
+  action: SkillPolicyAction;
+  reason: string;
+  createdBy: string;
+  expiresAt?: string;
+  createdAt: string;
+}
+
+export interface SkillPolicyInput {
+  skillName: string;
+  action: SkillPolicyAction;
+  reason?: string;
+  expiresAt?: string;
+}
+
+export interface PrivateSkillUploadInput {
+  bundle: File | Blob;
+  filename?: string;
+  expectedName?: string;
+}
+
+export interface PublicSkillUploadInput {
+  bundle: File | Blob;
+  filename?: string;
+}
+
+export interface PrivateSkillUploadResult {
+  skill: SkillAsset;
+}
+
+export interface PublicSkillUploadResult {
+  skill: SkillAsset;
+  affectedPodIds: string[];
+}
+
+export interface PublicSkillStorageStatus {
+  driver: "docker" | "k8s" | string;
+  name: string;
+  namespace: string;
+  configured: boolean;
+  ready: boolean;
+  phase: string;
+  accessMode: string;
+  storageClass: string;
+  size: string;
+  message: string;
+}
+
+export interface PrivateSkillDeleteResult {
+  deleted: boolean;
+  skillId: string;
+}
+
+export interface SkillExecution {
+  executionId: string;
+  podId: string;
+  humanUserId: string;
+  agentId: string;
+  skillName: string;
+  skillScope: SkillScope;
+  skillVersion: string;
+  status: SkillExecutionStatus;
+  startedAt: string;
+  endedAt?: string;
+  durationMs: number;
+  progressJson: string;
+  errorCode?: string;
+  errorMessage?: string;
+  inputSummary?: string;
+  outputSummary?: string;
+  createdAt: string;
+}
+
+export interface SkillExecutionQuery extends PageQuery {
+  podId?: string;
+  humanUserId?: string;
+  agentId?: string;
+  skillName?: string;
+  status?: SkillExecutionStatus;
+}
+
 export interface ResourceValues {
   memLimit: string;
   cpuLimit: string;
@@ -386,6 +539,8 @@ export interface AuditMetadata {
   identityId?: string;
   bindingCodeId?: string;
   platform?: string;
+  skillId?: string;
+  skillName?: string;
   fingerprint?: string;
   status?: string;
   errorCode?: string;
@@ -399,7 +554,7 @@ export interface AuditEntry {
   actor: string;
   action: string;
   target: string;
-  targetType: "pod" | "human_user" | "identity" | "binding_code" | "platform" | "generic";
+  targetType: "pod" | "human_user" | "identity" | "binding_code" | "platform" | "skill" | "generic";
   payload: string;
   metadata: AuditMetadata;
   ts: string;

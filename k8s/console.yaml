@@ -4,7 +4,7 @@
 #
 # 用法：
 #   kubectl create namespace muad
-#   # 先按 console/config.example.yaml 写好 config.yaml（runtimeDriver: k8s, masterKey, adminPassword 等）
+#   # 先按 console/backend/config.example.yaml 写好 config.yaml（runtime.driver: k8s, security.masterKey, admin.password 等）
 #   kubectl -n muad create secret generic muad-console-config --from-file=config.yaml=./config.yaml
 #   kubectl apply -f k8s/console.yaml
 ---
@@ -99,7 +99,7 @@ spec:
       volumes:
         - name: config
           secret:
-            secretName: muad-console-config # 含 config.yaml（含 masterKey/adminPassword）
+            secretName: muad-console-config # 含 config.yaml（含 security.masterKey/admin.password）
         - name: data
           persistentVolumeClaim:
             claimName: muad-console-data

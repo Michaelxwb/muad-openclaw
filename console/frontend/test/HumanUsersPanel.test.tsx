@@ -4,6 +4,7 @@ import { Toast } from "@douyinfe/semi-ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   BindingCode,
+  EffectiveSkill,
   HumanUser,
   HumanUserDetail,
   Identity,
@@ -30,6 +31,10 @@ const apiMocks = vi.hoisted(() => ({
   listPlatformCredentials: vi.fn(),
   putPlatformCredential: vi.fn(),
   deletePlatformCredential: vi.fn(),
+  listHumanUserSkills: vi.fn(),
+  uploadPrivateSkill: vi.fn(),
+  deletePrivateSkill: vi.fn(),
+  createSkillPolicy: vi.fn(),
 }));
 
 vi.mock("../src/api", async (importOriginal) => {
@@ -140,6 +145,50 @@ const xdrCredential: PlatformCredential = {
   updatedAt: "2026-07-11T00:00:00Z",
 };
 
+const effectiveSkill: EffectiveSkill = {
+  name: "xdr-query",
+  displayName: "XDR Query",
+  effective: true,
+  effectiveSource: "public",
+  status: "missing_credential",
+  version: "1.0.0",
+  publicSkillId: "skill-public-xdr",
+  conflict: false,
+  platforms: [
+    {
+      platform: "xdr",
+      credentialStatus: "missing",
+      platformEnabled: true,
+    },
+  ],
+  progressSupported: true,
+  browserRequired: false,
+  runtimePending: true,
+  lastExecution: {
+    executionId: "exec-a",
+    status: "failed",
+    startedAt: "2026-07-11T00:00:00Z",
+    durationMs: 123,
+  },
+};
+
+const conflictSkill: EffectiveSkill = {
+  name: "soar-sync",
+  displayName: "SOAR Sync",
+  effective: false,
+  effectiveSource: "public",
+  status: "conflict",
+  version: "1.0.0",
+  publicSkillId: "skill-public-soar",
+  privateSkillId: "skill-private-soar",
+  conflict: true,
+  conflictReason: "private_overrides_public_requires_approval",
+  platforms: [],
+  progressSupported: false,
+  browserRequired: false,
+  runtimePending: false,
+};
+
 beforeEach(() => {
   for (const mock of Object.values(apiMocks)) mock.mockReset();
   apiMocks.listHumanUsers.mockResolvedValue({ items: [user], total: 1, page: 1, pageSize: 20 });
@@ -194,6 +243,44 @@ beforeEach(() => {
     deleted: true,
     cacheInvalidation: "on_next_resolve",
   });
+  apiMocks.listHumanUserSkills.mockResolvedValue({
+    items: [effectiveSkill, conflictSkill],
+    total: 2,
+  });
+  apiMocks.uploadPrivateSkill.mockResolvedValue({
+    skill: {
+      skillId: "skill-private-upload",
+      name: "xdr-upload",
+      displayName: "XDR Upload",
+      scope: "private",
+      humanUserId: "user-a",
+      podId: "pod-a",
+      version: "1.0.0",
+      manifestHash: "sha256:skill",
+      status: "active",
+      sourcePath: "/home/node/.openclaw/workspace-user-a/skills/xdr-upload",
+      metadataJson: "{}",
+      platforms: ["xdr"],
+      progressSupported: true,
+      browserRequired: false,
+      systemProtected: false,
+      createdAt: "2026-07-11T00:00:00Z",
+      updatedAt: "2026-07-11T00:00:00Z",
+    },
+  });
+  apiMocks.deletePrivateSkill.mockResolvedValue({
+    deleted: true,
+    skillId: "skill-private-soar",
+  });
+  apiMocks.createSkillPolicy.mockResolvedValue({
+    policyId: "policy-a",
+    humanUserId: "user-a",
+    skillName: "soar-sync",
+    action: "allow_override",
+    reason: "console",
+    createdBy: "admin",
+    createdAt: "2026-07-11T00:00:00Z",
+  });
 });
 
 afterEach(() => Toast.destroyAll());
@@ -241,6 +328,12 @@ describe("HumanUsersPanel", () => {
     apiMocks.createHumanUser.mockResolvedValue({ humanUser: user, identity });
     renderPanel();
     await openCreateDialog();
+    expect(screen.getByText("Pod A (pod-a) 1/10")).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("combobox")
+        .some((element) => element.getAttribute("aria-disabled") === "true"),
+    ).toBe(true);
     fireEvent.change(screen.getByRole("textbox", { name: "显示名称" }), {
       target: { value: "Alice" },
     });
@@ -324,7 +417,7 @@ describe("HumanUsersPanel", () => {
     renderPanel();
     await openUserDetail();
 
-    expect(screen.getByText("运行 Agent")).toBeInTheDocument();
+    expect(screen.getAllByText("运行 Agent").length).toBeGreaterThan(0);
     expect(screen.getByText("浏览器配置")).toBeInTheDocument();
     expect(screen.getByText("已绑定 IM 数")).toBeInTheDocument();
     expect(screen.queryByText("Human User ID")).not.toBeInTheDocument();
@@ -337,8 +430,8 @@ describe("HumanUsersPanel", () => {
 
   it("lists cleanup impact before deleting a Human User", async () => {
     const onPodChanged = renderPanel();
-    await openUserDetail();
-    fireEvent.click(screen.getAllByRole("button", { name: "删除" })[0]);
+    await screen.findByText("Alice");
+    fireEvent.click(screen.getByRole("button", { name: "删除用户 Alice" }));
 
     expect(screen.getByText(/workspace 与 private Skill/)).toBeInTheDocument();
     expect(screen.getByText(/浏览器配置与浏览器状态/)).toBeInTheDocument();
@@ -349,12 +442,12 @@ describe("HumanUsersPanel", () => {
     expect(onPodChanged).toHaveBeenCalled();
   });
 
-  it("keeps save and delete actions in the dialog footer", async () => {
+  it("keeps only the save action in the detail dialog footer", async () => {
     renderPanel();
     await openUserDetail();
 
     expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "删除" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "删除" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "关闭" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "保存基本信息" })).not.toBeInTheDocument();
     expect(document.querySelector(".standard-modal")).toBeInTheDocument();
@@ -503,6 +596,118 @@ describe("HumanUsersPanel", () => {
 
     await waitFor(() =>
       expect(apiMocks.deletePlatformCredential).toHaveBeenCalledWith("user-a", "xdr"),
+    );
+  });
+
+  it("shows effective Skills with conflict, credential, runtime, and execution state", async () => {
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    expect(await screen.findByText("XDR Query")).toBeInTheDocument();
+    expect(screen.getByText("xdr-query")).toBeInTheDocument();
+    expect(screen.getByText("缺少平台凭证")).toBeInTheDocument();
+    expect(screen.getByText("xdr: 缺凭证")).toBeInTheDocument();
+    expect(screen.getByText("待应用")).toBeInTheDocument();
+    expect(screen.getByText("failed")).toBeInTheDocument();
+    expect(screen.getByText("123ms")).toBeInTheDocument();
+    expect(screen.getByText("SOAR Sync")).toBeInTheDocument();
+    expect(screen.getAllByText("冲突").length).toBeGreaterThan(0);
+    expect(screen.getByText("private_overrides_public_requires_approval")).toBeInTheDocument();
+    expect(document.querySelector('select[aria-label="Skill 状态过滤"]')).not.toBeInTheDocument();
+  });
+
+  it("keeps the Skill tab usable when the API returns null platform lists", async () => {
+    apiMocks.listHumanUserSkills.mockResolvedValue({
+      items: [{ ...effectiveSkill, platforms: null, lastExecution: null }],
+      total: 1,
+    });
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    expect(await screen.findByText("XDR Query")).toBeInTheDocument();
+    expect(screen.getAllByText("-").length).toBeGreaterThan(0);
+  });
+
+  it("creates user Skill policies for allow override and disable", async () => {
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    await screen.findByText("SOAR Sync");
+    fireEvent.click(screen.getByRole("button", { name: "允许覆盖" }));
+    await waitFor(() =>
+      expect(apiMocks.createSkillPolicy).toHaveBeenCalledWith("user-a", {
+        skillName: "soar-sync",
+        action: "allow_override",
+        reason: "console",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "禁用" }));
+    await waitFor(() =>
+      expect(apiMocks.createSkillPolicy).toHaveBeenCalledWith("user-a", {
+        skillName: "xdr-query",
+        action: "disable",
+        reason: "console",
+      }),
+    );
+  });
+
+  it("uploads a private Skill bundle from the user detail dialog", async () => {
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    await screen.findByText("XDR Query");
+    fireEvent.click(screen.getByText("上传 Private Skill").closest("button") as HTMLButtonElement);
+    const file = new File(["bundle"], "xdr-upload.zip", { type: "application/zip" });
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+    if (!fileInput) return;
+    expect(fileInput).toHaveAttribute("accept", ".tar.gz,.zip");
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    await waitFor(() =>
+      expect(apiMocks.uploadPrivateSkill).toHaveBeenCalledWith("user-a", {
+        bundle: file,
+        filename: "xdr-upload.zip",
+      }),
+    );
+    expect(screen.queryByLabelText("期望 Skill 名称")).not.toBeInTheDocument();
+  });
+
+  it("shows private Skill upload failures inside the dialog", async () => {
+    apiMocks.uploadPrivateSkill.mockRejectedValueOnce(new Error("invalid skill bundle"));
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    await screen.findByText("XDR Query");
+    fireEvent.click(screen.getByText("上传 Private Skill").closest("button") as HTMLButtonElement);
+    const file = new File(["bundle"], "broken.tar.gz", { type: "application/gzip" });
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+    if (!fileInput) return;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    expect(await screen.findByText("invalid skill bundle")).toBeInTheDocument();
+  });
+
+  it("deletes a private Skill through confirmation", async () => {
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    await screen.findByText("SOAR Sync");
+    fireEvent.click(screen.getByLabelText("删除 Private Skill soar-sync user-a"));
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    await waitFor(() =>
+      expect(apiMocks.deletePrivateSkill).toHaveBeenCalledWith("user-a", "skill-private-soar"),
     );
   });
 });

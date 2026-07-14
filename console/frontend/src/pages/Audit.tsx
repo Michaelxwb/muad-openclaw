@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Input, Skeleton, Space, Table, Tag } from "@douyinfe/semi-ui";
+import { IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../api";
 import type { AuditEntry, AuditQuery } from "../api";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
@@ -113,18 +114,20 @@ function AuditToolbar({
   return (
     <ListToolbar
       filters={
-        <Space wrap>
+        <Space>
           <Input
             aria-label="按操作人过滤"
             placeholder="操作人"
             value={value.actor}
             onChange={(input) => field("actor", input)}
+            style={{ width: 160 }}
           />
           <Input
             aria-label="按动作过滤"
             placeholder="动作"
             value={value.action}
             onChange={(input) => field("action", input)}
+            style={{ width: 180 }}
           />
           <Input
             aria-label="按目标过滤"
@@ -132,8 +135,9 @@ function AuditToolbar({
             value={value.target}
             onChange={(input) => field("target", input)}
             onEnterPress={onSearch}
+            style={{ width: 160 }}
           />
-          <Button theme="solid" onClick={onSearch}>
+          <Button aria-label="查询审计日志" icon={<IconSearch />} theme="solid" onClick={onSearch}>
             查询
           </Button>
         </Space>
@@ -184,6 +188,7 @@ function targetTypeLabel(type: AuditEntry["targetType"]): string {
     identity: "Identity",
     binding_code: "Binding Code",
     platform: "Platform",
+    skill: "Skill",
     generic: "通用",
   };
   return labels[type];
@@ -197,6 +202,7 @@ function auditContext(entry: AuditEntry) {
     entry.metadata.identityId && `identity=${entry.metadata.identityId}`,
     entry.metadata.bindingCodeId && `code=${entry.metadata.bindingCodeId}`,
     entry.metadata.platform && `platform=${entry.metadata.platform}`,
+    entry.metadata.skillName && `skill=${entry.metadata.skillName}`,
     entry.metadata.generation !== undefined && `generation=${entry.metadata.generation}`,
   ].filter((value): value is string => Boolean(value));
   return values.length > 0 ? <span className="mono">{values.join(" · ")}</span> : "-";

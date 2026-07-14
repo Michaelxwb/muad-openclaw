@@ -37,6 +37,13 @@ const (
 	ActionPlatformCredentialCreate Action = "platform_credential.create"
 	ActionPlatformCredentialUpdate Action = "platform_credential.update"
 	ActionPlatformCredentialDelete Action = "platform_credential.delete"
+	ActionSkillAssetScan           Action = "skill.asset.scan"
+	ActionSkillAssetInstall        Action = "skill.asset.install"
+	ActionSkillAssetUpdate         Action = "skill.asset.update"
+	ActionSkillAssetDelete         Action = "skill.asset.delete"
+	ActionSkillPolicyCreate        Action = "skill.policy.create"
+	ActionSkillPolicyDelete        Action = "skill.policy.delete"
+	ActionSkillExecutionFail       Action = "skill.execution.fail"
 	ActionSessionResolveFail       Action = "session_credential.resolve_fail"
 	ActionPodConfigApply           Action = "pod_config.apply"
 	ActionPodConfigSuccess         Action = "pod_config.success"
@@ -54,6 +61,9 @@ var validActions = map[Action]struct{}{
 	ActionPlatformConfigCreate: {}, ActionPlatformConfigUpdate: {}, ActionPlatformConfigDisable: {},
 	ActionPlatformConfigDelete:     {},
 	ActionPlatformCredentialCreate: {}, ActionPlatformCredentialUpdate: {}, ActionPlatformCredentialDelete: {},
+	ActionSkillAssetScan: {}, ActionSkillAssetInstall: {}, ActionSkillAssetUpdate: {},
+	ActionSkillAssetDelete: {}, ActionSkillPolicyCreate: {}, ActionSkillPolicyDelete: {},
+	ActionSkillExecutionFail: {},
 	ActionSessionResolveFail: {}, ActionPodConfigApply: {}, ActionPodConfigSuccess: {},
 	ActionPodConfigFail: {}, ActionRuntimeGuardBind: {}, ActionRuntimeGuardReject: {},
 	ActionPodServiceTokenRotate: {},
@@ -67,6 +77,8 @@ type Metadata struct {
 	IdentityID        string `json:"identityId,omitempty"`
 	BindingCodeID     string `json:"bindingCodeId,omitempty"`
 	Platform          string `json:"platform,omitempty"`
+	SkillID           string `json:"skillId,omitempty"`
+	SkillName         string `json:"skillName,omitempty"`
 	Fingerprint       string `json:"fingerprint,omitempty"`
 	Status            string `json:"status,omitempty"`
 	ErrorCode         string `json:"errorCode,omitempty"`

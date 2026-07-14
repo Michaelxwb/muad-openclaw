@@ -5,47 +5,6 @@ import { Modal } from "@douyinfe/semi-ui";
 import { BatchToolbar } from "../src/components/BatchToolbar";
 
 describe("BatchToolbar", () => {
-  it("disables skill reload without selected Pods", () => {
-    const onReloadSkills = vi.fn();
-    render(
-      <BatchToolbar
-        selectedIds={[]}
-        onReloadSkills={onReloadSkills}
-        onBatchUpgrade={vi.fn()}
-        onBatchDelete={vi.fn()}
-      />,
-    );
-
-    const reload = screen.getByRole("button", { name: "重载 Skill" });
-    expect(reload).toBeDisabled();
-    fireEvent.click(reload);
-    expect(onReloadSkills).not.toHaveBeenCalled();
-  });
-
-  it("confirms skill reload for selected Pods", () => {
-    const onReloadSkills = vi.fn();
-    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
-      expect(config.content).toContain("1 个");
-      config.onOk?.();
-      return {} as ReturnType<typeof Modal.confirm>;
-    });
-    render(
-      <BatchToolbar
-        selectedIds={["alice"]}
-        onReloadSkills={onReloadSkills}
-        onBatchUpgrade={vi.fn()}
-        onBatchDelete={vi.fn()}
-      />,
-    );
-
-    const reload = screen.getByRole("button", { name: "重载 Skill" });
-    expect(reload).toBeEnabled();
-    fireEvent.click(reload);
-    expect(confirm).toHaveBeenCalledTimes(1);
-    expect(onReloadSkills).toHaveBeenCalledTimes(1);
-    confirm.mockRestore();
-  });
-
   it("confirms batch upgrade with selected count", () => {
     const onBatchUpgrade = vi.fn();
     const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
@@ -56,7 +15,6 @@ describe("BatchToolbar", () => {
     render(
       <BatchToolbar
         selectedIds={["alice", "bob"]}
-        onReloadSkills={vi.fn()}
         onBatchUpgrade={onBatchUpgrade}
         onBatchDelete={vi.fn()}
       />,
@@ -72,7 +30,6 @@ describe("BatchToolbar", () => {
     render(
       <BatchToolbar
         selectedIds={["alice", "bob"]}
-        onReloadSkills={vi.fn()}
         onBatchUpgrade={vi.fn()}
         onBatchDelete={vi.fn()}
       />,
@@ -92,7 +49,6 @@ describe("BatchToolbar", () => {
     render(
       <BatchToolbar
         selectedIds={["alice", "bob"]}
-        onReloadSkills={vi.fn()}
         onBatchUpgrade={vi.fn()}
         onBatchDelete={vi.fn()}
       />,

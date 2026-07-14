@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -68,21 +70,101 @@ func TestPodOperationsAPI_SkillReloadReportsPartialResults(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
-	e.drv.restartErrors["pod-b"] = errors.New("simulated restart failure")
+	e.reconcile.podIDs = nil
+	e.drv.removeErr = errors.New("unused runtime error")
 	body := `{"podIds":["pod-a","pod-b","pod-missing"]}`
 	rr := e.do(http.MethodPost, "/api/v1/skills/reload", body)
 	assertStatus(t, rr, http.StatusOK)
 	data := decodeAPIData[struct {
 		Results map[string]string `json:"results"`
 	}](t, rr.Body.Bytes())
-	want := map[string]string{"pod-a": "reloaded", "pod-b": "failed", "pod-missing": "not_found"}
+	want := map[string]string{"pod-a": "queued", "pod-b": "queued", "pod-missing": "not_found"}
 	for podID, status := range want {
 		if data.Results[podID] != status {
 			t.Errorf("result[%s] = %q, want %q", podID, data.Results[podID], status)
 		}
 	}
-	if strings.Contains(rr.Body.String(), "simulated restart failure") {
+	if strings.Contains(rr.Body.String(), "unused runtime error") {
 		t.Fatal("reload response exposed a runtime error")
+	}
+	if strings.Join(e.reconcile.podIDs, ",") != "pod-a,pod-b" {
+		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	}
+	if len(e.drv.syncPublicSkillCalls) != 2 ||
+		e.drv.syncPublicSkillCalls[0].podID != "pod-a" ||
+		e.drv.syncPublicSkillCalls[1].podID != "pod-b" {
+		t.Fatalf("public Skill sync calls = %+v", e.drv.syncPublicSkillCalls)
+	}
+	if e.drv.restarted["pod-a"] != 0 || e.drv.restarted["pod-b"] != 0 {
+		t.Fatalf("Skill reload should enqueue config apply instead of direct restart: %+v", e.drv.restarted)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadWithoutPodIDsAppliesAllPods(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
+	e.reconcile.podIDs = nil
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{}`)
+	assertStatus(t, rr, http.StatusOK)
+	data := decodeAPIData[struct {
+		Results map[string]string `json:"results"`
+	}](t, rr.Body.Bytes())
+	if data.Results["pod-a"] != "queued" || data.Results["pod-b"] != "queued" {
+		t.Fatalf("global reload results = %+v", data.Results)
+	}
+	if strings.Join(e.reconcile.podIDs, ",") != "pod-a,pod-b" {
+		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadSyncsOnlyActivePublicSkills(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createPublicSkillDir(t, e.skillsDir, "enabled-skill")
+	createPublicSkillDir(t, e.skillsDir, "disabled-skill")
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "enabled-skill", Scope: repo.SkillScopePublic, Status: repo.SkillStatusActive,
+		SourcePath: filepath.Join(e.skillsDir, "enabled-skill"), ManifestHash: "sha256:enabled",
+	})
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "disabled-skill", Scope: repo.SkillScopePublic, Status: repo.SkillStatusDisabled,
+		SourcePath: filepath.Join(e.skillsDir, "disabled-skill"), ManifestHash: "sha256:disabled",
+	})
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)
+	assertStatus(t, rr, http.StatusOK)
+	if len(e.drv.syncPublicSkillCalls) != 1 {
+		t.Fatalf("public Skill sync calls = %+v", e.drv.syncPublicSkillCalls)
+	}
+	if got := strings.Join(e.drv.syncPublicSkillCalls[0].sourceSkillNames, ","); got != "enabled-skill" {
+		t.Fatalf("synced public Skills = %q, want enabled-skill", got)
+	}
+	if got := e.drv.syncPublicSkillCalls[0].sourceIndex; got != "disabled-skill\nenabled-skill\n" {
+		t.Fatalf("managed public Skill index = %q", got)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadStopsBeforeApplyWhenPublicSkillSyncFails(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	e.reconcile.podIDs = nil
+	e.drv.syncPublicSkillErr = errors.New("sync failed")
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)
+	assertStatus(t, rr, http.StatusOK)
+	data := decodeAPIData[struct {
+		Results map[string]string `json:"results"`
+	}](t, rr.Body.Bytes())
+	if data.Results["pod-a"] != "failed_sync" {
+		t.Fatalf("result[pod-a] = %q", data.Results["pod-a"])
+	}
+	if len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	}
+	if strings.Contains(rr.Body.String(), "sync failed") {
+		t.Fatal("Skill reload response exposed sync error details")
 	}
 }
 
@@ -128,5 +210,16 @@ func assertStatus(t *testing.T, response *httptest.ResponseRecorder, want int) {
 	t.Helper()
 	if response.Code != want {
 		t.Fatalf("status = %d, want %d", response.Code, want)
+	}
+}
+
+func createPublicSkillDir(t *testing.T, root, name string) {
+	t.Helper()
+	dir := filepath.Join(root, name)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatalf("mkdir public Skill %s: %v", name, err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("# "+name+"\n"), 0o600); err != nil {
+		t.Fatalf("write public Skill %s: %v", name, err)
 	}
 }

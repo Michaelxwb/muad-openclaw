@@ -1,49 +1,71 @@
-# muad 控制台配置（唯一配置源；env 可选覆盖：env > yaml > 内置默认值）
+# muad Console 配置模板（backend 本地开发 / K8s Secret 均可使用）。
 # 复制为 config.yaml 后按需修改。config.yaml 含机密，已 gitignore、运行时挂载、不入镜像。
+# 优先级：环境变量 > config.yaml > 内置兜底默认值。
 
-# AES-GCM 加密主密钥（派生加密 DB 内凭证的 key）。生成：openssl rand -hex 32
-masterKey: ""
+# 安全与密钥
+security:
+  # AES-GCM 加密主密钥（派生加密 DB 内凭证的 key）。生成：openssl rand -hex 32
+  masterKey: ""
+  # JWT session token 签名密钥；留空默认复用 masterKey
+  # jwtSecret: ""
 
-# 初始管理员密码（首启幂等引导；用户名见下方 adminUser）
-adminPassword: ""
+# 初始管理员（首启幂等引导）
+admin:
+  user: "admin"
+  password: ""
 
-# 运行时驱动："docker" 或 "k8s"（默认 docker）
-runtimeDriver: docker
+# Console 服务自身
+server:
+  # 监听地址；集群/宿主机通常用 0.0.0.0:8080，本地开发可用 :8080
+  listenAddr: ":8080"
+  # 可选日志目录；配置后同时输出 stdout 和 <logDir>/YYYY-MM-DD/console.log
+  # logDir: /var/lib/muad-console/logs
+  # SQLite 数据库路径（挂卷持久化）
+  dbPath: /var/lib/muad-console/console.db
+  # 后台采集间隔（秒）
+  collectIntervalSec: 30
+  # Worker 通过内部网络访问 Console internal API 的地址
+  consoleInternalURL: http://muad-console:8080
 
-# 建容器时默认使用的 openclaw 镜像
-defaultImage: ghcr.io/michaelxwb/muad-openclaw:latest
+# Worker 运行时
+runtime:
+  # "docker" 或 "k8s"
+  driver: docker
+  # 建 Pod/容器时默认使用的 openclaw worker 镜像
+  defaultImage: ghcr.io/michaelxwb/muad-openclaw:latest
+  # Console Public Skill 原始资产库目录；docker 模式会从该目录派生 .muad-active-public-skills 运行视图
+  skillsDir: /var/lib/muad-console/skills
+  # 注入到 worker 的运行时环境
+  timezone: Asia/Shanghai
+  stateDir: /home/node/.openclaw
+  publicSkillsDir: /opt/openclaw-skills
 
-# 共享 docker 网络名（控制台与用户容器互通）
-muadNet: muad-net
+# Docker driver（仅 runtime.driver=docker 时生效）
+docker:
+  # 共享 docker 网络名（控制台与 worker 容器互通）
+  network: muad-net
 
-# 共享 skill 目录（只读挂进每个用户容器）
-skillsDir: /opt/muad/skills
-
-# 监听地址（集群/宿主机用 0.0.0.0:8080）
-listenAddr: ":8080"
-
-# 可选日志目录；配置后同时输出 stdout 和 <logDir>/YYYY-MM-DD/console.log
-# logDir: /var/lib/muad-console/logs
-
-# SQLite 数据库路径（挂卷持久化）
-dbPath: /var/lib/muad-console/console.db
-
-# Worker Pod 通过内部网络访问 Console internal API 的地址
-consoleInternalURL: http://muad-console:8080
-
-# JWT session token 签名密钥（留空默认复用 masterKey）
-# jwtSecret: ""
-
-# 初始管理员用户名（首启引导，幂等）
-adminUser: "admin"
-
-# 采集间隔（秒，默认 30）
-collectIntervalSec: 30
-
-# 单 Pod 未配置覆写时使用的非敏感运行时默认值。
-# 可由 CONSOLE_RUNTIME_* 环境变量覆盖。
-runtimeDefaults:
+# Pod 资源默认值；DB 中的全局/Pod 覆写优先级高于这里
+resources:
+  memLimit: 3g
+  cpuLimit: "2"
+  restartPolicy: unless-stopped
   maxSkillConcurrency: 2
   maxBrowserConcurrency: 2
-  browserCDPPortStart: 18802
-  browserCDPPortEnd: 65535
+
+# 浏览器端口分配范围
+browser:
+  cdpPortStart: 18802
+  cdpPortEnd: 65535
+
+# K8s driver（仅 runtime.driver=k8s 时生效）
+k8s:
+  namespace: muad
+  # 共享 Public Skill 的 RWX PVC 名。正式环境需 NFS/CephFS/Longhorn RWX/EFS 等 RWX StorageClass。
+  # skillsPVC: muad-skills
+  # Public Skill PVC 的 RWX StorageClass（如 nfs/cephfs/efs）
+  # skillsStorageClass: ""
+  skillsSize: 5Gi
+  # 每个 worker state PVC 的 StorageClass；留空使用集群默认
+  # storageClass: ""
+  stateSize: 5Gi

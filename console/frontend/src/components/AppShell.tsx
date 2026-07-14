@@ -6,6 +6,7 @@ import {
   IconChevronRight,
   IconComponentStroked,
   IconExit,
+  IconPuzzle,
   IconSearchStroked,
   IconServerStroked,
   IconSettingStroked,
@@ -17,19 +18,21 @@ import { Containers } from "../pages/Containers";
 import { LLM } from "../pages/LLM";
 import { PodDetail } from "../pages/PodDetail";
 import { Settings } from "../pages/Settings";
+import { Skills } from "../pages/Skills";
 import { Users } from "../pages/Users";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeButton } from "./ThemeButton";
 import type { ThemeMode } from "./ThemeButton";
 import styles from "./AppShell.module.css";
 
-type Page = "pods" | "users" | "llm" | "settings" | "audit";
+type Page = "pods" | "users" | "skills" | "llm" | "settings" | "audit";
 
 const PAGE_KEY = "muad_console_page";
 
 const NAV_ITEMS: { key: Page; label: string; icon: ReactNode }[] = [
   { key: "pods", label: "Pod 管理", icon: <IconServerStroked size="large" /> },
   { key: "users", label: "用户管理", icon: <IconUserGroup size="large" /> },
+  { key: "skills", label: "Skill 管理", icon: <IconPuzzle size="large" /> },
   { key: "llm", label: "模型配置", icon: <IconComponentStroked size="large" /> },
   { key: "settings", label: "资源与平台", icon: <IconSettingStroked size="large" /> },
   { key: "audit", label: "审计日志", icon: <IconSearchStroked size="large" /> },
@@ -104,6 +107,7 @@ function normalizePage(value: string | null): Page | null {
   switch (value) {
     case "pods":
     case "users":
+    case "skills":
     case "llm":
     case "settings":
     case "audit":
@@ -251,6 +255,7 @@ function PageContent({
     return <PodDetail podId={detailPodId} onBack={onClosePodDetail} onDeleted={onClosePodDetail} />;
   }
   if (page === "users") return <Users onOpenPod={onOpenPod} />;
+  if (page === "skills") return <Skills />;
   if (page === "llm") return <LLM />;
   if (page === "settings") return <Settings />;
   if (page === "audit") return <Audit />;

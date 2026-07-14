@@ -34,6 +34,8 @@ func writeRepoError(w http.ResponseWriter, err error) {
 		writeErr(w, http.StatusNotFound, codeNotFound, "resource not found")
 	case errors.Is(err, repo.ErrPodExists), errors.Is(err, repo.ErrHumanUserExists):
 		writeErr(w, http.StatusConflict, codeConflict, "resource already exists")
+	case errors.Is(err, repo.ErrSkillExists):
+		writeErr(w, http.StatusConflict, codeConflict, "skill already exists")
 	case errors.Is(err, repo.ErrPlatformExists):
 		writeErr(w, http.StatusConflict, codeConflict, "platform already exists")
 	case errors.Is(err, repo.ErrPodCapacity):
@@ -49,7 +51,7 @@ func writeRepoError(w http.ResponseWriter, err error) {
 		writeErr(w, http.StatusConflict, codeInvalidBinding, "binding code is not usable")
 	case errors.Is(err, repo.ErrInvalidHumanUser), errors.Is(err, repo.ErrInvalidCapacity),
 		errors.Is(err, repo.ErrInvalidBindingCode), errors.Is(err, repo.ErrInvalidPlatform),
-		errors.Is(err, repo.ErrInvalidLLMModel):
+		errors.Is(err, repo.ErrInvalidLLMModel), errors.Is(err, repo.ErrInvalidSkill):
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid field value")
 	case errors.Is(err, repo.ErrCredentialNotConfigured):
 		writeErr(w, http.StatusNotFound, codeCredentialNotConfigured, "platform credential not configured")
