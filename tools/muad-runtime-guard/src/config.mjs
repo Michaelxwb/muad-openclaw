@@ -10,13 +10,15 @@ export function parseGuardConfig(value) {
   const consoleInternalURL = String(input.consoleInternalURL ?? "").trim();
   const serviceTokenFile = String(input.serviceTokenFile ?? "").trim();
   const agentProfiles = parseAgentProfiles(input.agentProfiles);
+  const skillReadRoots = parseSkillReadRoots(input.skillReadRoots);
   const sessionAgentIds = parseAgentIds(input.sessionAgentIds);
   const maxBrowserConcurrency = input.maxBrowserConcurrency;
   const maxSkillConcurrency = input.maxSkillConcurrency;
   const valid = Number.isInteger(generation) && generation > 0 && mainAgentId === "main" &&
     ID_PATTERN.test(quarantineProfile) && validURL(consoleInternalURL) &&
     serviceTokenFile === POD_SERVICE_TOKEN_FILE && agentProfiles !== null && sessionAgentIds !== null &&
-    sameAgentSet(agentProfiles, sessionAgentIds) &&
+    skillReadRoots !== null && sameAgentSet(agentProfiles, sessionAgentIds) &&
+    sameSkillRootAgentSet(agentProfiles, skillReadRoots) &&
     agentProfiles.every((mapping) => mapping.profile !== quarantineProfile) &&
     positiveInteger(maxBrowserConcurrency) && positiveInteger(maxSkillConcurrency);
   return {
@@ -27,10 +29,34 @@ export function parseGuardConfig(value) {
     consoleInternalURL,
     serviceTokenFile,
     agentProfiles: agentProfiles ?? [],
+    skillReadRoots: skillReadRoots ?? [],
     sessionAgentIds: sessionAgentIds ?? [],
     maxBrowserConcurrency: positiveInteger(maxBrowserConcurrency) ? maxBrowserConcurrency : 1,
     maxSkillConcurrency: positiveInteger(maxSkillConcurrency) ? maxSkillConcurrency : 1,
   };
+}
+
+function parseSkillReadRoots(value) {
+  if (!Array.isArray(value)) return null;
+  const agents = new Set();
+  const output = [];
+  for (const item of value) {
+    if (!isRecord(item) || !Array.isArray(item.roots)) return null;
+    const agentId = String(item.agentId ?? "").trim();
+    const roots = item.roots.map((root) => String(root ?? "").trim());
+    if (!ID_PATTERN.test(agentId) || agentId === "main" || agents.has(agentId) ||
+      roots.some((root) => !root || !root.startsWith("/") || root.includes("\0")) ||
+      new Set(roots).size !== roots.length) return null;
+    agents.add(agentId);
+    output.push({ agentId, roots });
+  }
+  return output;
+}
+
+function sameSkillRootAgentSet(profiles, mappings) {
+  if (profiles.length !== mappings.length) return false;
+  const expected = new Set(profiles.map((profile) => profile.agentId));
+  return mappings.every((mapping) => expected.has(mapping.agentId));
 }
 
 function parseAgentIds(value) {

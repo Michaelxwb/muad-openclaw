@@ -54,6 +54,21 @@ const (
 	SkillExecutionSucceeded = "succeeded"
 	SkillExecutionFailed    = "failed"
 	SkillExecutionCancelled = "cancelled"
+	SkillExecutionRejected  = "rejected"
+)
+
+// Skill entry types distinguish managed bundles from traditional OpenClaw Skills.
+const (
+	SkillEntryManaged           = "managed"
+	SkillEntryTraditionalScript = "traditional-script"
+	SkillEntryTraditionalPrompt = "traditional-prompt"
+)
+
+// Skill activation modes describe how one execution was attributed.
+const (
+	SkillActivationTool         = "tool"
+	SkillActivationPathDetected = "path-detected"
+	SkillActivationRunner       = "runner"
 )
 
 // Effective Skill view states used by the Human User resolver.
@@ -229,23 +244,28 @@ type SkillPolicy struct {
 
 // SkillExecutionRecord stores a redacted, queryable Skill execution summary.
 type SkillExecutionRecord struct {
-	ExecutionID   string
-	PodID         string
-	HumanUserID   string
-	AgentID       string
-	SkillName     string
-	SkillScope    string
-	SkillVersion  string
-	Status        string
-	StartedAt     time.Time
-	EndedAt       time.Time
-	DurationMS    int64
-	ProgressJSON  string
-	ErrorCode     string
-	ErrorMessage  string
-	InputSummary  string
-	OutputSummary string
-	CreatedAt     time.Time
+	ExecutionID    string
+	PodID          string
+	HumanUserID    string
+	AgentID        string
+	SkillName      string
+	SkillScope     string
+	SkillVersion   string
+	EntryType      string
+	ActivationMode string
+	EventSeq       int64
+	Status         string
+	StartedAt      time.Time
+	EndedAt        time.Time
+	DurationMS     int64
+	ProgressJSON   string
+	LastToolName   string
+	TerminalReason string
+	ErrorCode      string
+	ErrorMessage   string
+	InputSummary   string
+	OutputSummary  string
+	CreatedAt      time.Time
 }
 
 // EffectiveSkill is the final per-Human User Skill state after merging assets,
@@ -258,6 +278,7 @@ type EffectiveSkill struct {
 	Status            string
 	Version           string
 	EntryType         string
+	ScriptFiles       []string
 	SystemSkillID     string
 	PublicSkillID     string
 	PrivateSkillID    string

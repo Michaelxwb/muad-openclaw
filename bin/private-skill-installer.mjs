@@ -11,6 +11,7 @@ const MAX_BUNDLE_BYTES = 5 * 1024 * 1024;
 const SKILL_NAME_RE = /^[a-z][a-z0-9_-]{0,63}$/u;
 const AGENT_ID_RE = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/u;
 const DEFAULT_STATE_DIR = "/home/node/.openclaw";
+const SCRIPT_EXTENSIONS = new Set([".sh", ".py", ".js"]);
 
 export async function installPrivateSkill({ bundle, agentId, stateDir, expectedName, bundleFormat }) {
   validateAgentId(agentId);
@@ -91,16 +92,42 @@ async function readSkillMetadata(skillDir, expectedName) {
   const progressSupported = Boolean(rawManifest?.progress) || /muad-progress/u.test(skillMarkdown);
   const browserRequired = rawManifest?.browserRequired === true ||
     (Array.isArray(rawManifest?.capabilities) && rawManifest.capabilities.includes("browser"));
-  const entryType = rawManifest?.runtime === "script" ? "script" : "prompt-only";
+  const scriptFiles = rawManifest ? [] : await scanTraditionalScripts(skillDir);
+  const entryType = rawManifest
+    ? "managed"
+    : scriptFiles.length > 0 ? "traditional-script" : "traditional-prompt";
   const manifestJSON = JSON.stringify({
     name, version, runtime: rawManifest?.runtime ?? "", mode: rawManifest?.mode ?? "",
     visibility: rawManifest?.visibility ?? "private", platforms, progressSupported,
-    browserRequired, entryType,
+    browserRequired, entryType, ...(rawManifest ? {} : { scriptFiles }),
   });
   return {
     name, version, platforms, progressSupported, browserRequired, entryType,
     manifestHash: await hashFile(path.join(skillDir, "SKILL.md")), manifestJson: manifestJSON,
   };
+}
+
+async function scanTraditionalScripts(skillDir) {
+  const scripts = [];
+  await scanScriptDirectory(skillDir, skillDir, scripts);
+  return scripts.sort((left, right) => left.localeCompare(right));
+}
+
+async function scanScriptDirectory(root, current, scripts) {
+  for (const entry of await fs.readdir(current, { withFileTypes: true })) {
+    const entryPath = path.join(current, entry.name);
+    if (entry.isSymbolicLink()) throw new Error("bundle must not contain symlinks");
+    if (entry.isDirectory()) {
+      if (!ignoredScriptDirectory(entry.name)) await scanScriptDirectory(root, entryPath, scripts);
+      continue;
+    }
+    if (!entry.isFile() || !SCRIPT_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) continue;
+    scripts.push(path.relative(root, entryPath).split(path.sep).join("/"));
+  }
+}
+
+function ignoredScriptDirectory(name) {
+  return name.startsWith(".") || name === "node_modules" || name === "__pycache__";
 }
 
 function normalizePlatforms(value) {

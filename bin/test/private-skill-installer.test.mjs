@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { deletePrivateSkill, installPrivateSkill } from "../private-skill-installer.mjs";
@@ -25,8 +25,24 @@ test("installs one private skill into the target agent workspace", async () => {
   assert.deepEqual(result.platforms, ["xdr"]);
   assert.equal(result.progressSupported, true);
   assert.equal(result.browserRequired, true);
+  assert.equal(result.entryType, "managed");
   assert.match(result.manifestHash, /^sha256:/u);
   assert.equal(readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "SKILL.md"), "utf8"), "# XDR\n");
+});
+
+test("classifies a manifest-free private Skill with nested scripts", async () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-skill-traditional-script-"));
+  const bundle = makeBundle(root, {
+    name: "mss-report-skill",
+    scripts: ["config/display.py", "scripts/export.sh", "node_modules/ignored.js"],
+  });
+
+  const result = await installPrivateSkill({ bundle, agentId: "alice", stateDir: root });
+
+  assert.equal(result.entryType, "traditional-script");
+  assert.deepEqual(JSON.parse(result.manifestJson).scriptFiles, [
+    "config/display.py", "scripts/export.sh",
+  ]);
 });
 
 test("installs one private skill from a zip bundle", async () => {
@@ -108,12 +124,17 @@ test("CLI emits JSON and enforces expected skill name", () => {
   assert.match(bad.stderr, /expected skill name/u);
 });
 
-function makeBundle(root, { name, manifest }) {
+function makeBundle(root, { name, manifest, scripts = [] }) {
   const source = join(root, `src-${name}`);
   const skillDir = join(source, name);
   mkdirSync(skillDir, { recursive: true });
   writeFileSync(join(skillDir, "SKILL.md"), `# ${name === "xdr-query" ? "XDR" : name}\n`);
   if (manifest) writeFileSync(join(skillDir, "muad.skill.json"), JSON.stringify(manifest));
+  for (const script of scripts) {
+    const target = join(skillDir, script);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, "print('ok')\n");
+  }
   return tar(root, `src-${name}`);
 }
 

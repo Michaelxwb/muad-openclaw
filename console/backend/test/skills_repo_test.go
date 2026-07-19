@@ -73,6 +73,18 @@ func TestSkillAsset_CRUDListAndConstraints(t *testing.T) {
 	}
 }
 
+func TestSkillAsset_RejectsLegacyEntryType(t *testing.T) {
+	store := newStore(t)
+	_, err := store.CreateSkillAsset(repo.SkillAsset{
+		Name: "legacy-skill", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/legacy-skill", ManifestHash: "sha256:legacy",
+		EntryType: "prompt-only",
+	})
+	if !errors.Is(err, repo.ErrInvalidSkill) {
+		t.Fatalf("legacy entry type = %v, want ErrInvalidSkill", err)
+	}
+}
+
 func TestSkillPolicy_CRUD(t *testing.T) {
 	store := newStore(t)
 	createTestPod(t, store, "pod-a", 3)
@@ -112,7 +124,8 @@ func TestSkillExecutionRecord_UpsertListAndFilters(t *testing.T) {
 	record, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
 		ExecutionID: "exec-1", PodID: "pod-a", HumanUserID: alice.HumanUserID,
 		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
-		Status: repo.SkillExecutionRunning, StartedAt: started, ProgressJSON: `[{"stage":"start"}]`,
+		Status: repo.SkillExecutionRunning, EventSeq: 1,
+		StartedAt: started, ProgressJSON: `[{"stage":"start"}]`,
 	})
 	if err != nil {
 		t.Fatalf("UpsertSkillExecutionRecord running: %v", err)
@@ -124,7 +137,8 @@ func TestSkillExecutionRecord_UpsertListAndFilters(t *testing.T) {
 	if _, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
 		ExecutionID: "exec-1", PodID: "pod-a", HumanUserID: alice.HumanUserID,
 		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
-		Status: repo.SkillExecutionSucceeded, StartedAt: started, EndedAt: ended,
+		Status: repo.SkillExecutionSucceeded, EventSeq: 2,
+		StartedAt: started, EndedAt: ended,
 		DurationMS: 1500, ProgressJSON: `[{"stage":"done"}]`, OutputSummary: "ok",
 	}); err != nil {
 		t.Fatalf("UpsertSkillExecutionRecord done: %v", err)
@@ -144,6 +158,64 @@ func TestSkillExecutionRecord_UpsertListAndFilters(t *testing.T) {
 		SkillName: "bad/name", SkillScope: repo.SkillScopePublic,
 	}); !errors.Is(err, repo.ErrInvalidSkill) {
 		t.Fatalf("invalid execution = %v, want ErrInvalidSkill", err)
+	}
+}
+
+func TestSkillExecutionRepositoryRejectsLateEventAfterTerminal(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 3)
+	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
+	started := time.Now().UTC().Add(-time.Minute)
+	base := repo.SkillExecutionRecord{
+		ExecutionID: "exec-terminal", PodID: "pod-a", HumanUserID: alice.HumanUserID,
+		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
+		SkillVersion: "1.0.0", EntryType: repo.SkillEntryTraditionalPrompt,
+		ActivationMode: repo.SkillActivationTool, StartedAt: started, ProgressJSON: `[]`,
+	}
+	running := base
+	running.Status = repo.SkillExecutionRunning
+	running.EventSeq = 1
+	if _, err := store.UpsertSkillExecutionRecord(running); err != nil {
+		t.Fatalf("insert running execution: %v", err)
+	}
+	terminal := base
+	terminal.Status = repo.SkillExecutionSucceeded
+	terminal.EventSeq = 2
+	terminal.EndedAt = started.Add(time.Second)
+	terminal.TerminalReason = "agent_end"
+	terminal.OutputSummary = "completed"
+	stored, err := store.UpsertSkillExecutionRecord(terminal)
+	if err != nil {
+		t.Fatalf("finish execution: %v", err)
+	}
+	if stored.Status != repo.SkillExecutionSucceeded || stored.EventSeq != 2 {
+		t.Fatalf("terminal execution = %+v", stored)
+	}
+
+	late := base
+	late.Status = repo.SkillExecutionRunning
+	late.EventSeq = 1
+	late.ProgressJSON = `[{"stage":"late"}]`
+	stored, err = store.UpsertSkillExecutionRecord(late)
+	if err != nil {
+		t.Fatalf("upsert late event: %v", err)
+	}
+	if stored.Status != repo.SkillExecutionSucceeded || stored.EventSeq != 2 ||
+		stored.TerminalReason != "agent_end" || stored.OutputSummary != "completed" {
+		t.Fatalf("late event changed terminal execution: %+v", stored)
+	}
+
+	conflictingTerminal := base
+	conflictingTerminal.Status = repo.SkillExecutionFailed
+	conflictingTerminal.EventSeq = 3
+	conflictingTerminal.TerminalReason = "tool_error"
+	stored, err = store.UpsertSkillExecutionRecord(conflictingTerminal)
+	if err != nil {
+		t.Fatalf("upsert conflicting terminal event: %v", err)
+	}
+	if stored.Status != repo.SkillExecutionSucceeded || stored.EventSeq != 2 ||
+		stored.TerminalReason != "agent_end" {
+		t.Fatalf("terminal state was overwritten: %+v", stored)
 	}
 }
 

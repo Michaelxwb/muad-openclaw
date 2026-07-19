@@ -2,6 +2,7 @@ import path from "node:path";
 
 const AGENT_PATTERN = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/u;
 const MAX_SESSION_KEY_LENGTH = 512;
+const MAX_RUN_ID_LENGTH = 512;
 
 export class SkillContextError extends Error {
   constructor() {
@@ -12,14 +13,22 @@ export class SkillContextError extends Error {
 }
 
 export function trustedExecutionContext(toolContext) {
-  const agentId = String(toolContext?.agentId ?? "").trim();
-  const sessionKey = String(toolContext?.sessionKey ?? "").trim();
+  const context = trustedRunContext(toolContext, toolContext);
   const workspaceDir = String(toolContext?.workspaceDir ?? "").trim();
-  if (!AGENT_PATTERN.test(agentId) || agentId === "main" || !sessionKey ||
-    sessionKey.length > MAX_SESSION_KEY_LENGTH || !path.isAbsolute(workspaceDir)) {
+  if (!path.isAbsolute(workspaceDir)) {
     throw new SkillContextError();
   }
-  return { agentId, sessionKey, workspaceDir: path.resolve(workspaceDir) };
+  return { ...context, workspaceDir: path.resolve(workspaceDir) };
+}
+
+export function trustedRunContext(event, hookContext = {}) {
+  const agentId = String(hookContext?.agentId ?? event?.agentId ?? "").trim();
+  const sessionKey = String(hookContext?.sessionKey ?? event?.sessionKey ?? "").trim();
+  const runId = String(event?.runId ?? hookContext?.runId ?? "").trim();
+  if (!validAgent(agentId) || !validSession(sessionKey) || runId.length > MAX_RUN_ID_LENGTH) {
+    throw new SkillContextError();
+  }
+  return { agentId, sessionKey, ...(runId ? { runId } : {}) };
 }
 
 export function buildSkillEnvironment({ baseEnv, context, manifest, input, args, eventFile, workDir }) {
@@ -34,4 +43,12 @@ export function buildSkillEnvironment({ baseEnv, context, manifest, input, args,
     MUAD_PROGRESS_EVENTS_FILE: eventFile,
     MUAD_PROGRESS_STATE_DIR: workDir,
   };
+}
+
+function validAgent(agentId) {
+  return AGENT_PATTERN.test(agentId) && agentId !== "main";
+}
+
+function validSession(sessionKey) {
+  return sessionKey.length > 0 && sessionKey.length <= MAX_SESSION_KEY_LENGTH;
 }

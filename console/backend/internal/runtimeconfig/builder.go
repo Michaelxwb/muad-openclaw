@@ -60,6 +60,11 @@ type sourceData struct {
 	models     []repo.LLMModelConfig
 }
 
+type skillState struct {
+	policies []driver.RuntimeAgentSkills
+	filters  map[string][]string
+}
+
 func New(source Source, cipher *secretcrypto.Cipher, options Options) (*Builder, error) {
 	if source == nil || cipher == nil || strings.TrimSpace(options.ConsoleInternalURL) == "" {
 		return nil, ErrInvalidRuntimeSource
@@ -89,7 +94,7 @@ func (builder *Builder) Build(podID string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	skillPolicies, err := builder.buildSkillPolicies(users)
+	skills, err := builder.buildSkillState(users)
 	if err != nil {
 		return Result{}, err
 	}
@@ -101,7 +106,7 @@ func (builder *Builder) Build(podID string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	config := builder.assemble(data.pod, users, routes, links, providers, models, platforms, channels, skillPolicies)
+	config := builder.assemble(data.pod, users, routes, links, providers, models, platforms, channels, skills)
 	return finish(config)
 }
 
@@ -136,9 +141,9 @@ func (builder *Builder) assemble(
 	pod repo.Pod, users []repo.HumanUser, routes []driver.RuntimeRoute,
 	links []driver.RuntimeIdentityLink, providers []driver.RuntimeProvider,
 	models map[string]string, platforms []driver.RuntimePlatform,
-	channels driver.RuntimeChannels, skillPolicies []driver.RuntimeAgentSkills,
+	channels driver.RuntimeChannels, skills skillState,
 ) driver.RuntimeConfigV1 {
-	agents := buildAgents(builder.options.StateDirectory, users, models)
+	agents := buildAgents(builder.options.StateDirectory, users, models, skills.filters)
 	browser, sessions, guard := buildUserMappings(builder.options.StateDirectory, users)
 	maxSkills := positiveOrDefault(pod.MaxSkillConcurrency, builder.options.MaxSkillConcurrency)
 	maxBrowser := positiveOrDefault(pod.MaxBrowserConcurrency, builder.options.MaxBrowserConcurrency)
@@ -153,48 +158,78 @@ func (builder *Builder) assemble(
 		Skills: driver.RuntimeSkills{
 			PublicDirectory: builder.options.PublicSkillsDirectory,
 			PrivateRoot:     builder.options.StateDirectory,
-			Agents:          skillPolicies,
+			Agents:          skills.policies,
 		},
 		SessionManager: sessions, Guard: guard,
 	}
 }
 
-func (builder *Builder) buildSkillPolicies(
+func (builder *Builder) buildSkillState(
 	users []repo.HumanUser,
-) ([]driver.RuntimeAgentSkills, error) {
+) (skillState, error) {
 	policies := make([]driver.RuntimeAgentSkills, 0, len(users))
+	filters := make(map[string][]string, len(users))
 	for _, user := range users {
 		effective, _, err := builder.source.ResolveEffectiveSkills(
 			builder.cipher, user.HumanUserID, repo.EffectiveSkillFilter{},
 		)
 		if err != nil {
-			return nil, err
+			return skillState{}, err
 		}
+		filters[user.AgentID] = runtimeSkillFilters(effective)
 		policies = append(policies, driver.RuntimeAgentSkills{
 			AgentID: user.AgentID,
-			Allowed: runtimeSkillGrants(effective),
+			Allowed: runtimeSkillGrants(
+				effective, builder.options.StateDirectory,
+				builder.options.PublicSkillsDirectory, user.AgentID,
+			),
 		})
 	}
-	return policies, nil
+	return skillState{policies: policies, filters: filters}, nil
 }
 
-func runtimeSkillGrants(skills []repo.EffectiveSkill) []driver.RuntimeSkillGrant {
+func runtimeSkillFilters(skills []repo.EffectiveSkill) []string {
+	names := make([]string, 0, len(skills))
+	for _, skill := range skills {
+		if !skill.Effective || skill.Status != repo.EffectiveSkillStatusEffective {
+			continue
+		}
+		names = append(names, skill.Name)
+	}
+	slices.Sort(names)
+	return slices.Compact(names)
+}
+
+func runtimeSkillGrants(
+	skills []repo.EffectiveSkill, stateRoot, publicRoot, agentID string,
+) []driver.RuntimeSkillGrant {
 	grants := make([]driver.RuntimeSkillGrant, 0, len(skills))
 	for _, skill := range skills {
 		if !skill.Effective || skill.Status != repo.EffectiveSkillStatusEffective {
 			continue
 		}
-		if skill.EntryType != "" && skill.EntryType != "script" {
-			continue
-		}
 		grants = append(grants, driver.RuntimeSkillGrant{
 			Name: skill.Name, Source: skill.EffectiveSource, SkillID: effectiveSkillID(skill),
+			Version: skill.Version, EntryType: skill.EntryType,
+			RootPath: runtimeSkillRoot(stateRoot, publicRoot, agentID, skill),
+			ScriptFiles: append(
+				make([]string, 0, len(skill.ScriptFiles)), skill.ScriptFiles...,
+			),
 		})
 	}
 	slices.SortFunc(grants, func(left, right driver.RuntimeSkillGrant) int {
 		return strings.Compare(left.Name, right.Name)
 	})
 	return grants
+}
+
+func runtimeSkillRoot(
+	stateRoot, publicRoot, agentID string, skill repo.EffectiveSkill,
+) string {
+	if skill.EffectiveSource == repo.SkillScopePrivate {
+		return path.Join(stateRoot, "workspace-"+agentID, "skills", skill.Name)
+	}
+	return path.Join(publicRoot, skill.Name)
 }
 
 func effectiveSkillID(skill repo.EffectiveSkill) string {
@@ -228,11 +263,13 @@ func selectRuntimeUsers(podID string, input []repo.HumanUser) ([]repo.HumanUser,
 	return users, nil
 }
 
-func buildAgents(state string, users []repo.HumanUser, models map[string]string) []driver.RuntimeAgent {
+func buildAgents(
+	state string, users []repo.HumanUser, models map[string]string, skillFilters map[string][]string,
+) []driver.RuntimeAgent {
 	agents := []driver.RuntimeAgent{{
 		ID: "main", Default: true, Status: repo.HumanUserStatusActive,
 		Workspace: path.Join(state, "workspace"), AgentDir: path.Join(state, "agents/main/agent"),
-		Model: models["main"], Tools: mainToolPolicy(),
+		Model: models["main"], Skills: []string{}, Tools: mainToolPolicy(),
 	}}
 	for _, user := range users {
 		agents = append(agents, driver.RuntimeAgent{
@@ -240,10 +277,18 @@ func buildAgents(state string, users []repo.HumanUser, models map[string]string)
 			Workspace:      path.Join(state, "workspace-"+user.AgentID),
 			AgentDir:       path.Join(state, "agents", user.AgentID, "agent"),
 			BrowserProfile: user.BrowserProfile, Model: models[user.AgentID],
-			Tools: businessToolPolicy(),
+			Skills: copyStrings(skillFilters[user.AgentID]),
+			Tools:  businessToolPolicy(),
 		})
 	}
 	return agents
+}
+
+func copyStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return append([]string(nil), values...)
 }
 
 func buildUserMappings(state string, users []repo.HumanUser) (
@@ -278,14 +323,14 @@ func buildUserMappings(state string, users []repo.HumanUser) (
 
 func mainToolPolicy() driver.RuntimeToolPolicy {
 	return driver.RuntimeToolPolicy{
-		Deny:          []string{"browser", "exec", "read", "write", "edit", "muad_run_skill", "session_get_state"},
+		Deny:          []string{"browser", "exec", "read", "write", "edit", "muad_use_skill", "muad_run_skill", "session_get_state"},
 		WorkspaceOnly: true,
 	}
 }
 
 func businessToolPolicy() driver.RuntimeToolPolicy {
 	return driver.RuntimeToolPolicy{
-		Allow: []string{"browser", "muad_run_skill", "session_get_state"},
+		Allow: []string{"browser", "read", "muad_use_skill", "muad_run_skill", "session_get_state"},
 		Deny:  []string{"exec", "shell"}, WorkspaceOnly: true,
 	}
 }

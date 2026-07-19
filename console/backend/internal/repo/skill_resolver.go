@@ -209,6 +209,7 @@ func disabledEffectiveSkill(
 	skill.DisplayName = asset.DisplayName
 	skill.Version = asset.Version
 	skill.EntryType = asset.EntryType
+	skill.ScriptFiles = scriptFilesFromAsset(*asset)
 	skill.EffectiveSource = asset.Scope
 	assignSkillID(&skill, *asset)
 	if last, ok := context.LastExecutions[name]; ok {
@@ -234,11 +235,29 @@ func skillFromAsset(
 	skill := EffectiveSkill{
 		Name: asset.Name, DisplayName: asset.DisplayName, Effective: effective,
 		EffectiveSource: asset.Scope, Status: status, Version: asset.Version, EntryType: asset.EntryType,
+		ScriptFiles:       scriptFilesFromAsset(asset),
 		ProgressSupported: asset.ProgressSupported, BrowserRequired: asset.BrowserRequired,
 		Conflict: conflict, ConflictReason: reason,
 	}
 	assignSkillID(&skill, asset)
 	return skill
+}
+
+func scriptFilesFromAsset(asset SkillAsset) []string {
+	var metadata struct {
+		ScriptFiles []string `json:"scriptFiles"`
+	}
+	if json.Unmarshal([]byte(asset.ManifestJSON), &metadata) != nil {
+		return []string{}
+	}
+	files := make([]string, 0, len(metadata.ScriptFiles))
+	for _, file := range metadata.ScriptFiles {
+		if value := strings.TrimSpace(file); value != "" {
+			files = append(files, value)
+		}
+	}
+	sort.Strings(files)
+	return files
 }
 
 func assignSkillID(skill *EffectiveSkill, asset SkillAsset) {

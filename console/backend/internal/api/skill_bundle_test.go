@@ -3,10 +3,91 @@ package api
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestInspectSkillBundleClassifiesTraditionalScript(t *testing.T) {
+	skillDir := filepath.Join(t.TempDir(), "legacy-report")
+	if err := os.MkdirAll(filepath.Join(skillDir, "scripts"), 0o700); err != nil {
+		t.Fatalf("create scripts directory: %v", err)
+	}
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "SKILL.md"), "---\nname: legacy-report\n---\n# Legacy report\n")
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "scripts", "export.py"), "print('ok')\n")
+
+	result, err := readSkillBundleMetadata(skillDir)
+	if err != nil {
+		t.Fatalf("inspect traditional script Skill: %v", err)
+	}
+	if result.EntryType != "traditional-script" {
+		t.Fatalf("entry type = %q, want traditional-script", result.EntryType)
+	}
+	var metadata struct {
+		Runtime     string   `json:"runtime"`
+		HasScripts  bool     `json:"hasScripts"`
+		ScriptFiles []string `json:"scriptFiles"`
+	}
+	if err := json.Unmarshal([]byte(result.ManifestJSON), &metadata); err != nil {
+		t.Fatalf("decode scanned metadata: %v", err)
+	}
+	if metadata.Runtime != "traditional" || !metadata.HasScripts ||
+		len(metadata.ScriptFiles) != 1 || metadata.ScriptFiles[0] != "scripts/export.py" {
+		t.Fatalf("traditional script metadata = %+v", metadata)
+	}
+}
+
+func TestInspectSkillBundleClassifiesTraditionalPrompt(t *testing.T) {
+	skillDir := filepath.Join(t.TempDir(), "web-guide")
+	if err := os.MkdirAll(skillDir, 0o700); err != nil {
+		t.Fatalf("create Skill directory: %v", err)
+	}
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "SKILL.md"), "---\nname: web-guide\n---\n# Web guide\n")
+
+	result, err := readSkillBundleMetadata(skillDir)
+	if err != nil {
+		t.Fatalf("inspect traditional prompt Skill: %v", err)
+	}
+	if result.EntryType != "traditional-prompt" {
+		t.Fatalf("entry type = %q, want traditional-prompt", result.EntryType)
+	}
+}
+
+func TestInspectSkillBundlePreservesManagedManifest(t *testing.T) {
+	skillDir := filepath.Join(t.TempDir(), "managed-skill")
+	if err := os.MkdirAll(filepath.Join(skillDir, "scripts"), 0o700); err != nil {
+		t.Fatalf("create managed Skill directory: %v", err)
+	}
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "SKILL.md"), "# Managed\n")
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "muad.skill.json"), `{"name":"managed-skill","runtime":"script"}`)
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "scripts", "run.py"), "print('ok')\n")
+
+	result, err := readSkillBundleMetadata(skillDir)
+	if err != nil {
+		t.Fatalf("inspect managed Skill: %v", err)
+	}
+	if result.EntryType != "managed" {
+		t.Fatalf("entry type = %q, want managed", result.EntryType)
+	}
+}
+
+func TestInspectSkillBundleRejectsSymlinkScript(t *testing.T) {
+	skillDir := filepath.Join(t.TempDir(), "linked-skill")
+	if err := os.MkdirAll(filepath.Join(skillDir, "scripts"), 0o700); err != nil {
+		t.Fatalf("create linked Skill directory: %v", err)
+	}
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "SKILL.md"), "# Linked\n")
+	target := filepath.Join(t.TempDir(), "outside.py")
+	writeSkillBundleTestFile(t, target, "print('outside')\n")
+	if err := os.Symlink(target, filepath.Join(skillDir, "scripts", "run.py")); err != nil {
+		t.Fatalf("create script symlink: %v", err)
+	}
+
+	if _, err := readSkillBundleMetadata(skillDir); err == nil {
+		t.Fatal("expected symlink script to be rejected")
+	}
+}
 
 func TestInstallPublicSkillBundle_AllowsRelativePublicRoot(t *testing.T) {
 	cwd, err := os.Getwd()
@@ -86,4 +167,11 @@ func makeAPIZipWithFiles(t *testing.T, files map[string][]byte) []byte {
 		t.Fatalf("close zip: %v", err)
 	}
 	return body.Bytes()
+}
+
+func writeSkillBundleTestFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
 }

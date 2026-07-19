@@ -2,6 +2,8 @@
 
 `muad-progress` is a language-neutral CLI used by business skills to report user-visible progress from long-running operations.
 
+The CLI does not own an IM conversation and must not send WeCom/WeChat messages directly. In the OpenClaw runtime, `muad-run-skill` owns the trusted Tool Context, consumes progress events, delivers them to the current conversation, and records them in the Skill execution lifecycle.
+
 It lives under `tools/` because it runs inside worker pods and is not part of the Console control plane. Production images should copy the built binary to:
 
 ```text
@@ -33,8 +35,12 @@ muad-progress done --text "处理完成，正在生成结果"
 
 All user-visible text is validated before delivery. Cookie, token, password, authorization headers, internal URLs, SQL snippets, and stack traces are rejected.
 
+Progress events describe coarse business stages only. They do not replace the OpenClaw native final reply, which remains responsible for the complete text, attachment, image, or card result.
+
 ## Adapter
 
 Set `MUAD_PROGRESS_ADAPTER_CMD` to a command that accepts one event JSON object on stdin. If the adapter is missing, the CLI writes a local diagnostic event and exits successfully by default so progress reporting never blocks the business SDK path.
 
 Set `MUAD_PROGRESS_STRICT_ADAPTER=1` to fail when the adapter is unavailable.
+
+OpenClaw business Skills should run through [`../muad-run-skill/`](../muad-run-skill/) instead of wiring a child process directly to an IM channel. The adapter directories remain thin compatibility examples for other Agent runtimes.

@@ -154,6 +154,7 @@ func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
 	}
 	results, err := s.enqueueSkillConfigApply(r.Context(), podIDs)
 	if err != nil {
+		log.Printf("skill_reload_enqueue_failed error=%v", err)
 		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "inspect Pod runtimes failed")
 		return
 	}
@@ -208,6 +209,11 @@ func (s *Server) enqueueSkillConfigApply(ctx context.Context, podIDs []string) (
 	for _, podID := range reload {
 		if err := s.drv.SyncPublicSkills(ctx, podID, syncDir); err != nil {
 			results[podID] = "failed_sync"
+			continue
+		}
+		if _, err := s.store.MarkPodConfigPending(podID); err != nil {
+			log.Printf("skill_reload_mark_pending_failed pod=%s error=%v", podID, err)
+			results[podID] = "failed_queue"
 			continue
 		}
 		s.enqueueReconcile(podID)

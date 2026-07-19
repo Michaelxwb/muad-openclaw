@@ -92,6 +92,44 @@ func TestRuntimeBuilder_RejectsInvalidStatusAndChannelAlias(t *testing.T) {
 	}
 }
 
+func TestRuntimeBuilderIncludesAllSkillGrantTypes(t *testing.T) {
+	cipher := mustRuntimeCipher(t)
+	source := runtimeBuilderFixture(t, cipher)
+	source.skills["u-alice"][0].EntryType = repo.SkillEntryManaged
+	source.skills["u-alice"][0].Version = "1.0.0"
+	source.skills["u-alice"][1].EntryType = repo.SkillEntryTraditionalPrompt
+	source.skills["u-alice"][1].Version = ""
+	source.skills["u-charlie"][0].EntryType = repo.SkillEntryTraditionalScript
+	source.skills["u-charlie"][0].Version = "sha256:script"
+	source.skills["u-charlie"][0].ScriptFiles = []string{"scripts/export.py"}
+
+	config := buildRuntime(t, source, cipher).Config
+	alice := indexRuntimeSkillGrants(config.Skills.Agents[0].Allowed)
+	charlie := indexRuntimeSkillGrants(config.Skills.Agents[1].Allowed)
+	assertRuntimeGrant(t, alice["xdr-query"], repo.SkillEntryManaged, "/opt/openclaw-skills/xdr-query")
+	assertRuntimeGrant(t, alice["web-tools-guide"], repo.SkillEntryTraditionalPrompt, "/opt/openclaw-skills/web-tools-guide")
+	assertRuntimeGrant(t, charlie["sdsp-report"], repo.SkillEntryTraditionalScript,
+		"/home/node/.openclaw/workspace-charlie/skills/sdsp-report")
+	if !slices.Equal(charlie["sdsp-report"].ScriptFiles, []string{"scripts/export.py"}) {
+		t.Fatalf("traditional script allowlist = %+v", charlie["sdsp-report"].ScriptFiles)
+	}
+}
+
+func indexRuntimeSkillGrants(grants []driver.RuntimeSkillGrant) map[string]driver.RuntimeSkillGrant {
+	indexed := make(map[string]driver.RuntimeSkillGrant, len(grants))
+	for _, grant := range grants {
+		indexed[grant.Name] = grant
+	}
+	return indexed
+}
+
+func assertRuntimeGrant(t *testing.T, grant driver.RuntimeSkillGrant, entryType, rootPath string) {
+	t.Helper()
+	if grant.EntryType != entryType || grant.RootPath != rootPath {
+		t.Fatalf("runtime grant = %+v, want entry=%s root=%s", grant, entryType, rootPath)
+	}
+}
+
 func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBuilderSource {
 	t.Helper()
 	users := []repo.HumanUser{
@@ -132,12 +170,12 @@ func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBui
 				{
 					Name: "xdr-query", Effective: true, Status: repo.EffectiveSkillStatusEffective,
 					EffectiveSource: repo.SkillScopePublic, PublicSkillID: "skill-public-xdr",
-					EntryType: "script",
+					EntryType: repo.SkillEntryManaged, Version: "1.0.0",
 				},
 				{
 					Name: "web-tools-guide", Effective: true, Status: repo.EffectiveSkillStatusEffective,
 					EffectiveSource: repo.SkillScopePublic, PublicSkillID: "skill-public-web",
-					EntryType: "prompt-only",
+					EntryType: repo.SkillEntryTraditionalPrompt, Version: "sha256:prompt",
 				},
 				{
 					Name: "soar-sync", Effective: false, Status: repo.EffectiveSkillStatusConflict,
@@ -149,7 +187,8 @@ func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBui
 				{
 					Name: "sdsp-report", Effective: true, Status: repo.EffectiveSkillStatusEffective,
 					EffectiveSource: repo.SkillScopePrivate, PrivateSkillID: "skill-private-sdsp",
-					EntryType: "script",
+					EntryType: repo.SkillEntryTraditionalScript, Version: "sha256:script",
+					ScriptFiles: []string{"scripts/export.py"},
 				},
 			},
 		},
@@ -182,6 +221,11 @@ func assertRuntimeUsers(t *testing.T, config driver.RuntimeConfigV1) {
 	if len(config.Agents) != 3 || config.Agents[0].ID != "main" || config.Agents[1].ID != "alice" || config.Agents[2].ID != "charlie" {
 		t.Fatalf("runtime agents = %+v", config.Agents)
 	}
+	if len(config.Agents[0].Skills) != 0 ||
+		!slices.Equal(config.Agents[1].Skills, []string{"web-tools-guide", "xdr-query"}) ||
+		!slices.Equal(config.Agents[2].Skills, []string{"sdsp-report"}) {
+		t.Fatalf("runtime agent Skill filters = %+v", config.Agents)
+	}
 	if config.Agents[2].Status != repo.HumanUserStatusPending {
 		t.Fatalf("pending user was not pre-created: %+v", config.Agents[2])
 	}
@@ -190,6 +234,13 @@ func assertRuntimeUsers(t *testing.T, config driver.RuntimeConfigV1) {
 	}
 	if config.Concurrency.MaxSkills != 4 || config.Concurrency.MaxBrowser != 2 {
 		t.Fatalf("effective concurrency = %+v", config.Concurrency)
+	}
+	if !slices.Contains(config.Agents[0].Tools.Deny, "read") ||
+		!slices.Contains(config.Agents[0].Tools.Deny, "muad_use_skill") ||
+		!slices.Contains(config.Agents[1].Tools.Allow, "read") ||
+		!slices.Contains(config.Agents[1].Tools.Allow, "muad_use_skill") ||
+		!config.Agents[1].Tools.WorkspaceOnly {
+		t.Fatalf("Skill activation Tool policies = %+v", config.Agents)
 	}
 	if !slices.Equal(config.Channels.Enabled, []string{"wechat", "wecom"}) ||
 		string(config.Channels.Configs["wecom"]) != `{"botId":"bot-a","secret":"channel-secret"}` {
@@ -217,8 +268,8 @@ func assertRuntimeSkills(t *testing.T, config driver.RuntimeConfigV1) {
 		t.Fatalf("runtime Skill policies = %+v", config.Skills.Agents)
 	}
 	alice := config.Skills.Agents[0].Allowed
-	if len(alice) != 1 || alice[0].Name != "xdr-query" ||
-		alice[0].Source != repo.SkillScopePublic || alice[0].SkillID != "skill-public-xdr" {
+	if len(alice) != 2 || alice[0].Name != "web-tools-guide" || alice[1].Name != "xdr-query" ||
+		alice[1].Source != repo.SkillScopePublic || alice[1].SkillID != "skill-public-xdr" {
 		t.Fatalf("alice Skill grants = %+v", alice)
 	}
 	charlie := config.Skills.Agents[1].Allowed

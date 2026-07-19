@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path"
 	"regexp"
 	"strings"
 )
@@ -95,6 +96,7 @@ type RuntimeAgent struct {
 	AgentDir       string            `json:"agentDir"`
 	BrowserProfile string            `json:"browserProfile,omitempty"`
 	Model          string            `json:"model,omitempty"`
+	Skills         []string          `json:"skills"`
 	Tools          RuntimeToolPolicy `json:"tools"`
 }
 
@@ -154,9 +156,13 @@ type RuntimeAgentSkills struct {
 }
 
 type RuntimeSkillGrant struct {
-	Name    string `json:"name"`
-	Source  string `json:"source"`
-	SkillID string `json:"skillId"`
+	Name        string   `json:"name"`
+	Source      string   `json:"source"`
+	SkillID     string   `json:"skillId"`
+	Version     string   `json:"version"`
+	EntryType   string   `json:"entryType"`
+	RootPath    string   `json:"rootPath"`
+	ScriptFiles []string `json:"scriptFiles"`
 }
 
 type RuntimeSessionManager struct {
@@ -273,7 +279,8 @@ func validateRuntimeAgents(agents []RuntimeAgent) error {
 	ids := make(map[string]struct{}, len(agents))
 	defaultCount := 0
 	for _, agent := range agents {
-		if !podIDPattern.MatchString(agent.ID) || agent.Workspace == "" || agent.AgentDir == "" {
+		if !podIDPattern.MatchString(agent.ID) || agent.Workspace == "" || agent.AgentDir == "" ||
+			agent.Skills == nil || hasInvalidOrDuplicateSkills(agent.Skills) {
 			return ErrInvalidRuntimeConfig
 		}
 		if _, exists := ids[agent.ID]; exists {
@@ -288,6 +295,20 @@ func validateRuntimeAgents(agents []RuntimeAgent) error {
 		return ErrInvalidRuntimeConfig
 	}
 	return nil
+}
+
+func hasInvalidOrDuplicateSkills(skills []string) bool {
+	seen := make(map[string]struct{}, len(skills))
+	for _, skill := range skills {
+		if !podIDPattern.MatchString(skill) {
+			return true
+		}
+		if _, duplicate := seen[skill]; duplicate {
+			return true
+		}
+		seen[skill] = struct{}{}
+	}
+	return false
 }
 
 func validateRuntimeBrowser(browser RuntimeBrowser, agents []RuntimeAgent) error {
@@ -433,7 +454,7 @@ func validateRuntimeSkills(skills RuntimeSkills, agents map[string]RuntimeAgent)
 		seenAgents[policy.AgentID] = struct{}{}
 		seenSkills := make(map[string]struct{}, len(policy.Allowed))
 		for _, grant := range policy.Allowed {
-			if !podIDPattern.MatchString(grant.Name) || strings.TrimSpace(grant.SkillID) == "" {
+			if !validRuntimeSkillGrant(grant) {
 				return ErrInvalidRuntimeConfig
 			}
 			switch grant.Source {
@@ -451,6 +472,25 @@ func validateRuntimeSkills(skills RuntimeSkills, agents map[string]RuntimeAgent)
 		return ErrInvalidRuntimeConfig
 	}
 	return nil
+}
+
+func validRuntimeSkillGrant(grant RuntimeSkillGrant) bool {
+	if !podIDPattern.MatchString(grant.Name) || strings.TrimSpace(grant.SkillID) == "" ||
+		!path.IsAbs(grant.RootPath) || grant.ScriptFiles == nil {
+		return false
+	}
+	switch grant.EntryType {
+	case "managed", "traditional-script", "traditional-prompt":
+	default:
+		return false
+	}
+	for _, file := range grant.ScriptFiles {
+		cleaned := path.Clean(strings.TrimSpace(file))
+		if cleaned == "." || path.IsAbs(cleaned) || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+			return false
+		}
+	}
+	return grant.EntryType != "traditional-script" || len(grant.ScriptFiles) > 0
 }
 
 func validateRuntimeMappings(config RuntimeConfigV1, agents map[string]RuntimeAgent) error {

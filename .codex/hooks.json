@@ -12,16 +12,7 @@
         ]
       }
     ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_session_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi"
-          }
-        ]
-      }
-    ],
+    "SessionStart": [],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -40,6 +31,18 @@
             "type": "command",
             "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_stop_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
             "timeout": 35
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_pre_tool_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
+            "timeout": 5
           }
         ]
       }

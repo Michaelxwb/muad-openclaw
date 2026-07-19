@@ -7,6 +7,7 @@
   },
   "contracts": {
     "tools": [
+      "muad_use_skill",
       "muad_run_skill"
     ]
   },
@@ -15,6 +16,9 @@
     "additionalProperties": false,
     "properties": {
       "skillsRoot": {
+        "type": "string"
+      },
+      "privateRoot": {
         "type": "string"
       },
       "maxConcurrency": {
@@ -32,11 +36,27 @@
       "skillPolicies": {
         "type": "array"
       },
-      "consoleInternalURL": {
-        "type": "string"
+      "activation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "toolName": { "type": "string" },
+          "requireBeforeExecution": { "type": "boolean" },
+          "detectSkillFileReads": { "type": "boolean" },
+          "contextTimeoutMs": { "type": "integer", "minimum": 1 },
+          "cleanupIntervalMs": { "type": "integer", "minimum": 1 }
+        }
       },
-      "serviceTokenFile": {
-        "type": "string"
+      "telemetry": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "consoleInternalURL": { "type": "string" },
+          "serviceTokenFile": { "type": "string" },
+          "outboxPath": { "type": "string" },
+          "maxQueueItems": { "type": "integer", "minimum": 1 },
+          "maxOutboxBytes": { "type": "integer", "minimum": 1 }
+        }
       }
     }
   }

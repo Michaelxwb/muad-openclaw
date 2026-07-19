@@ -14,6 +14,10 @@ const config = {
     { agentId: "alice", profile: "profile-alice" },
     { agentId: "bob", profile: "profile-bob" },
   ],
+  skillReadRoots: [
+    { agentId: "alice", roots: ["/opt/openclaw-skills/web-tools-guide"] },
+    { agentId: "bob", roots: ["/state/workspace-bob/skills/private-report"] },
+  ],
 };
 
 test("browser policy pins omitted profiles and accepts only the mapped profile", async () => {
@@ -66,6 +70,19 @@ test("file policy allows the current workspace and blocks cross-user and runtime
     "/state/agents/alice/session-store/xdr/cookies.json",
     "../workspace-bob/MEMORY.md",
   ]) assert.equal((await policy.evaluate(file("read", target), context("alice"))).allow, false);
+});
+
+test("file policy allows only read access to the current agent authorized Skill roots", async () => {
+  const policy = filePolicy();
+  const skillFile = "/opt/openclaw-skills/web-tools-guide/SKILL.md";
+  assert.equal(await policy.evaluate(file("read", skillFile), context("alice")), undefined);
+  assert.equal((await policy.evaluate(file("write", skillFile), context("alice"))).allow, false);
+  assert.equal((await policy.evaluate(
+    file("read", "/opt/openclaw-skills/ungranted/SKILL.md"), context("alice"),
+  )).allow, false);
+  assert.equal((await policy.evaluate(
+    file("read", "/state/workspace-bob/skills/private-report/SKILL.md"), context("alice"),
+  )).allow, false);
 });
 
 test("apply_patch requires host-derived paths and checks every target", async () => {

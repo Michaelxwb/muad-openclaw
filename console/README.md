@@ -1,139 +1,191 @@
-# muad 管理监控控制台
+# muad 管理控制台
 
-多租户 openclaw 企微 Agent 平台的 Web 控制台:把容器开通 / 删除 / 改 LLM / 排障 / 监控从 `provision-user.sh` + `docker` CLI 上移到页面,管理员零 CLI 操作。
+`muad-console` 是多用户 OpenClaw 平台的控制面。后端为 Go 单二进制，生产构建内嵌 React + Semi Design 前端；通过统一 `RuntimeDriver` 管理 Docker 或 Kubernetes 中的 Worker Pod。
 
-> 设计文档:`.code-flow/tasks/2026-06-27/muad-admin-console.design.md`
-> 任务台账:`.code-flow/tasks/2026-06-27/muad-admin-console.md`
+相关设计：
 
-## 能力
+- [多用户单 Pod](../docs/multi-user-single-pod.md)
+- [100 用户 Kubernetes 架构](../docs/k8s-architecture-100users.md)
+- [Skill 执行审计](../.code-flow/tasks/archived/2026-07-14/skill-execution-audit/)
 
-- **容器全生命周期**:建(user_id/bot_id/secret)、列、删(可选删卷)、start/stop/restart/reap/revive、镜像升级(保卷重建)
-- **LLM 配置**:全局默认 + per-user 覆盖 + 连通性测试(保存前必测)+ 批量应用到存量(滚动重启)
-- **监控**:CPU/MEM、WeCom 连接健康、最后活跃、10 天回收倒计时;down/断连/高内存/即将回收 告警
-- **运维**:日志查看、skill 热更(滚动重载全队)、审计日志、管理员登录鉴权
+## 功能
+
+- **Pod 生命周期**：创建、启停、重启、删除、镜像升级、日志、资源、通道和配置 generation 调和。
+- **Human User**：每个 Pod 最多 10 个用户；用户拥有独立 Agent、工作区、浏览器 Profile、模型配置和 IM 身份。
+- **身份绑定**：支持已知 External ID 预绑定，以及 main Agent 中使用一次性绑定码自动绑定新 IM。
+- **模型池**：批量导入 OpenAI 兼容模型配置并测试连通性；创建用户时绑定一个未占用模型。
+- **Skill 管理**：Public/Private 上传、启禁用、删除、用户策略、冲突解析和最终生效视图。
+- **平台凭证**：维护业务平台及每用户 API Key，数据库只保存加密值并对外返回指纹。
+- **监控告警**：Pod 状态、通道、generation、Runtime Guard、资源和遥测 outbox 健康。
+- **双审计**：管理员操作进入“操作审计”，Agent Skill 生命周期进入“Skill 执行日志”。
 
 ## 架构
 
-```
+```text
 console/
-├── backend/        Go 控制面(单二进制，内嵌前端)
-│   ├── cmd/console            装配 + 优雅退出 + 后台 collector
-│   └── internal/
-│       ├── config crypto repo auth   env 配置 / AES-GCM 加密 / SQLite / bcrypt+HMAC 鉴权
-│       ├── driver                    RuntimeDriver 抽象（docker 实现 + k8s 桩 + factory）
-│       ├── llm gateway collector monitor   LLM 探活 / 采集适配器 / 并发 Collector / 内存缓存
-│       ├── api                       HTTP 接口 + 鉴权/审计中间件
-│       └── web                       embed 前端 + SPA fallback
-└── frontend/       React + Vite + TS SPA（登录 / 容器监控 / LLM / 审计）
+├── backend/
+│   ├── cmd/console          配置、数据库、Driver、Collector、HTTP 装配
+│   ├── internal/api         管理 API、internal API、鉴权和响应封装
+│   ├── internal/repo        SQLite schema、状态机与查询
+│   ├── internal/driver      Docker/Kubernetes RuntimeDriver
+│   ├── internal/runtimeconfig  确定性多用户 Runtime DTO
+│   ├── internal/runtimeapply   配置应用、健康检查和回滚
+│   ├── internal/collector   有界并发状态采集
+│   └── internal/web         dev 文件系统 / prod go:embed
+└── frontend/
+    ├── src/pages            Pod、用户、Skill、模型、资源平台、审计
+    ├── src/components       通用页面、表格、分页和弹窗
+    └── src/api.ts           统一 API 客户端
 ```
 
-设计要点:
-- **运行时抽象**:`RuntimeDriver` 屏蔽 docker / k8s;P0 写实 docker（走 `docker` CLI），k8s 留桩。
-- **凭证**:secret / api_key 经 AES-256-GCM 加密落 SQLite，运行时经 env 注入容器，**不进镜像**。
-- **监控采集**:复用容器内 `openclaw status --json`（`docker exec`），不在 Go 重写 openclaw WS 握手。
-- **网络**:gateway 端口不发布;控制台与用户容器共享 `muad-net`，按容器名 `muad-oc-<id>:18789` 访问。
+核心数据关系：
 
-## 配置（唯一来源 config.yaml，无凭证入镜像）
+```text
+Pod 1 ── N Human User
+Human User 1 ── 1 LLM Model Config（模型配置不可被其他用户复用）
+Human User 1 ── N IM Identity
+Human User 1 ── N Platform Credential
+Human User 1 ── N Private Skill / Skill Policy
+Pod ── Runtime generation / service token / state volume
+```
 
-所有运行时配置（含机密）都在 `config.yaml`。该文件已 gitignore、运行时只读挂进容器、不入镜像。
-env 仍可作为最高优先级覆盖（`env > config.yaml > 内置默认值`），但部署不再依赖 `.env`。
+## 配置
 
-| 字段（config.yaml） | env 覆盖键 | 必填 | 默认 | 说明 |
-|------|------|------|------|------|
-| `security.masterKey` | `CONSOLE_MASTER_KEY` | ✅ | — | 派生 AES 加密主密钥（加密 DB 内凭证） |
-| `security.jwtSecret` | `CONSOLE_JWT_SECRET` | | = 主密钥 | session token 签名密钥 |
-| `admin.user` / `admin.password` | `CONSOLE_ADMIN_USER` / `CONSOLE_ADMIN_PASSWORD` | 首启建议 | `admin` / — | 初始管理员（幂等引导） |
-| `server.listenAddr` | `CONSOLE_LISTEN` | | `:8080` | 监听地址 |
-| `server.logDir` | `CONSOLE_LOG_DIR` | | 空（仅 stdout） | 配置后双写 `<logDir>/YYYY-MM-DD/console.log` |
-| `server.dbPath` | `CONSOLE_DB` | | `/var/lib/muad-console/console.db` | SQLite 路径（挂卷持久化） |
-| `server.collectIntervalSec` | `CONSOLE_COLLECT_INTERVAL` | | `30` | 监控采集周期（秒） |
-| `server.consoleInternalURL` | `CONSOLE_INTERNAL_URL` | | `http://muad-console:8080` | Worker 访问 Console internal API 的地址 |
-| `runtime.driver` | `RUNTIME_DRIVER` | | `docker` | `docker` 或 `k8s` |
-| `runtime.defaultImage` | `DEFAULT_IMAGE` | | `ghcr.io/michaelxwb/muad-openclaw:latest` | 建 Pod/容器默认镜像 |
-| `runtime.skillsDir` | `CONSOLE_SKILLS_DIR` | | `/var/lib/muad-console/skills` | Console Public Skill 原始资产库目录；docker 模式会从该目录派生 `.muad-active-public-skills` 运行视图 |
-| `runtime.timezone` | `CONSOLE_RUNTIME_TIMEZONE` | | `Asia/Shanghai` | 注入 worker 的时区 |
-| `runtime.stateDir` | `CONSOLE_RUNTIME_STATE_DIR` | | `/home/node/.openclaw` | worker 状态目录挂载点 |
-| `runtime.publicSkillsDir` | `CONSOLE_RUNTIME_PUBLIC_SKILLS_DIR` | | `/opt/openclaw-skills` | worker 内 public skill 目录 |
-| `docker.network` | `MUAD_NET` | | `muad-net` | 共享 docker 网络名 |
-| `resources.*` | `CONSOLE_RESOURCE_*` / `CONSOLE_RUNTIME_MAX_*` | | `3g` / `2` / `unless-stopped` / `2` / `2` | Pod 资源和并发默认值 |
-| `browser.cdpPortStart` / `browser.cdpPortEnd` | `CONSOLE_RUNTIME_BROWSER_CDP_PORT_START` / `CONSOLE_RUNTIME_BROWSER_CDP_PORT_END` | | `18802` / `65535` | 浏览器 CDP 端口分配范围 |
-| `k8s.*` | `K8S_*` | | 见模板 | K8s namespace、PVC、StorageClass 和容量配置 |
+配置优先级为 `环境变量 > config.yaml > 内置默认值`。`config.yaml` 包含机密并已被 gitignore，生产部署应只读挂载，不得打进镜像。
 
-## 快速开始
+| YAML 字段 | env | 默认值 | 说明 |
+|-----------|-----|--------|------|
+| `security.masterKey` | `CONSOLE_MASTER_KEY` | 无 | AES-GCM 主密钥，必填 |
+| `security.jwtSecret` | `CONSOLE_JWT_SECRET` | 复用 masterKey | JWT 签名密钥 |
+| `admin.user` | `CONSOLE_ADMIN_USER` | `admin` | 首次管理员 |
+| `admin.password` | `CONSOLE_ADMIN_PASSWORD` | 无 | 首次管理员密码 |
+| `server.listenAddr` | `CONSOLE_LISTEN` | `:8080` | HTTP 监听地址 |
+| `server.logDir` | `CONSOLE_LOG_DIR` | 空 | 配置后双写 `<dir>/YYYY-MM-DD/console.log` |
+| `server.dbPath` | `CONSOLE_DB` | `/var/lib/muad-console/console.db` | SQLite 文件 |
+| `server.collectIntervalSec` | `CONSOLE_COLLECT_INTERVAL` | `30` | 采集周期，秒 |
+| `server.consoleInternalURL` | `CONSOLE_INTERNAL_URL` | `http://muad-console:8080` | Worker 上报和 Resolver 地址 |
+| `runtime.driver` | `RUNTIME_DRIVER` | `docker` | `docker` 或 `k8s` |
+| `runtime.defaultImage` | `DEFAULT_IMAGE` | GHCR latest | Worker 默认镜像 |
+| `runtime.skillsDir` | `CONSOLE_SKILLS_DIR` | `/var/lib/muad-console/skills` | Public Skill 原始资产目录 |
+| `runtime.timezone` | `CONSOLE_RUNTIME_TIMEZONE` | `Asia/Shanghai` | Worker 时区 |
+| `runtime.stateDir` | `CONSOLE_RUNTIME_STATE_DIR` | `/home/node/.openclaw` | Worker 状态挂载点 |
+| `runtime.publicSkillsDir` | `CONSOLE_RUNTIME_PUBLIC_SKILLS_DIR` | `/opt/openclaw-skills` | Worker Public Skill 目录 |
+| `docker.network` | `MUAD_NET` | `muad-net` | Console 与 Worker 共享网络 |
+| `resources.memLimit/cpuLimit/restartPolicy` | `CONSOLE_RESOURCE_*` | `3g` / `2` / `unless-stopped` | Pod 默认资源 |
+| `resources.maxSkillConcurrency` | `CONSOLE_RUNTIME_MAX_SKILL_CONCURRENCY` | `2` | Pod 脚本 Skill 并发 |
+| `resources.maxBrowserConcurrency` | `CONSOLE_RUNTIME_MAX_BROWSER_CONCURRENCY` | `2` | Pod 浏览器并发 |
+| `browser.cdpPortStart/end` | `CONSOLE_RUNTIME_BROWSER_CDP_PORT_START/END` | `18802/65535` | 用户浏览器端口池 |
+| `k8s.namespace` | `K8S_NAMESPACE` | `muad` | Worker namespace |
+| `k8s.skillsPVC` | `K8S_SKILLS_PVC` | 空 | Public Skill RWX PVC 名 |
+| `k8s.skillsStorageClass` | `K8S_SKILLS_STORAGE_CLASS` | 空 | 可动态创建 RWX PVC 的 StorageClass |
+| `k8s.skillsSize` | `K8S_SKILLS_SIZE` | `5Gi` | Public Skill PVC 容量 |
+| `k8s.storageClass/stateSize` | `K8S_STORAGE_CLASS/K8S_STATE_SIZE` | 集群默认 / `5Gi` | 每 Pod state PVC |
 
-### Docker Compose（生产/单机，推荐）
+完整模板见 [`backend/config.example.yaml`](backend/config.example.yaml)。
+
+## Docker 部署
 
 ```bash
-# 共享网络（控制台与用户容器互通），首次部署创建一次
 docker network create muad-net
-# DockerDriver 通过 docker.sock 创建 worker，bind mount 源路径必须是宿主可见路径
 sudo mkdir -p /var/lib/muad-console
 
 cd console
-cp backend/config.example.yaml backend/config.yaml   # 填 security.masterKey / admin.password 等
+cp backend/config.example.yaml backend/config.yaml
+# 填写 masterKey、管理员密码和默认 Worker 镜像
 docker compose up -d
-# 浏览器打开 http://<host>:18080 登录（端口/镜像版本在 docker-compose.yml 内编辑）
 ```
 
-`console/backend/config.yaml` 是统一配置入口：Docker Compose 会把它只读挂载到容器内 `/etc/muad-console/config.yaml`，backend 本地开发则从当前目录直接读取它。
+访问 `http://<host>:18080`。Console 需要挂载 `/var/run/docker.sock` 才能创建 Worker；该权限等价于宿主 root，应与不可信工作负载隔离。
 
-> 控制台需 `docker.sock` 才能管理容器（DockerDriver）。持有 docker.sock 即 root 等价（RISK-03），
-> 请将控制台与不可信用户容器隔离部署。
+Docker 模式不需要 Public Skill PVC。控制面从 `runtime.skillsDir` 生成 active-only 运行目录，并只读挂载给 Worker。
 
-### 本地构建镜像
+## Kubernetes 部署
+
+设置：
+
+```yaml
+runtime:
+  driver: k8s
+k8s:
+  namespace: muad
+  skillsPVC: muad-skills
+  skillsStorageClass: nfs-rwx
+  skillsSize: 5Gi
+  storageClass: local-path
+  stateSize: 5Gi
+```
+
+- 每个 Worker Pod 使用独立 state PVC 保存用户工作区、会话、浏览器 Profile 和 Private Skill。
+- Public Skill 使用共享 RWX PVC。正式环境应使用 NFS、CephFS、EFS 或其他支持 RWX 的存储。
+- `skillsPVC` 和 `skillsStorageClass` 已配置时，可在 Skill 管理页创建 PVC；PVC Ready 前禁止上传 Public Skill。
+- 只有 RWO 的默认 `local-path` 不能作为多 Pod Public Skill 共享卷。本地单节点可使用仓库 `k8s/` 下的 hostPath 静态 PV 进行功能测试。
+
+## Skill 生效与审计
+
+### Public Skill
+
+1. 上传 `.tar.gz` 或 `.zip`，包内必须且只能有一个有效 `SKILL.md`。
+2. 上传、启用、禁用和删除先更新控制面状态并标记 Pod pending。
+3. 管理员点击“应用 Skill”后，控制面同步 active-only Public Skill 目录并对所有运行中 Pod 应用 Runtime Config。
+
+### Private Skill
+
+Private Skill 从用户详情上传。Console 通过 `ExecStdin` 调用目标 Pod 内的 installer，将文件写入该 Agent 的工作区；安装或删除后只调和目标 Pod，不需要全局“应用 Skill”。
+
+### 执行日志
+
+`muad-run-skill` 通过 `/internal/v1/skill-executions` 上报执行快照。列表与详情 API 只返回脱敏摘要：
+
+- `running` 只能进入终态，终态不能被迟到事件覆盖。
+- 单次工具失败只记录过程，最终状态由 Agent/Runner 结束事件决定。
+- Console 暂时不可用时，Worker 将快照写入 state PVC outbox，恢复后按 `executionId + eventSeq` 幂等补传。
+- Skill 上传、启禁用和应用进入操作审计；Skill 实际运行只进入 Skill 执行日志。
+
+## HTTP API
+
+除登录和 internal 路由外，`/api/v1` 均要求 Bearer token。
+
+| 领域 | 主要接口 |
+|------|----------|
+| 登录 | `POST /auth/login`、`GET /me` |
+| Pod | `GET/POST /containers`、`GET/PATCH/DELETE /containers/{podId}`、actions、logs、upgrade、channels、resources、apply-config |
+| 用户 | `GET /human-users`、`GET/POST /containers/{podId}/human-users`、`GET/PATCH/DELETE /human-users/{id}` |
+| 身份绑定 | identities、binding-codes、`POST /internal/v1/bindings/activate` |
+| 模型池 | `GET /llm/models`、`POST /llm/models/batch`、`POST /llm/models/test` |
+| 平台凭证 | platforms、`/human-users/{id}/platform-credentials`、`/internal/v1/session-credentials/resolve` |
+| Skill | `/skills`、`/skills/public-storage`、`/skills/public`、`/skills/reload`、用户 Private Skill 和 policy |
+| 审计 | `GET /audit`、`GET /skill-executions`、`GET /skill-executions/{id}`、`GET /alerts` |
+
+实际路由以 [`backend/internal/api/routes.go`](backend/internal/api/routes.go) 为准。
+
+## 开发与验证
 
 ```bash
+# 后端
+cd console/backend
+cp config.example.yaml config.yaml
+go vet ./...
+go test ./...
+go run ./cmd/console
+
+# 前端
+cd console/frontend
+npm install
+npm run dev
+npm run check
+
+# Console 镜像
 cd console
 docker build -t muad-console:local .
 ```
 
-## 开发
-
-```bash
-# 后端（dev 不需要前端产物）
-cd console/backend
-cp config.example.yaml config.yaml   # 填 masterKey 等（config.yaml 含机密，已 gitignore）
-go test ./...                        # 单测（test/ 黑盒包）
-go run ./cmd/console                 # 自动读取 config.yaml；env 可覆盖任意字段
-
-# 前端（vite dev，代理 /api → :8080）
-cd console/frontend
-npm install
-npm run dev                          # http://localhost:5173
-npm run build                        # tsc 类型检查 + 打包 dist/
-```
-
-- **配置优先级:env > config.yaml > 内置默认值**。config.yaml 是唯一配置源（含机密），已 gitignore、不入镜像；env 仅作可选覆盖。
-- 后端 HTTP 用 stdlib `net/http`；单测集中在 `backend/test/`（`package test` 黑盒）。
-- 前端构建产物 `dist/` 在镜像构建时由 `-tags prod` 内嵌进 Go 二进制（dev 构建不需要）。
-
-## HTTP API（`/api/v1`，除 login 外均需 Bearer token）
-
-| 方法 + 路径 | 说明 |
-|---|---|
-| `POST /auth/login` | 登录，返回 token |
-| `POST /containers` | 建容器（userId/botId/secret[/imageTag/llmOverride]） |
-| `GET /containers` | 列表（含监控快照） |
-| `DELETE /containers/{id}?deleteVolume=` | 删容器（默认保状态卷） |
-| `GET /containers/{id}/logs?tail=` | 日志 |
-| `POST /containers/{id}/actions/{action}` | start/stop/restart/reap/revive |
-| `POST /containers/{id}/upgrade` | 镜像升级（保卷重建） |
-| `GET /llm` · `PUT /llm` · `POST /llm/test` | 全局 LLM 读/写/连通性测试 |
-| `PUT /containers/{id}/llm` · `POST /llm/apply` | per-user 覆盖 / 批量应用到存量 |
-| `POST /skills/reload` | skill 热更（滚动重启运行中容器） |
-| `GET /audit` · `GET /alerts` | 审计查询 / 当前告警 |
+前端开发服务器默认监听 `http://localhost:5173`，并代理 `/api` 到后端 `:8080`。生产构建执行 `vite build`，随后由 Go `embed.FS` 打入 Console 镜像。
 
 ## CI / 发布
 
-推送 `console-v*` tag 触发 `.github/workflows/build-console.yml`，构建并推到 `ghcr.io/<owner>/muad-console`：
+推送 `console-v*` tag 触发 `.github/workflows/build-console.yml`：
 
 ```bash
-git tag console-v0.1.0 && git push origin console-v0.1.0
+git tag console-v0.1.0
+git push origin console-v0.1.0
 ```
-
-> 与 openclaw 工作镜像的 `v*` tag 区分，互不触发。
-
-## 现状与后续
-
-- ✅ 后端全链路 + 前端全页面 + 镜像端到端验证通过（TASK-001~021）。
-- 后续:k8s driver 写实（目前桩）；真机 WeCom 在线时回归 `channelSummary` 解析；告警外发通道（webhook/邮件）。

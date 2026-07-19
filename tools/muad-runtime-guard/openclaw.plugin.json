@@ -20,6 +20,7 @@
       "mainAgentId",
       "quarantineProfile",
       "agentProfiles",
+      "skillReadRoots",
       "sessionAgentIds",
       "maxBrowserConcurrency",
       "maxSkillConcurrency",
@@ -39,6 +40,21 @@
           "properties": {
             "agentId": { "type": "string" },
             "profile": { "type": "string" }
+          }
+        }
+      },
+      "skillReadRoots": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agentId", "roots"],
+          "properties": {
+            "agentId": { "type": "string" },
+            "roots": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
           }
         }
       },

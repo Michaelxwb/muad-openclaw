@@ -69,14 +69,27 @@ function evaluateFileAccess(event, ctx, config, resolvePaths) {
   }
   const roots = resolvePaths(ctx.agentId);
   if (!validRoots(roots)) return deny("trusted agent paths are unavailable");
+  const skillRoots = skillRootsForAgent(config, safeId(ctx.agentId));
+  if (!skillRoots) return deny("trusted Skill paths are unavailable");
   const candidates = fileCandidates(event);
   if (!candidates || candidates.length === 0) return deny("file destination cannot be verified");
   for (const candidate of candidates) {
     const target = resolveCandidate(roots.workspace, candidate);
+    const skillRead = event.toolName === "read" &&
+      skillRoots.some((root) => isWithin(root, target ?? ""));
     if (!target || isWithin(roots.agentDir, target) || isWithin(roots.sessionStore, target) ||
-      !isWithin(roots.workspace, target)) return deny("file access is outside the agent workspace");
+      (!isWithin(roots.workspace, target) && !skillRead)) {
+      return deny("file access is outside the agent workspace or authorized Skill roots");
+    }
   }
   return undefined;
+}
+
+function skillRootsForAgent(config, agentId) {
+  if (!Array.isArray(config.skillReadRoots)) return null;
+  const entry = config.skillReadRoots.find((item) => item?.agentId === agentId);
+  if (!entry || !Array.isArray(entry.roots) || !entry.roots.every(path.isAbsolute)) return null;
+  return entry.roots;
 }
 
 function fileCandidates(event) {

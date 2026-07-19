@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { validateRuntimeConfig } from "./runtime-config-schema.mjs";
 import { mergeStartupContext, normalizeChannel } from "./startup-context.mjs";
@@ -9,6 +9,7 @@ const PLUGIN_PATHS = {
   "session-manager": "/opt/muad/session-manager",
   "muad-runtime-guard": "/opt/muad/muad-runtime-guard",
 };
+const REQUIRED_PROFILE_TOOLS = ["browser", "muad_run_skill", "muad_use_skill", "session_get_state"];
 
 export function renderOpenClawConfig(runtime, baseline = {}) {
   validateRuntimeConfig(runtime);
@@ -19,9 +20,18 @@ export function renderOpenClawConfig(runtime, baseline = {}) {
   renderBindings(output, runtime);
   renderBrowser(output, runtime);
   renderProviders(output, runtime);
+  renderGlobalToolProfile(output);
   renderSkills(output, runtime);
   renderPlugins(output, runtime);
   return sortValue(output);
+}
+
+function renderGlobalToolProfile(output) {
+  const tools = isRecord(output.tools) ? output.tools : {};
+  output.tools = {
+    ...tools,
+    alsoAllow: uniqueSorted([...(tools.alsoAllow ?? []), ...REQUIRED_PROFILE_TOOLS]),
+  };
 }
 
 function renderChannels(output, runtime) {
@@ -47,10 +57,42 @@ export function canonicalHash(value) {
 export function writeAgentGuidance(runtime) {
   for (const agent of runtime.agents) {
     const file = agent.id === "main" ? `${agent.workspace}/BOOTSTRAP.md` : `${agent.workspace}/AGENTS.md`;
-    if (existsSync(file)) continue;
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, agent.id === "main" ? MAIN_GUIDANCE : USER_GUIDANCE, { mode: 0o600 });
+    if (agent.id === "main") {
+      writeGuidanceWhenMissing(file, MAIN_GUIDANCE);
+      continue;
+    }
+    upsertUserGuidance(file);
   }
+}
+
+function writeGuidanceWhenMissing(file, content) {
+  if (existsSync(file)) return;
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, content, { mode: 0o600 });
+}
+
+function upsertUserGuidance(file) {
+  if (!existsSync(file)) {
+    writeGuidanceWhenMissing(file, USER_GUIDANCE);
+    return;
+  }
+  const current = readFileSync(file, "utf8");
+  const next = replaceManagedBlock(removeLegacySkillGuidance(current));
+  if (next !== current) writeFileSync(file, next, { mode: 0o600 });
+}
+
+function replaceManagedBlock(content) {
+  const start = content.indexOf(SKILL_GUIDANCE_START);
+  const end = content.indexOf(SKILL_GUIDANCE_END);
+  if (start >= 0 && end >= start) {
+    const suffix = end + SKILL_GUIDANCE_END.length;
+    return `${content.slice(0, start)}${MANAGED_SKILL_GUIDANCE}${content.slice(suffix)}`;
+  }
+  return `${content.trimEnd()}\n\n${MANAGED_SKILL_GUIDANCE}\n`;
+}
+
+function removeLegacySkillGuidance(content) {
+  return content.replace(LEGACY_SKILL_GUIDANCE, "");
 }
 
 function renderSession(output, runtime) {
@@ -76,16 +118,22 @@ function renderAgents(output, runtime) {
       workspace: agent.workspace,
       agentDir: agent.agentDir,
       model: agent.model ? { primary: agent.model } : undefined,
-      tools: renderToolPolicy(agent.tools),
+      skills: Array.isArray(agent.skills) ? [...agent.skills] : [],
+      tools: renderToolPolicy(agent.tools, !agent.default),
     })),
   };
 }
 
-function renderToolPolicy(policy) {
+function renderToolPolicy(policy, requireNativeSkillRead) {
+  const allow = policy.allow?.length ? [...policy.allow] : [];
+  const deny = policy.deny?.length ? [...policy.deny] : [];
+  if (requireNativeSkillRead) allow.push("read");
   return compact({
-    allow: policy.allow?.length ? [...policy.allow] : undefined,
-    deny: policy.deny?.length ? [...policy.deny] : undefined,
-    fs: { workspaceOnly: policy.workspaceOnly },
+    allow: allow.length ? uniqueSorted(allow) : undefined,
+    deny: deny.length
+      ? uniqueSorted(deny.filter((tool) => !requireNativeSkillRead || tool !== "read"))
+      : undefined,
+    fs: { workspaceOnly: requireNativeSkillRead || policy.workspaceOnly },
   });
 }
 
@@ -133,12 +181,26 @@ function renderProviders(output, runtime) {
 
 function renderSkills(output, runtime) {
   const existing = isRecord(output.skills?.load) ? output.skills.load : {};
+  const entries = isRecord(output.skills?.entries) ? output.skills.entries : {};
   output.skills = {
     ...(isRecord(output.skills) ? output.skills : {}),
     load: {
       ...existing,
       extraDirs: uniqueSorted([...(existing.extraDirs ?? []), runtime.skills.publicDirectory]),
       watch: true,
+    },
+    entries: {
+      ...entries,
+      "__muad-runtime-skill-state": {
+        enabled: true,
+        config: {
+          generation: runtime.generation,
+          agentsHash: canonicalHash(runtime.agents.map((agent) => ({
+            id: agent.id,
+            skills: Array.isArray(agent.skills) ? agent.skills : [],
+          }))),
+        },
+      },
     },
   };
 }
@@ -155,12 +217,28 @@ function renderPlugins(output, runtime) {
       ...entries,
       "muad-run-skill": {
         enabled: true,
+        hooks: {
+          allowConversationAccess: true,
+        },
         config: {
           skillsRoot: runtime.skills.publicDirectory,
+          privateRoot: runtime.skills.privateRoot,
           skillPolicies: runtime.skills.agents,
-          consoleInternalURL: runtime.consoleInternalUrl,
-          serviceTokenFile: runtime.serviceTokenFile,
           maxConcurrency: runtime.concurrency.maxSkills,
+          activation: {
+            toolName: "muad_use_skill",
+            requireBeforeExecution: true,
+            detectSkillFileReads: true,
+            contextTimeoutMs: 6 * 60 * 60 * 1_000,
+            cleanupIntervalMs: 60_000,
+          },
+          telemetry: {
+            consoleInternalURL: runtime.consoleInternalUrl,
+            serviceTokenFile: runtime.serviceTokenFile,
+            outboxPath: runtimePath(runtime.skills.privateRoot, "muad/skill-execution-outbox.ndjson"),
+            maxQueueItems: 256,
+            maxOutboxBytes: 5 * 1024 * 1024,
+          },
         },
       },
       "session-manager": {
@@ -179,6 +257,7 @@ function renderPlugins(output, runtime) {
           mainAgentId: runtime.guard.mainAgentId,
           quarantineProfile: runtime.guard.quarantineProfile,
           agentProfiles: runtime.guard.agentProfiles,
+          skillReadRoots: renderSkillReadRoots(runtime),
           sessionAgentIds: runtime.sessionManager.agents.map((agent) => agent.agentId),
           maxBrowserConcurrency: runtime.concurrency.maxBrowser,
           maxSkillConcurrency: runtime.concurrency.maxSkills,
@@ -188,6 +267,14 @@ function renderPlugins(output, runtime) {
       },
     },
   };
+}
+
+function renderSkillReadRoots(runtime) {
+  const policies = new Map(runtime.skills.agents.map((policy) => [policy.agentId, policy]));
+  return runtime.agents.filter((agent) => !agent.default).map((agent) => ({
+    agentId: agent.id,
+    roots: uniqueSorted((policies.get(agent.id)?.allowed ?? []).map((grant) => grant.rootPath)),
+  }));
 }
 
 function browserProfileColor(profile, quarantineProfile) {
@@ -232,6 +319,10 @@ function uniqueSorted(values) {
   return [...new Set(values.filter((value) => typeof value === "string" && value))].sort();
 }
 
+function runtimePath(root, suffix) {
+  return `${String(root).replace(/\/$/, "")}/${suffix}`;
+}
+
 function cloneRecord(value) {
   if (!isRecord(value)) return {};
   return JSON.parse(JSON.stringify(value));
@@ -247,10 +338,29 @@ This is the unbound-user fallback agent. Only explain how to bind or contact an 
 Never access business tools, user memory, Browser profiles, Skills, files, or platform credentials.
 `;
 
-const USER_GUIDANCE = `# Shared memory boundary
+const USER_BASE_GUIDANCE = `# Shared memory boundary
 
 This workspace belongs to one human who may use multiple IM channels.
 - Treat this workspace as that person's shared memory boundary.
 - Consult workspace memory when the person asks about facts learned through another IM channel.
 - Never expose this workspace or its memory to another agent.
 `;
+
+const LEGACY_SKILL_GUIDANCE = `- Before using any Skill instructions, scripts, or referenced files, call muad_use_skill with the exact Skill name.
+- A successful muad_use_skill result is authoritative: continue the task and never claim that Skill is not enabled.
+- For traditional-script Skills, call muad_run_skill only with a script path returned by muad_use_skill; for traditional-prompt Skills, follow the returned instructions with allowed native tools.
+- Report a Skill as unavailable only when muad_use_skill rejects the activation.`;
+
+const SKILL_GUIDANCE_START = "<!-- muad:skill-activation:start -->";
+const SKILL_GUIDANCE_END = "<!-- muad:skill-activation:end -->";
+const MANAGED_SKILL_GUIDANCE = `${SKILL_GUIDANCE_START}
+# Skill activation boundary
+
+- Skill activation is scoped to one user turn.
+- On every user turn, including a retry or follow-up, if the request clearly matches an available Skill, first read the exact SKILL.md path listed in <available_skills>.
+- Reading that exact SKILL.md is the native Skill activation and audit boundary. If native reading is unavailable, call muad_use_skill with the exact Skill name instead.
+- Do not call task tools until one of those activation methods succeeds.
+- Never reuse a prior turn's Skill activation as authorization for the current turn.
+${LEGACY_SKILL_GUIDANCE}
+${SKILL_GUIDANCE_END}`;
+const USER_GUIDANCE = `${USER_BASE_GUIDANCE}\n${MANAGED_SKILL_GUIDANCE}\n`;

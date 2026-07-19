@@ -85,7 +85,7 @@ function validateAgents(value) {
     assertRecord(agent, label);
     assertExactKeys(
       agent,
-      ["id", "default", "status", "workspace", "agentDir", "browserProfile", "model", "tools"],
+      ["id", "default", "status", "workspace", "agentDir", "browserProfile", "model", "skills", "tools"],
       label,
       ["id", "default", "status", "workspace", "agentDir", "tools"],
     );
@@ -96,6 +96,8 @@ function validateAgents(value) {
     assertAbsolutePath(agent.agentDir, `${label}.agentDir`);
     optionalString(agent.browserProfile, `${label}.browserProfile`);
     optionalString(agent.model, `${label}.model`);
+    optionalStringArray(agent.skills, `${label}.skills`);
+    if (Array.isArray(agent.skills)) assertNoDuplicateStrings(agent.skills, `${label}.skills`);
     validateToolPolicy(agent.tools, `${label}.tools`);
     if (ids.has(agent.id)) throw new Error(`duplicate agent: ${agent.id}`);
     ids.add(agent.id);
@@ -220,15 +222,36 @@ function validateSkills(value, agents) {
     policy.allowed.forEach((skill, skillIndex) => {
       const skillLabel = `${label}.allowed[${skillIndex}]`;
       assertRecord(skill, skillLabel);
-      assertExactKeys(skill, ["name", "source", "skillId"], skillLabel);
+      assertExactKeys(
+        skill,
+        ["name", "source", "skillId", "version", "entryType", "rootPath", "scriptFiles"],
+        skillLabel,
+      );
       assertString(skill.name, `${skillLabel}.name`);
       assertString(skill.skillId, `${skillLabel}.skillId`);
+      optionalString(skill.version, `${skillLabel}.version`);
+      assertAbsolutePath(skill.rootPath, `${skillLabel}.rootPath`);
+      assertStringArray(skill.scriptFiles, `${skillLabel}.scriptFiles`);
+      if (!["managed", "traditional-script", "traditional-prompt"].includes(skill.entryType)) {
+        throw new Error(`${skillLabel}.entryType is invalid`);
+      }
+      if (skill.entryType === "traditional-script" && skill.scriptFiles.length === 0) {
+        throw new Error(`${skillLabel}.scriptFiles is required`);
+      }
+      skill.scriptFiles.forEach((file) => assertRelativeSkillPath(file, `${skillLabel}.scriptFiles`));
       if (!["system", "public", "private"].includes(skill.source)) throw new Error(`${skillLabel}.source is invalid`);
       if (names.has(skill.name)) throw new Error(`duplicate Skill grant: ${skill.name}`);
       names.add(skill.name);
     });
   });
   if (mapped.size !== agents.size - 1) throw new Error("runtime.skills must map every business agent");
+}
+
+function assertRelativeSkillPath(value, label) {
+  assertString(value, label);
+  if (value.startsWith("/") || value === "." || value === ".." || value.startsWith("../") || value.includes("/../")) {
+    throw new Error(`${label} must contain relative Skill paths`);
+  }
 }
 
 function validateSessionManager(value, agents) {
@@ -296,6 +319,14 @@ function assertStringArray(value, label) {
 
 function optionalStringArray(value, label) {
   if (value !== undefined) assertStringArray(value, label);
+}
+
+function assertNoDuplicateStrings(value, label) {
+  const seen = new Set();
+  for (const item of value) {
+    if (seen.has(item)) throw new Error(`${label} must not contain duplicates`);
+    seen.add(item);
+  }
 }
 
 function assertBoolean(value, label) {

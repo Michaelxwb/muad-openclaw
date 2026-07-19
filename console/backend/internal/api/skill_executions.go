@@ -2,12 +2,13 @@ package api
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
-	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -17,21 +18,31 @@ const (
 	maxSkillProgressRows = 20
 )
 
+var (
+	runSecretPairPattern = regexp.MustCompile(`(?i)\b(api[_-]?key|token|cookie|authorization|secret|password)\s*[:=]\s*[^\s,;]+`)
+	runBearerPattern     = regexp.MustCompile(`(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+`)
+)
+
 type skillExecutionUpsertRequest struct {
-	ExecutionID   string              `json:"executionId"`
-	AgentID       string              `json:"agentId"`
-	SkillName     string              `json:"skillName"`
-	SkillScope    string              `json:"skillScope"`
-	SkillVersion  string              `json:"skillVersion"`
-	Status        string              `json:"status"`
-	StartedAt     time.Time           `json:"startedAt"`
-	EndedAt       time.Time           `json:"endedAt"`
-	DurationMS    int64               `json:"durationMs"`
-	Progress      []skillProgressItem `json:"progress"`
-	ErrorCode     string              `json:"errorCode"`
-	ErrorMessage  string              `json:"errorMessage"`
-	InputSummary  string              `json:"inputSummary"`
-	OutputSummary string              `json:"outputSummary"`
+	ExecutionID    string              `json:"executionId"`
+	AgentID        string              `json:"agentId"`
+	SkillName      string              `json:"skillName"`
+	SkillScope     string              `json:"skillScope"`
+	SkillVersion   string              `json:"skillVersion"`
+	EntryType      string              `json:"entryType"`
+	ActivationMode string              `json:"activationMode"`
+	EventSeq       int64               `json:"eventSeq"`
+	Status         string              `json:"status"`
+	StartedAt      time.Time           `json:"startedAt"`
+	EndedAt        time.Time           `json:"endedAt"`
+	DurationMS     int64               `json:"durationMs"`
+	Progress       []skillProgressItem `json:"progress"`
+	LastToolName   string              `json:"lastToolName"`
+	TerminalReason string              `json:"terminalReason"`
+	ErrorCode      string              `json:"errorCode"`
+	ErrorMessage   string              `json:"errorMessage"`
+	InputSummary   string              `json:"inputSummary"`
+	OutputSummary  string              `json:"outputSummary"`
 }
 
 type skillProgressItem struct {
@@ -42,23 +53,32 @@ type skillProgressItem struct {
 }
 
 type skillExecutionView struct {
-	ExecutionID   string    `json:"executionId"`
-	PodID         string    `json:"podId"`
-	HumanUserID   string    `json:"humanUserId"`
-	AgentID       string    `json:"agentId"`
-	SkillName     string    `json:"skillName"`
-	SkillScope    string    `json:"skillScope"`
-	SkillVersion  string    `json:"skillVersion"`
-	Status        string    `json:"status"`
-	StartedAt     time.Time `json:"startedAt"`
-	EndedAt       time.Time `json:"endedAt,omitempty"`
-	DurationMS    int64     `json:"durationMs"`
-	ProgressJSON  string    `json:"progressJson"`
-	ErrorCode     string    `json:"errorCode,omitempty"`
-	ErrorMessage  string    `json:"errorMessage,omitempty"`
-	InputSummary  string    `json:"inputSummary,omitempty"`
-	OutputSummary string    `json:"outputSummary,omitempty"`
-	CreatedAt     time.Time `json:"createdAt"`
+	ExecutionID    string    `json:"executionId"`
+	PodID          string    `json:"podId"`
+	HumanUserID    string    `json:"humanUserId"`
+	AgentID        string    `json:"agentId"`
+	SkillName      string    `json:"skillName"`
+	SkillScope     string    `json:"skillScope"`
+	SkillVersion   string    `json:"skillVersion"`
+	EntryType      string    `json:"entryType"`
+	ActivationMode string    `json:"activationMode"`
+	EventSeq       int64     `json:"eventSeq"`
+	Status         string    `json:"status"`
+	StartedAt      time.Time `json:"startedAt"`
+	EndedAt        time.Time `json:"endedAt,omitempty"`
+	DurationMS     int64     `json:"durationMs"`
+	LastToolName   string    `json:"lastToolName,omitempty"`
+	TerminalReason string    `json:"terminalReason,omitempty"`
+	ErrorCode      string    `json:"errorCode,omitempty"`
+	ErrorMessage   string    `json:"errorMessage,omitempty"`
+	InputSummary   string    `json:"inputSummary,omitempty"`
+	OutputSummary  string    `json:"outputSummary,omitempty"`
+	CreatedAt      time.Time `json:"createdAt"`
+}
+
+type skillExecutionDetailView struct {
+	skillExecutionView
+	ProgressJSON string `json:"progressJson"`
 }
 
 func (s *Server) handleUpsertSkillExecution(w http.ResponseWriter, r *http.Request) {
@@ -82,10 +102,7 @@ func (s *Server) handleUpsertSkillExecution(w http.ResponseWriter, r *http.Reque
 		writeRepoError(w, err)
 		return
 	}
-	if stored.Status == repo.SkillExecutionFailed {
-		s.auditSkillExecutionFail(r, stored)
-	}
-	writeJSON(w, http.StatusOK, skillExecutionToView(stored))
+	writeJSON(w, http.StatusOK, skillExecutionDetail(stored))
 }
 
 func (s *Server) skillExecutionRecordFromRequest(
@@ -105,13 +122,26 @@ func (s *Server) skillExecutionRecordFromRequest(
 	return repo.SkillExecutionRecord{
 		ExecutionID: request.ExecutionID, PodID: pod.PodID, HumanUserID: user.HumanUserID,
 		AgentID: user.AgentID, SkillName: request.SkillName, SkillScope: request.SkillScope,
-		SkillVersion: request.SkillVersion, Status: request.Status, StartedAt: request.StartedAt,
+		SkillVersion: request.SkillVersion, EntryType: request.EntryType,
+		ActivationMode: request.ActivationMode, EventSeq: request.EventSeq,
+		Status: request.Status, StartedAt: request.StartedAt,
 		EndedAt: request.EndedAt, DurationMS: request.DurationMS, ProgressJSON: progressJSON,
-		ErrorCode:     trimRunText(request.ErrorCode, 128),
-		ErrorMessage:  trimRunText(request.ErrorMessage, maxSkillSummaryBytes),
-		InputSummary:  trimRunText(request.InputSummary, maxSkillSummaryBytes),
-		OutputSummary: trimRunText(request.OutputSummary, maxSkillSummaryBytes),
+		LastToolName:   sanitizeRunText(request.LastToolName, 128),
+		TerminalReason: sanitizeRunText(request.TerminalReason, 128),
+		ErrorCode:      sanitizeRunText(request.ErrorCode, 128),
+		ErrorMessage:   sanitizeRunText(request.ErrorMessage, maxSkillSummaryBytes),
+		InputSummary:   sanitizeRunText(request.InputSummary, maxSkillSummaryBytes),
+		OutputSummary:  sanitizeRunText(request.OutputSummary, maxSkillSummaryBytes),
 	}, nil
+}
+
+func (s *Server) handleGetSkillExecution(w http.ResponseWriter, r *http.Request) {
+	record, err := s.store.GetSkillExecutionRecord(strings.TrimSpace(r.PathValue("executionId")))
+	if err != nil {
+		writeRepoError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, skillExecutionDetail(record))
 }
 
 func (s *Server) handleListSkillExecutions(w http.ResponseWriter, r *http.Request) {
@@ -132,30 +162,92 @@ func (s *Server) handleListSkillExecutions(w http.ResponseWriter, r *http.Reques
 func skillExecutionFilterFromRequest(
 	w http.ResponseWriter, r *http.Request,
 ) (repo.SkillExecutionListFilter, int, int, bool) {
-	page, pageSize := parsePodPagination(r)
+	page, pageSize, ok := skillExecutionPagination(w, r)
+	if !ok {
+		return repo.SkillExecutionListFilter{}, 0, 0, false
+	}
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 	if status != "" && !validSkillExecutionStatus(status) {
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill execution status")
 		return repo.SkillExecutionListFilter{}, 0, 0, false
 	}
+	from, to, ok := skillExecutionTimeRange(w, r)
+	if !ok {
+		return repo.SkillExecutionListFilter{}, 0, 0, false
+	}
+	scope := strings.TrimSpace(r.URL.Query().Get("scope"))
+	entryType := strings.TrimSpace(r.URL.Query().Get("entryType"))
+	if !validOptionalSkillExecutionClass(scope, entryType) {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill execution filter")
+		return repo.SkillExecutionListFilter{}, 0, 0, false
+	}
 	return repo.SkillExecutionListFilter{
 		Offset: (page - 1) * pageSize, Limit: pageSize,
+		Query:       strings.TrimSpace(r.URL.Query().Get("q")),
 		PodID:       strings.TrimSpace(r.URL.Query().Get("podId")),
 		HumanUserID: strings.TrimSpace(r.URL.Query().Get("humanUserId")),
 		AgentID:     strings.TrimSpace(r.URL.Query().Get("agentId")),
 		SkillName:   strings.TrimSpace(r.URL.Query().Get("skillName")),
-		Status:      status,
+		SkillScope:  scope, EntryType: entryType, Status: status, From: from, To: to,
 	}, page, pageSize, true
+}
+
+func skillExecutionPagination(w http.ResponseWriter, r *http.Request) (int, int, bool) {
+	page, pageSize := parsePodPagination(r)
+	raw := strings.TrimSpace(r.URL.Query().Get("pageSize"))
+	if raw == "" {
+		return page, defaultPodPageSize, true
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil || !validSkillExecutionPageSize(parsed) {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid page size")
+		return 0, 0, false
+	}
+	return page, pageSize, true
+}
+
+func validSkillExecutionPageSize(size int) bool {
+	return size == 10 || size == 20 || size == 50 || size == 100
+}
+
+func skillExecutionTimeRange(w http.ResponseWriter, r *http.Request) (time.Time, time.Time, bool) {
+	from, err := parseOptionalExecutionTime(r.URL.Query().Get("startedFrom"))
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid start time")
+		return time.Time{}, time.Time{}, false
+	}
+	to, err := parseOptionalExecutionTime(r.URL.Query().Get("startedTo"))
+	if err != nil || (!from.IsZero() && !to.IsZero() && from.After(to)) {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid end time")
+		return time.Time{}, time.Time{}, false
+	}
+	return from, to, true
+}
+
+func parseOptionalExecutionTime(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.RFC3339, value)
 }
 
 func validSkillExecutionStatus(status string) bool {
 	switch status {
 	case repo.SkillExecutionRunning, repo.SkillExecutionSucceeded,
-		repo.SkillExecutionFailed, repo.SkillExecutionCancelled:
+		repo.SkillExecutionFailed, repo.SkillExecutionCancelled, repo.SkillExecutionRejected:
 		return true
 	default:
 		return false
 	}
+}
+
+func validOptionalSkillExecutionClass(scope, entryType string) bool {
+	validScope := scope == "" || scope == repo.SkillScopeSystem ||
+		scope == repo.SkillScopePublic || scope == repo.SkillScopePrivate
+	validEntry := entryType == "" || entryType == repo.SkillEntryManaged ||
+		entryType == repo.SkillEntryTraditionalScript || entryType == repo.SkillEntryTraditionalPrompt
+	return validScope && validEntry
 }
 
 func marshalSkillProgress(input []skillProgressItem) (string, error) {
@@ -165,8 +257,8 @@ func marshalSkillProgress(input []skillProgressItem) (string, error) {
 	output := make([]skillProgressItem, 0, len(input))
 	for _, item := range input {
 		output = append(output, skillProgressItem{
-			Type: trimRunText(item.Type, 32), Stage: trimRunText(item.Stage, 80),
-			Text: trimRunText(item.Text, maxSkillProgressText), TS: trimRunText(item.TS, 64),
+			Type: sanitizeRunText(item.Type, 32), Stage: sanitizeRunText(item.Stage, 80),
+			Text: sanitizeRunText(item.Text, maxSkillProgressText), TS: sanitizeRunText(item.TS, 64),
 		})
 	}
 	encoded, err := json.Marshal(output)
@@ -181,7 +273,17 @@ func trimRunText(value string, limit int) string {
 	if len(value) <= limit {
 		return value
 	}
-	return value[:limit]
+	value = value[:limit]
+	for !utf8.ValidString(value) {
+		value = value[:len(value)-1]
+	}
+	return value
+}
+
+func sanitizeRunText(value string, limit int) string {
+	trimmed := trimRunText(value, limit)
+	trimmed = runBearerPattern.ReplaceAllString(trimmed, "Bearer [REDACTED]")
+	return runSecretPairPattern.ReplaceAllString(trimmed, "$1=[REDACTED]")
 }
 
 func skillExecutionViews(records []repo.SkillExecutionRecord) []skillExecutionView {
@@ -196,24 +298,20 @@ func skillExecutionToView(record repo.SkillExecutionRecord) skillExecutionView {
 	return skillExecutionView{
 		ExecutionID: record.ExecutionID, PodID: record.PodID, HumanUserID: record.HumanUserID,
 		AgentID: record.AgentID, SkillName: record.SkillName, SkillScope: record.SkillScope,
-		SkillVersion: record.SkillVersion, Status: record.Status, StartedAt: record.StartedAt,
-		EndedAt: record.EndedAt, DurationMS: record.DurationMS, ProgressJSON: record.ProgressJSON,
+		SkillVersion: record.SkillVersion, EntryType: record.EntryType,
+		ActivationMode: record.ActivationMode, EventSeq: record.EventSeq,
+		Status: record.Status, StartedAt: record.StartedAt,
+		EndedAt: record.EndedAt, DurationMS: record.DurationMS,
+		LastToolName: record.LastToolName, TerminalReason: record.TerminalReason,
 		ErrorCode: record.ErrorCode, ErrorMessage: record.ErrorMessage,
 		InputSummary: record.InputSummary, OutputSummary: record.OutputSummary,
 		CreatedAt: record.CreatedAt,
 	}
 }
 
-func (s *Server) auditSkillExecutionFail(r *http.Request, record repo.SkillExecutionRecord) {
-	err := auditlog.Record(r.Context(), s.store, auditlog.Event{
-		Actor: auditlog.PodActor(record.PodID), Action: auditlog.ActionSkillExecutionFail,
-		Target: record.ExecutionID,
-		Metadata: auditlog.Metadata{
-			PodID: record.PodID, HumanUserID: record.HumanUserID, AgentID: record.AgentID,
-			SkillName: record.SkillName, Status: record.Status, ErrorCode: record.ErrorCode,
-		},
-	})
-	if err != nil {
-		log.Printf("skill_execution_audit_failed execution=%s error=%v", record.ExecutionID, err)
+func skillExecutionDetail(record repo.SkillExecutionRecord) skillExecutionDetailView {
+	return skillExecutionDetailView{
+		skillExecutionView: skillExecutionToView(record),
+		ProgressJSON:       record.ProgressJSON,
 	}
 }

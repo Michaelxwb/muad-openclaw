@@ -45,6 +45,7 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 		"idx_skill_policies_human_user", "idx_skill_policies_skill_name",
 		"idx_skill_executions_human_user_started", "idx_skill_executions_pod_started",
 		"idx_skill_executions_skill_started", "idx_skill_executions_status_started",
+		"idx_skill_executions_started",
 	}
 	for _, index := range indexes {
 		if !schemaObjectExists(t, db, "index", index) {
@@ -60,6 +61,104 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 	}
 	if journalMode != "wal" {
 		t.Errorf("journal_mode = %q, want wal", journalMode)
+	}
+}
+
+func TestSchemaSkillExecutionSupportsAuditStateMachine(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "skill-execution.db")
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open first time: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close first store: %v", err)
+	}
+	store, err = repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open second time: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close second store: %v", err)
+	}
+
+	db := openSchemaDB(t, path)
+	for _, column := range []string{
+		"entry_type", "activation_mode", "event_seq", "last_tool_name", "terminal_reason",
+	} {
+		if !tableColumnExists(t, db, "skill_execution_records", column) {
+			t.Errorf("skill_execution_records column %q was not created", column)
+		}
+	}
+}
+
+func TestOpen_MigratesLegacySkillExecutionSchema(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-skill-execution.db")
+	prepareLegacySkillExecutionDatabase(t, path)
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open migrated database: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	legacy, err := store.GetSkillExecutionRecord("execution-legacy")
+	if err != nil {
+		t.Fatalf("Get migrated Skill execution: %v", err)
+	}
+	if legacy.ActivationMode != repo.SkillActivationTool || legacy.EventSeq != 0 {
+		t.Fatalf("migrated defaults = mode %q seq %d", legacy.ActivationMode, legacy.EventSeq)
+	}
+	_, err = store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
+		ExecutionID: "execution-rejected", PodID: "pod-a", HumanUserID: "user-a",
+		AgentID: "agent-a", SkillName: "legacy-skill", SkillScope: repo.SkillScopePublic,
+		EntryType: repo.SkillEntryManaged, ActivationMode: repo.SkillActivationTool,
+		EventSeq: 1, Status: repo.SkillExecutionRejected,
+	})
+	if err != nil {
+		t.Fatalf("insert rejected Skill execution after migration: %v", err)
+	}
+}
+
+func TestOpen_MigratesLegacySkillAssetEntryTypes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-skill-assets.db")
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open initial database: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close initial database: %v", err)
+	}
+	db := openSchemaDB(t, path)
+	for _, entry := range []struct{ id, name, entryType string }{
+		{"prompt-skill", "prompt-skill", "prompt-only"},
+		{"script-skill", "script-skill", "script"},
+	} {
+		_, err := db.Exec(`INSERT INTO skill_assets (
+			skill_id, name, scope, display_name, source_path, manifest_hash,
+			entry_type, created_at, updated_at
+		) VALUES (?, ?, 'public', ?, ?, ?, ?, '2026-07-15T00:00:00Z', '2026-07-15T00:00:00Z')`,
+			entry.id, entry.name, entry.name, "/skills/"+entry.name,
+			"sha256:"+entry.name, entry.entryType)
+		if err != nil {
+			t.Fatalf("insert legacy Skill %s: %v", entry.name, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	store, err = repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open migrated database: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+	for id, expected := range map[string]string{
+		"prompt-skill": repo.SkillEntryTraditionalPrompt,
+		"script-skill": repo.SkillEntryTraditionalScript,
+	} {
+		asset, err := store.GetSkillAsset(id)
+		if err != nil || asset.EntryType != expected {
+			t.Fatalf("migrated Skill %s = %+v, %v; want %q", id, asset, err, expected)
+		}
 	}
 }
 
@@ -143,6 +242,30 @@ func schemaObjectExists(t *testing.T, db *sql.DB, kind, name string) bool {
 	return count == 1
 }
 
+func tableColumnExists(t *testing.T, db *sql.DB, table, column string) bool {
+	t.Helper()
+	rows, err := db.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		t.Fatalf("inspect table %s: %v", table, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid, notNull, primaryKey int
+		var name, columnType string
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
+			t.Fatalf("scan table info for %s: %v", table, err)
+		}
+		if name == column {
+			return true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate table info for %s: %v", table, err)
+	}
+	return false
+}
+
 func assertPragmaInt(t *testing.T, db *sql.DB, pragma string, want int) {
 	t.Helper()
 	var got int
@@ -187,3 +310,70 @@ func insertLLMModel(t *testing.T, db *sql.DB, modelConfigID string) {
 		t.Fatalf("insert LLM model %s: %v", modelConfigID, err)
 	}
 }
+
+func prepareLegacySkillExecutionDatabase(t *testing.T, path string) {
+	t.Helper()
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("create current database: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("close current database: %v", err)
+	}
+	db := openSchemaDB(t, path)
+	insertPod(t, db, "pod-a", "fingerprint-a")
+	insertLLMModel(t, db, "model-a")
+	insertSchemaHumanUser(t, db)
+	if _, err := db.Exec(`DROP TABLE skill_execution_records`); err != nil {
+		t.Fatalf("drop current Skill execution table: %v", err)
+	}
+	if _, err := db.Exec(legacySkillExecutionSchema); err != nil {
+		t.Fatalf("create legacy Skill execution table: %v", err)
+	}
+	if _, err := db.Exec(legacySkillExecutionFixture); err != nil {
+		t.Fatalf("insert legacy Skill execution: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+}
+
+func insertSchemaHumanUser(t *testing.T, db *sql.DB) {
+	t.Helper()
+	_, err := db.Exec(`INSERT INTO human_users (
+		human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile,
+		browser_cdp_port, status, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, "user-a", "pod-a", "model-a", "Alice",
+		"agent-a", "browser-a", 18802, "active", "2026-07-14T12:00:00Z", "2026-07-14T12:00:00Z")
+	if err != nil {
+		t.Fatalf("insert schema Human User: %v", err)
+	}
+}
+
+const legacySkillExecutionSchema = `CREATE TABLE skill_execution_records (
+	execution_id TEXT PRIMARY KEY,
+	pod_id TEXT NOT NULL REFERENCES pods(pod_id) ON DELETE CASCADE,
+	human_user_id TEXT NOT NULL,
+	agent_id TEXT NOT NULL,
+	skill_name TEXT NOT NULL,
+	skill_scope TEXT NOT NULL CHECK (skill_scope IN ('system','public','private')),
+	skill_version TEXT NOT NULL DEFAULT '',
+	status TEXT NOT NULL CHECK (status IN ('running','succeeded','failed','cancelled')),
+	started_at TEXT NOT NULL,
+	ended_at TEXT NOT NULL DEFAULT '',
+	duration_ms INTEGER NOT NULL DEFAULT 0 CHECK (duration_ms >= 0),
+	progress_json TEXT NOT NULL DEFAULT '[]',
+	error_code TEXT NOT NULL DEFAULT '',
+	error_message TEXT NOT NULL DEFAULT '',
+	input_summary TEXT NOT NULL DEFAULT '',
+	output_summary TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL,
+	FOREIGN KEY (human_user_id, pod_id)
+		REFERENCES human_users(human_user_id, pod_id) ON DELETE CASCADE
+);`
+
+const legacySkillExecutionFixture = `INSERT INTO skill_execution_records (
+	execution_id, pod_id, human_user_id, agent_id, skill_name, skill_scope,
+	skill_version, status, started_at, created_at
+) VALUES ('execution-legacy', 'pod-a', 'user-a', 'agent-a', 'legacy-skill',
+	'public', '', 'succeeded', '2026-07-14T12:00:00Z', '2026-07-14T12:00:00Z')`
