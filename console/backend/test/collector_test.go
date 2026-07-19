@@ -71,7 +71,8 @@ func TestCollector_CollectOnce_PopulatesCache(t *testing.T) {
 	if snap.MaxSkillConcurrency != 3 || snap.MaxBrowserConcurrency != 2 {
 		t.Errorf("runtime defaults not inherited: %+v", snap)
 	}
-	if !snap.RuntimeGuardHealthy || snap.SkillActive != 1 || snap.SkillQueued != 2 || snap.RuntimeGeneration != 3 {
+	if !snap.RuntimeGuardHealthy || snap.SkillActive != 1 || snap.SkillQueued != 2 ||
+		snap.RuntimeGeneration != 3 || snap.SkillTelemetryPending != 2 || snap.SkillTelemetryWriteFailed {
 		t.Errorf("runtime health not aggregated: %+v", snap)
 	}
 

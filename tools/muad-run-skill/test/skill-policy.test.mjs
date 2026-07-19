@@ -12,8 +12,15 @@ test("normalizes and resolves per-agent Skill grants", () => {
     {
       agentId: "alice",
       allowed: [
-        { name: "xdr-query", source: "public", skillId: "skill-public-xdr" },
-        { name: "sdsp-report", source: "private", skillId: "skill-private-sdsp" },
+        {
+          name: "xdr-query", source: "public", skillId: "skill-public-xdr",
+          version: "1", entryType: "managed", rootPath: "/skills/xdr-query", scriptFiles: [],
+        },
+        {
+          name: "sdsp-report", source: "private", skillId: "skill-private-sdsp",
+          version: "2", entryType: "traditional-prompt",
+          rootPath: "/state/skills/sdsp-report", scriptFiles: [],
+        },
         { name: "bad", source: "unknown", skillId: "bad" },
       ],
     },
@@ -23,6 +30,10 @@ test("normalizes and resolves per-agent Skill grants", () => {
     name: "sdsp-report",
     source: "private",
     skillId: "skill-private-sdsp",
+    version: "2",
+    entryType: "traditional-prompt",
+    rootPath: "/state/skills/sdsp-report",
+    scriptFiles: [],
   });
   assert.equal(manifestSourceForGrant("private"), "private");
   assert.equal(manifestSourceForGrant("public"), "public");

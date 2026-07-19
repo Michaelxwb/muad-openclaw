@@ -1,0 +1,8 @@
+version: 1
+task: agent-telemetry-plugin-architecture
+enforcement: required
+updated_at: '2026-07-18T11:36:28.773814+00:00'
+sources:
+- type: migration
+  ref: prepared-plan
+bindings: []

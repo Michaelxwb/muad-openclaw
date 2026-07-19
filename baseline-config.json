@@ -12,7 +12,7 @@
   },
   "tools": {
     "profile": "coding",
-    "alsoAllow": ["browser", "muad_run_skill"]
+    "alsoAllow": ["browser", "muad_run_skill", "muad_use_skill", "session_get_state"]
   },
   "browser": {
     "enabled": true,

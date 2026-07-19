@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
 func TestRuntimeConfig_StrictRoundTrip(t *testing.T) {
@@ -92,8 +93,8 @@ func validRuntimeConfig() driver.RuntimeConfigV1 {
 			Configs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"botId":"test","secret":"test"}`)},
 		},
 		Agents: []driver.RuntimeAgent{
-			{ID: "main", Default: true, Status: "active", Workspace: "/state/main/workspace", AgentDir: "/state/main/agent", Tools: driver.RuntimeToolPolicy{}},
-			{ID: "alice", Status: "active", Workspace: "/state/alice/workspace", AgentDir: "/state/alice/agent", BrowserProfile: "alice", Model: "provider-a/model", Tools: driver.RuntimeToolPolicy{WorkspaceOnly: true}},
+			{ID: "main", Default: true, Status: "active", Workspace: "/state/main/workspace", AgentDir: "/state/main/agent", Skills: []string{}, Tools: driver.RuntimeToolPolicy{}},
+			{ID: "alice", Status: "active", Workspace: "/state/alice/workspace", AgentDir: "/state/alice/agent", BrowserProfile: "alice", Model: "provider-a/model", Skills: []string{"xdr-query"}, Tools: driver.RuntimeToolPolicy{WorkspaceOnly: true}},
 		},
 		Routes: []driver.RuntimeRoute{
 			{AgentID: "alice", Channel: "wecom", AccountID: "default", PeerKind: "direct", ExternalID: "alice-id"},
@@ -116,6 +117,8 @@ func validRuntimeConfig() driver.RuntimeConfigV1 {
 				AgentID: "alice",
 				Allowed: []driver.RuntimeSkillGrant{{
 					Name: "xdr-query", Source: "public", SkillID: "skill-public-xdr",
+					Version: "1.0.0", EntryType: repo.SkillEntryManaged,
+					RootPath: "/opt/openclaw-skills/xdr-query", ScriptFiles: []string{},
 				}},
 			}},
 		},

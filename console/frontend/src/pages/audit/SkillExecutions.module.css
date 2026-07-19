@@ -1,0 +1,129 @@
+.filters {
+  justify-content: flex-end;
+}
+
+.filters :global(.semi-input-wrapper) {
+  width: 144px;
+}
+
+.filters .queryInput {
+  width: 240px;
+}
+
+.filters :global(.semi-select) {
+  width: 124px;
+}
+
+.filters .timeInput {
+  width: 184px;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.error :global(.semi-banner) {
+  flex: 1;
+}
+
+.primary {
+  color: var(--semi-color-text-0);
+  font-weight: 600;
+}
+
+.ellipsis {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.detailLoading {
+  display: flex;
+  min-height: 200px;
+  align-items: center;
+  justify-content: center;
+}
+
+.detailError {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detailError :global(.semi-banner) {
+  flex: 1;
+}
+
+.detailContent {
+  min-width: 0;
+}
+
+.detailSection {
+  margin-top: 20px;
+}
+
+.detailSection :global(.semi-typography-h6) {
+  margin: 0 0 12px;
+}
+
+.progressEmpty {
+  padding: 16px 0;
+}
+
+.progressTitle {
+  margin-bottom: 4px;
+  color: var(--semi-color-text-0);
+  font-weight: 600;
+}
+
+.detailText,
+.resultText {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.detailText {
+  color: var(--semi-color-text-1);
+}
+
+.resultGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+.resultText {
+  max-height: 180px;
+  margin-top: 4px;
+  padding: 8px;
+  overflow: auto;
+  color: var(--semi-color-text-0);
+  background: var(--semi-color-fill-0);
+  border-radius: 4px;
+}
+
+@media (max-width: 900px) {
+  .filters {
+    justify-content: flex-start;
+  }
+
+  .resultGrid {
+    grid-template-columns: 1fr;
+  }
+}

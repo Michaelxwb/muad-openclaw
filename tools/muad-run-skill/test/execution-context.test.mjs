@@ -10,10 +10,12 @@ import {
 test("trusted Tool Context is required and main cannot execute script Skills", () => {
   const context = trustedExecutionContext({
     agentId: "alice",
+    runId: "run-1",
     sessionKey: "agent:alice:wecom:direct:user-a",
     workspaceDir: "/home/node/.openclaw/workspace-alice",
   });
   assert.equal(context.agentId, "alice");
+  assert.equal(context.runId, "run-1");
   for (const invalid of [
     {},
     { agentId: "main", sessionKey: "x", workspaceDir: "/state/workspace" },

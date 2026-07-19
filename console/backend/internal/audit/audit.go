@@ -43,7 +43,6 @@ const (
 	ActionSkillAssetDelete         Action = "skill.asset.delete"
 	ActionSkillPolicyCreate        Action = "skill.policy.create"
 	ActionSkillPolicyDelete        Action = "skill.policy.delete"
-	ActionSkillExecutionFail       Action = "skill.execution.fail"
 	ActionSessionResolveFail       Action = "session_credential.resolve_fail"
 	ActionPodConfigApply           Action = "pod_config.apply"
 	ActionPodConfigSuccess         Action = "pod_config.success"
@@ -63,7 +62,6 @@ var validActions = map[Action]struct{}{
 	ActionPlatformCredentialCreate: {}, ActionPlatformCredentialUpdate: {}, ActionPlatformCredentialDelete: {},
 	ActionSkillAssetScan: {}, ActionSkillAssetInstall: {}, ActionSkillAssetUpdate: {},
 	ActionSkillAssetDelete: {}, ActionSkillPolicyCreate: {}, ActionSkillPolicyDelete: {},
-	ActionSkillExecutionFail: {},
 	ActionSessionResolveFail: {}, ActionPodConfigApply: {}, ActionPodConfigSuccess: {},
 	ActionPodConfigFail: {}, ActionRuntimeGuardBind: {}, ActionRuntimeGuardReject: {},
 	ActionPodServiceTokenRotate: {},

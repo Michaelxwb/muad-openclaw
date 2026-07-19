@@ -10,34 +10,38 @@ import (
 
 // Snapshot is the latest sampled runtime and control-plane state for one Pod.
 type Snapshot struct {
-	PodID                  string
-	UserCount              int
-	MaxUsers               int
-	AvailableSlots         int
-	CPUPercent             float64
-	MemMiB                 int
-	EffectiveMemLimit      string
-	EffectiveMemLimitMiB   int
-	MemAlertThresholdMiB   int
-	EffectiveCPULimit      string
-	EffectiveRestartPolicy string
-	MaxSkillConcurrency    int
-	MaxBrowserConcurrency  int
-	SkillActive            int
-	SkillQueued            int
-	BrowserActive          int
-	BrowserQueued          int
-	ConfigGeneration       int64
-	AppliedGeneration      int64
-	GenerationLag          int64
-	RuntimeGeneration      int64
-	RuntimeGuardHealthy    bool
-	ChannelConnected       bool
-	ChannelStatuses        map[string]bool // per-channel connected state
-	LastActiveAt           time.Time       // display "最后活跃" (incl. channel start)
-	LastMessageAt          time.Time       // real message activity; drives idle/reap countdown
-	Healthy                bool            // false when the last probe failed (→ unhealthy)
-	Updated                time.Time
+	PodID                     string
+	UserCount                 int
+	MaxUsers                  int
+	AvailableSlots            int
+	CPUPercent                float64
+	MemMiB                    int
+	EffectiveMemLimit         string
+	EffectiveMemLimitMiB      int
+	MemAlertThresholdMiB      int
+	EffectiveCPULimit         string
+	EffectiveRestartPolicy    string
+	MaxSkillConcurrency       int
+	MaxBrowserConcurrency     int
+	SkillActive               int
+	SkillQueued               int
+	BrowserActive             int
+	BrowserQueued             int
+	SkillTelemetryPending     int
+	SkillTelemetryWriteFailed bool
+	SkillTelemetryDropped     int
+	SkillTelemetryLastError   string
+	ConfigGeneration          int64
+	AppliedGeneration         int64
+	GenerationLag             int64
+	RuntimeGeneration         int64
+	RuntimeGuardHealthy       bool
+	ChannelConnected          bool
+	ChannelStatuses           map[string]bool // per-channel connected state
+	LastActiveAt              time.Time       // display "最后活跃" (incl. channel start)
+	LastMessageAt             time.Time       // real message activity; drives idle/reap countdown
+	Healthy                   bool            // false when the last probe failed (→ unhealthy)
+	Updated                   time.Time
 }
 
 // Cache is a concurrency-safe map of podID to Snapshot.

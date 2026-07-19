@@ -1,127 +1,159 @@
 # muad-openclaw
 
-多用户 **企业微信 + 个人微信** Agent 平台。每用户一个隔离容器：[openclaw](https://github.com/openclaw/openclaw) + 官方 WeCom / WeChat 插件 + Playwright + 任意 OpenAI 兼容 LLM。
+面向企业微信和个人微信的多用户 Agent 平台。控制面以 Pod 为运行单元，每个 Pod 最多承载 10 个 Human User；每个用户拥有独立的 Agent、工作区、浏览器 Profile、模型配置和 IM 身份，同一用户绑定多个 IM 后复用同一份记忆与 Skill。
 
-容器 **可同时跑多通道**（一个容器里企微 + 个人微信并行），共享同一 LLM 会话记忆。通道增删改通过控制面热更（`openclaw.json` 走 ExecStdin 注入，~200ms 生效，无需重启容器）。
+平台不修改或 fork OpenClaw 上游源码，所有多用户隔离、Skill 执行、身份绑定和业务凭证能力都通过控制面、运行时配置及外置插件实现。
 
-**所有复杂配置（浏览器/工具/渠道/provider）在构建镜像时已烤好，起来即用。**
+## 核心能力
 
-> 设计文档：[`.code-flow/specs/`](.code-flow/specs/)
-> 多 IM 通道方案：[`.code-flow/tasks/archived/2026-07-03/multi-im-channel/`](.code-flow/tasks/archived/2026-07-03/multi-im-channel/)
+- **多用户单 Pod**：管理员维护 Pod 容量，用户级 Agent、会话、浏览器、模型和私有状态相互隔离。
+- **多 IM 身份**：支持企业微信 `wecom` 和个人微信 `openclaw-weixin`；已知 External ID 可直接绑定，未知身份通过一次性绑定码激活。
+- **模型池**：批量维护 OpenAI 兼容模型配置，创建用户时必须绑定一个未占用模型；不存在全局、Pod 或用户 override 回退链路。
+- **Skill 管理**：统一管理 system/public/private Skill，支持 `.tar.gz` 和 `.zip`，Public Skill 显式应用到全部 Pod，Private Skill 直接安装到目标用户工作区。
+- **业务平台凭证**：每个用户可配置多个业务平台 API Key；`session-manager` 按可信 Agent 上下文解析并生成隔离登录态。
+- **执行审计**：操作审计与 Skill 执行日志分开查询，记录 Skill 激活、工具进度、终态、耗时和失败摘要。
+- **Docker/Kubernetes**：`RuntimeDriver` 同时实现 Docker 和 Kubernetes，配置应用带 generation、健康检查与失败回滚。
 
-## 镜像里烤好了什么
+## 运行时镜像
 
-- openclaw + **Chromium**（Playwright，含系统依赖）
-- **WeCom 长连接插件** `@wecom/wecom-openclaw-plugin`（通道 id `wecom`，websocket 长连接 + 主动推送）
-- **WeChat 插件** `@tencent-weixin/openclaw-weixin`（通道 id `openclaw-weixin`，扫码登录）
-- PoC 验证的基线配置：`browser.mode=off` 本地启动、`noSandbox`、`tools.alsoAllow=[browser]`、`provider.api=openai-completions`
+Worker 镜像包含：
 
-通道凭据（wecom botId/secret、wechat 走扫码）和 LLM key **不进镜像**，运行时经 env 注入。
+- OpenClaw `2026.6.10` 与 Chromium/Playwright。
+- 企业微信插件 `@wecom/wecom-openclaw-plugin`。
+- 个人微信插件 `@tencent-weixin/openclaw-weixin`。
+- `muad-run-skill`、`muad-runtime-guard` 和 `session-manager`。
+- 多用户配置渲染、Private Skill installer、配置事务与进度 CLI。
+- `/opt/openclaw-skills` 下的内置 Skill 种子。
 
-## 构建镜像
+通道凭证、LLM API Key、平台 API Key 和 Pod service token 均在运行时注入，不进入镜像。
 
-推 git tag 即由 GitHub Actions 构建并推到 `ghcr.io/<owner>/muad-openclaw:<tag>`：
+## 架构概览
 
-```bash
-git tag v0.1.0 && git push origin v0.1.0
+```text
+企业微信 / 微信
+       │
+       ▼
+OpenClaw Pod（最多 10 个 Human User）
+  ├── main：仅处理绑定引导
+  ├── user-a Agent / workspace / browser / model
+  ├── user-b Agent / workspace / browser / model
+  ├── muad-run-skill：激活、执行、进度、审计
+  ├── runtime-guard：身份、目录、浏览器和健康边界
+  └── session-manager：业务平台登录态
+       │
+       ▼
+muad Console
+  ├── Pod / 用户 / IM / 模型 / Skill / 平台管理
+  ├── Runtime Config 调和与回滚
+  ├── 操作审计 / Skill 执行日志 / 告警
+  └── SQLite + Docker/K8s RuntimeDriver
 ```
 
-本地构建：
+详细架构见 [`docs/k8s-architecture-100users.md`](docs/k8s-architecture-100users.md) 和 [`docs/multi-user-single-pod.md`](docs/multi-user-single-pod.md)。
+
+## 构建 Worker 镜像
 
 ```bash
 docker build -t muad-openclaw:local .
-# 基础版本固定为 2026.6.10；构建自检会拒绝其他版本。
 ```
 
-## 用户容器管理（通过 `muad-console` 控制面）
-
-[不再用 `provision-user.sh` CLI 起容器]，统一走 Web 控制台（`console/`）：建/删/启停/重读 channel/改 LLM/查日志/审计一条龙。
-
-`muad-console` 是单 Go 二进制（内嵌 React 前端），通过 `RuntimeDriver` 抽象同时支持 Docker 和 Kubernetes：
+构建过程会校验 OpenClaw 固定版本、插件清单和运行时装配。推送 `v*` tag 会触发 `.github/workflows/build-image.yml`：
 
 ```bash
-# 启动 console（默认 docker driver）
-cd console/backend && cp config.example.yaml config.yaml
-# 编辑 config.yaml 填 security.masterKey / admin.password 等
-go run ./cmd/console
-
-# 或切换到 k8s driver（已写实）
-# config.yaml: runtime.driver: k8s + k8s.namespace: muad
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
-打开 `http://localhost:8080`，管理员在 UI 上：
-
-| 操作        | 说明                                                                     |
-| ----------- | ------------------------------------------------------------------------ |
-| 创建容器    | 选多通道（wecom / wechat），填凭据 / 走扫码                              |
-| 列表        | 看每个容器的多通道独立状态（🟢/🔴）、CPU/内存、最后活跃、回收倒计时      |
-| 编辑通道    | 增/删/改通道配置 → 控制面走 ExecStdin 热更到 `openclaw.json`，容器不重启 |
-| 删容器      | 可选同时删状态卷（记忆/会话）                                            |
-| LLM         | 全局配置 + per-user 覆盖 + 连通性测试 + 批量应用                         |
-| 审计 / 告警 | 管理员操作审计 + 容器健康告警（铃铛，30s 轮询）                          |
-
-详细架构、配置表、API 列表、CI 流程见 **[`console/README.md`](console/README.md)**。
-
-### 通道行为
-
-- **wecom**：必填 `botId` + `secret`，通过 env 注入容器，openclaw 长连接企微
-- **wechat**：免凭证（无 botId/secret），管理员创建后点「扫码」按钮 → 后端触发 `openclaw channels login` → 拉 ASCII 二维码到 UI → 用户用微信扫 → 完成登录
-- **一容器可同时勾选多个通道**，openclaw 内部按 channel id 隔离 session
-- **通道热更**：编辑保存 → 控制面对比新旧 channels/configs → `openclaw inject-channels.mjs` 解析 stdin JSON → 写 `openclaw.json` 的 `channels` 段 → gateway 自动 reload
-
-## 开发
+## 启动控制面
 
 ```bash
-# 后端
 cd console/backend
-go test ./...                        # 69 个集成测试（test/ 黑盒）
+cp config.example.yaml config.yaml
+# 配置 security.masterKey、admin.password 和 runtime.driver
 go run ./cmd/console
+```
 
-# 前端
+本地前端开发：
+
+```bash
 cd console/frontend
 npm install
-npm run dev                          # http://localhost:5173
-npm run check                        # tsc --noEmit && eslint && prettier --check && vitest run
-# 6 个 vitest 单元测试（test/ChannelForm.test.tsx）
-
-# 整体
-npx -y @douyinfe/semi-mcp            # 控制面 / 容器内 openclaw 知识查询
+npm run dev
 ```
 
-`/cf-task:prd` 走需求 → 设计 → 任务 → 实现 → 归档的工作流，详见 [`.opencode/commands/`](.opencode/commands/)。
+访问 `http://localhost:5173`。生产镜像会把前端静态文件嵌入 Go 二进制，默认监听 `:8080`。Docker Compose 和 Kubernetes 配置见 [`console/README.md`](console/README.md)。
 
-## 注意
+## 控制台模块
 
-- **一通道一凭证**：同一通道（wecom/wechat）在多容器上配同一凭证会互踢（连接互斥）。但**不同通道可在同一容器并存**（wechat + wecom 各一凭证）。
-- WeCom 主动推送要求用户先给 bot 发过一条消息（企微规则）。
-- 浏览器 / exec 等特权 scope 已通过基线配置（本地启动）规避人工审批，无需在 UI 点批准。
+| 模块 | 主要功能 |
+|------|----------|
+| Pod 管理 | 创建、启停、升级、通道、资源、配置应用、日志和容量 |
+| 用户管理 | 全局用户列表、选择未满 Pod、绑定模型、IM 身份、绑定码、平台凭证和 Private Skill |
+| Skill 管理 | Public Skill 上传、启禁用、删除、全 Pod 应用、资产扫描和状态查询 |
+| 模型配置 | 批量导入模型 Key、连通性测试、占用状态和用户绑定 |
+| 资源与平台 | Pod 默认资源、Skill/浏览器并发和业务平台配置 |
+| 审计日志 | 平台操作审计与 Skill 执行生命周期两个独立 Tab |
 
-## 结构
+## Skill 约定
 
+每个 Skill 必须包含 `SKILL.md`；`muad.skill.json` 仅用于确定性步骤、入口和进度编排，不是识别或执行的必要条件。
+
+```text
+<skill-name>/
+├── SKILL.md              # 必需
+├── muad.skill.json       # 可选：managed Skill
+├── scripts/              # 可选：Shell/Python/Node 脚本
+└── references/           # 可选
 ```
-Dockerfile                  自包含 muad-openclaw 镜像（烤 Chromium + wecom/wechat 插件 + 基线配置）
-baseline-config.json        内部固化配置（管理员不碰）
-bin/
-  ├── seed-config.mjs       构建期：合并基线
-  ├── inject-env.mjs        运行期：注入 LLM/通道 env → openclaw.json
-  └── inject-channels.mjs   运行期（热更）：stdin 收 JSON → 更新 openclaw.json 的 channels 段
-entrypoint.sh               首启播种 + 注入 env + 起网关
 
-console/                     管理控制面（Go 后端 + React 前端，详细见 console/README.md）
-  ├── backend/              Go 单二进制，RuntimeDriver 抽象（docker + k8s）
-  └── frontend/             React + Vite + Semi Design SPA
+运行时支持：
 
-.code-flow/                 规范 + 任务档案
-  ├── specs/                编码规范（backend / frontend / shared）
-  └── tasks/                任务档案（含已归档的 multi-im-channel 等）
+- `managed`：由 `muad.skill.json` 声明 steps 或 entrypoint。
+- `traditional-script`：无 manifest，由已扫描的相对脚本路径执行。
+- `traditional-prompt`：无 manifest，按 `SKILL.md` 指导 Agent 使用原生工具。
 
-.opencode/                  opencode 命令 + plugin + skills（含 semi-design-guide）
-.github/workflows/          build-image.yml / build-console.yml
+Skill 激活只在当前用户消息轮次有效。Agent 必须先读取授权 Skill 的精确 `SKILL.md`，无法读取时调用 `muad_use_skill`。若 frontmatter `description` 声明 `MANDATORY before calling ...`，`muad-run-skill` 会在未激活时阻断对应原生工具，避免模型绕过 Skill 后漏记审计。
+
+详见 [`skills/README.md`](skills/README.md) 和 [`tools/muad-run-skill/README.md`](tools/muad-run-skill/README.md)。
+
+## 开发验证
+
+```bash
+cd console/backend && go vet ./... && go test ./...
+cd console/frontend && npm run check
+cd tools/muad-run-skill && npm test
+cd tools/muad-runtime-guard && npm test
+node --test bin/test/*.test.mjs
+```
+
+## 目录结构
+
+```text
+Dockerfile                    Worker 镜像
+baseline-config.json          OpenClaw 基线配置
+bin/                          配置渲染、事务、Private Skill installer
+console/                      Go + React 管理控制面
+docs/                         架构与部署文档
+skills/                       内置 Skill 与开发模板
+tools/
+  ├── muad-run-skill/         Skill 激活、执行、进度和审计插件
+  ├── muad-runtime-guard/     多用户运行时边界和健康检查
+  ├── session-manager/        业务平台登录态管理
+  └── muad-progress/          语言无关进度 CLI
+.code-flow/                   规范、设计和任务档案
+.github/workflows/            Worker/Console 镜像流水线
 ```
 
 ## CI / 发布
 
-| tag 格式     | 触发                | 推到                                            |
-| ------------ | ------------------- | ----------------------------------------------- |
-| `v*`         | `build-image.yml`   | `ghcr.io/<owner>/muad-openclaw`（用户容器镜像） |
-| `console-v*` | `build-console.yml` | `ghcr.io/<owner>/muad-console`（控制台镜像）    |
+| tag | 流水线 | 镜像 |
+|-----|--------|------|
+| `v*` | `build-image.yml` | `ghcr.io/<owner>/muad-openclaw` |
+| `console-v*` | `build-console.yml` | `ghcr.io/<owner>/muad-console` |
+
+## 注意事项
+
+- 同一个机器人或通道凭证不能同时绑定多个 Pod，否则会发生连接互斥；Pod 与机器人由管理员维护。
+- WeCom 主动推送要求用户先向机器人发送过消息。
+- Public Skill 在状态变更后必须点击“应用 Skill”才会同步到所有运行中 Pod；Private Skill 安装/删除只作用于目标用户。
+- Kubernetes Public Skill 需要可用的 RWX PVC；本地单节点测试可使用 `k8s/` 下的 hostPath 静态 PV 模拟，正式环境应使用 NFS/CephFS/EFS 等共享存储。

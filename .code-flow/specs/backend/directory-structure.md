@@ -1,5 +1,14 @@
 ---
+id: backend-directory-structure
 description: 新建/移动后端文件时适用：目录结构与模块组织约束
+stages: [design, plan, code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-backend-directory-001
+    type: manual
+    config:
+      checklist: Confirm all Guidance and Avoid items for this Spec.
+      owner: project-owner
 ---
 
 # Backend Directory Structure
@@ -22,15 +31,15 @@ if order.status == 1 and role == "admin":   # 魔法数字 / 魔法字符串
 ```
 
 ## Rules
+- [RULE-backend-directory-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+
+## Guidance
 - 接口层放 `api/`，业务逻辑放 `services/`，数据模型放 `models/`，禁止跨层倒置依赖
 - 入口文件（`main.*`）只做框架装配，不写业务代码
 - 配置统一放 `config/`，禁止在业务代码中直接读 `os.environ` / `process.env`
 - 常量集中放 `constants/`，按业务模块拆分（`constants/order.py`、`constants/user.py`），禁止在业务代码中散落硬编码字面量（魔法数字 / 字符串 / 状态码）
 - 数据访问层独立放 `crud/` 或 `repositories/`，业务层依赖 CRUD 抽象，不直接依赖 ORM
 - 新增一级目录必须同步更新导航地图与 `__init__` / `index` 索引
-- **[项目] Go `internal/` 目录**：所有应用代码放 `internal/` 下，按功能域拆分子包（`internal/api/`、`internal/config/`、`internal/repo/`），`cmd/` 仅放入口 main
-- **[项目] Go 常量惯例**：Go 项目使用包级 `const` 块定义常量（如 `driver.GatewayPort`、`collector.defaultWorkers`），不创建 `constants/` 目录；通用规则中 `constants/` 模式适用于 Python/Node，Go 以包级 const 替代
-- **[项目] [internal/driver/]** 容器运行时通过 `RuntimeDriver` 接口抽象（13 个方法：Create/Start/Stop/Restart/Remove/List/Stats/StatsAll/Logs/Exec/Reap/Revive），Docker/K8s 分别实现接口；`factory.go` 按配置选择驱动，其余代码只依赖接口，不 import 具体实现包
 
 ## Patterns
 - 模块按业务域拆分（如 `services/order/`、`services/user/`），目录深度建议 ≤ 3 层
@@ -38,7 +47,7 @@ if order.status == 1 and role == "admin":   # 魔法数字 / 魔法字符串
 - 常量命名用 UPPER_SNAKE_CASE，枚举优先使用语言原生 `Enum`
 - 测试目录与源码同构（`tests/services/order/test_*`）
 
-## Anti-Patterns
+## Avoid
 - 禁止在根目录堆放脚本与临时代码，临时脚本放 `scripts/` 并命名清晰
 - 禁止在 `models/` 里写业务逻辑，模型仅定义结构与简单关联
 - 禁止把常量直接写在业务代码里（如 `if status == 1` / `role == "admin"`），必须引用 `constants/` 中的命名常量

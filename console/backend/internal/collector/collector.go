@@ -183,4 +183,8 @@ func mergeGatewayStatus(snapshot *monitor.Snapshot, status gateway.Status) {
 	snapshot.SkillQueued = status.SkillQueued
 	snapshot.BrowserActive = status.BrowserActive
 	snapshot.BrowserQueued = status.BrowserQueued
+	snapshot.SkillTelemetryPending = status.SkillTelemetryPending
+	snapshot.SkillTelemetryWriteFailed = status.SkillTelemetryWriteFailed
+	snapshot.SkillTelemetryDropped = status.SkillTelemetryDropped
+	snapshot.SkillTelemetryLastError = status.SkillTelemetryLastError
 }

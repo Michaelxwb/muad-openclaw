@@ -29,12 +29,13 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   const health = await registration.healthHandler({ params: {} });
   assert.deepEqual(health, {
     ok: true,
-    version: 1,
+    version: 2,
     generation: 7,
     mappings: 2,
     sessionManager: { loaded: true, version: 1 },
     skill: { active: 1, queued: 2, limit: 4 },
     browser: { active: 0, queued: 0, limit: 2 },
+    telemetry: { loaded: true, pending: 0, writeFailed: false, dropped: 0, lastError: "" },
   });
   assert.equal(JSON.stringify(health).includes("pod-service-token"), false);
 });
@@ -56,6 +57,22 @@ test("health fails closed for incomplete mappings, quarantine reuse, or missing 
   };
   delete globalThis[Symbol.for("muad.session-manager.health")];
   assert.equal(runtimeHealth(parseGuardConfig(validConfig())).ok, false);
+});
+
+test("health exposes pending telemetry and fails closed after an outbox write error", (t) => {
+  installHealthMarkers(t);
+  globalThis[Symbol.for("muad.run-skill.telemetry")] = {
+    snapshot: () => ({
+      pending: 3, writeFailed: true, dropped: 1,
+      lastError: "outbox_capacity_exceeded",
+    }),
+  };
+  const health = runtimeHealth(parseGuardConfig(validConfig()));
+  assert.equal(health.ok, false);
+  assert.deepEqual(health.telemetry, {
+    loaded: true, pending: 3, writeFailed: true, dropped: 1,
+    lastError: "outbox_capacity_exceeded",
+  });
 });
 
 test("manifest declares all trusted policies and package entry", () => {
@@ -126,6 +143,10 @@ function validConfig() {
       { agentId: "alice", profile: "alice" },
       { agentId: "bob", profile: "bob" },
     ],
+    skillReadRoots: [
+      { agentId: "alice", roots: ["/opt/openclaw-skills/web-tools-guide"] },
+      { agentId: "bob", roots: [] },
+    ],
     sessionAgentIds: ["alice", "bob"],
     maxBrowserConcurrency: 2,
     maxSkillConcurrency: 4,
@@ -138,12 +159,17 @@ function installHealthMarkers(t) {
   const sessionSymbol = Symbol.for("muad.session-manager.health");
   const skillSymbol = Symbol.for("muad.run-skill.queue");
   const browserSymbol = Symbol.for("muad.browser.lease");
+  const telemetrySymbol = Symbol.for("muad.run-skill.telemetry");
   globalThis[sessionSymbol] = { loaded: true, version: 1 };
   globalThis[skillSymbol] = { snapshot: () => ({ active: 1, queued: 2, limit: 4 }) };
   globalThis[browserSymbol] = { snapshot: () => ({ active: 0, queued: 0, limit: 2 }) };
+  globalThis[telemetrySymbol] = {
+    snapshot: () => ({ pending: 0, writeFailed: false, dropped: 0, lastError: "" }),
+  };
   t.after(() => {
     delete globalThis[sessionSymbol];
     delete globalThis[skillSymbol];
     delete globalThis[browserSymbol];
+    delete globalThis[telemetrySymbol];
   });
 }

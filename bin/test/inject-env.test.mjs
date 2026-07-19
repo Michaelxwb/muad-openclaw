@@ -96,7 +96,13 @@ test("startup preserves a newer persisted runtime generation", () => {
   });
   const persistedConfig = JSON.parse(readFileSync(configPath, "utf8"));
   const persistedBotId = persistedConfig.channels.wecom.botId;
+  persistedConfig.tools = { profile: "coding", alsoAllow: ["browser", "muad_run_skill"] };
   delete persistedConfig.plugins.entries["muad-runtime-guard"].hooks;
+  delete persistedConfig.plugins.entries["muad-run-skill"].hooks;
+  const runSkillConfig = persistedConfig.plugins.entries["muad-run-skill"].config;
+  runSkillConfig.consoleInternalURL = runSkillConfig.telemetry.consoleInternalURL;
+  runSkillConfig.serviceTokenFile = runSkillConfig.telemetry.serviceTokenFile;
+  delete runSkillConfig.telemetry;
   writeFileSync(configPath, `${JSON.stringify(persistedConfig, null, 2)}\n`);
 
   const staleRuntime = structuredClone(newerRuntime);
@@ -114,6 +120,18 @@ test("startup preserves a newer persisted runtime generation", () => {
   const migrated = JSON.parse(readFileSync(configPath, "utf8"));
   assert.equal(migrated.plugins.entries["muad-runtime-guard"].config.generation, 8);
   assert.equal(migrated.plugins.entries["muad-runtime-guard"].hooks.allowConversationAccess, true);
+  assert.equal(migrated.plugins.entries["muad-run-skill"].hooks.allowConversationAccess, true);
+  assert.deepEqual(migrated.tools.alsoAllow, [
+    "browser",
+    "muad_run_skill",
+    "muad_use_skill",
+    "session_get_state",
+  ]);
+  const migratedRunSkill = migrated.plugins.entries["muad-run-skill"].config;
+  assert.equal(migratedRunSkill.consoleInternalURL, undefined);
+  assert.equal(migratedRunSkill.serviceTokenFile, undefined);
+  assert.equal(migratedRunSkill.telemetry.consoleInternalURL, newerRuntime.consoleInternalUrl);
+  assert.equal(migratedRunSkill.telemetry.serviceTokenFile, newerRuntime.serviceTokenFile);
   assert.equal(migrated.channels.wecom.botId, persistedBotId);
   assert.notEqual(migrated.channels.wecom.botId, "stale-runtime-bot");
 });

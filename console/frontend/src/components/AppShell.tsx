@@ -258,6 +258,6 @@ function PageContent({
   if (page === "skills") return <Skills />;
   if (page === "llm") return <LLM />;
   if (page === "settings") return <Settings />;
-  if (page === "audit") return <Audit />;
+  if (page === "audit") return <Audit onOpenPod={onOpenPod} />;
   return <Containers />;
 }

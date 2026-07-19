@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Select, Space, Typography } from "@douyinfe/semi-ui";
 import { Pagination as SemiPagination } from "@douyinfe/semi-ui";
 import type { TablePaginationProps } from "@douyinfe/semi-ui/lib/es/table/interface";
@@ -76,12 +77,16 @@ interface PageSizeSelectProps {
 }
 
 export function PageSizeSelect({ pageSize, onPageSizeChange }: PageSizeSelectProps) {
+  const labelId = useId();
   const options = PAGE_SIZE_OPTIONS.map((value) => ({ label: String(value), value }));
   return (
     <Space className={styles.pageSize} spacing={6}>
+      <span id={labelId} className={styles.visuallyHidden}>
+        每页数量
+      </span>
       <Typography.Text className={styles.label}>每页</Typography.Text>
       <Select
-        aria-label="每页数量"
+        aria-labelledby={labelId}
         className={styles.select}
         size="small"
         value={pageSize}

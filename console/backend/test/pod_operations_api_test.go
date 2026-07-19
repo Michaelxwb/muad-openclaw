@@ -70,6 +70,8 @@ func TestPodOperationsAPI_SkillReloadReportsPartialResults(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
+	podABefore, _ := e.store.GetPod("pod-a")
+	podBBefore, _ := e.store.GetPod("pod-b")
 	e.reconcile.podIDs = nil
 	e.drv.removeErr = errors.New("unused runtime error")
 	body := `{"podIds":["pod-a","pod-b","pod-missing"]}`
@@ -97,6 +99,14 @@ func TestPodOperationsAPI_SkillReloadReportsPartialResults(t *testing.T) {
 	}
 	if e.drv.restarted["pod-a"] != 0 || e.drv.restarted["pod-b"] != 0 {
 		t.Fatalf("Skill reload should enqueue config apply instead of direct restart: %+v", e.drv.restarted)
+	}
+	podAAfter, _ := e.store.GetPod("pod-a")
+	podBAfter, _ := e.store.GetPod("pod-b")
+	if podAAfter.ConfigGeneration != podABefore.ConfigGeneration+1 ||
+		podBAfter.ConfigGeneration != podBBefore.ConfigGeneration+1 {
+		t.Fatalf("Skill reload did not mark Pods pending: before=%d/%d after=%d/%d",
+			podABefore.ConfigGeneration, podBBefore.ConfigGeneration,
+			podAAfter.ConfigGeneration, podBAfter.ConfigGeneration)
 	}
 }
 

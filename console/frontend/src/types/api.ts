@@ -13,7 +13,9 @@ export type SkillScope = "system" | "public" | "private";
 export type SkillStatus = "active" | "disabled" | "deleted";
 export type EffectiveSkillStatus = "effective" | "conflict" | "disabled" | "missing_credential";
 export type SkillPolicyAction = "disable" | "allow_override";
-export type SkillExecutionStatus = "running" | "succeeded" | "failed" | "cancelled";
+export type SkillExecutionStatus = "running" | "succeeded" | "failed" | "cancelled" | "rejected";
+export type SkillEntryType = "managed" | "traditional-script" | "traditional-prompt";
+export type SkillActivationMode = "tool" | "path-detected" | "runner";
 
 export interface ApiSuccessResponse<T> {
   code: 0;
@@ -469,11 +471,15 @@ export interface SkillExecution {
   skillName: string;
   skillScope: SkillScope;
   skillVersion: string;
+  entryType: SkillEntryType;
+  activationMode: SkillActivationMode;
+  eventSeq: number;
   status: SkillExecutionStatus;
   startedAt: string;
   endedAt?: string;
   durationMs: number;
-  progressJson: string;
+  lastToolName?: string;
+  terminalReason?: string;
   errorCode?: string;
   errorMessage?: string;
   inputSummary?: string;
@@ -481,12 +487,20 @@ export interface SkillExecution {
   createdAt: string;
 }
 
+export interface SkillExecutionDetail extends SkillExecution {
+  progressJson: string | null;
+}
+
 export interface SkillExecutionQuery extends PageQuery {
   podId?: string;
   humanUserId?: string;
   agentId?: string;
   skillName?: string;
+  scope?: SkillScope;
+  entryType?: SkillEntryType;
   status?: SkillExecutionStatus;
+  startedFrom?: string;
+  startedTo?: string;
 }
 
 export interface ResourceValues {

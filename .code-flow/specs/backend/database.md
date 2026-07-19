@@ -1,5 +1,14 @@
 ---
+id: backend-database
 description: 涉及数据库/ORM/迁移/查询时适用：schema 与数据访问约束
+stages: [design, plan, code, review]
+enforcement: required
+verifiers:
+  - rule: RULE-backend-database-001
+    type: manual
+    config:
+      checklist: Confirm all Guidance and Avoid items for this Spec.
+      owner: project-owner
 ---
 
 # Backend Database
@@ -19,6 +28,9 @@ cur.execute(f"SELECT * FROM users WHERE email = '{email}'")
 ```
 
 ## Rules
+- [RULE-backend-database-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+
+## Guidance
 - 所有 SQL 必须参数化，禁止字符串拼接 / 模板插值用户输入
 - 迁移脚本必须可回滚，或写成幂等脚本（`IF NOT EXISTS` / `ON CONFLICT`）
 - 事务边界明确：跨表写入必须在同一事务内，禁止"半提交"状态
@@ -32,17 +44,8 @@ cur.execute(f"SELECT * FROM users WHERE email = '{email}'")
 - 缓存与数据库一致性：先写库再失效缓存（`cache-aside`）
 - CRUD 基类统一实现 `get / list / create / update / delete / bulk_*`，子类只扩展模型特有查询
 
-## Anti-Patterns
+## Avoid
 - 禁止在事务内发起外部 HTTP / RPC 调用，超时会导致连接池耗尽
 - 禁止在循环中执行单条 `INSERT` / `UPDATE`，必须批量化
 - 禁止在 ORM 之外手写 SQL 时绕过参数绑定
 - 禁止用 `SELECT *` 上线，明确列出字段控制传输与索引
-
-## Project-Specific Notes
-
-- **[go.mod]** SQLite 驱动：`modernc.org/sqlite`（纯 Go，无 CGO，跨平台编译友好）
-- **[internal/repo/repo.go]** 无 ORM，使用 `database/sql` 标准库 + 手写 SQL；所有查询参数化
-- **[config.yaml / config.go]** DB 路径通过 `dbPath` 配置（yaml + `CONSOLE_DB` env override），默认 `/var/lib/muad-console/console.db`
-- **[internal/repo/repo.go:94-130]** 数据库迁移使用内联 `CREATE TABLE IF NOT EXISTS` DDL（幂等），写在 Go 源码中而非独立 `.sql` 文件；策略：只增不删，无 `DROP`/`ALTER`，新增字段用 `ALTER TABLE ADD COLUMN IF NOT EXISTS`
-- **[internal/repo/repo.go:68-89]** SQLite 连接配置：`busy_timeout(5000)` + `journal_mode(WAL)` + `foreign_keys(1)` pragma；`SetMaxOpenConns(1)` 避免并发写冲突
-- **[internal/repo/repo.go:158-181] ALTER TABLE ADD COLUMN 后必须用 `WHERE` 条件单次幂等地把旧数据转换到新结构**：新增 `channels TEXT DEFAULT '["wecom"]'` + `channel_configs TEXT DEFAULT '{}'` 后，紧跟 `UPDATE users SET channels=json_array(channel), channel_configs=CASE ... WHERE channels='["wecom"]' AND channel_configs='{}'`，**只在「全新默认值」时转换**——这样 `UPDATE` 跑多少次都是幂等的（已经转换过的行不再满足 WHERE 条件），且不会覆盖用户已编辑过的值。新增列必须遵循「DEFAULT 占位 + WHERE 守卫的幂等 UPDATE」两步式，不能裸 `UPDATE users SET new_col=...` 无 WHERE（会反复覆盖）。

@@ -23,8 +23,9 @@
       "workspace": "/tmp/muad-runtime/workspace",
       "agentDir": "/tmp/muad-runtime/agents/main/agent",
       "model": "pod-default-deepseek/deepseek-chat",
+      "skills": [],
       "tools": {
-        "deny": ["browser", "exec", "muad_run_skill", "session_get_state"],
+        "deny": ["browser", "exec", "read", "muad_use_skill", "muad_run_skill", "session_get_state"],
         "workspaceOnly": true
       }
     },
@@ -36,8 +37,9 @@
       "agentDir": "/tmp/muad-runtime/agents/alice/agent",
       "browserProfile": "alice",
       "model": "user-alice-deepseek/deepseek-chat",
+      "skills": ["web-tools-guide", "xdr-query"],
       "tools": {
-        "allow": ["browser", "muad_run_skill", "session_get_state"],
+        "allow": ["browser", "read", "muad_use_skill", "muad_run_skill", "session_get_state"],
         "deny": ["exec", "shell"],
         "workspaceOnly": true
       }
@@ -102,7 +104,15 @@
       {
         "agentId": "alice",
         "allowed": [
-          {"name": "xdr-query", "source": "public", "skillId": "skill-public-xdr"}
+          {
+            "name": "xdr-query",
+            "source": "public",
+            "skillId": "skill-public-xdr",
+            "version": "1.0.0",
+            "entryType": "managed",
+            "rootPath": "/opt/openclaw-skills/xdr-query",
+            "scriptFiles": []
+          }
         ]
       }
     ]

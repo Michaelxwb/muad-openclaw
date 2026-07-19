@@ -153,6 +153,22 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 设计简报模式：记录**章节名**，无需行号。
 引用格式：`<name>.design.md#3.3 数据设计`, `<name>.design.md#3.4 接口设计` 等（章节名须与模板真实标题一致）。
 
+**验收契约拆解（硬约束）**：
+
+1. 从全部 design 提取 P0/P1 的 S-/E-/B- 场景，以及 RULE 和高影响 RISK 到场景的映射。
+2. 优先沿用 design 指定的测试层级与关键真实边界。旧 design 未填写时，跨 API、存储、运行时生成、渲染或最终用户可见结果的场景推断为 `E2E`，局部模块协作推断为 `integration`，纯函数约束才可用 `unit`。
+3. 每个场景必须分配给一个负责的 TASK，并写入 `Acceptance-Refs`；同一场景可被多个任务引用，但必须有且仅有一个最终验收负责人。
+4. `manual` 只允许用于无法自动化的外部条件，必须记录原因并经用户明确确认。agent 不得把 design 的 E2E 自行降级为 unit/integration。
+5. Checklist 禁止使用泛化的“编写测试”。必须写成 `[场景ID][测试层级] + 真实边界 + 关键断言`，并为新功能/缺陷修复安排先写测试和 RED 记录。
+6. 如果场景缺测试层级、真实边界或 RULE/高影响 RISK 没有验证场景，先以 `#NOTES` 列为设计缺口；未解决前不得开始编码。
+
+**Spec 责任拆解（硬约束）**：
+
+1. 先执行 Context `refresh`，读取 Design `Spec Compliance Matrix` 与每个 design-stage/plan-stage Rule 的 `verifier_ref`，继承已有 applied refs，禁止重新选择或降级。
+2. 每条 plan-stage required Rule 必须有且仅有一个责任 TASK；该 TASK 的 `Spec-Refs` 写完整 `{spec-id}#{rule-ref}`，Checklist 写具体 verifier 命令/输入，Acceptance Contract 写测试层级、不得 Mock 的真实边界和关键断言。
+3. Rule 可被其他 TASK 引用为依赖，但 Acceptance Coverage 只能有一个最终负责人。E2E 层级**不得降级**；manual 仍仅限经用户确认的外部边界。
+4. 缺 `verifier_ref`、责任 TASK 为 0/多个、Checklist/Contract 不含 Rule-specific 验证责任时，任务文件只能保留为缺口草稿，不能启动。
+
 ### 4. 生成任务文件方案
 
 将拆解结果按以下格式组织，展示给用户确认：
@@ -183,12 +199,25 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 ---
 
+## Acceptance Coverage
+
+| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 |
+|--------|---------|---------|-------------|---------|------|
+| S-01 | xxx.design.md#2.5 验收条件 | E2E | API → Store → Renderer | TASK-001 | planned |
+| E-01 | xxx.design.md#2.5 验收条件 | integration | Service → Store | TASK-001 | planned |
+
+> 本表必须覆盖 design 中全部 P0/P1 场景，以及 RULE/高影响 RISK 映射的场景；存在缺口时不生成可启动任务。
+
+---
+
 ## TASK-001: <子任务标题>
 
 - **Status**: draft
 - **Priority**: P0
 - **Depends**:
 - **Source**: docs/xxx.md#§3.1 数据模型(L83-L110)
+- **Spec-Refs**: product-rules#RULE-product-001
+- **Acceptance-Refs**: S-01, E-01, RULE-01
 
 ### Description
 <从设计文档提取的需求重点，不必复制全文>
@@ -196,7 +225,21 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 ### Checklist
 - [ ] <具体实现步骤1>
 - [ ] <具体实现步骤2>
-- [ ] <编写测试>
+- [ ] [S-01][E2E] 修改生产代码前，按 API → Store → Renderer 真实边界编写验收测试并记录 RED
+- [ ] [S-01] 断言 <最终可观测结果 1> 与 <最终可观测结果 2>
+- [ ] [E-01][integration] 覆盖 <异常输入> 与 <可观测失败行为>
+- [ ] 运行验收命令并填写 Acceptance Evidence
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-01 | E2E | API、Store、Renderer | <断言列表> | planned | planned | planned |
+| E-01 | integration | Service、Store | <断言列表> | planned | planned | planned |
+
+### Acceptance Evidence
+
+> `cf-task-start` 在编码期填写 RED/GREEN 结果、每个关键断言的位置和真实组件证据；全部状态 verified 后任务才可 done。
 
 ### Log
 - [<当前日期>] created (draft)
@@ -221,6 +264,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 TASK-001: <标题> [P0]
   来源: §3.1 数据模型 (L83-L110)
+  验收: S-01(E2E), E-01(integration)
   描述: ...
   Checklist: N 项
   依赖: 无
@@ -248,6 +292,14 @@ TASK-002: <标题> [P1]
 3. 如果输入为 docs/ 设计文档（无需求目录）→ 按当前日期创建需求目录 `.code-flow/tasks/<YYYY-MM-DD>/<需求>/` 并写入其中
 4. 用 Write 写入
 
+写入后用 `bind --stage plan` 的 `applications` 将每条 required Rule 指向任务文件内唯一 TASK item，并执行：
+
+```bash
+python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage plan --artifact <任务文件> --json
+```
+
+只有 Context Plan 状态与任务结构校验都 `decision=pass` 才输出 Start 下一步；缺唯一 owner、`verifier_ref`、测试层级或真实边界时必须回到拆解修复。
+
 ### 6. 输出摘要
 
 ```
@@ -256,6 +308,7 @@ TASK-002: <标题> [P1]
 - P0: x 个, P1: y 个, P2: z 个
 - 依赖链深度: N 层
 - 详设引用覆盖: §3.1, §3.2, §3.3, §3.5 (共 4 个章节)
+- 验收覆盖: P0/P1 场景 x/x，RULE/高影响 RISK 映射 y/y，E2E 场景 z 个
 
 建议执行顺序:
   1. TASK-001 (无依赖)

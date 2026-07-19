@@ -60,6 +60,7 @@ func TestAlertsExposeGenerationQueuesAndFailureThresholdsWithoutSecrets(t *testi
 			PodID: "pod-a", Healthy: true, ChannelConnected: true,
 			RuntimeGuardHealthy: false, SkillActive: 1, SkillQueued: 2,
 			BrowserActive: 1, BrowserQueued: 1, MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1,
+			SkillTelemetryPending: 3, SkillTelemetryWriteFailed: true,
 		},
 	})
 	recordRepeatedFailures(t, env, auditlog.ActionSessionResolveFail, 3)
@@ -73,6 +74,8 @@ func TestAlertsExposeGenerationQueuesAndFailureThresholdsWithoutSecrets(t *testi
 		`"kind":"skill_queue"`, `"kind":"browser_queue"`,
 		`"kind":"resolver_failures"`, `"kind":"binding_failures"`,
 		`"kind":"runtime_guard_rejections"`, `"kind":"runtime_guard_unhealthy"`)
+	assertBodyContains(t, response.Code, body, http.StatusOK,
+		`"kind":"skill_telemetry_outbox_pending"`, `"kind":"skill_telemetry_outbox_write_failed"`)
 	if strings.Contains(body, "sk-alertsecret") {
 		t.Fatalf("alert response leaked apply secret: %s", body)
 	}
@@ -102,6 +105,41 @@ func TestAlertsDoNotReportGenerationMismatchWhenRuntimeGuardProbeFails(t *testin
 	assertBodyContains(t, response.Code, body, http.StatusOK, `"kind":"runtime_guard_unhealthy"`)
 	if strings.Contains(body, `"kind":"runtime_generation_mismatch"`) {
 		t.Fatalf("runtime health probe failure should not also report generation mismatch: %s", body)
+	}
+}
+
+func TestAlertsExposeOnlyStaleRunningSkillExecutions(t *testing.T) {
+	env := newTestEnv(t)
+	createTestPod(t, env.store, "pod-a", 10)
+	user := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	if err := env.store.UpdatePodState("pod-a", repo.PodStateRunning); err != nil {
+		t.Fatalf("mark Pod running: %v", err)
+	}
+	started := time.Now().UTC().Add(-7 * time.Hour).Truncate(time.Second)
+	seedRunningSkillExecution(t, env, user, "exec-stale", started)
+	seedRunningSkillExecution(t, env, user, "exec-recent", time.Now().UTC().Add(-time.Minute))
+	env.cache.Replace(map[string]monitor.Snapshot{
+		"pod-a": {PodID: "pod-a", Healthy: true, ChannelConnected: true, RuntimeGuardHealthy: true},
+	})
+
+	response := env.do(http.MethodGet, "/api/v1/alerts", "")
+	body := response.Body.String()
+	assertBodyContains(t, response.Code, body, http.StatusOK,
+		`"kind":"skill_execution_running_stale"`, `"count":1`,
+		`"oldestStartedAt":"`+started.Format(time.RFC3339)+`"`)
+}
+
+func seedRunningSkillExecution(
+	t *testing.T, env *testEnv, user repo.HumanUser, executionID string, started time.Time,
+) {
+	t.Helper()
+	_, err := env.store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
+		ExecutionID: executionID, PodID: user.PodID, HumanUserID: user.HumanUserID,
+		AgentID: user.AgentID, SkillName: "web-tools-guide", SkillScope: repo.SkillScopePublic,
+		Status: repo.SkillExecutionRunning, EventSeq: 1, StartedAt: started,
+	})
+	if err != nil {
+		t.Fatalf("seed running Skill execution %s: %v", executionID, err)
 	}
 }
 

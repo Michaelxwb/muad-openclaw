@@ -199,7 +199,7 @@ func (f *fakeDriver) Exec(_ context.Context, podID string, cmd ...string) (strin
 		if generation == 0 {
 			generation = 3
 		}
-		return fmt.Sprintf(`{"ok":true,"generation":%d,"skill":{"active":1,"queued":2},"browser":{"active":1,"queued":0}}`, generation), nil
+		return fmt.Sprintf(`{"ok":true,"generation":%d,"skill":{"active":1,"queued":2},"browser":{"active":1,"queued":0},"telemetry":{"loaded":true,"pending":2,"writeFailed":false,"dropped":0,"lastError":""}}`, generation), nil
 	default:
 		// `openclaw channels status --json`.
 		if f.channelDisconnected {
@@ -234,7 +234,7 @@ func (f *fakeDriver) ExecStdin(_ context.Context, userID string, stdin io.Reader
 		}
 		return fmt.Sprintf(`{"ok":true,"name":%q,"version":"1.0.0",`+
 			`"platforms":["xdr"],"progressSupported":true,"browserRequired":false,`+
-			`"entryType":"script","manifestHash":"sha256:test","manifestJson":"{}",`+
+			`"entryType":"managed","manifestHash":"sha256:test","manifestJson":"{}",`+
 			`"targetDir":"/home/node/.openclaw/workspace-agent/skills/%s"}`, name, name), nil
 	}
 	if strings.Contains(joined, "/opt/muad/private-skill-installer.mjs delete") {

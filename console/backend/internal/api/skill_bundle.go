@@ -261,7 +261,7 @@ func readSkillBundleMetadata(skillDir string) (privateSkillInstallResult, error)
 	if err != nil {
 		return privateSkillInstallResult{}, fmt.Errorf("read SKILL.md: %w", err)
 	}
-	manifest, err := readSkillManifest(filepath.Join(skillDir, "muad.skill.json"))
+	manifest, managed, err := readSkillManifest(filepath.Join(skillDir, "muad.skill.json"))
 	if err != nil {
 		return privateSkillInstallResult{}, err
 	}
@@ -274,19 +274,26 @@ func readSkillBundleMetadata(skillDir string) (privateSkillInstallResult, error)
 		return privateSkillInstallResult{}, errors.New("invalid skill name")
 	}
 	platforms := normalizeSkillPlatforms(manifest)
-	entryType := "prompt-only"
-	if manifest.Runtime == "script" {
-		entryType = "script"
+	scriptFiles, err := scanTraditionalSkillScripts(skillDir)
+	if err != nil {
+		return privateSkillInstallResult{}, err
 	}
+	entryType := classifySkillEntryType(managed, scriptFiles)
 	progressSupported := manifest.Progress != nil || strings.Contains(string(skillMarkdown), "muad-progress")
 	browserRequired := manifest.BrowserRequired || stringSliceContains(manifest.Capabilities, "browser")
-	manifestJSON, err := json.Marshal(map[string]any{
+	metadata := map[string]any{
 		"name": name, "version": strings.TrimSpace(manifest.Version),
 		"runtime": manifest.Runtime, "mode": manifest.Mode,
 		"visibility": valueOrDefault(manifest.Visibility, "public"),
 		"platforms":  platforms, "progressSupported": progressSupported,
 		"browserRequired": browserRequired, "entryType": entryType,
-	})
+	}
+	if !managed {
+		metadata["runtime"] = "traditional"
+		metadata["hasScripts"] = len(scriptFiles) > 0
+		metadata["scriptFiles"] = scriptFiles
+	}
+	manifestJSON, err := json.Marshal(metadata)
 	if err != nil {
 		return privateSkillInstallResult{}, fmt.Errorf("marshal Skill manifest: %w", err)
 	}
@@ -298,19 +305,71 @@ func readSkillBundleMetadata(skillDir string) (privateSkillInstallResult, error)
 	}, nil
 }
 
-func readSkillManifest(path string) (skillBundleManifest, error) {
+func readSkillManifest(path string) (skillBundleManifest, bool, error) {
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return skillBundleManifest{}, nil
+		return skillBundleManifest{}, false, nil
 	}
 	if err != nil {
-		return skillBundleManifest{}, fmt.Errorf("read Skill manifest: %w", err)
+		return skillBundleManifest{}, false, fmt.Errorf("read Skill manifest: %w", err)
 	}
 	var manifest skillBundleManifest
 	if err := json.Unmarshal(raw, &manifest); err != nil {
-		return skillBundleManifest{}, nil
+		return skillBundleManifest{}, false, nil
 	}
-	return manifest, nil
+	return manifest, true, nil
+}
+
+func classifySkillEntryType(managed bool, scriptFiles []string) string {
+	if managed {
+		return "managed"
+	}
+	if len(scriptFiles) > 0 {
+		return "traditional-script"
+	}
+	return "traditional-prompt"
+}
+
+func scanTraditionalSkillScripts(skillDir string) ([]string, error) {
+	scripts := make([]string, 0)
+	err := filepath.WalkDir(skillDir, func(item string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.Type()&fs.ModeSymlink != 0 {
+			return errors.New("Skill directory must not contain symlinks")
+		}
+		if item != skillDir && entry.IsDir() && ignoredSkillScriptDirectory(entry.Name()) {
+			return filepath.SkipDir
+		}
+		if entry.IsDir() || !supportedSkillScriptExtension(filepath.Ext(entry.Name())) {
+			return nil
+		}
+		relative, err := filepath.Rel(skillDir, item)
+		if err != nil || !pathWithin(skillDir, item) {
+			return errors.New("Skill script escapes bundle root")
+		}
+		scripts = append(scripts, filepath.ToSlash(relative))
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(scripts)
+	return scripts, nil
+}
+
+func ignoredSkillScriptDirectory(name string) bool {
+	return strings.HasPrefix(name, ".") || name == "node_modules" || name == "__pycache__"
+}
+
+func supportedSkillScriptExtension(extension string) bool {
+	switch strings.ToLower(extension) {
+	case ".sh", ".py", ".js":
+		return true
+	default:
+		return false
+	}
 }
 
 func skillMarkdownFrontmatterName(markdown string) string {

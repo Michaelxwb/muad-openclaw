@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS skill_assets (
 	source_path TEXT NOT NULL,
 	manifest_hash TEXT NOT NULL,
 	manifest_json TEXT NOT NULL DEFAULT '{}',
-	entry_type TEXT NOT NULL DEFAULT 'script',
+	entry_type TEXT NOT NULL DEFAULT 'managed',
 	platforms_json TEXT NOT NULL DEFAULT '[]',
 	browser_required INTEGER NOT NULL DEFAULT 0 CHECK (browser_required IN (0,1)),
 	progress_supported INTEGER NOT NULL DEFAULT 0 CHECK (progress_supported IN (0,1)),
@@ -171,36 +171,6 @@ CREATE TABLE IF NOT EXISTS skill_policies (
 );
 CREATE INDEX IF NOT EXISTS idx_skill_policies_human_user ON skill_policies(human_user_id);
 CREATE INDEX IF NOT EXISTS idx_skill_policies_skill_name ON skill_policies(skill_name);
-
-CREATE TABLE IF NOT EXISTS skill_execution_records (
-	execution_id TEXT PRIMARY KEY,
-	pod_id TEXT NOT NULL REFERENCES pods(pod_id) ON DELETE CASCADE,
-	human_user_id TEXT NOT NULL,
-	agent_id TEXT NOT NULL,
-	skill_name TEXT NOT NULL,
-	skill_scope TEXT NOT NULL CHECK (skill_scope IN ('system','public','private')),
-	skill_version TEXT NOT NULL DEFAULT '',
-	status TEXT NOT NULL CHECK (status IN ('running','succeeded','failed','cancelled')),
-	started_at TEXT NOT NULL,
-	ended_at TEXT NOT NULL DEFAULT '',
-	duration_ms INTEGER NOT NULL DEFAULT 0 CHECK (duration_ms >= 0),
-	progress_json TEXT NOT NULL DEFAULT '[]',
-	error_code TEXT NOT NULL DEFAULT '',
-	error_message TEXT NOT NULL DEFAULT '',
-	input_summary TEXT NOT NULL DEFAULT '',
-	output_summary TEXT NOT NULL DEFAULT '',
-	created_at TEXT NOT NULL,
-	FOREIGN KEY (human_user_id, pod_id)
-		REFERENCES human_users(human_user_id, pod_id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_skill_executions_human_user_started
-	ON skill_execution_records(human_user_id, started_at);
-CREATE INDEX IF NOT EXISTS idx_skill_executions_pod_started
-	ON skill_execution_records(pod_id, started_at);
-CREATE INDEX IF NOT EXISTS idx_skill_executions_skill_started
-	ON skill_execution_records(skill_name, started_at);
-CREATE INDEX IF NOT EXISTS idx_skill_executions_status_started
-	ON skill_execution_records(status, started_at);
 
 CREATE TABLE IF NOT EXISTS audit_log (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -237,8 +207,28 @@ func (s *Store) migrate() error {
 	if _, err := s.db.Exec(schemaDDL); err != nil {
 		return fmt.Errorf("create multi-user schema: %w", err)
 	}
+	if err := s.migrateSkillAssetEntryTypes(); err != nil {
+		return err
+	}
+	if err := s.migrateSkillExecutionRecords(); err != nil {
+		return err
+	}
 	if err := s.seedPlatformConfigs(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (s *Store) migrateSkillAssetEntryTypes() error {
+	_, err := s.db.Exec(`UPDATE skill_assets
+		SET entry_type = CASE entry_type
+			WHEN 'prompt-only' THEN 'traditional-prompt'
+			WHEN 'script' THEN 'traditional-script'
+			ELSE entry_type
+		END
+		WHERE entry_type IN ('prompt-only', 'script')`)
+	if err != nil {
+		return fmt.Errorf("migrate Skill asset entry types: %w", err)
 	}
 	return nil
 }
