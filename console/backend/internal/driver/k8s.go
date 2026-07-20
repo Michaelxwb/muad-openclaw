@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -282,6 +283,16 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: d.labels(spec.PodID)},
 				Spec: corev1.PodSpec{
+					AutomountServiceAccountToken: ptr(false),
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: ptr(true),
+						RunAsUser:    ptr(int64(DefaultRuntimeUID)),
+						RunAsGroup:   ptr(int64(DefaultRuntimeGID)),
+						FSGroup:      ptr(int64(DefaultRuntimeGID)),
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
+						},
+					},
 					Volumes:        vols,
 					InitContainers: initContainers,
 					Containers: []corev1.Container{{
@@ -293,13 +304,29 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 							{Name: "TZ", Value: runtime.Timezone},
 							{Name: "OPENCLAW_STATE_DIR", Value: runtime.StateDir},
 						},
-						Ports:        []corev1.ContainerPort{{ContainerPort: GatewayPort}},
-						VolumeMounts: mounts,
-						Resources:    resourceReqs(spec),
+						Ports: []corev1.ContainerPort{{ContainerPort: GatewayPort}},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: ptr(false),
+							Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+						},
+						ReadinessProbe: gatewayTCPProbe(),
+						LivenessProbe:  gatewayTCPProbe(),
+						VolumeMounts:   mounts,
+						Resources:      resourceReqs(spec),
 					}},
 				},
 			},
 		},
+	}
+}
+
+func gatewayTCPProbe() *corev1.Probe {
+	return &corev1.Probe{
+		ProbeHandler:        corev1.ProbeHandler{TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(GatewayPort)}},
+		InitialDelaySeconds: 10,
+		PeriodSeconds:       10,
+		TimeoutSeconds:      2,
+		FailureThreshold:    6,
 	}
 }
 

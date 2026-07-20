@@ -77,7 +77,12 @@ async function findManifestCandidates(root, name, maxDepth) {
     const entries = await readDirectory(directory);
     if (entries.some((entry) => entry.isFile() && entry.name === "muad.skill.json")) {
       const rawText = await fs.readFile(path.join(directory, "muad.skill.json"), "utf8");
-      const parsed = JSON.parse(rawText);
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch {
+        parsed = null;
+      }
       if (parsed && parsed.name === name) results.push({ skillDir: directory, rawText });
     }
     for (const entry of entries) {

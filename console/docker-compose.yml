@@ -19,8 +19,8 @@ services:
       # 唯一配置入口：指向下方挂载的 config.yaml（其余配置全在该文件里）
       CONSOLE_CONFIG: /etc/muad-console/config.yaml
     ports:
-      # 宿主端口:容器端口（容器内固定 8080，对应 config.yaml 的 listenAddr）
-      - "18080:8080"
+      # 仅本机访问（避免 0.0.0.0 暴露管理面 + docker.sock）
+      - "127.0.0.1:18080:8080"
     volumes:
       # 唯一配置源（含机密），只读挂载——不入镜像
       - ./backend/config.yaml:/etc/muad-console/config.yaml:ro

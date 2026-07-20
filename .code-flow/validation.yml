@@ -1,36 +1,66 @@
 validators:
-    - name: "TypeScript 类型检查"
-      trigger: "**/*.{ts,tsx}"
-      command: "cd console/frontend && npx tsc --noEmit"
-      timeout: 30000
-      on_fail: "检查类型定义，参见 specs/frontend/quality-standards.md"
+  - name: "TypeScript 类型检查"
+    trigger: "console/frontend/**/*.{ts,tsx}"
+    command: "cd console/frontend && npx tsc --noEmit"
+    timeout: 30000
+    on_fail: "检查类型定义，参见 specs/frontend/quality-standards.md"
 
-    - name: "Go vet"
-      trigger: "**/*.go"
-      command: "cd console/backend && go vet ./..."
-      timeout: 30000
-      on_fail: "go vet 发现可疑代码，参见 specs/backend/code-quality-performance.md"
+  - name: "ESLint"
+    trigger: "console/frontend/**/*.{ts,tsx}"
+    command: "cd console/frontend && npx eslint src/"
+    timeout: 15000
+    on_fail: "运行 npx eslint --fix 自动修复，参见 specs/frontend/quality-standards.md"
 
-    - name: "Go 单元测试"
-      trigger: "**/*.go"
-      command: "cd console/backend && go test ./..."
-      timeout: 60000
-      on_fail: "测试失败，检查断言和 mock 是否需要更新，参见 specs/backend/code-quality-performance.md"
+  - name: "Prettier"
+    trigger: "console/frontend/**/*.{ts,tsx,css}"
+    command: "cd console/frontend && npx prettier --check src/"
+    timeout: 15000
+    on_fail: "运行 npx prettier --write src/ 自动格式化，参见 specs/frontend/quality-standards.md"
 
-    - name: "ESLint"
-      trigger: "**/*.{ts,tsx}"
-      command: "cd console/frontend && npx eslint src/"
-      timeout: 15000
-      on_fail: "运行 npx eslint --fix 自动修复，参见 specs/frontend/quality-standards.md"
+  - name: "前端单元测试"
+    trigger: "console/frontend/**/*.{ts,tsx}"
+    command: "cd console/frontend && npx vitest run"
+    timeout: 30000
+    on_fail: "前端测试失败，检查组件渲染和 mock，参见 specs/frontend/quality-standards.md"
 
-    - name: "Prettier"
-      trigger: "**/*.{ts,tsx,css}"
-      command: "cd console/frontend && npx prettier --check src/"
-      timeout: 15000
-      on_fail: "运行 npx prettier --write src/ 自动格式化，参见 specs/frontend/quality-standards.md"
+  - name: "Go vet"
+    trigger: "console/backend/**/*.go"
+    command: "cd console/backend && go vet ./..."
+    timeout: 30000
+    on_fail: "go vet 发现可疑代码，参见 specs/backend/code-quality-performance.md"
 
-    - name: "前端单元测试"
-      trigger: "**/*.{ts,tsx}"
-      command: "cd console/frontend && npx vitest run"
-      timeout: 30000
-      on_fail: "前端测试失败，检查组件渲染和 mock 是否需要更新，参见 specs/frontend/quality-standards.md"
+  - name: "Go 单元测试"
+    trigger: "console/backend/**/*.go"
+    command: "cd console/backend && go test ./..."
+    timeout: 60000
+    on_fail: "测试失败，检查断言和 mock，参见 specs/backend/code-quality-performance.md"
+
+  - name: "Runtime Node 单测（bin）"
+    trigger: "bin/**/*.{mjs,js}"
+    command: "node --test bin/test/*.test.mjs"
+    timeout: 60000
+    on_fail: "bin 测试失败，参见 specs/runtime/config-and-apply.md"
+
+  - name: "Runtime Node 单测（muad-run-skill）"
+    trigger: "tools/muad-run-skill/**/*.{mjs,js}"
+    command: "node --test tools/muad-run-skill/test/*.test.mjs"
+    timeout: 60000
+    on_fail: "muad-run-skill 测试失败，参见 specs/runtime/skill-execution.md"
+
+  - name: "Runtime Node 单测（muad-runtime-guard）"
+    trigger: "tools/muad-runtime-guard/**/*.{mjs,js}"
+    command: "node --test tools/muad-runtime-guard/test/*.test.mjs"
+    timeout: 60000
+    on_fail: "muad-runtime-guard 测试失败，参见 specs/runtime/isolation-and-security.md"
+
+  - name: "Runtime Node 单测（session-manager）"
+    trigger: "tools/session-manager/**/*.{mjs,js,ts}"
+    command: "cd tools/session-manager && npm test"
+    timeout: 120000
+    on_fail: "session-manager 测试失败，参见 specs/runtime/isolation-and-security.md"
+
+  - name: "Runtime Go 单测（muad-progress）"
+    trigger: "tools/muad-progress/**/*.go"
+    command: "cd tools/muad-progress && go test ./..."
+    timeout: 60000
+    on_fail: "muad-progress 测试失败，参见 specs/runtime/skill-execution.md"

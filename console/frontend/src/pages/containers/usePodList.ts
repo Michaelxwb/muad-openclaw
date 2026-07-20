@@ -14,33 +14,37 @@ export function usePodList({ enabled = true }: UsePodListOptions = {}) {
   const { page, pageSize, search, status, setError, setItems, setLoading, setTotal } = state;
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
-  const refresh = useCallback(async () => {
-    const requestId = ++requestRef.current;
-    if (mountedRef.current) {
-      setLoading(true);
-      setError("");
-    }
-    try {
-      const result = await api.listPods({
-        page,
-        pageSize,
-        q: search,
-        state: status || undefined,
-      });
-      if (!mountedRef.current || requestId !== requestRef.current) return;
-      setItems(result.items);
-      setTotal(result.total);
-    } catch (caught) {
-      if (!mountedRef.current || requestId !== requestRef.current) return;
-      setError(caught instanceof Error ? caught.message : "加载 Pod 失败");
-    } finally {
-      if (mountedRef.current && requestId === requestRef.current) setLoading(false);
-    }
-  }, [mountedRef, page, pageSize, search, setError, setItems, setLoading, setTotal, status]);
+  const refresh = useCallback(
+    async (background = false) => {
+      const requestId = ++requestRef.current;
+      if (mountedRef.current) {
+        if (!background) setLoading(true);
+        setError("");
+      }
+      try {
+        const result = await api.listPods({
+          page,
+          pageSize,
+          q: search,
+          state: status || undefined,
+        });
+        if (!mountedRef.current || requestId !== requestRef.current) return;
+        setItems(result.items);
+        setTotal(result.total);
+      } catch (caught) {
+        if (!mountedRef.current || requestId !== requestRef.current) return;
+        setError(caught instanceof Error ? caught.message : "加载 Pod 失败");
+      } finally {
+        if (mountedRef.current && requestId === requestRef.current && !background)
+          setLoading(false);
+      }
+    },
+    [mountedRef, page, pageSize, search, setError, setItems, setLoading, setTotal, status],
+  );
   useEffect(() => {
     if (!enabled) return;
     void refresh();
-    const timer = setInterval(() => void refresh(), 5000);
+    const timer = setInterval(() => void refresh(true), 5000);
     return () => clearInterval(timer);
   }, [enabled, refresh]);
   return { ...state, refresh };

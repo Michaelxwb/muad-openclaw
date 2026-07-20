@@ -10,7 +10,7 @@ import type {
 } from "../../api";
 import { channelMeta } from "../../channels";
 import { useMountedRef } from "../../hooks/useMountedRef";
-import { FeedbackBanner } from "../ConsolePage";
+import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
 import styles from "../HumanUsersPanel.module.css";
 import { ActivationCodeDialog } from "./ActivationCodeDialog";
 import { Field } from "./shared";
@@ -186,7 +186,7 @@ function CreateBindingCodeDialog(props: CreateDialogProps) {
   }, [props.channels, props.visible]);
 
   const submit = async () => {
-    if (!form.channel) return setError("消息通道必填");
+    if (!form.channel) return setRepeatableError(setError, "消息通道必填");
     setBusy(true);
     setError("");
     try {

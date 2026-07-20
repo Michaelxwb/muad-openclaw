@@ -130,12 +130,15 @@ function useGlobalResources() {
     setMessage("");
     try {
       const result = await api.setResources(form);
+      if (!mountedRef.current) return;
       setMessage(`已更新默认值，${result.affectedPodIds.length} 个 Pod 等待应用`);
       await load();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存资源配置失败");
+      if (mountedRef.current) {
+        setError(caught instanceof Error ? caught.message : "保存资源配置失败");
+      }
     } finally {
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   };
   return { form, config, busy, error, message, setForm, save };

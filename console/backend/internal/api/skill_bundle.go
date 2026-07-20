@@ -25,6 +25,16 @@ var (
 	skillPlatformRegexp = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 )
 
+const (
+	maxExtractedSkillBundleBytes   = 25 * 1024 * 1024
+	maxExtractedSkillBundleEntries = 2048
+)
+
+type skillBundleExtractLimits struct {
+	entries   int
+	totalByte int64
+}
+
 type skillBundleManifest struct {
 	Name            string   `json:"name"`
 	Version         string   `json:"version"`
@@ -113,6 +123,7 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 	}
 	defer gz.Close()
 	reader := tar.NewReader(gz)
+	limits := &skillBundleExtractLimits{}
 	for {
 		header, err := reader.Next()
 		if errors.Is(err, io.EOF) {
@@ -129,6 +140,9 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 		if !pathWithin(targetRoot, target) {
 			return errors.New("bundle path escapes extract root")
 		}
+		if err := limits.addEntry(); err != nil {
+			return err
+		}
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(target, 0o700); err != nil {
@@ -138,7 +152,7 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 			if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
 				return fmt.Errorf("create bundle parent: %w", err)
 			}
-			if err := writeBundleFile(target, reader); err != nil {
+			if err := writeBundleFile(target, reader, header.Size, limits); err != nil {
 				return err
 			}
 		case tar.TypeSymlink, tar.TypeLink:
@@ -154,18 +168,21 @@ func extractZipSkillBundle(bundle []byte, targetRoot string) error {
 	if err != nil {
 		return err
 	}
+	limits := &skillBundleExtractLimits{}
 	for _, file := range reader.File {
 		if ignoredZipEntry(file.Name) {
 			continue
 		}
-		if err := extractZipEntry(file, targetRoot); err != nil {
+		if err := extractZipEntry(file, targetRoot, limits); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func extractZipEntry(file *zip.File, targetRoot string) error {
+func extractZipEntry(
+	file *zip.File, targetRoot string, limits *skillBundleExtractLimits,
+) error {
 	relative, err := safeArchivePath(file.Name)
 	if err != nil {
 		return err
@@ -178,6 +195,9 @@ func extractZipEntry(file *zip.File, targetRoot string) error {
 	if mode&os.ModeSymlink != 0 {
 		return errors.New("bundle must not contain symlinks")
 	}
+	if err := limits.addEntry(); err != nil {
+		return err
+	}
 	if file.FileInfo().IsDir() || zipNameIsDirectory(file.Name) {
 		return os.MkdirAll(target, 0o700)
 	}
@@ -189,7 +209,7 @@ func extractZipEntry(file *zip.File, targetRoot string) error {
 		return fmt.Errorf("open zip entry: %w", err)
 	}
 	defer source.Close()
-	return writeBundleFile(target, source)
+	return writeBundleFile(target, source, int64(file.UncompressedSize64), limits)
 }
 
 func ignoredZipEntry(name string) bool {
@@ -203,7 +223,12 @@ func zipNameIsDirectory(name string) bool {
 	return strings.HasSuffix(strings.ReplaceAll(name, "\\", "/"), "/")
 }
 
-func writeBundleFile(target string, reader io.Reader) error {
+func writeBundleFile(
+	target string, reader io.Reader, size int64, limits *skillBundleExtractLimits,
+) error {
+	if err := limits.addBytes(size); err != nil {
+		return err
+	}
 	file, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("create bundle file: %w", err)
@@ -211,6 +236,25 @@ func writeBundleFile(target string, reader io.Reader) error {
 	defer file.Close()
 	if _, err := io.Copy(file, reader); err != nil {
 		return fmt.Errorf("write bundle file: %w", err)
+	}
+	return nil
+}
+
+func (limits *skillBundleExtractLimits) addEntry() error {
+	limits.entries++
+	if limits.entries > maxExtractedSkillBundleEntries {
+		return errors.New("bundle contains too many files")
+	}
+	return nil
+}
+
+func (limits *skillBundleExtractLimits) addBytes(size int64) error {
+	if size < 0 {
+		return errors.New("bundle contains an invalid file size")
+	}
+	limits.totalByte += size
+	if limits.totalByte > maxExtractedSkillBundleBytes {
+		return errors.New("bundle extracted size is too large")
 	}
 	return nil
 }
@@ -315,7 +359,7 @@ func readSkillManifest(path string) (skillBundleManifest, bool, error) {
 	}
 	var manifest skillBundleManifest
 	if err := json.Unmarshal(raw, &manifest); err != nil {
-		return skillBundleManifest{}, false, nil
+		return skillBundleManifest{}, false, errors.New("invalid Skill manifest")
 	}
 	return manifest, true, nil
 }

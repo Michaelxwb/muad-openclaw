@@ -161,6 +161,35 @@ func TestSkillExecutionRecord_UpsertListAndFilters(t *testing.T) {
 	}
 }
 
+func TestSkillExecutionRecord_RejectsCrossPodEventSeqUpdate(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 3)
+	createTestPod(t, store, "pod-b", 3)
+	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
+	started := time.Now().UTC().Add(-time.Minute)
+	if _, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
+		ExecutionID: "exec-cross-pod", PodID: "pod-a", HumanUserID: alice.HumanUserID,
+		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
+		Status: repo.SkillExecutionRunning, EventSeq: 1, StartedAt: started, ProgressJSON: `[]`,
+	}); err != nil {
+		t.Fatalf("insert running: %v", err)
+	}
+
+	// Same execution_id + higher event_seq but different pod_id must not rewrite the row.
+	stored, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
+		ExecutionID: "exec-cross-pod", PodID: "pod-b", HumanUserID: alice.HumanUserID,
+		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
+		Status: repo.SkillExecutionSucceeded, EventSeq: 2, StartedAt: started,
+		EndedAt: started.Add(time.Second), ProgressJSON: `[{"stage":"done"}]`, OutputSummary: "forged",
+	})
+	if err != nil {
+		t.Fatalf("cross-pod upsert: %v", err)
+	}
+	if stored.PodID != "pod-a" || stored.Status != repo.SkillExecutionRunning || stored.EventSeq != 1 {
+		t.Fatalf("cross-pod update leaked: %+v", stored)
+	}
+}
+
 func TestSkillExecutionRepositoryRejectsLateEventAfterTerminal(t *testing.T) {
 	store := newStore(t)
 	createTestPod(t, store, "pod-a", 3)

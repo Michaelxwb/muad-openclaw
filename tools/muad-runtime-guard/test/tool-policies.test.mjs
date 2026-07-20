@@ -72,6 +72,34 @@ test("file policy allows the current workspace and blocks cross-user and runtime
   ]) assert.equal((await policy.evaluate(file("read", target), context("alice"))).allow, false);
 });
 
+test("file policy rejects workspace symlink escapes via realpath", async () => {
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "muad-policy-"));
+  try {
+    const workspace = path.join(root, "workspace-alice");
+    const outside = path.join(root, "outside-secret.txt");
+    const escapeLink = path.join(workspace, "escape.txt");
+    fs.mkdirSync(workspace, { recursive: true });
+    fs.writeFileSync(outside, "secret");
+    fs.symlinkSync(outside, escapeLink);
+
+    const policy = createAgentFilesPolicy({
+      config,
+      resolvePaths: () => ({
+        workspace,
+        agentDir: path.join(root, "agents/alice/agent"),
+        sessionStore: path.join(root, "agents/alice/session-store"),
+      }),
+    });
+    assert.equal((await policy.evaluate(file("read", escapeLink), context("alice"))).allow, false);
+    assert.equal((await policy.evaluate(file("read", "escape.txt"), context("alice"))).allow, false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("file policy allows only read access to the current agent authorized Skill roots", async () => {
   const policy = filePolicy();
   const skillFile = "/opt/openclaw-skills/web-tools-guide/SKILL.md";

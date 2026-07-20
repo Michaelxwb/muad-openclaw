@@ -181,12 +181,9 @@ class SkillTelemetryClient {
   }
 
   async token() {
-    if (!this.tokenPromise) {
-      this.tokenPromise = this.readFile(this.tokenPath, "utf8")
-        .then((value) => String(value).trim());
-    }
+    // Always re-read so projected/rotated service tokens stay valid.
     try {
-      return await this.tokenPromise;
+      return String(await this.readFile(this.tokenPath, "utf8")).trim();
     } catch (error) {
       this.tokenPromise = null;
       throw error;

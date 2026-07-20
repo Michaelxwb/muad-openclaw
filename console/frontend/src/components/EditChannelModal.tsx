@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Banner, Modal, Spin, Toast } from "@douyinfe/semi-ui";
 import { api } from "../api";
 import type { ChannelConfigView, ChannelCredential } from "../api";
@@ -18,21 +18,30 @@ export function EditChannelModal({ podId, onClose, onSaved }: Props) {
     channels: string[];
     channelConfigs: Record<string, ChannelConfigView>;
   } | null>(null);
+  const requestRef = useRef(0);
 
   useEffect(() => {
     if (!podId) return;
+    const requestId = ++requestRef.current;
     setLoading(true);
     setError("");
+    setInitial(null);
     api
       .getPod(podId)
-      .then((data) =>
+      .then((data) => {
+        if (requestId !== requestRef.current) return;
         setInitial({
           channels: data.channels,
           channelConfigs: data.channelConfigs ?? {},
-        }),
-      )
-      .catch((e) => setError((e as Error).message))
-      .finally(() => setLoading(false));
+        });
+      })
+      .catch((e) => {
+        if (requestId !== requestRef.current) return;
+        setError((e as Error).message);
+      })
+      .finally(() => {
+        if (requestId === requestRef.current) setLoading(false);
+      });
   }, [podId]);
 
   async function handleSubmit(v: {

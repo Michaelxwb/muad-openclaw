@@ -163,6 +163,9 @@ func (s *Server) handleSetPodResources(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, err)
 		return
 	}
+	// mem/cpu/restart only take effect on container Create. Always enqueue reconcile for
+	// concurrency DTO changes; for cgroup fields surface requiresPodRestart so clients
+	// (or operators) recreate via upgrade/restart path instead of false "applied".
 	s.enqueueReconcile(pod.PodID)
 	s.auditResourceUpdate(r, pod.PodID, generation)
 	updated, err := s.store.GetPod(pod.PodID)

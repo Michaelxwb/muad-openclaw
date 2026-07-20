@@ -1,13 +1,18 @@
 ---
 id: backend-logging
-description: 涉及日志/调试/监控时适用：日志级别、格式、追踪约束
+description: Console 后端日志/审计/监控相关改动时适用
 stages: [design, plan, code, review]
 enforcement: required
 verifiers:
   - rule: RULE-backend-logging-001
     type: manual
     config:
-      checklist: Confirm all Guidance and Avoid items for this Spec.
+      checklist: Confirm structured logs, RedactDiagnostic on stored/logged errors, no secrets, audit vs skill-execution separation.
+      owner: project-owner
+  - rule: RULE-backend-redact-001
+    type: manual
+    config:
+      checklist: Confirm error strings persisted to logs/audit/apply failures use auditlog.RedactDiagnostic first.
       owner: project-owner
 ---
 
@@ -15,36 +20,39 @@ verifiers:
 
 ## Examples
 
-✅ 结构化字段 + 脱敏 + 保留堆栈
+✅ 结构化字段 + 脱敏后再落库/日志
 
-```python
-logger.info("login", extra={"user_id": uid, "request_id": rid})
-logger.error("pay failed", exc_info=True)
+```go
+_ = s.store.FailPodConfigApply(podID, gen, auditlog.RedactDiagnostic(err.Error()))
+log.Printf("pod_upgrade_rollback_failed pod=%s error=%s", podID, auditlog.RedactDiagnostic(err.Error()))
 ```
 
-❌ 明文 token + `print` 吞掉堆栈
+❌ 打印 token / 未脱敏 error
 
-```python
-print(f"login token={token}")          # 泄露敏感字段 + 非日志框架
-logger.error("failed")                 # 丢失原始错误与上下文
+```go
+log.Printf("auth header=%s", r.Header.Get("Authorization"))
+_ = s.store.FailPodConfigApply(podID, gen, err.Error()) // 可能含敏感上下文
 ```
 
 ## Rules
-- [RULE-backend-logging-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+- [RULE-backend-logging-001] Logs and audit records must be structured enough to debug, must never include secrets/credentials, and must keep operation audit separate from skill-execution telemetry.
+- [RULE-backend-redact-001] Error strings written to logs, audit details, apply-failure fields, or user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic` (or equivalent redaction) before persistence or emission.
 
 ## Guidance
-- 关键路径（请求入口、外部调用、DB 写入、异常分支）必须输出结构化日志
-- 日志中禁止出现明文密码、token、身份证号等敏感字段，需在记录前脱敏
-- 每条请求日志必须包含 `request_id`，串联整个调用链
-- 日志级别遵循：`DEBUG`（开发）/ `INFO`（业务事件）/ `WARN`（可恢复异常）/ `ERROR`（需告警）
+- 使用项目既有 logging 工具（如 `internal/logging` daily writer），保持字段命名稳定：`pod_id`、`user_id`、`request_id`、`route`、`status`、`latency`
+- 错误日志保留错误链；不要只打 `"failed"`
+- 操作审计走 `internal/audit`；Skill 执行日志走独立查询面，禁止混表混接口糊成一团
+- 凭证、binding code、LLM key、service token 禁止进日志/审计明文
+- 请求日志避免记录完整 body 若可能含密钥
+- Skill execution / audit 查询侧只返回已 redacted 摘要
 
 ## Patterns
-- 统一字段命名：`request_id`、`user_id`、`route`、`status`、`latency_ms`、`error`
-- 异常日志必须带堆栈（`exc_info=True` 或等价机制）
-- 高频路径用采样日志，避免 IO 阻塞主流程
-- 日志输出到 stdout/stderr，由部署环境采集，禁止业务代码写文件
+- handler 入口记录关键 id，apply 流水按 stage 打点
+- 用户可见错误 message 与内部 err 分离；内部 err 落库前 Redact
+- repo 模型注释明确 “already-redacted payload”
 
 ## Avoid
-- 禁止在循环或热路径中无脱敏地打印请求体
-- 禁止用 `print` / `console.log` 替代日志框架
-- 禁止吞掉异常仅打 `logger.error("failed")`，必须保留原始错误与上下文
+- 禁止 `print` 调试残留
+- 禁止把密钥写入 `console/backend/logs/` 或响应
+- 禁止用操作审计表塞 Skill 进度刷屏事件
+- 禁止把未脱敏的 driver/gateway 错误原文直接写入 apply error 字段

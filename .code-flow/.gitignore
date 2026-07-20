@@ -1,6 +1,8 @@
 # code-flow 运行时数据（仅存本地，不入库）
 .session-log.jsonl
 .check-state.json
+# 重建/迁移对照备份，不入库
+specs.legacy-*/
 # >>> code-flow:runtime schema=1
 .active-task.json
 .active-task.lock

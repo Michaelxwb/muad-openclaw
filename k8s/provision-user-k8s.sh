@@ -22,6 +22,24 @@ done
 [[ "${USER_ID}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { echo "FATAL: userId 非法" >&2; exit 1; }
 DIR="$(pwd)/users/${USER_ID}"
 
+load_user_config() {
+  local file="$1" line key value
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "${line}" || "${line}" == \#* ]] && continue
+    if [[ "${line}" != *=* ]]; then
+      echo "FATAL: config line must be KEY=VALUE (got: ${line})" >&2
+      exit 1
+    fi
+    key="${line%%=*}"; value="${line#*=}"
+    key="${key%"${key##*[![:space:]]}"}"
+    [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "FATAL: invalid config key: ${key}" >&2; exit 1; }
+    printf -v "${key}" '%s' "${value}"
+    export "${key}"
+  done < "${file}"
+}
+
 case "${ACTION}" in
   init)
     [[ -e "${DIR}/config" ]] && { echo "已存在: ${DIR}/config" >&2; exit 2; }
@@ -34,21 +52,34 @@ case "${ACTION}" in
     ;;
   apply)
     [[ -f "${DIR}/config" ]] || { echo "FATAL: 先 $0 ${USER_ID} --init 填好 config" >&2; exit 1; }
-    set -a; . "${DIR}/config"; set +a
+    load_user_config "${DIR}/config"
     : "${WECOM_BOT_ID:?config 缺 WECOM_BOT_ID}" "${WECOM_SECRET:?缺 WECOM_SECRET}" "${LLM_API_KEY:?缺 LLM_API_KEY}"
     TOKEN="$(openssl rand -hex 16)"
-    # 渲染模板（占位用 __KEY__，sed 替换；secret 经 Secret.stringData 注入，不落盘明文清单到 git）
+    # Prefer --from-literal for secrets (no shell-source, no sed of secret values into YAML).
+    kubectl -n "${NS}" create secret generic "muad-oc-${USER_ID}" \
+      --from-literal=WECOM_BOT_ID="${WECOM_BOT_ID}" \
+      --from-literal=WECOM_SECRET="${WECOM_SECRET}" \
+      --from-literal=LLM_PROVIDER="${LLM_PROVIDER:-deepseek}" \
+      --from-literal=LLM_API_KEY="${LLM_API_KEY}" \
+      --from-literal=LLM_MODEL="${LLM_MODEL:-deepseek-v4-pro}" \
+      --from-literal=LLM_BASE_URL="${LLM_BASE_URL:-https://api.deepseek.com}" \
+      --from-literal=OPENCLAW_GATEWAY_TOKEN="${TOKEN}" \
+      --dry-run=client -o yaml | kubectl -n "${NS}" label --local -f - \
+        app=muad-openclaw "muad-user=${USER_ID}" -o yaml | kubectl -n "${NS}" apply -f -
     RENDERED="$(mktemp)"; trap 'rm -f "$RENDERED"' EXIT
-    sed -e "s|__USER__|${USER_ID}|g" \
-        -e "s|__IMAGE__|${IMAGE}|g" \
-        -e "s|__WECOM_BOT_ID__|${WECOM_BOT_ID}|g" \
-        -e "s|__WECOM_SECRET__|${WECOM_SECRET}|g" \
-        -e "s|__LLM_PROVIDER__|${LLM_PROVIDER:-deepseek}|g" \
-        -e "s|__LLM_API_KEY__|${LLM_API_KEY}|g" \
-        -e "s|__LLM_MODEL__|${LLM_MODEL:-deepseek-v4-pro}|g" \
-        -e "s|__LLM_BASE_URL__|${LLM_BASE_URL:-https://api.deepseek.com}|g" \
-        -e "s|__GATEWAY_TOKEN__|${TOKEN}|g" \
-        k8s/user.template.yaml > "${RENDERED}"
+    # Apply workload only (Secret already applied above).
+    awk '
+      function flush() {
+        if (doc == "") return
+        if (doc !~ /(^|\n)kind:[[:space:]]*Secret([[:space:]]|$)/) printf "%s", doc
+        doc = ""
+      }
+      /^---$/ { flush(); doc = $0 ORS; next }
+      doc != "" { doc = doc $0 ORS; next }
+      { print }
+      END { flush() }
+    ' k8s/user.template.yaml \
+      | sed -e "s|__USER__|${USER_ID}|g" -e "s|__IMAGE__|${IMAGE}|g" > "${RENDERED}"
     kubectl -n "${NS}" apply -f "${RENDERED}"
     echo "已部署: muad-oc-${USER_ID} (ns=${NS})"
     echo "  看日志: kubectl -n ${NS} logs -f statefulset/muad-oc-${USER_ID} | grep -i Authenticated"

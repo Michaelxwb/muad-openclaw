@@ -120,6 +120,51 @@ func TestBindingCode_IdentityConflictRollsBackConsumption(t *testing.T) {
 	assertHumanUserStatus(t, store, bob.HumanUserID, repo.HumanUserStatusPending)
 }
 
+func TestBindingCode_PurposeMustMatchUserStatus(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 10)
+	codec := bindingCodec(t)
+
+	// First-identity codes only activate pending users.
+	active := createTestHumanUser(t, store, "pod-a", "active-user", repo.HumanUserStatusActive)
+	firstForActive, plainFirst := createTestBindingCodeWithPurpose(
+		t, store, codec, active, repo.BindingPurposeFirstIdentity, time.Now().Add(time.Hour),
+	)
+	if _, err := store.ActivateBindingCode(codec, bindingActivation(plainFirst, "active-ext"), time.Now().UTC()); !errors.Is(err, repo.ErrInvalidStateTransition) {
+		t.Fatalf("first-identity on active user = %v, want ErrInvalidStateTransition", err)
+	}
+	if stored, err := store.GetBindingCode(firstForActive.BindingCodeID); err != nil || stored.Status != repo.BindingCodeStatusPending {
+		t.Fatalf("first-identity mismatch consumed code: %+v, %v", stored, err)
+	}
+
+	// Add-identity codes only activate already-active users.
+	pending := createTestHumanUser(t, store, "pod-a", "pending-user", repo.HumanUserStatusPending)
+	addForPending, plainAdd := createTestBindingCodeWithPurpose(
+		t, store, codec, pending, repo.BindingPurposeAddIdentity, time.Now().Add(time.Hour),
+	)
+	if _, err := store.ActivateBindingCode(codec, bindingActivation(plainAdd, "pending-ext"), time.Now().UTC()); !errors.Is(err, repo.ErrInvalidStateTransition) {
+		t.Fatalf("add-identity on pending user = %v, want ErrInvalidStateTransition", err)
+	}
+	if stored, err := store.GetBindingCode(addForPending.BindingCodeID); err != nil || stored.Status != repo.BindingCodeStatusPending {
+		t.Fatalf("add-identity mismatch consumed code: %+v, %v", stored, err)
+	}
+
+	// Matching purpose still succeeds for active + add_identity.
+	okCode, plainOK := createTestBindingCodeWithPurpose(
+		t, store, codec, active, repo.BindingPurposeAddIdentity, time.Now().Add(time.Hour),
+	)
+	result, err := store.ActivateBindingCode(codec, bindingActivation(plainOK, "second-id"), time.Now().UTC())
+	if err != nil {
+		t.Fatalf("matching add-identity: %v", err)
+	}
+	if result.HumanUser.HumanUserID != active.HumanUserID || result.HumanUser.Status != repo.HumanUserStatusActive {
+		t.Fatalf("unexpected activation result: %+v", result)
+	}
+	if stored, err := store.GetBindingCode(okCode.BindingCodeID); err != nil || stored.Status != repo.BindingCodeStatusUsed {
+		t.Fatalf("matching code status = %+v, %v", stored, err)
+	}
+}
+
 func bindingCodec(t *testing.T) *crypto.BindingCodeCodec {
 	t.Helper()
 	codec, err := crypto.NewBindingCodeCodec("binding-test-master-key")
@@ -134,10 +179,20 @@ func createTestBindingCode(
 	user repo.HumanUser, expiresAt time.Time,
 ) (repo.BindingCode, string) {
 	t.Helper()
+	return createTestBindingCodeWithPurpose(
+		t, store, codec, user, repo.BindingPurposeFirstIdentity, expiresAt,
+	)
+}
+
+func createTestBindingCodeWithPurpose(
+	t *testing.T, store *repo.Store, codec *crypto.BindingCodeCodec,
+	user repo.HumanUser, purpose string, expiresAt time.Time,
+) (repo.BindingCode, string) {
+	t.Helper()
 	record, plain, err := store.CreateBindingCode(codec, repo.BindingCodeRequest{
 		HumanUserID: user.HumanUserID, PodID: user.PodID, Channel: "wecom",
 		OpenClawChannel: "wecom", AccountID: "default",
-		Purpose: repo.BindingPurposeFirstIdentity, ExpiresAt: expiresAt,
+		Purpose: purpose, ExpiresAt: expiresAt,
 	})
 	if err != nil {
 		t.Fatalf("CreateBindingCode: %v", err)

@@ -4,8 +4,10 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -116,17 +118,26 @@ func TestInstallPublicSkillBundle_AllowsRelativePublicRoot(t *testing.T) {
 	}
 }
 
-func TestInstallPublicSkillBundle_UsesFallbackNameWhenManifestIsLoose(t *testing.T) {
+func TestInstallPublicSkillBundle_RejectsInvalidManifest(t *testing.T) {
 	root := t.TempDir()
-	result, err := installPublicSkillBundle(makeAPIZipWithFiles(t, map[string][]byte{
+	_, err := installPublicSkillBundle(makeAPIZipWithFiles(t, map[string][]byte{
 		"Web Tools Guide 1.0.2/SKILL.md":        []byte("# Web\n"),
 		"Web Tools Guide 1.0.2/muad.skill.json": []byte("{not json"),
 	}), root, nil)
-	if err != nil {
-		t.Fatalf("install loose public Skill bundle: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "invalid Skill manifest") {
+		t.Fatalf("invalid manifest error = %v", err)
 	}
-	if result.Name != "web-tools-guide-1-0-2" {
-		t.Fatalf("Skill name = %q", result.Name)
+}
+
+func TestInstallPublicSkillBundle_RejectsTooManyEntries(t *testing.T) {
+	root := t.TempDir()
+	files := map[string][]byte{"many-files/SKILL.md": []byte("# Many\n")}
+	for index := 0; index < maxExtractedSkillBundleEntries+1; index++ {
+		files[fmt.Sprintf("many-files/file-%d.txt", index)] = []byte("x")
+	}
+	_, err := installPublicSkillBundle(makeAPIZipWithFiles(t, files), root, nil)
+	if err == nil || !strings.Contains(err.Error(), "too many files") {
+		t.Fatalf("too many entries error = %v", err)
 	}
 }
 

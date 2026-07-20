@@ -120,6 +120,16 @@ function unwrapResponse<T>(payload: unknown, status: number): T {
   return payload.data as T;
 }
 
+function handleUnauthorized(path: string, hadBearer: boolean): never {
+  // Login failures are also HTTP 401; do not treat them as session expiry.
+  if (path === "/auth/login" || !hadBearer) {
+    throw new ApiError("用户名或密码错误", 401, 40101);
+  }
+  token.clear();
+  window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+  throw new ApiError("登录已失效，请重新登录", 401, 40101);
+}
+
 async function request<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const currentToken = token.get();
@@ -131,9 +141,7 @@ async function request<T>(method: HttpMethod, path: string, body?: unknown): Pro
   });
   const raw = await response.text();
   if (response.status === 401) {
-    token.clear();
-    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
-    throw new ApiError("登录已失效，请重新登录", response.status, 40101);
+    handleUnauthorized(path, Boolean(currentToken));
   }
   const payload = parseResponseBody(raw, response.status);
   if (!response.ok) throw errorFromResponse(payload, response.status);
@@ -147,9 +155,7 @@ async function requestForm<T>(path: string, form: FormData): Promise<T> {
   const response = await fetch(BASE + path, { method: "POST", headers, body: form });
   const raw = await response.text();
   if (response.status === 401) {
-    token.clear();
-    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
-    throw new ApiError("登录已失效，请重新登录", response.status, 40101);
+    handleUnauthorized(path, Boolean(currentToken));
   }
   const payload = parseResponseBody(raw, response.status);
   if (!response.ok) throw errorFromResponse(payload, response.status);

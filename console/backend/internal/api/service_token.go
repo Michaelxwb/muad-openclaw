@@ -23,7 +23,19 @@ type serviceTokenMaterial struct {
 
 func (s *Server) handleRotatePodServiceToken(w http.ResponseWriter, r *http.Request) {
 	podID := r.PathValue("podId")
-	fingerprint, err := s.rotatePodServiceToken(r.Context(), podID)
+	var fingerprint string
+	err := s.runPodExclusive(r.Context(), podID, func(ctx context.Context) error {
+		// Compensation must not use a client-cancelled context.
+		opCtx, cancel := podRuntimeOperationContext(ctx)
+		defer cancel()
+		var rotateErr error
+		fingerprint, rotateErr = s.rotatePodServiceToken(opCtx, podID)
+		return rotateErr
+	})
+	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
+		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")
+		return
+	}
 	if err != nil {
 		if errors.Is(err, repo.ErrNotFound) {
 			writeRepoError(w, err)

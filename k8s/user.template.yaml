@@ -32,10 +32,20 @@ spec:
     metadata:
       labels: { app: muad-openclaw, muad-user: "__USER__" }
     spec:
-      securityContext: { runAsNonRoot: true, runAsUser: 1000, fsGroup: 1000 }
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
       containers:
         - name: openclaw
           image: __IMAGE__
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          ports:
+            - { containerPort: 18789 }
           env:
             - { name: PC_USER, value: "__USER__" }
             - { name: TZ, value: "Asia/Shanghai" }
@@ -46,6 +56,18 @@ spec:
           resources:
             requests: { cpu: "100m", memory: "300Mi" }  # 空闲≈269MiB（PoC 实测）→ 密集打包
             limits:   { cpu: "1500m", memory: "2Gi" }    # 浏览器峰值≈1.38GiB → 留余量
+          readinessProbe:
+            tcpSocket: { port: 18789 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket: { port: 18789 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 6
           volumeMounts:
             - { name: state, mountPath: /home/node/.openclaw }
             # TODO(FEAT-03 共享 skill 热更新)：集群建一个 RWX(NFS/CephFS) PVC `muad-skills`，

@@ -203,6 +203,27 @@ describe("Users", () => {
     );
   });
 
+  it("loads all Pod pages before opening the create-user dialog", async () => {
+    const firstPagePods = Array.from({ length: 100 }, (_, index) => ({
+      ...fullPod,
+      podId: `pod-full-${index}`,
+      displayName: `Full Pod ${index}`,
+    }));
+    apiMocks.listPods.mockImplementation(({ page }: { page?: number }) =>
+      Promise.resolve(
+        page === 1
+          ? { items: firstPagePods, total: 101, page: 1, pageSize: 100 }
+          : { items: [sparePod], total: 101, page: 2, pageSize: 100 },
+      ),
+    );
+    render(<Users onOpenPod={vi.fn()} />);
+
+    await waitFor(() => expect(apiMocks.listPods).toHaveBeenCalledWith({ page: 2, pageSize: 100 }));
+    fireEvent.click(screen.getByRole("button", { name: "创建用户" }));
+
+    expect(await screen.findByText("Pod B (pod-b) 0/10")).toBeInTheDocument();
+  });
+
   it("opens the same detail operations used by the Pod-scoped list", async () => {
     render(<Users onOpenPod={vi.fn()} />);
 

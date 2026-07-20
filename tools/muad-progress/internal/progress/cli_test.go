@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRunStage_JSONSuccessWithoutAdapter(t *testing.T) {
@@ -73,6 +74,28 @@ func TestRunStage_ThrottleDuplicate(t *testing.T) {
 	}
 }
 
+func TestThrottleCountResetsAfterInterval(t *testing.T) {
+	t.Setenv("MUAD_PROGRESS_STATE_DIR", t.TempDir())
+	t.Setenv("MUAD_PROGRESS_MIN_INTERVAL_MS", "1")
+	t.Setenv("MUAD_PROGRESS_MAX_EVENTS", "1")
+	event := Event{Type: TypeProgress, Skill: "xdr", ID: "run-a", Stage: "query", Text: "first"}
+	now := time.Date(2026, 7, 20, 11, 0, 0, 0, time.UTC)
+
+	throttled, err := shouldThrottle(event, now)
+	if err != nil || throttled {
+		t.Fatalf("first throttle = %v, %v", throttled, err)
+	}
+	event.Text = "second"
+	throttled, err = shouldThrottle(event, now)
+	if err != nil || !throttled {
+		t.Fatalf("second throttle = %v, %v", throttled, err)
+	}
+	throttled, err = shouldThrottle(event, now.Add(2*time.Millisecond))
+	if err != nil || throttled {
+		t.Fatalf("after interval throttle = %v, %v", throttled, err)
+	}
+}
+
 func TestRunStage_StrictAdapterFailure(t *testing.T) {
 	t.Setenv("MUAD_PROGRESS_STATE_DIR", t.TempDir())
 	t.Setenv("MUAD_PROGRESS_STRICT_ADAPTER", "1")
@@ -84,6 +107,23 @@ func TestRunStage_StrictAdapterFailure(t *testing.T) {
 
 	if code != ExitAdapterUnavailable {
 		t.Fatalf("expected adapter unavailable, got %d", code)
+	}
+}
+
+func TestRunHeartbeatHonorsMaxCount(t *testing.T) {
+	t.Setenv("MUAD_PROGRESS_STATE_DIR", t.TempDir())
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := Run([]string{
+		"heartbeat", "--text", "仍在处理", "--interval-ms", "0", "--max-count", "3",
+	}, &stdout, &stderr)
+
+	if code != ExitOK {
+		t.Fatalf("heartbeat exit = %d stderr=%s", code, stderr.String())
+	}
+	if got := strings.Count(stdout.String(), "progress: 仍在处理"); got != 3 {
+		t.Fatalf("heartbeat output count = %d stdout=%q", got, stdout.String())
 	}
 }
 

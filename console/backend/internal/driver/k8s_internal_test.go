@@ -59,11 +59,52 @@ func TestK8s_CreateProvisionsAll(t *testing.T) {
 	if dep.Spec.Strategy.Type != "Recreate" {
 		t.Errorf("strategy = %q, want Recreate", dep.Spec.Strategy.Type)
 	}
+	if dep.Spec.Template.Spec.AutomountServiceAccountToken == nil ||
+		*dep.Spec.Template.Spec.AutomountServiceAccountToken {
+		t.Fatal("worker Pod must not automount a service-account token")
+	}
+	assertWorkerPodSecurity(t, dep.Spec.Template.Spec.SecurityContext)
+	assertWorkerContainerSecurity(t, c.SecurityContext)
+	if c.ReadinessProbe == nil || c.ReadinessProbe.TCPSocket == nil ||
+		c.ReadinessProbe.TCPSocket.Port.IntVal != GatewayPort {
+		t.Fatalf("readiness probe = %+v, want TCP %d", c.ReadinessProbe, GatewayPort)
+	}
+	if c.LivenessProbe == nil || c.LivenessProbe.TCPSocket == nil ||
+		c.LivenessProbe.TCPSocket.Port.IntVal != GatewayPort {
+		t.Fatalf("liveness probe = %+v, want TCP %d", c.LivenessProbe, GatewayPort)
+	}
 	if len(dep.Spec.Template.Spec.InitContainers) != 1 {
 		t.Fatalf("init containers = %d, want 1", len(dep.Spec.Template.Spec.InitContainers))
 	}
 	if !hasVolumeMount(c.VolumeMounts, "service-token-runtime", "/run/secrets/muad") {
 		t.Fatal("main container is missing read-only service-token runtime mount")
+	}
+}
+
+func assertWorkerPodSecurity(t *testing.T, security *corev1.PodSecurityContext) {
+	t.Helper()
+	if security == nil || security.RunAsNonRoot == nil || !*security.RunAsNonRoot {
+		t.Fatalf("pod security context = %+v, want runAsNonRoot", security)
+	}
+	if security.RunAsUser == nil || *security.RunAsUser != DefaultRuntimeUID ||
+		security.FSGroup == nil || *security.FSGroup != DefaultRuntimeGID {
+		t.Fatalf("pod uid/gid security context = %+v", security)
+	}
+	if security.SeccompProfile == nil ||
+		security.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+		t.Fatalf("pod seccomp profile = %+v", security.SeccompProfile)
+	}
+}
+
+func assertWorkerContainerSecurity(t *testing.T, security *corev1.SecurityContext) {
+	t.Helper()
+	if security == nil || security.AllowPrivilegeEscalation == nil ||
+		*security.AllowPrivilegeEscalation {
+		t.Fatalf("container security context = %+v, want no privilege escalation", security)
+	}
+	if security.Capabilities == nil || len(security.Capabilities.Drop) != 1 ||
+		security.Capabilities.Drop[0] != "ALL" {
+		t.Fatalf("container capabilities = %+v, want drop ALL", security.Capabilities)
 	}
 }
 

@@ -97,6 +97,21 @@ test("rejects bundles containing symbolic links", async () => {
   );
 });
 
+test("rejects bundles with too many extracted entries", async () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-skill-many-files-"));
+  const source = join(root, "src", "huge-skill");
+  mkdirSync(source, { recursive: true });
+  writeFileSync(join(source, "SKILL.md"), "# Huge\n");
+  for (let index = 0; index < 2050; index++) {
+    writeFileSync(join(source, `file-${index}.txt`), "x");
+  }
+
+  await assert.rejects(
+    () => installPrivateSkill({ bundle: tar(root, "src"), agentId: "alice", stateDir: root }),
+    /too many files/u,
+  );
+});
+
 test("delete removes only the selected private skill directory", async () => {
   const root = mkdtempSync(join(tmpdir(), "muad-skill-delete-"));
   const bundle = makeBundle(root, { name: "soar-sync" });

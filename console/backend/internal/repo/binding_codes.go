@@ -323,6 +323,17 @@ func activateBindingTx(
 	if user.PodID != record.PodID || user.Status == HumanUserStatusDisabled || user.Status == HumanUserStatusDeleting {
 		return BindingActivationResult{}, ErrInvalidStateTransition
 	}
+	// Enforce purpose against user state (first-identity vs add-identity).
+	switch record.Purpose {
+	case BindingPurposeFirstIdentity:
+		if user.Status != HumanUserStatusPending {
+			return BindingActivationResult{}, ErrInvalidStateTransition
+		}
+	case BindingPurposeAddIdentity:
+		if user.Status != HumanUserStatusActive {
+			return BindingActivationResult{}, ErrInvalidStateTransition
+		}
+	}
 	identity, err := bindingIdentity(record, activation, now)
 	if err != nil {
 		return BindingActivationResult{}, err

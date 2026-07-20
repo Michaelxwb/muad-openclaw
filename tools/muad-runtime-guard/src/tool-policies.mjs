@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 const SHELL_TOOLS = new Set(["bash", "exec", "process", "shell"]);
@@ -103,7 +104,9 @@ function fileCandidates(event) {
 function resolveCandidate(workspace, candidate) {
   try {
     if (candidate.includes("\0") || candidate === "~" || candidate.startsWith("~/")) return null;
-    return path.resolve(path.isAbsolute(candidate) ? candidate : path.join(workspace, candidate));
+    const resolved = path.resolve(path.isAbsolute(candidate) ? candidate : path.join(workspace, candidate));
+    // Prefer realpath so workspace symlinks cannot escape isolation.
+    return realpathOrSelf(resolved);
   } catch {
     return null;
   }
@@ -114,8 +117,26 @@ function validRoots(value) {
     .every((item) => typeof item === "string" && path.isAbsolute(item));
 }
 
+function realpathOrSelf(target) {
+  try {
+    return fs.realpathSync(target);
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      try {
+        return path.join(fs.realpathSync(path.dirname(target)), path.basename(target));
+      } catch {
+        return path.resolve(target);
+      }
+    }
+    return path.resolve(target);
+  }
+}
+
 function isWithin(root, target) {
-  const relative = path.relative(path.resolve(root), path.resolve(target));
+  if (!root || !target) return false;
+  const realRoot = realpathOrSelf(root);
+  const realTarget = realpathOrSelf(target);
+  const relative = path.relative(realRoot, realTarget);
   return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." &&
     !path.isAbsolute(relative));
 }

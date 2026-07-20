@@ -231,10 +231,13 @@ func (s *Server) handlePatchSkill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	status := strings.TrimSpace(*request.Status)
+	var publicDeleteName string
 	if status == repo.SkillStatusDeleted {
-		if !s.removePublicSkillBeforeDelete(w, r.PathValue("skillId")) {
+		asset, ok := s.publicSkillDeleteTarget(w, r.PathValue("skillId"))
+		if !ok {
 			return
 		}
+		publicDeleteName = asset.Name
 	}
 	asset, podIDs, err := s.store.UpdateSkillAssetStatusAndMarkPods(
 		r.PathValue("skillId"), status,
@@ -244,28 +247,34 @@ func (s *Server) handlePatchSkill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.enqueuePodIDs(podIDs)
+	if publicDeleteName != "" {
+		s.removePublicSkillAfterDelete(publicDeleteName)
+	}
 	s.auditSkill(r, auditlog.ActionSkillAssetUpdate, asset, asset.Status, len(podIDs))
 	writeJSON(w, http.StatusOK, map[string]any{
 		"skill": skillAssetToView(asset), "affectedPodIds": podIDs,
 	})
 }
 
-func (s *Server) removePublicSkillBeforeDelete(w http.ResponseWriter, skillID string) bool {
+func (s *Server) publicSkillDeleteTarget(
+	w http.ResponseWriter, skillID string,
+) (repo.SkillAsset, bool) {
 	asset, err := s.store.GetSkillAsset(skillID)
 	if err != nil {
 		writeRepoError(w, err)
-		return false
+		return repo.SkillAsset{}, false
 	}
 	if asset.Scope != repo.SkillScopePublic {
 		writeRepoError(w, repo.ErrInvalidSkill)
-		return false
+		return repo.SkillAsset{}, false
 	}
-	if err := removePublicSkillDirectory(s.cfg.SkillsDir, asset.Name); err != nil {
-		log.Printf("public_skill_delete_failed skill=%s error=%v", asset.Name, err)
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "delete public Skill failed")
-		return false
+	return asset, true
+}
+
+func (s *Server) removePublicSkillAfterDelete(skillName string) {
+	if err := removePublicSkillDirectory(s.cfg.SkillsDir, skillName); err != nil {
+		log.Printf("public_skill_delete_cleanup_failed skill=%s error=%v", skillName, err)
 	}
-	return true
 }
 
 func (s *Server) handleListHumanUserSkills(w http.ResponseWriter, r *http.Request) {

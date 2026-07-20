@@ -88,6 +88,30 @@ test("loads nested manifests by manifest name", async () => {
   assert.equal(manifest.skillDir, skillDir);
 });
 
+test("ignores unrelated corrupt manifests during recursive discovery", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "muad-manifest-corrupt-"));
+  const badDir = path.join(root, "broken-skill");
+  const skillDir = path.join(root, "reviewed", "example-long-task");
+  await fs.mkdir(badDir, { recursive: true });
+  await fs.mkdir(path.join(skillDir, "scripts"), { recursive: true });
+  await fs.writeFile(path.join(badDir, "muad.skill.json"), "{");
+  await fs.writeFile(path.join(skillDir, "scripts", "run.sh"), "#!/bin/sh\nexit 0\n");
+  await fs.writeFile(
+    path.join(skillDir, "muad.skill.json"),
+    JSON.stringify({
+      name: "example-long-task",
+      runtime: "script",
+      mode: "entrypoint",
+      entrypoint: ["bash", "scripts/run.sh"],
+      steps: [{ id: "query", title: "查询" }],
+    }),
+  );
+
+  const manifest = await loadSkillManifest({ skillsRoot: root, skillName: "example-long-task" });
+
+  assert.equal(manifest.skillDir, skillDir);
+});
+
 test("loads the shipped reviewed public Skill template", async () => {
   const publicSkillsRoot = fileURLToPath(new URL("../../../skills", import.meta.url));
   const manifest = await loadSkillManifest({

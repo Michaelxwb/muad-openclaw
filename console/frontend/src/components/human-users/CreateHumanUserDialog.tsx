@@ -8,7 +8,7 @@ import type {
   Pod,
 } from "../../api";
 import { channelMeta } from "../../channels";
-import { FeedbackBanner } from "../ConsolePage";
+import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
 import styles from "../HumanUsersPanel.module.css";
 import { Field } from "./shared";
 
@@ -113,24 +113,30 @@ export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCre
     void loadAvailableModels();
   }, [pod, selectablePods, visible]);
 
+  const modelsRequestRef = useRef(0);
   const loadAvailableModels = async () => {
+    const requestId = ++modelsRequestRef.current;
     try {
       const result = await api.listLLMModels(true);
+      if (requestId !== modelsRequestRef.current || !visible) return;
       setModels(result.items);
       setForm((previous) => ({
         ...previous,
         modelConfigId: previous.modelConfigId || result.items[0]?.modelConfigId || "",
       }));
     } catch (caught) {
+      if (requestId !== modelsRequestRef.current || !visible) return;
       setModels([]);
       setError(caught instanceof Error ? caught.message : "加载可用模型失败");
     }
   };
 
   const submit = async () => {
-    if (canSwitchPod && selectedPod.availableSlots <= 0) return setError("请选择有剩余容量的 Pod");
+    if (canSwitchPod && selectedPod.availableSlots <= 0) {
+      return setRepeatableError(setError, "请选择有剩余容量的 Pod");
+    }
     const validation = validate(form);
-    if (validation) return setError(validation);
+    if (validation) return setRepeatableError(setError, validation);
     setBusy(true);
     setError("");
     try {

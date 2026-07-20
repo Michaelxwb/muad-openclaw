@@ -1,13 +1,25 @@
 ---
 id: backend-platform-rules
-description: 涉及 API 设计/部署/配置/版本兼容时适用：平台规则
+description: Console API、多用户隔离、模型池、Skill 与运行时编排平台规则
 stages: [design, plan, code, review]
 enforcement: required
 verifiers:
   - rule: RULE-backend-platform-001
     type: manual
     config:
-      checklist: Confirm all Guidance and Avoid items for this Spec.
+      checklist: Confirm multi-user isolation, model binding, writeJSON/writeErr, secret handling, and runtime apply semantics.
+      owner: project-owner
+  - rule: RULE-backend-http-envelope-001
+    type: regex
+    config:
+      pattern: "json\\.NewEncoder\\("
+      files:
+        - console/backend/internal/api/**
+      message: "HTTP 输出必须走 writeJSON/writeErr，禁止 json.NewEncoder"
+  - rule: RULE-backend-model-pool-001
+    type: manual
+    config:
+      checklist: Confirm CreateHumanUser binds unbound model_config_id and conflicts on already-bound models with no override fallback.
       owner: project-owner
 ---
 
@@ -15,41 +27,49 @@ verifiers:
 
 ## Examples
 
-✅ 走统一封装 + 错误码常量
+✅ 统一错误输出 + 稳定 code
 
-```python
-return success(data)
-raise BizError(ORDER_NOT_FOUND)   # 错误码定义在 errors/order.py
+```go
+writeErr(w, http.StatusConflict, codeConflict, "LLM model is already bound")
+writeJSON(w, http.StatusOK, data)
 ```
 
-❌ handler 手拼响应结构 + 硬编码 message
+❌ handler 手写杂散 JSON
 
-```python
-return {"code": 1, "message": "order not found", "data": None}
+```go
+json.NewEncoder(w).Encode(map[string]any{"error": "bad"})
+```
+
+✅ 创建用户绑定未占用模型
+
+```go
+// CreateHumanUser 校验 model_config_id 未被占用，否则 ErrLLMModelAlreadyBound
 ```
 
 ## Rules
-- [RULE-backend-platform-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+- [RULE-backend-platform-001] Control-plane changes must preserve multi-user isolation, mandatory model-pool binding, secret-not-in-image injection, and generation-based runtime apply with health/rollback semantics.
+- [RULE-backend-http-envelope-001] All Console HTTP handlers must emit responses via `writeJSON` / `writeErr` with stable `code*` constants; do not call `json.NewEncoder` (or ad-hoc maps) in handlers.
+- [RULE-backend-model-pool-001] Creating a Human User requires binding an unbound `model_config_id`; already-bound models must fail with a conflict (`ErrLLMModelAlreadyBound` / API conflict). No implicit shared or override model fallback chain.
 
 ## Guidance
-- API 变更必须保持向后兼容；破坏性变更走新版本路径（`/v2/...`）并保留旧版本至少一个发布周期
-- 配置项分环境管理（dev / staging / prod），敏感值走密钥管理服务，禁止入库
-- 新增外部依赖必须更新部署文档与 `requirements` / `package.json` 锁文件
-- 灰度 / 实验性功能必须由 feature flag 控制，默认关闭
-- 所有 HTTP handler 统一使用 `writeJSON(w, statusCode, data)` / `writeErr(w, statusCode, code, msg)` 输出响应，禁止直接调用 `json.NewEncoder`
-- 错误码体系：`4xxxx` 客户端错误 / `5xxxx` 服务端错误，子码按场景递增（如 `40001` 请求体非法、`40101` 认证失败）
+- **不 fork OpenClaw**：能力通过控制面、runtime 配置与外置插件扩展
+- **多用户隔离**：用户级 Agent/会话/浏览器 Profile/模型/私有状态不得串扰；Pod 容量由管理员策略约束
+- **模型池**：创建用户必须绑定未占用模型配置；禁止隐式全局/Pod/用户 override 回退链
+- **IM 身份**：wecom / openclaw-weixin；已知 External ID 直接绑定，未知走一次性绑定码
+- **Skill**：system/public/private 分层；public 需显式应用到 Pod；private 装目标用户工作区；同名冲突默认不静默覆盖
+- **凭证**：通道/LLM/平台 API Key/service token 运行时注入，禁止写入镜像或入库明文可逆存储而不经 crypto
+- **Runtime apply**：经 `runtimeconfig` + `runtimeapply`，带 generation、分 stage、失败可回滚；不要在 handler 里半套 apply
+- 错误码保持项目约定（客户端/服务端分段 + 场景子码）；用户 message 稳定、可本地化理解
+- 健康检查与业务鉴权分离
 
 ## Patterns
-- API 响应统一结构：`{ code, message, data }`（`code=0` 表示成功），全项目一致
-- 错误码命名空间：模块前缀 + 顺序号（如订单错误码 `10xxx`、用户 `20xxx`），便于定位归属
-- 异常 → 错误码：自定义业务异常类携带 `code`，由中间件统一转 `fail(code)` 响应
-- 配置加载优先级：环境变量 > 配置文件 > 默认值
-- 健康检查端点（`/healthz`、`/readyz`）必须独立于业务认证
-- 部署前跑 smoke test，覆盖核心路径
+- 新平台能力先扩 registry/repo，再暴露 api，最后才动 driver
+- repo 层 sentinel error → `errors.go` / handler 映射到 HTTP code
+- 破坏性 API 变更走显式版本或兼容窗口
 
 ## Avoid
-- 禁止在生产环境开启 `DEBUG` / 详细堆栈输出
-- 禁止把 secret 写进代码库或 dev 配置文件
-- 禁止破坏性 API 变更不通知调用方直接发布
-- 禁止 feature flag 长期遗留，上线稳定后必须清理
-- 禁止在 handler 里直接拼响应结构或硬编码错误 message，必须走 `writeJSON` / `writeErr` 并遵守错误码体系
+- 禁止把密钥写进 Dockerfile、compose、k8s manifest 明文
+- 禁止跨用户复用同一浏览器 profile / 工作区路径
+- 禁止 apply 成功写 generation 但跳过健康检查
+- 禁止 public skill 状态变更后假定已自动同步到全部 Pod
+- 禁止创建用户时复用已绑定模型或静默改绑

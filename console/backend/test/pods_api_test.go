@@ -134,6 +134,70 @@ func TestPodAPI_RejectsUnsupportedChannel(t *testing.T) {
 	}
 }
 
+func TestPodAPI_PatchImageTagPerformsUpgrade(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+
+	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a",
+		`{"imageTag":"img:v2","displayName":"Pod Upgraded"}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("patch image status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	if rr.Header().Get("X-Muad-Requires-Pod-Restart") != "false" {
+		t.Fatalf("restart header = %q, want false", rr.Header().Get("X-Muad-Requires-Pod-Restart"))
+	}
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.ImageTag != "img:v2" || pod.DisplayName != "Pod Upgraded" {
+		t.Fatalf("unexpected patched Pod: %+v", pod)
+	}
+	if e.drv.created["pod-a"].ImageTag != "img:v2" || !e.drv.keepState["pod-a"] {
+		t.Fatalf("runtime was not upgraded: %+v keep=%v", e.drv.created["pod-a"], e.drv.keepState["pod-a"])
+	}
+}
+
+func TestPodAPI_PatchImageTagFailureRollsBack(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	e.drv.createErrors = []error{errors.New("simulated create failure"), nil}
+
+	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"imageTag":"img:bad"}`)
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("failed image patch status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.ImageTag != "img:test" || e.drv.created["pod-a"].ImageTag != "img:test" {
+		t.Fatalf("image patch did not roll back: pod=%+v runtime=%+v", pod, e.drv.created["pod-a"])
+	}
+	if strings.Contains(rr.Body.String(), "simulated create failure") {
+		t.Fatal("image patch response exposed a runtime error")
+	}
+}
+
+func TestPodAPI_PatchImageTagRejectsCapacityBeforeUpgrade(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createTestHumanUser(t, e.store, "pod-a", "bob", repo.HumanUserStatusPending)
+
+	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"imageTag":"img:v2","maxUsers":1}`)
+	if rr.Code != http.StatusConflict || !strings.Contains(rr.Body.String(), `"code":40902`) {
+		t.Fatalf("capacity image patch response = %d body=%s", rr.Code, rr.Body.String())
+	}
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.ImageTag != "img:test" || e.drv.created["pod-a"].ImageTag != "img:test" {
+		t.Fatalf("capacity rejection upgraded image: pod=%+v runtime=%+v", pod, e.drv.created["pod-a"])
+	}
+}
+
 func createPodThroughAPI(t *testing.T, e *testEnv, body string) podAPIView {
 	t.Helper()
 	rr := e.do(http.MethodPost, "/api/v1/containers", body)

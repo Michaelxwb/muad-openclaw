@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { readdirSync, statSync } from "node:fs";
-import { mkdir, readFile, readdir, stat, unlink, utimes, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, readdir, stat, unlink, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export class SharedQueueBusyError extends Error {
@@ -23,7 +23,7 @@ export class SharedLeaseQueue {
     if (this.#closed) throw new SharedQueueBusyError("shared concurrency queue stopped");
     throwIfAborted(signal);
     const record = leaseRecord(key);
-    await mkdir(this.#options.directory, { recursive: true, mode: 0o700 });
+    await ensureQueueDirectory(this.#options.directory);
     await sweepStale(this.#options);
     const active = await claimSlot(this.#options, "active", this.#options.limit, record);
     if (active) return this.#lease(active, record.owner);
@@ -62,10 +62,8 @@ export class SharedLeaseQueue {
   }
 
   #lease(slot, owner) {
-    const timer = setInterval(() => {
-      void touchOwned(slot, owner).catch((error) => reportCleanupError("heartbeat", error));
-    }, this.#options.heartbeatMs);
-    timer.unref?.();
+    let timer;
+    const expiresAt = Date.now() + this.#options.leaseTtlMs;
     let released = false;
     const release = async () => {
       if (released) return;
@@ -74,8 +72,27 @@ export class SharedLeaseQueue {
       this.#localReleases.delete(release);
       await removeOwned(slot, owner);
     };
+    timer = setInterval(() => {
+      if (Date.now() >= expiresAt) {
+        void release().catch((error) => reportCleanupError("expire", error));
+        return;
+      }
+      void touchOwned(slot, owner).catch((error) => reportCleanupError("heartbeat", error));
+    }, this.#options.heartbeatMs);
+    timer.unref?.();
     this.#localReleases.add(release);
     return release;
+  }
+}
+
+async function ensureQueueDirectory(directory) {
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const info = await lstat(directory);
+  if (!info.isDirectory() || info.isSymbolicLink()) {
+    throw new Error("shared concurrency directory is not a private directory");
+  }
+  if ((info.mode & 0o077) !== 0) {
+    await chmod(directory, 0o700);
   }
 }
 
@@ -132,7 +149,10 @@ async function sweepStale(options) {
     const kind = slotKind(name);
     if (!kind) return;
     const file = path.join(options.directory, name);
-    const ttl = kind === "active" ? options.leaseTtlMs : options.waitTimeoutMs + options.pollMs * 4;
+    // Active slots use mtime as heartbeat; still reclaim after 10x TTL wall-clock.
+    const ttl = kind === "active"
+      ? Math.max(options.leaseTtlMs * 10, options.leaseTtlMs + 30_000)
+      : options.waitTimeoutMs + options.pollMs * 4;
     try {
       const info = await stat(file);
       if (Date.now() - info.mtimeMs > ttl) await unlink(file);
@@ -188,8 +208,13 @@ async function removeOwned(file, owner) {
 }
 
 async function readOwner(file) {
-  const value = JSON.parse(await readFile(file, "utf8"));
-  return typeof value?.owner === "string" ? value.owner : "";
+  try {
+    const value = JSON.parse(await readFile(file, "utf8"));
+    return typeof value?.owner === "string" ? value.owner : "";
+  } catch (error) {
+    if (error instanceof SyntaxError) return "";
+    throw error;
+  }
 }
 
 function delay(durationMs, signal) {

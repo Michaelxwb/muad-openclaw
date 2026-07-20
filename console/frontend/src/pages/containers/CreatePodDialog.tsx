@@ -3,7 +3,7 @@ import { Input, InputNumber, Modal, Select } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type { ChannelCredential, Pod } from "../../api";
 import { ChannelForm } from "../../components/ChannelForm";
-import { FeedbackBanner } from "../../components/ConsolePage";
+import { FeedbackBanner, setRepeatableError } from "../../components/ConsolePage";
 import styles from "../Containers.module.css";
 import {
   createPodInput,
@@ -29,7 +29,7 @@ export function CreatePodDialog(props: Props) {
   }, [props.visible]);
   const submit = async (channels: string[], channelConfigs: Record<string, ChannelCredential>) => {
     const validation = validateCreateForm(form);
-    if (validation) return setError(validation);
+    if (validation) return setRepeatableError(setError, validation);
     setBusy(true);
     setError("");
     try {

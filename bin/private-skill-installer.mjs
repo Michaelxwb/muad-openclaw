@@ -8,6 +8,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const MAX_BUNDLE_BYTES = 5 * 1024 * 1024;
+const MAX_EXTRACTED_BYTES = 25 * 1024 * 1024;
+const MAX_EXTRACTED_ENTRIES = 2048;
 const SKILL_NAME_RE = /^[a-z][a-z0-9_-]{0,63}$/u;
 const AGENT_ID_RE = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/u;
 const DEFAULT_STATE_DIR = "/home/node/.openclaw";
@@ -30,6 +32,7 @@ export async function installPrivateSkill({ bundle, agentId, stateDir, expectedN
     await fs.mkdir(extractRoot, { mode: 0o700 });
     await extractBundle(bundlePath, extractRoot, format);
     await assertNoLinks(extractRoot);
+    await assertExtractedLimits(extractRoot);
     const skillDir = await findSingleSkillDir(extractRoot);
     const metadata = await readSkillMetadata(skillDir, expectedName);
     const targetDir = path.join(skillsRoot, metadata.name);
@@ -76,6 +79,18 @@ async function validateZipBundle(bundlePath) {
   const names = runUnzip(["-Z1", bundlePath]).stdout.split(/\r?\n/u).filter(Boolean);
   if (names.length === 0) throw new Error("bundle is empty");
   for (const name of names) assertSafeArchivePath(name);
+  // Reject symlink/hardlink entries before extract (tar path already does this).
+  const verbose = runUnzip(["-Z", bundlePath]).stdout.split(/\r?\n/u).filter(Boolean);
+  for (const line of verbose) {
+    if (/\bs(?:ym)?l(?:ink)?\b/iu.test(line) || /\b->\b/.test(line) || line.includes(" symlink ")) {
+      throw new Error("bundle must not contain links");
+    }
+    // Info-ZIP -Z long listing: attributes often start with 'l' for links.
+    const attrs = line.trim().split(/\s+/u)[0] || "";
+    if (attrs.startsWith("l") || attrs.includes("lrwx") || attrs.includes("lrwxrwxrwx")) {
+      throw new Error("bundle must not contain links");
+    }
+  }
 }
 
 async function readSkillMetadata(skillDir, expectedName) {
@@ -137,12 +152,31 @@ function normalizePlatforms(value) {
 }
 
 async function replaceDirectory(source, target, tempRoot) {
-  const staging = path.join(path.dirname(target), `.${path.basename(target)}.${process.pid}.tmp`);
+  const parent = path.dirname(target);
+  const staging = path.join(parent, `.${path.basename(target)}.${process.pid}.${Date.now()}.tmp`);
+  const backup = path.join(parent, `.${path.basename(target)}.${process.pid}.${Date.now()}.bak`);
   await fs.rm(staging, { recursive: true, force: true });
+  await fs.rm(backup, { recursive: true, force: true });
   await fs.cp(source, staging, { recursive: true, force: false, dereference: false });
   await assertNoLinks(staging);
-  await fs.rm(target, { recursive: true, force: true });
-  await fs.rename(staging, target);
+  // Prefer rename-over: move live target aside, promote staging, then drop backup.
+  let hadTarget = false;
+  try {
+    await fs.access(target, fsConstants.F_OK);
+    hadTarget = true;
+  } catch {
+    hadTarget = false;
+  }
+  if (hadTarget) await fs.rename(target, backup);
+  try {
+    await fs.rename(staging, target);
+  } catch (error) {
+    if (hadTarget) {
+      try { await fs.rename(backup, target); } catch { /* best effort restore */ }
+    }
+    throw error;
+  }
+  await fs.rm(backup, { recursive: true, force: true });
   await fs.chmod(target, 0o700);
   await fs.writeFile(path.join(tempRoot, "installed"), target);
 }
@@ -160,6 +194,17 @@ async function findSingleSkillDir(root) {
 async function assertNoLinks(root) {
   await walk(root, async (_entryPath, stat) => {
     if (stat.isSymbolicLink()) throw new Error("bundle must not contain symlinks");
+  }, { lstat: true });
+}
+
+async function assertExtractedLimits(root) {
+  let entries = 0;
+  let totalBytes = 0;
+  await walk(root, async (_entryPath, stat) => {
+    entries++;
+    if (entries > MAX_EXTRACTED_ENTRIES) throw new Error("bundle contains too many files");
+    if (stat.isFile()) totalBytes += stat.size;
+    if (totalBytes > MAX_EXTRACTED_BYTES) throw new Error("bundle extracted size is too large");
   }, { lstat: true });
 }
 

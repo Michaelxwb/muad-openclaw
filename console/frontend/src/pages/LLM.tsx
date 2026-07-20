@@ -280,7 +280,10 @@ function ModelTable({ state }: { state: LLMModelsState }) {
         selectedRowKeys: selectedModelIds(state.selected, state.models),
         getCheckboxProps: (model) => ({ "aria-label": `选择模型 ${model.displayName}` }),
         onChange: (keys: (string | number)[] | undefined) => {
-          const next: Record<string, boolean> = {};
+          // Preserve selection on other pages; only update keys for current page.
+          const pageIds = new Set(state.pageModels.map((model) => model.modelConfigId));
+          const next: Record<string, boolean> = { ...state.selected };
+          for (const id of pageIds) delete next[id];
           for (const key of keys ?? []) next[String(key)] = true;
           state.setSelected(next);
         },

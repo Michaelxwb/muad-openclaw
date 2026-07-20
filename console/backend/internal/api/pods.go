@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -22,6 +24,7 @@ const (
 
 var (
 	errInvalidPodRequest = errors.New("invalid Pod request")
+	errPodPatchMetadata  = errors.New("Pod patch metadata update failed")
 	podIdentifierPattern = regexp.MustCompile(`^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$`)
 )
 
@@ -220,11 +223,12 @@ func (s *Server) writePodDetail(w http.ResponseWriter, r *http.Request, podID st
 }
 
 func (s *Server) handlePatchPod(w http.ResponseWriter, r *http.Request) {
-	pod, err := s.store.GetPod(r.PathValue("podId"))
+	summary, err := s.store.GetPodSummary(r.PathValue("podId"))
 	if err != nil {
 		writeRepoError(w, err)
 		return
 	}
+	pod := summary.Pod
 	var request patchPodRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
 		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
@@ -239,14 +243,77 @@ func (s *Server) handlePatchPod(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Pod configuration")
 		return
 	}
+	if update.MaxUsers < summary.UserCount {
+		writeRepoError(w, repo.ErrPodCapacity)
+		return
+	}
+	// Image changes must recreate the workload (same as /upgrade), not only bump generation.
+	if imageChanged {
+		s.handlePatchPodImageChange(w, r, pod, update)
+		return
+	}
 	if err := s.store.UpdatePod(pod.PodID, update); err != nil {
 		writeRepoError(w, err)
 		return
 	}
 	s.enqueueReconcile(pod.PodID)
 	s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "updated")
-	w.Header().Set("X-Muad-Requires-Pod-Restart", strconv.FormatBool(imageChanged))
+	w.Header().Set("X-Muad-Requires-Pod-Restart", "false")
 	s.writePodDetail(w, r, pod.PodID, http.StatusOK)
+}
+
+func (s *Server) handlePatchPodImageChange(
+	w http.ResponseWriter, r *http.Request, pod repo.Pod, update repo.PodUpdate,
+) {
+	if !validImageTag(update.ImageTag) {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "valid imageTag is required")
+		return
+	}
+	err := s.updatePodImageViaPatch(r.Context(), pod, update)
+	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
+		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")
+		return
+	}
+	if errors.Is(err, errPodPatchMetadata) {
+		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_metadata_failed")
+		writeRepoError(w, err)
+		return
+	}
+	if err != nil {
+		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_rolled_back")
+		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "Pod image change failed and was rolled back")
+		return
+	}
+	s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade")
+	w.Header().Set("X-Muad-Requires-Pod-Restart", "false")
+	s.writePodDetail(w, r, pod.PodID, http.StatusOK)
+}
+
+func (s *Server) updatePodImageViaPatch(ctx context.Context, pod repo.Pod, update repo.PodUpdate) error {
+	err := s.runPodExclusive(ctx, pod.PodID, func(runCtx context.Context) error {
+		opCtx, cancel := podRuntimeOperationContext(runCtx)
+		defer cancel()
+		_, upgradeErr := s.performPodUpgrade(opCtx, pod, update.ImageTag)
+		return upgradeErr
+	})
+	if err != nil {
+		return err
+	}
+	if update.DisplayName == pod.DisplayName && update.MaxUsers == pod.MaxUsers {
+		return nil
+	}
+	latest, err := s.store.GetPod(pod.PodID)
+	if err != nil {
+		return errors.Join(errPodPatchMetadata, err)
+	}
+	nonImage := podUpdateFrom(latest)
+	nonImage.DisplayName = update.DisplayName
+	nonImage.MaxUsers = update.MaxUsers
+	if err := s.store.UpdatePod(pod.PodID, nonImage); err != nil {
+		return errors.Join(errPodPatchMetadata, err)
+	}
+	s.enqueueReconcile(pod.PodID)
+	return nil
 }
 
 func applyPodPatch(pod repo.Pod, request patchPodRequest) (repo.PodUpdate, bool, bool) {
@@ -285,17 +352,28 @@ func (s *Server) handleDeletePod(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, err)
 		return
 	}
-	if err := s.store.UpdatePodState(pod.PodID, repo.PodStateDeleting); err != nil {
-		writeRepoError(w, err)
+	err = s.runPodExclusive(r.Context(), pod.PodID, func(ctx context.Context) error {
+		opCtx, cancel := podRuntimeOperationContext(ctx)
+		defer cancel()
+		if err := s.store.UpdatePodState(pod.PodID, repo.PodStateDeleting); err != nil {
+			return err
+		}
+		if err := s.drv.Remove(opCtx, pod.PodID, !deleteState); err != nil {
+			_ = s.store.UpdatePodState(pod.PodID, pod.State)
+			return fmt.Errorf("delete Pod runtime: %w", err)
+		}
+		return s.store.DeletePod(pod.PodID)
+	})
+	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
+		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")
 		return
 	}
-	if err := s.drv.Remove(r.Context(), pod.PodID, !deleteState); err != nil {
-		_ = s.store.UpdatePodState(pod.PodID, pod.State)
+	if err != nil {
+		if errors.Is(err, repo.ErrNotFound) {
+			writeRepoError(w, err)
+			return
+		}
 		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "delete Pod runtime failed")
-		return
-	}
-	if err := s.store.DeletePod(pod.PodID); err != nil {
-		writeRepoError(w, err)
 		return
 	}
 	status := "state_retained"

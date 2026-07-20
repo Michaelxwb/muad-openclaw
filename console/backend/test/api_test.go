@@ -400,6 +400,65 @@ func TestLoginAndProtectedRoute(t *testing.T) {
 	}
 }
 
+func TestLoginRejectsInvalidCredentialsUniformly(t *testing.T) {
+	e := newTestEnv(t)
+	cases := []struct {
+		name string
+		body string
+		code int
+	}{
+		{name: "empty body fields", body: `{"username":"","password":""}`, code: http.StatusUnauthorized},
+		{name: "whitespace username", body: `{"username":"  ","password":"pw"}`, code: http.StatusUnauthorized},
+		{name: "unknown user", body: `{"username":"nobody","password":"x"}`, code: http.StatusUnauthorized},
+		{name: "wrong password", body: `{"username":"root","password":"nope"}`, code: http.StatusUnauthorized},
+		{name: "invalid json", body: `{`, code: http.StatusBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			e.h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/v1/auth/login",
+				strings.NewReader(tc.body)))
+			if rr.Code != tc.code {
+				t.Fatalf("status = %d, want %d body=%s", rr.Code, tc.code, rr.Body.String())
+			}
+			if tc.code == http.StatusUnauthorized && !strings.Contains(rr.Body.String(), `"code":40101`) {
+				t.Fatalf("expected 40101 envelope, got %s", rr.Body.String())
+			}
+			if strings.Contains(rr.Body.String(), `"token"`) {
+				t.Fatalf("failure response leaked token: %s", rr.Body.String())
+			}
+		})
+	}
+	// Successful login still works after negative cases.
+	rr := httptest.NewRecorder()
+	e.h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/v1/auth/login",
+		strings.NewReader(`{"username":"root","password":"pw"}`)))
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"token"`) {
+		t.Fatalf("valid login = %d %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestLoginRateLimitsRepeatedFailures(t *testing.T) {
+	e := newTestEnv(t)
+	for attempt := 1; attempt <= 5; attempt++ {
+		rr := httptest.NewRecorder()
+		e.h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/v1/auth/login",
+			strings.NewReader(`{"username":"root","password":"bad"}`)))
+		if rr.Code != http.StatusUnauthorized {
+			t.Fatalf("attempt %d status = %d body=%s", attempt, rr.Code, rr.Body.String())
+		}
+	}
+	rr := httptest.NewRecorder()
+	e.h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/v1/auth/login",
+		strings.NewReader(`{"username":"root","password":"bad"}`)))
+	if rr.Code != http.StatusTooManyRequests || !strings.Contains(rr.Body.String(), `"code":42901`) {
+		t.Fatalf("rate limited status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	if strings.Contains(rr.Body.String(), `"token"`) {
+		t.Fatalf("rate limit response leaked token: %s", rr.Body.String())
+	}
+}
+
 func TestPodAPIRejectsInvalidPodID(t *testing.T) {
 	e := newTestEnv(t)
 	rr := e.do(http.MethodPost, "/api/v1/containers", `{"podId":"bad id!","channels":["wechat"]}`)

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ReactNode } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Card, Descriptions, Space, Toast, Typography } from "@douyinfe/semi-ui";
 import styles from "./ConsolePage.module.css";
 
@@ -82,6 +82,11 @@ export function FeedbackBanner({ error, message }: { error?: string; message?: s
     }
   }, [error, message]);
   return null;
+}
+
+export function setRepeatableError(setError: Dispatch<SetStateAction<string>>, message: string) {
+  setError("");
+  window.setTimeout(() => setError(message), 0);
 }
 
 export interface MetricItem {

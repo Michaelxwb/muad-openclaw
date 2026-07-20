@@ -23,6 +23,26 @@ done
 DIR="$(pwd)/users/${USER_ID}"
 COMPOSE="${DIR}/compose.yml"
 
+# Parse KEY=VALUE config without shell-sourcing (rejects bare tokens / command injection).
+load_user_config() {
+  local file="$1" line key value
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "${line}" || "${line}" == \#* ]] && continue
+    if [[ "${line}" != *=* ]]; then
+      echo "FATAL: config line must be KEY=VALUE (got: ${line})" >&2
+      exit 1
+    fi
+    key="${line%%=*}"
+    value="${line#*=}"
+    key="${key%"${key##*[![:space:]]}"}"
+    [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "FATAL: invalid config key: ${key}" >&2; exit 1; }
+    printf -v "${key}" '%s' "${value}"
+    export "${key}"
+  done < "${file}"
+}
+
 case "${ACTION}" in
   init)
     [[ -e "${DIR}/config" ]] && { echo "已存在: ${DIR}/config" >&2; exit 2; }
@@ -36,12 +56,19 @@ case "${ACTION}" in
     ;;
   start)
     [[ -f "${DIR}/config" ]] || { echo "FATAL: 先 ./provision-user.sh ${USER_ID} --init 并填好 config" >&2; exit 1; }
-    # 校验必填
-    set -a; . "${DIR}/config"; set +a
+    # KEY=VALUE only — never shell-source config (avoids bare sk- lines / injection)
+    load_user_config "${DIR}/config"
     : "${WECOM_BOT_ID:?config 缺 WECOM_BOT_ID}" "${WECOM_SECRET:?config 缺 WECOM_SECRET}" "${LLM_API_KEY:?config 缺 LLM_API_KEY}"
     # 合成运行时 .env = config + 生成的网关 token
     umask 077
-    { cat "${DIR}/config"; echo "OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 16)"; } > "${DIR}/.env"
+    {
+      while IFS= read -r line || [[ -n "${line}" ]]; do
+        [[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
+        [[ "${line}" == *=* ]] || continue
+        printf '%s\n' "${line}"
+      done < "${DIR}/config"
+      echo "OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 16)"
+    } > "${DIR}/.env"
     chmod 600 "${DIR}/.env"
     # 渲染 compose（| 作分隔符避开路径里的 /）；SKILLS_DIR=项目根共享 skill 目录（所有用户同一份）
     mkdir -p "$(pwd)/skills"

@@ -38,8 +38,9 @@
 //
 // Exit codes: 0=success, 1=error
 
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
 const state = process.env.OPENCLAW_STATE_DIR || `${homedir()}/.openclaw`;
 const p = `${state}/openclaw.json`;
@@ -99,7 +100,7 @@ try {
     }
   }
 
-  writeFileSync(p, JSON.stringify(d, null, 2));
+  atomicWriteJSON(p, d);
 
   // --- wipe plugin transport state for removed channels ---
   for (const ch of removedChannels) {
@@ -144,21 +145,17 @@ try {
     if (removed > 0) {
       process.stderr.write(`[inject-channels] session-wipe: removed=${removed} trajectories=${trajectoryPaths.size}\n`);
       try {
-        writeFileSync(SESSIONS_INDEX, JSON.stringify(sessions, null, 2));
+        atomicWriteJSON(SESSIONS_INDEX, sessions);
       } catch (e) {
         process.stderr.write(`[inject-channels] write sessions.json: ${e.message}\n`);
       }
-      for (const p of trajectoryPaths) {
+      for (const sessionFile of trajectoryPaths) {
         // sessionFile may be absolute or relative to SESSIONS_DIR; resolve
         // both forms. We delete the .jsonl, .trajectory.jsonl and
         // .trajectory-path.json siblings.
-        const candidates = [];
-        if (p.startsWith("/")) {
-          candidates.push(p);
-        } else {
-          candidates.push(`${SESSIONS_DIR}/${p}`);
-        }
-        for (const f of candidates) {
+        const resolved = safeSessionPath(sessionFile);
+        if (!resolved) continue;
+        for (const f of [resolved]) {
           for (const suffix of ["", ".trajectory.jsonl", ".trajectory-path.json"]) {
             try {
               rmSync(f + suffix, { force: true });
@@ -180,4 +177,19 @@ try {
 } catch (e) {
   console.error(`[inject-channels] FAILED: ${e.message}`);
   process.exit(1);
+}
+
+function atomicWriteJSON(file, value) {
+  const temporary = join(dirname(file), `.${basename(file)}.${process.pid}.tmp`);
+  writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+  renameSync(temporary, file);
+}
+
+function safeSessionPath(sessionFile) {
+  if (typeof sessionFile !== "string" || sessionFile.includes("\0")) return "";
+  const root = resolve(SESSIONS_DIR);
+  const target = resolve(isAbsolute(sessionFile) ? sessionFile : join(root, sessionFile));
+  const relative = target.slice(root.length);
+  if (target !== root && relative.startsWith("/") && !relative.startsWith("/..")) return target;
+  return "";
 }

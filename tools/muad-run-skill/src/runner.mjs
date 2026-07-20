@@ -5,6 +5,8 @@ import { spawn } from "node:child_process";
 
 import { buildSkillEnvironment } from "./execution-context.mjs";
 
+const MAX_STREAM_CHARS = 256 * 1024;
+
 export async function runSkill({
   manifest,
   trustedContext,
@@ -63,16 +65,20 @@ async function executeEntrypoint({ manifest, env, eventFile, signal, deliver, ou
 }
 
 async function runCommand({ command, manifest, env, eventFile, signal, deliver }) {
-  const eventState = { offset: 0 };
+  const eventState = { offset: 0, draining: Promise.resolve() };
   const interval = setInterval(() => {
-    void drainBestEffort(eventFile, eventState, deliver);
+    eventState.draining = eventState.draining
+      .then(() => drainBestEffort(eventFile, eventState, deliver))
+      .catch(() => {});
   }, 250);
   try {
     const commandResult = await runProcess({ command, cwd: manifest.skillDir, env, signal });
+    await eventState.draining;
     await drainEvents(eventFile, eventState, deliver);
     return commandResult;
   } finally {
     clearInterval(interval);
+    await eventState.draining;
     await drainBestEffort(eventFile, eventState, deliver);
   }
 }
@@ -84,13 +90,25 @@ function runProcess({ command, cwd, env, signal }) {
     });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (chunk) => { stdout += chunk.toString("utf8"); });
-    child.stderr.on("data", (chunk) => { stderr += chunk.toString("utf8"); });
+    child.stdout.on("data", (chunk) => { stdout = appendCapped(stdout, chunk.toString("utf8")); });
+    child.stderr.on("data", (chunk) => { stderr = appendCapped(stderr, chunk.toString("utf8")); });
     child.on("error", (error) => {
-      resolve({ code: -1, stdout, stderr: `${stderr}\n${error.message}`.trim() });
+      resolve({ code: -1, signal: null, stdout, stderr: `${stderr}\n${error.message}`.trim() });
     });
-    child.on("close", (code) => resolve({ code: code ?? 0, stdout, stderr }));
+    child.on("close", (code, signalName) => {
+      const exitCode = code === null || code === undefined
+        ? (signalName ? 128 : -1)
+        : code;
+      resolve({ code: exitCode, signal: signalName || null, stdout, stderr });
+    });
   });
+}
+
+function appendCapped(current, chunk) {
+  if (current.length >= MAX_STREAM_CHARS) return current;
+  const next = current + chunk;
+  if (next.length <= MAX_STREAM_CHARS) return next;
+  return `${next.slice(0, MAX_STREAM_CHARS)}\n...[truncated]`;
 }
 
 async function drainEvents(filePath, state, deliver) {
