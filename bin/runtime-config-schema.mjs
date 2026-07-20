@@ -249,8 +249,11 @@ function validateSkills(value, agents) {
 
 function assertRelativeSkillPath(value, label) {
   assertString(value, label);
-  if (value.startsWith("/") || value === "." || value === ".." || value.startsWith("../") || value.includes("/../")) {
+  if (value.startsWith("/") || value === "." || value === "..") {
     throw new Error(`${label} must contain relative Skill paths`);
+  }
+  for (const part of value.split(/[\\/]/u)) {
+    if (part === "..") throw new Error(`${label} must contain relative Skill paths`);
   }
 }
 

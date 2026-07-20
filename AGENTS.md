@@ -10,25 +10,36 @@
 - Single responsibility per function (<= 50 lines)
 - No loose typing or silent exception handling
 - Handle errors explicitly
-- 当用户明确说“先对齐 / 先探讨 / 不要着急改代码 / 先给结论”时，先输出方案、风险和建议，不直接编辑代码、构建镜像或部署
+- **先对齐再改代码**：涉及表结构、跨模块重构、行为取舍或产品交互争议时，先给出结论/方案与用户确认，再动代码；当用户明确说“先对齐 / 先探讨 / 不要着急改代码 / 先给结论”时，不直接编辑代码、构建镜像或部署
 
 ## Forbidden Patterns
 - Hard-coded secrets or credentials
-- Unparameterized SQL
+- Unparameterized SQL / `SELECT *`
 - Network calls inside tight loops
+- Secrets baked into images or world-readable secret files
 
 ## Project Conventions
 
 ### Go Backend (console/backend)
-- 外部命令（docker CLI）统一通过 helper 函数执行，`exec.CommandContext` + stderr 合并到 error；禁止裸 `exec.Command` 散落在业务代码中 `[internal/driver/docker.go:176-183]`
-- HTTP handler 统一使用 `writeJSON` / `writeErr` 输出响应；禁止直接调用 `json.NewEncoder` `[internal/api/server.go:80-90]`
-- 错误码体系：`4xxxx` 客户端错误 / `5xxxx` 服务端错误，子码按场景递增 `[internal/api/*.go]`
+- 外部命令（docker CLI）统一通过 helper 函数执行，`exec.CommandContext` + stderr 合并到 error；禁止裸 `exec.Command` 散落在业务代码中 `[internal/driver/docker.go]`
+- HTTP handler 统一使用 `writeJSON` / `writeErr` 输出响应；禁止直接调用 `json.NewEncoder` `[internal/api/server.go]`
+- 错误码体系：`4xxxx` 客户端错误 / `5xxxx` 服务端错误，子码按场景递增；业务冲突映射稳定文案（如 model already bound、generation conflict）
+- 创建 Human User 必须绑定未占用 `model_config_id`，禁止隐式模型回退
+- 写入日志/审计/apply 失败字段前对 error 做 `auditlog.RedactDiagnostic`
 - 测试使用 fake/mock 实现接口（非真实 Docker/K8s），结合 `httptest` 测试 HTTP `[test/api_test.go]`
 
 ### TypeScript Frontend (console/frontend)
-- 所有 API 调用经 `src/api.ts` 统一封装（BASE path、auth header、401 处理）；页面组件禁止裸 `fetch` `[src/api.ts]`
+- 所有 API 调用经 `src/api.ts` 统一封装（`/api/v1`、auth header、`code===0` 解包、`ApiError`、401 → clear token + `UNAUTHORIZED_EVENT`）；`pages/**`/`components/**` 禁止裸 `fetch`
+- 契约类型放 `src/types/api.ts`，由 `api.ts` re-export
+- UI 以 Semi Design 为主；`ConfigProvider` 在 `main.tsx` 统一挂载
 - TypeScript strict 模式开启（`strict`/`noUnusedLocals`/`noFallthroughCasesInSwitch`）`[tsconfig.json]`
-- 表单提交：`busy` → `try/catch/finally` → `setErr`/`setMsg` 三态 `[Login.tsx, Containers.tsx]`
+- 表单提交：`busy` → `try/catch/finally` → `setErr`/`setMsg` 三态
+- 轮询/自动刷新 hook 必须区分首载与后台刷新：后台刷新不设 `loading=true`，避免表格 spinner 持续闪烁
+
+### Runtime (bin / tools / skills)
+- 不 fork OpenClaw 上游；能力经控制面配置 + 外置插件
+- runtime DTO 先 `validateRuntimeConfig` 再原子落盘（`0o600`）；apply 走 generation + stage + health/rollback
+- Skill：system 优先且 protected；public/private 冲突默认不静默覆盖（需 allow_override）
 
 <!-- code-flow:spec-loading schema=1 start -->
 ## Spec Workflow (schema 1)

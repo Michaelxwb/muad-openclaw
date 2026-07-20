@@ -331,6 +331,48 @@ describe("request contract", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
+  it("does not clear a stored token when login returns 401", async () => {
+    token.set("still-valid-session");
+    const listener = vi.fn();
+    window.addEventListener(UNAUTHORIZED_EVENT, listener, { once: true });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code: 40101, message: "invalid credentials" }), {
+          status: 401,
+        }),
+      ),
+    );
+
+    await expect(api.login("root", "bad")).rejects.toMatchObject({
+      status: 401,
+      code: 40101,
+      message: "用户名或密码错误",
+    });
+    expect(token.get()).toBe("still-valid-session");
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("does not treat unauthenticated 401 responses as session expiry", async () => {
+    token.clear();
+    const listener = vi.fn();
+    window.addEventListener(UNAUTHORIZED_EVENT, listener, { once: true });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code: 40101, message: "unauthorized" }), { status: 401 }),
+      ),
+    );
+
+    await expect(api.me()).rejects.toMatchObject({
+      status: 401,
+      code: 40101,
+      message: "用户名或密码错误",
+    });
+    expect(token.get()).toBeNull();
+    expect(listener).not.toHaveBeenCalled();
+  });
+
   it("exposes backend status and error code", async () => {
     vi.stubGlobal(
       "fetch",

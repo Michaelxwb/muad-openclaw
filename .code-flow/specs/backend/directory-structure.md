@@ -1,13 +1,13 @@
 ---
 id: backend-directory-structure
-description: 新建/移动后端文件时适用：目录结构与模块组织约束
+description: 新建/移动 Console 后端文件时适用：Go 包边界与目录约束
 stages: [design, plan, code, review]
 enforcement: required
 verifiers:
   - rule: RULE-backend-directory-001
     type: manual
     config:
-      checklist: Confirm all Guidance and Avoid items for this Spec.
+      checklist: Confirm Go code lives under console/backend with cmd/internal separation and no cross-layer imports.
       owner: project-owner
 ---
 
@@ -15,40 +15,39 @@ verifiers:
 
 ## Examples
 
-✅ 魔法值集中到 `constants/`，命名引用
+✅ API 调 repo/driver，不直接拼 SQL 字符串散落
 
-```python
-# constants/order.py
-ORDER_PAID = 1
-# service：if order.status == ORDER_PAID: ...
+```go
+// internal/api/pods.go → s.store.ListPods(...)
+// internal/repo/pods.go → 查询实现
 ```
 
-❌ 业务代码散落硬编码字面量
+❌ handler 内嵌大段 SQL / 直接调 docker SDK
 
-```python
-if order.status == 1 and role == "admin":   # 魔法数字 / 魔法字符串
-    ...
+```go
+func (s *Server) handlePods(w http.ResponseWriter, r *http.Request) {
+    db.Query(`SELECT * FROM pods`) // 越层
+}
 ```
 
 ## Rules
-- [RULE-backend-directory-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+- [RULE-backend-directory-001] Console backend code must live under `console/backend/` with `cmd/` entrypoints and `internal/` packages; handlers must not own persistence or runtime-driver details.
 
 ## Guidance
-- 接口层放 `api/`，业务逻辑放 `services/`，数据模型放 `models/`，禁止跨层倒置依赖
-- 入口文件（`main.*`）只做框架装配，不写业务代码
-- 配置统一放 `config/`，禁止在业务代码中直接读 `os.environ` / `process.env`
-- 常量集中放 `constants/`，按业务模块拆分（`constants/order.py`、`constants/user.py`），禁止在业务代码中散落硬编码字面量（魔法数字 / 字符串 / 状态码）
-- 数据访问层独立放 `crud/` 或 `repositories/`，业务层依赖 CRUD 抽象，不直接依赖 ORM
-- 新增一级目录必须同步更新导航地图与 `__init__` / `index` 索引
+- 入口只放 `cmd/console`；业务实现进 `internal/<pkg>`
+- `api`：HTTP 编解码、鉴权中间件、调用下层
+- `repo`：schema、CRUD、迁移；是唯一持久化边界
+- `driver`：容器/K8s 操作唯一出口
+- `runtimeconfig` / `runtimeapply`：配置构建与事务应用，不混进 handler
+- 测试：包内 `*_test.go` + `console/backend/test` 集成测
+- 禁止在仓库根再开平行 Go module 承载 console 控制面逻辑
 
 ## Patterns
-- 模块按业务域拆分（如 `services/order/`、`services/user/`），目录深度建议 ≤ 3 层
-- 公共工具放 `utils/`，无业务依赖；与业务相关的 helper 放对应 service 子目录
-- 常量命名用 UPPER_SNAKE_CASE，枚举优先使用语言原生 `Enum`
-- 测试目录与源码同构（`tests/services/order/test_*`）
+- 新资源：`api` 路由 + `repo` 模型 +（如需）`driver`/`runtimeconfig` 扩展
+- 共享 DTO 放靠近使用方的 package，避免循环依赖
+- 资源配额、generation、apply 状态机逻辑集中，不复制到多个 handler
 
 ## Avoid
-- 禁止在根目录堆放脚本与临时代码，临时脚本放 `scripts/` 并命名清晰
-- 禁止在 `models/` 里写业务逻辑，模型仅定义结构与简单关联
-- 禁止把常量直接写在业务代码里（如 `if status == 1` / `role == "admin"`），必须引用 `constants/` 中的命名常量
-- 禁止单文件超过 500 行或单函数超过 50 行
+- 禁止 api → 跳过 repo 直连 sqlite
+- 禁止在 api 包 import docker/k8s client（应经 driver）
+- 禁止把 Worker 镜像内脚本逻辑复制进 backend 而不抽边界

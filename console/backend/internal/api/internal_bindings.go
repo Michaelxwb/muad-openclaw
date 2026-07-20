@@ -53,6 +53,14 @@ func (s *Server) handleActivateBinding(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusTooManyRequests, codeRateLimited, "binding attempts are rate limited")
 		return
 	}
+	// Trim fields before persistence (validBindingContext only trimmed a copy).
+	request.Code = strings.TrimSpace(request.Code)
+	request.Channel = strings.TrimSpace(request.Channel)
+	request.AccountID = strings.TrimSpace(request.AccountID)
+	request.ExternalID = strings.TrimSpace(request.ExternalID)
+	request.ExternalIDType = strings.TrimSpace(request.ExternalIDType)
+	request.OpenClawChannel = strings.TrimSpace(request.OpenClawChannel)
+	request.PeerKind = strings.TrimSpace(request.PeerKind)
 	result, err := s.store.ActivateBindingCode(s.bindingCodec, repo.BindingActivation{
 		Code: request.Code, PodID: pod.PodID, Channel: request.Channel,
 		OpenClawChannel: request.OpenClawChannel, AccountID: request.AccountID,

@@ -13,7 +13,7 @@
 #          需要你提供 bucket + 凭证（建议 Secret 注入），命令处已留占位。
 set -euo pipefail
 
-NS="${MUAD_NS:-default}"
+NS="${MUAD_NS:-muad}"
 IDLE_DAYS="${MUAD_IDLE_DAYS:-10}"
 DRY_RUN="${DRY_RUN:-true}"   # 默认只报告不动手；设 DRY_RUN=false 真回收
 
@@ -28,20 +28,38 @@ restore_pvc() { echo "  [restore] user=$1 ←（TODO-B）从对象存储恢复 P
 # 复活：被回收用户再来消息时由控制面/webhook 调本函数
 revive() {  # $1=user
   restore_pvc "$1"
-  kubectl -n "${NS}" scale statefulset "muad-oc-$1" --replicas=1
+  workload=$(workload_for_user "$1")
+  [[ -n "${workload}" ]] || { echo "FATAL: user=$1 workload not found" >&2; exit 1; }
+  kubectl -n "${NS}" scale "${workload}" --replicas=1
   echo "  [revive] user=$1 已拉起"
+}
+
+workload_for_user() {
+  local user="$1" name="muad-oc-$1"
+  if kubectl -n "${NS}" get deployment "${name}" >/dev/null 2>&1; then
+    echo "deployment/${name}"
+    return
+  fi
+  if kubectl -n "${NS}" get statefulset "${name}" >/dev/null 2>&1; then
+    echo "statefulset/${name}"
+  fi
 }
 [[ "${1:-}" == "--revive" ]] && { revive "$2"; exit 0; }
 
 # 扫描所有用户实例
 echo "[reaper] ns=${NS} idle_days=${IDLE_DAYS} dry_run=${DRY_RUN}"
-kubectl -n "${NS}" get statefulset -l app=muad-openclaw \
-  -o jsonpath='{range .items[*]}{.metadata.labels.muad-user}{" "}{.spec.replicas}{" "}{.metadata.annotations.muad/last-active}{"\n"}{end}' \
-| while read -r user replicas last_active; do
+for kind in deployment statefulset; do
+  kubectl -n "${NS}" get "${kind}" -l app=muad-openclaw \
+    -o jsonpath="{range .items[*]}${kind}{\" \"}{.metadata.name}{\" \"}{.metadata.labels.muad-user}{\" \"}{.spec.replicas}{\" \"}{.metadata.annotations.muad/last-active}{\"\\n\"}{end}"
+done | while read -r kind name user replicas last_active; do
     [[ -z "${user}" ]] && continue
     [[ "${replicas:-0}" == "0" ]] && continue   # 已回收
     # TODO-A：优先用 annotation muad/last-active；缺失则用 Pod 启动时间占位
     if [[ -n "${last_active}" && "${last_active}" != "<no value>" ]]; then
+      if [[ ! "${last_active}" =~ ^[0-9]+$ ]]; then
+        echo "[reaper] skip ${user}: invalid muad/last-active=${last_active}" >&2
+        continue
+      fi
       idle=$(( (now - last_active) / 86400 ))
     else
       started=$(kubectl -n "${NS}" get pod -l "muad-user=${user}" \
@@ -53,7 +71,7 @@ kubectl -n "${NS}" get statefulset -l app=muad-openclaw \
       echo "→ 回收 user=${user}（空闲 ${idle} 天）"
       if [[ "${DRY_RUN}" == "false" ]]; then
         archive_pvc "${user}"
-        kubectl -n "${NS}" scale statefulset "muad-oc-${user}" --replicas=0
+        kubectl -n "${NS}" scale "${kind}/${name}" --replicas=0
       fi
     else
       echo "  保留 user=${user}（空闲 ${idle} 天）"

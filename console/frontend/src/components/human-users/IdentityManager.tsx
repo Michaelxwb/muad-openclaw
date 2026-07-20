@@ -3,7 +3,7 @@ import { Button, Input, Modal, Select, Space, Table, Toast } from "@douyinfe/sem
 import { api } from "../../api";
 import type { HumanUser, Identity, IdentityInput } from "../../api";
 import { channelMeta } from "../../channels";
-import { FeedbackBanner } from "../ConsolePage";
+import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
 import styles from "../HumanUsersPanel.module.css";
 import { Field, UserStatusTag } from "./shared";
 
@@ -172,7 +172,7 @@ function CreateIdentityDialog(props: CreateDialogProps) {
 
   const submit = async () => {
     const validation = validateIdentity(form);
-    if (validation) return setError(validation);
+    if (validation) return setRepeatableError(setError, validation);
     setBusy(true);
     setError("");
     try {

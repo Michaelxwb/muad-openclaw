@@ -3,14 +3,14 @@
 # 默认 DRY_RUN=true 只报告；确认无误后改为 "false" 真回收。
 apiVersion: v1
 kind: ServiceAccount
-metadata: { name: muad-reaper }
+metadata: { name: muad-reaper, namespace: muad }
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
-metadata: { name: muad-reaper }
+metadata: { name: muad-reaper, namespace: muad }
 rules:
   - apiGroups: ["apps"]
-    resources: ["statefulsets", "statefulsets/scale"]
+    resources: ["deployments", "deployments/scale", "statefulsets", "statefulsets/scale"]
     verbs: ["get", "list", "update", "patch"]
   - apiGroups: [""]
     resources: ["pods"]
@@ -19,13 +19,13 @@ rules:
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata: { name: muad-reaper }
+metadata: { name: muad-reaper, namespace: muad }
 roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: muad-reaper }
-subjects: [{ kind: ServiceAccount, name: muad-reaper }]
+subjects: [{ kind: ServiceAccount, name: muad-reaper, namespace: muad }]
 ---
 apiVersion: batch/v1
 kind: CronJob
-metadata: { name: muad-reaper }
+metadata: { name: muad-reaper, namespace: muad }
 spec:
   schedule: "0 3 * * *"          # 每天 03:00
   concurrencyPolicy: Forbid
@@ -35,14 +35,26 @@ spec:
         spec:
           serviceAccountName: muad-reaper
           restartPolicy: Never
+          automountServiceAccountToken: true
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+            seccompProfile: { type: RuntimeDefault }
           containers:
             - name: reaper
               image: bitnami/kubectl:latest   # 自带 kubectl；reaper.sh 经 ConfigMap 挂入
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: ["ALL"] }
               command: ["/bin/bash", "/scripts/reaper.sh"]
               env:
-                - { name: MUAD_NS, value: "default" }
+                - { name: MUAD_NS, value: "muad" }
                 - { name: MUAD_IDLE_DAYS, value: "10" }
                 - { name: DRY_RUN, value: "true" }   # 验证期 true；上线改 "false"
+              resources:
+                requests: { cpu: "25m", memory: "64Mi" }
+                limits: { cpu: "200m", memory: "256Mi" }
               volumeMounts: [{ name: scripts, mountPath: /scripts }]
           volumes:
             - name: scripts

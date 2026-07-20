@@ -31,6 +31,7 @@ type Server struct {
 	reconcile      ReconcileEnqueuer
 	operations     PodOperationRunner
 	bindingLimiter *bindingAttemptLimiter
+	loginLimiter   *bindingAttemptLimiter
 }
 
 // ReconcileEnqueuer receives Pod IDs whose desired runtime generation changed.
@@ -53,6 +54,7 @@ func NewServer(
 	server := &Server{
 		cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache,
 		bindingLimiter: newBindingAttemptLimiter(10*time.Minute, 10, 4096),
+		loginLimiter:   newBindingAttemptLimiter(10*time.Minute, 5, 4096),
 	}
 	if cfg != nil {
 		codec, err := crypto.NewBindingCodeCodec(cfg.MasterKey)

@@ -385,6 +385,7 @@ func (s *Store) UpsertSkillExecutionRecord(record SkillExecutionRecord) (SkillEx
 		error_code=excluded.error_code, error_message=excluded.error_message,
 		input_summary=excluded.input_summary, output_summary=excluded.output_summary
 	WHERE excluded.event_seq > skill_execution_records.event_seq
+		AND skill_execution_records.pod_id = excluded.pod_id
 		AND skill_execution_records.status = ?
 		AND excluded.status IN ('running','succeeded','failed','cancelled')`,
 		prepared.ExecutionID, prepared.PodID, prepared.HumanUserID, prepared.AgentID,

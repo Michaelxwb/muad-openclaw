@@ -61,7 +61,17 @@ async function requirementsForAgent({
 }) {
   let pending = requirements.get(agentId);
   if (!pending) {
-    pending = loadAgentRequirements({ policies, agentId, readFileImpl, logger });
+    pending = loadAgentRequirements({ policies, agentId, readFileImpl, logger })
+      .then((value) => {
+        // Only cache successful loads so transient FS errors do not disable the gate forever.
+        if (value.ok) return value.byTool;
+        requirements.delete(agentId);
+        return value.byTool;
+      })
+      .catch((error) => {
+        requirements.delete(agentId);
+        throw error;
+      });
     requirements.set(agentId, pending);
   }
   return pending;
@@ -73,28 +83,30 @@ async function loadAgentRequirements({ policies, agentId, readFileImpl, logger }
   const resolved = await Promise.all(grants.map((grant) => loadGrantTools({
     grant, readFileImpl, logger,
   })));
-  for (const { grant, tools } of resolved) {
-    for (const tool of tools) {
+  let ok = true;
+  for (const item of resolved) {
+    if (!item.ok) ok = false;
+    for (const tool of item.tools) {
       const matches = byTool.get(tool) ?? [];
-      matches.push(grant);
+      matches.push(item.grant);
       byTool.set(tool, matches);
     }
   }
-  return byTool;
+  return { ok, byTool };
 }
 
 async function loadGrantTools({ grant, readFileImpl, logger }) {
   try {
     const content = String(await readFileImpl(path.join(grant.rootPath, "SKILL.md"), "utf8"));
     if (Buffer.byteLength(content) > MAX_SKILL_INSTRUCTIONS) throw new Error("Skill is too large");
-    return { grant, tools: mandatoryToolsFromSkillMarkdown(content) };
+    return { grant, tools: mandatoryToolsFromSkillMarkdown(content), ok: true };
   } catch (error) {
     logger.warn?.(`[muad-run-skill] ${JSON.stringify({
       event: "skill_activation_gate_load_failed",
       skillName: grant.name,
       error: errorMessage(error),
     })}`);
-    return { grant, tools: [] };
+    return { grant, tools: [], ok: false };
   }
 }
 

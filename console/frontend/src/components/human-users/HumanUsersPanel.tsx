@@ -43,33 +43,37 @@ function useHumanUsers(podId: string): HumanUsersState {
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    const requestId = ++requestRef.current;
-    if (mountedRef.current) {
-      setLoading(true);
-      setError("");
-    }
-    try {
-      const result = await api.listHumanUsers(podId, {
-        page,
-        pageSize,
-        q: query,
-        status: status || undefined,
-      });
-      if (!mountedRef.current || requestId !== requestRef.current) return;
-      setItems(result.items);
-      setTotal(result.total);
-    } catch (caught) {
-      if (!mountedRef.current || requestId !== requestRef.current) return;
-      setError(caught instanceof Error ? caught.message : "加载 Human User 失败");
-    } finally {
-      if (mountedRef.current && requestId === requestRef.current) setLoading(false);
-    }
-  }, [mountedRef, page, pageSize, podId, query, status]);
+  const refresh = useCallback(
+    async (background = false) => {
+      const requestId = ++requestRef.current;
+      if (mountedRef.current) {
+        if (!background) setLoading(true);
+        setError("");
+      }
+      try {
+        const result = await api.listHumanUsers(podId, {
+          page,
+          pageSize,
+          q: query,
+          status: status || undefined,
+        });
+        if (!mountedRef.current || requestId !== requestRef.current) return;
+        setItems(result.items);
+        setTotal(result.total);
+      } catch (caught) {
+        if (!mountedRef.current || requestId !== requestRef.current) return;
+        setError(caught instanceof Error ? caught.message : "加载 Human User 失败");
+      } finally {
+        if (mountedRef.current && requestId === requestRef.current && !background)
+          setLoading(false);
+      }
+    },
+    [mountedRef, page, pageSize, podId, query, status],
+  );
 
   useEffect(() => {
     void refresh();
-    const timer = setInterval(() => void refresh(), 10000);
+    const timer = setInterval(() => void refresh(true), 10000);
     return () => clearInterval(timer);
   }, [refresh]);
 

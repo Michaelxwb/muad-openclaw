@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -59,6 +59,35 @@ test("shared browser lease reports leases held by another plugin context", async
   assert.equal(await waiting, "call-2");
   assert.deepEqual(first.snapshot(), { active: 1, queued: 0, limit: 1 });
   assert.equal(await second.release("call-2"), true);
+});
+
+test("shared browser lease tightens a pre-existing queue directory", async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "muad-shared-browser-open-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  chmodSync(directory, 0o777);
+  const leases = new SharedBrowserLeaseManager({ directory, limit: 1 });
+
+  await leases.acquire("call-1");
+
+  assert.equal(statSync(directory).mode & 0o077, 0);
+  assert.equal(await leases.release("call-1"), true);
+});
+
+test("shared browser lease expires when release hook is missed", async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "muad-shared-browser-expire-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const leases = new SharedBrowserLeaseManager({
+    directory,
+    limit: 1,
+    leaseTtlMs: 30,
+    heartbeatMs: 5,
+  });
+
+  await leases.acquire("call-1");
+  await waitFor(() => leases.snapshot().active === 0);
+
+  assert.deepEqual(leases.snapshot(), { active: 0, queued: 0, limit: 1 });
+  leases.close();
 });
 
 test("browser plugin registration reuses the shared manager for the same limit", () => {

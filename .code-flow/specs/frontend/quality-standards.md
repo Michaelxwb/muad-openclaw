@@ -1,63 +1,73 @@
 ---
 id: frontend-quality-standards
-description: 写前端代码时适用：类型、lint、错误处理、测试、状态管理质量约束
+description: 写 Console 前端代码时适用：TypeScript、lint、API 客户端、错误与测试
 stages: [design, plan, code, review]
 enforcement: required
 verifiers:
   - rule: RULE-frontend-quality-001
     type: manual
     config:
-      checklist: Confirm all Guidance and Avoid items for this Spec.
+      checklist: Confirm TS/lint/test, async UI states, and api.ts contract for console/frontend changes.
       owner: project-owner
+  - rule: RULE-frontend-api-client-001
+    type: regex
+    config:
+      pattern: "\\bfetch\\("
+      files:
+        - console/frontend/src/components/**
+        - console/frontend/src/pages/**
+      message: "HTTP 必须经 api.ts，禁止在 pages/components 裸 fetch"
 ---
 
 # Frontend Quality Standards
 
 ## Examples
 
-✅ `unknown` 收敛 + 异步三态
+✅ 经 api.ts 解包 code===0 的 data
+
+```ts
+const data = await api.listPods(); // unwrapResponse 已校验 code===0
+```
+
+❌ pages 内裸 fetch + 只处理成功路径
+
+```ts
+const data: any = await fetch("/api/v1/pods").then((r) => r.json());
+render(data);
+```
+
+✅ 异步三态
 
 ```ts
 setState("loading");
 try {
-  const raw: unknown = await api.fetch();
-  setState("success", parse(raw));
+  const data = await api.listPods();
+  setState("success", data);
 } catch (e) {
-  setState("error", toMessage(e));
+  setState("error", e instanceof ApiError ? e.message : toMessage(e));
 }
 ```
 
-❌ `any` + `@ts-ignore` + 只处理成功路径
-
-```ts
-// @ts-ignore
-const data: any = await api.fetch();
-render(data);
-```
-
 ## Rules
-- [RULE-frontend-quality-001] The implementation must satisfy every applicable item in Guidance and avoid every item in Avoid.
+- [RULE-frontend-quality-001] Console frontend changes must keep TypeScript strict typing, explicit async loading/error/success handling, and pass project frontend validators (tsc/eslint/prettier/vitest when applicable).
+- [RULE-frontend-api-client-001] All Console HTTP must go through `console/frontend/src/api.ts`: base path `/api/v1`, success only when response `code === 0` then unwrap `data`, failures as `ApiError(status, code?)`, and HTTP 401 must clear token and dispatch `UNAUTHORIZED_EVENT`.
 
 ## Guidance
-- TypeScript 项目禁止使用 `any`，未知类型用 `unknown` 并显式收敛
-- 组件统一使用函数组件（React）/ 组合式 API（Vue 3），禁止类组件新增
-- 关键交互（提交 / 删除 / 支付）必须有错误提示与 loading 状态
-- 异步操作必须处理 loading / success / error 三态，禁止只处理成功路径
-- 提交前必须通过 lint 与 type check，禁止 `eslint-disable` / `@ts-ignore` 滥用
+- 禁止无必要的 `any` / `@ts-ignore`；外部 JSON 先收成 `unknown` 再收窄（见 `parseResponseBody` / `isRecord`）
+- 用户可见错误必须可读，优先展示服务端 `message` / `ApiError.message`
+- 列表/详情请求必须处理 loading 与 empty；失败可重试或明确提示
+- 鉴权失效：依赖 `api.ts` 的 401 清 token + `UNAUTHORIZED_EVENT`，App 层回到登录，不静默吞
+- 会话 token 仅经 `token` helper 存 `localStorage` 的约定 key；禁止另存 LLM/平台 API Key、binding code 明文
+- 后台轮询/自动刷新不得把首载 `loading` 一直置 true（区分 background 刷新，避免表格闪烁）
+- 测试：纯函数与 hooks 优先单测；关键交互用 Testing Library
 
 ## Patterns
-- 跨组件状态用集中式状态管理，避免 prop drilling 超过 2 层
-- 表单校验在提交前完成，错误信息定位到具体字段
-- 网络请求统一处理 401 / 403 / 5xx，避免每个调用方重复
-- 关键路径补端到端测试或组件交互测试
-- 异步数据获取 hook 必须使用 `useMountedRef` + 递增 `requestRef` 双重防护：
-  1. `const mountedRef = useMountedRef(); const requestRef = useRef(0);`
-  2. 请求前 `const requestId = ++requestRef.current;`
-  3. 响应后 `if (!mountedRef.current || requestId !== requestRef.current) return;`
-  此模式防止未挂载 setState 和过时响应覆盖两重竞态
+- 页面只调用 `api.*`，错误用 `Toast` / Banner 展示 `ApiError`
+- `useMountedRef` 防止卸载后 setState
+- 变更 `api.ts` / `types/api.ts` 时同步检查调用方与 vitest
 
 ## Avoid
-- 禁止在 render / setup 中发起未受控的副作用（用 `useEffect` / `onMounted`）
-- 禁止把后端错误直接抛给用户（如 SQL / stack trace）
-- 禁止用 `// @ts-ignore` 绕过类型错误，必须修复或改为 `@ts-expect-error` 加注释
-- 禁止在组件中直接修改 store 内部状态，必须走 action / mutation
+- 禁止在 `pages/**`、`components/**` 使用裸 `fetch` / axios
+- 禁止忽略 ESLint/Prettier 项目约定另起风格
+- 禁止在 UI 展示原始堆栈或内部路径
+- 禁止把 LLM/平台密钥渲染进 DOM 调试块

@@ -22,52 +22,52 @@
 
 ### Go 后端 ✅已复核
 
-- [ ] **H1. 管理员登录无限流、无锁定、无请求体上限** — `console/backend/internal/api/auth.go:26-31`
+- [x] **H1. 管理员登录无限流、无锁定、无请求体上限** — `console/backend/internal/api/auth.go:26-31`
   - 未认证端点直接 `json.NewDecoder(r.Body).Decode`，未走 `decodeJSONBody`，无 `http.MaxBytesReader`：超大 JSON 全量缓存进内存（未认证内存 DoS）。
   - 无尝试次数限制（绑定码路径有 `bindingAttemptLimiter`，登录没有），唯一管理员密码仅靠 bcrypt 成本抵御暴力破解。
 
-- [ ] **H2. 回滚/恢复路径复用客户端（可能已取消的）请求 context**
+- [x] **H2. 回滚/恢复路径复用客户端（可能已取消的）请求 context**
   - `internal/api/pod_upgrade.go:47-59, 132-146` — 管理员升级中断开连接：`Create`/`waitForPodHealth` 中止，**且** `restorePodRuntime` 回滚也带着已取消的 context 执行失败，pod 留在 `error`/被删状态。
   - `internal/api/service_token.go:46-80, 108-119` — 同样问题：`drv.Stop` 之后断连，`rollbackToken` 失败，pod 停机且 token 状态不一致。
   - `internal/api/pods.go:288-296` — 删除流程标记 `deleting` 后 `drv.Remove(r.Context())` 被取消，DB 永久停在 `deleting`。
   - 处理：补偿/清理逻辑统一改用 `context.WithoutCancel(r.Context())`（或 `context.Background()` + 超时）。
 
-- [ ] **H3. 绑定激活：校验用 trim 后的副本，落库用原始值 → 合法码可被打废** — `internal/api/internal_bindings.go:77-87`
+- [x] **H3. 绑定激活：校验用 trim 后的副本，落库用原始值 → 合法码可被打废** — `internal/api/internal_bindings.go:77-87`
   - `validBindingContext` 在值传递的局部副本上 trim `Channel`/`AccountID`/`ExternalIDType`，调用方（:56-61）却把未 trim 的原值传入 `repo.BindingActivation`。
   - `repo/binding_codes.go:291-314` `bindingScopeMatches` 是精确比较：`" wecom"` 过校验但 scope 匹配失败 → `persistBindingFailure`；5 次即可把合法待激活码永久 revoke（针对激活流程的 DoS）。
 
 ### 工具 / Hook 脚本 ✅已复核
 
-- [ ] **H4. 被信号杀死的 skill 子进程被报告为成功** — `tools/muad-run-skill/src/runner.mjs:92`
+- [x] **H4. 被信号杀死的 skill 子进程被报告为成功** — `tools/muad-run-skill/src/runner.mjs:92`
   - `child.on("close", (code) => resolve({ code: code ?? 0 }))`：进程死于信号（OOM-kill、外部 `kill -9`）时 `code` 为 `null`，被强转为 0 → 运行结果 `ok: true`/"completed"（错误的成功语义，影响遥测与用户可见结果）。
 
-- [ ] **H5. Stop hook 存在 shell 命令注入（经由编辑过的文件名）** — `.code-flow/scripts/cf_stop_hook.py:189-198`
+- [x] **H5. Stop hook 存在 shell 命令注入（经由编辑过的文件名）** — `.code-flow/scripts/cf_stop_hook.py:189-198`（不处理：`.code-flow` 开发 hook 不进入生产环境）
   - `command.replace("{files}", " ".join(matched))` 后 `subprocess.run(command, shell=True)`；`matched` 来自会话编辑事件的 `tool_input.file_path`。文件名形如 `` x`$(cmd)`.py `` 或 `a;cmd.py` 即注入——Edit 能力经 Stop hook 升级为 shell 执行。
   - 处理：`shlex.quote` 每个路径，或改为 list 形式执行。
 
 - [ ] **H6. 规范门禁在活动任务状态损坏时 fail-open** — `.code-flow/scripts/cf_pre_tool_hook.py:58-61`（+ `cf_spec_router.py:36-43, 56`）
   - `ContextError`/`SpecResolutionError` 是 `ValueError` 子类，落入只记日志的 `except (json.JSONDecodeError, OSError, ValueError)` 分支 → Edit/Write 被放行而非 deny。与项目契约"corrupt marker 必须 `SPEC_WORKFLOW_BLOCKED`"矛盾——恰好在状态损坏、最需要拦截时静默失效。router 内 `_task_file` 读取错误与 `project_task_session` 的 `ValueError` 同样在 `try` 之外抛出，同路径泄漏。
 
-- [ ] **H7. zip 包未在解压前筛查 symlink（zip-slip）** — `bin/private-skill-installer.mjs:75-79`（对比 :64-73）
+- [x] **H7. zip 包未在解压前筛查 symlink（zip-slip）** — `bin/private-skill-installer.mjs:75-79`（对比 :64-73）
   - tar 路径解压前拒绝 link 条目（`type === "l" || "h"`），zip 路径的 `validateZipBundle` 仅经 `unzip -Z1` 检查文件名。zip 内 symlink 条目 + 穿过它的文件路径可使 `unzip` 写出 `extractRoot` 之外；`assertNoLinks`（:32）在解压后才执行，已太迟。
 
 ### 基础设施 ✅已复核
 
-- [ ] **H8. docker.sock 挂进 `0.0.0.0:18080` 明文 HTTP 的控制台** — `console/docker-compose.yml:23, 28`
+- [x] **H8. docker.sock 挂进 `0.0.0.0:18080` 明文 HTTP 的控制台** — `console/docker-compose.yml:23, 28`
   - 管理密码/JWT 明文 HTTP 传输 + 控制台持有 docker.sock（等价宿主 root）：任何认证绕过或 RCE = 主机沦陷。已记为 RISK-03，但与全接口暴露叠加后风险放大。
   - 处理：至少改 `"127.0.0.1:18080:8080"` 或前置 TLS 反代；docker.sock 走 socket-proxy（如 tecnativa/docker-socket-proxy）限制端点；k8s 部署优先。
 
-- [ ] **H9. 密钥经 sed 未转义替换进 YAML 后 `kubectl apply`** — `k8s/provision-user-k8s.sh:42-51`
+- [x] **H9. 密钥经 sed 未转义替换进 YAML 后 `kubectl apply`** — `k8s/provision-user-k8s.sh:42-51`
   - `WECOM_SECRET`、`LLM_API_KEY`、`LLM_BASE_URL` 等值未转义 `|`/`&`/`\`/换行：合法值含 `&` 即破坏渲染（sed 反向引用）；恶意多行值可注入任意额外 K8s 资源并被 apply。
   - 处理：Secret 改用 `kubectl create secret generic --from-literal=...`，不经模板渲染。
 
-- [ ] **H10. 无任何 NetworkPolicy；Docker 路径所有租户与控制台同网** — `k8s/` 全目录；`console/docker-compose.yml:37-43`；`entrypoint.sh:25`（gateway bind lan）
+- [ ] **H10. 无任何 NetworkPolicy；Docker 路径所有租户与控制台同网** — `k8s/` 全目录；`console/docker-compose.yml:37-43`；`entrypoint.sh:25`（gateway bind lan）（部分修复：已新增 K8s worker NetworkPolicy；Docker 多租户网络隔离仍待设计）
   - 运行不可信代码的 worker 拥有无限制 egress 与 pod 间可达：其他租户 gateway（18789，仅 token 防护）、console API、kube API、云 metadata（169.254.169.254）。与 NFR-SEC-03"不可信沙箱"承诺不符。
   - 处理：default-deny NetworkPolicy / 每租户独立网络。
 
 ### 前端 ✅已复核
 
-- [ ] **H11. 删除 Private Skill 无错误处理（破坏性操作无反馈）** — `console/frontend/src/components/human-users/HumanUserSkillsTab.tsx:124-128`
+- [x] **H11. 删除 Private Skill 无错误处理（破坏性操作无反馈）** — `console/frontend/src/components/human-users/HumanUserSkillsTab.tsx:124-128`
   - `Modal.confirm` 的 `onOk` 内 `await api.deletePrivateSkill(...)` 无 try/catch：失败时 unhandled rejection、用户零反馈、列表不刷新。同文件 `setPolicy`（:110-116）与 `Skills.tsx:97-110` `applyAllSkills` 是正确写法。
 
 ---
@@ -78,15 +78,15 @@
 
 - [ ] **M1.** `internal/config/config.go:222-224` — `jwtSecret` 为空时静默回退 = `masterKey`：一把钥匙横跨两个密码学域（HMAC 会话签名 + AES-GCM 密钥派生），任一面泄漏/轮换影响另一面。应像 `binding_code.go` 一样做域分离派生。（同 `config.example.yaml:10-11` 的默认示例）
 - [ ] **M2.** `internal/crypto/crypto.go:28-42` — AES key 仅对 masterKey 做单次无盐 SHA-256：低熵人选字符串可被离线爆破。至少 HKDF，低熵输入用密码 KDF。
-- [ ] **M3.** `internal/api/skill_bundle.go:206-216, 109-166` — 解压无解压后大小/条目数上限：5 MB gzip 炸弹可膨胀数 GB 写满 console 主机/共享 skills 卷；海量小文件可耗尽 inode。用 `io.LimitReader` + 条目数上限。
+- [x] **M3.** `internal/api/skill_bundle.go:206-216, 109-166` — 解压无解压后大小/条目数上限：5 MB gzip 炸弹可膨胀数 GB 写满 console 主机/共享 skills 卷；海量小文件可耗尽 inode。已补公共 Skill 解压后大小/条目数上限与回归测试。
 - [ ] **M4.** `internal/api/auth.go:18` + `internal/auth/auth.go:37-64` — 12h 无状态 session 无吊销：登出/改密后旧 token 仍有效至到期。控制面值得上 token 版本号或黑名单。
-- [ ] **M5.** `internal/api/skills.go:227-269` — 公共 skill 删除先删磁盘再改 DB：`UpdateSkillAssetStatusAndMarkPods` 失败后文件已没、DB 行仍 `active`，无回滚。调换顺序或先暂存。
-- [ ] **M6.** `internal/api/service_token.go:24-80` — token 轮换未走 `runPodExclusive`，Stop→Update→Start 可与 reconcile 协调器并发交错（双重重启、对半轮换状态做健康检查）。
-- [ ] **M7.** `internal/api/llm.go:78-149` + `internal/llm/probe.go:18-53` — LLM 连通性测试用 `http.DefaultClient` 探测任意 `baseUrl`（SSRF：可达集群内部服务与云 metadata，状态码回显）。管理员认证后可用，仍建议拒绝私网段。
-- [ ] **M8.** `tools/muad-progress/internal/progress/state.go:29-54, 77-89` — 节流状态文件无锁非原子（并发 CLI 丢更新/损坏后 :68-70 静默丢弃）；`entry.Count` 只增不减且跨执行持久 → 同 key 累计 100 事件（默认 `MUAD_PROGRESS_MAX_EVENTS`）后**永久**被节流。
-- [ ] **M9.** `tools/muad-progress/internal/progress/cli.go:109-148` — `heartbeat` 的 `--interval-ms`/`--max-count` 解析后从未使用，只发一个事件，与帮助文本矛盾。
-- [ ] **M10.** `internal/api/skill_bundle.go:308-321` — `muad.skill.json` 解析失败被静默忽略并降级为 `traditional-prompt`（managed skill 的 manifest 元数据全部丢弃）。应返回 400。
-- [ ] **M11.** `cmd/console/main.go:138-145` — HTTP server 仅设 `ReadHeaderTimeout`，缺 Read/Write/Idle 超时（slowloris 慢滴请求体可长期占连接/goroutine）。
+- [x] **M5.** `internal/api/skills.go:227-269` — 公共 skill 删除先删磁盘再改 DB：`UpdateSkillAssetStatusAndMarkPods` 失败后文件已没、DB 行仍 `active`，无回滚。已改为先更新 DB/标记 Pod，再做磁盘清理。
+- [x] **M6.** `internal/api/service_token.go:24-80` — token 轮换未走 `runPodExclusive`，Stop→Update→Start 可与 reconcile 协调器并发交错（双重重启、对半轮换状态做健康检查）。
+- [x] **M7.** `internal/api/llm.go:78-149` + `internal/llm/probe.go:18-53` — LLM 连通性测试用 `http.DefaultClient` 探测任意 `baseUrl`（SSRF：可达集群内部服务与云 metadata，状态码回显）。已改为安全探测 client，默认拒绝 loopback/private/link-local 目标并禁用代理。
+- [x] **M8.** `tools/muad-progress/internal/progress/state.go:29-54, 77-89` — 节流状态文件无锁非原子（并发 CLI 丢更新/损坏后 :68-70 静默丢弃）；`entry.Count` 只增不减且跨执行持久 → 同 key 累计 100 事件（默认 `MUAD_PROGRESS_MAX_EVENTS`）后**永久**被节流。已加文件锁、原子写、损坏状态显式报错，并在间隔后重置计数。
+- [x] **M9.** `tools/muad-progress/internal/progress/cli.go:109-148` — `heartbeat` 的 `--interval-ms`/`--max-count` 解析后从未使用，只发一个事件，与帮助文本矛盾。已按 `max-count` 循环并按 `interval-ms` 间隔发送。
+- [x] **M10.** `internal/api/skill_bundle.go:308-321` — `muad.skill.json` 解析失败被静默忽略并降级为 `traditional-prompt`（managed skill 的 manifest 元数据全部丢弃）。已改为返回上传错误。
+- [x] **M11.** `cmd/console/main.go:138-145` — HTTP server 仅设 `ReadHeaderTimeout`，缺 Read/Write/Idle 超时（slowloris 慢滴请求体可长期占连接/goroutine）。
 
 ### 工具 / Hook 脚本（M12-M32）
 
@@ -94,43 +94,43 @@
 - [ ] **M13.** `.code-flow/scripts/cf_checks.py:282-296` — 正则"超时"无法取消运行中的匹配：`future.cancel()` 对运行线程无效且 `with ThreadPoolExecutor` 退出会 join——一个灾难性回溯 pattern 卡住整个 hook，后续 check 全部排队"超时"。
 - [ ] **M14.** `.code-flow/scripts/cf_inject_hook.py:7-26` — 死代码：引用 `cf_core.py` 已删除的 5 个函数（AST 验证），一旦被执行即 `ImportError`。`cf_session_hook.py`（写已删除的 `.inject-state`）同为遗留，应删除。
 - [ ] **M15.** `.code-flow/scripts/cf_spec_context.py:1092` — `_decision_command` 恒返回第一个 binding 第一条 rule 的状态而非决策目标 rule；首 binding 无 rule 时 `IndexError` → `internal_error`。（盘上状态正确，仅 CLI 回复错。）
-- [ ] **M16.** `tools/muad-runtime-guard/src/browser-lease.mjs:28-53` + `tools/runtime-concurrency/shared-lease-queue.mjs:64-79` — 浏览器槽位可永久泄漏：心跳每 2s 刷新槽文件直到 `release()`；若 `after_tool_call` 未触发或两侧 `browserCallKey` 计算不一致（`browser-hooks.mjs:32-38` 的 runId/sessionKey 单侧缺失），release 找不到目标，而 `sweepStale` 因心跳常新永远无法回收。另注意队列等待 30s 与 before-hook 35s 超时的紧耦合。
-- [ ] **M17.** `tools/runtime-concurrency/shared-lease-queue.mjs:3` — 队列目录硬编码世界可写的 `/tmp/muad-runtime-queues/...`：他人先创建目录（0777、其属主）即可删/占槽文件，绕过并发限制或 DoS。单用户容器内无碍，共享主机不安全。
-- [ ] **M18.** `tools/muad-run-skill/src/runner.mjs:87-88` — 子进程 stdout/stderr 无上限累积成字符串，话痨/恶意 skill 可耗尽 gateway 内存。
-- [ ] **M19.** `tools/muad-run-skill/src/execution-context.mjs:34-46` — `buildSkillEnvironment` 把 gateway 全量 `process.env` 传给每个 skill 子进程：gateway 环境中的任何密钥泄漏给所有 skill 脚本。应改 allowlist。
-- [ ] **M20.** `tools/muad-run-skill/src/manifest.mjs:79-81` — 递归扫描中对每个 `muad.skill.json` 裸 `JSON.parse`：公共 skills 根下任一坏 manifest 使**所有**递归查找抛 `skill_manifest_unavailable`（殃及无关 skill）。
-- [ ] **M21.** `tools/muad-run-skill/src/tool-activation-gate.mjs:59-68, 86-99` — 按 agent 永久缓存包括失败结果：SKILL.md 瞬时读失败 → `tools: []` 被缓存整个生命周期 → 强制工具门禁静默关闭直到重启。
-- [ ] **M22.** `tools/muad-run-skill/src/telemetry.mjs:183-194` — service token 首次读取成功后永久缓存（`tokenPromise` 不失效，401 也不清缓存）：K8s projected token 轮换后所有发送永久 401。
-- [ ] **M23.** `bin/inject-channels.mjs:102` — `openclaw.json` 非原子写（同族脚本都用 temp+rename）：写一半崩溃或 gateway 并发热载读到截断配置。另 :151 循环变量遮蔽外层 `const p`。
+- [x] **M16.** `tools/muad-runtime-guard/src/browser-lease.mjs:28-53` + `tools/runtime-concurrency/shared-lease-queue.mjs:64-79` — 浏览器槽位可永久泄漏：心跳每 2s 刷新槽文件直到 `release()`；若 `after_tool_call` 未触发或两侧 `browserCallKey` 计算不一致（`browser-hooks.mjs:32-38` 的 runId/sessionKey 单侧缺失），release 找不到目标，而 `sweepStale` 因心跳常新永远无法回收。已让共享 lease heartbeat 到 TTL 后自动释放槽位。
+- [x] **M17.** `tools/runtime-concurrency/shared-lease-queue.mjs:3` — 队列目录硬编码世界可写的 `/tmp/muad-runtime-queues/...`：他人先创建目录（0777、其属主）即可删/占槽文件，绕过并发限制或 DoS。单用户容器内无碍，共享主机不安全。
+- [x] **M18.** `tools/muad-run-skill/src/runner.mjs:87-88` — 子进程 stdout/stderr 无上限累积成字符串，话痨/恶意 skill 可耗尽 gateway 内存。
+- [x] **M19.** `tools/muad-run-skill/src/execution-context.mjs:34-46` — `buildSkillEnvironment` 把 gateway 全量 `process.env` 传给每个 skill 子进程：gateway 环境中的任何密钥泄漏给所有 skill 脚本。应改 allowlist。
+- [x] **M20.** `tools/muad-run-skill/src/manifest.mjs:79-81` — 递归扫描中对每个 `muad.skill.json` 裸 `JSON.parse`：公共 skills 根下任一坏 manifest 使**所有**递归查找抛 `skill_manifest_unavailable`（殃及无关 skill）。
+- [x] **M21.** `tools/muad-run-skill/src/tool-activation-gate.mjs:59-68, 86-99` — 按 agent 永久缓存包括失败结果：SKILL.md 瞬时读失败 → `tools: []` 被缓存整个生命周期 → 强制工具门禁静默关闭直到重启。
+- [x] **M22.** `tools/muad-run-skill/src/telemetry.mjs:183-194` — service token 首次读取成功后永久缓存（`tokenPromise` 不失效，401 也不清缓存）：K8s projected token 轮换后所有发送永久 401。
+- [x] **M23.** `bin/inject-channels.mjs:102` — `openclaw.json` 非原子写（同族脚本都用 temp+rename）：写一半崩溃或 gateway 并发热载读到截断配置。另 :151 循环变量遮蔽外层 `const p`。
 - [ ] **M24.** `.code-flow/scripts/cf_spec_verify.py:163-192` — `command`/`test` 验证器直接执行 spec frontmatter 里的 argv（config 的 `cwd` 还可 `../` 逃出根）：能提交 spec 文件 = 能在所有跑 done-gate/stop hook 的机器上执行命令。属设计决策，但无 allowlist 或确认门。
 - [ ] **M25.** `.code-flow/scripts/cf_core.py:40-41` — `estimate_tokens = len(text) // 4` 按 ASCII 校准；spec 以中文为主（1 字 ≈ 1+ token），低估 4-6 倍 → 基于它的所有注入预算（catalog_max、l1 预算、cf-stats 利用率）全线超支。
 - [ ] **M26.** `.code-flow/scripts/cf_core.py:153-156, 93-95` — 用 `id()` 做缓存 key（`_ext_set_cache[id(code_exts)]` 等）：对象被 GC 后 id 可复用 → 另一对象命中脏数据。短命 hook 无碍，长驻进程错误。
 - [ ] **M27.** `.code-flow/scripts/cf_core.py:15-37` — `load_config` 任何错误（缺 pyyaml、YAML 语法错）都返回 `{}`：一个配置手误静默关停整个 spec workflow（router 返回 "none"）。至少 stderr 告警区分"无配置"。
-- [ ] **M28.** `bin/private-skill-installer.mjs:54-62` — 5 MiB 限制只作用于压缩包：解压炸弹可先在 `tempRoot` 膨胀数 GB（磁盘耗尽）再被验证。
-- [ ] **M29.** `bin/runtime-config-schema.mjs:250-255` + `tools/muad-run-skill/src/skill-policy.mjs:70-79` — 校验不一致 + 静默丢授权：`assertRelativeSkillPath` 漏掉尾部 `"scripts/.."`（只查 `"/../"`），该条目过 schema 后 `normalizeScriptFiles` 返回 `null` → **整个 grant 被丢弃**（skill 对该 agent 静默不可用，无日志）。
-- [ ] **M30.** `tools/muad-runtime-guard/src/tool-policies.mjs:103-110, 117-121` — 文件策略只做词法路径判断（无 realpath）：workspace 内指向外部的 symlink 可通过。业务 agent 自身建不了 symlink（shell 被拒），但经 `muad_run_skill` 跑的 skill 脚本可以，之后 agent `read` 即越界。
+- [x] **M28.** `bin/private-skill-installer.mjs:54-62` — 5 MiB 限制只作用于压缩包：解压炸弹可先在 `tempRoot` 膨胀数 GB（磁盘耗尽）再被验证。已补解压后大小/条目数上限与回归测试。
+- [x] **M29.** `bin/runtime-config-schema.mjs:250-255` + `tools/muad-run-skill/src/skill-policy.mjs:70-79` — 校验不一致 + 静默丢授权：`assertRelativeSkillPath` 漏掉尾部 `"scripts/.."`（只查 `"/../"`），该条目过 schema 后 `normalizeScriptFiles` 返回 `null` → **整个 grant 被丢弃**（skill 对该 agent 静默不可用，无日志）。
+- [x] **M30.** `tools/muad-runtime-guard/src/tool-policies.mjs:103-110, 117-121` — 文件策略只做词法路径判断（无 realpath）：workspace 内指向外部的 symlink 可通过。业务 agent 自身建不了 symlink（shell 被拒），但经 `muad_run_skill` 跑的 skill 脚本可以，之后 agent `read` 即越界。
 - [ ] **M31.** `.code-flow/scripts/cf_stop_hook.py:257` — done-gate 只捕 `(OSError, ValueError)`：其他异常（如坏 context 数据的 `KeyError`/`TypeError`）落到 :285 的外层通用 handler → 静默 return → 整个 stop 门禁 fail-open。
-- [ ] **M32.** `tools/muad-run-skill/src/runner.mjs:66-77` — 250ms drain 定时器不等待上一次 drain：两次重叠的 `drainBestEffort` 从同一 `state.offset` 读 → 重复投递进度事件到会话，再竞态写新 offset。
+- [x] **M32.** `tools/muad-run-skill/src/runner.mjs:66-77` — 250ms drain 定时器不等待上一次 drain：两次重叠的 `drainBestEffort` 从同一 `state.offset` 读 → 重复投递进度事件到会话，再竞态写新 offset。
 
 ### 基础设施（M33-M42）
 
 - [ ] **M33.** `console/backend/config.yaml:7` — 弱管理密码 `k8stest` + 真实 masterKey 在盘；`k8s/DEMO.md:22-23` 将该文件原样载入集群 Secret。任何非本地使用前必须轮换 masterKey 并设强密码。
 - [ ] **M34.** `k8s/console.yaml:79-98` — 控制台 pod 以 root 运行、无 securityContext、无 resources、无 livenessProbe（卡死不重启）、`image: :latest` 可变 tag。k8s 模式不用 docker.sock，本可非 root。
-- [ ] **M35.** `console/Dockerfile:9-10` — 前端构建忽略 lockfile：只 COPY `package.json` 且 `npm install`（`package-lock.json` 存在却不用）。应 `COPY package.json package-lock.json ./` + `npm ci`（供应链 + 可复现性）。
-- [ ] **M36.** `k8s/user.template.yaml:35` — 不可信 worker 沙箱硬化不全：缺 `allowPrivilegeEscalation: false`、`capabilities: {drop: [ALL]}`、`seccompProfile: RuntimeDefault`、`automountServiceAccountToken: false`（不可信 agent 现在拿得到 kube API token）。`compose.template.yml:21-23` 同理：只有 mem/cpu，缺 `pids_limit`（fork 炸弹）、`security_opt: [no-new-privileges:true]`、`cap_drop: [ALL]`。
+- [x] **M35.** `console/Dockerfile:9-10` — 前端构建忽略 lockfile：只 COPY `package.json` 且 `npm install`（`package-lock.json` 存在却不用）。应 `COPY package.json package-lock.json ./` + `npm ci`（供应链 + 可复现性）。
+- [x] **M36.** `k8s/user.template.yaml:35` — 不可信 worker 沙箱硬化不全：缺 `allowPrivilegeEscalation: false`、`capabilities: {drop: [ALL]}`、`seccompProfile: RuntimeDefault`、`automountServiceAccountToken: false`（不可信 agent 现在拿得到 kube API token）。`compose.template.yml:21-23` 同理：只有 mem/cpu，缺 `pids_limit`（fork 炸弹）、`security_opt: [no-new-privileges:true]`、`cap_drop: [ALL]`。
 - [ ] **M37.** 密钥以 env 注入不可信 worker — `compose.template.yml:9`（env_file）与 `k8s/user.template.yaml:44-45`（envFrom secretRef）：`WECOM_SECRET`/`LLM_API_KEY`/`OPENCLAW_GATEWAY_TOKEN` 进程环境被 agent 的所有子进程继承，`/proc/*/environ`、`docker inspect` 可读；`inject-env.mjs` 反正会写进 `openclaw.json`。优先文件挂载、启动读取后清除。
-- [ ] **M38.** `k8s/reaper.sh:44-45` — annotation 值未验证直接进 bash 算术：`last_active` 形如 `x[$(malicious)]` 即在 reaper（持有 statefulset scale RBAC）内执行命令；TODO-A 计划让 worker（不可信）写该 annotation 后将实际可利用。非数字值还会因 `set -e` 崩掉脚本、静默跳过剩余用户。先 `[[ "$last_active" =~ ^[0-9]+$ ]]`。
-- [ ] **M39.** `k8s/reaper-cronjob.yaml:40, 43` — `MUAD_NS: "default"` 而全栈部署在 `muad`；SA/Role/RoleBinding 未带 namespace——按现状 reaper 看错命名空间。`bitnami/kubectl:latest` 为已停更目录的可变 tag。job 容器无 resources/securityContext。
-- [ ] **M40.** 资源类型漂移：console k8s driver 创建 **Deployment**（`k8s/console.yaml`、DEMO.md），而 `provision-user-k8s.sh` 创建 **StatefulSet**、`reaper.sh:38` 只扫 `statefulset -l app=muad-openclaw` → **console 创建的 worker 永远不被回收**，`--delete` 也删不掉它们。两条生命周期路径必有一条静默失效。
-- [ ] **M41.** worker 容器全线无健康检查：根 `Dockerfile` 无 HEALTHCHECK、`compose.template.yml` 未定义、`k8s/user.template.yaml` 无 liveness/readiness（18789 可探测）。gateway 卡死后永远"running"，`restart: unless-stopped` 永不触发。
-- [ ] **M42.** `provision-user.sh:40` / `provision-user-k8s.sh:37` — config 以 shell source 方式执行（任意命令执行面，H0 的根因）。改逐行解析 KEY=VALUE。
+- [x] **M38.** `k8s/reaper.sh:44-45` — annotation 值未验证直接进 bash 算术：`last_active` 形如 `x[$(malicious)]` 即在 reaper（持有 statefulset scale RBAC）内执行命令；TODO-A 计划让 worker（不可信）写该 annotation 后将实际可利用。非数字值还会因 `set -e` 崩掉脚本、静默跳过剩余用户。先 `[[ "$last_active" =~ ^[0-9]+$ ]]`。
+- [ ] **M39.** `k8s/reaper-cronjob.yaml:40, 43` — `MUAD_NS: "default"` 而全栈部署在 `muad`；SA/Role/RoleBinding 未带 namespace——按现状 reaper 看错命名空间。`bitnami/kubectl:latest` 为已停更目录的可变 tag。job 容器无 resources/securityContext。（部分修复：namespace/RBAC/resources/securityContext 已补；kubectl image pin 仍待确定目标集群版本）
+- [x] **M40.** 资源类型漂移：console k8s driver 创建 **Deployment**（`k8s/console.yaml`、DEMO.md），而 `provision-user-k8s.sh` 创建 **StatefulSet**、`reaper.sh:38` 只扫 `statefulset -l app=muad-openclaw` → **console 创建的 worker 永远不被回收**，`--delete` 也删不掉它们。两条生命周期路径必有一条静默失效。
+- [x] **M41.** worker 容器全线无健康检查：根 `Dockerfile` 无 HEALTHCHECK、`compose.template.yml` 未定义、`k8s/user.template.yaml` 无 liveness/readiness（18789 可探测）。gateway 卡死后永远"running"，`restart: unless-stopped` 永不触发。
+- [x] **M42.** `provision-user.sh:40` / `provision-user-k8s.sh:37` — config 以 shell source 方式执行（任意命令执行面，H0 的根因）。改逐行解析 KEY=VALUE。
 
 ### 前端（M43-M47）
 
-- [ ] **M43.** 轮询每 tick 置 `loading=true` → 表格 spinner 常闪：`pages/containers/usePodList.ts:19-21,43`（5s）、`components/human-users/HumanUsersPanel.tsx:48-51,72`（10s）、`pages/Users.tsx:121-124,145`（10s）。`pages/audit/useSkillExecutionRecords.ts:89-108` 已有正确的 `background` 标志模式，照抄即可。
+- [x] **M43.** 轮询每 tick 置 `loading=true` → 表格 spinner 常闪：`pages/containers/usePodList.ts:19-21,43`（5s）、`components/human-users/HumanUsersPanel.tsx:48-51,72`（10s）、`pages/Users.tsx:121-124,145`（10s）。已按 audit hook 模式区分首载/后台刷新。
 - [ ] **M44.** 11 个表格 `columns={... as never}` 完全绕过列类型检查（render 签名、dataIndex 手误都能编译）：`PodTable.tsx:27`、`Users.tsx:292`、`Skills.tsx:441`、`HumanUserList.tsx:115`、`IdentityManager.tsx:32`、`BindingCodeManager.tsx:39`、`PlatformCredentialManager.tsx:27`、`HumanUserSkillsTab.tsx:56`、`PlatformSettings.tsx:58`、`SkillExecutionTable.tsx:17`、`OperationAuditTab.tsx:89`。应 `ColumnProps<T>[]`。
-- [ ] **M45.** 相同校验错误重复提交无任何反馈：`FeedbackBanner`（`components/ConsolePage.tsx:67-85`）只在 error 字符串**变化**时发 Toast；`if (validation) return setError(validation)` 不先清空 → 第二次同错提交状态不变、无 Toast，点击像死了。涉及 `CreateHumanUserDialog.tsx:131-133`、`IdentityManager.tsx:174-175`、`BindingCodeManager.tsx:189`、`PlatformEditorDialog.tsx:72-74`、`CreatePodDialog.tsx:31-32`。
-- [ ] **M46.** `pages/Users.tsx:177` — pod 查询硬编码 `pageSize: 100`：>100 pod 时用户表 pod 名解析静默缺失、创建用户对话框选不到 100 之后的 pod，无翻页无警告。
+- [x] **M45.** 相同校验错误重复提交无任何反馈：`FeedbackBanner`（`components/ConsolePage.tsx:67-85`）只在 error 字符串**变化**时发 Toast；`if (validation) return setError(validation)` 不先清空 → 第二次同错提交状态不变、无 Toast，点击像死了。已补 repeatable error helper 并替换相关校验分支。
+- [x] **M46.** `pages/Users.tsx:177` — pod 查询硬编码 `pageSize: 100`：>100 pod 时用户表 pod 名解析静默缺失、创建用户对话框选不到 100 之后的 pod，无翻页无警告。已改为按页拉取全部 Pod。
 - [ ] **M47.** `src/api.ts:69-75` + `index.html` — token 存 `localStorage`（XSS 可窃取、非 HttpOnly），全站无 CSP，后端也无安全响应头。今日无 XSS sink，属纵深防御缺口（管理控制台值得补）。
 
 ---

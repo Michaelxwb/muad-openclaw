@@ -141,6 +141,9 @@ func newHTTPServer(
 			deps.cfg, deps.store, deps.cipher, deps.driver, cache, coordinator,
 		).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      3 * time.Minute,
+		IdleTimeout:       60 * time.Second,
 	}
 }
 

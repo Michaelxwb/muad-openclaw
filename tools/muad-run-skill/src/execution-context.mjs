@@ -4,6 +4,25 @@ const AGENT_PATTERN = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/u;
 const MAX_SESSION_KEY_LENGTH = 512;
 const MAX_RUN_ID_LENGTH = 512;
 
+// Never forward gateway secrets into skill children (channel tokens, LLM keys, etc.).
+const BASE_ENV_ALLOWLIST = new Set([
+  "PATH",
+  "HOME",
+  "USER",
+  "LOGNAME",
+  "LANG",
+  "LC_ALL",
+  "LC_CTYPE",
+  "TZ",
+  "TERM",
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+  "NODE_PATH",
+  "NODE_OPTIONS",
+  "SHELL",
+]);
+
 export class SkillContextError extends Error {
   constructor() {
     super("trusted skill execution context is unavailable");
@@ -31,9 +50,19 @@ export function trustedRunContext(event, hookContext = {}) {
   return { agentId, sessionKey, ...(runId ? { runId } : {}) };
 }
 
+export function sanitizeBaseEnvironment(baseEnv = process.env) {
+  const source = baseEnv && typeof baseEnv === "object" ? baseEnv : {};
+  const env = {};
+  for (const key of BASE_ENV_ALLOWLIST) {
+    const value = source[key];
+    if (typeof value === "string" && value !== "") env[key] = value;
+  }
+  return env;
+}
+
 export function buildSkillEnvironment({ baseEnv, context, manifest, input, args, eventFile, workDir }) {
   return {
-    ...baseEnv,
+    ...sanitizeBaseEnvironment(baseEnv),
     MUAD_AGENT_ID: context.agentId,
     MUAD_SESSION_KEY: context.sessionKey,
     MUAD_WORKSPACE_DIR: context.workspaceDir,

@@ -116,33 +116,37 @@ function useGlobalHumanUsers(): GlobalUsersState {
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    const requestId = ++requestRef.current;
-    if (mountedRef.current) {
-      setLoading(true);
-      setError("");
-    }
-    try {
-      const result = await api.listAllHumanUsers({
-        page,
-        pageSize,
-        q: query,
-        status: status || undefined,
-      });
-      if (!mountedRef.current || requestId !== requestRef.current) return;
-      setItems(result.items);
-      setTotal(result.total);
-    } catch (caught) {
-      if (!mountedRef.current || requestId !== requestRef.current) return;
-      setError(caught instanceof Error ? caught.message : "加载用户失败");
-    } finally {
-      if (mountedRef.current && requestId === requestRef.current) setLoading(false);
-    }
-  }, [mountedRef, page, pageSize, query, status]);
+  const refresh = useCallback(
+    async (background = false) => {
+      const requestId = ++requestRef.current;
+      if (mountedRef.current) {
+        if (!background) setLoading(true);
+        setError("");
+      }
+      try {
+        const result = await api.listAllHumanUsers({
+          page,
+          pageSize,
+          q: query,
+          status: status || undefined,
+        });
+        if (!mountedRef.current || requestId !== requestRef.current) return;
+        setItems(result.items);
+        setTotal(result.total);
+      } catch (caught) {
+        if (!mountedRef.current || requestId !== requestRef.current) return;
+        setError(caught instanceof Error ? caught.message : "加载用户失败");
+      } finally {
+        if (mountedRef.current && requestId === requestRef.current && !background)
+          setLoading(false);
+      }
+    },
+    [mountedRef, page, pageSize, query, status],
+  );
 
   useEffect(() => {
     void refresh();
-    const timer = setInterval(() => void refresh(), 10000);
+    const timer = setInterval(() => void refresh(true), 10000);
     return () => clearInterval(timer);
   }, [refresh]);
 
@@ -174,9 +178,9 @@ function useGlobalUserPods() {
       setError("");
     }
     try {
-      const result = await api.listPods({ page: 1, pageSize: 100 });
+      const result = await listAllPodsForUsers();
       if (!mountedRef.current) return;
-      setItems(result.items);
+      setItems(result);
     } catch (caught) {
       if (!mountedRef.current) return;
       setError(caught instanceof Error ? caught.message : "加载 Pod 失败");
@@ -191,10 +195,23 @@ function useGlobalUserPods() {
   return { items, byId, loading, error, refresh };
 }
 
+async function listAllPodsForUsers(): Promise<Pod[]> {
+  const pageSize = 100;
+  const first = await api.listPods({ page: 1, pageSize });
+  const items = [...first.items];
+  for (let page = 2; items.length < first.total; page++) {
+    const result = await api.listPods({ page, pageSize });
+    items.push(...result.items);
+    if (result.items.length === 0) break;
+  }
+  return items;
+}
+
 function useSelectedPod(podId: string, pods: Map<string, Pod>) {
   const [pod, setPod] = useState<Pod | null>(null);
   const [error, setError] = useState("");
   const mountedRef = useMountedRef();
+  const requestRef = useRef(0);
   useEffect(() => {
     setError("");
     if (podId === "") {
@@ -207,13 +224,14 @@ function useSelectedPod(podId: string, pods: Map<string, Pod>) {
       return;
     }
     setPod(null);
+    const requestId = ++requestRef.current;
     api
       .getPod(podId)
       .then((result) => {
-        if (mountedRef.current) setPod(result);
+        if (mountedRef.current && requestId === requestRef.current) setPod(result);
       })
       .catch((caught: unknown) => {
-        if (mountedRef.current)
+        if (mountedRef.current && requestId === requestRef.current)
           setError(caught instanceof Error ? caught.message : "加载 Pod 失败");
       });
   }, [mountedRef, podId, pods]);

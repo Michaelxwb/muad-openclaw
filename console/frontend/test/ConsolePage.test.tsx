@@ -1,10 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { Toast } from "@douyinfe/semi-ui";
-import { afterEach, describe, expect, it } from "vitest";
-import { FeedbackBanner, ListToolbar } from "../src/components/ConsolePage";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { FeedbackBanner, ListToolbar, setRepeatableError } from "../src/components/ConsolePage";
 
-afterEach(() => Toast.destroyAll());
+afterEach(() => {
+  Toast.destroyAll();
+  vi.useRealTimers();
+});
 
 describe("FeedbackBanner", () => {
   it("shows success feedback as an auto-dismiss toast instead of an inline banner", async () => {
@@ -19,6 +22,16 @@ describe("FeedbackBanner", () => {
 
     expect(view.container).toBeEmptyDOMElement();
     expect(await screen.findByText("保存失败")).toBeInTheDocument();
+  });
+
+  it("emits a fresh state change for repeated validation errors", () => {
+    vi.useFakeTimers();
+    const values: string[] = [];
+
+    setRepeatableError((value) => values.push(String(value)), "Pod ID 必填");
+    vi.runAllTimers();
+
+    expect(values).toEqual(["", "Pod ID 必填"]);
   });
 });
 

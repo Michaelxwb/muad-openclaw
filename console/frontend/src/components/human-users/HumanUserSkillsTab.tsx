@@ -122,9 +122,17 @@ function useHumanUserSkills(humanUserId: string) {
       title: "删除 Private Skill",
       content: `删除 ${skill.name} 后，该用户将无法继续使用该 private 版本。`,
       onOk: async () => {
-        await api.deletePrivateSkill(humanUserId, skill.privateSkillId ?? "");
-        Toast.success("Private Skill 已删除");
-        await refresh();
+        try {
+          await api.deletePrivateSkill(humanUserId, skill.privateSkillId ?? "");
+          if (!mountedRef.current) return;
+          Toast.success("Private Skill 已删除");
+          await refresh();
+        } catch (caught) {
+          if (mountedRef.current) {
+            setError(caught instanceof Error ? caught.message : "删除 Private Skill 失败");
+          }
+          throw caught;
+        }
       },
     });
   };

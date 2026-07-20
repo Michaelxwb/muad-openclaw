@@ -16,6 +16,7 @@ import (
 
 const (
 	upgradeHealthTimeout = 2 * time.Minute
+	podRuntimeOpTimeout  = upgradeHealthTimeout + 30*time.Second
 	upgradePollInterval  = 500 * time.Millisecond
 )
 
@@ -45,8 +46,10 @@ func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 	}
 	var upgraded repo.Pod
 	err = s.runPodExclusive(r.Context(), pod.PodID, func(ctx context.Context) error {
+		opCtx, cancel := podRuntimeOperationContext(ctx)
+		defer cancel()
 		var upgradeErr error
-		upgraded, upgradeErr = s.performPodUpgrade(ctx, pod, request.ImageTag)
+		upgraded, upgradeErr = s.performPodUpgrade(opCtx, pod, request.ImageTag)
 		return upgradeErr
 	})
 	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
@@ -63,6 +66,10 @@ func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 		"podId": upgraded.PodID, "imageTag": upgraded.ImageTag, "state": upgraded.State,
 		"configGeneration": upgraded.ConfigGeneration, "appliedGeneration": upgraded.AppliedGeneration,
 	})
+}
+
+func podRuntimeOperationContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), podRuntimeOpTimeout)
 }
 
 func validImageTag(value string) bool {

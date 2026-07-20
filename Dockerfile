@@ -101,4 +101,6 @@ ENV MUAD_PROGRESS_ADAPTER_CMD="node /opt/muad/progress-adapters/openclaw/src/ada
 
 USER node
 WORKDIR /app
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+    CMD node -e "const net=require('net');const s=net.connect(18789,'127.0.0.1');s.setTimeout(2000);s.once('connect',()=>{s.destroy();process.exit(0)});s.once('timeout',()=>process.exit(1));s.once('error',()=>process.exit(1));"
 ENTRYPOINT ["/usr/local/bin/muad-entrypoint.sh"]

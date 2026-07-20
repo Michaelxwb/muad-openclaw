@@ -53,7 +53,13 @@ export const CHANNELS: { value: Channel; label: string; icon: string }[] = CHANN
 
 /** Lookup display metadata by channel id. */
 export function channelMeta(channel: string) {
-  return CHANNELS.find((c) => c.value === channel) ?? CHANNELS[0];
+  return (
+    CHANNELS.find((c) => c.value === channel) ?? {
+      value: channel as Channel,
+      label: channel || "未知通道",
+      icon: "?",
+    }
+  );
 }
 
 /** Lookup full channel definition by channel id. */

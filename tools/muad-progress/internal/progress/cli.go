@@ -126,13 +126,21 @@ func runHeartbeat(args []string, stdout io.Writer, stderr io.Writer) int {
 	if opts.intervalMS < 0 {
 		opts.intervalMS = 0
 	}
+	for count := 0; count < opts.maxCount; count++ {
+		if count > 0 {
+			time.Sleep(time.Duration(opts.intervalMS) * time.Millisecond)
+		}
+		if code := deliverHeartbeatEvent(opts, stdout, stderr); code != ExitOK {
+			return code
+		}
+	}
+	return ExitOK
+}
+
+func deliverHeartbeatEvent(opts commandOptions, stdout io.Writer, stderr io.Writer) int {
 	event := newEvent(TypeProgress, commandOptions{
-		stage:      "heartbeat",
-		text:       opts.text,
-		skill:      opts.skill,
-		id:         opts.id,
-		visibility: DefaultVisibility,
-		privacy:    DefaultPrivacy,
+		stage: "heartbeat", text: opts.text, skill: opts.skill, id: opts.id,
+		visibility: DefaultVisibility, privacy: DefaultPrivacy,
 	}, time.Now())
 	if err := validateEvent(event); err != nil {
 		return writeValidationError(err, opts.jsonOutput, stdout, stderr)
@@ -141,7 +149,11 @@ func runHeartbeat(args []string, stdout io.Writer, stderr io.Writer) int {
 	event.Delivery = delivery
 	if err != nil && strictAdapter() {
 		writeResult(stdout, opts.jsonOutput, Result{OK: false, Error: err.Error()})
+		fmt.Fprintf(stderr, "adapter unavailable: %v\n", err)
 		return ExitAdapterUnavailable
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "adapter unavailable: %v\n", err)
 	}
 	writeResult(stdout, opts.jsonOutput, Result{OK: true, Event: &event})
 	return ExitOK

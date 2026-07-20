@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Input, Modal, Switch, TextArea, Toast } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type { Platform } from "../../api";
-import { FeedbackBanner } from "../ConsolePage";
+import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
 import { Field } from "../human-users/shared";
 import type { PLATFORM_OPTIONS } from "./PlatformSettings";
 import styles from "./PlatformSettings.module.css";
@@ -70,8 +70,10 @@ function usePlatformEditor(props: Props) {
 
   const submit = async () => {
     const parsed = parseConfig(form.config);
-    if (typeof parsed === "string") return setError(parsed);
-    if (!form.platform || !form.displayName.trim()) return setError("平台和显示名称必填");
+    if (typeof parsed === "string") return setRepeatableError(setError, parsed);
+    if (!form.platform || !form.displayName.trim()) {
+      return setRepeatableError(setError, "平台和显示名称必填");
+    }
     setBusy(true);
     setError("");
     try {
