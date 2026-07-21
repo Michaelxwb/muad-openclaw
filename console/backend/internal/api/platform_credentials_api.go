@@ -8,7 +8,6 @@ import (
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
-	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/platformregistry"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -62,8 +61,8 @@ func (s *Server) handlePutPlatformCredential(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	platform := r.PathValue("platform")
-	if !platformregistry.Supports(platform) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "platform adapter is not installed")
+	if _, err := s.store.GetPlatformConfig(platform); err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "platform not found")
 		return
 	}
 	var request putPlatformCredentialRequest
@@ -107,8 +106,8 @@ func (s *Server) handleDeletePlatformCredential(w http.ResponseWriter, r *http.R
 		return
 	}
 	platform := r.PathValue("platform")
-	if !platformregistry.Supports(platform) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "platform adapter is not installed")
+	if _, err := s.store.GetPlatformConfig(platform); err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "platform not found")
 		return
 	}
 	summaries, err := s.store.ListUserPlatformCredentials(s.cipher, user.HumanUserID)

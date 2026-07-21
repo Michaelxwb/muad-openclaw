@@ -101,15 +101,17 @@
   <text x="1650" y="1175" text-anchor="middle" class="label">控制面审计不在此层</text>
   <text x="1650" y="1208" text-anchor="middle" class="small">audit / skill_execution_records → SQLite</text>
 
-  <!-- arrows -->
+  <!-- arrows: keep curve style; snap start/end to card edges only -->
   <path d="M324 328 C380 328, 430 328, 480 328" class="control"/>
   <path d="M680 328 L740 328" class="control"/>
   <path d="M970 328 L1030 328" class="control"/>
   <path d="M865 482 C865 540, 640 600, 640 680" class="control"/>
   <path d="M324 490 C400 490, 430 725, 500 725" class="message"/>
-  <path d="M900 725 C1200 620, 1400 360, 1535 328" class="data"/>
-  <path d="M900 760 C1250 760, 1450 500, 1535 480" class="data"/>
-  <path d="M1140 376 C1300 376, 1450 620, 1535 628" class="control"/>
+  <!-- Runtime 右缘中 → LLM / 业务 左缘中（避免穿过 Pod 文字） -->
+  <path d="M1360 725 C1450 650, 1500 400, 1535 328" class="data"/>
+  <path d="M1360 750 C1450 700, 1500 520, 1535 485" class="data"/>
+  <!-- SQLite 右缘 → K8S 左缘 -->
+  <path d="M1250 328 C1400 328, 1480 500, 1535 628" class="control"/>
   <path d="M640 770 C640 950, 680 1080, 710 1135" class="session"/>
-  <path d="M890 954 C960 1040, 1080 1100, 1170 1135" class="session"/>
+  <path d="M1240 923 C1200 1040, 1180 1100, 1170 1135" class="session"/>
 </svg>

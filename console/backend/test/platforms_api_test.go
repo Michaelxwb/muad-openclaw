@@ -45,11 +45,9 @@ func TestPlatformAPI_ListAndPatchReconcilesAllPods(t *testing.T) {
 	assertIdempotentPlatformPatch(t, e, body)
 }
 
-func TestPlatformAPI_RejectsSecretsAndUninstalledAdapters(t *testing.T) {
+func TestPlatformAPI_RejectsSecretsInConfig(t *testing.T) {
 	e := newTestEnv(t)
 	rr := e.do(http.MethodPatch, "/api/v1/platforms/xdr", `{"config":{"apiKey":"forbidden"}}`)
-	assertStatus(t, rr, http.StatusBadRequest)
-	rr = e.do(http.MethodPost, "/api/v1/platforms", `{"platform":"custom_api","displayName":"Custom"}`)
 	assertStatus(t, rr, http.StatusBadRequest)
 	rr = e.do(http.MethodPost, "/api/v1/platforms", `{"platform":"xdr","displayName":"Duplicate"}`)
 	assertStatus(t, rr, http.StatusConflict)

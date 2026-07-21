@@ -138,9 +138,10 @@
     <text x="110" y="204" text-anchor="middle" class="small">State PVC · 并发上限</text>
   </g>
 
-  <rect x="920" y="934" width="550" height="86" class="inner" fill="#f0fdf4"/>
-  <text x="1195" y="968" text-anchor="middle" class="label">Public Skills PVC（只读）</text>
-  <text x="1195" y="998" text-anchor="middle" class="small">所有 Runtime Pod 共享，只读发布</text>
+  <!-- Public Skills 下移，与 Pod 底边留出空隙便于看线 -->
+  <rect x="920" y="1000" width="550" height="86" class="inner" fill="#f0fdf4"/>
+  <text x="1195" y="1034" text-anchor="middle" class="label">Public Skills PVC（只读）</text>
+  <text x="1195" y="1064" text-anchor="middle" class="small">所有 Runtime Pod 共享，只读发布</text>
 
   <!-- Enterprise systems -->
   <rect x="64" y="1180" width="1430" height="132" class="area" fill="#fff7ed"/>
@@ -156,26 +157,31 @@
   <text x="1592" y="1225" class="section-title">远端模型服务</text>
   <text x="1772" y="1272" text-anchor="middle" class="small">每个 Human User 绑定一个模型配置</text>
 
-  <!-- Arrows: control -->
+  <!-- Arrows: keep style; endpoints on card edges -->
   <path d="M243 358 C243 468, 251 550, 251 684" class="control"/>
   <path d="M505 780 L505 842" class="control thin"/>
-  <path d="M604 890 C650 890, 700 830, 772 830" class="control"/>
+  <path d="M604 890 C650 890, 700 830, 772 802" class="control"/>
 
-  <!-- Arrows: message -->
   <path d="M738 299 L795 299" class="message"/>
-  <path d="M930 358 C930 498, 920 604, 902 682" class="message"/>
+  <path d="M930 358 C930 498, 920 604, 897 682" class="message"/>
   <path d="M1408 299 L1456 299" class="message"/>
-  <path d="M1576 358 C1576 510, 1485 604, 1498 682" class="message"/>
+  <path d="M1576 358 C1576 510, 1485 604, 1205 682" class="message"/>
 
-  <!-- Arrows: skills and state -->
-  <path d="M1040 934 C1015 900, 990 860, 965 834" class="data dash thin"/>
-  <path d="M1195 934 C1195 900, 1200 860, 1205 834" class="data dash thin"/>
-  <path d="M1350 934 C1410 900, 1464 860, 1498 834" class="data dash thin"/>
+  <!--
+    Pod 底边 y=922
+    Public Skills 顶 y=1000, 中心 x=1195
+    MSSW 顶 y=1228 中心 630；SDSP 顶 y=1228 中心 910
+  -->
+  <!-- 紫虚线：三 Pod 底边中 → Public Skills 顶边中 -->
+  <path d="M897 922 C980 960, 1100 990, 1195 1000" class="data dash thin"/>
+  <path d="M1205 922 C1202 960, 1198 990, 1195 1000" class="data dash thin"/>
+  <path d="M1498 922 C1400 960, 1280 990, 1195 1000" class="data dash thin"/>
 
-  <!-- Arrows: model and business calls -->
-  <path d="M1400 760 C1600 760, 1760 572, 1845 358" class="data"/>
-  <path d="M1195 922 C1160 1050, 980 1148, 910 1228" class="session"/>
-  <path d="M902 922 C820 1050, 720 1148, 630 1228" class="session dash"/>
+  <!-- 紫虚线：Runtime 区域 → 远端模型 / 顶部模型池（数据调用，虚线） -->
+  <path d="M1661 760 C1760 700, 1845 500, 1845 358" class="data dash"/>
+  <!-- 橙线：Pod → MSSW / SDSP（业务平台，与 Public Skills 分离） -->
+  <path d="M897 922 C850 1050, 720 1150, 630 1228" class="session"/>
+  <path d="M1205 922 C1120 1050, 1000 1150, 910 1228" class="session"/>
 
   <!-- Return labels -->
   <text x="836" y="478" class="tiny">企业微信消息进出</text>
