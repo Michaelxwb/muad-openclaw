@@ -134,14 +134,15 @@
   <path d="M1075 460 L1075 490" class="message"/>
   <path d="M920 540 L940 540" class="message"/>
   <!-- ③ session-manager → State PVC（session-store） -->
-  <path d="M1365 460 C1365 520, 1500 400, 1630 390" class="session"/>
-  <!-- ② run-skill → Public Skills（读授权 skill 根） -->
-  <path d="M1075 460 C1200 520, 1500 540, 1630 535" class="session"/>
-  <!-- ② run-skill → 底部 internal（skill-executions 上报，非直写 SQLite） -->
-  <path d="M1075 460 C1200 700, 1500 900, 1660 980" class="data dash"/>
-  <!-- ① guard 绑定 → 底部 internal（bindings/activate，经 Console） -->
-  <path d="M785 410 C900 700, 1400 900, 1660 980" class="data dash"/>
-  <path d="M70 980 C200 880, 500 300, 620 242" class="message"/>
-  <!-- bindings → 底部 internal 汇总（与其它 internal 回调一致：虚线） -->
-  <path d="M1425 274 C1500 400, 1550 980, 1660 980" class="data dash"/>
+  <path d="M1365 460 C1365 520, 1500 400, 1630 400" class="session"/>
+  <!-- ② run-skill 底边 → Public Skills 左缘 -->
+  <path d="M1075 460 C1200 520, 1500 535, 1630 535" class="session"/>
+  <!-- ② run-skill → internal 卡顶边中（勿进框内挡字） -->
+  <path d="M1075 460 C1200 700, 1500 900, 1660 940" class="data dash"/>
+  <!-- ① guard → internal 卡顶边中 -->
+  <path d="M785 460 C900 700, 1400 900, 1660 940" class="data dash"/>
+  <!-- 企微顶边中 → Gateway 左缘中 -->
+  <path d="M210 940 C200 880, 500 300, 620 242" class="message"/>
+  <!-- bindings 右缘 → internal 卡顶边中 -->
+  <path d="M1530 242 C1550 400, 1600 900, 1660 940" class="data dash"/>
 </svg>

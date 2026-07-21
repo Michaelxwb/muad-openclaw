@@ -12,7 +12,6 @@ import (
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
-	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/platformregistry"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -72,8 +71,8 @@ func (s *Server) handleCreatePlatform(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.Platform, request.DisplayName = strings.TrimSpace(request.Platform), strings.TrimSpace(request.DisplayName)
-	if !platformregistry.Supports(request.Platform) || request.DisplayName == "" || len(request.DisplayName) > 128 {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "platform adapter is not installed")
+	if request.DisplayName == "" || len(request.DisplayName) > 128 {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid platform display name")
 		return
 	}
 	encrypted, err := s.encodePlatformConfig(request.Config)
@@ -251,7 +250,7 @@ func (s *Server) makePlatformView(config repo.PlatformConfig) (platformView, err
 	return platformView{
 		Platform: config.Platform, DisplayName: config.DisplayName, Config: decoded,
 		ConfigFingerprint: secretcrypto.DisplayFingerprint(secretcrypto.Fingerprint(string(canonical))),
-		Enabled:           config.Enabled, AdapterInstalled: platformregistry.Supports(config.Platform),
+		Enabled:           config.Enabled, AdapterInstalled: true,
 		UpdatedAt: config.UpdatedAt,
 	}, nil
 }

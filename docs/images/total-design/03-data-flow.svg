@@ -52,9 +52,11 @@
   <rect x="1380" y="540" width="200" height="80" class="card" fill="#ffedd5"/><text x="1480" y="572" text-anchor="middle" class="label">muad-progress</text><text x="1480" y="600" text-anchor="middle" class="small">独立进度消息</text>
   <rect x="1640" y="540" width="300" height="80" class="card" fill="#dcfce7"/><text x="1790" y="572" text-anchor="middle" class="label">native final reply</text><text x="1790" y="600" text-anchor="middle" class="small">文本/附件/卡片 → IM</text>
   <path d="M280 580 L330 580" class="message"/><path d="M540 580 L590 580" class="message"/><path d="M800 580 L850 580" class="message"/>
-  <path d="M1060 560 C1080 540, 1100 540, 1120 545" class="data"/>
-  <path d="M1060 600 C1080 630, 1100 640, 1120 640" class="message"/>
-  <path d="M1320 645 L1380 590" class="message"/>
+  <!-- 问题一：Agent 右缘 → LLM / run-skill 左缘（曲线，端点贴边，run-skill 一定接到） -->
+  <path d="M1060 555 C1080 540, 1100 540, 1120 555" class="data"/>
+  <path d="M1060 600 C1080 630, 1100 645, 1120 645" class="message"/>
+  <!-- run-skill → progress → final reply（曲线） -->
+  <path d="M1320 645 C1345 620, 1360 580, 1380 580" class="message"/>
   <path d="M1580 580 L1640 580" class="message"/>
   <path d="M1790 620 C1790 700, 400 700, 280 620" class="message dash"/>
   <text x="80" y="720" class="tiny">未绑定：main agent /bind → Guard → POST /internal/v1/bindings/activate（不在主业务路径上）</text>
@@ -73,12 +75,13 @@
   <rect x="80" y="1110" width="1880" height="120" class="inner" fill="#ffffff"/>
   <text x="110" y="1150" class="small">业务平台仅 MSSW、SDSP；每个业务 Skill 与唯一平台一对一绑定，经 session-manager 取该平台 session/storageState</text>
   <text x="110" y="1185" class="small">执行记录只存摘要与脱敏错误；Console 不可用时写 State outbox，恢复后幂等重放</text>
+  <!-- 问题二：run-skill 向下两条紫线均为虚线；橙线为 State/Public 持久化（保持 session 色） -->
   <path d="M1220 680 C900 820, 400 900, 240 950" class="session"/>
   <path d="M1220 680 C900 860, 700 920, 560 950" class="session"/>
-  <path d="M1220 680 C1000 860, 900 920, 860 950" class="data"/>
-  <path d="M1000 1000 L1040 1000" class="data"/>
+  <path d="M1220 680 C1000 860, 900 920, 860 950" class="data dash"/>
   <path d="M1220 680 C1400 800, 1500 900, 1540 950" class="data dash"/>
-  <!-- 执行审计写入控制面 SQLite（紫=internal/数据，非运行态橙） -->
+  <!-- 第 3 区横向 -->
+  <path d="M1000 1000 L1040 1000" class="data"/>
+  <path d="M1360 1000 L1400 1000" class="data"/>
   <path d="M1680 1000 L1720 1000" class="data"/>
-  <path d="M1200 1050 C1200 1100, 1400 1100, 1720 1000" class="data dash"/>
 </svg>

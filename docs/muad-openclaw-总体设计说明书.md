@@ -6,7 +6,7 @@
 | -------- | ------------------------------- |
 | 文档编号 | SFRD-TS-03-1.4                  |
 | 产品名称 | muad-openclaw 多用户 Agent 平台 |
-| 版本号   | V0.5.2                          |
+| 版本号   | V0.5.3                          |
 | 作者     | 待填                            |
 | 审核人   | 待填                            |
 | 批准人   | 待填                            |
@@ -24,6 +24,7 @@
 | **0.5** | **2026-07-21** | **全文重梳：产品定位、Worker 工具链专章、图件重画、章节顺序按「诉求→选型→架构→运行时→数据流→部署→质量」组织** |
 | 0.5.1 | 2026-07-21 | 扩充第 4 章：演进路径、Hermes 对比、最终选型决策依据 |
 | 0.5.2 | 2026-07-21 | 第 4 章改为选型结论；Hermes/演进细节拆到独立调研文档 |
+| **0.5.3** | **2026-07-21** | **§5.3/§5.4 对调（先 Pod 内部再工具链）；§5.7 去重 K8S 图改为文字总结；CONST-PLAT-01 备注更新** |
 
 ---
 
@@ -34,6 +35,14 @@
 3. [关键应用场景](#3-关键应用场景)
 4. [架构选型与技术栈](#4-架构选型与技术栈)
 5. [总体架构设计](#5-总体架构设计)
+   - [5.1 系统上下文](#51-系统上下文)
+   - [5.2 逻辑组件与依赖](#52-逻辑组件与依赖)
+   - [5.3 单 Runtime Pod 内部](#53-单-runtime-pod-内部)
+   - [5.4 Worker 工具链](#54-worker-工具链tools--为何拆成六块)
+   - [5.5 关键数据流](#55-关键数据流)
+   - [5.6 用户绑定](#56-用户绑定关键场景)
+   - [5.7 部署与资源规划](#57-部署与资源规划)
+   - [5.8 控制面故障影响](#58-控制面故障影响摘要)
 6. [质量属性与风险](#6-质量属性与风险)
 7. [附录](#附录-a架构决策记录adr)
 
@@ -84,7 +93,7 @@
 | Human User | 平台用户；≠ IM external id |
 | Identity | IM 身份 → Human User |
 | Runtime DTO | `RuntimeConfigV1`，generation 版本化配置 |
-| tools/ 工具链 | Worker 内插件与 CLI（见 §5.3） |
+| tools/ 工具链 | Worker 内插件与 CLI（见 §5.4） |
 | grant | 下发给 Agent 的 Skill 授权清单 |
 | quarantine | 默认 browser profile，业务 agent 不可复用 |
 
@@ -130,7 +139,7 @@
 | CONST-ISO-01 | 约束 | 每用户独立 agent/workspace/profile/session-store |
 | CONST-SEC-01 | 约束 | 密钥不进镜像与普通日志 |
 | CONST-SKILL-01 | 约束 | system 保护；public/private 冲突需 allow_override |
-| CONST-PLAT-01 | 产品约束 | 业务平台产品范围 **MSSW、SDSP**；业务 Skill 与平台一对一。*实现态可能仍有历史 adapter，待收口* |
+| CONST-PLAT-01 | 产品约束 | 业务平台产品范围 **MSSW、SDSP**；业务 Skill 与平台一对一。Go 后端已改为 DB 驱动；Worker 镜像 session-manager 侧暂保留历史 adapter |
 | CONST-ID-01 | 约束 | 未绑定不自动开户；绑定码预指向用户/Pod/channel |
 | CONST-ROUTE-01 | 约束 | 无全局消息路由；用户归管理员分配 Pod |
 | CONST-NOFORK-01 | 约束 | 不 fork OpenClaw；扩展仅配置 + 外置插件/CLI |
@@ -168,7 +177,7 @@
 | Agent 内核 | **OpenClaw** | 不以 Hermes 等为默认 Gateway |
 | 部署单元 | **单 Pod 多用户**（默认约 10 用户/Pod） | 不以「每用户一 Pod」为稳态 |
 | 控制面 | **muad Console**（Go/React + SQLite） | 不依赖运行时自带管理台 |
-| 运行时扩展 | **tools/ 外置插件与 CLI**（§5.3） | 不 fork OpenClaw |
+| 运行时扩展 | **tools/ 外置插件与 CLI**（§5.4） | 不 fork OpenClaw |
 | 消息路由 | 管理员分配 Pod + OpenClaw bindings | 不做全局 Message Router |
 | 业务增长 | **Skill 内容扩展**（预防流/报告等） | 不另起业务运行时 |
 
@@ -183,7 +192,7 @@
 | -- | ---- |
 | 控制面 | Go + React/Semi；SQLite |
 | 运行时 | OpenClaw（固定镜像版本）+ Chromium |
-| 扩展 | tools/（§5.3） |
+| 扩展 | tools/（§5.4） |
 | 编排 | Docker 或 K8S Driver |
 | 通道 | 企微 wecom、微信 openclaw-weixin |
 
@@ -222,17 +231,26 @@ Runtime ──► State PVC / Public Skills
 | -- | ---- | ---- |
 | 控制面 | Console FE/API、Repo、runtimeconfig、runtimeapply、Driver、Collector | 开通、配置、编排、审计 |
 | 运行时核心 | OpenClaw Gateway、main、业务 agents | 消息、编排、原生工具 |
-| **Worker 工具链** | 见 §5.3 | 隔离、Skill、凭证、进度、并发 |
+| **Worker 工具链** | 见 §5.4 | 隔离、Skill、凭证、进度、并发 |
 | 存储 | SQLite；State PVC；Public Skills | 控制面状态 vs 运行态 |
 | 外部 | 企微/微信、LLM、MSSW/SDSP、K8S/Docker | 入口与执行依赖 |
 
 **信任边界：** 管理员 JWT；Pod service token；Agent 间 workspace/profile/grant 隔离；同 Pod 为**逻辑隔离**（非独立内核）。
 
-### 5.3 Worker 工具链（tools/）— 为何拆成六块
+### 5.3 单 Runtime Pod 内部
+
+![单 Pod 内部](images/total-design/05-runtime-pod-internal.svg)
+
+- **共享：** Gateway、工具链插件、并发队列、Public Skills 只读挂载  
+- **每用户：** agent、`workspace-<id>`、browser profile、session-store、private skills、model  
+- **main：** 仅绑定引导  
+- **defaultProfile：** quarantine  
+
+### 5.4 Worker 工具链（tools/）— 为何拆成六块
 
 > **核心诉求：** 在 **CONST-NOFORK-01** 下，把多服务经理共用的 Runtime 做成：可隔离、可跑标准 SOP、可安全调平台、可反馈进度、可审计、打不满。
 
-#### 5.3.1 诉求 → 组件
+#### 5.4.1 诉求 → 组件
 
 | 诉求 | 组件 | 类型 | 缺了会怎样 |
 | ---- | ---- | ---- | ---------- |
@@ -243,7 +261,7 @@ Runtime ──► State PVC / Public Skills
 | E. 进度如何进当前 IM 会话 | **progress-adapters** | 适配器（openclaw 主路径；hermes 可选） | CLI 与会话脱节 |
 | F. Skill/浏览器如何有界并发 | **runtime-concurrency** | 共享库 | Pod 易被打满 |
 
-#### 5.3.2 主路径与配套
+#### 5.4.2 主路径与配套
 
 ```text
 主路径插件/CLI
@@ -259,7 +277,7 @@ Runtime ──► State PVC / Public Skills
 
 **不是六个平行产品**，而是「3 个运行时职责插件 + 进度链路 + 横切并发」。
 
-#### 5.3.3 协作关系（实现态）
+#### 5.4.3 协作关系（实现态）
 
 ```text
 IM 消息
@@ -274,22 +292,13 @@ IM 消息
   → run-skill 上报 skill-executions（失败则 outbox）
 ```
 
-#### 5.3.4 与业务扩展的关系
+#### 5.4.4 与业务扩展的关系
 
 预防流、报告、策略检查等 = **新增 Skill 包 + Tool 约定**，挂在上述链上：
 
 - 不新增第七种「业务运行时」  
 - 不改控制面主模型  
 - 专家平权（P2）= 更深 Skill/知识/标准，仍走同一工具链  
-
-### 5.4 单 Runtime Pod 内部
-
-![单 Pod 内部](images/total-design/05-runtime-pod-internal.svg)
-
-- **共享：** Gateway、工具链插件、并发队列、Public Skills 只读挂载  
-- **每用户：** agent、`workspace-<id>`、browser profile、session-store、private skills、model  
-- **main：** 仅绑定引导  
-- **defaultProfile：** quarantine  
 
 ### 5.5 关键数据流
 
@@ -316,13 +325,7 @@ Human User 是平台用户；IM external id 是 Identity。未绑定不自动开
 
 ### 5.7 部署与资源规划
 
-![K8S 拓扑](images/total-design/k8s-architecture-100users.svg)
-
-| 环境 | 形态 |
-| ---- | ---- |
-| 本地 | Console + Docker Runtime 按需 |
-| 测试 K8S | 见 `deploy-k8s-linux.md` |
-| ~100 用户 | Console×1 + Runtime≈10 |
+部署支持三种形态：本地开发用 Docker Compose 按需启停；测试环境见 `deploy-k8s-linux.md` 中的 K3S 部署方案；~100 用户生产环境采用 **Console×1 + Runtime≈10 Pod** 的 K8S 部署，管理员按 Pod 分配用户，每 Pod 默认 `max_users=10` 以控制故障半径。详细部署拓扑见 [`docs/k8s-architecture-100users.md`](./k8s-architecture-100users.md)。
 
 **资源规划（规划值，非压测 SLA；细节见 `k8s-architecture-100users.md`）：**
 

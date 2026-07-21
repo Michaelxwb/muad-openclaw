@@ -128,18 +128,15 @@
   <text x="70" y="1140" class="small">平台产品范围 MSSW / SDSP；业务 Skill 一对一绑定平台；预防流/报告 = Skill 扩展，不改本图隔离与工具链结构。</text>
   <text x="70" y="1175" class="tiny">IM session ≠ session-store（后者为业务平台 Cookie/storageState）。进度消息经 ④⑤ 旁路；终态仍 native final reply。</text>
 
-  <!-- 绿：Gateway 扇出到全部 agent（共享运行时，每用户独立上下文；非 ①→A/②→B 一一对应） -->
+  <!-- 绿：Gateway 底边中 → 用户卡顶边中（线型不变，仅端点贴边） -->
   <path d="M170 270 C170 340, 290 360, 290 420" class="message"/>
   <path d="M170 270 C400 320, 760 360, 760 420" class="message"/>
   <path d="M170 270 C700 300, 1230 360, 1230 420" class="message"/>
-  <!-- 紫：仅三条完整 internal 调用（无半截线） -->
-  <!-- main → bindings/activate（卡片文案含 ① guard 绑定） -->
-  <path d="M365 270 C800 300, 1700 420, 1784 490" class="data dash"/>
-  <!-- ③ session-mgr → credentials/resolve -->
-  <path d="M1050 270 C1400 400, 1700 580, 1784 600" class="data dash"/>
-  <!-- ② run-skill → skill-executions -->
-  <path d="M810 270 C1200 500, 1600 700, 1784 710" class="data dash"/>
-  <!-- 橙：每用户运行态落盘 -->
+  <!-- 紫：tools 底边 → Console internal 左缘中（勿进框内挡字） -->
+  <path d="M365 270 C800 300, 1500 420, 1590 490" class="data dash"/>
+  <path d="M1050 270 C1400 400, 1500 560, 1590 600" class="data dash"/>
+  <path d="M810 270 C1200 500, 1500 680, 1590 710" class="data dash"/>
+  <!-- 橙：用户底边中 → 存储顶边中 -->
   <path d="M290 720 C300 850, 320 940, 350 980" class="session"/>
   <path d="M760 720 C800 880, 840 940, 860 980" class="session"/>
   <path d="M1230 720 C1260 880, 1280 940, 1290 980" class="session"/>
