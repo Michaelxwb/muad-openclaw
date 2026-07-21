@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1368" viewBox="0 0 2048 1368" role="img" aria-labelledby="title desc">
+  <title id="title">muad-openclaw 组件架构图</title>
+  <desc id="desc">控制面、Runtime 核心、Worker 工具链六组件、存储与外部依赖。</desc>
+  <defs>
+    <marker id="arrow-control" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#2563eb"/></marker>
+    <marker id="arrow-message" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#16a34a"/></marker>
+    <marker id="arrow-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#7c3aed"/></marker>
+    <marker id="arrow-session" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#ea580c"/></marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/></filter>
+    <style>
+      .bg{fill:#f8fafc}
+      .title{fill:#0f172a;font:700 40px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .subtitle{fill:#475569;font:400 20px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .section{fill:#0f172a;font:700 22px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .label{fill:#0f172a;font:700 18px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .small{fill:#475569;font:400 15px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .tiny{fill:#64748b;font:400 14px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .legend{fill:#334155;font:400 16px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .area{stroke-width:2;rx:24}
+      .card{stroke:#94a3b8;stroke-width:2;rx:14;filter:url(#shadow)}
+      .control{fill:none;stroke:#2563eb;stroke-width:3.5;marker-end:url(#arrow-control)}
+      .message{fill:none;stroke:#16a34a;stroke-width:3.5;marker-end:url(#arrow-message)}
+      .data{fill:none;stroke:#7c3aed;stroke-width:3.5;marker-end:url(#arrow-data)}
+      .session{fill:none;stroke:#ea580c;stroke-width:3.5;marker-end:url(#arrow-session)}
+      .dash{stroke-dasharray:10 8}
+      .thin{stroke-width:3}
+    </style>
+  </defs>
+  <rect class="bg" width="2048" height="1368"/>
+  <text x="56" y="64" class="title">muad-openclaw 组件架构</text>
+  <text x="56" y="98" class="subtitle">诉求驱动：不 fork OpenClaw · 多用户隔离 · SOP 交付 · 安全调平台 · 进度可感 · 有界并发</text>
+  <g transform="translate(980 48)">
+    <line x1="0" y1="8" x2="56" y2="8" class="control thin"/><text x="66" y="13" class="legend">控制</text>
+    <line x1="130" y1="8" x2="186" y2="8" class="message thin"/><text x="196" y="13" class="legend">消息/执行</text>
+    <line x1="300" y1="8" x2="356" y2="8" class="data thin dash"/><text x="366" y="13" class="legend">internal / 外部</text>
+    <line x1="510" y1="8" x2="566" y2="8" class="session thin"/><text x="576" y="13" class="legend">持久化</text>
+  </g>
+
+  <!-- 1 Control -->
+  <rect x="40" y="140" width="520" height="700" class="area" fill="#eef6ff" stroke="#2563eb"/>
+  <text x="60" y="178" class="section" fill="#2563eb">1. 控制平面 Console</text>
+  <rect x="70" y="210" width="220" height="70" class="card" fill="#dbeafe"/><text x="180" y="240" text-anchor="middle" class="label">React 前端</text><text x="180" y="264" text-anchor="middle" class="small">管理 UI</text>
+  <rect x="310" y="210" width="220" height="70" class="card" fill="#dbeafe"/><text x="420" y="240" text-anchor="middle" class="label">Go API</text><text x="420" y="264" text-anchor="middle" class="small">/api + /internal</text>
+  <rect x="70" y="310" width="220" height="70" class="card" fill="#fff"/><text x="180" y="340" text-anchor="middle" class="label">Repo</text><text x="180" y="364" text-anchor="middle" class="small">SQLite CRUD</text>
+  <rect x="310" y="310" width="220" height="70" class="card" fill="#fff"/><text x="420" y="340" text-anchor="middle" class="label">runtimeconfig</text><text x="420" y="364" text-anchor="middle" class="small">DTO Builder</text>
+  <rect x="70" y="410" width="220" height="70" class="card" fill="#fff"/><text x="180" y="440" text-anchor="middle" class="label">runtimeapply</text><text x="180" y="464" text-anchor="middle" class="small">事务 apply</text>
+  <rect x="310" y="410" width="220" height="70" class="card" fill="#fff"/><text x="420" y="440" text-anchor="middle" class="label">Driver</text><text x="420" y="464" text-anchor="middle" class="small">Docker / K8S</text>
+  <rect x="70" y="510" width="460" height="70" class="card" fill="#e2e8f0"/><text x="300" y="540" text-anchor="middle" class="label">SQLite（唯一控制面状态）</text><text x="300" y="564" text-anchor="middle" class="small">pods · users · skills · audit · executions</text>
+  <rect x="70" y="610" width="460" height="60" class="card" fill="#fff"/><text x="300" y="646" text-anchor="middle" class="small">collector · usercleanup · JWT / service token</text>
+  <text x="60" y="720" class="tiny">管理员：开通用户 · 模型 · Skill · 平台 · 审计</text>
+  <text x="60" y="748" class="tiny">不处理 IM 消息；不执行业务 Skill 脚本</text>
+
+  <!-- 2 Runtime core + tools -->
+  <rect x="590" y="140" width="980" height="700" class="area" fill="#ecfdf5" stroke="#16a34a"/>
+  <text x="610" y="178" class="section" fill="#16a34a">2. Runtime Pod（OpenClaw + tools/ 工具链）</text>
+
+  <rect x="620" y="210" width="280" height="64" class="card" fill="#dcfce7"/><text x="760" y="248" text-anchor="middle" class="label">OpenClaw Gateway</text>
+  <rect x="920" y="210" width="160" height="64" class="card" fill="#dcfce7"/><text x="1000" y="238" text-anchor="middle" class="label">main</text><text x="1000" y="260" text-anchor="middle" class="tiny">绑定引导</text>
+  <rect x="1100" y="210" width="200" height="64" class="card" fill="#dcfce7"/><text x="1200" y="238" text-anchor="middle" class="label">业务 agents</text><text x="1200" y="260" text-anchor="middle" class="tiny">每 Human User</text>
+  <rect x="1320" y="210" width="210" height="64" class="card" fill="#fff"/><text x="1425" y="238" text-anchor="middle" class="label">bindings 路由</text><text x="1425" y="260" text-anchor="middle" class="tiny">peer → agent</text>
+
+  <!-- tools chain title -->
+  <rect x="620" y="300" width="910" height="500" class="area" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="640" y="334" class="section" fill="#15803d">Worker 工具链 tools/（不 fork · 按诉求拆分）</text>
+
+  <!-- 6 tools -->
+  <rect x="650" y="360" width="270" height="100" class="card" fill="#ffedd5"/>
+  <text x="785" y="395" text-anchor="middle" class="label">① runtime-guard</text>
+  <text x="785" y="422" text-anchor="middle" class="small">诉求 A：谁能进 / 能碰哪</text>
+  <text x="785" y="444" text-anchor="middle" class="tiny">绑定 · 模型门禁 · 文件 · browser · 健康</text>
+
+  <rect x="940" y="360" width="270" height="100" class="card" fill="#ffedd5"/>
+  <text x="1075" y="395" text-anchor="middle" class="label">② muad-run-skill</text>
+  <text x="1075" y="422" text-anchor="middle" class="small">诉求 B：SOP 怎么跑 / 记账</text>
+  <text x="1075" y="444" text-anchor="middle" class="tiny">激活 · 执行 · 审计 · outbox</text>
+
+  <rect x="1230" y="360" width="270" height="100" class="card" fill="#ffedd5"/>
+  <text x="1365" y="395" text-anchor="middle" class="label">③ session-manager</text>
+  <text x="1365" y="422" text-anchor="middle" class="small">诉求 C：平台登录 / 不泄密钥</text>
+  <text x="1365" y="444" text-anchor="middle" class="tiny">resolve · session-store</text>
+
+  <rect x="650" y="490" width="270" height="100" class="card" fill="#fef3c7"/>
+  <text x="785" y="525" text-anchor="middle" class="label">④ muad-progress</text>
+  <text x="785" y="552" text-anchor="middle" class="small">诉求 D：长任务进度事件</text>
+  <text x="785" y="574" text-anchor="middle" class="tiny">语言无关 CLI · 不直连 IM</text>
+
+  <rect x="940" y="490" width="270" height="100" class="card" fill="#fef3c7"/>
+  <text x="1075" y="525" text-anchor="middle" class="label">⑤ progress-adapters</text>
+  <text x="1075" y="552" text-anchor="middle" class="small">诉求 E：进度进当前会话</text>
+  <text x="1075" y="574" text-anchor="middle" class="tiny">openclaw 主路径 · hermes 可选</text>
+
+  <rect x="1230" y="490" width="270" height="100" class="card" fill="#e0e7ff"/>
+  <text x="1365" y="525" text-anchor="middle" class="label">⑥ runtime-concurrency</text>
+  <text x="1365" y="552" text-anchor="middle" class="small">诉求 F：有界并发 lease</text>
+  <text x="1365" y="574" text-anchor="middle" class="tiny">Skill / browser 共享队列</text>
+
+  <text x="650" y="640" class="small">主路径：① ② ③ ④　　配套：⑤ 投递 · ⑥ 被 ①② 使用</text>
+  <text x="650" y="670" class="tiny">业务预防流 / 报告 = Skill 内容扩展，挂在 ②③④ 上，不新增第七运行时</text>
+  <text x="650" y="700" class="tiny">进度旁路（④⑤）≠ 终态；终态仍 OpenClaw native final reply</text>
+  <text x="650" y="760" class="tiny">服务经理企微消息 → Gateway → ①门禁 → 业务 agent → ②Skill →（③平台 / ④进度）→ 终态回 IM</text>
+
+  <!-- 3 storage -->
+  <rect x="1600" y="140" width="400" height="700" class="area" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="1620" y="178" class="section" fill="#ea580c">3. 存储</text>
+  <rect x="1630" y="220" width="340" height="90" class="card" fill="#e2e8f0"/><text x="1800" y="258" text-anchor="middle" class="label">SQLite</text><text x="1800" y="286" text-anchor="middle" class="small">控制面 · 审计 · 执行记录</text>
+  <rect x="1630" y="340" width="340" height="120" class="card" fill="#ffedd5"/><text x="1800" y="380" text-anchor="middle" class="label">State PVC</text><text x="1800" y="408" text-anchor="middle" class="small">workspace-&lt;agent&gt;</text><text x="1800" y="432" text-anchor="middle" class="small">session-store · private · outbox</text>
+  <rect x="1630" y="490" width="340" height="90" class="card" fill="#ffedd5"/><text x="1800" y="528" text-anchor="middle" class="label">Public Skills</text><text x="1800" y="556" text-anchor="middle" class="small">只读 · RWX 或派生目录</text>
+  <text x="1630" y="630" class="tiny">控制面数据 ≠ 运行态数据</text>
+  <text x="1630" y="658" class="tiny">执行终态摘要在 SQLite</text>
+  <text x="1630" y="686" class="tiny">outbox 在 State，恢复后重放</text>
+
+  <!-- 4 external bottom -->
+  <rect x="40" y="870" width="1960" height="220" class="area" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="60" y="908" class="section" fill="#7c3aed">4. 外部依赖</text>
+  <rect x="70" y="940" width="280" height="80" class="card" fill="#ede9fe"/><text x="210" y="975" text-anchor="middle" class="label">企微 / 微信</text><text x="210" y="1000" text-anchor="middle" class="small">服务经理入口</text>
+  <rect x="380" y="940" width="280" height="80" class="card" fill="#ede9fe"/><text x="520" y="975" text-anchor="middle" class="label">LLM</text><text x="520" y="1000" text-anchor="middle" class="small">per-user model key</text>
+  <rect x="690" y="940" width="320" height="80" class="card" fill="#ede9fe"/><text x="850" y="975" text-anchor="middle" class="label">MSSW · SDSP</text><text x="850" y="1000" text-anchor="middle" class="small">Skill 一对一绑定</text>
+  <rect x="1040" y="940" width="280" height="80" class="card" fill="#e2e8f0"/><text x="1180" y="975" text-anchor="middle" class="label">K8S / Docker</text><text x="1180" y="1000" text-anchor="middle" class="small">编排基础设施</text>
+  <rect x="1350" y="940" width="620" height="80" class="card" fill="#fff"/><text x="1660" y="975" text-anchor="middle" class="label">internal：activate · credentials/resolve · skill-executions</text><text x="1660" y="1000" text-anchor="middle" class="small">Runtime → Console · service token</text>
+  <text x="70" y="1060" class="tiny">业务 Skill（预防流/报告）= 内容扩展，走 ②③④；专家平权 P2 = 同一工具链纵向加深</text>
+
+  <!-- arrows -->
+  <!-- control plane internal (short orth lines) -->
+  <path d="M290 245 L310 245" class="control"/>
+  <path d="M420 280 L420 310" class="control"/>
+  <path d="M180 380 L180 410" class="control"/>
+  <path d="M420 380 L420 410" class="control"/>
+  <path d="M300 480 L300 510" class="control"/>
+  <path d="M530 445 C560 445, 580 242, 620 242" class="control"/>
+  <path d="M900 242 L920 242" class="message"/>
+  <path d="M1080 242 L1100 242" class="message"/>
+  <path d="M1300 242 L1320 242" class="message"/>
+  <path d="M1200 274 L1200 360" class="message"/>
+  <path d="M1075 460 L1075 490" class="message"/>
+  <path d="M920 540 L940 540" class="message"/>
+  <!-- ③ session-manager → State PVC（session-store） -->
+  <path d="M1365 460 C1365 520, 1500 400, 1630 390" class="session"/>
+  <!-- ② run-skill → Public Skills（读授权 skill 根） -->
+  <path d="M1075 460 C1200 520, 1500 540, 1630 535" class="session"/>
+  <!-- ② run-skill → 底部 internal（skill-executions 上报，非直写 SQLite） -->
+  <path d="M1075 460 C1200 700, 1500 900, 1660 980" class="data dash"/>
+  <!-- ① guard 绑定 → 底部 internal（bindings/activate，经 Console） -->
+  <path d="M785 410 C900 700, 1400 900, 1660 980" class="data dash"/>
+  <path d="M70 980 C200 880, 500 300, 620 242" class="message"/>
+  <!-- bindings → 底部 internal 汇总（与其它 internal 回调一致：虚线） -->
+  <path d="M1425 274 C1500 400, 1550 980, 1660 980" class="data dash"/>
+</svg>

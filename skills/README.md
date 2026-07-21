@@ -97,6 +97,8 @@ Console 支持 `.tar.gz` 和 `.zip`。压缩包可以有一层外部目录，但
 
 Public Skill 依赖共享运行目录：Docker 使用 active-only bind mount；Kubernetes 使用 RWX PVC。Private Skill 由 Console 通过目标 Pod 内 installer 写入用户工作区，不直接写宿主 PVC。
 
-## mss-soar
+## 业务 Skill 扩展
 
-`mss-soar/SKILL.md` 当前仍是结构骨架。正式使用前需补齐业务接口、鉴权和操作流程，或基于 `_templates/` 创建新的业务 Skill 包。
+预防流、周期报告、策略检查等业务 Playbook 通过新增 public/private Skill 扩展，不改变控制面与 Runtime 架构。业务 Skill 绑定平台时，产品范围以 **MSSW / SDSP** 为主（见总设 CONST-PLAT-01）。
+
+仓库内 `mss-soar/SKILL.md` 仍是结构骨架，正式使用前需补齐业务接口、鉴权和操作流程，或基于 `_templates/` 创建新包。
