@@ -27,14 +27,17 @@
 
   <!-- 1. Entry -->
   <rect x="48" y="170" width="330" height="560" class="area" fill="#ecfdf5" stroke="#16a34a"/>
-  <text x="80" y="216" class="section-title" fill="#16a34a">1. 入口</text>
-  <rect x="94" y="278" width="230" height="100" class="card" fill="#dbeafe"/>
-  <text x="209" y="320" text-anchor="middle" class="label">管理员浏览器</text>
-  <text x="209" y="352" text-anchor="middle" class="small">Console UI</text>
-  <rect x="94" y="430" width="230" height="120" class="card" fill="#dcfce7"/>
-  <text x="209" y="478" text-anchor="middle" class="label">企业微信 / 微信</text>
-  <text x="209" y="512" text-anchor="middle" class="small">用户消息入口</text>
-  <text x="80" y="620" class="tiny">业务系统不是消息入口，见右侧外部服务</text>
+  <text x="80" y="216" class="section-title" fill="#16a34a">1. 入口角色</text>
+  <rect x="94" y="260" width="230" height="96" class="card" fill="#dbeafe"/>
+  <text x="209" y="300" text-anchor="middle" class="label">管理员</text>
+  <text x="209" y="330" text-anchor="middle" class="small">浏览器访问 Console</text>
+  <rect x="94" y="388" width="230" height="96" class="card" fill="#dcfce7"/>
+  <text x="209" y="428" text-anchor="middle" class="label">服务经理</text>
+  <text x="209" y="458" text-anchor="middle" class="small">企业微信 · 内部协作</text>
+  <rect x="94" y="516" width="230" height="96" class="card" fill="#fef3c7"/>
+  <text x="209" y="556" text-anchor="middle" class="label">外部客户</text>
+  <text x="209" y="586" text-anchor="middle" class="small">微信 · 客户触达</text>
+  <text x="80" y="655" class="tiny">业务系统不是消息入口，见右侧外部服务</text>
 
   <!-- 2. Control plane -->
   <rect x="420" y="170" width="1020" height="360" class="area" fill="#eef6ff" stroke="#2563eb"/>
@@ -64,15 +67,9 @@
   <rect x="1160" y="680" width="200" height="90" class="card" fill="#dcfce7"/>
   <text x="1260" y="716" text-anchor="middle" class="label">Pod N</text>
   <text x="1260" y="748" text-anchor="middle" class="small">横向扩展</text>
-  <rect x="500" y="810" width="200" height="48" class="inner" fill="#ffffff"/><text x="600" y="840" text-anchor="middle" class="small">Gateway / main</text>
-  <rect x="720" y="810" width="180" height="48" class="inner" fill="#ffffff"/><text x="810" y="840" text-anchor="middle" class="small">业务 Agent × N</text>
-  <rect x="920" y="810" width="200" height="48" class="inner" fill="#ffedd5"/><text x="1020" y="840" text-anchor="middle" class="small">① guard</text>
-  <rect x="1140" y="810" width="200" height="48" class="inner" fill="#ffedd5"/><text x="1240" y="840" text-anchor="middle" class="small">② run-skill</text>
-  <rect x="500" y="875" width="200" height="48" class="inner" fill="#ffedd5"/><text x="600" y="905" text-anchor="middle" class="small">③ session-mgr</text>
-  <rect x="720" y="875" width="180" height="48" class="inner" fill="#fef3c7"/><text x="810" y="905" text-anchor="middle" class="small">④ progress</text>
-  <rect x="920" y="875" width="200" height="48" class="inner" fill="#fef3c7"/><text x="1020" y="905" text-anchor="middle" class="small">⑤ adapters</text>
-  <rect x="1140" y="875" width="200" height="48" class="inner" fill="#e0e7ff"/><text x="1240" y="905" text-anchor="middle" class="small">⑥ concurrency</text>
-  <text x="500" y="960" class="tiny">tools/ 六件套：隔离 · Skill · 凭证 · 进度 · 投递 · 有界并发（见总设 §5.3）</text>
+  <rect x="500" y="810" width="860" height="40" class="inner" fill="#ffffff"/>
+  <text x="930" y="836" text-anchor="middle" class="small">每 Pod 共享：Gateway · main · 业务 agents · tools/ 六件套（详见 §5.4）</text>
+  <text x="500" y="880" class="tiny">隔离：独立 agent / workspace / browser profile / session-store / model / skill grant</text>
 
   <!-- 4. External -->
   <rect x="1480" y="170" width="510" height="560" class="area" fill="#f5f3ff" stroke="#7c3aed"/>
@@ -102,16 +99,16 @@
   <text x="1650" y="1208" text-anchor="middle" class="small">audit / skill_execution_records → SQLite</text>
 
   <!-- arrows: keep curve style; snap start/end to card edges only -->
-  <path d="M324 328 C380 328, 430 328, 480 328" class="control"/>
-  <path d="M680 328 L740 328" class="control"/>
-  <path d="M970 328 L1030 328" class="control"/>
+  <path d="M324 308 C380 308, 430 308, 480 308" class="control"/>
+  <path d="M680 308 L740 308" class="control"/>
+  <path d="M970 308 L1030 308" class="control"/>
   <path d="M865 482 C865 540, 640 600, 640 680" class="control"/>
-  <path d="M324 490 C400 490, 430 725, 500 725" class="message"/>
+  <path d="M324 436 C400 436, 430 725, 500 725" class="message"/>
   <!-- Runtime 右缘中 → LLM / 业务 左缘中（避免穿过 Pod 文字） -->
   <path d="M1360 725 C1450 650, 1500 400, 1535 328" class="data"/>
   <path d="M1360 750 C1450 700, 1500 520, 1535 485" class="data"/>
   <!-- SQLite 右缘 → K8S 左缘 -->
   <path d="M1250 328 C1400 328, 1480 500, 1535 628" class="control"/>
   <path d="M640 770 C640 950, 680 1080, 710 1135" class="session"/>
-  <path d="M1240 923 C1200 1040, 1180 1100, 1170 1135" class="session"/>
+  <path d="M1260 770 C1260 1000, 1200 1080, 1170 1135" class="session"/>
 </svg>

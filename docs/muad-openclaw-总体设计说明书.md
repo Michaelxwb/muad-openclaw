@@ -24,7 +24,7 @@
 | **0.5** | **2026-07-21** | **全文重梳：产品定位、Worker 工具链专章、图件重画、章节顺序按「诉求→选型→架构→运行时→数据流→部署→质量」组织** |
 | 0.5.1 | 2026-07-21 | 扩充第 4 章：演进路径、Hermes 对比、最终选型决策依据 |
 | 0.5.2 | 2026-07-21 | 第 4 章改为选型结论；Hermes/演进细节拆到独立调研文档 |
-| **0.5.3** | **2026-07-21** | **§5.3/§5.4 对调（先 Pod 内部再工具链）；§5.7 去重 K8S 图改为文字总结；CONST-PLAT-01 备注更新** |
+| **0.5.3** | **2026-07-21** | **§5 结构调整：5.3/5.4 对调（先 Pod 内部再工具链）、5.7 去重 K8S 图改为文字；图件 5→3 整合（01 优化全景、02+05 合并 Pod 内部、03 精简泳道）；CONST-PLAT-01 备注更新** |
 
 ---
 
@@ -105,7 +105,7 @@
 | `docs/multi-user-single-pod.md` | bindings / 绑定码机制 |
 | `docs/agent-runtime-selection.md` | Agent 运行时与部署单元选型调研（OpenClaw vs Hermes 等） |
 | `docs/deploy-k8s-linux.md` | 测试部署 |
-| `docs/images/total-design/` | 架构 SVG |
+| `docs/images/total-design/` | 架构图（3 张：系统上下文 / Pod 内部与组件 / 核心数据流） |
 | `tools/*/README.md` | 各 Worker 组件说明 |
 
 ---
@@ -215,6 +215,8 @@
 
 ![系统上下文](images/total-design/01-system-context.svg)
 
+唯一全景图，覆盖系统全部 5 层：入口角色（管理员浏览器 / 服务经理企微 / 外部客户微信）、Console 控制面、Runtime Pod 分片、外部依赖（LLM / MSSW / SDSP / K8S API）及持久化存储。读者可在 30 秒内建立「谁跟谁通信、数据在哪落地」的整体认知。
+
 ```text
 服务经理(企微) ──消息──► Runtime Pod(s) ──► LLM
 管理员(浏览器) ──API──► Console ──编排──► Runtime Pod(s)
@@ -225,7 +227,7 @@ Runtime ──► State PVC / Public Skills
 
 ### 5.2 逻辑组件与依赖
 
-![组件架构](images/total-design/02-component-architecture.svg)
+各层职责总览如下；组件细节见 §5.3 的 Pod 内部展开图（图 B）。
 
 | 层 | 组件 | 职责 |
 | -- | ---- | ---- |
@@ -239,12 +241,9 @@ Runtime ──► State PVC / Public Skills
 
 ### 5.3 单 Runtime Pod 内部
 
-![单 Pod 内部](images/total-design/05-runtime-pod-internal.svg)
+![单 Pod 内部](images/total-design/02-runtime-pod-internal.svg)
 
-- **共享：** Gateway、工具链插件、并发队列、Public Skills 只读挂载  
-- **每用户：** agent、`workspace-<id>`、browser profile、session-store、private skills、model  
-- **main：** 仅绑定引导  
-- **defaultProfile：** quarantine  
+单 Pod 内部组件展开图（图 B），合并了原来的组件架构与 Pod 内部两张图，一次性展示：共享层（Gateway + tools/ 六件套 + 并发队列）、每用户逻辑隔离区（独立 agent / workspace / browser profile / session-store / model / skill grant）、存储挂载（State PVC / Public Skills / Private Skills）以及 Pod 与 Console 之间的 3 条 internal API。信任边界标注了管理员 JWT、Pod service token 和 agent 间隔离关系。  
 
 ### 5.4 Worker 工具链（tools/）— 为何拆成六块
 
@@ -303,6 +302,8 @@ IM 消息
 ### 5.5 关键数据流
 
 ![数据流](images/total-design/03-data-flow.svg)
+
+以泳道图（图 C）展示 6 条规范数据流在「管理员 / Console / Runtime Pod / 外部」四层之间的路径，不再重复绘制组件卡片，聚焦端到端链路：
 
 | ID | 流 | 路径 |
 | -- | -- | ---- |
