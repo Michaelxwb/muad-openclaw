@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1368" viewBox="0 0 2048 1368" role="img" aria-labelledby="title desc">
-  <title id="title">单 Runtime Pod 内部结构</title>
-  <desc id="desc">Gateway、tools 六件套、每用户隔离区、internal API 与 State 布局。</desc>
+  <title id="title">单 Runtime Pod 内部与组件（图 B）</title>
+  <desc id="desc">合并组件架构与 Pod 内部：共享 Gateway + tools 六件套、每用户隔离区、信任边界、internal API 与 State 布局。</desc>
   <defs>
     <marker id="arrow-control" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#2563eb"/></marker>
     <marker id="arrow-message" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#16a34a"/></marker>
@@ -28,7 +28,7 @@
   </defs>
   <rect class="bg" width="2048" height="1368"/>
   <text x="48" y="56" class="title">单 Runtime Pod 内部结构</text>
-  <text x="48" y="88" class="subtitle">共享 Gateway + tools 六件套；每用户 agent / workspace / profile / session-store 逻辑隔离</text>
+  <text x="48" y="88" class="subtitle">共享 Gateway + tools 六件套；每用户 agent / workspace / profile / session-store 逻辑隔离 · 信任边界：JWT / service token / agent 间隔离</text>
   <g transform="translate(980 42)">
     <line x1="0" y1="8" x2="56" y2="8" class="control thin"/><text x="66" y="13" class="legend">控制</text>
     <line x1="130" y1="8" x2="186" y2="8" class="message thin"/><text x="196" y="13" class="legend">消息/执行</text>
