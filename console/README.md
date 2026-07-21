@@ -4,18 +4,20 @@
 
 相关设计：
 
+- [总体设计说明书](../docs/muad-openclaw-总体设计说明书.md)（架构评审基线）
 - [多用户单 Pod](../docs/multi-user-single-pod.md)
 - [100 用户 Kubernetes 架构](../docs/k8s-architecture-100users.md)
-- [Skill 执行审计](../.code-flow/tasks/archived/2026-07-14/skill-execution-audit/)
+- [架构图](../docs/images/total-design/)
+- [Skill 执行审计任务档案](../.code-flow/tasks/archived/2026-07-14/skill-execution-audit/)
 
 ## 功能
 
 - **Pod 生命周期**：创建、启停、重启、删除、镜像升级、日志、资源、通道和配置 generation 调和。
-- **Human User**：每个 Pod 最多 10 个用户；用户拥有独立 Agent、工作区、浏览器 Profile、模型配置和 IM 身份。
-- **身份绑定**：支持已知 External ID 预绑定，以及 main Agent 中使用一次性绑定码自动绑定新 IM。
+- **Human User**：每个 Pod 默认最多约 10 个用户（`max_users` 可配置）；用户拥有独立 Agent、工作区、浏览器 Profile、模型配置和 IM 身份。企微侧用户可作为服务经理交付入口。
+- **身份绑定**：支持已知 External ID 预绑定，以及 main Agent 中使用一次性绑定码激活新 IM；未绑定发送者不自动开户。
 - **模型池**：批量导入 OpenAI 兼容模型配置并测试连通性；创建用户时绑定一个未占用模型。
-- **Skill 管理**：Public/Private 上传、启禁用、删除、用户策略、冲突解析和最终生效视图。
-- **平台凭证**：维护业务平台及每用户 API Key，数据库只保存加密值并对外返回指纹。
+- **Skill 管理**：Public/Private 上传、启禁用、删除、用户策略、冲突解析和最终生效视图；业务 Skill（预防流、报告等）为后续扩展，不改变控制面架构。
+- **平台凭证**：维护业务平台及每用户 API Key，数据库只保存加密值并对外返回指纹；产品范围以 MSSW / SDSP 为主。
 - **监控告警**：Pod 状态、通道、generation、Runtime Guard、资源和遥测 outbox 健康。
 - **双审计**：管理员操作进入“操作审计”，Agent Skill 生命周期进入“Skill 执行日志”。
 

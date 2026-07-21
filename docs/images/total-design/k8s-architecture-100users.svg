@@ -2,18 +2,10 @@
   <title id="title">muad-openclaw K8S 架构图</title>
   <desc id="desc">展示管理员、内部用户、外部客户、muad Console、K8S 多用户 Runtime Pod、业务系统与 LLM 的控制链路和消息链路。</desc>
   <defs>
-    <marker id="arrow-control" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#2563eb"/>
-    </marker>
-    <marker id="arrow-message" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#16a34a"/>
-    </marker>
-    <marker id="arrow-data" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#7c3aed"/>
-    </marker>
-    <marker id="arrow-session" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#ea580c"/>
-    </marker>
+    <marker id="arrow-control" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#2563eb"/></marker>
+    <marker id="arrow-message" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#16a34a"/></marker>
+    <marker id="arrow-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#7c3aed"/></marker>
+    <marker id="arrow-session" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#ea580c"/></marker>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
       <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.14"/>
     </filter>
@@ -43,13 +35,15 @@
   <text x="72" y="76" class="title">muad-openclaw K8S 架构图（100 用户）</text>
   <text x="72" y="116" class="subtitle">控制链路、内部企业微信协作、外部微信客户触达、多用户 Runtime Pod 分片</text>
 
-  <g transform="translate(1380 58)">
-    <line x1="0" y1="0" x2="72" y2="0" class="control thin"/>
-    <text x="88" y="7" class="legend">控制链路</text>
-    <line x1="230" y1="0" x2="302" y2="0" class="message thin"/>
-    <text x="318" y="7" class="legend">消息链路</text>
-    <line x1="460" y1="0" x2="532" y2="0" class="data thin dash"/>
-    <text x="548" y="7" class="legend">数据 / 模型调用</text>
+  <g transform="translate(1000 52)">
+    <line x1="0" y1="8" x2="64" y2="8" class="control thin"/>
+    <text x="76" y="14" class="legend">控制链路</text>
+    <line x1="200" y1="8" x2="264" y2="8" class="message thin"/>
+    <text x="276" y="14" class="legend">消息链路</text>
+    <line x1="400" y1="8" x2="464" y2="8" class="data thin dash"/>
+    <text x="476" y="14" class="legend">数据 / 模型调用</text>
+    <line x1="660" y1="8" x2="724" y2="8" class="session thin"/>
+    <text x="736" y="14" class="legend">持久化访问</text>
   </g>
 
   <!-- External users and services -->
@@ -104,40 +98,44 @@
   <text x="505" y="912" text-anchor="middle" class="small">受限 RBAC</text>
 
   <rect x="725" y="594" width="936" height="390" class="card" fill="#ecfdf5"/>
-  <text x="1193" y="640" text-anchor="middle" class="label">OpenClaw Runtime Pod 分片（约 10 用户 / Pod，×10）</text>
+  <text x="1193" y="640" text-anchor="middle" class="label">OpenClaw Runtime Pod 分片（默认约 10 用户 / Pod，×10）</text>
 
   <g transform="translate(772 682)">
     <rect x="0" y="0" width="250" height="240" class="inner" fill="#ffffff"/>
-    <text x="125" y="44" text-anchor="middle" class="label">Runtime Pod 01</text>
-    <text x="125" y="78" text-anchor="middle" class="small">OpenClaw Gateway</text>
-    <rect x="32" y="102" width="186" height="38" rx="10" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
-    <text x="125" y="127" text-anchor="middle" class="small">Agents ×10 / Skills</text>
-    <rect x="32" y="150" width="186" height="38" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-    <text x="125" y="175" text-anchor="middle" class="small">Session Manager</text>
-    <rect x="32" y="198" width="186" height="34" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
-    <text x="125" y="219" text-anchor="middle" class="tiny">State PVC / Browser / Private Skills</text>
+    <text x="125" y="36" text-anchor="middle" class="label">Runtime Pod 01</text>
+    <text x="125" y="62" text-anchor="middle" class="small">OpenClaw Gateway</text>
+    <rect x="32" y="78" width="186" height="32" rx="10" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
+    <text x="125" y="100" text-anchor="middle" class="small">Agents 默认约 10</text>
+    <rect x="32" y="118" width="186" height="32" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+    <text x="125" y="140" text-anchor="middle" class="tiny">guard · run-skill · session</text>
+    <rect x="32" y="158" width="186" height="32" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+    <text x="125" y="180" text-anchor="middle" class="tiny">muad-progress</text>
+    <rect x="32" y="198" width="186" height="30" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="125" y="218" text-anchor="middle" class="tiny">State / browser / private skills</text>
   </g>
 
   <g transform="translate(1080 682)">
     <rect x="0" y="0" width="250" height="240" class="inner" fill="#ffffff"/>
-    <text x="125" y="44" text-anchor="middle" class="label">Runtime Pod 02</text>
-    <text x="125" y="78" text-anchor="middle" class="small">OpenClaw Gateway</text>
-    <rect x="32" y="102" width="186" height="38" rx="10" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
-    <text x="125" y="127" text-anchor="middle" class="small">Agents ×10 / Skills</text>
-    <rect x="32" y="150" width="186" height="38" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-    <text x="125" y="175" text-anchor="middle" class="small">Session Manager</text>
-    <rect x="32" y="198" width="186" height="34" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
-    <text x="125" y="219" text-anchor="middle" class="tiny">State PVC / Browser / Private Skills</text>
+    <text x="125" y="36" text-anchor="middle" class="label">Runtime Pod 02</text>
+    <text x="125" y="62" text-anchor="middle" class="small">OpenClaw Gateway</text>
+    <rect x="32" y="78" width="186" height="32" rx="10" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
+    <text x="125" y="100" text-anchor="middle" class="small">Agents 默认约 10</text>
+    <rect x="32" y="118" width="186" height="32" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+    <text x="125" y="140" text-anchor="middle" class="tiny">guard · run-skill · session</text>
+    <rect x="32" y="158" width="186" height="32" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+    <text x="125" y="180" text-anchor="middle" class="tiny">muad-progress</text>
+    <rect x="32" y="198" width="186" height="30" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="125" y="218" text-anchor="middle" class="tiny">State / browser / private skills</text>
   </g>
 
   <g transform="translate(1388 682)">
     <rect x="0" y="0" width="220" height="240" class="inner" fill="#ffffff"/>
-    <text x="110" y="50" text-anchor="middle" class="label">...</text>
-    <text x="110" y="88" text-anchor="middle" class="small">Runtime Pod N</text>
-    <text x="110" y="122" text-anchor="middle" class="small">Agents / Skills</text>
-    <text x="110" y="154" text-anchor="middle" class="small">Session Manager</text>
-    <text x="110" y="186" text-anchor="middle" class="small">State PVC</text>
-    <text x="110" y="218" text-anchor="middle" class="small">Pod 级并发上限</text>
+    <text x="110" y="40" text-anchor="middle" class="label">...</text>
+    <text x="110" y="74" text-anchor="middle" class="small">Runtime Pod N</text>
+    <text x="110" y="108" text-anchor="middle" class="small">Agents 默认约 10</text>
+    <text x="110" y="140" text-anchor="middle" class="small">guard / run-skill</text>
+    <text x="110" y="172" text-anchor="middle" class="small">session-manager</text>
+    <text x="110" y="204" text-anchor="middle" class="small">State PVC · 并发上限</text>
   </g>
 
   <rect x="920" y="934" width="550" height="86" class="inner" fill="#f0fdf4"/>
@@ -147,17 +145,12 @@
   <!-- Enterprise systems -->
   <rect x="64" y="1180" width="1430" height="132" class="area" fill="#fff7ed"/>
   <text x="96" y="1225" class="section-title">企业业务系统 / 内网依赖</text>
-  <text x="96" y="1266" class="tiny">token API / cookie API / health check</text>
-  <rect x="400" y="1228" width="150" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-  <text x="475" y="1262" text-anchor="middle" class="small">SOAR</text>
-  <rect x="610" y="1228" width="170" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-  <text x="695" y="1262" text-anchor="middle" class="small">Sea_SOAR</text>
-  <rect x="840" y="1228" width="150" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-  <text x="915" y="1262" text-anchor="middle" class="small">MSSW</text>
-  <rect x="1050" y="1228" width="150" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-  <text x="1125" y="1262" text-anchor="middle" class="small">XDR</text>
-  <rect x="1260" y="1228" width="150" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-  <text x="1335" y="1262" text-anchor="middle" class="small">SDSP</text>
+  <text x="96" y="1266" class="tiny">Skill ↔ 平台一对一绑定 · session-manager</text>
+  <rect x="520" y="1228" width="220" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+  <text x="630" y="1262" text-anchor="middle" class="small">MSSW</text>
+  <rect x="800" y="1228" width="220" height="54" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
+  <text x="910" y="1262" text-anchor="middle" class="small">SDSP</text>
+  <text x="1080" y="1262" class="tiny">每个业务 Skill 绑定唯一平台</text>
 
   <rect x="1560" y="1180" width="424" height="132" class="area" fill="#f5f3ff"/>
   <text x="1592" y="1225" class="section-title">远端模型服务</text>
@@ -181,8 +174,8 @@
 
   <!-- Arrows: model and business calls -->
   <path d="M1400 760 C1600 760, 1760 572, 1845 358" class="data"/>
-  <path d="M1195 922 C1160 1050, 825 1148, 695 1228" class="session"/>
-  <path d="M902 922 C820 1050, 580 1148, 475 1228" class="session dash"/>
+  <path d="M1195 922 C1160 1050, 980 1148, 910 1228" class="session"/>
+  <path d="M902 922 C820 1050, 720 1148, 630 1228" class="session dash"/>
 
   <!-- Return labels -->
   <text x="836" y="478" class="tiny">企业微信消息进出</text>

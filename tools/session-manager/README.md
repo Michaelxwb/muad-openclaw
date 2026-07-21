@@ -12,7 +12,7 @@ The OpenClaw plugin exposes the equivalent `session_get_state` Tool with one mod
 
 ```json
 {
-  "platform": "xdr"
+  "platform": "mssw"
 }
 ```
 
@@ -32,7 +32,7 @@ State is stored at:
 
 Every request resolves the current credential first. Cached state is reusable only when its Human User, agent, Pod, platform, credential fingerprint, platform-config fingerprint, and expiry all match. A file lock serializes refreshes across processes and stale crash locks are reclaimed after a bounded timeout.
 
-The installed adapters are `mssw`, `sdsp`, `sea_soar`, `soar`, and `xdr`. Their initial shared HTTP contract uses these non-secret platform config fields:
+**Product scope** for business platforms is **MSSW** and **SDSP** (see overall design CONST-PLAT-01). The installed adapter set in code may still include historical names (`mssw`, `sdsp`, `sea_soar`, `soar`, `xdr`); new Skills should bind only `mssw` or `sdsp`. Shared HTTP contract uses these non-secret platform config fields:
 
 ```json
 {

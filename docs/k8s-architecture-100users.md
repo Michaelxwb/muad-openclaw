@@ -6,7 +6,7 @@
 
 ## 1. 架构总览
 
-![muad-openclaw K8S 架构与硬件资源](k8s-architecture-100users.svg)
+![muad-openclaw K8S 架构与硬件资源](images/total-design/k8s-architecture-100users.svg)
 
 当前架构已经从“每个用户一个 Pod”优化为“多个用户共享一个 Runtime Pod”。平台不再把企微、微信或其他 IM 的外部 user id 当作系统用户，而是使用内部 `Human User` 作为统一用户实体，再把不同 IM 身份绑定到这个用户上。
 
