@@ -1,114 +1,128 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1368" viewBox="0 0 2048 1368" role="img" aria-labelledby="title desc">
-  <title id="title">muad-openclaw 系统上下文图</title>
-  <desc id="desc">展示已落地的入口、控制平面、Runtime Pod、外部依赖与持久化存储，与当前代码一致。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1100" viewBox="0 0 2048 1100" role="img" aria-labelledby="title desc">
+  <title id="title">muad-openclaw 系统上下文（图 A）</title>
+  <desc id="desc">唯一全景图：入口角色、控制平面、Runtime Pod、外部依赖与持久化存储，覆盖系统全部 5 层。</desc>
   <defs>
     <marker id="arrow-control" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#2563eb"/></marker>
     <marker id="arrow-message" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#16a34a"/></marker>
     <marker id="arrow-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#7c3aed"/></marker>
     <marker id="arrow-session" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#ea580c"/></marker>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.14"/></filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/></filter>
     <style>
-      .bg{fill:#f8fafc}.title{fill:#0f172a;font:700 44px Arial,"PingFang SC","Microsoft YaHei",sans-serif}.subtitle{fill:#475569;font:400 22px Arial,"PingFang SC","Microsoft YaHei",sans-serif}.section-title{fill:#0f172a;font:700 26px Arial,"PingFang SC","Microsoft YaHei",sans-serif}.label{fill:#0f172a;font:700 22px Arial,"PingFang SC","Microsoft YaHei",sans-serif}.small{fill:#475569;font:400 18px Arial,"PingFang SC","Microsoft YaHei",sans-serif}.tiny{fill:#64748b;font:400 16px Arial,"PingFang SC","Microsoft YaHei",sans-serif}.legend{fill:#334155;font:400 18px Arial,"PingFang SC","Microsoft YaHei",sans-serif}.area{stroke:#cbd5e1;stroke-width:2;rx:28}.card{stroke:#94a3b8;stroke-width:2;rx:18;filter:url(#shadow)}.inner{stroke:#cbd5e1;stroke-width:2;rx:14}.control{fill:none;stroke:#2563eb;stroke-width:4;marker-end:url(#arrow-control)}.message{fill:none;stroke:#16a34a;stroke-width:4;marker-end:url(#arrow-message)}.data{fill:none;stroke:#7c3aed;stroke-width:4;marker-end:url(#arrow-data)}.session{fill:none;stroke:#ea580c;stroke-width:4;marker-end:url(#arrow-session)}.dash{stroke-dasharray:12 10}.thin{stroke-width:3}
+      .bg{fill:#f8fafc}
+      .title{fill:#0f172a;font:700 38px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .subtitle{fill:#475569;font:400 18px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .section-title{fill:#0f172a;font:700 22px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .label{fill:#0f172a;font:700 18px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .small{fill:#475569;font:400 15px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .tiny{fill:#64748b;font:400 14px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .legend{fill:#334155;font:400 16px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .area{stroke:#cbd5e1;stroke-width:2;rx:22}
+      .card{stroke:#94a3b8;stroke-width:2;rx:14;filter:url(#shadow)}
+      .inner{stroke:#cbd5e1;stroke-width:2;rx:12}
+      .control{fill:none;stroke:#2563eb;stroke-width:3.5;marker-end:url(#arrow-control)}
+      .message{fill:none;stroke:#16a34a;stroke-width:3.5;marker-end:url(#arrow-message)}
+      .data{fill:none;stroke:#7c3aed;stroke-width:3.5;marker-end:url(#arrow-data)}
+      .session{fill:none;stroke:#ea580c;stroke-width:3.5;marker-end:url(#arrow-session)}
+      .dash{stroke-dasharray:10 8}
+      .thin{stroke-width:3}
     </style>
   </defs>
-  <rect class="bg" width="2048" height="1368"/>
-  <text x="72" y="76" class="title">muad-openclaw 系统上下文</text>
-  <text x="72" y="116" class="subtitle">服务经理企微交付 · 管理员 Console · Runtime 含 tools 工具链 · 业务 Skill 可扩展 · 平台 MSSW/SDSP</text>
-  <g transform="translate(1000 52)">
-    <line x1="0" y1="8" x2="64" y2="8" class="control thin"/>
-    <text x="76" y="14" class="legend">控制链路</text>
-    <line x1="200" y1="8" x2="264" y2="8" class="message thin"/>
-    <text x="276" y="14" class="legend">消息链路</text>
-    <line x1="400" y1="8" x2="464" y2="8" class="data thin dash"/>
-    <text x="476" y="14" class="legend">数据 / 模型调用</text>
-    <line x1="660" y1="8" x2="724" y2="8" class="session thin"/>
-    <text x="736" y="14" class="legend">持久化访问</text>
+  <rect class="bg" width="2048" height="1100"/>
+  <text x="56" y="60" class="title">muad-openclaw 系统上下文（图 A）</text>
+  <text x="56" y="92" class="subtitle">入口角色（管理员 / 服务经理 / 外部客户）· Console 控制面 · Runtime Pod 分片 · 外部依赖 · 持久化存储</text>
+  <g transform="translate(980 46)">
+    <line x1="0" y1="8" x2="56" y2="8" class="control thin"/><text x="66" y="13" class="legend">控制</text>
+    <line x1="130" y1="8" x2="186" y2="8" class="message thin"/><text x="196" y="13" class="legend">消息</text>
+    <line x1="300" y1="8" x2="356" y2="8" class="data thin dash"/><text x="366" y="13" class="legend">数据/模型</text>
+    <line x1="490" y1="8" x2="546" y2="8" class="session thin"/><text x="556" y="13" class="legend">持久化</text>
   </g>
 
-  <!-- 1. Entry -->
-  <rect x="48" y="170" width="330" height="560" class="area" fill="#ecfdf5" stroke="#16a34a"/>
-  <text x="80" y="216" class="section-title" fill="#16a34a">1. 入口角色</text>
-  <rect x="94" y="260" width="230" height="96" class="card" fill="#dbeafe"/>
-  <text x="209" y="300" text-anchor="middle" class="label">管理员</text>
-  <text x="209" y="330" text-anchor="middle" class="small">浏览器访问 Console</text>
-  <rect x="94" y="388" width="230" height="96" class="card" fill="#dcfce7"/>
-  <text x="209" y="428" text-anchor="middle" class="label">服务经理</text>
-  <text x="209" y="458" text-anchor="middle" class="small">企业微信 · 内部协作</text>
-  <rect x="94" y="516" width="230" height="96" class="card" fill="#fef3c7"/>
-  <text x="209" y="556" text-anchor="middle" class="label">外部客户</text>
-  <text x="209" y="586" text-anchor="middle" class="small">微信 · 客户触达</text>
-  <text x="80" y="655" class="tiny">业务系统不是消息入口，见右侧外部服务</text>
+  <!-- 1. Entry (matches middle column height: Control 310 + Runtime 350 = 660) -->
+  <rect x="48" y="140" width="330" height="690" class="area" fill="#ecfdf5" stroke="#16a34a"/>
+  <text x="80" y="178" class="section-title" fill="#16a34a">1. 入口角色</text>
+  <rect x="94" y="230" width="230" height="80" class="card" fill="#dbeafe"/>
+  <text x="209" y="266" text-anchor="middle" class="label">管理员</text>
+  <text x="209" y="290" text-anchor="middle" class="small">浏览器访问 Console</text>
+  <rect x="94" y="390" width="230" height="80" class="card" fill="#dcfce7"/>
+  <text x="209" y="426" text-anchor="middle" class="label">服务经理</text>
+  <text x="209" y="450" text-anchor="middle" class="small">企业微信 · 内部协作</text>
+  <rect x="94" y="550" width="230" height="80" class="card" fill="#fef3c7"/>
+  <text x="209" y="586" text-anchor="middle" class="label">外部客户</text>
+  <text x="209" y="610" text-anchor="middle" class="small">微信 · 客户触达</text>
+  <text x="80" y="720" class="tiny">业务系统通过 Runtime 调用，非直接消息入口</text>
 
   <!-- 2. Control plane -->
-  <rect x="420" y="170" width="1020" height="360" class="area" fill="#eef6ff" stroke="#2563eb"/>
-  <text x="452" y="216" class="section-title" fill="#2563eb">2. 控制平面（muad Console）</text>
-  <rect x="480" y="280" width="200" height="96" class="card" fill="#dbeafe"/>
-  <text x="580" y="320" text-anchor="middle" class="label">Console 前端</text>
-  <text x="580" y="350" text-anchor="middle" class="small">Pod / 用户 / Skill</text>
-  <rect x="740" y="280" width="230" height="96" class="card" fill="#dbeafe"/>
-  <text x="855" y="320" text-anchor="middle" class="label">Console 后端 API</text>
-  <text x="855" y="350" text-anchor="middle" class="small">鉴权 / 审计 / DTO</text>
-  <rect x="1030" y="280" width="220" height="96" class="card" fill="#e2e8f0"/>
-  <text x="1140" y="314" text-anchor="middle" class="label">SQLite</text>
-  <text x="1140" y="344" text-anchor="middle" class="small">配置 / 审计 / 执行记录</text>
-  <rect x="480" y="410" width="770" height="72" class="inner" fill="#ffffff"/>
-  <text x="865" y="454" text-anchor="middle" class="small">Runtime Config Builder · Apply Coordinator · Docker / K8S Driver · Collector</text>
+  <rect x="420" y="140" width="1020" height="310" class="area" fill="#eef6ff" stroke="#2563eb"/>
+  <text x="452" y="178" class="section-title" fill="#2563eb">2. 控制平面（muad Console）</text>
+  <rect x="480" y="230" width="200" height="80" class="card" fill="#dbeafe"/>
+  <text x="580" y="266" text-anchor="middle" class="label">Console 前端</text>
+  <text x="580" y="290" text-anchor="middle" class="small">Pod / 用户 / Skill</text>
+  <rect x="740" y="230" width="230" height="80" class="card" fill="#dbeafe"/>
+  <text x="855" y="266" text-anchor="middle" class="label">Console 后端 API</text>
+  <text x="855" y="290" text-anchor="middle" class="small">鉴权 / 审计 / DTO</text>
+  <rect x="1030" y="230" width="220" height="80" class="card" fill="#e2e8f0"/>
+  <text x="1140" y="264" text-anchor="middle" class="label">SQLite</text>
+  <text x="1140" y="288" text-anchor="middle" class="small">配置 / 审计 / 执行记录</text>
+  <rect x="480" y="355" width="770" height="56" class="inner" fill="#ffffff"/>
+  <text x="865" y="390" text-anchor="middle" class="small">Runtime Config Builder · Apply Coordinator · Docker / K8S Driver · Collector</text>
 
   <!-- 3. Runtime -->
-  <rect x="420" y="570" width="1020" height="430" class="area" fill="#ecfdf5" stroke="#16a34a"/>
-  <text x="452" y="616" class="section-title" fill="#16a34a">3. 运行时层（OpenClaw Runtime Pod）</text>
-  <rect x="500" y="680" width="280" height="90" class="card" fill="#dcfce7"/>
-  <text x="640" y="716" text-anchor="middle" class="label">Runtime Pod 01</text>
-  <text x="640" y="748" text-anchor="middle" class="small">默认约 10 用户 / Pod</text>
-  <rect x="840" y="680" width="220" height="90" class="card" fill="#dcfce7"/>
-  <text x="950" y="716" text-anchor="middle" class="label">Runtime Pod 02</text>
-  <text x="950" y="748" text-anchor="middle" class="small">默认约 10 用户</text>
-  <text x="1100" y="730" text-anchor="middle" class="label">……</text>
-  <rect x="1160" y="680" width="200" height="90" class="card" fill="#dcfce7"/>
-  <text x="1260" y="716" text-anchor="middle" class="label">Pod N</text>
-  <text x="1260" y="748" text-anchor="middle" class="small">横向扩展</text>
-  <rect x="500" y="810" width="860" height="40" class="inner" fill="#ffffff"/>
-  <text x="930" y="836" text-anchor="middle" class="small">每 Pod 共享：Gateway · main · 业务 agents · tools/ 六件套（详见 §5.4）</text>
-  <text x="500" y="880" class="tiny">隔离：独立 agent / workspace / browser profile / session-store / model / skill grant</text>
+  <rect x="420" y="480" width="1020" height="350" class="area" fill="#ecfdf5" stroke="#16a34a"/>
+  <text x="452" y="518" class="section-title" fill="#16a34a">3. 运行时层（OpenClaw Runtime Pod）</text>
+  <rect x="500" y="570" width="280" height="80" class="card" fill="#dcfce7"/>
+  <text x="640" y="604" text-anchor="middle" class="label">Runtime Pod 01</text>
+  <text x="640" y="628" text-anchor="middle" class="small">默认约 10 用户 / Pod</text>
+  <rect x="840" y="570" width="220" height="80" class="card" fill="#dcfce7"/>
+  <text x="950" y="604" text-anchor="middle" class="label">Runtime Pod 02</text>
+  <text x="950" y="628" text-anchor="middle" class="small">默认约 10 用户</text>
+  <text x="1100" y="615" text-anchor="middle" class="label">……</text>
+  <rect x="1160" y="570" width="200" height="80" class="card" fill="#dcfce7"/>
+  <text x="1260" y="604" text-anchor="middle" class="label">Pod N</text>
+  <text x="1260" y="628" text-anchor="middle" class="small">横向扩展</text>
+  <rect x="500" y="690" width="860" height="36" class="inner" fill="#ffffff"/>
+  <text x="930" y="714" text-anchor="middle" class="small">每 Pod 共享：Gateway · main · 业务 agents · tools/ 六件套（详见 §5.4）</text>
+  <text x="500" y="750" class="tiny">隔离：独立 agent / workspace / browser profile / session-store / model / skill grant</text>
 
-  <!-- 4. External -->
-  <rect x="1480" y="170" width="510" height="560" class="area" fill="#f5f3ff" stroke="#7c3aed"/>
-  <text x="1512" y="216" class="section-title" fill="#7c3aed">4. 外部服务</text>
-  <rect x="1535" y="280" width="380" height="96" class="card" fill="#ede9fe"/>
-  <text x="1725" y="320" text-anchor="middle" class="label">模型服务 / LLM</text>
-  <text x="1725" y="352" text-anchor="middle" class="small">OpenAI-compatible · per-user key</text>
-  <rect x="1535" y="420" width="380" height="130" class="card" fill="#ede9fe"/>
-  <text x="1725" y="458" text-anchor="middle" class="label">企业业务系统</text>
-  <text x="1725" y="490" text-anchor="middle" class="small">MSSW · SDSP</text>
-  <text x="1725" y="520" text-anchor="middle" class="small">Skill ↔ 平台 一对一绑定</text>
-  <rect x="1535" y="580" width="380" height="96" class="card" fill="#e2e8f0"/>
-  <text x="1725" y="620" text-anchor="middle" class="label">K8S API / Docker</text>
-  <text x="1725" y="652" text-anchor="middle" class="small">Runtime 编排基础设施</text>
+  <!-- 4. External (K8S on top → no crossing with blue control line) -->
+  <rect x="1480" y="140" width="510" height="690" class="area" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="1512" y="178" class="section-title" fill="#7c3aed">4. 外部服务</text>
+  <rect x="1535" y="240" width="380" height="80" class="card" fill="#e2e8f0"/>
+  <text x="1725" y="276" text-anchor="middle" class="label">K8S API / Docker</text>
+  <text x="1725" y="300" text-anchor="middle" class="small">Runtime 编排基础设施</text>
+  <rect x="1535" y="370" width="380" height="80" class="card" fill="#ede9fe"/>
+  <text x="1725" y="406" text-anchor="middle" class="label">模型服务 / LLM</text>
+  <text x="1725" y="430" text-anchor="middle" class="small">OpenAI-compatible · per-user key</text>
+  <rect x="1535" y="500" width="380" height="130" class="card" fill="#ede9fe"/>
+  <text x="1725" y="542" text-anchor="middle" class="label">企业业务系统</text>
+  <text x="1725" y="574" text-anchor="middle" class="small">MSSW · SDSP</text>
+  <text x="1725" y="600" text-anchor="middle" class="small">Skill ↔ 平台 一对一绑定</text>
+  <text x="1512" y="720" class="tiny">业务平台以 Skill 形式调用，非独立消息链路</text>
 
-  <!-- 5. Storage -->
-  <rect x="420" y="1040" width="1570" height="250" class="area" fill="#fff7ed" stroke="#ea580c"/>
-  <text x="452" y="1086" class="section-title" fill="#ea580c">5. 持久化存储（运行态，按 Pod / agent 隔离）</text>
-  <rect x="500" y="1135" width="420" height="90" class="inner" fill="#ffedd5"/>
-  <text x="710" y="1175" text-anchor="middle" class="label">State PVC / Docker Volume</text>
-  <text x="710" y="1208" text-anchor="middle" class="small">workspace-agent · session-store · private skills</text>
-  <rect x="980" y="1135" width="380" height="90" class="inner" fill="#ffedd5"/>
-  <text x="1170" y="1175" text-anchor="middle" class="label">Public Skills 存储</text>
-  <text x="1170" y="1208" text-anchor="middle" class="small">K8S RWX PVC 或 Console 派生目录</text>
-  <rect x="1410" y="1135" width="480" height="90" class="inner" fill="#e2e8f0"/>
-  <text x="1650" y="1175" text-anchor="middle" class="label">控制面审计不在此层</text>
-  <text x="1650" y="1208" text-anchor="middle" class="small">audit / skill_execution_records → SQLite</text>
+  <!-- 5. Storage (stretch left to fill bottom-left) -->
+  <rect x="48" y="860" width="1942" height="175" class="area" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="80" y="898" class="section-title" fill="#ea580c">5. 持久化存储（按 Pod / agent 隔离）</text>
+  <rect x="80" y="930" width="560" height="80" class="inner" fill="#ffedd5"/>
+  <text x="360" y="967" text-anchor="middle" class="label">State PVC / Docker Volume</text>
+  <text x="360" y="991" text-anchor="middle" class="small">workspace-agent · session-store · private skills</text>
+  <rect x="680" y="930" width="500" height="80" class="inner" fill="#ffedd5"/>
+  <text x="930" y="967" text-anchor="middle" class="label">Public Skills 存储</text>
+  <text x="930" y="991" text-anchor="middle" class="small">K8S RWX PVC 或 Console 派生目录</text>
+  <rect x="1220" y="930" width="670" height="80" class="inner" fill="#e2e8f0"/>
+  <text x="1555" y="967" text-anchor="middle" class="label">控制面审计不在此层</text>
+  <text x="1555" y="991" text-anchor="middle" class="small">audit / skill_execution_records → SQLite</text>
 
-  <!-- arrows: keep curve style; snap start/end to card edges only -->
-  <path d="M324 308 C380 308, 430 308, 480 308" class="control"/>
-  <path d="M680 308 L740 308" class="control"/>
-  <path d="M970 308 L1030 308" class="control"/>
-  <path d="M865 482 C865 540, 640 600, 640 680" class="control"/>
-  <path d="M324 436 C400 436, 430 725, 500 725" class="message"/>
-  <!-- Runtime 右缘中 → LLM / 业务 左缘中（避免穿过 Pod 文字） -->
-  <path d="M1360 725 C1450 650, 1500 400, 1535 328" class="data"/>
-  <path d="M1360 750 C1450 700, 1500 520, 1535 485" class="data"/>
-  <!-- SQLite 右缘 → K8S 左缘 -->
-  <path d="M1250 328 C1400 328, 1480 500, 1535 628" class="control"/>
-  <path d="M640 770 C640 950, 680 1080, 710 1135" class="session"/>
-  <path d="M1260 770 C1260 1000, 1200 1080, 1170 1135" class="session"/>
+  <!-- arrows -->
+  <path d="M324 270 C380 270, 430 270, 480 270" class="control"/>
+  <path d="M680 270 L740 270" class="control"/>
+  <path d="M970 270 L1030 270" class="control"/>
+  <path d="M865 411 C865 470, 640 530, 640 570" class="control"/>
+  <path d="M324 430 C400 430, 430 610, 500 610" class="message"/>
+  <!-- Runtime → LLM / Biz (data arrows, K8S is now top so no crossing) -->
+  <path d="M1360 610 C1450 530, 1500 410, 1535 410" class="data"/>
+  <path d="M1360 630 C1450 580, 1500 565, 1535 565" class="data"/>
+  <!-- SQLite → K8S (top of external, straight across) -->
+  <path d="M1250 270 C1400 270, 1480 280, 1535 280" class="control"/>
+  <!-- Pod → Storage (stretched left) -->
+  <path d="M640 650 C640 850, 400 890, 360 930" class="session"/>
+  <path d="M1260 650 C1260 870, 960 890, 930 930" class="session"/>
 </svg>
