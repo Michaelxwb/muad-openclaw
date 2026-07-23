@@ -51,7 +51,7 @@ func (s *Server) handleCreateBindingCode(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	bindingRequest.HumanUserID, bindingRequest.PodID = user.HumanUserID, user.PodID
-	bindingRequest.Purpose = repo.BindingPurposeAddIdentity
+	bindingRequest.Purpose = bindingCodePurposeForUser(user)
 	record, plain, err := s.store.CreateBindingCode(s.bindingCodec, bindingRequest)
 	if err != nil {
 		writeRepoError(w, err)
@@ -61,6 +61,13 @@ func (s *Server) handleCreateBindingCode(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"bindingCode": bindingCodeToView(record), "code": plain,
 	})
+}
+
+func bindingCodePurposeForUser(user repo.HumanUser) string {
+	if user.Status == repo.HumanUserStatusPending {
+		return repo.BindingPurposeFirstIdentity
+	}
+	return repo.BindingPurposeAddIdentity
 }
 
 func (s *Server) handleListBindingCodes(w http.ResponseWriter, r *http.Request) {

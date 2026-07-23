@@ -22,20 +22,22 @@ import (
 // yamlFile mirrors the shape of config.yaml.  All fields are optional so a
 // minimal file (just listenAddr / dbPath) is valid.
 type yamlFile struct {
-	RuntimeDriver      *string              `yaml:"runtimeDriver"`
-	DefaultImage       *string              `yaml:"defaultImage"`
-	MuadNet            *string              `yaml:"muadNet"`
-	SkillsDir          *string              `yaml:"skillsDir"`
-	ListenAddr         *string              `yaml:"listenAddr"`
-	LogDir             *string              `yaml:"logDir"`
-	DBPath             *string              `yaml:"dbPath"`
-	JWTSecret          *string              `yaml:"jwtSecret"`
-	AdminUser          *string              `yaml:"adminUser"`
-	AdminPassword      *string              `yaml:"adminPassword"`
-	MasterKey          *string              `yaml:"masterKey"`
-	CollectIntervalSec *int                 `yaml:"collectIntervalSec"`
-	ConsoleInternalURL *string              `yaml:"consoleInternalURL"`
-	RuntimeDefaults    *runtimeDefaultsYAML `yaml:"runtimeDefaults"`
+	RuntimeDriver           *string              `yaml:"runtimeDriver"`
+	DefaultImage            *string              `yaml:"defaultImage"`
+	MuadNet                 *string              `yaml:"muadNet"`
+	SkillsDir               *string              `yaml:"skillsDir"`
+	ListenAddr              *string              `yaml:"listenAddr"`
+	LogDir                  *string              `yaml:"logDir"`
+	DBPath                  *string              `yaml:"dbPath"`
+	JWTSecret               *string              `yaml:"jwtSecret"`
+	AdminUser               *string              `yaml:"adminUser"`
+	AdminPassword           *string              `yaml:"adminPassword"`
+	MasterKey               *string              `yaml:"masterKey"`
+	CollectIntervalSec      *int                 `yaml:"collectIntervalSec"`
+	ConsoleInternalURL      *string              `yaml:"consoleInternalURL"`
+	AutomationPlatformURL   *string              `yaml:"automationPlatformURL"`
+	AutomationPlatformToken *string              `yaml:"automationPlatformToken"`
+	RuntimeDefaults         *runtimeDefaultsYAML `yaml:"runtimeDefaults"`
 	// k8s driver (used when runtimeDriver=k8s)
 	K8sNamespace          *string               `yaml:"k8sNamespace"`
 	K8sSkillsPVC          *string               `yaml:"k8sSkillsPVC"`
@@ -74,11 +76,13 @@ type adminYAML struct {
 }
 
 type serverYAML struct {
-	ListenAddr         *string `yaml:"listenAddr"`
-	LogDir             *string `yaml:"logDir"`
-	DBPath             *string `yaml:"dbPath"`
-	CollectIntervalSec *int    `yaml:"collectIntervalSec"`
-	ConsoleInternalURL *string `yaml:"consoleInternalURL"`
+	ListenAddr              *string `yaml:"listenAddr"`
+	LogDir                  *string `yaml:"logDir"`
+	DBPath                  *string `yaml:"dbPath"`
+	CollectIntervalSec      *int    `yaml:"collectIntervalSec"`
+	ConsoleInternalURL      *string `yaml:"consoleInternalURL"`
+	AutomationPlatformURL   *string `yaml:"automationPlatformURL"`
+	AutomationPlatformToken *string `yaml:"automationPlatformToken"`
 }
 
 type runtimeYAML struct {
@@ -130,29 +134,31 @@ type RuntimeDefaults struct {
 
 // Config holds the validated console configuration.
 type Config struct {
-	MasterKey              string
-	RuntimeDriver          string
-	DefaultImage           string
-	MuadNet                string
-	SkillsDir              string
-	ListenAddr             string
-	LogDir                 string
-	DBPath                 string
-	JWTSecret              string
-	AdminUser              string
-	AdminPassword          string
-	CollectIntervalSec     int
-	ConsoleInternalURL     string
-	RuntimeDefaults        RuntimeDefaults
-	RuntimeTimezone        string
-	RuntimeStateDir        string
-	RuntimePublicSkillsDir string
-	K8sNamespace           string
-	K8sSkillsPVC           string
-	K8sSkillsStorageClass  string
-	K8sSkillsSize          string
-	K8sStorageClass        string
-	K8sStateSize           string
+	MasterKey               string
+	RuntimeDriver           string
+	DefaultImage            string
+	MuadNet                 string
+	SkillsDir               string
+	ListenAddr              string
+	LogDir                  string
+	DBPath                  string
+	JWTSecret               string
+	AdminUser               string
+	AdminPassword           string
+	CollectIntervalSec      int
+	ConsoleInternalURL      string
+	AutomationPlatformURL   string
+	AutomationPlatformToken string
+	RuntimeDefaults         RuntimeDefaults
+	RuntimeTimezone         string
+	RuntimeStateDir         string
+	RuntimePublicSkillsDir  string
+	K8sNamespace            string
+	K8sSkillsPVC            string
+	K8sSkillsStorageClass   string
+	K8sSkillsSize           string
+	K8sStorageClass         string
+	K8sStateSize            string
 }
 
 var validDrivers = map[string]bool{"docker": true, "k8s": true}
@@ -168,13 +174,15 @@ var (
 
 func defaults() *Config {
 	return &Config{
-		RuntimeDriver:      "docker",
-		DefaultImage:       "ghcr.io/michaelxwb/muad-openclaw:latest",
-		MuadNet:            "muad-net",
-		SkillsDir:          "/var/lib/muad-console/skills",
-		ListenAddr:         ":8080",
-		DBPath:             "/var/lib/muad-console/console.db",
-		ConsoleInternalURL: "http://muad-console:8080",
+		RuntimeDriver:           "docker",
+		DefaultImage:            "ghcr.io/michaelxwb/muad-openclaw:latest",
+		MuadNet:                 "muad-net",
+		SkillsDir:               "/var/lib/muad-console/skills",
+		ListenAddr:              ":8080",
+		DBPath:                  "/var/lib/muad-console/console.db",
+		ConsoleInternalURL:      "http://muad-console:8080",
+		AutomationPlatformURL:   "",
+		AutomationPlatformToken: "",
 		// 默认管理员名；只需在 config.yaml 配 adminPassword 即可引导管理员
 		// （或 env CONSOLE_ADMIN_PASSWORD）。BootstrapAdmin 要求 user+password 均非空。
 		AdminUser:          "admin",
@@ -254,6 +262,8 @@ func applyLegacyYAML(c *Config, f *yamlFile) {
 	applyString(&c.AdminUser, f.AdminUser)
 	applyString(&c.AdminPassword, f.AdminPassword)
 	applyString(&c.ConsoleInternalURL, f.ConsoleInternalURL)
+	applyString(&c.AutomationPlatformURL, f.AutomationPlatformURL)
+	applyString(&c.AutomationPlatformToken, f.AutomationPlatformToken)
 	applyString(&c.K8sNamespace, f.K8sNamespace)
 	applyString(&c.K8sSkillsPVC, f.K8sSkillsPVC)
 	applyString(&c.K8sSkillsStorageClass, f.K8sSkillsStorageClass)
@@ -296,6 +306,8 @@ func applyServerYAML(c *Config, src *serverYAML) {
 	applyString(&c.LogDir, src.LogDir)
 	applyString(&c.DBPath, src.DBPath)
 	applyString(&c.ConsoleInternalURL, src.ConsoleInternalURL)
+	applyString(&c.AutomationPlatformURL, src.AutomationPlatformURL)
+	applyString(&c.AutomationPlatformToken, src.AutomationPlatformToken)
 	if src.CollectIntervalSec != nil && *src.CollectIntervalSec > 0 {
 		c.CollectIntervalSec = *src.CollectIntervalSec
 	}
@@ -382,6 +394,8 @@ func (c *Config) overrideFromEnv() error {
 	envOverride(&c.RuntimeTimezone, "CONSOLE_RUNTIME_TIMEZONE")
 	envOverride(&c.RuntimeStateDir, "CONSOLE_RUNTIME_STATE_DIR")
 	envOverride(&c.RuntimePublicSkillsDir, "CONSOLE_RUNTIME_PUBLIC_SKILLS_DIR")
+	envOverride(&c.AutomationPlatformURL, "CONSOLE_AUTOMATION_PLATFORM_URL")
+	envOverride(&c.AutomationPlatformToken, "CONSOLE_AUTOMATION_PLATFORM_TOKEN")
 	if v := os.Getenv("CONSOLE_ADMIN_PASSWORD"); v != "" {
 		c.AdminPassword = v
 	}

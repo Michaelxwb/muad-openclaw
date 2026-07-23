@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { Modal } from "@douyinfe/semi-ui";
+import { Children, isValidElement, type ReactNode } from "react";
 import { BatchToolbar } from "../src/components/BatchToolbar";
 
 describe("BatchToolbar", () => {
@@ -41,9 +42,10 @@ describe("BatchToolbar", () => {
 
   it("confirms batch delete with count only", () => {
     const warning = vi.spyOn(Modal, "warning").mockImplementation((config) => {
-      expect(config.content).toBe("确定删除 2 个已勾选 Pod？此操作不可撤销。");
-      expect(config.content).not.toContain("alice");
-      expect(config.content).not.toContain("bob");
+      const text = reactText(config.content);
+      expect(text).toContain("确定删除 2 个已勾选 Pod？");
+      expect(text).not.toContain("alice");
+      expect(text).not.toContain("bob");
       return {} as ReturnType<typeof Modal.warning>;
     });
     render(
@@ -59,3 +61,9 @@ describe("BatchToolbar", () => {
     warning.mockRestore();
   });
 });
+
+function reactText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (!isValidElement(node)) return "";
+  return Children.toArray(node.props.children).map(reactText).join("");
+}

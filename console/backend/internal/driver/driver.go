@@ -142,6 +142,8 @@ func BuildEnv(spec PodSpec) map[string]string {
 		putIf(env, "MUAD_CONSOLE_INTERNAL_URL", spec.MultiUser.ConsoleInternalURL)
 	}
 	putIf(env, "OPENCLAW_GATEWAY_TOKEN", spec.GatewayToken)
+	putIf(env, "MUAD_AUTOMATION_URL", spec.AutomationPlatformURL)
+	putIf(env, "MUAD_AUTH_TOKEN", spec.AutomationPlatformToken)
 	return env
 }
 

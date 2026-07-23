@@ -1,0 +1,544 @@
+version: 1
+task: muad-automation-platform-demo
+enforcement: required
+updated_at: '2026-07-21T19:16:16.809875+00:00'
+sources:
+- type: prd
+  ref: muad-automation-platform-demo.prd.md
+bindings:
+- spec_id: backend-code-quality-performance
+  path: backend/code-quality-performance.md
+  status: active
+  hashes:
+    file_sha256: 713788e046ebe630397299a31e949783663a8a89658b1c7ea563624e18cf82a6
+    metadata_sha256: d89d124e30b5da80b97c71b08bcbd0afdb804a9728f305df39d489c1441b70ea
+    rules_sha256: 3b14b1bd594738f46dd9264d7b878098f5b81341991aa30cc16dc7687b8dea49
+  selected_by: muad
+  reason: Go universal practices for new microservice
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-quality-001
+    summary: Backend changes must handle errors explicitly, bound remote/runtime calls
+      with context deadlines, and keep `go vet` / `go test` green for touched packages
+      when run in the project validators.
+    text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
+    enforcement: required
+    verifier_ref: backend-code-quality-performance#RULE-backend-quality-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.design.md
+          section_id: '3.4'
+          item_id: error-handling-grpc-context
+          artifact_sha256: f903a59929cd5544635f3be459618bb8bdf0bc938f6008b07c846eed8d676437
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence: []
+      code:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence:
+        - verifier_ref: backend-code-quality-performance#RULE-backend-quality-001
+          executed_at: '2026-07-21T19:06:57.918067+00:00'
+          status: unverified
+          rule_text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
+          artifact_sha256: null
+          diff_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          result_sha256: a30331fb18ffd5503a315f35fe85bc8f1017058858e57d19f116439fbd0a9a73
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm explicit errors, context timeouts, and go test/vet
+              expectations.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: table-driven tests
+    text_sha256: 63b77ecd86e891c95de079549157211b9c484265eab0b634a703d5fc136aa8b3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: fake Driver 注入 apply/coordinator 测试
+    text_sha256: 6165390b3a5d64582d231a8df8f34eae4b5ffd41d383ee7e50b7f1a0ea4347cb
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 关键路径先写失败用例再实现
+    text_sha256: 823088b0379f5d42abcb9e6c9951c5978d783ef585a79ea29e9dee3bbfe0872a
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-database
+  path: backend/database.md
+  status: active
+  hashes:
+    file_sha256: d609ca20df425bd1f0ea419688b8d512afbf0d51bbd702459f5c6161fa9f20b2
+    metadata_sha256: d698e736dc0be502a2b989ec2533962f684e6da06112f836814670864beced2a
+    rules_sha256: a8b78dc27f0a85f8e4a5c00474f9566573663d30cadc120bdeced83fd87b8504
+  selected_by: muad
+  reason: PostgreSQL parameterized queries and repo isolation for Execution Store
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-database-001
+    summary: All SQL must be parameterized and confined to `internal/repo` (or explicit
+      migration helpers); schema changes must be idempotent or versioned and must
+      not destroy user data silently.
+    text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
+    enforcement: required
+    verifier_ref: backend-database#RULE-backend-database-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.design.md
+          section_id: '3.3'
+          item_id: store-repo-parameterized
+          artifact_sha256: f903a59929cd5544635f3be459618bb8bdf0bc938f6008b07c846eed8d676437
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence: []
+      code:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence:
+        - verifier_ref: backend-database#RULE-backend-database-001
+          executed_at: '2026-07-21T19:06:57.919273+00:00'
+          status: unverified
+          rule_text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
+          artifact_sha256: null
+          diff_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          result_sha256: aa2fb07979d15d0eb644d9391cccd41a6c4c1848c7bef732e37d039be24ed509
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm parameterized queries, explicit columns, repo-only
+              access, and reversible/idempotent schema changes.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-backend-no-select-star-001
+    summary: Queries must list explicit columns; do not use `SELECT *` in production
+      SQL.
+    text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+    enforcement: required
+    verifier_ref: backend-database#RULE-backend-no-select-star-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.design.md
+          section_id: '3.3'
+          item_id: explicit-column-list
+          artifact_sha256: f903a59929cd5544635f3be459618bb8bdf0bc938f6008b07c846eed8d676437
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence: []
+      code:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence:
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-07-21T19:06:57.919347+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: 模型字段与 API DTO 分离，避免把存储列直接当外部契约
+    text_sha256: 11956eb8e8695d58bf30caa6cf963841f9dd70f8ff267fcb4ed07838e3106777
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: 迁移可重复执行（IF NOT EXISTS / 版本号）
+    text_sha256: 4ca263814b857306a2ac69b7b43cb5cd99d19a01ee2b6916b5af720cefdf7be9
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 共享列清单用 const SQL 片段（如 `humanUserColumns`）避免漂移
+    text_sha256: d206311bb31eb81c54796d71d1336bfa330a978087f9108493a46886f3f239e2
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-logging
+  path: backend/logging.md
+  status: active
+  hashes:
+    file_sha256: 105919bf1d68686f6174e1585cc3afa752aa7a412137f17de813d57ec2ae6eda
+    metadata_sha256: 3e2ec4d613ee9f44017234b56b595590d8d8d2ba2beda5e6d1c9e9cf06104ffc
+    rules_sha256: 12f3905dd505354f0f7c4bac6254d8578ab19fd10025d4ab25451e9d2a3c8339
+  selected_by: muad
+  reason: Structured logging and secret redaction for all service logs
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-logging-001
+    summary: Logs and audit records must be structured enough to debug, must never
+      include secrets/credentials, and must keep operation audit separate from skill-execution
+      telemetry.
+    text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+    enforcement: required
+    verifier_ref: backend-logging#RULE-backend-logging-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.design.md
+          section_id: '3.5'
+          item_id: structured-logging-slog
+          artifact_sha256: f903a59929cd5544635f3be459618bb8bdf0bc938f6008b07c846eed8d676437
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence: []
+      code:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence:
+        - verifier_ref: backend-logging#RULE-backend-logging-001
+          executed_at: '2026-07-21T19:06:57.920249+00:00'
+          status: unverified
+          rule_text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+          artifact_sha256: null
+          diff_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          result_sha256: f03c4d628416dc3c8fbf24c20f127cb8e28e09299ffeb17e8741301490bc83b6
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm structured logs, RedactDiagnostic on stored/logged
+              errors, no secrets, audit vs skill-execution separation.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-backend-redact-001
+    summary: Error strings written to logs, audit details, apply-failure fields, or
+      user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic`
+      (or equivalent redaction) before persistence or emission.
+    text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+    enforcement: required
+    verifier_ref: backend-logging#RULE-backend-redact-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.design.md
+          section_id: '3.5'
+          item_id: activity-redact-before-store
+          artifact_sha256: f903a59929cd5544635f3be459618bb8bdf0bc938f6008b07c846eed8d676437
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-003
+          item_id: TASK-003
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence: []
+      code:
+        status: applied
+        refs:
+        - artifact: muad-automation-platform-demo.md
+          section_id: TASK-003
+          item_id: TASK-003
+          artifact_sha256: 9844432a10fbaa6f0131b79c354d410f2a535942ec22fd6548b78d0cb3b8aa51
+        decision: null
+        evidence:
+        - verifier_ref: backend-logging#RULE-backend-redact-001
+          executed_at: '2026-07-21T19:06:57.920258+00:00'
+          status: unverified
+          rule_text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+          artifact_sha256: null
+          diff_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          result_sha256: 6552434b4ff5c1b7578d87f32adccf218d4f7c142dd6e6b18c73068ea40c62dc
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm error strings persisted to logs/audit/apply failures
+              use auditlog.RedactDiagnostic first.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: handler 入口记录关键 id，apply 流水按 stage 打点
+    text_sha256: c79a6ef9bcaea5daf6590e157b5cb1232553e19bdd981d6749814bf96288f919
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: 用户可见错误 message 与内部 err 分离；内部 err 落库前 Redact
+    text_sha256: c476041772c4562e1de03bcf26b1cec4bcb3da99a9366ace6b21e2a50bdb869e
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: repo 模型注释明确 “already-redacted payload”
+    text_sha256: 2f386a93596aa4a0647173999a82ebceca9f90155d94cc7fa8eb5fcad6276a83
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []

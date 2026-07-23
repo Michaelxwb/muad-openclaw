@@ -102,6 +102,15 @@ func (s *Server) handleApplyPodConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.enqueueReconcile(pod.PodID)
+
+	// Refresh the runtime env Secret so BuildEnv changes (e.g. MUAD_AUTOMATION_URL)
+	// take effect on the next Pod restart.
+	if spec, specErr := s.buildDesiredPodSpec(pod); specErr == nil {
+		if updateErr := s.drv.UpdateSpec(r.Context(), pod.PodID, spec); updateErr != nil {
+			log.Printf("pod_config_update_spec_failed pod=%s error=%v", pod.PodID, updateErr)
+		}
+	}
+
 	s.auditPodConfigQueued(r, pod)
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"podId": pod.PodID, "status": "queued", "configGeneration": pod.ConfigGeneration,

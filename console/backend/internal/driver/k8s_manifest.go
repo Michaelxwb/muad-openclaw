@@ -1,7 +1,6 @@
 package driver
 
 import (
-	"fmt"
 	"strings"
 	"unicode"
 
@@ -10,46 +9,16 @@ import (
 )
 
 func serviceTokenVolumes(name string) []corev1.Volume {
-	mode := int32(0o400)
+	mode := int32(0o440)
 	return []corev1.Volume{
 		{
-			Name: "service-token-source",
+			Name: "service-token-runtime",
 			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{
 				SecretName: name + "-service-token", DefaultMode: &mode,
 				Items: []corev1.KeyToPath{{Key: "pod-service-token", Path: "pod-service-token", Mode: &mode}},
 			}},
 		},
-		{Name: "service-token-runtime", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
 	}
-}
-
-func serviceTokenInitContainer(spec PodSpec) corev1.Container {
-	uid, gid := runtimeIdentity(spec.ServiceToken)
-	command := fmt.Sprintf(
-		"cp /run/secrets-source/pod-service-token %s && chown %d:%d %s && chmod 0400 %s",
-		PodServiceTokenPath, uid, gid, PodServiceTokenPath, PodServiceTokenPath,
-	)
-	zero := int64(0)
-	return corev1.Container{
-		Name: "prepare-service-token", Image: spec.ImageTag,
-		Command:         []string{"/bin/sh", "-ec", command},
-		SecurityContext: &corev1.SecurityContext{RunAsUser: &zero, RunAsGroup: &zero},
-		VolumeMounts: []corev1.VolumeMount{
-			{Name: "service-token-source", MountPath: "/run/secrets-source", ReadOnly: true},
-			{Name: "service-token-runtime", MountPath: "/run/secrets/muad"},
-		},
-	}
-}
-
-func runtimeIdentity(secret SecretFileSpec) (int64, int64) {
-	uid, gid := secret.UID, secret.GID
-	if uid <= 0 {
-		uid = DefaultRuntimeUID
-	}
-	if gid <= 0 {
-		gid = DefaultRuntimeGID
-	}
-	return uid, gid
 }
 
 // resourceReqs maps the Pod limits to conservative requests and hard limits.

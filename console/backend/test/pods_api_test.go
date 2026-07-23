@@ -125,6 +125,18 @@ func TestPodAPI_DeleteRequiresStatePolicyAndReportsRetainedConflict(t *testing.T
 	}
 }
 
+func TestPodAPI_CreateCanAdoptRetainedState(t *testing.T) {
+	e := newTestEnv(t)
+	body := strings.Replace(testPodBody, `"maxUsers":2`, `"maxUsers":2,"adoptState":true`, 1)
+	rr := e.do(http.MethodPost, "/api/v1/containers", body)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("create with adopt state status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !e.drv.created["pod-a"].AdoptState {
+		t.Fatal("driver Create did not receive AdoptState=true")
+	}
+}
+
 func TestPodAPI_RejectsUnsupportedChannel(t *testing.T) {
 	e := newTestEnv(t)
 	body := `{"podId":"pod-a","channels":["feishu"],"channelConfigs":{}}`

@@ -111,6 +111,7 @@ export interface CreatePodInput {
   restartPolicy?: string;
   maxSkillConcurrency?: number;
   maxBrowserConcurrency?: number;
+  adoptState?: boolean;
 }
 
 export interface PatchPodInput {

@@ -172,16 +172,17 @@
 
 在「**服务经理企微私聊交付**、标准 **SOP Skill 化**、约 **100 用户** 并行、**密钥与租户隔离**、**不 fork 上游**」约束下，稳态架构定为：
 
-| 决策点 | 选择 | 不选 |
-| ------ | ---- | ---- |
-| Agent 内核 | **OpenClaw** | 不以 Hermes 等为默认 Gateway |
-| 部署单元 | **单 Pod 多用户**（默认约 10 用户/Pod） | 不以「每用户一 Pod」为稳态 |
-| 控制面 | **muad Console**（Go/React + SQLite） | 不依赖运行时自带管理台 |
-| 运行时扩展 | **tools/ 外置插件与 CLI**（§5.4） | 不 fork OpenClaw |
-| 消息路由 | 管理员分配 Pod + OpenClaw bindings | 不做全局 Message Router |
-| 业务增长 | **Skill 内容扩展**（预防流/报告等） | 不另起业务运行时 |
+| 决策点 | 选择 | 不选 | 依据 |
+| ------ | ---- | ---- | ---- |
+| Agent 内核 | **OpenClaw** | Hermes 等 | 企微私聊体验 + Skill 分层治理 + 跨 IM 身份关联更匹配 |
+| 部署单元 | **单 Pod 多用户**（约 10 用户/Pod） | 每用户一 Pod | 100 用户下成本可控，故障半径可配 |
+| 运行时扩展 | **tools/ 外置插件与 CLI**（§5.4） | fork OpenClaw | CONST-NOFORK-01：能力经配置 + 外置插件扩展 |
+| 消息路由 | 管理员分配 Pod + bindings | 全局 Message Router | 当前规模无需额外路由层，管理员分配即可 |
+| 业务增长 | **Skill 内容扩展**（预防流/报告等） | 另起业务运行时 | 同一 Agent/Skill 链纵向加深，架构无变更 |
 
-**演进一句话：** 早期 **单 Pod 单用户** 用于验证 → 因规模成本重构为 **单 Pod 多用户**；曾对照 **Hermes**（群聊 per-user、会话模型更「天生多人」），因主路径是企微私聊、企业 Skill 分层与已投工具链，**主运行时仍选 OpenClaw**；Hermes 仅作对照，进度层保留 `progress-adapters/hermes`。
+**关于 Hermes：** 曾深度对照 Hermes（源码级），其在多用户会话模型、持久化、群聊 per-user 隔离方面不弱于甚至优于 OpenClaw。未选其作主运行时的原因是场景匹配度：muad 的高权重场景——企微私聊交付体验、企业 Skill 分层治理、跨 IM 身份关联（identityLinks）——更匹配 OpenClaw 模型。这是场景选择，非能力高下。进度层保留 `progress-adapters/hermes` 作为备选适配。
+
+**演进路径：** 单 Pod 单用户（验证）→ 单 Pod 多用户（当前稳态）→ Skill 内容纵向扩展 + 专家平权（P2，无架构变更）。
 
 调研过程、对照表与源码依据见独立文档：  
 **[`docs/agent-runtime-selection.md`](./agent-runtime-selection.md)**（含对本地 `hermes-agent` 源码的核对）。

@@ -109,6 +109,8 @@ func (s *Server) writeBindingActivationError(w http.ResponseWriter, err error) {
 		writeErr(w, http.StatusConflict, codeInvalidBinding, "binding code is not usable")
 	case errors.Is(err, repo.ErrIdentityExists):
 		writeErr(w, http.StatusConflict, codeIdentityConflict, "sender is already bound")
+	case errors.Is(err, repo.ErrInvalidStateTransition):
+		writeErr(w, http.StatusConflict, codeInvalidBinding, "binding code is not usable")
 	default:
 		writeErr(w, http.StatusInternalServerError, codeInternal, "activate binding code")
 	}

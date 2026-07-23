@@ -73,12 +73,13 @@ func TestK8s_CreateProvisionsAll(t *testing.T) {
 		c.LivenessProbe.TCPSocket.Port.IntVal != GatewayPort {
 		t.Fatalf("liveness probe = %+v, want TCP %d", c.LivenessProbe, GatewayPort)
 	}
-	if len(dep.Spec.Template.Spec.InitContainers) != 1 {
-		t.Fatalf("init containers = %d, want 1", len(dep.Spec.Template.Spec.InitContainers))
+	if len(dep.Spec.Template.Spec.InitContainers) != 0 {
+		t.Fatalf("init containers = %d, want 0", len(dep.Spec.Template.Spec.InitContainers))
 	}
 	if !hasVolumeMount(c.VolumeMounts, "service-token-runtime", "/run/secrets/muad") {
 		t.Fatal("main container is missing read-only service-token runtime mount")
 	}
+	assertServiceTokenVolume(t, dep.Spec.Template.Spec.Volumes, "muad-oc-alice")
 }
 
 func assertWorkerPodSecurity(t *testing.T, security *corev1.PodSecurityContext) {
@@ -106,6 +107,32 @@ func assertWorkerContainerSecurity(t *testing.T, security *corev1.SecurityContex
 		security.Capabilities.Drop[0] != "ALL" {
 		t.Fatalf("container capabilities = %+v, want drop ALL", security.Capabilities)
 	}
+}
+
+func assertServiceTokenVolume(t *testing.T, volumes []corev1.Volume, name string) {
+	t.Helper()
+	for _, volume := range volumes {
+		if volume.Name != "service-token-runtime" {
+			continue
+		}
+		if volume.Secret == nil {
+			t.Fatalf("service-token-runtime volume = %+v, want Secret", volume.VolumeSource)
+		}
+		secret := volume.Secret
+		if secret.SecretName != name+"-service-token" {
+			t.Fatalf("service-token secret name = %q", secret.SecretName)
+		}
+		if secret.DefaultMode == nil || *secret.DefaultMode != 0o440 {
+			t.Fatalf("service-token default mode = %v, want 0440", secret.DefaultMode)
+		}
+		if len(secret.Items) != 1 || secret.Items[0].Key != "pod-service-token" ||
+			secret.Items[0].Path != "pod-service-token" ||
+			secret.Items[0].Mode == nil || *secret.Items[0].Mode != 0o440 {
+			t.Fatalf("service-token items = %+v, want pod-service-token mode 0440", secret.Items)
+		}
+		return
+	}
+	t.Fatal("missing service-token-runtime Secret volume")
 }
 
 func TestK8s_EnsurePublicSkillsStorageCreatesRWXPVC(t *testing.T) {
