@@ -28,15 +28,17 @@ var (
 
 // PodSpec is the runtime-agnostic desired state for one multi-user workload.
 type PodSpec struct {
-	PodID          string
-	Channels       []string
-	ChannelConfigs map[string]json.RawMessage
-	ImageTag       string
-	GatewayToken   string
-	MultiUser      RuntimeConfigV1
-	Resource       ResourceSpec
-	ServiceToken   SecretFileSpec
-	AdoptState     bool
+	PodID                   string
+	Channels                []string
+	ChannelConfigs          map[string]json.RawMessage
+	ImageTag                string
+	GatewayToken            string
+	AutomationPlatformURL   string
+	AutomationPlatformToken string
+	MultiUser               RuntimeConfigV1
+	Resource                ResourceSpec
+	ServiceToken            SecretFileSpec
+	AdoptState              bool
 }
 
 // ResourceSpec contains already-resolved Pod resource and concurrency limits.

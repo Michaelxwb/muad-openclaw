@@ -26,6 +26,10 @@ server:
   collectIntervalSec: 30
   # Worker 通过内部网络访问 Console internal API 的地址
   consoleInternalURL: http://muad-console:8080
+  # muad-automation-platform 地址（所有 Pod 统一注入 MUAD_AUTOMATION_URL）
+  # automationPlatformURL: http://muad-automation-platform:9000
+  # automation-platform 鉴权 token（所有 Pod 统一注入 MUAD_AUTH_TOKEN）
+  # automationPlatformToken: demo-token
 
 # Worker 运行时
 runtime:

@@ -40,6 +40,7 @@ type createPodRequest struct {
 	RestartPolicy         string                        `json:"restartPolicy"`
 	MaxSkillConcurrency   int                           `json:"maxSkillConcurrency"`
 	MaxBrowserConcurrency int                           `json:"maxBrowserConcurrency"`
+	AdoptState            bool                          `json:"adoptState"`
 }
 
 type patchPodRequest struct {
@@ -67,7 +68,7 @@ func (s *Server) handleCreatePod(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, err)
 		return
 	}
-	if err := s.provisionPod(r, pod, token); err != nil {
+	if err := s.provisionPod(r, pod, token, request.AdoptState); err != nil {
 		s.writeProvisionError(w, err)
 		return
 	}
@@ -134,13 +135,16 @@ func validPodRequest(request createPodRequest) bool {
 	return validateResourceRequest(resources) == nil && validateConcurrency(concurrency) == nil
 }
 
-func (s *Server) provisionPod(r *http.Request, pod repo.Pod, token serviceTokenMaterial) error {
+func (s *Server) provisionPod(
+	r *http.Request, pod repo.Pod, token serviceTokenMaterial, adoptState bool,
+) error {
 	spec, err := s.buildDesiredPodSpec(pod)
 	if err != nil {
 		_ = s.store.UpdatePodState(pod.PodID, repo.PodStateError)
 		return err
 	}
 	spec.ServiceToken = tokenSecret(token.plain)
+	spec.AdoptState = adoptState
 	if err := s.drv.Create(r.Context(), spec); err != nil {
 		if errors.Is(err, driver.ErrRetainedState) {
 			_ = s.store.DeletePod(pod.PodID)

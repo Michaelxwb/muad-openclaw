@@ -260,13 +260,11 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: name + "-state"}},
 	}}
 	mounts := []corev1.VolumeMount{{Name: "state", MountPath: runtime.StateDir}}
-	initContainers := []corev1.Container{}
 	if spec.ServiceToken.Value != "" {
 		vols = append(vols, serviceTokenVolumes(name)...)
 		mounts = append(mounts, corev1.VolumeMount{
 			Name: "service-token-runtime", MountPath: "/run/secrets/muad", ReadOnly: true,
 		})
-		initContainers = append(initContainers, serviceTokenInitContainer(spec))
 	}
 	if d.skillsPVC != "" {
 		vols = append(vols, publicSkillsVolume(d.skillsPVC))
@@ -293,8 +291,7 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
 					},
-					Volumes:        vols,
-					InitContainers: initContainers,
+					Volumes: vols,
 					Containers: []corev1.Container{{
 						Name:            "openclaw",
 						Image:           spec.ImageTag,

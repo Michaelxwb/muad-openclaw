@@ -46,6 +46,8 @@ type skillBundleManifest struct {
 	Progress        any      `json:"progress"`
 	BrowserRequired bool     `json:"browserRequired"`
 	Capabilities    []string `json:"capabilities"`
+	Entrypoint      string   `json:"entrypoint"`
+	Scripts         []string `json:"scripts"`
 }
 
 func installPublicSkillBundle(
@@ -332,7 +334,22 @@ func readSkillBundleMetadata(skillDir string) (privateSkillInstallResult, error)
 		"platforms":  platforms, "progressSupported": progressSupported,
 		"browserRequired": browserRequired, "entryType": entryType,
 	}
-	if !managed {
+	if managed {
+		managedScripts := make([]string, 0)
+		if manifest.Entrypoint != "" {
+			managedScripts = append(managedScripts, manifest.Entrypoint)
+		}
+		if len(manifest.Scripts) > 0 {
+			managedScripts = append(managedScripts, manifest.Scripts...)
+		}
+		for _, sf := range scriptFiles {
+			if sf != "" {
+				managedScripts = append(managedScripts, sf)
+			}
+		}
+		metadata["hasScripts"] = len(managedScripts) > 0
+		metadata["scriptFiles"] = managedScripts
+	} else {
 		metadata["runtime"] = "traditional"
 		metadata["hasScripts"] = len(scriptFiles) > 0
 		metadata["scriptFiles"] = scriptFiles

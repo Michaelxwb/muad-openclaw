@@ -197,7 +197,7 @@ build_session_key(
 
 → 对 **MSS 企业交付控制面** 是加分项但非刚需；换栈成本远高于「在 OpenClaw 上补 tools」。
 
-### 4.7 OpenClaw vs Hermes 对照（基于源码 + 我方实现）
+### 4.7 OpenClaw vs Hermes 对照（基于源码）
 
 | 维度 | OpenClaw | Hermes（源码核实） | 对 muad |
 | ---- | -------- | ------------------ | ------- |
@@ -211,6 +211,8 @@ build_session_key(
 | 多配置域 | 多 Pod / 多 agent | profile multiplex + secret scope | 不同切分方式 |
 | 与 muad 工具链 | 已实现全套 | 仅 progress-adapters/hermes | **换 Hermes = 重做主路径** |
 | 控制面 | 自研 Console | 无对等「企业开通/模型池/apply」 | 必须自研，已押 OpenClaw 契约 |
+
+> **注：Hermes 单 Pod 多用户能力不弱于 OpenClaw。** 在多用户会话模型（`SessionSource`、`build_session_key`）、会话持久化（state.db WAL+FTS）、多 profile multiplex 方面 Hermes 甚至更原生。选型差异不在能力层面，而在 **场景匹配度**（企微私聊为主、非群聊）与 **核心功能模型匹配**（Skill 分层、跨 IM 身份关联，详见 §6）。
 
 ---
 
@@ -236,10 +238,39 @@ build_session_key(
 | -------------------- |
 | 企微官方插件与交付体验匹配主入口 |
 | Skill workspace 分层贴企业 public/private + Console |
-| tools 六件套与 Runtime DTO 已按 OpenClaw 契约落地 |
-| 换 Hermes = 重做绑定、执行、凭证、进度主路径 |
+| identityLinks 原生支持跨 IM 身份关联，Hermes 无对等机制 |
 
 **Hermes 定位：** 对照系与备选；保留 `tools/progress-adapters/hermes`；群聊强隔离若升 P0 再专项评估。
+
+### 6.1 场景匹配度分析
+
+双方能力各有长短，选型核心取决于 **muad 的业务场景权重**，而非任一方存在能力短板：
+
+| 评估维度 | 占优方 | muad 场景权重 | 说明 |
+|---------|--------|-------------|------|
+| 企微私聊交付体验 | OpenClaw | **高** — 主入口 | 官方插件消息类型更全（模板卡片、富交互）；Hermes WeCom WS 适配可用，但需按消息类型清单逐项比对 |
+| 群聊多用户隔离 | Hermes | **低** — 当前非主路径 | `group_sessions_per_user` 默认 True，群聊是 Hermes 核心场景；muad 主路径是私聊 SOP |
+| DM 多用户隔离 | 均可 | **高** — 核心场景 | 两端都能做到：Hermes 靠 session key 规则，OpenClaw 需 bindings + guard 补充 |
+| 企业 Skill 分层治理 | OpenClaw | **高** — 核心产品模型 | workspace/extraDirs 天然对应 public/private 分层 + 同名覆盖策略；Hermes 全局 `~/.hermes/skills` 为主，分层需在编排层自建 compiler |
+| 跨 IM 身份关联 | OpenClaw | **中高** — 核心功能 | identityLinks 让 Agent 跨通道共享上下文；Hermes 无对等抽象，只能用 memory plugin + prompt 注入近似，跨通道上下文不连续 |
+| 会话持久化 | Hermes | **中** — 审计在 Console | state.db WAL+FTS 工程化程度更高；但企业级审计真相源在 Console SQLite，不完全依赖运行时会话库 |
+| 多配置域隔离 | 均可 | **中** | Hermes 靠 multiplex_profiles + secret scope；OpenClaw 靠多 agent + workspace。实现路径不同，均可达 |
+
+> **结论：** muad 的高权重场景（企微私聊交付、Skill 分层治理、跨 IM 身份关联）更匹配 OpenClaw 的模型；Hermes 占优的维度（群聊、会话库）恰好是 muad 当前低权重项。这是场景匹配度的选择，非能力高下。
+
+### 6.2 长期维护特征对比
+
+从架构设计的长期演进视角看，两个方案在核心功能上的维护成本特征不同：
+
+| 核心功能 | OpenClaw 维护特征 | Hermes 维护特征 |
+|---------|-----------------|----------------|
+| 多用户底座 | 需自维护 bindings/guard/per-agent workspace 等组件 | 内核原生，维护面在会话 key 规则与 Agent 缓存策略 |
+| 企业 Skill 分层 | 内核原生支持，治理逻辑在 Console 统一管控 | 需自建外部 skill-compiler + per-profile 目录管理，技能变更需协调 compiler 重生成与 gateway 重载 |
+| 跨 IM 身份关联 | identityLinks 内核原生，跨通道上下文连续 | 无对等机制，只能用 memory plugin + prompt 注入近似，体验差距无法通过外部组件完全弥合 |
+| 企微通道 | 官方插件持续跟进上游协议变更 | WeCom WS 适配需自行跟进企微协议演进 |
+| 不 fork 扩展 | 外置插件/CLI 模式已验证可行 | 同样支持外置扩展，但 Skill 分层和跨 IM 的补丁更「侵入式」 |
+
+> **长期结论：** 二者都需要在「不 fork」约束下自建一部分能力。差异在于：OpenClaw 需补的（多用户底座）在编排层有成熟的工程模式，且与「不 fork」约束的摩擦较小；Hermes 需补的（跨 IM 上下文连续）属于内核认知模型层面的缺失，外部近似方案与「体验无损」之间存在本质差距，长期维护中每个跨通道场景都可能撞边界。
 
 ---
 
@@ -263,7 +294,7 @@ build_session_key(
 | 单用户 Pod | 演进起点，非稳态 |
 
 **一句话：**  
-在「企微私聊、标准 Skill 交付、多服务经理、成本可控、不 fork」下，**OpenClaw 多用户单 Pod + Console + 外置工具链** 为稳态；Hermes 在会话/群聊模型上更「天生多人」，但与主入口与已投工程路径不匹配，故不换栈。
+在「企微私聊、标准 Skill 交付、多服务经理、成本可控、不 fork」的约束下，**OpenClaw 多用户单 Pod + Console + 外置工具链** 为稳态架构。Hermes 在会话/群聊模型上更「天生多人」，但 muad 的高权重场景（企微私聊交付体验、Skill 分层治理、跨 IM 身份关联）更匹配 OpenClaw 的模型——这是场景匹配度的选择，而非能力高下之分。身份关联（identityLinks）是二者在不 fork 约束下差距最大的维度：Hermes 的外部近似方案与「跨通道上下文连续」之间存在本质差距，若该需求升为刚需，会显著削弱 Hermes 在其它维度的架构优势。
 
 ---
 

@@ -66,9 +66,11 @@ func (s *Server) assemblePodSpec(pod repo.Pod, runtime runtimeconfig.Result) (dr
 	spec := driver.PodSpec{
 		PodID: pod.PodID, Channels: channels, ChannelConfigs: rawConfigs,
 		ImageTag: pod.ImageTag, GatewayToken: crypto.DeriveGatewayToken(serviceToken),
-		MultiUser:    runtime.Config,
-		Resource:     driver.ResolveResourceSpec(podResourceSpec(pod), global, s.resourceFallback()),
-		ServiceToken: tokenSecret(serviceToken),
+		AutomationPlatformURL:   s.cfg.AutomationPlatformURL,
+		AutomationPlatformToken: s.cfg.AutomationPlatformToken,
+		MultiUser:               runtime.Config,
+		Resource:                driver.ResolveResourceSpec(podResourceSpec(pod), global, s.resourceFallback()),
+		ServiceToken:            tokenSecret(serviceToken),
 	}
 	if err := spec.Validate(); err != nil {
 		return driver.PodSpec{}, err

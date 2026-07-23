@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1368" viewBox="0 0 2048 1368" role="img" aria-labelledby="title desc">
+  <title id="title">muad-openclaw Phase 2 架构图</title>
+  <desc id="desc">Phase 2 将 SOP 可靠执行能力集中到右侧 muad-automation-platform；Runtime Pod 保留对话、guard 和 Bridge Skill；Temporal 与 Execution Store 复用 PostgreSQL；企业业务系统统一放底部。</desc>
+
+  <defs>
+    <marker id="arrow-control" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L9.5,5 L0,9 z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-message" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L9.5,5 L0,9 z" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-bridge" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L9.5,5 L0,9 z" fill="#0d9488"/>
+    </marker>
+    <marker id="arrow-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L9.5,5 L0,9 z" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrow-store" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L9.5,5 L0,9 z" fill="#ea580c"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .bg{fill:#f8fafc}
+      .title{fill:#0f172a;font:700 42px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .subtitle{fill:#475569;font:400 19px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .section-title{fill:#0f172a;font:700 26px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .label{fill:#0f172a;font:700 22px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .small{fill:#475569;font:400 17px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .tiny{fill:#64748b;font:400 15px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .legend{fill:#334155;font:400 17px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .area{stroke-width:2.5;rx:26}
+      .card{stroke:#94a3b8;stroke-width:2;rx:16;filter:url(#shadow)}
+      .inner{stroke:#cbd5e1;stroke-width:2;rx:14}
+      .phase2{stroke:#0d9488;stroke-width:3;rx:16;filter:url(#shadow)}
+      .deprecated{stroke:#94a3b8;stroke-width:1.6;stroke-dasharray:7 7;rx:10}
+      .control{fill:none;stroke:#2563eb;stroke-width:4;marker-end:url(#arrow-control)}
+      .message{fill:none;stroke:#16a34a;stroke-width:4;marker-end:url(#arrow-message)}
+      .bridge{fill:none;stroke:#0d9488;stroke-width:4;marker-end:url(#arrow-bridge)}
+      .data{fill:none;stroke:#7c3aed;stroke-width:4;marker-end:url(#arrow-data)}
+      .store{fill:none;stroke:#ea580c;stroke-width:4;marker-end:url(#arrow-store)}
+      .dash{stroke-dasharray:12 10}
+      .thin{stroke-width:3}
+      .strike{text-decoration:line-through}
+    </style>
+  </defs>
+
+  <rect class="bg" width="2048" height="1368"/>
+
+  <text x="56" y="58" class="title">muad-openclaw 架构演进：Phase 1 → Phase 2（图 D）</text>
+  <text x="56" y="92" class="subtitle">关键变化：新增可靠执行区集中右侧 · Runtime Pod 只负责对话/桥接 · AP 统一执行 SOP · Temporal 与 Execution Store 复用 PostgreSQL</text>
+
+  <g transform="translate(40 118)">
+    <rect width="18" height="18" rx="3" fill="#0d9488"/>
+    <text x="26" y="15" class="legend">Phase 2 新增</text>
+    <text x="170" y="15" class="legend strike" fill="#94a3b8">Phase 1 废弃</text>
+    <line x1="355" y1="10" x2="415" y2="10" class="control thin"/>
+    <text x="427" y="15" class="legend">控制/配置</text>
+    <line x1="550" y1="10" x2="610" y2="10" class="message thin"/>
+    <text x="622" y="15" class="legend">消息</text>
+    <line x1="715" y1="10" x2="775" y2="10" class="bridge thin dash"/>
+    <text x="787" y="15" class="legend">HTTP Bridge</text>
+    <line x1="930" y1="10" x2="990" y2="10" class="data thin"/>
+    <text x="1002" y="15" class="legend">业务/API/模型</text>
+    <line x1="1185" y1="10" x2="1245" y2="10" class="store thin"/>
+    <text x="1257" y="15" class="legend">持久化</text>
+  </g>
+
+  <rect x="1850" y="36" width="160" height="48" rx="12" fill="#0d9488"/>
+  <text x="1930" y="67" text-anchor="middle" class="label" fill="#fff">Phase 2</text>
+
+  <!-- External roles -->
+  <rect x="64" y="170" width="1920" height="126" class="area" fill="#eef6ff" stroke="#cbd5e1"/>
+  <text x="96" y="210" class="section-title">外部角色与入口（不变）</text>
+  <rect x="190" y="232" width="300" height="42" rx="12" fill="#dbeafe"/>
+  <text x="340" y="259" text-anchor="middle" class="small">管理员（Console 浏览器）</text>
+  <rect x="874" y="232" width="300" height="42" rx="12" fill="#dcfce7"/>
+  <text x="1024" y="259" text-anchor="middle" class="small">服务经理（企微私聊）</text>
+  <rect x="1558" y="232" width="300" height="42" rx="12" fill="#fef3c7"/>
+  <text x="1708" y="259" text-anchor="middle" class="small">外部客户（微信）</text>
+
+  <!-- Left: existing console -->
+  <rect x="64" y="330" width="820" height="190" class="area" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="96" y="372" class="section-title" fill="#2563eb">Console 控制面</text>
+  <rect x="120" y="392" width="220" height="50" class="card" fill="#dbeafe"/>
+  <text x="230" y="414" text-anchor="middle" class="label">Console 前端</text>
+  <text x="230" y="435" text-anchor="middle" class="small">管理员 UI</text>
+  <rect x="390" y="392" width="220" height="50" class="card" fill="#dbeafe"/>
+  <text x="500" y="414" text-anchor="middle" class="label">Console 后端</text>
+  <text x="500" y="435" text-anchor="middle" class="small">API / 鉴权 / 审计</text>
+  <rect x="120" y="455" width="220" height="50" class="card" fill="#e2e8f0"/>
+  <text x="230" y="477" text-anchor="middle" class="label">SQLite PVC</text>
+  <text x="230" y="498" text-anchor="middle" class="small">配置 / 审计 / 凭据密文</text>
+  <rect x="390" y="455" width="220" height="50" class="card" fill="#e2e8f0"/>
+  <text x="500" y="477" text-anchor="middle" class="label">K8S API Client</text>
+  <text x="500" y="498" text-anchor="middle" class="small">受限 RBAC</text>
+  <!-- Left: runtime pods -->
+  <rect x="64" y="540" width="820" height="390" class="area" fill="#ecfdf5" stroke="#16a34a"/>
+  <text x="96" y="582" class="section-title" fill="#16a34a">Runtime Pod 分片（Phase 2：默认目标 50 用户/Pod）</text>
+
+  <g transform="translate(100 615)">
+    <rect width="360" height="220" class="card" fill="#f0fdf4"/>
+    <text x="180" y="35" text-anchor="middle" class="label">Runtime Pod 01</text>
+    <rect x="26" y="58" width="130" height="36" rx="9" fill="#dcfce7"/>
+    <text x="91" y="82" text-anchor="middle" class="small">Gateway</text>
+    <rect x="178" y="58" width="150" height="36" rx="9" fill="#dcfce7"/>
+    <text x="253" y="82" text-anchor="middle" class="small">Agents × 50</text>
+    <rect x="26" y="112" width="130" height="36" rx="9" fill="#dcfce7"/>
+    <text x="91" y="136" text-anchor="middle" class="small">✅ guard</text>
+    <rect x="178" y="112" width="150" height="36" rx="9" fill="#dcfce7"/>
+    <text x="253" y="136" text-anchor="middle" class="small">Bridge Skills</text>
+    <rect x="26" y="166" width="130" height="32" class="deprecated" fill="#f1f5f9"/>
+    <text x="91" y="187" text-anchor="middle" class="tiny strike">run-skill</text>
+    <rect x="178" y="166" width="150" height="32" class="deprecated" fill="#f1f5f9"/>
+    <text x="253" y="187" text-anchor="middle" class="tiny strike">session/progress</text>
+  </g>
+
+  <g transform="translate(500 615)">
+    <rect width="340" height="220" class="card" fill="#f0fdf4"/>
+    <text x="170" y="35" text-anchor="middle" class="label">Runtime Pod 02..N</text>
+    <rect x="28" y="62" width="125" height="34" rx="9" fill="#dcfce7"/>
+    <text x="91" y="85" text-anchor="middle" class="small">Gateway</text>
+    <rect x="178" y="62" width="130" height="34" rx="9" fill="#dcfce7"/>
+    <text x="243" y="85" text-anchor="middle" class="small">Agents × 50</text>
+    <rect x="28" y="116" width="125" height="34" rx="9" fill="#dcfce7"/>
+    <text x="91" y="139" text-anchor="middle" class="small">✅ guard</text>
+    <rect x="178" y="116" width="130" height="34" rx="9" fill="#dcfce7"/>
+    <text x="243" y="139" text-anchor="middle" class="small">Bridge Skills</text>
+    <text x="170" y="184" text-anchor="middle" class="tiny">不再内置 Chromium</text>
+    <text x="170" y="204" text-anchor="middle" class="tiny">无需 exec/shell 执行 SOP</text>
+  </g>
+
+  <text x="98" y="887" class="tiny">隔离：每个用户独立 agent / workspace / session-store / model / private skill grant</text>
+  <text x="98" y="910" class="tiny">Runtime Pod 只负责对话、权限边界和 HTTP Bridge 触发；长任务执行移至右侧 AP</text>
+
+  <!-- Left: runtime-related persistence -->
+  <rect x="64" y="960" width="820" height="130" class="area" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="96" y="1000" class="section-title" fill="#ea580c">Runtime Pod 相关持久化</text>
+  <rect x="112" y="1028" width="340" height="48" class="inner" fill="#ffedd5"/>
+  <text x="282" y="1059" text-anchor="middle" class="small">State PVC：workspace / session-store / private skills</text>
+  <rect x="500" y="1028" width="320" height="48" class="inner" fill="#ffedd5"/>
+  <text x="660" y="1059" text-anchor="middle" class="small">Public Skills：Bridge SKILL.md</text>
+
+  <!-- Right: Phase 2 new execution area -->
+  <rect x="930" y="330" width="1054" height="760" class="area" fill="#f0fdfa" stroke="#0d9488" stroke-width="3"/>
+  <text x="965" y="372" class="section-title" fill="#0d9488">Phase 2 新增可靠执行区（全部集中右侧）</text>
+
+  <rect x="970" y="400" width="972" height="300" class="phase2" fill="#ccfbf1"/>
+  <text x="1456" y="438" text-anchor="middle" class="label">muad-automation-platform（独立 Go 微服务）</text>
+
+  <rect x="1005" y="470" width="280" height="78" class="inner" fill="#ecfeff" stroke="#0d9488"/>
+  <text x="1145" y="501" text-anchor="middle" class="label">HTTP API Gateway</text>
+  <text x="1145" y="526" text-anchor="middle" class="small">POST /workflows/start</text>
+  <text x="1145" y="545" text-anchor="middle" class="tiny">GET /workflows/status · /executions</text>
+
+  <rect x="1320" y="470" width="290" height="78" class="inner" fill="#ecfeff" stroke="#0d9488"/>
+  <text x="1465" y="501" text-anchor="middle" class="label">Workflow Engine</text>
+  <text x="1465" y="526" text-anchor="middle" class="small">Temporal Worker 内嵌</text>
+  <text x="1465" y="545" text-anchor="middle" class="tiny">重试 · Saga · 断点续传 · 并发控制</text>
+
+  <rect x="1645" y="470" width="260" height="78" class="inner" fill="#ecfeff" stroke="#0d9488"/>
+  <text x="1775" y="501" text-anchor="middle" class="label">Console Internal API</text>
+  <text x="1775" y="526" text-anchor="middle" class="small">凭证解析 / 审计上报</text>
+  <text x="1775" y="545" text-anchor="middle" class="tiny">替代 session-manager</text>
+
+  <rect x="1005" y="585" width="435" height="86" class="inner" fill="#ecfeff" stroke="#0d9488"/>
+  <text x="1222" y="617" text-anchor="middle" class="label">Capability Center</text>
+  <text x="1222" y="642" text-anchor="middle" class="small">mssw / soar / sdsp 等平台能力封装</text>
+  <text x="1222" y="662" text-anchor="middle" class="tiny">分页 · 重试 · 错误分类 · 脱敏</text>
+
+  <rect x="1485" y="585" width="350" height="86" class="inner" fill="#ecfeff" stroke="#0d9488"/>
+  <text x="1660" y="617" text-anchor="middle" class="label">Playwright 浏览器</text>
+  <text x="1660" y="642" text-anchor="middle" class="small">浏览器 Activity 独立上下文</text>
+  <text x="1660" y="662" text-anchor="middle" class="tiny">执行完销毁，不占用 Pod 内存</text>
+
+  <rect x="970" y="745" width="460" height="130" class="phase2" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="1200" y="785" text-anchor="middle" class="label">Temporal Server</text>
+  <text x="1200" y="815" text-anchor="middle" class="small">Frontend · History · Matching</text>
+  <text x="1200" y="840" text-anchor="middle" class="small">Temporal UI · Event History</text>
+  <text x="1200" y="864" text-anchor="middle" class="tiny">替代 run-skill / muad-progress 的长任务状态机</text>
+
+  <rect x="1505" y="745" width="400" height="130" class="phase2" fill="#dcfce7" stroke="#0d9488"/>
+  <text x="1705" y="785" text-anchor="middle" class="label">PostgreSQL（复用）</text>
+  <text x="1705" y="815" text-anchor="middle" class="small">Temporal DB</text>
+  <text x="1705" y="840" text-anchor="middle" class="small">Execution Store：workflow_executions / activity_records</text>
+  <text x="1705" y="864" text-anchor="middle" class="tiny">同一 PG 实例，不再画两套数据库</text>
+
+  <rect x="970" y="925" width="935" height="90" class="inner" fill="#f0fdfa" stroke="#0d9488"/>
+  <text x="1438" y="958" text-anchor="middle" class="label">Phase 2 替代关系</text>
+  <text x="1438" y="987" text-anchor="middle" class="small">run-skill / session-manager / muad-progress / progress-adapters / runtime-concurrency → AP + Temporal + HTTP Bridge</text>
+
+  <!-- Bottom: enterprise systems -->
+  <rect x="64" y="1135" width="1920" height="150" class="area" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="96" y="1178" class="section-title">企业业务系统 / 外部依赖（不变，统一放底部）</text>
+  <rect x="420" y="1200" width="250" height="58" class="card" fill="#ffedd5"/>
+  <text x="545" y="1236" text-anchor="middle" class="label">MSSW</text>
+  <rect x="760" y="1200" width="250" height="58" class="card" fill="#ffedd5"/>
+  <text x="885" y="1236" text-anchor="middle" class="label">SDSP / SOAR / XDR</text>
+  <rect x="1100" y="1200" width="250" height="58" class="card" fill="#ffedd5"/>
+  <text x="1225" y="1236" text-anchor="middle" class="label">其他业务平台</text>
+  <rect x="1440" y="1200" width="250" height="58" class="card" fill="#ede9fe"/>
+  <text x="1565" y="1236" text-anchor="middle" class="label">LLM 模型服务</text>
+
+  <!-- Main cross-area arrows only -->
+  <path d="M340 274 C330 325, 250 350, 230 392" class="control"/>
+  <path d="M1024 274 C1010 420, 900 565, 690 615" class="message"/>
+  <path d="M500 505 C430 545, 330 585, 280 615" class="control"/>
+
+  <path d="M840 720 C915 690, 940 565, 1005 515" class="bridge dash"/>
+  <text x="906" y="650" class="tiny" fill="#0d9488">Bridge Skill HTTP POST</text>
+
+  <path d="M1775 470 C1775 360, 650 360, 500 392" class="control dash"/>
+  <text x="1455" y="386" class="tiny" fill="#2563eb">凭证解析 / 审计回写</text>
+
+  <path d="M1465 548 C1465 630, 1320 690, 1200 745" class="data"/>
+  <path d="M1200 875 C1300 915, 1600 915, 1705 875" class="store"/>
+  <path d="M1465 548 C1540 650, 1640 690, 1705 745" class="store"/>
+
+  <path d="M1222 671 C1230 830, 1260 980, 1024 1135" class="data"/>
+  <text x="1080" y="1112" class="tiny" fill="#7c3aed">Capability 调用企业业务 API</text>
+
+  <path d="M280 835 C280 900, 282 970, 282 1028" class="store"/>
+  <path d="M670 835 C670 900, 660 970, 660 1028" class="store"/>
+</svg>

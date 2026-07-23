@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Input, InputNumber, Modal, Select } from "@douyinfe/semi-ui";
+import { Checkbox, Input, InputNumber, Modal, Select } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type { ChannelCredential, Pod } from "../../api";
 import { ChannelForm } from "../../components/ChannelForm";
@@ -126,6 +126,17 @@ function CreatePodFields({
         max={1000}
         onChange={(value) => set("maxBrowserConcurrency", value)}
       />
+      <label className={`${styles.field} ${styles.full}`}>
+        <Checkbox
+          checked={form.adoptState}
+          onChange={(event) => setForm({ ...form, adoptState: Boolean(event.target.checked) })}
+        >
+          接管同名保留状态卷
+        </Checkbox>
+        <span>
+          仅当删除 Pod 时选择了保留 PVC 后使用；会复用原 workspace、记忆、会话和 private Skill。
+        </span>
+      </label>
     </div>
   );
 }

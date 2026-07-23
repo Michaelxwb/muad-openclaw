@@ -10,6 +10,7 @@ export interface CreateFormState {
   restartPolicy: string;
   maxSkillConcurrency: number;
   maxBrowserConcurrency: number;
+  adoptState: boolean;
 }
 
 export const EMPTY_CREATE_FORM: CreateFormState = {
@@ -22,6 +23,7 @@ export const EMPTY_CREATE_FORM: CreateFormState = {
   restartPolicy: "",
   maxSkillConcurrency: 0,
   maxBrowserConcurrency: 0,
+  adoptState: false,
 };
 
 export function validateCreateForm(form: CreateFormState): string {
@@ -60,5 +62,6 @@ export function createPodInput(
     restartPolicy: form.restartPolicy,
     maxSkillConcurrency: form.maxSkillConcurrency,
     maxBrowserConcurrency: form.maxBrowserConcurrency,
+    adoptState: form.adoptState,
   };
 }
