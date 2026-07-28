@@ -1,7 +1,7 @@
 name: build-image
 
-# 推送 git tag（v*）即构建镜像并推到 GHCR：ghcr.io/<owner>/muad-openclaw:<tag>
-# 例：git tag v0.1.0 && git push origin v0.1.0
+# 推送 git tag（v*）即构建并推送镜像到 GHCR。
+# 基础镜像（muad-openclaw-base）若不存在则自动构建并推送；否则直接复用。
 on:
   push:
     tags: ['v*']
@@ -10,9 +10,13 @@ on:
       openclaw_version:
         description: 'openclaw 基础镜像版本（ghcr.io/openclaw/openclaw:<tag>）'
         default: '2026.6.10'
+      base_tag:
+        description: '基础镜像 tag（默认 latest；不存在则自动构建）'
+        default: 'latest'
 
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/muad-openclaw
+  BASE_IMAGE: ghcr.io/${{ github.repository_owner }}/muad-openclaw-base
 
 jobs:
   build:
@@ -34,6 +38,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve base image（拉取；不存在则构建+推送）
+        id: base
+        run: |
+          TAG="${{ inputs.base_tag || 'latest' }}"
+          if docker pull "${BASE_IMAGE}:${TAG}"; then
+            echo "✅ 复用已有 base: ${BASE_IMAGE}:${TAG}"
+            docker tag "${BASE_IMAGE}:${TAG}" muad-openclaw-base:"${TAG}"
+            echo "base_tag=${TAG}" >> "$GITHUB_OUTPUT"
+          else
+            echo "⬆️  base ${BASE_IMAGE}:${TAG} 不存在，开始构建…"
+            docker build -f Dockerfile.base \
+              -t "muad-openclaw-base:${TAG}" \
+              -t "${BASE_IMAGE}:${TAG}" \
+              --build-arg "OPENCLAW_VERSION=${{ inputs.openclaw_version || '2026.6.10' }}" \
+              .
+            docker push "${BASE_IMAGE}:${TAG}"
+            echo "✅ base 构建并推送完成: ${BASE_IMAGE}:${TAG}"
+            echo "base_tag=${TAG}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Image metadata（tag → 镜像标签）
         id: meta
         uses: docker/metadata-action@v5
@@ -44,7 +68,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
-      - name: Build & push
+      - name: Build & push app image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -53,4 +77,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            OPENCLAW_VERSION=${{ inputs.openclaw_version || '2026.6.10' }}
+            BASE_TAG=${{ steps.base.outputs.base_tag }}

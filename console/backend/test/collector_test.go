@@ -85,16 +85,26 @@ func TestCollector_CollectOnce_PopulatesCache(t *testing.T) {
 func TestMonitorCache_DetachesPerPodChannelMaps(t *testing.T) {
 	cache := monitor.NewCache()
 	original := map[string]monitor.Snapshot{
-		"alice": {PodID: "alice", ChannelStatuses: map[string]bool{"wecom": true}},
-		"bob":   {PodID: "bob", ChannelStatuses: map[string]bool{"wechat": true}},
+		"alice": {
+			PodID: "alice", ChannelStatuses: map[string]bool{"wecom": true},
+			ChannelDefaultAccountIDs: map[string]string{"wecom": "default"},
+		},
+		"bob": {
+			PodID: "bob", ChannelStatuses: map[string]bool{"wechat": true},
+			ChannelDefaultAccountIDs: map[string]string{"wechat": "wx-bot"},
+		},
 	}
 	cache.Replace(original)
 	original["alice"].ChannelStatuses["wecom"] = false
+	original["alice"].ChannelDefaultAccountIDs["wecom"] = "mutated"
 	alice, _ := cache.Get("alice")
 	alice.ChannelStatuses["wecom"] = false
+	alice.ChannelDefaultAccountIDs["wecom"] = "mutated-again"
 	storedAlice, _ := cache.Get("alice")
 	storedBob, _ := cache.Get("bob")
-	if !storedAlice.ChannelStatuses["wecom"] || !storedBob.ChannelStatuses["wechat"] {
+	if !storedAlice.ChannelStatuses["wecom"] || !storedBob.ChannelStatuses["wechat"] ||
+		storedAlice.ChannelDefaultAccountIDs["wecom"] != "default" ||
+		storedBob.ChannelDefaultAccountIDs["wechat"] != "wx-bot" {
 		t.Fatal(errors.New("cache snapshots share mutable channel state"))
 	}
 }

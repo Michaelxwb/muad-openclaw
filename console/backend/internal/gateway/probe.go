@@ -17,10 +17,11 @@ import (
 
 // Status is the application-layer snapshot for one container.
 type Status struct {
-	Healthy          bool            // probe responded and parsed
-	ChannelConnected bool            // DEPRECATED: true if any channel connected
-	ChannelStatuses  map[string]bool // per-channel connected state, e.g. {"wecom":true,"wechat":false}
-	LastActiveAt     time.Time       // newest of inbound/outbound/start (display "最后活跃")
+	Healthy                  bool              // probe responded and parsed
+	ChannelConnected         bool              // DEPRECATED: true if any channel connected
+	ChannelStatuses          map[string]bool   // per-channel connected state, e.g. {"wecom":true,"wechat":false}
+	ChannelDefaultAccountIDs map[string]string // per-channel default account id
+	LastActiveAt             time.Time         // newest of inbound/outbound/start (display "最后活跃")
 	// LastMessageAt is the newest real message time (inbound/outbound only),
 	// excluding channel start. It drives the idle/reap countdown: ongoing
 	// conversation keeps refreshing it, so an active container never goes idle.
@@ -112,7 +113,8 @@ type channelStatusJSON struct {
 		LastOutboundAt *int64 `json:"lastOutboundAt"`
 		LastStartAt    *int64 `json:"lastStartAt"`
 	} `json:"channels"`
-	ChannelAccounts map[string][]json.RawMessage `json:"channelAccounts"`
+	ChannelAccounts          map[string][]json.RawMessage `json:"channelAccounts"`
+	ChannelDefaultAccountIDs map[string]string            `json:"channelDefaultAccountId"`
 }
 
 // ParseStatus extracts health, channel connection, and last-activity from the
@@ -126,6 +128,7 @@ func ParseStatus(raw []byte) (Status, error) {
 		return Status{}, err
 	}
 	st := Status{Healthy: true}
+	st.ChannelDefaultAccountIDs = defaultAccountIDs(s)
 
 	var maxMs, maxMsgMs int64 // maxMs: any activity incl. start; maxMsgMs: messages only
 	for id, c := range s.Channels {
@@ -157,4 +160,36 @@ func ParseStatus(raw []byte) (Status, error) {
 		st.LastMessageAt = time.UnixMilli(maxMsgMs)
 	}
 	return st, nil
+}
+
+func defaultAccountIDs(status channelStatusJSON) map[string]string {
+	accounts := make(map[string]string, len(status.ChannelDefaultAccountIDs))
+	for channel, accountID := range status.ChannelDefaultAccountIDs {
+		if accountID != "" {
+			accounts[channel] = accountID
+		}
+	}
+	for channel, entries := range status.ChannelAccounts {
+		if accounts[channel] != "" || len(entries) == 0 {
+			continue
+		}
+		if accountID := accountIDFromRaw(entries[0]); accountID != "" {
+			accounts[channel] = accountID
+		}
+	}
+	return accounts
+}
+
+func accountIDFromRaw(raw json.RawMessage) string {
+	var account struct {
+		AccountID string `json:"accountId"`
+		ID        string `json:"id"`
+	}
+	if err := json.Unmarshal(raw, &account); err != nil {
+		return ""
+	}
+	if account.AccountID != "" {
+		return account.AccountID
+	}
+	return account.ID
 }

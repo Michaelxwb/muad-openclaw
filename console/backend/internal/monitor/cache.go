@@ -38,9 +38,10 @@ type Snapshot struct {
 	RuntimeGuardHealthy       bool
 	ChannelConnected          bool
 	ChannelStatuses           map[string]bool // per-channel connected state
-	LastActiveAt              time.Time       // display "最后活跃" (incl. channel start)
-	LastMessageAt             time.Time       // real message activity; drives idle/reap countdown
-	Healthy                   bool            // false when the last probe failed (→ unhealthy)
+	ChannelDefaultAccountIDs  map[string]string
+	LastActiveAt              time.Time // display "最后活跃" (incl. channel start)
+	LastMessageAt             time.Time // real message activity; drives idle/reap countdown
+	Healthy                   bool      // false when the last probe failed (→ unhealthy)
 	Updated                   time.Time
 }
 
@@ -74,13 +75,19 @@ func (c *Cache) Replace(snaps map[string]Snapshot) {
 }
 
 func cloneSnapshot(snapshot Snapshot) Snapshot {
-	if snapshot.ChannelStatuses == nil {
-		return snapshot
+	if snapshot.ChannelStatuses != nil {
+		statuses := make(map[string]bool, len(snapshot.ChannelStatuses))
+		for channel, connected := range snapshot.ChannelStatuses {
+			statuses[channel] = connected
+		}
+		snapshot.ChannelStatuses = statuses
 	}
-	statuses := make(map[string]bool, len(snapshot.ChannelStatuses))
-	for channel, connected := range snapshot.ChannelStatuses {
-		statuses[channel] = connected
+	if snapshot.ChannelDefaultAccountIDs != nil {
+		accounts := make(map[string]string, len(snapshot.ChannelDefaultAccountIDs))
+		for channel, accountID := range snapshot.ChannelDefaultAccountIDs {
+			accounts[channel] = accountID
+		}
+		snapshot.ChannelDefaultAccountIDs = accounts
 	}
-	snapshot.ChannelStatuses = statuses
 	return snapshot
 }

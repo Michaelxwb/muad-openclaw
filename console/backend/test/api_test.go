@@ -473,11 +473,16 @@ func TestPodListMergesRuntimeMetrics(t *testing.T) {
 	e.cache.Replace(map[string]monitor.Snapshot{
 		"pod-metrics": {
 			CPUPercent: 5.5, MemMiB: 300, ChannelStatuses: map[string]bool{"wechat": true},
-			SkillActive: 2, BrowserQueued: 1, RuntimeGuardHealthy: true,
+			ChannelDefaultAccountIDs: map[string]string{"openclaw-weixin": "wx-bot"},
+			SkillActive:              2, BrowserQueued: 1, RuntimeGuardHealthy: true,
 		},
 	})
 	rr := e.do(http.MethodGet, "/api/v1/containers", "")
-	for _, expected := range []string{`"memMiB":300`, `"skillActive":2`, `"browserQueued":1`, `"wechat":true`} {
+	for _, expected := range []string{
+		`"memMiB":300`, `"skillActive":2`, `"browserQueued":1`, `"wechat":true`,
+		`"wechat":"wx-bot"`,
+		`"openclaw-weixin":"wx-bot"`,
+	} {
 		if !strings.Contains(rr.Body.String(), expected) {
 			t.Fatalf("Pod metrics response missing %s: %s", expected, rr.Body.String())
 		}

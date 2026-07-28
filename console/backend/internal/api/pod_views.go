@@ -12,32 +12,33 @@ import (
 )
 
 type podView struct {
-	PodID                   string                       `json:"podId"`
-	DisplayName             string                       `json:"displayName"`
-	ImageTag                string                       `json:"imageTag"`
-	State                   string                       `json:"state"`
-	Channels                []string                     `json:"channels"`
-	ChannelConfigs          map[string]channelConfigView `json:"channelConfigs,omitempty"`
-	ChannelStatuses         map[string]bool              `json:"channelStatuses,omitempty"`
-	MaxUsers                int                          `json:"maxUsers"`
-	UserCount               int                          `json:"userCount"`
-	AvailableSlots          int                          `json:"availableSlots"`
-	ConfigGeneration        int64                        `json:"configGeneration"`
-	AppliedGeneration       int64                        `json:"appliedGeneration"`
-	GenerationLag           int64                        `json:"generationLag"`
-	LastApplyStatus         string                       `json:"lastApplyStatus"`
-	LastApplyError          string                       `json:"lastApplyError,omitempty"`
-	LastAppliedAt           *time.Time                   `json:"lastAppliedAt,omitempty"`
-	ServiceTokenFingerprint string                       `json:"serviceTokenFingerprint"`
-	CPUPercent              float64                      `json:"cpuPercent"`
-	MemMiB                  int                          `json:"memMiB"`
-	SkillActive             int                          `json:"skillActive"`
-	SkillQueued             int                          `json:"skillQueued"`
-	BrowserActive           int                          `json:"browserActive"`
-	BrowserQueued           int                          `json:"browserQueued"`
-	RuntimeGuardHealthy     bool                         `json:"runtimeGuardHealthy"`
-	CreatedAt               time.Time                    `json:"createdAt"`
-	UpdatedAt               time.Time                    `json:"updatedAt"`
+	PodID                    string                       `json:"podId"`
+	DisplayName              string                       `json:"displayName"`
+	ImageTag                 string                       `json:"imageTag"`
+	State                    string                       `json:"state"`
+	Channels                 []string                     `json:"channels"`
+	ChannelConfigs           map[string]channelConfigView `json:"channelConfigs,omitempty"`
+	ChannelStatuses          map[string]bool              `json:"channelStatuses,omitempty"`
+	ChannelDefaultAccountIDs map[string]string            `json:"channelDefaultAccountIds,omitempty"`
+	MaxUsers                 int                          `json:"maxUsers"`
+	UserCount                int                          `json:"userCount"`
+	AvailableSlots           int                          `json:"availableSlots"`
+	ConfigGeneration         int64                        `json:"configGeneration"`
+	AppliedGeneration        int64                        `json:"appliedGeneration"`
+	GenerationLag            int64                        `json:"generationLag"`
+	LastApplyStatus          string                       `json:"lastApplyStatus"`
+	LastApplyError           string                       `json:"lastApplyError,omitempty"`
+	LastAppliedAt            *time.Time                   `json:"lastAppliedAt,omitempty"`
+	ServiceTokenFingerprint  string                       `json:"serviceTokenFingerprint"`
+	CPUPercent               float64                      `json:"cpuPercent"`
+	MemMiB                   int                          `json:"memMiB"`
+	SkillActive              int                          `json:"skillActive"`
+	SkillQueued              int                          `json:"skillQueued"`
+	BrowserActive            int                          `json:"browserActive"`
+	BrowserQueued            int                          `json:"browserQueued"`
+	RuntimeGuardHealthy      bool                         `json:"runtimeGuardHealthy"`
+	CreatedAt                time.Time                    `json:"createdAt"`
+	UpdatedAt                time.Time                    `json:"updatedAt"`
 }
 
 func (s *Server) makePodView(
@@ -74,11 +75,26 @@ func mergePodMetrics(view *podView, snapshot monitor.Snapshot) {
 	view.CPUPercent = snapshot.CPUPercent
 	view.MemMiB = snapshot.MemMiB
 	view.ChannelStatuses = snapshot.ChannelStatuses
+	view.ChannelDefaultAccountIDs = normalizeChannelDefaultAccountIDs(snapshot.ChannelDefaultAccountIDs)
 	view.SkillActive = snapshot.SkillActive
 	view.SkillQueued = snapshot.SkillQueued
 	view.BrowserActive = snapshot.BrowserActive
 	view.BrowserQueued = snapshot.BrowserQueued
 	view.RuntimeGuardHealthy = snapshot.RuntimeGuardHealthy
+}
+
+func normalizeChannelDefaultAccountIDs(input map[string]string) map[string]string {
+	if len(input) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(input)+1)
+	for channel, accountID := range input {
+		out[channel] = accountID
+		if channel == driver.OpenClawChannelWeChat {
+			out[driver.ChannelWeChat] = accountID
+		}
+	}
+	return out
 }
 
 func derivePodState(pod repo.Pod, states map[string]string) string {

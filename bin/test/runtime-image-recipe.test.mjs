@@ -6,16 +6,24 @@ import test from "node:test";
 const root = join(import.meta.dirname, "..", "..");
 
 test("worker image pins OpenClaw and records the base version", () => {
-  const dockerfile = read("Dockerfile");
+  const base = read("Dockerfile.base");
+  const app = read("Dockerfile");
   const workflow = read(".github/workflows/build-image.yml");
-  assert.match(dockerfile, /^ARG OPENCLAW_VERSION=2026\.6\.10$/mu);
-  assert.match(dockerfile, /io\.muad\.openclaw\.version="\$\{OPENCLAW_VERSION\}"/u);
+  // Base image pins openclaw version
+  assert.match(base, /^ARG OPENCLAW_VERSION=2026\.6\.10$/mu);
+  assert.match(base, /io\.muad\.openclaw\.version="\$\{OPENCLAW_VERSION\}"/u);
+  assert.match(base, /io\.muad\.image\.role="base"/u);
+  // App image references base with BASE_TAG
+  assert.match(app, /^ARG BASE_TAG=latest$/mu);
+  assert.match(app, /^FROM muad-openclaw-base:\$\{BASE_TAG\}$/mu);
+  assert.match(app, /io\.muad\.image\.role="app"/u);
+  // CI still passes openclaw version through
   assert.match(workflow, /OPENCLAW_VERSION=\$\{\{ inputs\.openclaw_version \|\| '2026\.6\.10' \}\}/u);
   assert.doesNotMatch(workflow, /OPENCLAW_VERSION=.*latest/u);
 });
 
 test("worker image builds session-manager and installs all runtime plugins and CLI", () => {
-  const dockerfile = read("Dockerfile");
+  const app = read("Dockerfile");
   for (const expected of [
     "AS session-manager-builder",
     "npm ci --include=dev",
@@ -28,9 +36,30 @@ test("worker image builds session-manager and installs all runtime plugins and C
     "private-skill-installer.mjs",
     "/usr/local/bin/session-manager",
     "runtime-image-self-check.mjs --image-only",
-  ]) assert.equal(dockerfile.includes(expected), true, `Dockerfile missing ${expected}`);
+  ]) assert.equal(app.includes(expected), true, `Dockerfile missing ${expected}`);
 
   assert.match(read("entrypoint.sh"), /node \/opt\/muad\/runtime-image-self-check\.mjs/u);
+});
+
+test("base image contains OpenClaw, Chromium/Playwright, channel plugins, and seed", () => {
+  const base = read("Dockerfile.base");
+  const entrypoint = read("entrypoint.sh");
+  // OpenClaw upstream
+  assert.match(base, /FROM ghcr\.io\/openclaw\/openclaw:\$\{OPENCLAW_VERSION\}/u);
+  // Playwright / Chromium
+  assert.match(base, /node \/app\/node_modules\/playwright-core\/cli\.js install --with-deps chromium/u);
+  // WeCom plugin
+  assert.match(base, /openclaw plugins install.*wecom-openclaw-plugin/u);
+  // WeChat plugin
+  assert.match(base, /openclaw plugins install.*openclaw-weixin/u);
+  // Baseline seed
+  assert.match(base, /seed-config\.mjs/u);
+  assert.match(base, /\/opt\/openclaw-seed/u);
+  // Entrypoint seed-to-PVC copy on first boot
+  assert.match(entrypoint, /cp -r \/opt\/openclaw-seed/u);
+  // Labels
+  assert.match(base, /io\.muad\.image\.role="base"/u);
+  assert.match(base, /io\.muad\.openclaw\.version="/u);
 });
 
 function read(relativePath) {

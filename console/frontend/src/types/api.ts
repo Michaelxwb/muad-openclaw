@@ -74,6 +74,7 @@ export interface Pod {
   channels: string[];
   channelConfigs?: Record<string, ChannelConfigView>;
   channelStatuses?: Record<string, boolean>;
+  channelDefaultAccountIds?: Record<string, string>;
   maxUsers: number;
   userCount: number;
   availableSlots: number;

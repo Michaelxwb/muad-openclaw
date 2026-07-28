@@ -96,6 +96,46 @@ test("/bind maps WeChat to openclaw-weixin without producing a model reply", asy
   assert.equal(requests[0].externalIdType, "wechat_peer_id");
 });
 
+test("/bind accepts OpenClaw session-prefixed WeChat direct context", async () => {
+  const requests = [];
+  const command = createBindCommand({
+    mainAgentId: "main",
+    client: { activate: async (request) => { requests.push(request); } },
+  });
+  const senderId = "o9cq804HgKSer0_xAOY8nQB7lye4@im.wechat";
+  const result = await command.handler(commandContext({
+    channel: "openclaw-weixin",
+    channelId: "openclaw-weixin",
+    senderId,
+    sessionKey: `session:agent:main:openclaw-weixin:direct:${senderId}`,
+  }));
+
+  assert.equal(result.text, "绑定成功，配置正在应用，请稍后重新发送业务消息。");
+  assert.equal(requests[0].channel, "wechat");
+  assert.equal(requests[0].openclawChannel, "openclaw-weixin");
+  assert.equal(requests[0].externalId, senderId);
+});
+
+test("/bind accepts linked WeChat direct sessions while preserving sender external ID", async () => {
+  const requests = [];
+  const command = createBindCommand({
+    mainAgentId: "main",
+    client: { activate: async (request) => { requests.push(request); } },
+  });
+  const senderId = "o9cq804HgKSer0_xAOY8nQB7lye4@im.wechat";
+  const result = await command.handler(commandContext({
+    channel: "openclaw-weixin",
+    channelId: "openclaw-weixin",
+    senderId,
+    from: senderId,
+    sessionKey: "agent:main:openclaw-weixin:direct:user-07550ac6",
+  }));
+
+  assert.equal(result.text, "绑定成功，配置正在应用，请稍后重新发送业务消息。");
+  assert.equal(requests[0].externalId, senderId);
+  assert.equal(requests[0].externalIdType, "wechat_peer_id");
+});
+
 test("/bind rejects missing senders, group sessions, unsupported channels, and non-main agents", async () => {
   let calls = 0;
   const command = createBindCommand({

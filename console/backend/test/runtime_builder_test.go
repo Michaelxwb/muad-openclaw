@@ -238,7 +238,10 @@ func assertRuntimeUsers(t *testing.T, config driver.RuntimeConfigV1) {
 	if !slices.Contains(config.Agents[0].Tools.Deny, "read") ||
 		!slices.Contains(config.Agents[0].Tools.Deny, "muad_use_skill") ||
 		!slices.Contains(config.Agents[1].Tools.Allow, "read") ||
+		!slices.Contains(config.Agents[1].Tools.Allow, "write") ||
+		!slices.Contains(config.Agents[1].Tools.Allow, "exec") ||
 		!slices.Contains(config.Agents[1].Tools.Allow, "muad_use_skill") ||
+		len(config.Agents[1].Tools.Deny) != 0 ||
 		!config.Agents[1].Tools.WorkspaceOnly {
 		t.Fatalf("Skill activation Tool policies = %+v", config.Agents)
 	}

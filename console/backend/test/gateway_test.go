@@ -10,7 +10,8 @@ import (
 func TestParseStatus_ConnectedWithAccountAndActivity(t *testing.T) {
 	raw := []byte(`{
 		"channels": {"openclaw-weixin": {"configured": true, "lastInboundAt": 1782557845792, "lastOutboundAt": 1782557888921}},
-		"channelAccounts": {"openclaw-weixin": [{"id": "x"}]}
+		"channelAccounts": {"openclaw-weixin": [{"accountId": "wx-bot"}]},
+		"channelDefaultAccountId": {"openclaw-weixin": "wx-bot"}
 	}`)
 	st, err := gateway.ParseStatus(raw)
 	if err != nil {
@@ -21,6 +22,9 @@ func TestParseStatus_ConnectedWithAccountAndActivity(t *testing.T) {
 	}
 	if !st.ChannelConnected {
 		t.Error("expected connected (account present)")
+	}
+	if st.ChannelDefaultAccountIDs["openclaw-weixin"] != "wx-bot" {
+		t.Errorf("default account = %q, want wx-bot", st.ChannelDefaultAccountIDs["openclaw-weixin"])
 	}
 	want := time.UnixMilli(1782557888921) // newest of inbound/outbound
 	if !st.LastActiveAt.Equal(want) {

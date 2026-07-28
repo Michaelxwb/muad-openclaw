@@ -175,6 +175,7 @@ func mergeGatewayStatus(snapshot *monitor.Snapshot, status gateway.Status) {
 	snapshot.Healthy = status.Healthy
 	snapshot.ChannelConnected = status.ChannelConnected
 	snapshot.ChannelStatuses = status.ChannelStatuses
+	snapshot.ChannelDefaultAccountIDs = status.ChannelDefaultAccountIDs
 	snapshot.LastActiveAt = status.LastActiveAt
 	snapshot.LastMessageAt = status.LastMessageAt
 	snapshot.RuntimeGuardHealthy = status.RuntimeGuardHealthy

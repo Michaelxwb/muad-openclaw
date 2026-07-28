@@ -1,146 +1,238 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1280" viewBox="0 0 2048 1280" role="img" aria-labelledby="title desc">
-  <title id="title">单 Runtime Pod 内部与组件（图 B）</title>
-  <desc id="desc">合并组件架构与 Pod 内部：共享 Gateway + tools 六件套、每用户隔离区、信任边界、internal API 与 State 布局。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1480" viewBox="0 0 2048 1480" role="img" aria-labelledby="title desc">
+  <title id="title">图 4-3 单 Claw Pod 内部与组件</title>
+  <desc id="desc">MSS Claw 单 Pod：共享 Gateway 与 tools 六件套、每用户逻辑隔离、双路径出站 MSSW、Console internal、State 布局。</desc>
   <defs>
-    <marker id="arrow-control" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#2563eb"/></marker>
-    <marker id="arrow-message" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#16a34a"/></marker>
-    <marker id="arrow-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#7c3aed"/></marker>
-    <marker id="arrow-session" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="20" markerHeight="20" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,1 L9.5,5 L0,9 z" fill="#ea580c"/></marker>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/></filter>
+    <marker id="arr-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9.5,5 L0,9 z" fill="#2563eb"/></marker>
+    <marker id="arr-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9.5,5 L0,9 z" fill="#16a34a"/></marker>
+    <marker id="arr-d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9.5,5 L0,9 z" fill="#7c3aed"/></marker>
+    <marker id="arr-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,1 L9.5,5 L0,9 z" fill="#ea580c"/></marker>
+    <filter id="sh" x="-8%" y="-8%" width="116%" height="120%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.12"/></filter>
     <style>
       .bg{fill:#f8fafc}
-      .title{fill:#0f172a;font:700 38px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
-      .subtitle{fill:#475569;font:400 18px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
-      .section{fill:#0f172a;font:700 22px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
-      .label{fill:#0f172a;font:700 18px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
-      .small{fill:#475569;font:400 15px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
-      .tiny{fill:#64748b;font:400 14px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
-      .legend{fill:#334155;font:400 16px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
-      .area{stroke-width:2;rx:22}
-      .card{stroke:#94a3b8;stroke-width:2;rx:12;filter:url(#shadow)}
-      .control{fill:none;stroke:#2563eb;stroke-width:3.5;marker-end:url(#arrow-control)}
-      .message{fill:none;stroke:#16a34a;stroke-width:3.5;marker-end:url(#arrow-message)}
-      .data{fill:none;stroke:#7c3aed;stroke-width:3.5;marker-end:url(#arrow-data)}
-      .session{fill:none;stroke:#ea580c;stroke-width:3.5;marker-end:url(#arrow-session)}
-      .dash{stroke-dasharray:10 8}
-      .thin{stroke-width:3}
+      .t{fill:#0f172a;font:700 34px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .sub{fill:#64748b;font:400 15px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .sec{fill:#0f172a;font:700 18px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .l{fill:#0f172a;font:700 15px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .m{fill:#475569;font:400 13px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .x{fill:#64748b;font:400 12px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .leg{fill:#334155;font:400 13px Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+      .area{stroke-width:2;rx:16}
+      .card{stroke:#94a3b8;stroke-width:1.5;rx:10;filter:url(#sh)}
+      .c{fill:none;stroke:#2563eb;stroke-width:2.2;marker-end:url(#arr-c)}
+      .g{fill:none;stroke:#16a34a;stroke-width:2.2;marker-end:url(#arr-m)}
+      .p{fill:none;stroke:#7c3aed;stroke-width:2;marker-end:url(#arr-d);stroke-dasharray:7 5}
+      .o{fill:none;stroke:#ea580c;stroke-width:2.4;marker-end:url(#arr-s)}
+      .dash{stroke-dasharray:8 6}
     </style>
   </defs>
-  <rect class="bg" width="2048" height="1280"/>
-  <text x="48" y="56" class="title">单 Runtime Pod 内部与组件（图 B）</text>
-  <text x="48" y="88" class="subtitle">共享 Gateway + tools 六件套；每用户 agent / workspace / profile / session-store 逻辑隔离 · 信任边界：JWT / service token / agent 间隔离</text>
-  <g transform="translate(980 42)">
-    <line x1="0" y1="8" x2="56" y2="8" class="control thin"/><text x="66" y="13" class="legend">控制</text>
-    <line x1="130" y1="8" x2="186" y2="8" class="message thin"/><text x="196" y="13" class="legend">消息/执行</text>
-    <line x1="300" y1="8" x2="356" y2="8" class="data thin dash"/><text x="366" y="13" class="legend">internal</text>
-    <line x1="470" y1="8" x2="526" y2="8" class="session thin"/><text x="536" y="13" class="legend">持久化</text>
+  <rect class="bg" width="2048" height="1480"/>
+
+  <text x="40" y="42" class="t">图 4-3  单 Claw Pod 内部与组件（MSS Claw）</text>
+  <text x="40" y="68" class="sub">共享 Gateway + tools 六件套 · 每用户 agent/workspace/profile/session-store/model/grant · 脚本型在 Pod 内 · 生产可靠出站 MSSW.Workflow · 逻辑隔离非独立内核</text>
+
+  <g transform="translate(40 88)">
+    <line x1="0" y1="0" x2="36" y2="0" class="c"/><text x="42" y="4" class="leg">控制/配置</text>
+    <line x1="130" y1="0" x2="166" y2="0" class="g"/><text x="172" y="4" class="leg">消息/脚本路径</text>
+    <line x1="300" y1="0" x2="336" y2="0" class="o"/><text x="342" y="4" class="leg">工作流出站/进度</text>
+    <line x1="480" y1="0" x2="516" y2="0" class="p"/><text x="522" y="4" class="leg">internal / 模型</text>
   </g>
 
-  <!-- shared gateway -->
-  <rect x="40" y="120" width="1968" height="200" class="area" fill="#fff7ed" stroke="#ea580c"/>
-  <text x="60" y="156" class="section" fill="#ea580c">1. 共享：Gateway + tools/（同一信任域 · 默认 browser profile = quarantine）</text>
-  <rect x="80" y="180" width="280" height="90" class="card" fill="#ffedd5"/>
-  <text x="220" y="215" text-anchor="middle" class="label">Gateway + main</text>
-  <text x="220" y="242" text-anchor="middle" class="small">消息入口 · bindings · /bind 引导</text>
-  <rect x="440" y="180" width="480" height="90" class="card" fill="#fed7aa"/>
-  <text x="680" y="210" text-anchor="middle" class="label">① guard · ② run-skill · ③ session-mgr</text>
-  <text x="680" y="236" text-anchor="middle" class="small">安全边界与绑定 · Skill 执行与审计 · 平台登录态</text>
-  <rect x="1000" y="180" width="480" height="90" class="card" fill="#fde68a"/>
-  <text x="1240" y="210" text-anchor="middle" class="label">④ progress · ⑤ adapters · ⑥ concurrency</text>
-  <text x="1240" y="236" text-anchor="middle" class="small">进度 CLI · 投递到会话 · Skill/浏览器 lease 队列</text>
-  <rect x="1560" y="180" width="280" height="90" class="card" fill="#c7d2fe"/>
-  <text x="1700" y="215" text-anchor="middle" class="label">OpenClaw 内核</text>
-  <text x="1700" y="242" text-anchor="middle" class="small">browser · LLM · 原生工具</text>
-  <!-- 顶栏：工具链组成关系 -->
-  <path d="M360 225 L440 225" class="control"/><path d="M920 225 L1000 225" class="control"/><path d="M1480 225 L1560 225" class="control"/>
+  <!-- ========== 1 Shared ========== -->
+  <rect x="40" y="120" width="1968" height="210" class="area" fill="#fff7ed" stroke="#fdba74"/>
+  <text x="56" y="148" class="sec" fill="#c2410c">1. 共享层（同一进程信任域 · 默认 browser profile = quarantine，业务 agent 不可复用）</text>
 
-  <!-- per user -->
-  <rect x="40" y="370" width="1480" height="520" class="area" fill="#ecfdf5" stroke="#16a34a"/>
-  <text x="60" y="408" class="section" fill="#16a34a">2. 每用户隔离区（逻辑隔离 · 非独立内核）</text>
+  <rect x="60" y="168" width="220" height="88" class="card" fill="#ffedd5"/>
+  <text x="170" y="200" text-anchor="middle" class="l">Gateway + main</text>
+  <text x="170" y="222" text-anchor="middle" class="m">IM 入口 · bindings 路由</text>
+  <text x="170" y="242" text-anchor="middle" class="x">/bind 引导 · session 拆分</text>
 
-  <g transform="translate(70 440)">
-    <rect width="440" height="300" class="card" fill="#eef6ff" stroke="#2563eb"/>
-    <text x="220" y="36" text-anchor="middle" class="label">服务经理 A · agent A</text>
-    <rect x="24" y="56" width="180" height="44" class="card" fill="#fff"/><text x="114" y="84" text-anchor="middle" class="small">workspace-A</text>
-    <rect x="220" y="56" width="180" height="44" class="card" fill="#fff"/><text x="310" y="84" text-anchor="middle" class="small">MEMORY</text>
-    <rect x="24" y="116" width="180" height="44" class="card" fill="#fff"/><text x="114" y="144" text-anchor="middle" class="small">session-store A</text>
-    <rect x="220" y="116" width="180" height="44" class="card" fill="#fff"/><text x="310" y="144" text-anchor="middle" class="small">browser profile A</text>
-    <rect x="24" y="176" width="180" height="44" class="card" fill="#fff"/><text x="114" y="204" text-anchor="middle" class="small">model_config A</text>
-    <rect x="220" y="176" width="180" height="44" class="card" fill="#fff"/><text x="310" y="204" text-anchor="middle" class="small">skill grant A</text>
-    <text x="220" y="250" text-anchor="middle" class="tiny">企微 Identity → bindings → 本 agent</text>
-    <text x="220" y="278" text-anchor="middle" class="tiny">private skills @ workspace-A/skills</text>
+  <rect x="300" y="168" width="150" height="88" class="card" fill="#fed7aa"/>
+  <text x="375" y="200" text-anchor="middle" class="l">① guard</text>
+  <text x="375" y="222" text-anchor="middle" class="m">绑定 · 路径门禁</text>
+  <text x="375" y="242" text-anchor="middle" class="x">钉 profile · 禁串户</text>
+
+  <rect x="470" y="168" width="150" height="88" class="card" fill="#fed7aa"/>
+  <text x="545" y="200" text-anchor="middle" class="l">② run-skill</text>
+  <text x="545" y="222" text-anchor="middle" class="m">Skill 执行</text>
+  <text x="545" y="242" text-anchor="middle" class="x">grant · 审计上报</text>
+
+  <rect x="640" y="168" width="160" height="88" class="card" fill="#fed7aa"/>
+  <text x="720" y="200" text-anchor="middle" class="l">③ session-mgr</text>
+  <text x="720" y="222" text-anchor="middle" class="m">平台凭证解析</text>
+  <text x="720" y="242" text-anchor="middle" class="x">写入本 agent store</text>
+
+  <rect x="820" y="168" width="150" height="88" class="card" fill="#fde68a"/>
+  <text x="895" y="200" text-anchor="middle" class="l">④ progress</text>
+  <text x="895" y="222" text-anchor="middle" class="m">进度事件 CLI</text>
+  <text x="895" y="242" text-anchor="middle" class="x">长任务旁路</text>
+
+  <rect x="990" y="168" width="150" height="88" class="card" fill="#fde68a"/>
+  <text x="1065" y="200" text-anchor="middle" class="l">⑤ adapters</text>
+  <text x="1065" y="222" text-anchor="middle" class="m">投递到 IM 会话</text>
+  <text x="1065" y="242" text-anchor="middle" class="x">终态仍 native reply</text>
+
+  <rect x="1160" y="168" width="160" height="88" class="card" fill="#fde68a"/>
+  <text x="1240" y="200" text-anchor="middle" class="l">⑥ concurrency</text>
+  <text x="1240" y="222" text-anchor="middle" class="m">Skill/浏览器租约</text>
+  <text x="1240" y="242" text-anchor="middle" class="x">防 Pod 打满</text>
+
+  <rect x="1340" y="168" width="200" height="88" class="card" fill="#c7d2fe"/>
+  <text x="1440" y="200" text-anchor="middle" class="l">OpenClaw 内核</text>
+  <text x="1440" y="222" text-anchor="middle" class="m">LLM 工具 · browser</text>
+  <text x="1440" y="242" text-anchor="middle" class="x">原生工具执行面</text>
+
+  <rect x="1560" y="168" width="220" height="88" class="card" fill="#e2e8f0"/>
+  <text x="1670" y="200" text-anchor="middle" class="l">Runtime 配置</text>
+  <text x="1670" y="222" text-anchor="middle" class="m">agents · bindings</text>
+  <text x="1670" y="242" text-anchor="middle" class="x">profiles · grant · 通道</text>
+
+  <rect x="1800" y="168" width="180" height="88" class="card" fill="#fecdd3"/>
+  <text x="1890" y="200" text-anchor="middle" class="l">service token</text>
+  <text x="1890" y="222" text-anchor="middle" class="m">调 Console internal</text>
+  <text x="1890" y="242" text-anchor="middle" class="x">≠ 管理员 JWT</text>
+
+  <text x="60" y="285" class="x">六件套职责：① 不许串  ② 按授权跑脚本 Skill  ③ 平台票落本 agent  ④⑤ 进度旁路  ⑥ 有界并发。扩展业务优先加 Skill，不改本层骨架。</text>
+  <text x="60" y="308" class="x">配置来源：Console apply（generation 事务）下发；绑定激活经 ① → Console bindings/activate 后再 apply。</text>
+
+  <!-- ========== 2 Per-user ========== -->
+  <rect x="40" y="340" width="1320" height="520" class="area" fill="#ecfdf5" stroke="#86efac"/>
+  <text x="56" y="368" class="sec" fill="#15803d">2. 每用户隔离区（逻辑隔离 · 默认约 10 用户/Pod · 以 agentId 为锚）</text>
+
+  <!-- User A -->
+  <g transform="translate(60 390)">
+    <rect width="400" height="340" class="card" fill="#eff6ff" stroke="#3b82f6"/>
+    <text x="200" y="28" text-anchor="middle" class="l">服务经理 A · agent A</text>
+    <rect x="16" y="44" width="178" height="40" class="card" fill="#fff"/><text x="105" y="70" text-anchor="middle" class="m">workspace-A</text>
+    <rect x="206" y="44" width="178" height="40" class="card" fill="#fff"/><text x="295" y="70" text-anchor="middle" class="m">MEMORY / 记忆</text>
+    <rect x="16" y="96" width="178" height="40" class="card" fill="#fff"/><text x="105" y="122" text-anchor="middle" class="m">IM session A</text>
+    <rect x="206" y="96" width="178" height="40" class="card" fill="#fff"/><text x="295" y="122" text-anchor="middle" class="m">browser profile A</text>
+    <rect x="16" y="148" width="178" height="40" class="card" fill="#fff"/><text x="105" y="174" text-anchor="middle" class="m">session-store A</text>
+    <rect x="206" y="148" width="178" height="40" class="card" fill="#fff"/><text x="295" y="174" text-anchor="middle" class="m">model_config A</text>
+    <rect x="16" y="200" width="178" height="40" class="card" fill="#fff"/><text x="105" y="226" text-anchor="middle" class="m">skill grant A</text>
+    <rect x="206" y="200" width="178" height="40" class="card" fill="#fff"/><text x="295" y="226" text-anchor="middle" class="m">private skills A</text>
+    <text x="200" y="268" text-anchor="middle" class="x">bindings: wecom peer → agent A</text>
+    <text x="200" y="290" text-anchor="middle" class="x">一人多 IM → 同一 agent，记忆共享</text>
+    <text x="200" y="320" text-anchor="middle" class="x">路径示例 agents/A/ · workspace-A</text>
   </g>
-  <g transform="translate(540 440)">
-    <rect width="440" height="300" class="card" fill="#f0fdf4" stroke="#16a34a"/>
-    <text x="220" y="36" text-anchor="middle" class="label">服务经理 B · agent B</text>
-    <rect x="24" y="56" width="180" height="44" class="card" fill="#fff"/><text x="114" y="84" text-anchor="middle" class="small">workspace-B</text>
-    <rect x="220" y="56" width="180" height="44" class="card" fill="#fff"/><text x="310" y="84" text-anchor="middle" class="small">MEMORY</text>
-    <rect x="24" y="116" width="180" height="44" class="card" fill="#fff"/><text x="114" y="144" text-anchor="middle" class="small">session-store B</text>
-    <rect x="220" y="116" width="180" height="44" class="card" fill="#fff"/><text x="310" y="144" text-anchor="middle" class="small">browser profile B</text>
-    <rect x="24" y="176" width="180" height="44" class="card" fill="#fff"/><text x="114" y="204" text-anchor="middle" class="small">model_config B</text>
-    <rect x="220" y="176" width="180" height="44" class="card" fill="#fff"/><text x="310" y="204" text-anchor="middle" class="small">skill grant B</text>
-    <text x="220" y="250" text-anchor="middle" class="tiny">不可访问 A 的 workspace / profile</text>
-    <text x="220" y="278" text-anchor="middle" class="tiny">Guard 强制路径与 lease</text>
-  </g>
-  <g transform="translate(1010 440)">
-    <rect width="440" height="300" class="card" fill="#f5f3ff" stroke="#7c3aed"/>
-    <text x="220" y="36" text-anchor="middle" class="label">服务经理 N · agent N</text>
-    <rect x="24" y="56" width="180" height="44" class="card" fill="#fff"/><text x="114" y="84" text-anchor="middle" class="small">workspace-N</text>
-    <rect x="220" y="56" width="180" height="44" class="card" fill="#fff"/><text x="310" y="84" text-anchor="middle" class="small">MEMORY</text>
-    <rect x="24" y="116" width="180" height="44" class="card" fill="#fff"/><text x="114" y="144" text-anchor="middle" class="small">session-store N</text>
-    <rect x="220" y="116" width="180" height="44" class="card" fill="#fff"/><text x="310" y="144" text-anchor="middle" class="small">browser profile N</text>
-    <rect x="24" y="176" width="180" height="44" class="card" fill="#fff"/><text x="114" y="204" text-anchor="middle" class="small">model_config N</text>
-    <rect x="220" y="176" width="180" height="44" class="card" fill="#fff"/><text x="310" y="204" text-anchor="middle" class="small">skill grant N</text>
-    <text x="220" y="250" text-anchor="middle" class="tiny">默认最多约 10 用户 / Pod</text>
-    <text x="220" y="278" text-anchor="middle" class="tiny">Skill 业务扩展不改此隔离模型</text>
-  </g>
-  <text x="70" y="780" class="small">执行路径：企微消息 → bindings → agent → ② run-skill（③ 平台 · ④⑤ 进度 · ⑥ 并发）→ native final reply</text>
-  <text x="70" y="810" class="tiny">路径非 users/ 目录：workspace-&lt;agent&gt; · agents/&lt;agent&gt;/session-store/&lt;platform&gt;</text>
 
-  <!-- internal -->
-  <rect x="1560" y="370" width="448" height="520" class="area" fill="#f5f3ff" stroke="#7c3aed"/>
-  <text x="1580" y="388" class="section" fill="#7c3aed">3. Console internal</text>
-  <text x="1580" y="420" class="tiny">均 service token</text>
-  <rect x="1590" y="450" width="388" height="80" class="card" fill="#ede9fe"/>
-  <text x="1784" y="482" text-anchor="middle" class="label">bindings/activate</text>
-  <text x="1784" y="510" text-anchor="middle" class="small">① guard · 绑定码</text>
-  <rect x="1590" y="560" width="388" height="80" class="card" fill="#ede9fe"/>
-  <text x="1784" y="592" text-anchor="middle" class="label">session-credentials/resolve</text>
-  <text x="1784" y="620" text-anchor="middle" class="small">③ session-manager · 凭证</text>
-  <rect x="1590" y="670" width="388" height="80" class="card" fill="#ede9fe"/>
-  <text x="1784" y="702" text-anchor="middle" class="label">skill-executions</text>
-  <text x="1784" y="730" text-anchor="middle" class="small">② run-skill · 执行审计</text>
-  <text x="1590" y="800" class="tiny">健康：muad.runtime.health（①）</text>
-  <text x="1590" y="830" class="tiny">Collector 读取 · 告警</text>
+  <!-- User B -->
+  <g transform="translate(490 390)">
+    <rect width="400" height="340" class="card" fill="#f0fdf4" stroke="#16a34a"/>
+    <text x="200" y="28" text-anchor="middle" class="l">服务经理 B · agent B</text>
+    <rect x="16" y="44" width="178" height="40" class="card" fill="#fff"/><text x="105" y="70" text-anchor="middle" class="m">workspace-B</text>
+    <rect x="206" y="44" width="178" height="40" class="card" fill="#fff"/><text x="295" y="70" text-anchor="middle" class="m">MEMORY / 记忆</text>
+    <rect x="16" y="96" width="178" height="40" class="card" fill="#fff"/><text x="105" y="122" text-anchor="middle" class="m">IM session B</text>
+    <rect x="206" y="96" width="178" height="40" class="card" fill="#fff"/><text x="295" y="122" text-anchor="middle" class="m">browser profile B</text>
+    <rect x="16" y="148" width="178" height="40" class="card" fill="#fff"/><text x="105" y="174" text-anchor="middle" class="m">session-store B</text>
+    <rect x="206" y="148" width="178" height="40" class="card" fill="#fff"/><text x="295" y="174" text-anchor="middle" class="m">model_config B</text>
+    <rect x="16" y="200" width="178" height="40" class="card" fill="#fff"/><text x="105" y="226" text-anchor="middle" class="m">skill grant B</text>
+    <rect x="206" y="200" width="178" height="40" class="card" fill="#fff"/><text x="295" y="226" text-anchor="middle" class="m">private skills B</text>
+    <text x="200" y="268" text-anchor="middle" class="x">不可访问 A 的 workspace/profile</text>
+    <text x="200" y="290" text-anchor="middle" class="x">guard 强制路径与 lease</text>
+    <text x="200" y="320" text-anchor="middle" class="x">模型无 fallback，互不串 Key</text>
+  </g>
 
+  <!-- User N -->
+  <g transform="translate(920 390)">
+    <rect width="400" height="340" class="card" fill="#f5f3ff" stroke="#8b5cf6"/>
+    <text x="200" y="28" text-anchor="middle" class="l">服务经理 N · agent N</text>
+    <rect x="16" y="44" width="178" height="40" class="card" fill="#fff"/><text x="105" y="70" text-anchor="middle" class="m">workspace-N</text>
+    <rect x="206" y="44" width="178" height="40" class="card" fill="#fff"/><text x="295" y="70" text-anchor="middle" class="m">MEMORY / 记忆</text>
+    <rect x="16" y="96" width="178" height="40" class="card" fill="#fff"/><text x="105" y="122" text-anchor="middle" class="m">IM session N</text>
+    <rect x="206" y="96" width="178" height="40" class="card" fill="#fff"/><text x="295" y="122" text-anchor="middle" class="m">browser profile N</text>
+    <rect x="16" y="148" width="178" height="40" class="card" fill="#fff"/><text x="105" y="174" text-anchor="middle" class="m">session-store N</text>
+    <rect x="206" y="148" width="178" height="40" class="card" fill="#fff"/><text x="295" y="174" text-anchor="middle" class="m">model_config N</text>
+    <rect x="16" y="200" width="178" height="40" class="card" fill="#fff"/><text x="105" y="226" text-anchor="middle" class="m">skill grant N</text>
+    <rect x="206" y="200" width="178" height="40" class="card" fill="#fff"/><text x="295" y="226" text-anchor="middle" class="m">private skills N</text>
+    <text x="200" y="268" text-anchor="middle" class="x">故障半径 ≈ 本 Pod 用户数</text>
+    <text x="200" y="290" text-anchor="middle" class="x">Skill 扩展不改隔离模型</text>
+    <text x="200" y="320" text-anchor="middle" class="x">dmScope: per-channel-peer</text>
+  </g>
+
+  <text x="56" y="760" class="m">消息路径：企微 → Gateway → bindings → agent →（guard）→ LLM/工具 → native final reply</text>
+  <text x="56" y="782" class="m">脚本 SOP：agent → ② run-skill（⑥ 租约）→ ③ 凭证 · ④⑤ 进度 · browser 钉 profile → 上报 skill-executions</text>
+  <text x="56" y="804" class="m">工作流 SOP：agent → 触发契约 → 出站 MSSW.Workflow → 结果回 agent → reply（重执行在 MSSW，不在 Pod 内跑长工作流）</text>
+  <text x="56" y="826" class="x">IM session ≠ session-store（后者为业务平台 Cookie/storageState）。quarantine 仅默认隔离 profile。</text>
+
+  <!-- ========== 3 Dual path + external ========== -->
+  <rect x="1380" y="340" width="628" height="280" class="area" fill="#ecfdf5" stroke="#86efac"/>
+  <text x="1396" y="368" class="sec" fill="#15803d">3. 双路径出站（分叉在 Agent 后）</text>
+  <rect x="1410" y="390" width="270" height="100" class="card" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="1545" y="428" text-anchor="middle" class="l" fill="#15803d">脚本型 · 快速验证</text>
+  <text x="1545" y="452" text-anchor="middle" class="m">Pod 内 ② 执行脚本</text>
+  <text x="1545" y="474" text-anchor="middle" class="x">再调 MSSW Service*</text>
+  <rect x="1700" y="390" width="280" height="100" class="card" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="1840" y="428" text-anchor="middle" class="l" fill="#c2410c">工作流型 · 生产可靠</text>
+  <text x="1840" y="452" text-anchor="middle" class="m">Pod 内仅触发</text>
+  <text x="1840" y="474" text-anchor="middle" class="x">执行在 MSSW.Workflow</text>
+  <rect x="1410" y="510" width="570" height="80" class="card" fill="#f0fdf4"/>
+  <text x="1695" y="542" text-anchor="middle" class="l">MSSW（外部业务系统）</text>
+  <text x="1695" y="568" text-anchor="middle" class="m">ServiceA/B…  +  Workflow 微服务（同属 MSSW）</text>
+
+  <rect x="1380" y="640" width="300" height="100" class="area" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="1530" y="680" text-anchor="middle" class="l">LLM 模型服务</text>
+  <text x="1530" y="708" text-anchor="middle" class="m">按 agent 绑定 key · 无串用</text>
+  <rect x="1700" y="640" width="308" height="100" class="area" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="1854" y="680" text-anchor="middle" class="l">企微 / 微信通道</text>
+  <text x="1854" y="708" text-anchor="middle" class="m">插件接入 Gateway</text>
+
+  <!-- ========== 4 Console internal ========== -->
+  <rect x="1380" y="760" width="628" height="280" class="area" fill="#f5f3ff" stroke="#c4b5fd"/>
+  <text x="1396" y="788" class="sec" fill="#6d28d9">4. Console internal（均 service token）</text>
+  <rect x="1410" y="810" width="570" height="52" class="card" fill="#ede9fe"/>
+  <text x="1695" y="842" text-anchor="middle" class="m">bindings/activate ← ① guard · 绑定码激活</text>
+  <rect x="1410" y="876" width="570" height="52" class="card" fill="#ede9fe"/>
+  <text x="1695" y="908" text-anchor="middle" class="m">session-credentials/resolve ← ③ · 平台凭证</text>
+  <rect x="1410" y="942" width="570" height="52" class="card" fill="#ede9fe"/>
+  <text x="1695" y="974" text-anchor="middle" class="m">skill-executions ← ② · 执行审计（失败 outbox）</text>
+  <text x="1410" y="1018" class="x">健康：muad.runtime.health（①）· Collector · apply 由 Console 下推</text>
+
+  <!-- ========== 5 Storage ========== -->
+  <rect x="40" y="880" width="1320" height="160" class="area" fill="#fff7ed" stroke="#fdba74"/>
+  <text x="56" y="908" class="sec" fill="#c2410c">5. 存储挂载（State PVC · Skills）</text>
+  <rect x="60" y="928" width="400" height="72" class="card" fill="#ffedd5"/>
+  <text x="260" y="958" text-anchor="middle" class="l">State · ~/.openclaw</text>
+  <text x="260" y="980" text-anchor="middle" class="x">workspace · agents/*/session-store · outbox · 配置</text>
+  <rect x="480" y="928" width="280" height="72" class="card" fill="#ffedd5"/>
+  <text x="620" y="958" text-anchor="middle" class="l">Public Skills</text>
+  <text x="620" y="980" text-anchor="middle" class="x">只读共享 · 授权按 grant</text>
+  <rect x="780" y="928" width="280" height="72" class="card" fill="#ffedd5"/>
+  <text x="920" y="958" text-anchor="middle" class="l">Private Skills</text>
+  <text x="920" y="980" text-anchor="middle" class="x">workspace-&lt;agent&gt;/skills</text>
+  <rect x="1080" y="928" width="260" height="72" class="card" fill="#e2e8f0"/>
+  <text x="1210" y="958" text-anchor="middle" class="l">执行摘要</text>
+  <text x="1210" y="980" text-anchor="middle" class="x">落 Console SQLite</text>
+
+  <!-- ========== 6 Trust ========== -->
+  <rect x="40" y="1060" width="1968" height="100" class="area" fill="#fef2f2" stroke="#fca5a5"/>
+  <text x="56" y="1090" class="sec" fill="#b91c1c">6. 信任边界与不做强承诺</text>
+  <text x="56" y="1118" class="m">信任：管理员 JWT（仅 Console）≠ Pod service token ≠ 用户 IM 身份 ≠ MSSW 调用凭证。agent 间不可互访 workspace/profile/session-store。</text>
+  <text x="56" y="1142" class="m">边界：同 Pod = 逻辑隔离。主路径企微私聊。不强承诺：群聊强隔离、多人共享个人微信登录态、仅依赖上游自动选 browser profile（靠 ① guard 钉死）。</text>
+
+  <!-- footer note -->
+  <rect x="40" y="1180" width="1968" height="80" class="area" fill="#fffbeb" stroke="#fcd34d"/>
+  <text x="56" y="1210" class="m">与图 4-1 分工：4-1 多 Pod 全景与 MSSW 外部边界；本图单 Pod 组件、隔离竖切、六件套与双路径出站细节。</text>
+  <text x="56" y="1236" class="m">产品：MSS Claw · 运行单元：Claw Pod · 可靠执行：MSSW.Workflow 微服务 · 业务 API：MSSW/SDSP Service*。</text>
+
+  <!-- arrows shared -> users -->
+  <path d="M170 256 V340" class="g"/>
+  <path d="M170 340 C170 360, 260 380, 260 390" class="g"/>
+  <path d="M170 340 C400 360, 690 380, 690 390" class="g"/>
+  <path d="M170 340 C700 360, 1120 380, 1120 390" class="g"/>
+  <!-- tools to internal -->
+  <path d="M375 256 C500 300, 1300 820, 1410 836" class="p"/>
+  <path d="M545 256 C700 320, 1300 900, 1410 902" class="p"/>
+  <path d="M720 256 C900 340, 1300 960, 1410 968" class="p"/>
+  <!-- dual path from center users to dual path box -->
+  <path d="M1360 560 H1410" class="g"/>
+  <path d="M1360 600 H1410" class="o"/>
+  <!-- to MSSW -->
+  <path d="M1545 490 V510" class="g"/>
+  <path d="M1840 490 V510" class="o"/>
+  <!-- LLM -->
+  <path d="M1440 256 C1480 400, 1500 640, 1530 640" class="p"/>
   <!-- storage -->
-  <rect x="40" y="930" width="1968" height="280" class="area" fill="#fff7ed" stroke="#ea580c"/>
-  <text x="60" y="965" class="section" fill="#ea580c">4. State / Public / Private</text>
-  <rect x="70" y="1000" width="560" height="85" class="card" fill="#ffedd5"/>
-  <text x="350" y="1037" text-anchor="middle" class="label">State：/home/node/.openclaw</text>
-  <text x="350" y="1065" text-anchor="middle" class="small">workspace-* · agents/*/session-store · outbox</text>
-  <rect x="660" y="1000" width="400" height="85" class="card" fill="#ffedd5"/>
-  <text x="860" y="1037" text-anchor="middle" class="label">Public Skills</text>
-  <text x="860" y="1065" text-anchor="middle" class="small">/opt/openclaw-skills 只读</text>
-  <rect x="1090" y="1000" width="400" height="85" class="card" fill="#ffedd5"/>
-  <text x="1290" y="1037" text-anchor="middle" class="label">Private Skills</text>
-  <text x="1290" y="1065" text-anchor="middle" class="small">workspace-&lt;agent&gt;/skills</text>
-  <rect x="1520" y="1000" width="440" height="85" class="card" fill="#e2e8f0"/>
-  <text x="1740" y="1037" text-anchor="middle" class="label">执行终态摘要</text>
-  <text x="1740" y="1065" text-anchor="middle" class="small">Console SQLite（非 State）</text>
-  <text x="70" y="1145" class="small">平台产品范围 MSSW / SDSP；业务 Skill 一对一绑定平台；预防流/报告 = Skill 扩展，不改本图隔离与工具链结构。</text>
-  <text x="70" y="1175" class="tiny">IM session ≠ session-store（后者为业务平台 Cookie/storageState）。进度消息经 ④⑤ 旁路；终态仍 native final reply。</text>
-
-  <!-- 绿：Gateway 底边中 → 用户卡顶边中 -->
-  <path d="M220 270 C220 370, 290 400, 290 440" class="message"/>
-  <path d="M220 270 C400 370, 760 400, 760 440" class="message"/>
-  <path d="M220 270 C800 370, 1230 400, 1230 440" class="message"/>
-  <!-- 紫：tools 底边 → Console internal -->
-  <path d="M680 270 C850 370, 1500 450, 1590 490" class="data dash"/>
-  <path d="M680 270 C950 470, 1500 560, 1590 600" class="data dash"/>
-  <path d="M680 270 C1050 570, 1500 670, 1590 710" class="data dash"/>
-  <!-- 橙：用户底边中 → 存储顶边中 -->
-  <path d="M290 740 C300 880, 320 960, 350 1000" class="session"/>
-  <path d="M760 740 C800 900, 840 960, 860 1000" class="session"/>
-  <path d="M1230 740 C1260 900, 1280 960, 1290 1000" class="session"/>
+  <path d="M260 730 V880" class="o dash"/>
+  <path d="M690 730 V880" class="o dash"/>
+  <path d="M1120 730 V880" class="o dash"/>
 </svg>

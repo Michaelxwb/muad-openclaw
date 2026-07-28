@@ -7,6 +7,7 @@ import type {
   BindingCodeStatus,
   HumanUser,
   HumanUserActivation,
+  Identity,
 } from "../../api";
 import { channelMeta } from "../../channels";
 import { useMountedRef } from "../../hooks/useMountedRef";
@@ -18,9 +19,16 @@ import { Field } from "./shared";
 interface Props {
   user: HumanUser;
   channels: string[];
+  identities: Identity[];
+  channelDefaultAccountIds?: Record<string, string>;
 }
 
-export function BindingCodeManager({ user, channels }: Props) {
+export function BindingCodeManager({
+  user,
+  channels,
+  identities,
+  channelDefaultAccountIds = {},
+}: Props) {
   const state = useBindingCodes(user.humanUserId);
   const [createOpen, setCreateOpen] = useState(false);
   const [activation, setActivation] = useState<HumanUserActivation | null>(null);
@@ -46,6 +54,8 @@ export function BindingCodeManager({ user, channels }: Props) {
       <CreateBindingCodeDialog
         user={user}
         channels={channels}
+        identities={identities}
+        channelDefaultAccountIds={channelDefaultAccountIds}
         visible={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={async (created) => {
@@ -170,20 +180,24 @@ function BindingStatus({ status }: { status: BindingCodeStatus }) {
 interface CreateDialogProps {
   user: HumanUser;
   channels: string[];
+  identities: Identity[];
+  channelDefaultAccountIds: Record<string, string>;
   visible: boolean;
   onClose: () => void;
   onCreated: (activation: HumanUserActivation) => Promise<void>;
 }
 
 function CreateBindingCodeDialog(props: CreateDialogProps) {
-  const [form, setForm] = useState<Required<ActivationInput>>(() => initialForm(props.channels));
+  const [form, setForm] = useState<Required<ActivationInput>>(() =>
+    initialForm(props.channels, props.identities, props.channelDefaultAccountIds),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     if (!props.visible) return;
-    setForm(initialForm(props.channels));
+    setForm(initialForm(props.channels, props.identities, props.channelDefaultAccountIds));
     setError("");
-  }, [props.channels, props.visible]);
+  }, [props.channelDefaultAccountIds, props.channels, props.identities, props.visible]);
 
   const submit = async () => {
     if (!form.channel) return setRepeatableError(setError, "消息通道必填");
@@ -214,21 +228,53 @@ function CreateBindingCodeDialog(props: CreateDialogProps) {
       confirmLoading={busy}
     >
       <FeedbackBanner error={error} />
-      <BindingCodeFields channels={props.channels} form={form} setForm={setForm} />
+      <BindingCodeFields
+        channels={props.channels}
+        channelDefaultAccountIds={props.channelDefaultAccountIds}
+        form={form}
+        setForm={setForm}
+      />
     </Modal>
   );
 }
 
-function initialForm(channels: string[]): Required<ActivationInput> {
-  return { channel: channels[0] ?? "", accountId: "default", expiresInMinutes: 30 };
+export function defaultBindingChannel(
+  channels: string[],
+  identities: Pick<Identity, "channel" | "status">[],
+) {
+  const activeChannels = new Set(
+    identities
+      .filter((identity) => identity.status === "active")
+      .map((identity) => identity.channel),
+  );
+  return channels.find((channel) => !activeChannels.has(channel)) ?? channels[0] ?? "";
+}
+
+function initialForm(
+  channels: string[],
+  identities: Pick<Identity, "channel" | "status">[],
+  channelDefaultAccountIds: Record<string, string>,
+): Required<ActivationInput> {
+  const channel = defaultBindingChannel(channels, identities);
+  return {
+    channel,
+    accountId: defaultBindingAccountId(channel, channelDefaultAccountIds),
+    expiresInMinutes: 30,
+  };
+}
+
+function defaultBindingAccountId(channel: string, channelDefaultAccountIds: Record<string, string>) {
+  return channelDefaultAccountIds[channel] || "default";
 }
 
 function BindingCodeFields({
   channels,
+  channelDefaultAccountIds,
   form,
   setForm,
 }: {
   channels: string[];
+  channelDefaultAccountIds: Record<string, string>;
   form: Required<ActivationInput>;
   setForm: (form: Required<ActivationInput>) => void;
 }) {
@@ -242,7 +288,14 @@ function BindingCodeFields({
             value: channel,
             label: channelMeta(channel).label,
           }))}
-          onChange={(value) => setForm({ ...form, channel: String(value ?? "") })}
+          onChange={(value) => {
+            const channel = String(value ?? "");
+            setForm({
+              ...form,
+              channel,
+              accountId: defaultBindingAccountId(channel, channelDefaultAccountIds),
+            });
+          }}
           style={{ width: "100%" }}
         />
       </Field>
