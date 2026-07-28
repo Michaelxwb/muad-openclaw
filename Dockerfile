@@ -1,8 +1,13 @@
 # muad-openclaw 应用镜像
 # 在基础镜像上叠加业务插件代码（bin/ tools/ skills/ entrypoint）
 # 变更频率：每次业务代码发布
+#
+# 构建参数:
+#   BASE_IMAGE  基础镜像 registry 地址（默认 muad-openclaw-base，适用于本地构建）
+#   BASE_TAG    基础镜像 tag（默认 latest）
+ARG BASE_IMAGE=muad-openclaw-base
 ARG BASE_TAG=latest
-FROM muad-openclaw-base:${BASE_TAG}
+FROM ${BASE_IMAGE}:${BASE_TAG}
 
 LABEL io.muad.image.role="app"
 
@@ -21,7 +26,9 @@ RUN set -eux; \
     go build -o /out/muad-skill-check ./cmd/muad-skill-check
 
 # ── session-manager（npm 编译） ──
-FROM muad-openclaw-base:${BASE_TAG} AS session-manager-builder
+ARG BASE_IMAGE
+ARG BASE_TAG
+FROM ${BASE_IMAGE}:${BASE_TAG} AS session-manager-builder
 
 USER root
 WORKDIR /build/session-manager
@@ -34,7 +41,9 @@ COPY tools/session-manager/openclaw-plugin.mjs tools/session-manager/openclaw.pl
 RUN npm test
 
 # ── 最终镜像 ──
-FROM muad-openclaw-base:${BASE_TAG}
+ARG BASE_IMAGE
+ARG BASE_TAG
+FROM ${BASE_IMAGE}:${BASE_TAG}
 
 USER root
 

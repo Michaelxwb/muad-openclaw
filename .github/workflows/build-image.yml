@@ -79,4 +79,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
+            BASE_IMAGE=ghcr.io/michaelxwb/muad-openclaw-base
             BASE_TAG=${{ steps.base.outputs.base_tag }}
