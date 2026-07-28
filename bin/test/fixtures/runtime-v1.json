@@ -39,8 +39,20 @@
       "model": "user-alice-deepseek/deepseek-chat",
       "skills": ["web-tools-guide", "xdr-query"],
       "tools": {
-        "allow": ["browser", "read", "muad_use_skill", "muad_run_skill", "session_get_state"],
-        "deny": ["exec", "shell"],
+        "allow": [
+          "apply_patch",
+          "bash",
+          "browser",
+          "edit",
+          "exec",
+          "muad_run_skill",
+          "muad_use_skill",
+          "process",
+          "read",
+          "session_get_state",
+          "shell",
+          "write"
+        ],
         "workspaceOnly": true
       }
     }

@@ -82,10 +82,12 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.deepEqual(output.agents.list[0].skills, []);
   assert.deepEqual(output.agents.list[1].skills, ["web-tools-guide", "xdr-query"]);
   assert.equal(output.agents.list[1].tools.fs.workspaceOnly, true);
-  assert.deepEqual(output.agents.list[1].tools.deny, ["exec", "shell"]);
+  assert.equal(output.agents.list[1].tools.deny, undefined);
   assert.equal(output.agents.list[0].tools.deny.includes("muad_use_skill"), true);
   assert.equal(output.agents.list[0].tools.deny.includes("read"), true);
   assert.equal(output.agents.list[1].tools.allow.includes("read"), true);
+  assert.equal(output.agents.list[1].tools.allow.includes("write"), true);
+  assert.equal(output.agents.list[1].tools.allow.includes("exec"), true);
   assert.equal(output.agents.list[1].tools.allow.includes("muad_use_skill"), true);
   assert.equal(output.bindings[0].match.channel, "openclaw-weixin");
   assert.deepEqual(output.bindings[0].match.peer, { kind: "direct", id: "wx-alice" });
@@ -187,6 +189,9 @@ Keep this custom rule.
   assert.equal(stored._comment, undefined);
   assert.equal(result.hash, canonicalHash(stored));
   assert.match(firstGuidance, /Keep this custom rule/u);
+  assert.match(firstGuidance, /Memory persistence/u);
+  assert.match(firstGuidance, /before saying it is remembered/u);
+  assert.match(firstGuidance, /Never say a fact has been saved/u);
   assert.match(firstGuidance, /muad_use_skill/u);
   assert.match(firstGuidance, /read the exact .*SKILL\.md/iu);
   assert.match(firstGuidance, /every user turn/iu);

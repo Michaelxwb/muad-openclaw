@@ -77,8 +77,28 @@ function upsertUserGuidance(file) {
     return;
   }
   const current = readFileSync(file, "utf8");
-  const next = replaceManagedBlock(removeLegacySkillGuidance(current));
+  const withMemory = replaceMemoryGuidance(removeLegacyMemoryGuidance(current));
+  const next = replaceManagedBlock(removeLegacySkillGuidance(withMemory));
   if (next !== current) writeFileSync(file, next, { mode: 0o600 });
+}
+
+function replaceMemoryGuidance(content) {
+  const start = content.indexOf(MEMORY_GUIDANCE_START);
+  const end = content.indexOf(MEMORY_GUIDANCE_END);
+  if (start >= 0 && end >= start) {
+    const suffix = end + MEMORY_GUIDANCE_END.length;
+    return `${content.slice(0, start)}${MEMORY_GUIDANCE}${content.slice(suffix)}`;
+  }
+  return `${MEMORY_GUIDANCE}\n\n${content.trimStart()}`;
+}
+
+function removeLegacyMemoryGuidance(content) {
+  if (content.includes(MEMORY_GUIDANCE_START)) return content;
+  const start = content.indexOf("# Shared memory boundary");
+  if (start < 0) return content;
+  const end = content.indexOf(SKILL_GUIDANCE_START, start);
+  if (end < 0) return content;
+  return `${content.slice(0, start)}${content.slice(end)}`;
 }
 
 function replaceManagedBlock(content) {
@@ -338,13 +358,24 @@ This is the unbound-user fallback agent. Only explain how to bind or contact an 
 Never access business tools, user memory, Browser profiles, Skills, files, or platform credentials.
 `;
 
-const USER_BASE_GUIDANCE = `# Shared memory boundary
+const MEMORY_GUIDANCE_START = "<!-- muad:memory:start -->";
+const MEMORY_GUIDANCE_END = "<!-- muad:memory:end -->";
+const MEMORY_GUIDANCE = `${MEMORY_GUIDANCE_START}
+# Shared memory boundary
 
 This workspace belongs to one human who may use multiple IM channels.
 - Treat this workspace as that person's shared memory boundary.
 - Consult workspace memory when the person asks about facts learned through another IM channel.
 - Never expose this workspace or its memory to another agent.
-`;
+
+# Memory persistence
+
+- When the user asks you to remember, save, record, write to memory, or update who you are, update the relevant workspace memory file before saying it is remembered.
+- Store assistant identity, name, vibe, and emoji in \`IDENTITY.md\`; store user facts, names, preferences, and notes in \`USER.md\`.
+- Read the current file first, then use a file-writing tool to persist the change. Do not rely on chat history as memory.
+- Never say a fact has been saved, remembered, or written until the file-writing tool has completed successfully.
+- If file-writing tools are unavailable or fail, say that memory was not saved and explain the blocker briefly.
+${MEMORY_GUIDANCE_END}`;
 
 const LEGACY_SKILL_GUIDANCE = `- Before using any Skill instructions, scripts, or referenced files, call muad_use_skill with the exact Skill name.
 - A successful muad_use_skill result is authoritative: continue the task and never claim that Skill is not enabled.
@@ -363,4 +394,4 @@ const MANAGED_SKILL_GUIDANCE = `${SKILL_GUIDANCE_START}
 - Never reuse a prior turn's Skill activation as authorization for the current turn.
 ${LEGACY_SKILL_GUIDANCE}
 ${SKILL_GUIDANCE_END}`;
-const USER_GUIDANCE = `${USER_BASE_GUIDANCE}\n${MANAGED_SKILL_GUIDANCE}\n`;
+const USER_GUIDANCE = `${MEMORY_GUIDANCE}\n\n${MANAGED_SKILL_GUIDANCE}\n`;

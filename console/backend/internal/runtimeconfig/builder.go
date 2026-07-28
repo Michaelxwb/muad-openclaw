@@ -330,8 +330,11 @@ func mainToolPolicy() driver.RuntimeToolPolicy {
 
 func businessToolPolicy() driver.RuntimeToolPolicy {
 	return driver.RuntimeToolPolicy{
-		Allow: []string{"browser", "read", "muad_use_skill", "muad_run_skill", "session_get_state"},
-		Deny:  []string{"exec", "shell"}, WorkspaceOnly: true,
+		Allow: []string{
+			"apply_patch", "bash", "browser", "edit", "exec", "muad_run_skill",
+			"muad_use_skill", "process", "read", "session_get_state", "shell", "write",
+		},
+		WorkspaceOnly: true,
 	}
 }
 

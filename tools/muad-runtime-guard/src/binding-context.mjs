@@ -58,8 +58,7 @@ export function activationFromCommand(context, mainAgentId) {
 
 function resolveAgentId(value, sessionKey) {
   const explicit = String(value ?? "").trim();
-  const parts = sessionKey.split(":");
-  const fromSession = parts[0] === "agent" ? String(parts[1] ?? "").trim() : "";
+  const fromSession = parseSessionKey(sessionKey).agentId;
   if (explicit && fromSession && explicit !== fromSession) {
     throw new BindingContextError("direct_context_required", "agent_mismatch");
   }
@@ -77,7 +76,7 @@ function requireDirectContext({ externalId, agentId, mainAgentId, accountId, ses
   if (!ACCOUNT_PATTERN.test(accountId)) {
     throw new BindingContextError("direct_context_required", "invalid_account");
   }
-  if (!isDirectSession(sessionKey, agentId, externalId)) {
+  if (!isDirectSession(sessionKey, agentId)) {
     throw new BindingContextError("direct_context_required", "session_not_direct");
   }
 }
@@ -118,13 +117,27 @@ function resolveChannel(context) {
   return first;
 }
 
-function isDirectSession(sessionKey, agentId, senderId) {
-  const parts = sessionKey.split(":");
-  if (parts.length < 5 || parts[0] !== "agent" || parts[1] !== agentId) return false;
-  const kindIndex = parts.findIndex((part, index) => index >= 3 &&
+function isDirectSession(sessionKey, agentId) {
+  const parsed = parseSessionKey(sessionKey);
+  return parsed.agentId === agentId && parsed.routeType === "direct" && Boolean(parsed.peerId);
+}
+
+function parseSessionKey(sessionKey) {
+  const parts = String(sessionKey ?? "").split(":");
+  const offset = parts[0] === "session" ? 1 : 0;
+  if (parts.length - offset < 5 || parts[offset] !== "agent") return emptySession();
+  const routeIndex = parts.findIndex((part, index) => index >= offset + 3 &&
     (part === "direct" || part === "group" || part === "channel"));
-  return kindIndex >= 3 && parts[kindIndex] === "direct" &&
-    String(parts[kindIndex + 1] ?? "").toLowerCase() === senderId.toLowerCase();
+  if (routeIndex < offset + 3) return emptySession();
+  return {
+    agentId: String(parts[offset + 1] ?? "").trim(),
+    routeType: parts[routeIndex],
+    peerId: parts.slice(routeIndex + 1).join(":").trim(),
+  };
+}
+
+function emptySession() {
+  return { agentId: "", routeType: "", peerId: "" };
 }
 
 function loadBindingCodeSpec() {

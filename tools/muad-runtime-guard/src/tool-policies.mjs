@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const SHELL_TOOLS = new Set(["bash", "exec", "process", "shell"]);
 const FILE_TOOLS = new Set(["apply_patch", "edit", "read", "write"]);
 const PROFILE_MANAGEMENT_ACTIONS = new Set(["profiles"]);
 
@@ -35,10 +34,9 @@ export function createBrowserProfilePolicy({ config, onViolation = () => {} }) {
 export function createAgentFilesPolicy({ config, resolvePaths }) {
   return {
     id: "muad-agent-files",
-    description: "Blocks shell execution and file access outside the trusted agent workspace.",
+    description: "Blocks file access outside the trusted agent workspace.",
     evaluate(event, ctx) {
       if (ctx.agentId === config.mainAgentId) return undefined;
-      if (isShellCall(event)) return deny("shell and exec tools are disabled for business agents");
       if (!FILE_TOOLS.has(event.toolName)) return undefined;
       return evaluateFileAccess(event, ctx, config, resolvePaths);
     },
@@ -139,10 +137,6 @@ function isWithin(root, target) {
   const relative = path.relative(realRoot, realTarget);
   return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." &&
     !path.isAbsolute(relative));
-}
-
-function isShellCall(event) {
-  return SHELL_TOOLS.has(event.toolName) || event.toolKind === "code_mode_exec";
 }
 
 function invalid(reason) {

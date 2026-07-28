@@ -46,7 +46,7 @@ test("browser policy rejects forged, unmapped and profile-management requests", 
   assert.equal(violations.length, 4);
 });
 
-test("main and business-agent shell execution are denied fail-closed", async () => {
+test("main agent is denied while business-agent shell execution follows runtime tool policy", async () => {
   const main = createMainDenyPolicy(config);
   assert.equal((await main.evaluate(browser({ action: "open" }), context("main"))).allow, false);
   assert.equal(await main.evaluate(browser({ action: "open" }), context("alice")), undefined);
@@ -56,7 +56,7 @@ test("main and business-agent shell execution are denied fail-closed", async () 
     { toolName: "exec", params: { command: "id" } },
     { toolName: "bash", params: { command: "id" } },
     { toolName: "custom", toolKind: "code_mode_exec", params: {} },
-  ]) assert.equal((await files.evaluate(event, context("alice"))).allow, false);
+  ]) assert.equal(await files.evaluate(event, context("alice")), undefined);
 });
 
 test("file policy allows the current workspace and blocks cross-user and runtime state", async () => {

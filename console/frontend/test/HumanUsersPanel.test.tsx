@@ -48,6 +48,7 @@ const pod: Pod = {
   imageTag: "muad-openclaw:test",
   state: "running",
   channels: ["wecom", "wechat"],
+  channelDefaultAccountIds: { wecom: "default", wechat: "8c7c6741f2f3-im-bot" },
   maxUsers: 10,
   userCount: 1,
   availableSlots: 9,
@@ -533,6 +534,13 @@ describe("HumanUsersPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
     expect(await screen.findByText("MUAD-NEW-CODE")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(apiMocks.createBindingCode).toHaveBeenCalledWith("user-a", {
+        channel: "wechat",
+        accountId: "8c7c6741f2f3-im-bot",
+        expiresInMinutes: 30,
+      }),
+    );
     const savedButton = screen.getByText("我已保存").closest("button");
     expect(savedButton).not.toBeNull();
     if (savedButton) fireEvent.click(savedButton);

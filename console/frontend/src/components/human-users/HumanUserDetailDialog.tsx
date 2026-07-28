@@ -87,7 +87,7 @@ export function HumanUserDetailDialog(props: Props) {
         state.detail && (
           <DetailContent
             detail={state.detail}
-            channels={props.pod.channels}
+            pod={props.pod}
             onChanged={changed}
             onBasicBusyChange={setBasicBusy}
           />
@@ -99,12 +99,12 @@ export function HumanUserDetailDialog(props: Props) {
 
 function DetailContent({
   detail,
-  channels,
+  pod,
   onChanged,
   onBasicBusyChange,
 }: {
   detail: HumanUserDetail;
-  channels: string[];
+  pod: Pod;
   onChanged: () => Promise<void>;
   onBasicBusyChange: (busy: boolean) => void;
 }) {
@@ -124,12 +124,17 @@ function DetailContent({
           <IdentityManager
             user={detail.humanUser}
             identities={detail.identities}
-            channels={channels}
+            channels={pod.channels}
             onChanged={onChanged}
           />
         </TabPane>
         <TabPane tab="绑定码" itemKey="binding-code">
-          <BindingCodeManager user={detail.humanUser} channels={channels} />
+          <BindingCodeManager
+            user={detail.humanUser}
+            channels={pod.channels}
+            identities={detail.identities}
+            channelDefaultAccountIds={pod.channelDefaultAccountIds}
+          />
         </TabPane>
         <TabPane tab="平台凭证" itemKey="platform-credential">
           <PlatformCredentialManager user={detail.humanUser} />

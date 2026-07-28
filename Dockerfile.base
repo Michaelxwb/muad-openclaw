@@ -1,0 +1,47 @@
+# muad-openclaw 基础镜像
+# 包含：上游 OpenClaw + Chromium/Playwright + 企微/微信插件 + 系统依赖 + 基线种子
+# 变更频率：按季度 / 上游发版 / Chromium 升级 / 通道插件更新
+ARG OPENCLAW_VERSION=2026.6.10
+
+FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
+
+ARG OPENCLAW_VERSION
+LABEL org.opencontainers.image.base.name="ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}" \
+      io.muad.openclaw.version="${OPENCLAW_VERSION}" \
+      io.muad.image.role="base"
+
+USER root
+ENV OPENCLAW_STATE_DIR=/home/node/.openclaw \
+    PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
+
+# 企微官方长连接插件版本
+ARG WECOM_PLUGIN_VERSION=2026.6.23
+# 微信（个人）通道插件
+ARG WECHAT_PLUGIN_VERSION=2.4.3
+
+COPY baseline-config.json /opt/muad/baseline-config.json
+COPY bin/seed-config.mjs  /opt/muad/seed-config.mjs
+
+# 安装系统依赖 + 浏览器 + 通道插件 + 生成基线种子
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends unzip xvfb; \
+    mkdir -p "$PLAYWRIGHT_BROWSERS_PATH"; \
+    node /app/node_modules/playwright-core/cli.js install --with-deps chromium; \
+    rm -rf /var/lib/apt/lists/*; \
+    # 生成基线配置（构建期网关未起，setup 会非零退出但 openclaw.json 已写好）
+    su node -c "openclaw setup --non-interactive --accept-risk --mode local" || true; \
+    test -f /home/node/.openclaw/openclaw.json || { echo "FATAL: setup 未生成 openclaw.json" >&2; exit 1; }; \
+    # 安装通道插件
+    su node -c "openclaw plugins install '@wecom/wecom-openclaw-plugin@${WECOM_PLUGIN_VERSION}'"; \
+    su node -c "openclaw plugins install '@tencent-weixin/openclaw-weixin@${WECHAT_PLUGIN_VERSION}'"; \
+    # 合并基线配置 → 种子
+    su node -c "node /opt/muad/seed-config.mjs"; \
+    cp -a /home/node/.openclaw /opt/openclaw-seed; \
+    chown -R node:node /opt/openclaw-seed "$PLAYWRIGHT_BROWSERS_PATH" /home/node/.cache; \
+    # 留一个空挂载点（PVC 首挂时按它初始化）
+    rm -rf /home/node/.openclaw; \
+    install -d -m 0700 -o node -g node /home/node/.openclaw
+
+USER node
+WORKDIR /app
