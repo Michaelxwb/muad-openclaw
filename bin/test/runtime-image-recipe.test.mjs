@@ -13,9 +13,10 @@ test("worker image pins OpenClaw and records the base version", () => {
   assert.match(base, /^ARG OPENCLAW_VERSION=2026\.6\.10$/mu);
   assert.match(base, /io\.muad\.openclaw\.version="\$\{OPENCLAW_VERSION\}"/u);
   assert.match(base, /io\.muad\.image\.role="base"/u);
-  // App image references base with BASE_TAG
+  // App image references base with BASE_IMAGE and BASE_TAG
+  assert.match(app, /^ARG BASE_IMAGE=muad-openclaw-base$/mu);
   assert.match(app, /^ARG BASE_TAG=latest$/mu);
-  assert.match(app, /^FROM muad-openclaw-base:\$\{BASE_TAG\}$/mu);
+  assert.match(app, /^FROM \$\{BASE_IMAGE\}:\$\{BASE_TAG\}$/mu);
   assert.match(app, /io\.muad\.image\.role="app"/u);
   // CI still passes openclaw version through
   assert.match(workflow, /OPENCLAW_VERSION=\$\{\{ inputs\.openclaw_version \|\| '2026\.6\.10' \}\}/u);
