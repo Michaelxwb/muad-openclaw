@@ -45,7 +45,11 @@ jobs:
           TAG="${{ inputs.base_tag || 'latest' }}"
           echo "base_image=${BASE_IMAGE}" >> "$GITHUB_OUTPUT"
           echo "base_tag=${TAG}" >> "$GITHUB_OUTPUT"
-          if docker pull "${BASE_IMAGE}:${TAG}"; then
+          # tag push → 强制重建确保多架构；workflow_dispatch → 检查是否存在
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "🔄 tag push 触发，强制重建 base（多架构）"
+            echo "build_needed=true" >> "$GITHUB_OUTPUT"
+          elif docker pull "${BASE_IMAGE}:${TAG}"; then
             echo "✅ 复用已有 base: ${BASE_IMAGE}:${TAG}"
             echo "build_needed=false" >> "$GITHUB_OUTPUT"
           else
