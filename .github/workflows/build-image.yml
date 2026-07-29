@@ -37,28 +37,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve base image（拉取；不存在则构建+推送）
+      - name: Resolve base image（检查是否存在）
         id: base
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           BASE_IMAGE="ghcr.io/${OWNER}/muad-openclaw-base"
-          IMAGE="ghcr.io/${OWNER}/muad-openclaw"
           TAG="${{ inputs.base_tag || 'latest' }}"
+          echo "base_image=${BASE_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "base_tag=${TAG}" >> "$GITHUB_OUTPUT"
           if docker pull "${BASE_IMAGE}:${TAG}"; then
             echo "✅ 复用已有 base: ${BASE_IMAGE}:${TAG}"
-            docker tag "${BASE_IMAGE}:${TAG}" muad-openclaw-base:"${TAG}"
-            echo "base_tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "build_needed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "⬆️  base ${BASE_IMAGE}:${TAG} 不存在，开始构建…"
-            docker build -f Dockerfile.base \
-              -t "muad-openclaw-base:${TAG}" \
-              -t "${BASE_IMAGE}:${TAG}" \
-              --build-arg "OPENCLAW_VERSION=${{ inputs.openclaw_version || '2026.6.10' }}" \
-              .
-            docker push "${BASE_IMAGE}:${TAG}"
-            echo "✅ base 构建并推送完成: ${BASE_IMAGE}:${TAG}"
-            echo "base_tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "⬆️  base ${BASE_IMAGE}:${TAG} 不存在，需要多架构构建"
+            echo "build_needed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Build & push base image（multi-arch）
+        if: steps.base.outputs.build_needed == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.base
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.base.outputs.base_image }}:${{ steps.base.outputs.base_tag }}
+          build-args: |
+            OPENCLAW_VERSION=${{ inputs.openclaw_version || '2026.6.10' }}
 
       - name: Image metadata（tag → 镜像标签）
         id: meta
