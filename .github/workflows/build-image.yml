@@ -42,7 +42,12 @@ jobs:
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           BASE_IMAGE="ghcr.io/${OWNER}/muad-openclaw-base"
-          TAG="${{ inputs.base_tag || 'latest' }}"
+          # tag push → base 镜像用相同版本号；workflow_dispatch → 用输入或 latest
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${{ github.ref_name }}"   # e.g. v0.4.1
+          else
+            TAG="${{ inputs.base_tag || 'latest' }}"
+          fi
           echo "base_image=${BASE_IMAGE}" >> "$GITHUB_OUTPUT"
           echo "base_tag=${TAG}" >> "$GITHUB_OUTPUT"
           # tag push → 强制重建确保多架构；workflow_dispatch → 检查是否存在
