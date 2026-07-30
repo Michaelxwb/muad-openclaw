@@ -2,15 +2,18 @@
 import { constants, accessSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import {
+  IMAGE_CHANNEL_PLUGIN_SPECS,
+  IMAGE_PLUGIN_SPECS,
+  MUAD_RUNTIME_PLUGIN_SPECS,
+} from "./image-plugin-paths.mjs";
 
-export const PINNED_OPENCLAW_VERSION = "2026.6.10";
+export const PINNED_OPENCLAW_VERSION = "2026.7.1";
 export const POD_SERVICE_TOKEN_FILE = "/run/secrets/muad/pod-service-token";
 export const SESSION_MANAGER_CLI = "/usr/local/bin/session-manager";
-export const IMAGE_PLUGINS = Object.freeze([
-  plugin("muad-run-skill", "/opt/muad/muad-run-skill", "src/index.mjs"),
-  plugin("session-manager", "/opt/muad/session-manager", "openclaw-plugin.mjs"),
-  plugin("muad-runtime-guard", "/opt/muad/muad-runtime-guard", "src/index.mjs"),
-]);
+export const IMAGE_PLUGINS = IMAGE_PLUGIN_SPECS;
+export const REQUIRED_RUNTIME_PLUGINS = MUAD_RUNTIME_PLUGIN_SPECS;
+export const IMAGE_CHANNEL_PLUGINS = IMAGE_CHANNEL_PLUGIN_SPECS;
 
 export function assertOpenClawVersion(output, expected = PINNED_OPENCLAW_VERSION) {
   const version = String(output ?? "").trim();
@@ -30,7 +33,11 @@ export function validatePluginArtifacts(specs = IMAGE_PLUGINS, dependencies = {}
   }
 }
 
-export function validateRuntimePluginConfig(config, specs = IMAGE_PLUGINS) {
+export function validateRuntimePluginConfig(
+  config,
+  specs = REQUIRED_RUNTIME_PLUGINS,
+  imageChannelSpecs = IMAGE_CHANNEL_PLUGINS,
+) {
   const allow = config?.plugins?.allow;
   const paths = config?.plugins?.load?.paths;
   const entries = config?.plugins?.entries;
@@ -40,6 +47,11 @@ export function validateRuntimePluginConfig(config, specs = IMAGE_PLUGINS) {
   for (const spec of specs) {
     if (!allow.includes(spec.id) || !paths.includes(spec.root) || entries[spec.id]?.enabled !== true) {
       throw new Error(`OpenClaw plugin is not explicitly enabled: ${spec.id}`);
+    }
+  }
+  for (const spec of imageChannelSpecs) {
+    if (!paths.includes(spec.root)) {
+      throw new Error(`OpenClaw image channel plugin path is missing: ${spec.id}`);
     }
   }
   if (entries["muad-runtime-guard"]?.hooks?.allowConversationAccess !== true) {
@@ -54,6 +66,25 @@ export function validatePluginInventory(value, specs = IMAGE_PLUGINS) {
     const item = inventory.plugins.find((candidate) => candidate?.id === spec.id);
     if (!item || item.enabled !== true || item.status === "error") {
       throw new Error(`OpenClaw plugin inventory is unhealthy: ${spec.id}`);
+    }
+  }
+}
+
+export function validatePluginDependencies(value, specs = IMAGE_CHANNEL_PLUGINS) {
+  const inventory = typeof value === "string" ? parseJSON(value, "plugin inventory") : value;
+  if (!Array.isArray(inventory?.plugins)) throw new Error("OpenClaw plugin inventory is invalid");
+  for (const spec of specs) {
+    const item = inventory.plugins.find((candidate) => candidate?.id === spec.id);
+    if (!item) throw new Error(`OpenClaw plugin inventory is missing: ${spec.id}`);
+    const dependencyStatus = item.dependencyStatus;
+    if (!isRecord(dependencyStatus)) {
+      throw new Error(`OpenClaw plugin dependency status is missing: ${spec.id}`);
+    }
+    const missing = Array.isArray(dependencyStatus.missing)
+      ? dependencyStatus.missing.filter((name) => typeof name === "string" && name)
+      : [];
+    if (dependencyStatus.requiredInstalled !== true || missing.length > 0) {
+      throw new Error(`OpenClaw plugin dependencies are incomplete: ${spec.id}`);
     }
   }
 }
@@ -76,22 +107,22 @@ export function runImageSelfCheck(options = {}) {
   if (options.imageOnly) return;
   const configPath = options.configPath ?? openClawConfigPath(process.env);
   const config = parseJSON(readFileSync(configPath, "utf8"), configPath);
-  validateRuntimePluginConfig(config, options.plugins ?? IMAGE_PLUGINS);
+  validateRuntimePluginConfig(
+    config,
+    options.requiredRuntimePlugins ?? REQUIRED_RUNTIME_PLUGINS,
+    options.imageChannelPlugins ?? IMAGE_CHANNEL_PLUGINS,
+  );
   validateRuntimePermissions(config, options.dependencies);
   const inventory = options.inventoryOutput ?? execFileSync(
     "openclaw", ["plugins", "list", "--json"], { encoding: "utf8" },
   );
-  validatePluginInventory(inventory, options.plugins ?? IMAGE_PLUGINS);
+  validatePluginInventory(inventory, options.requiredRuntimePlugins ?? REQUIRED_RUNTIME_PLUGINS);
+  validatePluginDependencies(inventory, options.imageChannelPlugins ?? IMAGE_CHANNEL_PLUGINS);
 }
 
 function openClawConfigPath(env) {
   const state = String(env.OPENCLAW_STATE_DIR ?? "/home/node/.openclaw").trim();
   return `${state}/openclaw.json`;
-}
-
-function plugin(id, root, relativeEntry) {
-  return Object.freeze({ id, root, manifest: `${root}/openclaw.plugin.json`,
-    entry: `${root}/${relativeEntry}` });
 }
 
 function parseJSON(value, label) {

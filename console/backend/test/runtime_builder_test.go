@@ -92,6 +92,40 @@ func TestRuntimeBuilder_RejectsInvalidStatusAndChannelAlias(t *testing.T) {
 	}
 }
 
+func TestRuntimeBuilder_MattermostDirectIdentity(t *testing.T) {
+	cipher := mustRuntimeCipher(t)
+	source := runtimeBuilderFixture(t, cipher)
+	source.pod.Channels = `["mattermost","wechat","wecom"]`
+	source.pod.ChannelConfigsEnc = encryptRuntimeJSON(t, cipher,
+		`{"wecom":{"botId":"bot-a","secret":"channel-secret"},"wechat":{},`+
+			`"mattermost":{"baseUrl":"https://mattermost.internal","botToken":"mm-token","allowPrivateNetwork":"true"}}`)
+	source.identities = append(source.identities, repo.UserIdentity{
+		IdentityID: "i-mattermost", HumanUserID: "u-charlie", PodID: "pod-a",
+		Channel: "mattermost", OpenClawChannel: "mattermost", AccountID: "default",
+		ExternalID: "mm-user-1", ExternalIDType: "mattermost_user_id",
+		PeerKind: "direct", Status: repo.IdentityStatusActive,
+	})
+
+	config := buildRuntime(t, source, cipher).Config
+	if _, ok := config.Channels.Configs["mattermost"]; !ok {
+		t.Fatalf("mattermost channel config missing: %+v", config.Channels.Configs)
+	}
+	foundRoute := false
+	for _, route := range config.Routes {
+		if route.Channel == "mattermost" && route.ExternalID == "mm-user-1" &&
+			route.AgentID == "charlie" {
+			foundRoute = true
+		}
+	}
+	if !foundRoute {
+		t.Fatalf("mattermost route missing: %+v", config.Routes)
+	}
+	links := identityLinksByAgent(config.IdentityLinks)
+	if !slices.Contains(links["charlie"], "mattermost:mm-user-1") {
+		t.Fatalf("mattermost identity link missing: %+v", config.IdentityLinks)
+	}
+}
+
 func TestRuntimeBuilderIncludesAllSkillGrantTypes(t *testing.T) {
 	cipher := mustRuntimeCipher(t)
 	source := runtimeBuilderFixture(t, cipher)
@@ -113,6 +147,14 @@ func TestRuntimeBuilderIncludesAllSkillGrantTypes(t *testing.T) {
 	if !slices.Equal(charlie["sdsp-report"].ScriptFiles, []string{"scripts/export.py"}) {
 		t.Fatalf("traditional script allowlist = %+v", charlie["sdsp-report"].ScriptFiles)
 	}
+}
+
+func identityLinksByAgent(links []driver.RuntimeIdentityLink) map[string][]string {
+	result := make(map[string][]string, len(links))
+	for _, link := range links {
+		result[link.AgentID] = link.Identities
+	}
+	return result
 }
 
 func indexRuntimeSkillGrants(grants []driver.RuntimeSkillGrant) map[string]driver.RuntimeSkillGrant {

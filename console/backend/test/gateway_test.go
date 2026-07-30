@@ -1,6 +1,8 @@
 package test
 
 import (
+	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -70,5 +72,40 @@ func TestParseStatus_Disconnected(t *testing.T) {
 func TestParseStatus_Malformed(t *testing.T) {
 	if _, err := gateway.ParseStatus([]byte(`not json`)); err == nil {
 		t.Error("expected error on malformed json")
+	}
+}
+
+func TestProbeWithConfigRevisionReportsAppliedState(t *testing.T) {
+	execer := probeExecer{
+		configGet: `{"configRevisionHash":"rev-2","appliedConfigHash":"rev-2"}`,
+	}
+	status := gateway.ProbeWithConfigRevision(context.Background(), execer, "pod-a")
+	if !status.Healthy || !status.RuntimeGuardHealthy || !status.ConfigApplied {
+		t.Fatalf("status = %+v", status)
+	}
+	if status.ConfigRevisionHash != "rev-2" || status.AppliedConfigHash != "rev-2" {
+		t.Fatalf("revision fields = %+v", status)
+	}
+
+	execer.configGet = `{"configRevisionHash":"rev-2","appliedConfigHash":"rev-1"}`
+	status = gateway.ProbeWithConfigRevision(context.Background(), execer, "pod-a")
+	if status.ConfigApplied {
+		t.Fatalf("stale applied revision reported as applied: %+v", status)
+	}
+}
+
+type probeExecer struct {
+	configGet string
+}
+
+func (execer probeExecer) Exec(_ context.Context, _ string, cmd ...string) (string, error) {
+	joined := strings.Join(cmd, " ")
+	switch {
+	case strings.Contains(joined, "muad.runtime.health"):
+		return `{"ok":true,"generation":7}`, nil
+	case strings.Contains(joined, "config.get"):
+		return execer.configGet, nil
+	default:
+		return `{"channels":{"wecom":{"configured":true,"running":true}}}`, nil
 	}
 }

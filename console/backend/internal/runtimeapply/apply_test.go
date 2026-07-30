@@ -25,6 +25,31 @@ func TestApplyGatewayRestartSuccess(t *testing.T) {
 	}
 }
 
+func TestApplyRestartNoneSuccess(t *testing.T) {
+	driver := newFakeDriver(RestartNone)
+	applier := newTestApplier(t, driver)
+	result, err := applier.Apply(context.Background(), testRequest(false))
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if result.RestartMode != RestartNone || driver.gatewayRestarts != 0 || driver.podRestarts != 0 || !driver.committed {
+		t.Fatalf("result=%+v driver=%+v", result, driver)
+	}
+}
+
+func TestApplyRestartNoneWaitsForConfigRevisionApplied(t *testing.T) {
+	driver := newFakeDriver(RestartNone)
+	driver.configApplyLag = 1
+	applier := newTestApplier(t, driver)
+	result, err := applier.Apply(context.Background(), testRequest(false))
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if result.RestartMode != RestartNone || driver.configGetCalls < 2 {
+		t.Fatalf("result=%+v configGetCalls=%d", result, driver.configGetCalls)
+	}
+}
+
 func TestApplyUsesPodRestartForBrowserOrResourceChange(t *testing.T) {
 	for _, force := range []bool{false, true} {
 		t.Run(fmt.Sprintf("force=%t", force), func(t *testing.T) {
@@ -68,6 +93,21 @@ func TestApplyHealthFailureRestoresPreviousGeneration(t *testing.T) {
 	}
 }
 
+func TestApplyHealthFailureForRestartNoneRollsBackWithoutRestart(t *testing.T) {
+	driver := newFakeDriver(RestartNone)
+	driver.appliedHealthGeneration = 6
+	applier := newTestApplier(t, driver)
+	_, err := applier.Apply(context.Background(), testRequest(false))
+	assertApplyStage(t, err, StageHealth)
+	if !driver.rolledBack || driver.gatewayRestarts != 0 || driver.podRestarts != 0 {
+		t.Fatalf("health rollback state = %+v", driver)
+	}
+	var applyErr *ApplyError
+	if !errors.As(err, &applyErr) || applyErr.RecoveryError != nil {
+		t.Fatalf("recovery error = %v", applyErr.RecoveryError)
+	}
+}
+
 func TestApplyRestartFailureRestartsRestoredPod(t *testing.T) {
 	driver := newFakeDriver(RestartPod)
 	driver.failFirstPodRestart = true
@@ -89,6 +129,8 @@ type fakeDriver struct {
 	rolledBack              bool
 	gatewayRestarts         int
 	podRestarts             int
+	configApplyLag          int
+	configGetCalls          int
 }
 
 func newFakeDriver(mode RestartMode) *fakeDriver {
@@ -120,9 +162,25 @@ func (driver *fakeDriver) Exec(_ context.Context, _ string, cmd ...string) (stri
 			generation = 6
 		}
 		return fmt.Sprintf(`{"ok":true,"generation":%d}`, generation), nil
+	case strings.Contains(joined, "config.get"):
+		driver.configGetCalls++
+		revision := driver.currentRevision()
+		applied := revision
+		if !driver.rolledBack && driver.configApplyLag > 0 {
+			driver.configApplyLag--
+			applied = "revision-6"
+		}
+		return fmt.Sprintf(`{"configRevisionHash":%q,"appliedConfigHash":%q}`, revision, applied), nil
 	default:
 		return "", fmt.Errorf("unexpected command: %s", joined)
 	}
+}
+
+func (driver *fakeDriver) currentRevision() string {
+	if driver.rolledBack {
+		return "revision-6"
+	}
+	return "revision-7"
 }
 
 func (driver *fakeDriver) ExecStdin(

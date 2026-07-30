@@ -1,3 +1,8 @@
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+
+import { parseGuardConfig } from "./config.mjs";
+
 export const RUNTIME_GUARD_VERSION = 2;
 
 export function runtimeHealth(config, globals = globalThis) {
@@ -41,8 +46,21 @@ function telemetrySnapshot(client) {
   };
 }
 
-export function createHealthHandler(config, globals = globalThis) {
-  return async () => runtimeHealth(config, globals);
+export function createHealthHandler(config, globals = globalThis, options = {}) {
+  return async () => runtimeHealth(latestGuardConfig(config, options.readConfig), globals);
+}
+
+export function latestGuardConfig(fallback, readConfig = readOpenClawConfig) {
+  try {
+    const current = readConfig();
+    const pluginConfig = current?.plugins?.entries?.["muad-runtime-guard"]?.config;
+    const parsed = parseGuardConfig(pluginConfig);
+    if (parsed.valid) return parsed;
+  } catch {
+    // During atomic config replacement the file may be temporarily unreadable;
+    // keep reporting the last in-memory config until the next probe.
+  }
+  return fallback;
 }
 
 function queueSnapshot(queue, fallbackLimit) {
@@ -68,4 +86,15 @@ function positive(value, fallback) {
 function safeErrorCode(value) {
   const code = typeof value === "string" ? value.trim() : "";
   return /^[a-z0-9_-]{0,80}$/u.test(code) ? code : "telemetry_error";
+}
+
+function readOpenClawConfig() {
+  return JSON.parse(readFileSync(configPath(), "utf8"));
+}
+
+function configPath() {
+  const explicit = String(process.env.OPENCLAW_CONFIG_PATH ?? "").trim();
+  if (explicit) return explicit;
+  const state = String(process.env.OPENCLAW_STATE_DIR ?? `${homedir()}/.openclaw`).trim();
+  return `${state.replace(/\/$/u, "")}/openclaw.json`;
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Banner, Button, Checkbox, Input, Space, Typography } from "@douyinfe/semi-ui";
-import { CHANNEL_DEFS, ChannelDef } from "../channels";
+import { CHANNEL_DEFS, ChannelDef, channelDef } from "../channels";
 import { ChannelCredential } from "../api";
 import styles from "./ChannelForm.module.css";
 
@@ -12,7 +12,13 @@ interface Props {
     channels: string[];
     channelConfigs: Record<
       string,
-      { botId?: string; secretConfigured?: boolean; lastUpdated?: string }
+      {
+        botId?: string;
+        baseUrl?: string;
+        allowPrivateNetwork?: string;
+        secretConfigured?: boolean;
+        lastUpdated?: string;
+      }
     >;
   } | null;
   busy: boolean;
@@ -39,6 +45,8 @@ export function ChannelForm({ mode, initial, busy, error, onSubmit, onCancel }: 
       for (const [ch, cfg] of Object.entries(initial.channelConfigs)) {
         init[ch] = {};
         if (cfg.botId) init[ch].botId = cfg.botId;
+        if (cfg.baseUrl) init[ch].baseUrl = cfg.baseUrl;
+        if (cfg.allowPrivateNetwork === "true") init[ch].allowPrivateNetwork = "true";
         // secret stays empty — user fills to update, leaves empty to keep current
       }
       setCreds(init);
@@ -61,12 +69,10 @@ export function ChannelForm({ mode, initial, busy, error, onSubmit, onCancel }: 
     for (const ch of selected) {
       const def = CHANNEL_DEFS.find((d) => d.id === ch);
       if (!def) continue;
-      if (editMode && initial?.channelConfigs?.[ch]?.secretConfigured) {
-        // In edit mode, existing credentials are already configured — skip required check.
-        continue;
-      }
       for (const f of def.credentialFields) {
-        if (f.required && !(creds[ch]?.[f.key] ?? "").trim()) {
+        const hasExistingSecret =
+          editMode && f.type === "password" && initial?.channelConfigs?.[ch]?.secretConfigured;
+        if (f.required && !hasExistingSecret && !(creds[ch]?.[f.key] ?? "").trim()) {
           return `${def.label}: ${f.label} 必填`;
         }
       }
@@ -83,7 +89,13 @@ export function ChannelForm({ mode, initial, busy, error, onSubmit, onCancel }: 
     setLocalErr("");
     const channelConfigs: Record<string, ChannelCredential> = {};
     for (const ch of selected) {
-      channelConfigs[ch] = creds[ch] ?? {};
+      const config = { ...(creds[ch] ?? {}) } as ChannelCredential & Record<string, string>;
+      for (const field of channelDef(ch)?.credentialFields ?? []) {
+        if (field.type === "checkbox" && config[field.key] === undefined) {
+          config[field.key] = "false";
+        }
+      }
+      channelConfigs[ch] = config;
     }
     onSubmit({ channels: selected, channelConfigs });
   }
@@ -164,9 +176,25 @@ function ChannelCredentialFields({
     <div className={styles.credentials}>
       {channelDef.credentialFields.map((f) => {
         const isSecret = f.type === "password";
+        const isCheckbox = f.type === "checkbox";
         const existingVal = (existingConfig?.[f.key] ?? undefined) as string | undefined;
         const hasExisting = editMode && existingVal && existingVal !== "";
         const isSecretConfigured = editMode && isSecret && existingConfig?.secretConfigured;
+        if (isCheckbox) {
+          return (
+            <div key={f.key}>
+              <Checkbox
+                checked={values[f.key] === "true"}
+                onChange={(e) =>
+                  onChange(f.key, (e.target as HTMLInputElement).checked ? "true" : "false")
+                }
+              >
+                {f.label}
+              </Checkbox>
+              {f.help && <p className={styles.hint}>{f.help}</p>}
+            </div>
+          );
+        }
         return (
           <div key={f.key}>
             <label className={styles.credentialLabel}>
@@ -189,6 +217,7 @@ function ChannelCredentialFields({
               onChange={(v) => onChange(f.key, v)}
               placeholder={isSecretConfigured ? "留空则保持当前 secret" : f.placeholder}
             />
+            {f.help && <p className={styles.hint}>{f.help}</p>}
           </div>
         );
       })}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -14,13 +15,19 @@ import (
 )
 
 type channelConfigInput struct {
-	BotID  string `json:"botId"`
-	Secret string `json:"secret"`
+	BotID               string `json:"botId"`
+	Secret              string `json:"secret"`
+	BaseURL             string `json:"baseUrl,omitempty"`
+	BotToken            string `json:"botToken,omitempty"`
+	AllowPrivateNetwork string `json:"allowPrivateNetwork,omitempty"`
 }
 
 type channelConfigView struct {
-	BotID            string `json:"botId,omitempty"`
-	SecretConfigured bool   `json:"secretConfigured"`
+	BotID               string `json:"botId,omitempty"`
+	BaseURL             string `json:"baseUrl,omitempty"`
+	AllowPrivateNetwork string `json:"allowPrivateNetwork,omitempty"`
+	SecretConfigured    bool   `json:"secretConfigured"`
+	BotTokenConfigured  bool   `json:"botTokenConfigured,omitempty"`
 }
 
 type podChannelsRequest struct {
@@ -65,25 +72,69 @@ func (s *Server) normalizeChannelSettings(
 }
 
 func mergeChannelInput(current, requested channelConfigInput) channelConfigInput {
-	next := channelConfigInput{BotID: strings.TrimSpace(requested.BotID), Secret: strings.TrimSpace(requested.Secret)}
+	next := channelConfigInput{
+		BotID:               strings.TrimSpace(requested.BotID),
+		Secret:              strings.TrimSpace(requested.Secret),
+		BaseURL:             strings.TrimSpace(requested.BaseURL),
+		BotToken:            strings.TrimSpace(requested.BotToken),
+		AllowPrivateNetwork: strings.TrimSpace(requested.AllowPrivateNetwork),
+	}
 	if next.BotID == "" {
 		next.BotID = current.BotID
 	}
 	if next.Secret == "" {
 		next.Secret = current.Secret
 	}
+	if next.BaseURL == "" {
+		next.BaseURL = current.BaseURL
+	}
+	if next.BotToken == "" {
+		next.BotToken = current.BotToken
+	}
+	if next.AllowPrivateNetwork == "" {
+		next.AllowPrivateNetwork = current.AllowPrivateNetwork
+	}
 	return next
 }
 
 func validateChannelInput(channel string, config channelConfigInput) error {
-	if len(config.BotID) > 256 || len(config.Secret) > 4096 {
+	if len(config.BotID) > 256 || len(config.Secret) > 4096 || len(config.BotToken) > 4096 ||
+		len(config.BaseURL) > 2048 {
 		return errors.New("channel credential is too long")
 	}
 	if channel == driver.ChannelWeCom && (config.BotID == "" || config.Secret == "") {
 		return errors.New("wecom botId and secret are required")
 	}
-	if channel == driver.ChannelWeChat && (config.BotID != "" || config.Secret != "") {
+	if channel == driver.ChannelWeChat && hasAnyChannelCredential(config) {
 		return errors.New("wechat does not accept bot credentials")
+	}
+	if channel == driver.ChannelMattermost {
+		if config.BaseURL == "" || config.BotToken == "" {
+			return errors.New("mattermost baseUrl and botToken are required")
+		}
+		if err := validateHTTPURL(config.BaseURL); err != nil {
+			return err
+		}
+		if config.AllowPrivateNetwork != "" && config.AllowPrivateNetwork != "true" &&
+			config.AllowPrivateNetwork != "false" {
+			return errors.New("mattermost allowPrivateNetwork is invalid")
+		}
+	}
+	return nil
+}
+
+func hasAnyChannelCredential(config channelConfigInput) bool {
+	return config.BotID != "" || config.Secret != "" || config.BaseURL != "" || config.BotToken != "" ||
+		config.AllowPrivateNetwork != ""
+}
+
+func validateHTTPURL(value string) error {
+	parsed, err := url.ParseRequestURI(value)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return errors.New("channel url is invalid")
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return errors.New("channel url must use http or https")
 	}
 	return nil
 }
@@ -131,7 +182,13 @@ func channelConfigViews(
 	views := make(map[string]channelConfigView, len(channels))
 	for _, channel := range channels {
 		config := configs[channel]
-		views[channel] = channelConfigView{BotID: config.BotID, SecretConfigured: config.Secret != ""}
+		views[channel] = channelConfigView{
+			BotID:               config.BotID,
+			BaseURL:             config.BaseURL,
+			AllowPrivateNetwork: config.AllowPrivateNetwork,
+			SecretConfigured:    config.Secret != "" || config.BotToken != "",
+			BotTokenConfigured:  config.BotToken != "",
+		}
 	}
 	return views
 }
@@ -139,13 +196,35 @@ func channelConfigViews(
 func rawChannelConfigs(configs map[string]channelConfigInput) (map[string]json.RawMessage, error) {
 	result := make(map[string]json.RawMessage, len(configs))
 	for channel, config := range configs {
-		raw, err := json.Marshal(config)
+		raw, err := json.Marshal(runtimeChannelConfig(channel, config))
 		if err != nil {
 			return nil, fmt.Errorf("encode channel %s: %w", channel, err)
 		}
 		result[channel] = raw
 	}
 	return result, nil
+}
+
+func runtimeChannelConfig(channel string, config channelConfigInput) map[string]string {
+	switch channel {
+	case driver.ChannelMattermost:
+		allowPrivateNetwork := config.AllowPrivateNetwork
+		if allowPrivateNetwork == "" {
+			allowPrivateNetwork = "false"
+		}
+		return map[string]string{
+			"baseUrl":             config.BaseURL,
+			"botToken":            config.BotToken,
+			"dmPolicy":            "open",
+			"groupPolicy":         "disabled",
+			"allowFrom":           "*",
+			"allowPrivateNetwork": allowPrivateNetwork,
+		}
+	case driver.ChannelWeCom:
+		return map[string]string{"botId": config.BotID, "secret": config.Secret}
+	default:
+		return map[string]string{}
+	}
 }
 
 func decodeDocument(raw []byte, target any) error {

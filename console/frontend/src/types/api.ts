@@ -1,4 +1,4 @@
-export type Channel = "wecom" | "wechat";
+export type Channel = "wecom" | "wechat" | "mattermost";
 
 export type PodState =
   "creating" | "running" | "stopped" | "unhealthy" | "error" | "deleting" | "missing";
@@ -49,12 +49,16 @@ export interface ChannelCredential {
   botId?: string;
   secret?: string;
   botToken?: string;
-  signingSecret?: string;
+  baseUrl?: string;
+  allowPrivateNetwork?: string;
 }
 
 export interface ChannelConfigView {
   botId?: string;
+  baseUrl?: string;
+  allowPrivateNetwork?: string;
   secretConfigured: boolean;
+  botTokenConfigured?: boolean;
   lastUpdated?: string;
 }
 

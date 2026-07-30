@@ -3,8 +3,9 @@ import { channelMeta } from "../src/channels";
 
 describe("channelMeta", () => {
   it("returns known channel metadata", () => {
-    const meta = channelMeta("wecom");
-    expect(meta.value).toBe("wecom");
+    const meta = channelMeta("mattermost");
+    expect(meta.value).toBe("mattermost");
+    expect(meta.label).toBe("Mattermost");
     expect(meta.label.length).toBeGreaterThan(0);
     expect(meta.icon.length).toBeGreaterThan(0);
   });

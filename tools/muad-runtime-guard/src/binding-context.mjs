@@ -26,6 +26,10 @@ const CHANNELS = new Map([
     channel: "wechat", openclawChannel: "openclaw-weixin", externalIdType: "wechat_peer_id",
     senderPrefixes: ["openclaw-weixin:", "wechat:", "weixin:"],
   }],
+  ["mattermost", {
+    channel: "mattermost", openclawChannel: "mattermost", externalIdType: "mattermost_user_id",
+    senderPrefixes: ["mattermost:", "user:"],
+  }],
 ]);
 
 export class BindingContextError extends Error {

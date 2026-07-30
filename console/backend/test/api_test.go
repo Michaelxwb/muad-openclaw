@@ -502,6 +502,9 @@ func TestPodChannelValidation(t *testing.T) {
 		{"unsupported", `{"podId":"pod-unsupported","channels":["telegram"]}`},
 		{"wecom without credentials", `{"podId":"pod-wecom","channels":["wecom"]}`},
 		{"wechat with credentials", `{"podId":"pod-wx-creds","channels":["wechat"],"channelConfigs":{"wechat":{"botId":"bad"}}}`},
+		{"mattermost without token", `{"podId":"pod-mm-token","channels":["mattermost"],"channelConfigs":{"mattermost":{"baseUrl":"https://mattermost.internal"}}}`},
+		{"mattermost invalid url", `{"podId":"pod-mm-url","channels":["mattermost"],"channelConfigs":{"mattermost":{"baseUrl":"mattermost.internal","botToken":"token"}}}`},
+		{"mattermost invalid private flag", `{"podId":"pod-mm-private","channels":["mattermost"],"channelConfigs":{"mattermost":{"baseUrl":"https://mattermost.internal","botToken":"token","allowPrivateNetwork":"yes"}}}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

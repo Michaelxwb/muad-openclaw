@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { defaultConfigPath } from "./inject-multi-user-config.mjs";
@@ -21,6 +22,7 @@ import { readRuntimeConfig } from "./runtime-config-schema.mjs";
 
 const CANDIDATE_SUFFIX = ".muad.candidate";
 const PREVIOUS_SUFFIX = ".muad.previous";
+const SAFE_AGENT_ID = /^[A-Za-z0-9._-]+$/u;
 
 export function prepareTransaction({ runtime, configPath }) {
   const current = readConfig(configPath);
@@ -55,7 +57,30 @@ export function commitTransaction({ runtime, configPath }) {
   writeAgentGuidance(runtime);
   copyAtomic(configPath, `${configPath}${PREVIOUS_SUFFIX}`);
   renameSync(candidatePath, configPath);
+  try {
+    cleanupStaleMainSessions({ config: candidate, configPath });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[runtime-config-transaction] stale main session cleanup skipped: ${message}`);
+  }
   return { generation: runtime.generation, configHash: canonicalHash(candidate) };
+}
+
+export function cleanupStaleMainSessions({ config, configPath }) {
+  const mainAgentId = resolveMainAgentId(config);
+  const keys = mainBindingSessionKeys(config, mainAgentId);
+  const sessionsPath = join(dirname(configPath), "agents", mainAgentId, "sessions", "sessions.json");
+  if (keys.length === 0 || !existsSync(sessionsPath)) return { removed: 0 };
+
+  const sessions = readJSONRecord(sessionsPath);
+  let removed = 0;
+  for (const key of keys.flatMap((key) => [key, `session:${key}`])) {
+    if (!hasMissingSessionFile(sessions[key])) continue;
+    delete sessions[key];
+    removed += 1;
+  }
+  if (removed > 0) writeAtomic(sessionsPath, `${JSON.stringify(sessions, null, 2)}\n`);
+  return { removed };
 }
 
 export function rollbackTransaction(configPath) {
@@ -80,7 +105,37 @@ export function abortTransaction(configPath) {
 export function selectRestartMode(current, next) {
   if (canonicalHash(current) === canonicalHash(next)) return "none";
   if (canonicalHash(current.browser ?? {}) !== canonicalHash(next.browser ?? {})) return "pod";
+  if (isBindingHotReloadOnly(current, next)) return "none";
   return "gateway";
+}
+
+function isBindingHotReloadOnly(current, next) {
+  const previous = cloneForRestartComparison(current);
+  const candidate = cloneForRestartComparison(next);
+  return canonicalHash(previous) === canonicalHash(candidate);
+}
+
+function cloneForRestartComparison(config) {
+  const output = cloneRecord(config);
+  deletePath(output, ["bindings"]);
+  deletePath(output, ["session", "identityLinks"]);
+  deletePath(output, ["plugins", "entries", "muad-runtime-guard", "config", "generation"]);
+  deletePath(output, ["skills", "entries", "__muad-runtime-skill-state", "config", "generation"]);
+  return output;
+}
+
+function cloneRecord(value) {
+  if (!value || typeof value !== "object") return {};
+  return JSON.parse(JSON.stringify(value));
+}
+
+function deletePath(target, parts) {
+  let current = target;
+  for (const part of parts.slice(0, -1)) {
+    if (!current || typeof current !== "object") return;
+    current = current[part];
+  }
+  if (current && typeof current === "object") delete current[parts.at(-1)];
 }
 
 function readConfig(path) {
@@ -90,6 +145,14 @@ function readConfig(path) {
   } catch (error) {
     throw new Error(`invalid config file ${path}: ${error.message}`);
   }
+}
+
+function readJSONRecord(path) {
+  const value = JSON.parse(readFileSync(path, "utf8"));
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`invalid JSON record: ${path}`);
+  }
+  return value;
 }
 
 function writeAtomic(path, contents) {
@@ -107,6 +170,38 @@ function copyAtomic(source, target) {
 function runtimeGeneration(config) {
   const value = config?.plugins?.entries?.["muad-runtime-guard"]?.config?.generation;
   return Number.isSafeInteger(value) && value > 0 ? value : 0;
+}
+
+function resolveMainAgentId(config) {
+  const value = String(config?.plugins?.entries?.["muad-runtime-guard"]?.config?.mainAgentId ?? "main").trim();
+  return SAFE_AGENT_ID.test(value) ? value : "main";
+}
+
+function mainBindingSessionKeys(config, mainAgentId) {
+  const bindings = Array.isArray(config?.bindings) ? config.bindings : [];
+  return uniqueStrings(bindings.map((binding) => mainSessionKey(binding, mainAgentId)));
+}
+
+function mainSessionKey(binding, mainAgentId) {
+  if (binding?.type !== "route") return "";
+  if (!binding.agentId || binding.agentId === mainAgentId) return "";
+  const channel = String(binding?.match?.channel ?? "").trim();
+  const kind = String(binding?.match?.peer?.kind ?? "").trim();
+  const peerId = String(binding?.match?.peer?.id ?? "").trim();
+  if (!channel || kind !== "direct" || !peerId) return "";
+  return `agent:${mainAgentId}:${channel}:direct:${peerId}`;
+}
+
+function hasMissingSessionFile(entry) {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+  const sessionFile = String(entry.sessionFile ?? "").trim();
+  if (!sessionFile) return true;
+  if (sessionFile.startsWith("sqlite:")) return false;
+  return !existsSync(resolve(sessionFile));
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))];
 }
 
 function validationMessage(result) {
