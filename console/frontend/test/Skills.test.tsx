@@ -9,6 +9,7 @@ const apiMocks = vi.hoisted(() => ({
   scanSkills: vi.fn(),
   getPublicSkillStorage: vi.fn(),
   ensurePublicSkillStorage: vi.fn(),
+  listPlatforms: vi.fn(),
   uploadPublicSkill: vi.fn(),
   updateSkill: vi.fn(),
   applySkills: vi.fn(),
@@ -70,6 +71,7 @@ beforeEach(() => {
     size: "5Gi",
     message: "Public Skill PVC 已就绪",
   });
+  apiMocks.listPlatforms.mockReset().mockResolvedValue({ items: [], total: 0 });
   apiMocks.uploadPublicSkill.mockReset().mockResolvedValue({
     skill,
     affectedPodIds: ["pod-a"],
@@ -163,6 +165,7 @@ describe("Skills", () => {
       expect(apiMocks.uploadPublicSkill).toHaveBeenCalledWith({
         bundle: file,
         filename: "xdr-public.zip",
+        platforms: [],
       }),
     );
   });

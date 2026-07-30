@@ -27,20 +27,16 @@ type Status struct {
 	// conversation keeps refreshing it, so an active container never goes idle.
 	// Zero when the channel reports no message timestamps (e.g. wecom only
 	// exposes lastStartAt) — callers must not treat zero as "idle/reapable".
-	LastMessageAt             time.Time
-	RuntimeGuardHealthy       bool
-	RuntimeGeneration         int64
-	SkillActive               int
-	SkillQueued               int
-	BrowserActive             int
-	BrowserQueued             int
-	SkillTelemetryPending     int
-	SkillTelemetryWriteFailed bool
-	SkillTelemetryDropped     int
-	SkillTelemetryLastError   string
-	ConfigRevisionHash        string
-	AppliedConfigHash         string
-	ConfigApplied             bool
+	LastMessageAt       time.Time
+	RuntimeGuardHealthy bool
+	RuntimeGeneration   int64
+	SkillActive         int
+	SkillQueued         int
+	BrowserActive       int
+	BrowserQueued       int
+	ConfigRevisionHash  string
+	AppliedConfigHash   string
+	ConfigApplied       bool
 }
 
 // Execer runs a command inside a Pod (satisfied by each RuntimeDriver).
@@ -85,12 +81,6 @@ type runtimeHealthJSON struct {
 		Active int `json:"active"`
 		Queued int `json:"queued"`
 	} `json:"browser"`
-	Telemetry struct {
-		Pending     int    `json:"pending"`
-		WriteFailed bool   `json:"writeFailed"`
-		Dropped     int    `json:"dropped"`
-		LastError   string `json:"lastError"`
-	} `json:"telemetry"`
 }
 
 func mergeRuntimeHealth(ctx context.Context, ex Execer, podID string, status *Status) {
@@ -108,10 +98,6 @@ func mergeRuntimeHealth(ctx context.Context, ex Execer, podID string, status *St
 	status.SkillQueued = health.Skill.Queued
 	status.BrowserActive = health.Browser.Active
 	status.BrowserQueued = health.Browser.Queued
-	status.SkillTelemetryPending = health.Telemetry.Pending
-	status.SkillTelemetryWriteFailed = health.Telemetry.WriteFailed
-	status.SkillTelemetryDropped = health.Telemetry.Dropped
-	status.SkillTelemetryLastError = health.Telemetry.LastError
 }
 
 type configGetJSON struct {

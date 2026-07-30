@@ -319,13 +319,18 @@ func readSkillBundleMetadata(skillDir string) (privateSkillInstallResult, error)
 	if name == "" || !skillNameRegexp.MatchString(name) {
 		return privateSkillInstallResult{}, errors.New("invalid skill name")
 	}
-	platforms := normalizeSkillPlatforms(manifest)
+	platforms, err := normalizeSkillPlatforms(manifest)
+	if err != nil {
+		return privateSkillInstallResult{}, err
+	}
 	scriptFiles, err := scanTraditionalSkillScripts(skillDir)
 	if err != nil {
 		return privateSkillInstallResult{}, err
 	}
 	entryType := classifySkillEntryType(managed, scriptFiles)
-	progressSupported := manifest.Progress != nil || strings.Contains(string(skillMarkdown), "muad-progress")
+	// Progress telemetry is disabled in the minimal runtime until a new audited
+	// execution layer owns it end to end.
+	progressSupported := false
 	browserRequired := manifest.BrowserRequired || stringSliceContains(manifest.Capabilities, "browser")
 	metadata := map[string]any{
 		"name": name, "version": strings.TrimSpace(manifest.Version),
@@ -451,7 +456,7 @@ func skillMarkdownFrontmatterName(markdown string) string {
 	return ""
 }
 
-func normalizeSkillPlatforms(manifest skillBundleManifest) []string {
+func normalizeSkillPlatforms(manifest skillBundleManifest) ([]string, error) {
 	raw := append([]string(nil), manifest.Platforms...)
 	if strings.TrimSpace(manifest.Platform) != "" {
 		raw = append(raw, manifest.Platform)
@@ -459,14 +464,21 @@ func normalizeSkillPlatforms(manifest skillBundleManifest) []string {
 	seen := map[string]bool{}
 	platforms := make([]string, 0, len(raw))
 	for _, item := range raw {
+		if strings.TrimSpace(item) == "" {
+			continue
+		}
 		platform := normalizePlatformName(item)
-		if platform == "" || seen[platform] {
+		if platform == "" {
+			return nil, errors.New("invalid platform dependency")
+		}
+		if seen[platform] {
 			continue
 		}
 		seen[platform] = true
 		platforms = append(platforms, platform)
 	}
-	return platforms
+	sort.Strings(platforms)
+	return platforms, nil
 }
 
 func sortSkillDirs(root string, dirs []string) {

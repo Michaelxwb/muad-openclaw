@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS human_users (
 	browser_profile TEXT NOT NULL,
 	browser_cdp_port INTEGER NOT NULL CHECK (browser_cdp_port BETWEEN 1024 AND 65535),
 	status TEXT NOT NULL CHECK (status IN ('pending','active','disabled','deleting')),
-	platform_credentials_enc TEXT NOT NULL DEFAULT '',
 	notes TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL,
@@ -118,10 +117,20 @@ CREATE INDEX IF NOT EXISTS idx_binding_codes_expiry ON binding_codes(status, exp
 CREATE TABLE IF NOT EXISTS platform_configs (
 	platform TEXT PRIMARY KEY,
 	display_name TEXT NOT NULL,
-	config_enc TEXT NOT NULL DEFAULT '',
 	enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0,1)),
 	updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS user_platform_credentials (
+	human_user_id TEXT NOT NULL REFERENCES human_users(human_user_id) ON DELETE CASCADE,
+	platform TEXT NOT NULL REFERENCES platform_configs(platform) ON DELETE CASCADE,
+	credentials_json TEXT NOT NULL,
+	credential_fingerprint TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	PRIMARY KEY (human_user_id, platform)
+);
+CREATE INDEX IF NOT EXISTS idx_user_platform_credentials_platform
+	ON user_platform_credentials(platform);
 
 CREATE TABLE IF NOT EXISTS skill_assets (
 	skill_id TEXT PRIMARY KEY,
@@ -211,9 +220,6 @@ func (s *Store) migrate() error {
 		return err
 	}
 	if err := s.migrateSkillExecutionRecords(); err != nil {
-		return err
-	}
-	if err := s.seedPlatformConfigs(); err != nil {
 		return err
 	}
 	return nil

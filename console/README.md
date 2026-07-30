@@ -17,8 +17,8 @@
 - **身份绑定**：支持已知 External ID 预绑定，以及 main Agent 中使用一次性绑定码激活新 IM；未绑定发送者不自动开户。
 - **模型池**：批量导入 OpenAI 兼容模型配置并测试连通性；创建用户时绑定一个未占用模型。
 - **Skill 管理**：Public/Private 上传、启禁用、删除、用户策略、冲突解析和最终生效视图；业务 Skill（预防流、报告等）为后续扩展，不改变控制面架构。
-- **平台凭证**：维护业务平台及每用户 API Key，数据库只保存加密值并对外返回指纹；产品范围以 MSSW / SDSP 为主。
-- **监控告警**：Pod 状态、通道、generation、Runtime Guard、资源和遥测 outbox 健康。
+- **平台凭证**：管理员自建业务平台；每用户、每平台维护明文 JSON 认证信息，管理 API 只返回指纹，内部 resolver 按 `agentId + skillName` 解析。
+- **监控告警**：Pod 状态、通道、generation、Runtime Guard、资源和 Skill/browser 并发队列。
 - **双审计**：管理员操作进入“操作审计”，Agent Skill 生命周期进入“Skill 执行日志”。
 
 ## 架构
@@ -74,7 +74,7 @@ Pod ── Runtime generation / service token / state volume
 | `runtime.publicSkillsDir` | `CONSOLE_RUNTIME_PUBLIC_SKILLS_DIR` | `/opt/openclaw-skills` | Worker Public Skill 目录 |
 | `docker.network` | `MUAD_NET` | `muad-net` | Console 与 Worker 共享网络 |
 | `resources.memLimit/cpuLimit/restartPolicy` | `CONSOLE_RESOURCE_*` | `3g` / `2` / `unless-stopped` | Pod 默认资源 |
-| `resources.maxSkillConcurrency` | `CONSOLE_RUNTIME_MAX_SKILL_CONCURRENCY` | `2` | Pod 脚本 Skill 并发 |
+| `resources.maxSkillConcurrency` | `CONSOLE_RUNTIME_MAX_SKILL_CONCURRENCY` | `2` | Pod Skill 并发上限 |
 | `resources.maxBrowserConcurrency` | `CONSOLE_RUNTIME_MAX_BROWSER_CONCURRENCY` | `2` | Pod 浏览器并发 |
 | `browser.cdpPortStart/end` | `CONSOLE_RUNTIME_BROWSER_CDP_PORT_START/END` | `18802/65535` | 用户浏览器端口池 |
 | `k8s.namespace` | `K8S_NAMESPACE` | `muad` | Worker namespace |
@@ -122,11 +122,11 @@ k8s:
 - `skillsPVC` 和 `skillsStorageClass` 已配置时，可在 Skill 管理页创建 PVC；PVC Ready 前禁止上传 Public Skill。
 - 只有 RWO 的默认 `local-path` 不能作为多 Pod Public Skill 共享卷。本地单节点可使用仓库 `k8s/` 下的 hostPath 静态 PV 进行功能测试。
 
-## Skill 生效与审计
+## Skill 生效
 
 ### Public Skill
 
-1. 上传 `.tar.gz` 或 `.zip`，包内必须且只能有一个有效 `SKILL.md`。
+1. 上传 `.tar.gz` 或 `.zip`，包内必须且只能有一个有效 `SKILL.md`；需要业务登录态的 Skill 可通过 `muad.skill.json` 声明 1 到多个已创建平台，通用 Skill 可不声明平台。
 2. 上传、启用、禁用和删除先更新控制面状态并标记 Pod pending。
 3. 管理员点击“应用 Skill”后，控制面同步 active-only Public Skill 目录并对所有运行中 Pod 应用 Runtime Config。
 
@@ -134,14 +134,7 @@ k8s:
 
 Private Skill 从用户详情上传。Console 通过 `ExecStdin` 调用目标 Pod 内的 installer，将文件写入该 Agent 的工作区；安装或删除后只调和目标 Pod，不需要全局“应用 Skill”。
 
-### 执行日志
-
-`muad-run-skill` 通过 `/internal/v1/skill-executions` 上报执行快照。列表与详情 API 只返回脱敏摘要：
-
-- `running` 只能进入终态，终态不能被迟到事件覆盖。
-- 单次工具失败只记录过程，最终状态由 Agent/Runner 结束事件决定。
-- Console 暂时不可用时，Worker 将快照写入 state PVC outbox，恢复后按 `executionId + eventSeq` 幂等补传。
-- Skill 上传、启禁用和应用进入操作审计；Skill 实际运行只进入 Skill 执行日志。
+最小版本不再内置自研 Skill 执行/进度上报插件。Skill 上传、启禁用、删除和应用进入操作审计；“Skill 执行日志”保留为后续简易审计入口，实际执行反馈走 OpenClaw 原生回复。
 
 ## HTTP API
 

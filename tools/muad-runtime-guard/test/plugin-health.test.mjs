@@ -22,9 +22,12 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   ]);
   assert.deepEqual(registration.hooks.map((hook) => hook.name), [
     "before_agent_reply", "before_dispatch", "before_tool_call", "after_tool_call",
+    "before_agent_run", "agent_end",
   ]);
   assert.deepEqual(registration.hooks[0].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[1].options, { priority: -1000, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[4].options, { priority: -1000, timeoutMs: 35_000 });
+  assert.deepEqual(registration.hooks[5].options, { priority: 1000, timeoutMs: 1_000 });
   assert.equal(registration.hooks[0].handler({}, { agentId: "main" }).handled, true);
   assert.equal(registration.hooks[0].handler({}, { agentId: "alice" }), undefined);
   assert.equal(registration.hooks[1].handler({}, { agentId: "alice" }), undefined);
@@ -36,9 +39,8 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     generation: 7,
     mappings: 2,
     sessionManager: { loaded: true, version: 1 },
-    skill: { active: 1, queued: 2, limit: 4 },
     browser: { active: 0, queued: 0, limit: 2 },
-    telemetry: { loaded: true, pending: 0, writeFailed: false, dropped: 0, lastError: "" },
+    skill: { active: 0, queued: 0, limit: 4 },
   });
   assert.equal(JSON.stringify(health).includes("pod-service-token"), false);
 });
@@ -75,24 +77,13 @@ test("health fails closed for incomplete mappings, quarantine reuse, or missing 
   globalThis[Symbol.for("muad.browser.lease")] = {
     snapshot: () => ({ active: 0, queued: 0, limit: 2 }),
   };
+  delete globalThis[Symbol.for("muad.skill.lease")];
+  assert.equal(runtimeHealth(parseGuardConfig(validConfig())).ok, false);
+  globalThis[Symbol.for("muad.skill.lease")] = {
+    snapshot: () => ({ active: 0, queued: 0, limit: 4 }),
+  };
   delete globalThis[Symbol.for("muad.session-manager.health")];
   assert.equal(runtimeHealth(parseGuardConfig(validConfig())).ok, false);
-});
-
-test("health exposes pending telemetry and fails closed after an outbox write error", (t) => {
-  installHealthMarkers(t);
-  globalThis[Symbol.for("muad.run-skill.telemetry")] = {
-    snapshot: () => ({
-      pending: 3, writeFailed: true, dropped: 1,
-      lastError: "outbox_capacity_exceeded",
-    }),
-  };
-  const health = runtimeHealth(parseGuardConfig(validConfig()));
-  assert.equal(health.ok, false);
-  assert.deepEqual(health.telemetry, {
-    loaded: true, pending: 3, writeFailed: true, dropped: 1,
-    lastError: "outbox_capacity_exceeded",
-  });
 });
 
 test("manifest declares all trusted policies and package entry", () => {
@@ -124,7 +115,10 @@ function registerPlugin(t, config) {
     },
     registerReload: (policy) => { registration.reloadPolicy = policy; },
   });
-  t.after(() => globalThis[Symbol.for("muad.browser.lease")]?.close?.());
+  t.after(() => {
+    globalThis[Symbol.for("muad.browser.lease")]?.close?.();
+    globalThis[Symbol.for("muad.skill.lease")]?.close?.();
+  });
   return registration;
 }
 
@@ -178,19 +172,14 @@ function validConfig() {
 
 function installHealthMarkers(t) {
   const sessionSymbol = Symbol.for("muad.session-manager.health");
-  const skillSymbol = Symbol.for("muad.run-skill.queue");
   const browserSymbol = Symbol.for("muad.browser.lease");
-  const telemetrySymbol = Symbol.for("muad.run-skill.telemetry");
+  const skillSymbol = Symbol.for("muad.skill.lease");
   globalThis[sessionSymbol] = { loaded: true, version: 1 };
-  globalThis[skillSymbol] = { snapshot: () => ({ active: 1, queued: 2, limit: 4 }) };
   globalThis[browserSymbol] = { snapshot: () => ({ active: 0, queued: 0, limit: 2 }) };
-  globalThis[telemetrySymbol] = {
-    snapshot: () => ({ pending: 0, writeFailed: false, dropped: 0, lastError: "" }),
-  };
+  globalThis[skillSymbol] = { snapshot: () => ({ active: 0, queued: 0, limit: 4 }) };
   t.after(() => {
     delete globalThis[sessionSymbol];
-    delete globalThis[skillSymbol];
     delete globalThis[browserSymbol];
-    delete globalThis[telemetrySymbol];
+    delete globalThis[skillSymbol];
   });
 }

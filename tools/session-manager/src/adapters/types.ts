@@ -34,9 +34,14 @@ export type AdapterRefreshInput = {
   signal: AbortSignal;
 };
 
+export type AdapterValidateInput = AdapterRefreshInput & {
+  state: AdapterSessionState;
+};
+
 export type PlatformAdapter = {
   readonly platform: string;
   refresh(input: AdapterRefreshInput): Promise<AdapterSessionState>;
+  validate?(input: AdapterValidateInput): Promise<boolean>;
 };
 
 export class PlatformAdapterError extends Error {

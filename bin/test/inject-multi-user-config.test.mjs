@@ -88,12 +88,14 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.deepEqual(output.agents.list[1].skills, ["web-tools-guide", "xdr-query"]);
   assert.equal(output.agents.list[1].tools.fs.workspaceOnly, true);
   assert.equal(output.agents.list[1].tools.deny, undefined);
-  assert.equal(output.agents.list[0].tools.deny.includes("muad_use_skill"), true);
+  assert.equal(output.agents.list[0].tools.deny.includes("muad_use_skill"), false);
+  assert.equal(output.agents.list[0].tools.deny.includes("muad_run_skill"), false);
   assert.equal(output.agents.list[0].tools.deny.includes("read"), true);
   assert.equal(output.agents.list[1].tools.allow.includes("read"), true);
   assert.equal(output.agents.list[1].tools.allow.includes("write"), true);
   assert.equal(output.agents.list[1].tools.allow.includes("exec"), true);
-  assert.equal(output.agents.list[1].tools.allow.includes("muad_use_skill"), true);
+  assert.equal(output.agents.list[1].tools.allow.includes("muad_use_skill"), false);
+  assert.equal(output.agents.list[1].tools.allow.includes("muad_run_skill"), false);
   assert.equal(output.bindings[0].match.channel, "openclaw-weixin");
   assert.deepEqual(output.bindings[0].match.peer, { kind: "direct", id: "wx-alice" });
   assert.deepEqual(output.session.identityLinks.alice, ["openclaw-weixin:wx-alice", "wecom:XuWenBin"]);
@@ -103,39 +105,11 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.equal(output.browser.profiles.quarantine.color, "#6B7280");
   assert.notEqual(output.browser.profiles.alice.color, output.browser.profiles.quarantine.color);
   assert.equal(output.models.providers["user-alice-deepseek"].apiKey, "alice-key");
-  assert.deepEqual(output.tools.alsoAllow, [
-    "browser",
-    "muad_run_skill",
-    "muad_use_skill",
-    "session_get_state",
-  ]);
+  assert.deepEqual(output.tools.alsoAllow, ["browser", "session_get_state"]);
   assert.equal(output.plugins.entries["session-manager"].enabled, true);
   assert.equal(output.plugins.entries["session-manager"].config.consoleInternalURL, runtime.consoleInternalUrl);
-  assert.equal(output.plugins.entries["muad-run-skill"].config.maxConcurrency, runtime.concurrency.maxSkills);
-  assert.deepEqual(output.plugins.entries["muad-run-skill"].hooks, {
-    allowConversationAccess: true,
-  });
-  assert.deepEqual(output.plugins.entries["muad-run-skill"].config.skillPolicies, runtime.skills.agents);
-  assert.deepEqual(output.plugins.entries["muad-run-skill"].config.activation, {
-    toolName: "muad_use_skill",
-    requireBeforeExecution: true,
-    detectSkillFileReads: true,
-    contextTimeoutMs: 6 * 60 * 60 * 1_000,
-    cleanupIntervalMs: 60_000,
-  });
-  assert.equal(
-    output.plugins.entries["muad-run-skill"].config.telemetry.consoleInternalURL,
-    runtime.consoleInternalUrl,
-  );
-  assert.equal(
-    output.plugins.entries["muad-run-skill"].config.telemetry.outboxPath,
-    `${runtime.skills.privateRoot}/muad/skill-execution-outbox.ndjson`,
-  );
-  assert.equal(output.skills.entries["__muad-runtime-skill-state"].enabled, true);
-  assert.equal(
-    output.skills.entries["__muad-runtime-skill-state"].config.generation,
-    runtime.generation,
-  );
+  assert.equal(output.plugins.entries["muad-run-skill"], undefined);
+  assert.equal(output.skills.entries?.["__muad-runtime-skill-state"], undefined);
   assert.equal(output.plugins.bundledDiscovery, "allowlist");
   assert.equal(output.plugins.entries["muad-runtime-guard"].config.generation, 7);
   assert.deepEqual(output.plugins.entries["muad-runtime-guard"].config.skillReadRoots, [
@@ -154,7 +128,7 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   );
   assert.deepEqual(
     output.plugins.allow.filter((id) => id.startsWith("muad") || id === "session-manager"),
-    ["muad-run-skill", "muad-runtime-guard", "session-manager"],
+    ["muad-runtime-guard", "session-manager"],
   );
   assert.deepEqual(
     output.plugins.load.paths,
@@ -205,11 +179,11 @@ Keep this custom rule.
   assert.match(firstGuidance, /Memory persistence/u);
   assert.match(firstGuidance, /before saying it is remembered/u);
   assert.match(firstGuidance, /Never say a fact has been saved/u);
-  assert.match(firstGuidance, /muad_use_skill/u);
   assert.match(firstGuidance, /read the exact .*SKILL\.md/iu);
   assert.match(firstGuidance, /every user turn/iu);
-  assert.match(firstGuidance, /successful muad_use_skill result is authoritative/u);
+  assert.doesNotMatch(firstGuidance, /muad_use_skill/u);
+  assert.doesNotMatch(firstGuidance, /muad_run_skill/u);
   assert.equal(firstGuidance, secondGuidance);
   assert.equal((firstGuidance.match(/muad:skill-activation:start/gu) ?? []).length, 1);
-  assert.equal((firstGuidance.match(/Before using any Skill instructions/gu) ?? []).length, 1);
+  assert.equal((firstGuidance.match(/Before using any Skill instructions/gu) ?? []).length, 0);
 });

@@ -11,6 +11,7 @@ import (
 func TestSkillAsset_CRUDListAndConstraints(t *testing.T) {
 	store := newStore(t)
 	createTestPod(t, store, "pod-a", 3)
+	createTestPlatform(t, store, "xdr", "XDR")
 	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
 
 	public := createSkillAsset(t, store, repo.SkillAsset{
@@ -31,8 +32,9 @@ func TestSkillAsset_CRUDListAndConstraints(t *testing.T) {
 	private := createSkillAsset(t, store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate,
 		HumanUserID: alice.HumanUserID, PodID: "pod-a",
-		SourcePath:   "/home/node/.openclaw/workspace-alice/skills/xdr-query",
-		ManifestHash: "sha256:private",
+		SourcePath:    "/home/node/.openclaw/workspace-alice/skills/xdr-query",
+		ManifestHash:  "sha256:private",
+		PlatformsJSON: `["xdr"]`,
 	})
 	if !private.CreatedAt.Before(private.UpdatedAt) && !private.CreatedAt.Equal(private.UpdatedAt) {
 		t.Fatalf("invalid timestamps: %+v", private)
@@ -41,6 +43,7 @@ func TestSkillAsset_CRUDListAndConstraints(t *testing.T) {
 		Name: "xdr-query", Scope: repo.SkillScopePrivate,
 		HumanUserID: alice.HumanUserID, PodID: "pod-a",
 		SourcePath: "/duplicate", ManifestHash: "sha256:duplicate",
+		PlatformsJSON: `["xdr"]`,
 	}); !errors.Is(err, repo.ErrSkillExists) {
 		t.Fatalf("private duplicate = %v, want ErrSkillExists", err)
 	}
@@ -251,8 +254,8 @@ func TestSkillExecutionRepositoryRejectsLateEventAfterTerminal(t *testing.T) {
 func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t *testing.T) {
 	store := newStore(t)
 	createTestPod(t, store, "pod-a", 3)
+	createTestPlatform(t, store, "xdr", "XDR")
 	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
-	cipher := testCipher(t)
 	createSkillAsset(t, store, repo.SkillAsset{
 		Name: "session-manager", Scope: repo.SkillScopeSystem,
 		SourcePath: "/opt/system/session-manager", ManifestHash: "sha256:system",
@@ -260,8 +263,9 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 	createSkillAsset(t, store, repo.SkillAsset{
 		Name: "session-manager", Scope: repo.SkillScopePrivate,
 		HumanUserID: alice.HumanUserID, PodID: "pod-a",
-		SourcePath:   "/home/node/.openclaw/workspace-alice/skills/session-manager",
-		ManifestHash: "sha256:private-system",
+		SourcePath:    "/home/node/.openclaw/workspace-alice/skills/session-manager",
+		ManifestHash:  "sha256:private-system",
+		PlatformsJSON: `["xdr"]`,
 	})
 	publicXDR := createSkillAsset(t, store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePublic,
@@ -282,7 +286,7 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 		t.Fatalf("UpsertSkillExecutionRecord: %v", err)
 	}
 
-	skills, total, err := store.ResolveEffectiveSkills(cipher, alice.HumanUserID, repo.EffectiveSkillFilter{})
+	skills, total, err := store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{})
 	if err != nil {
 		t.Fatalf("ResolveEffectiveSkills: %v", err)
 	}
@@ -307,7 +311,7 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 	}); err != nil {
 		t.Fatalf("CreateSkillPolicy allow override: %v", err)
 	}
-	skills, _, err = store.ResolveEffectiveSkills(cipher, alice.HumanUserID, repo.EffectiveSkillFilter{})
+	skills, _, err = store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{})
 	if err != nil {
 		t.Fatalf("ResolveEffectiveSkills after override: %v", err)
 	}
@@ -317,10 +321,12 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 		xdr.Platforms[0].CredentialStatus != repo.SkillCredentialMissing {
 		t.Fatalf("override without credential = %+v", xdr)
 	}
-	if _, err := store.UpsertUserPlatformCredential(cipher, alice.HumanUserID, "xdr", "xdr-key"); err != nil {
+	if _, err := store.UpsertUserPlatformCredential(alice.HumanUserID, "xdr", map[string]any{
+		"apiKey": "xdr-key",
+	}); err != nil {
 		t.Fatalf("UpsertUserPlatformCredential: %v", err)
 	}
-	skills, _, err = store.ResolveEffectiveSkills(cipher, alice.HumanUserID, repo.EffectiveSkillFilter{
+	skills, _, err = store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{
 		Status: repo.EffectiveSkillStatusEffective,
 	})
 	if err != nil {
@@ -333,23 +339,81 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 	}
 }
 
+func TestEffectiveSkillResolver_PlatformlessAndMultiPlatformSkills(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 3)
+	createTestPlatform(t, store, "xdr", "XDR")
+	createTestPlatform(t, store, "mssw", "MSSW")
+	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createSkillAsset(t, store, repo.SkillAsset{
+		Name: "web-tools-guide", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/web-tools-guide", ManifestHash: "sha256:web",
+		PlatformsJSON: `[]`,
+	})
+	createSkillAsset(t, store, repo.SkillAsset{
+		Name: "multi-report", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/multi-report", ManifestHash: "sha256:multi",
+		PlatformsJSON: `["mssw","xdr"]`,
+	})
+	if _, err := store.UpsertUserPlatformCredential(alice.HumanUserID, "xdr", map[string]any{
+		"apiKey": "xdr-key",
+	}); err != nil {
+		t.Fatalf("UpsertUserPlatformCredential xdr: %v", err)
+	}
+
+	skills, _, err := store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{})
+	if err != nil {
+		t.Fatalf("ResolveEffectiveSkills: %v", err)
+	}
+	byName := indexEffectiveSkills(skills)
+	if web := byName["web-tools-guide"]; !web.Effective ||
+		web.Status != repo.EffectiveSkillStatusEffective || len(web.Platforms) != 0 {
+		t.Fatalf("platformless Skill = %+v", web)
+	}
+	multi := byName["multi-report"]
+	if multi.Effective || multi.Status != repo.EffectiveSkillStatusMissingCredential ||
+		len(multi.Platforms) != 2 || multi.Platforms[0].CredentialStatus != repo.SkillCredentialMissing ||
+		multi.Platforms[1].CredentialStatus != repo.SkillCredentialConfigured {
+		t.Fatalf("multi-platform missing credential = %+v", multi)
+	}
+
+	if _, err := store.UpsertUserPlatformCredential(alice.HumanUserID, "mssw", map[string]any{
+		"apiKey": "mssw-key",
+	}); err != nil {
+		t.Fatalf("UpsertUserPlatformCredential mssw: %v", err)
+	}
+	skills, _, err = store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{
+		Status: repo.EffectiveSkillStatusEffective,
+	})
+	if err != nil {
+		t.Fatalf("ResolveEffectiveSkills with credentials: %v", err)
+	}
+	multi = indexEffectiveSkills(skills)["multi-report"]
+	if !multi.Effective || multi.Status != repo.EffectiveSkillStatusEffective ||
+		len(multi.Platforms) != 2 {
+		t.Fatalf("multi-platform configured = %+v", multi)
+	}
+}
+
 func TestEffectiveSkillResolver_DisablePolicyAndPlatformDisabled(t *testing.T) {
 	store := newStore(t)
 	createTestPod(t, store, "pod-a", 3)
+	createTestPlatform(t, store, "soar", "SOAR")
 	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
-	cipher := testCipher(t)
 	createSkillAsset(t, store, repo.SkillAsset{
 		Name: "soar-sync", Scope: repo.SkillScopePublic,
 		SourcePath: "/opt/openclaw-skills/soar-sync", ManifestHash: "sha256:soar",
 		PlatformsJSON: `["soar"]`,
 	})
-	if _, err := store.UpsertUserPlatformCredential(cipher, alice.HumanUserID, "soar", "soar-key"); err != nil {
+	if _, err := store.UpsertUserPlatformCredential(alice.HumanUserID, "soar", map[string]any{
+		"apiKey": "soar-key",
+	}); err != nil {
 		t.Fatalf("UpsertUserPlatformCredential: %v", err)
 	}
-	if err := store.UpdatePlatformConfig("soar", "SOAR", "", false); err != nil {
+	if err := store.UpdatePlatformConfig("soar", "SOAR", false); err != nil {
 		t.Fatalf("UpdatePlatformConfig: %v", err)
 	}
-	skills, _, err := store.ResolveEffectiveSkills(cipher, alice.HumanUserID, repo.EffectiveSkillFilter{})
+	skills, _, err := store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{})
 	if err != nil {
 		t.Fatalf("ResolveEffectiveSkills platform disabled: %v", err)
 	}
@@ -364,7 +428,7 @@ func TestEffectiveSkillResolver_DisablePolicyAndPlatformDisabled(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CreateSkillPolicy disable: %v", err)
 	}
-	skills, _, err = store.ResolveEffectiveSkills(cipher, alice.HumanUserID, repo.EffectiveSkillFilter{
+	skills, _, err = store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{
 		Status: repo.EffectiveSkillStatusDisabled,
 	})
 	if err != nil {

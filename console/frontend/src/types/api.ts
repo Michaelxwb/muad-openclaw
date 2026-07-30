@@ -274,23 +274,18 @@ export interface BindingCodeCreateResult {
 export interface Platform {
   platform: string;
   displayName: string;
-  config: Record<string, unknown>;
-  configFingerprint: string;
   enabled: boolean;
-  adapterInstalled: boolean;
   updatedAt: string;
 }
 
 export interface CreatePlatformInput {
   platform: string;
   displayName: string;
-  config?: Record<string, unknown>;
   enabled?: boolean;
 }
 
 export interface PatchPlatformInput {
   displayName?: string;
-  config?: Record<string, unknown>;
   enabled?: boolean;
 }
 
@@ -303,7 +298,7 @@ export interface DeletePlatformResult {
 export interface PlatformCredential {
   humanUserId: string;
   platform: string;
-  keyFingerprint: string;
+  credentialFingerprint: string;
   platformEnabled: boolean;
   updatedAt: string;
 }
@@ -435,11 +430,13 @@ export interface PrivateSkillUploadInput {
   bundle: File | Blob;
   filename?: string;
   expectedName?: string;
+  platforms?: string[];
 }
 
 export interface PublicSkillUploadInput {
   bundle: File | Blob;
   filename?: string;
+  platforms?: string[];
 }
 
 export interface PrivateSkillUploadResult {

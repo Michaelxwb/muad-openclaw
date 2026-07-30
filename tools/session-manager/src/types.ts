@@ -7,7 +7,8 @@ export type TrustedContext = {
 
 export type ResolveRequest = {
   agentId: string;
-  platform: string;
+  skillName: string;
+  platform?: string;
   purpose: typeof RESOLVER_PURPOSE;
 };
 
@@ -15,13 +16,10 @@ export type ResolvedCredential = {
   humanUserId: string;
   podId: string;
   agentId: string;
+  skillName: string;
   platform: string;
   credentialFingerprint: string;
-  platformConfigFingerprint: string;
-  apiKey: string;
-  sessionMode: string;
-  adapter: string;
-  platformConfig: Record<string, unknown>;
+  credentials: Record<string, unknown>;
 };
 
 export type Resolver = {
@@ -37,5 +35,4 @@ export type SessionStateResult = {
   storageStatePath: string;
   expiresAt: string;
   credentialFingerprint: string;
-  platformConfigFingerprint: string;
 };

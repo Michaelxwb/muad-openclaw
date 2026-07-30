@@ -102,20 +102,20 @@
   <rect x="48" y="595" width="1952" height="115" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" rx="6"/>
   <text x="80" y="640" class="flow-id">DF-04</text>
   <text x="80" y="662" class="flow-name">Skill 执行</text>
-  <rect x="280" y="635" width="100" height="28" class="node" fill="#ffedd5"/><text x="330" y="654" text-anchor="middle" class="small">run-skill</text>
+  <rect x="280" y="635" width="100" height="28" class="node" fill="#ffedd5"/><text x="330" y="654" text-anchor="middle" class="small">Skill 激活</text>
   <line x1="380" y1="649" x2="420" y2="649" class="control"/>
   <rect x="430" y="635" width="90" height="28" class="node" fill="#fef3c7"/><text x="475" y="654" text-anchor="middle" class="small">脚本执行</text>
   <line x1="520" y1="649" x2="560" y2="649" class="control"/>
   <rect x="570" y="635" width="90" height="28" class="node" fill="#ffedd5"/><text x="615" y="654" text-anchor="middle" class="small">③ session</text>
   <text x="730" y="654" class="tiny">Skill → session-manager → resolve → session-store（平台登录态，详见 DF-05）</text>
-  <!-- 进度旁路：从脚本往下 -->
+  <!-- 并发与审计：当前最小版本无进度 outbox -->
   <line x1="475" y1="663" x2="475" y2="685" class="message thin"/>
-  <rect x="390" y="688" width="110" height="28" class="node" fill="#fef3c7"/><text x="445" y="707" text-anchor="middle" class="small">muad-progress</text>
+  <rect x="390" y="688" width="110" height="28" class="node" fill="#fef3c7"/><text x="445" y="707" text-anchor="middle" class="small">guard lease</text>
   <line x1="500" y1="702" x2="540" y2="702" class="message"/>
-  <rect x="550" y="688" width="120" height="28" class="node" fill="#fef3c7"/><text x="610" y="707" text-anchor="middle" class="small">adapters → IM</text>
+  <rect x="550" y="688" width="120" height="28" class="node" fill="#fef3c7"/><text x="610" y="707" text-anchor="middle" class="small">native reply</text>
   <line x1="670" y1="702" x2="710" y2="702" class="session"/>
-  <rect x="720" y="688" width="90" height="28" class="node" fill="#e2e8f0"/><text x="765" y="707" text-anchor="middle" class="small">outbox</text>
-  <text x="880" y="707" class="tiny">Console 不可用时写 State outbox，恢复后幂等重放</text>
+  <rect x="720" y="688" width="90" height="28" class="node" fill="#e2e8f0"/><text x="765" y="707" text-anchor="middle" class="small">审计入口</text>
+  <text x="880" y="707" class="tiny">Console 保留 Skill 执行日志；当前无进度 outbox</text>
 
   <!-- DF-05 平台会话 -->
   <rect x="48" y="725" width="1952" height="115" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" rx="6"/>

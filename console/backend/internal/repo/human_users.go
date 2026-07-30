@@ -216,8 +216,7 @@ func (s *Store) ListDeletingHumanUsers(podID string) ([]HumanUser, error) {
 }
 
 const humanUserColumns = `human_user_id, pod_id, model_config_id, display_name, agent_id,
-	browser_profile, browser_cdp_port, status, platform_credentials_enc,
-	notes, created_at, updated_at`
+	browser_profile, browser_cdp_port, status, notes, created_at, updated_at`
 
 func prepareNewHumanUser(user *HumanUser) error {
 	if user.HumanUserID == "" {
@@ -309,11 +308,10 @@ func allocateBrowserPort(tx *sql.Tx, podID string, start, end int) (int, error) 
 func insertHumanUser(tx *sql.Tx, user HumanUser) error {
 	_, err := tx.Exec(`INSERT INTO human_users (
 		human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile,
-		browser_cdp_port, status, platform_credentials_enc,
-		notes, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, user.HumanUserID, user.PodID,
+		browser_cdp_port, status, notes, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, user.HumanUserID, user.PodID,
 		nullIfEmpty(user.ModelConfigID), user.DisplayName, user.AgentID, user.BrowserProfile, user.BrowserCDPPort,
-		user.Status, user.PlatformCredentialsEnc, user.Notes,
+		user.Status, user.Notes,
 		formatTime(user.CreatedAt), formatTime(user.UpdatedAt))
 	if isUniqueConstraint(err) {
 		return ErrHumanUserExists
@@ -413,8 +411,7 @@ func scanHumanUser(sc scanner) (HumanUser, error) {
 	var modelConfigID sql.NullString
 	var createdAt, updatedAt string
 	err := sc.Scan(&user.HumanUserID, &user.PodID, &modelConfigID, &user.DisplayName, &user.AgentID,
-		&user.BrowserProfile, &user.BrowserCDPPort, &user.Status, &user.PlatformCredentialsEnc,
-		&user.Notes, &createdAt, &updatedAt)
+		&user.BrowserProfile, &user.BrowserCDPPort, &user.Status, &user.Notes, &createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return HumanUser{}, ErrNotFound
 	}

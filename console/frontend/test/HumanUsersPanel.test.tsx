@@ -131,17 +131,14 @@ const expiredBindingCode: BindingCode = {
 const xdrPlatform: Platform = {
   platform: "xdr",
   displayName: "XDR",
-  config: { baseUrl: "https://xdr.internal" },
-  configFingerprint: "sha256:xdr-config",
   enabled: false,
-  adapterInstalled: true,
   updatedAt: "2026-07-11T00:00:00Z",
 };
 
 const xdrCredential: PlatformCredential = {
   humanUserId: "user-a",
   platform: "xdr",
-  keyFingerprint: "sha256:user-xdr-key",
+  credentialFingerprint: "sha256:user-xdr-key",
   platformEnabled: false,
   updatedAt: "2026-07-11T00:00:00Z",
 };
@@ -556,16 +553,18 @@ describe("HumanUsersPanel", () => {
     expect(await screen.findByText("sha256:user-xdr-key")).toBeInTheDocument();
     expect(screen.getByText("已停用")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "覆盖" }));
-    const keyInput = screen.getByLabelText("业务平台 API Key");
-    expect(keyInput).toHaveValue("");
-    fireEvent.change(keyInput, { target: { value: "sensitive-new-key" } });
+    const credentialInput = screen.getByLabelText("业务平台认证 JSON");
+    expect(credentialInput).toHaveValue("{}");
+    fireEvent.change(credentialInput, {
+      target: { value: '{"apiKey":"sensitive-new-key"}' },
+    });
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
     await waitFor(() =>
       expect(apiMocks.putPlatformCredential).toHaveBeenCalledWith(
         "user-a",
         "xdr",
-        "sensitive-new-key",
+        { apiKey: "sensitive-new-key" },
       ),
     );
     expect(screen.queryByDisplayValue("sensitive-new-key")).not.toBeInTheDocument();
@@ -580,8 +579,8 @@ describe("HumanUsersPanel", () => {
 
     await screen.findByText("未配置");
     fireEvent.click(screen.getByRole("button", { name: "配置" }));
-    fireEvent.change(screen.getByLabelText("业务平台 API Key"), {
-      target: { value: "first-platform-key" },
+    fireEvent.change(screen.getByLabelText("业务平台认证 JSON"), {
+      target: { value: '{"apiKey":"first-platform-key"}' },
     });
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
@@ -589,7 +588,7 @@ describe("HumanUsersPanel", () => {
       expect(apiMocks.putPlatformCredential).toHaveBeenCalledWith(
         "user-a",
         "xdr",
-        "first-platform-key",
+        { apiKey: "first-platform-key" },
       ),
     );
   });
@@ -682,6 +681,7 @@ describe("HumanUsersPanel", () => {
       expect(apiMocks.uploadPrivateSkill).toHaveBeenCalledWith("user-a", {
         bundle: file,
         filename: "xdr-upload.zip",
+        platforms: [],
       }),
     );
     expect(screen.queryByLabelText("期望 Skill 名称")).not.toBeInTheDocument();

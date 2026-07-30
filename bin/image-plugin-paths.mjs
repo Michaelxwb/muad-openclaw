@@ -1,5 +1,4 @@
 export const MUAD_RUNTIME_PLUGIN_SPECS = Object.freeze([
-  plugin("muad-run-skill", "/opt/muad/muad-run-skill", "src/index.mjs"),
   plugin("session-manager", "/opt/muad/session-manager", "openclaw-plugin.mjs"),
   plugin("muad-runtime-guard", "/opt/muad/muad-runtime-guard", "src/index.mjs"),
 ]);

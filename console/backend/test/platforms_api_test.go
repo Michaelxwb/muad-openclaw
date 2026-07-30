@@ -10,26 +10,22 @@ import (
 )
 
 type platformAPIView struct {
-	Platform          string         `json:"platform"`
-	DisplayName       string         `json:"displayName"`
-	Config            map[string]any `json:"config"`
-	ConfigFingerprint string         `json:"configFingerprint"`
-	Enabled           bool           `json:"enabled"`
-	AdapterInstalled  bool           `json:"adapterInstalled"`
+	Platform    string `json:"platform"`
+	DisplayName string `json:"displayName"`
+	Enabled     bool   `json:"enabled"`
 }
 
 func TestPlatformAPI_ListAndPatchReconcilesAllPods(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
+	createTestPlatform(t, e.store, "xdr", "XDR")
 	e.reconcile.podIDs = nil
-	body := `{"displayName":"XDR Platform","config":{` +
-		`"baseUrl":"https://xdr.internal","sessionMode":"storage_state"}}`
+	body := `{"displayName":"XDR Platform"}`
 	rr := e.do(http.MethodPatch, "/api/v1/platforms/xdr", body)
 	assertStatus(t, rr, http.StatusOK)
 	view := decodeAPIData[platformAPIView](t, rr.Body.Bytes())
-	if view.DisplayName != "XDR Platform" || view.Config["baseUrl"] != "https://xdr.internal" ||
-		view.ConfigFingerprint == "" || !view.AdapterInstalled {
+	if view.DisplayName != "XDR Platform" || !view.Enabled {
 		t.Fatalf("unexpected platform view: %+v", view)
 	}
 	sort.Strings(e.reconcile.podIDs)
@@ -45,19 +41,28 @@ func TestPlatformAPI_ListAndPatchReconcilesAllPods(t *testing.T) {
 	assertIdempotentPlatformPatch(t, e, body)
 }
 
-func TestPlatformAPI_RejectsSecretsInConfig(t *testing.T) {
+func TestPlatformAPI_EmptyByDefaultAndRejectsDuplicates(t *testing.T) {
 	e := newTestEnv(t)
-	rr := e.do(http.MethodPatch, "/api/v1/platforms/xdr", `{"config":{"apiKey":"forbidden"}}`)
-	assertStatus(t, rr, http.StatusBadRequest)
-	rr = e.do(http.MethodPost, "/api/v1/platforms", `{"platform":"xdr","displayName":"Duplicate"}`)
-	assertStatus(t, rr, http.StatusConflict)
-	rr = e.do(http.MethodGet, "/api/v1/platforms", "")
+	rr := e.do(http.MethodGet, "/api/v1/platforms", "")
 	assertStatus(t, rr, http.StatusOK)
 	list := decodeAPIData[struct {
 		Items []platformAPIView `json:"items"`
 		Total int               `json:"total"`
 	}](t, rr.Body.Bytes())
-	if list.Total != 5 || len(list.Items) != 5 {
+	if list.Total != 0 || len(list.Items) != 0 {
+		t.Fatalf("platform list = %+v", list)
+	}
+	rr = e.do(http.MethodPost, "/api/v1/platforms", `{"platform":"xdr","displayName":"XDR"}`)
+	assertStatus(t, rr, http.StatusCreated)
+	rr = e.do(http.MethodPost, "/api/v1/platforms", `{"platform":"xdr","displayName":"Duplicate"}`)
+	assertStatus(t, rr, http.StatusConflict)
+	rr = e.do(http.MethodGet, "/api/v1/platforms", "")
+	assertStatus(t, rr, http.StatusOK)
+	list = decodeAPIData[struct {
+		Items []platformAPIView `json:"items"`
+		Total int               `json:"total"`
+	}](t, rr.Body.Bytes())
+	if list.Total != 1 || len(list.Items) != 1 {
 		t.Fatalf("platform list = %+v", list)
 	}
 }
@@ -80,7 +85,7 @@ func TestPlatformAPI_DisableIsAuditedAndInvalidatesResolver(t *testing.T) {
 	putCredential(t, e, user.HumanUserID, "xdr", "xdr-key")
 	rr := e.do(http.MethodPatch, "/api/v1/platforms/xdr", `{"enabled":false}`)
 	assertStatus(t, rr, http.StatusOK)
-	_, err := e.store.ResolveUserPlatformCredential(eCipher(t), user.HumanUserID, "xdr")
+	_, err := e.store.ResolveUserPlatformCredential(user.HumanUserID, "xdr")
 	if err != repo.ErrPlatformDisabled {
 		t.Fatalf("disabled resolver error = %v", err)
 	}
@@ -110,7 +115,7 @@ func TestPlatformAPI_DeleteRemovesConfigAndReconcilesPods(t *testing.T) {
 	if _, err := e.store.GetPlatformConfig("xdr"); err != repo.ErrNotFound {
 		t.Fatalf("deleted platform error = %v, want ErrNotFound", err)
 	}
-	summaries, err := e.store.ListUserPlatformCredentials(eCipher(t), user.HumanUserID)
+	summaries, err := e.store.ListUserPlatformCredentials(user.HumanUserID)
 	if err != nil || len(summaries) != 0 {
 		t.Fatalf("credentials after platform delete = %+v, %v", summaries, err)
 	}

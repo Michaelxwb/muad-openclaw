@@ -60,7 +60,7 @@ const execution = {
   startedAt: "2026-07-14T10:00:00Z",
   endedAt: "2026-07-14T10:00:02Z",
   durationMs: 2000,
-  lastToolName: "muad_run_skill",
+  lastToolName: "session_get_state",
   terminalReason: "tool-error",
   errorCode: "report_failed",
   errorMessage: "生成报告失败",

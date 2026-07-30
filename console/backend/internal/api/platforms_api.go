@@ -1,43 +1,32 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"io"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
-	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
-const maxPlatformConfigBytes = 16 * 1024
-
 type createPlatformRequest struct {
-	Platform    string          `json:"platform"`
-	DisplayName string          `json:"displayName"`
-	Config      json.RawMessage `json:"config"`
-	Enabled     *bool           `json:"enabled"`
+	Platform    string `json:"platform"`
+	DisplayName string `json:"displayName"`
+	Enabled     *bool  `json:"enabled"`
 }
 
 type patchPlatformRequest struct {
-	DisplayName *string          `json:"displayName"`
-	Config      *json.RawMessage `json:"config"`
-	Enabled     *bool            `json:"enabled"`
+	DisplayName *string `json:"displayName"`
+	Enabled     *bool   `json:"enabled"`
 }
 
 type platformView struct {
-	Platform          string         `json:"platform"`
-	DisplayName       string         `json:"displayName"`
-	Config            map[string]any `json:"config"`
-	ConfigFingerprint string         `json:"configFingerprint"`
-	Enabled           bool           `json:"enabled"`
-	AdapterInstalled  bool           `json:"adapterInstalled"`
-	UpdatedAt         time.Time      `json:"updatedAt"`
+	Platform    string    `json:"platform"`
+	DisplayName string    `json:"displayName"`
+	Enabled     bool      `json:"enabled"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 type deletePlatformResponse struct {
@@ -54,12 +43,7 @@ func (s *Server) handleListPlatforms(w http.ResponseWriter, _ *http.Request) {
 	}
 	views := make([]platformView, 0, len(configs))
 	for _, config := range configs {
-		view, err := s.makePlatformView(config)
-		if err != nil {
-			writeErr(w, http.StatusInternalServerError, codeInternal, "decode platform configuration")
-			return
-		}
-		views = append(views, view)
+		views = append(views, makePlatformView(config))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": views, "total": len(views)})
 }
@@ -75,18 +59,13 @@ func (s *Server) handleCreatePlatform(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid platform display name")
 		return
 	}
-	encrypted, err := s.encodePlatformConfig(request.Config)
-	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid platform configuration")
-		return
-	}
 	enabled := true
 	if request.Enabled != nil {
 		enabled = *request.Enabled
 	}
 	podIDs, err := s.store.CreatePlatformConfigAndMarkPods(repo.PlatformConfig{
 		Platform: request.Platform, DisplayName: request.DisplayName,
-		ConfigEnc: encrypted, Enabled: enabled,
+		Enabled: enabled,
 	})
 	if err != nil {
 		writeRepoError(w, err)
@@ -120,7 +99,7 @@ func (s *Server) handlePatchPlatform(w http.ResponseWriter, r *http.Request) {
 	}
 	if changed {
 		podIDs, err := s.store.UpdatePlatformConfigAndMarkPods(
-			next.Platform, next.DisplayName, next.ConfigEnc, next.Enabled,
+			next.Platform, next.DisplayName, next.Enabled,
 		)
 		if err != nil {
 			writeRepoError(w, err)
@@ -148,7 +127,7 @@ func (s *Server) handleDeletePlatform(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, err)
 		return
 	}
-	podIDs, err := s.store.DeletePlatformConfigAndMarkPods(s.cipher, platform)
+	podIDs, err := s.store.DeletePlatformConfigAndMarkPods(platform)
 	if err != nil {
 		writeRepoError(w, err)
 		return
@@ -170,98 +149,23 @@ func (s *Server) applyPlatformPatch(
 	if request.Enabled != nil {
 		next.Enabled = *request.Enabled
 	}
-	if request.Config != nil {
-		encrypted, err := s.encodePlatformConfig(*request.Config)
-		if err != nil {
-			return repo.PlatformConfig{}, false, err
-		}
-		next.ConfigEnc = encrypted
-	}
 	if next.DisplayName == "" || len(next.DisplayName) > 128 {
 		return repo.PlatformConfig{}, false, errors.New("invalid display name")
 	}
 	changed := next.DisplayName != current.DisplayName || next.Enabled != current.Enabled
-	if request.Config != nil {
-		changed = changed || !s.equalEncryptedPlatformConfigs(current.ConfigEnc, next.ConfigEnc)
-	}
 	return next, changed, nil
 }
 
-func (s *Server) encodePlatformConfig(raw json.RawMessage) (string, error) {
-	config, canonical, err := decodePlatformPayload(raw)
-	if err != nil || containsSensitiveConfigKey(config) {
-		return "", errors.New("invalid platform config")
-	}
-	return s.cipher.Encrypt(string(canonical))
-}
-
-func decodePlatformPayload(raw json.RawMessage) (map[string]any, []byte, error) {
-	if len(raw) == 0 {
-		raw = json.RawMessage(`{}`)
-	}
-	if len(raw) > maxPlatformConfigBytes {
-		return nil, nil, errors.New("platform config is too large")
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
-	var config map[string]any
-	if err := decoder.Decode(&config); err != nil || config == nil {
-		return nil, nil, errors.New("platform config must be an object")
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return nil, nil, errors.New("trailing platform config value")
-	}
-	canonical, err := json.Marshal(config)
-	return config, canonical, err
-}
-
-func containsSensitiveConfigKey(value any) bool {
-	switch typed := value.(type) {
-	case map[string]any:
-		for key, child := range typed {
-			normalized := strings.NewReplacer("_", "", "-", "").Replace(strings.ToLower(key))
-			if normalized == "apikey" || strings.HasSuffix(normalized, "secret") ||
-				strings.HasSuffix(normalized, "token") || strings.HasSuffix(normalized, "password") ||
-				strings.HasSuffix(normalized, "cookie") || containsSensitiveConfigKey(child) {
-				return true
-			}
-		}
-	case []any:
-		for _, child := range typed {
-			if containsSensitiveConfigKey(child) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (s *Server) equalEncryptedPlatformConfigs(left, right string) bool {
-	_, leftCanonical, leftErr := s.decodePlatformConfig(left)
-	_, rightCanonical, rightErr := s.decodePlatformConfig(right)
-	return leftErr == nil && rightErr == nil && bytes.Equal(leftCanonical, rightCanonical)
-}
-
-func (s *Server) makePlatformView(config repo.PlatformConfig) (platformView, error) {
-	decoded, canonical, err := s.decodePlatformConfig(config.ConfigEnc)
-	if err != nil {
-		return platformView{}, err
-	}
+func makePlatformView(config repo.PlatformConfig) platformView {
 	return platformView{
-		Platform: config.Platform, DisplayName: config.DisplayName, Config: decoded,
-		ConfigFingerprint: secretcrypto.DisplayFingerprint(secretcrypto.Fingerprint(string(canonical))),
-		Enabled:           config.Enabled, AdapterInstalled: true,
+		Platform: config.Platform, DisplayName: config.DisplayName,
+		Enabled: config.Enabled,
 		UpdatedAt: config.UpdatedAt,
-	}, nil
+	}
 }
 
 func (s *Server) writePlatform(w http.ResponseWriter, config repo.PlatformConfig, status int) {
-	view, err := s.makePlatformView(config)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "decode platform configuration")
-		return
-	}
-	writeJSON(w, status, view)
+	writeJSON(w, status, makePlatformView(config))
 }
 
 func (s *Server) enqueuePodIDs(podIDs []string) {

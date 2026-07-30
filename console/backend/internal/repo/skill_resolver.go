@@ -3,10 +3,9 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
-
-	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 )
 
 type EffectiveSkillFilter struct {
@@ -28,7 +27,7 @@ type skillGroup struct {
 // ResolveEffectiveSkills returns the per-Human User Skill state used by the
 // administrator view and runtime policy generation.
 func (s *Store) ResolveEffectiveSkills(
-	cipher *secretcrypto.Cipher, humanUserID string, filter EffectiveSkillFilter,
+	humanUserID string, filter EffectiveSkillFilter,
 ) ([]EffectiveSkill, int, error) {
 	user, err := s.GetHumanUser(humanUserID)
 	if err != nil {
@@ -38,7 +37,7 @@ func (s *Store) ResolveEffectiveSkills(
 	if err != nil {
 		return nil, 0, err
 	}
-	context, err := s.effectiveSkillContext(cipher, user)
+	context, err := s.effectiveSkillContext(user)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -58,9 +57,7 @@ type effectiveSkillContext struct {
 	RuntimePending bool
 }
 
-func (s *Store) effectiveSkillContext(
-	cipher *secretcrypto.Cipher, user HumanUser,
-) (effectiveSkillContext, error) {
+func (s *Store) effectiveSkillContext(user HumanUser) (effectiveSkillContext, error) {
 	policies, err := s.ListSkillPoliciesByHumanUser(user.HumanUserID)
 	if err != nil {
 		return effectiveSkillContext{}, err
@@ -69,7 +66,7 @@ func (s *Store) effectiveSkillContext(
 	if err != nil {
 		return effectiveSkillContext{}, err
 	}
-	credentials, err := s.ListUserPlatformCredentials(cipher, user.HumanUserID)
+	credentials, err := s.ListUserPlatformCredentials(user.HumanUserID)
 	if err != nil {
 		return effectiveSkillContext{}, err
 	}
@@ -339,7 +336,7 @@ func parseSkillPlatformList(raw string) ([]string, error) {
 		}
 	}
 	sort.Strings(platforms)
-	return platforms, nil
+	return slices.Compact(platforms), nil
 }
 
 func indexSkillPolicies(policies []SkillPolicy) map[string]skillPolicySet {

@@ -706,7 +706,7 @@ Hermes 的 WeCom 适配器在**消息类型丰富度**上不如 OpenClaw 插件�
 |------|------|
 | **群聊多用户** | Hermes 默认支持 per-user 隔离 → 如果群聊是核心场景，Hermes 更合适 |
 | **WeCom 生态** | OpenClaw 官方插件功能更全 → 企微私聊场景 OpenClaw 更好 |
-| **工具链** | muad-progress、muad-run-skill、session-manager 围绕 OpenClaw 构建 |
+| **工具链** | 当前最小版本保留 Runtime Guard 与 session-manager；Skill 执行走 OpenClaw 原生激活，进度 outbox 已移除 |
 | **语言栈** | Python（Hermes）vs Go+TS（muad Console）→ 团队技能匹配？ |
 | **持久化** | Hermes SQLite > OpenClaw JSON |
 
@@ -756,7 +756,7 @@ Skill 加载有 6 层，按优先级从低到高（`src/skills/loading/workspace
 └── charlie/agent/skills/               ← charlie 无 private skill（只用 public）
 ```
 
-**同名 skill override**：OpenClaw 原生加载顺序中 workspace（private）优先级最高，但 Muad 发布校验和 `muad-run-skill` 默认拒绝同名覆盖。确需覆盖时，private manifest 必须记录自身版本、被覆盖 public 版本和审批编号；未审批的同名 private skill 不执行。
+**同名 skill override**：OpenClaw 原生加载顺序中 workspace（private）优先级最高，但 Muad 控制面默认标记 public/private 同名冲突。确需覆盖时，管理员必须在用户维度创建 allow_override 策略；未审批的同名 private skill 不进入该用户的有效 Skill 集合。
 
 **Per-agent skill 白名单**（`agents.list[].skills`）：限制某个 agent 只能看到指定的 skill：
 
@@ -967,22 +967,16 @@ session: Unrecognized key: "_comment"
 - bob 的 `MEMORY.md` 和 sessions 自动创建 ✅
 - WeCom + WeChat 通道全部认证成功，无竞态问题 ✅
 
-### 12.6 ✅ muad 工具链兼容性（muad-run-skill + muad-progress）
+### 12.6 ✅ 最小运行时工具链兼容性（Runtime Guard + session-manager）
 
-**验证方式：** Alice 通过企微触发 `example-long-task` skill。
+**验证方式：** Alice 通过企微触发授权 Skill，并在 Skill 内按需调用 `session_get_state`。
 
 **结果：**
-```
-[muad-run-skill] progress skill=example-long-task stage=accepted   outbound=true
-[muad-run-skill] progress skill=example-long-task stage=auth       outbound=true
-[muad-run-skill] progress skill=example-long-task stage=query      outbound=true
-[muad-run-skill] progress skill=example-long-task stage=analysis   outbound=true
-[muad-run-skill] progress skill=example-long-task stage=done       outbound=true
-```
+- Runtime Guard 对 main / user agent 的文件、browser 和 Skill 并发边界生效。
+- session-manager 从受信 tool context 解析 agent/session，不接受模型传入的 agentId/sessionKey。
+- Skill 最终结果走 OpenClaw native final reply；当前最小版本不再提供独立进度投递 outbox。
 
-全部 5 个阶段 `outbound=true`，进度正确投递到 Alice 的企微会话。
-
-**路由原理：** `delivery.mjs:resolveDeliveryContext()` 从 `toolContext.sessionKey`（如 `agent:alice:wecom:direct:alice`）解析 channel + recipient → `sendDurableMessageBatch` 投递。基于 session key 路由，多 agent namespace 天然隔离，无需额外改造。✅
+**路由原理：** Gateway 根据 bindings/identityLinks 把消息路由到具体 agent。Tool 层从 OpenClaw 受信上下文读取 `agentId` 和 `sessionKey`，多 agent namespace 天然隔离，无需额外改造。✅
 
 ### 12.7 ⚠️ Browser profile 多用户隔离 — 待验证
 
@@ -1086,7 +1080,7 @@ OpenClaw 不支持群聊 per-user 隔离（所有群成员共享 `agent:<id>:wec
 | 3 | 跨 IM 共享记忆 | ✅ | WeCom + WeChat 路由到同一 agent/workspace；记忆写入后可跨 IM 回读 |
 | 4 | `_comment` schema | ✅ | `.strict()` 拒绝未知 key，方案不受影响 |
 | 5 | 多 agent 启动 | ✅ | 2+ agent 同时启动无竞态，workspace 正确初始化 |
-| 10 | 工具链兼容性 | ✅ | muad-run-skill 进度正确投递到正确 session |
+| 10 | 工具链兼容性 | ✅ | Runtime Guard 与 session-manager 基于受信 tool context 隔离到正确 session |
 | 6 | Browser 多用户隔离 | ⚠️ | 配置已就绪，功能待实测 |
 | 7 | WeCom dynamic vs bindings | ✅ | bindings 匹配时跳过 dynamic routing |
 | 8 | 群聊 per-user 隔离 | ⚠️ | OpenClaw 不支持，需群聊实测 |

@@ -25,7 +25,7 @@
       "model": "pod-default-deepseek/deepseek-chat",
       "skills": [],
       "tools": {
-        "deny": ["browser", "exec", "read", "muad_use_skill", "muad_run_skill", "session_get_state"],
+        "deny": ["browser", "exec", "read", "session_get_state"],
         "workspaceOnly": true
       }
     },
@@ -45,8 +45,6 @@
           "browser",
           "edit",
           "exec",
-          "muad_run_skill",
-          "muad_use_skill",
           "process",
           "read",
           "session_get_state",

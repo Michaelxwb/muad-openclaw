@@ -1,18 +1,14 @@
 import { useEffect, useState } from "react";
-import { Input, Modal, Switch, TextArea, Toast } from "@douyinfe/semi-ui";
+import { Input, Modal, Switch, Toast } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type { Platform } from "../../api";
 import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
 import { Field } from "../human-users/shared";
-import type { PLATFORM_OPTIONS } from "./PlatformSettings";
 import styles from "./PlatformSettings.module.css";
-
-type PlatformOption = (typeof PLATFORM_OPTIONS)[number];
 
 interface Props {
   visible: boolean;
   platform: Platform | null;
-  available: PlatformOption[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }
@@ -20,16 +16,13 @@ interface Props {
 interface Form {
   platform: string;
   displayName: string;
-  config: string;
   enabled: boolean;
 }
 
-function initialForm(platform: Platform | null, available: PlatformOption[]): Form {
-  const selected = available[0];
+function initialForm(platform: Platform | null): Form {
   return {
-    platform: platform?.platform ?? selected?.value ?? "",
-    displayName: platform?.displayName ?? selected?.label ?? "",
-    config: JSON.stringify(platform?.config ?? {}, null, 2),
+    platform: platform?.platform ?? "",
+    displayName: platform?.displayName ?? "",
     enabled: platform?.enabled ?? true,
   };
 }
@@ -50,7 +43,6 @@ export function PlatformEditorDialog(props: Props) {
       <FeedbackBanner error={editor.error} />
       <PlatformFields
         form={editor.form}
-        available={props.available}
         editing={props.platform !== null}
         setForm={editor.setForm}
       />
@@ -59,18 +51,16 @@ export function PlatformEditorDialog(props: Props) {
 }
 
 function usePlatformEditor(props: Props) {
-  const [form, setForm] = useState<Form>(() => initialForm(props.platform, props.available));
+  const [form, setForm] = useState<Form>(() => initialForm(props.platform));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     if (!props.visible) return;
-    setForm(initialForm(props.platform, props.available));
+    setForm(initialForm(props.platform));
     setError("");
-  }, [props.available, props.platform, props.visible]);
+  }, [props.platform, props.visible]);
 
   const submit = async () => {
-    const parsed = parseConfig(form.config);
-    if (typeof parsed === "string") return setRepeatableError(setError, parsed);
     if (!form.platform || !form.displayName.trim()) {
       return setRepeatableError(setError, "平台和显示名称必填");
     }
@@ -80,14 +70,12 @@ function usePlatformEditor(props: Props) {
       if (props.platform) {
         await api.patchPlatform(props.platform.platform, {
           displayName: form.displayName.trim(),
-          config: parsed,
           enabled: form.enabled,
         });
       } else {
         await api.createPlatform({
           platform: form.platform,
           displayName: form.displayName.trim(),
-          config: parsed,
           enabled: form.enabled,
         });
       }
@@ -103,26 +91,12 @@ function usePlatformEditor(props: Props) {
   return { form, busy, error, setForm, submit };
 }
 
-function parseConfig(raw: string): Record<string, unknown> | string {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      return "平台配置必须是 JSON 对象";
-    }
-    return parsed as Record<string, unknown>;
-  } catch (caught) {
-    return caught instanceof Error ? `平台配置 JSON 无效：${caught.message}` : "平台配置 JSON 无效";
-  }
-}
-
 function PlatformFields({
   form,
-  available,
   editing,
   setForm,
 }: {
   form: Form;
-  available: PlatformOption[];
   editing: boolean;
   setForm: (form: Form) => void;
 }) {
@@ -133,11 +107,8 @@ function PlatformFields({
           aria-label="业务平台"
           value={form.platform}
           disabled={editing}
-          placeholder={available.length > 0 ? available[0]?.value : "例如 custom_api"}
-          onChange={(platform) => {
-            const selected = available.find((option) => option.value === platform);
-            setForm({ ...form, platform, displayName: selected?.label ?? form.displayName });
-          }}
+          placeholder="例如 mssw"
+          onChange={(platform) => setForm({ ...form, platform })}
         />
       </Field>
       <Field label="显示名称">
@@ -154,16 +125,6 @@ function PlatformFields({
           onChange={(enabled) => setForm({ ...form, enabled })}
         />
       </Field>
-      <div className={styles.full}>
-        <Field label="平台配置（JSON）">
-          <TextArea
-            aria-label="平台配置 JSON"
-            value={form.config}
-            onChange={(config) => setForm({ ...form, config })}
-            rows={8}
-          />
-        </Field>
-      </div>
     </div>
   );
 }

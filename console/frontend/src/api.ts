@@ -283,11 +283,15 @@ export const api = {
       "GET",
       `${humanUserPath(humanUserId)}/platform-credentials`,
     ),
-  putPlatformCredential: (humanUserId: string, platform: string, apiKey: string) =>
+  putPlatformCredential: (
+    humanUserId: string,
+    platform: string,
+    credentials: Record<string, unknown>,
+  ) =>
     request<PlatformCredentialUpdateResult>(
       "PUT",
       `${humanUserPath(humanUserId)}/platform-credentials/${segment(platform)}`,
-      { apiKey },
+      { credentials },
     ),
   deletePlatformCredential: (humanUserId: string, platform: string) =>
     request<PlatformCredentialDeleteResult>(
@@ -328,6 +332,9 @@ export const api = {
     const filename =
       input.filename ?? (input.bundle instanceof File ? input.bundle.name : "skill.tar.gz");
     form.set("bundle", input.bundle, filename);
+    if (input.platforms) {
+      form.set("platforms", JSON.stringify(input.platforms));
+    }
     return requestForm<PublicSkillUploadResult>("/skills/public", form);
   },
   updateSkill: (skillId: string, input: SkillAssetUpdateInput) =>
@@ -350,6 +357,9 @@ export const api = {
       input.filename ?? (input.bundle instanceof File ? input.bundle.name : "skill.tar.gz");
     form.set("bundle", input.bundle, filename);
     if (input.expectedName) form.set("expectedName", input.expectedName);
+    if (input.platforms) {
+      form.set("platforms", JSON.stringify(input.platforms));
+    }
     return requestForm<PrivateSkillUploadResult>(
       `${humanUserPath(humanUserId)}/skills/private`,
       form,

@@ -3,7 +3,7 @@ import { Button, Input, Modal, Select, Space, Table, Tag, Toast, Upload } from "
 import type { FileItem } from "@douyinfe/semi-ui/lib/es/upload";
 import { IconPlus, IconSearch, IconRefresh } from "@douyinfe/semi-icons";
 import { api } from "../../api";
-import type { EffectiveSkill, HumanUser } from "../../api";
+import type { EffectiveSkill, HumanUser, Platform } from "../../api";
 import { FeedbackBanner, ListToolbar } from "../ConsolePage";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import styles from "../HumanUsersPanel.module.css";
@@ -350,11 +350,34 @@ function PrivateSkillUploadDialog({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [fileList, setFileList] = useState<FileItem[]>([]);
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const [platformOptions, setPlatformOptions] = useState<Platform[]>([]);
+  const [platformLoading, setPlatformLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (!visible) return;
+    let active = true;
+    setPlatformLoading(true);
+    api
+      .listPlatforms()
+      .then((result) => {
+        if (active) setPlatformOptions(result.items);
+      })
+      .catch((caught) => {
+        if (active) setError(caught instanceof Error ? caught.message : "加载平台失败");
+      })
+      .finally(() => {
+        if (active) setPlatformLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [visible]);
   const reset = () => {
     setFile(null);
     setFileList([]);
+    setPlatforms([]);
     setError("");
   };
   const close = () => {
@@ -372,6 +395,7 @@ function PrivateSkillUploadDialog({
       await api.uploadPrivateSkill(user.humanUserId, {
         bundle: file,
         filename: file.name,
+        platforms,
       });
       Toast.success("Private Skill 上传成功");
       close();
@@ -426,7 +450,23 @@ function PrivateSkillUploadDialog({
           <span className={styles.uploadTrigger}>选择 .tar.gz / .zip 包</span>
         </Upload>
         {file && <span className="mono">{file.name}</span>}
+        <Select
+          multiple
+          placeholder="业务平台依赖（可选）"
+          value={platforms}
+          loading={platformLoading}
+          optionList={platformOptions.map(platformOption)}
+          onChange={(value) => setPlatforms(Array.isArray(value) ? value.map(String) : [])}
+          style={{ width: 320 }}
+        />
       </Space>
     </Modal>
   );
+}
+
+function platformOption(platform: Platform) {
+  return {
+    value: platform.platform,
+    label: `${platform.displayName} (${platform.platform})${platform.enabled ? "" : " 停用"}`,
+  };
 }

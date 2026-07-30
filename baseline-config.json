@@ -12,7 +12,7 @@
   },
   "tools": {
     "profile": "coding",
-    "alsoAllow": ["browser", "muad_run_skill", "muad_use_skill", "session_get_state"]
+    "alsoAllow": ["browser", "session_get_state"]
   },
   "browser": {
     "enabled": true,
@@ -32,10 +32,11 @@
     }
   },
   "plugins": {
-    "allow": ["browser", "wecom-openclaw-plugin", "openclaw-weixin", "mattermost", "muad-run-skill"],
+    "allow": ["browser", "wecom-openclaw-plugin", "openclaw-weixin", "mattermost", "session-manager", "muad-runtime-guard"],
     "load": {
       "paths": [
-        "/opt/muad/muad-run-skill",
+        "/opt/muad/session-manager",
+        "/opt/muad/muad-runtime-guard",
         "/opt/openclaw-plugins/wecom-openclaw-plugin",
         "/opt/openclaw-plugins/openclaw-weixin",
         "/opt/openclaw-plugins/mattermost"

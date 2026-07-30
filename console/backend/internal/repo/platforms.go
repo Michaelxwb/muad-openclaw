@@ -6,12 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
 	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 )
+
+const maxPlatformCredentialBytes = 16 * 1024
 
 var (
 	ErrPlatformExists          = errors.New("repo: platform already exists")
@@ -22,54 +23,31 @@ var (
 	platformPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 )
 
-const platformColumns = `platform, display_name, config_enc, enabled, updated_at`
-
-type storedPlatformCredential struct {
-	Platform    string `json:"platform"`
-	APIKey      string `json:"apiKey"`
-	Fingerprint string `json:"fingerprint"`
-	UpdatedAt   string `json:"updatedAt"`
-}
+const platformColumns = `platform, display_name, enabled, updated_at`
 
 // PlatformCredentialSummary is safe for administrator-facing responses.
 type PlatformCredentialSummary struct {
-	Platform       string
-	KeyFingerprint string
-	UpdatedAt      time.Time
+	Platform              string
+	CredentialFingerprint string
+	UpdatedAt             time.Time
 }
 
 // ResolvedPlatformCredential contains plaintext only for the internal resolver.
 type ResolvedPlatformCredential struct {
-	Platform    string
-	APIKey      string
-	Fingerprint string
-	UpdatedAt   time.Time
+	Platform              string
+	CredentialsJSON       string
+	CredentialFingerprint string
+	UpdatedAt             time.Time
 }
 
-func (s *Store) seedPlatformConfigs() error {
-	now := formatTime(time.Now().UTC())
-	_, err := s.db.Exec(`INSERT INTO platform_configs
-		(platform, display_name, config_enc, enabled, updated_at) VALUES
-		('soar', 'SOAR', '', 1, ?),
-		('sea_soar', 'Sea_SOAR', '', 1, ?),
-		('mssw', 'MSSW', '', 1, ?),
-		('xdr', 'XDR', '', 1, ?),
-		('sdsp', 'SDSP', '', 1, ?)
-		ON CONFLICT(platform) DO NOTHING`, now, now, now, now, now)
-	if err != nil {
-		return fmt.Errorf("seed platform configs: %w", err)
-	}
-	return nil
-}
-
-// CreatePlatformConfig adds a platform supported by the installed adapter registry.
+// CreatePlatformConfig adds a platform supported by administrator configuration.
 func (s *Store) CreatePlatformConfig(config PlatformConfig) error {
 	if err := validatePlatformConfig(config); err != nil {
 		return err
 	}
 	_, err := s.db.Exec(`INSERT INTO platform_configs
-		(platform, display_name, config_enc, enabled, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		config.Platform, strings.TrimSpace(config.DisplayName), config.ConfigEnc,
+		(platform, display_name, enabled, updated_at) VALUES (?, ?, ?, ?)`,
+		config.Platform, strings.TrimSpace(config.DisplayName),
 		boolToInt(config.Enabled), formatTime(time.Now().UTC()))
 	if isUniqueConstraint(err) {
 		return ErrPlatformExists
@@ -107,38 +85,42 @@ func (s *Store) ListPlatformConfigs() ([]PlatformConfig, error) {
 }
 
 // UpdatePlatformConfig updates mutable platform fields; the platform ID is immutable.
-func (s *Store) UpdatePlatformConfig(platform, displayName, configEnc string, enabled bool) error {
+func (s *Store) UpdatePlatformConfig(platform, displayName string, enabled bool) error {
 	if !validPlatform(platform) || strings.TrimSpace(displayName) == "" {
 		return ErrInvalidPlatform
 	}
 	res, err := s.db.Exec(`UPDATE platform_configs SET display_name = ?,
-		config_enc = ?, enabled = ?, updated_at = ? WHERE platform = ?`,
-		strings.TrimSpace(displayName), configEnc, boolToInt(enabled),
+		enabled = ?, updated_at = ? WHERE platform = ?`,
+		strings.TrimSpace(displayName), boolToInt(enabled),
 		formatTime(time.Now().UTC()), platform)
 	return affectedOrNotFound(res, err, "update platform config")
 }
 
-// UpsertUserPlatformCredential atomically replaces one platform key.
+// UpsertUserPlatformCredential atomically replaces one platform credential object.
 func (s *Store) UpsertUserPlatformCredential(
-	cipher *secretcrypto.Cipher, humanUserID, platform, apiKey string,
+	humanUserID, platform string, credentials map[string]any,
 ) (PlatformCredentialSummary, error) {
-	summary, _, err := s.upsertUserPlatformCredential(cipher, humanUserID, platform, apiKey, false)
+	summary, _, err := s.upsertUserPlatformCredential(humanUserID, platform, credentials, false)
 	return summary, err
 }
 
-// UpsertUserPlatformCredentialAndMarkPod replaces one platform key and marks
-// the owning Pod pending because Skill availability may depend on credentials.
+// UpsertUserPlatformCredentialAndMarkPod replaces one platform credential object
+// and marks the owning Pod pending because Skill availability may depend on credentials.
 func (s *Store) UpsertUserPlatformCredentialAndMarkPod(
-	cipher *secretcrypto.Cipher, humanUserID, platform, apiKey string,
+	humanUserID, platform string, credentials map[string]any,
 ) (PlatformCredentialSummary, string, error) {
-	return s.upsertUserPlatformCredential(cipher, humanUserID, platform, apiKey, true)
+	return s.upsertUserPlatformCredential(humanUserID, platform, credentials, true)
 }
 
 func (s *Store) upsertUserPlatformCredential(
-	cipher *secretcrypto.Cipher, humanUserID, platform, apiKey string, markPod bool,
+	humanUserID, platform string, credentials map[string]any, markPod bool,
 ) (PlatformCredentialSummary, string, error) {
-	if cipher == nil || !validPlatform(platform) || strings.TrimSpace(apiKey) == "" {
+	if !validPlatform(platform) {
 		return PlatformCredentialSummary{}, "", ErrInvalidPlatform
+	}
+	canonical, fingerprint, err := canonicalPlatformCredentials(credentials)
+	if err != nil {
+		return PlatformCredentialSummary{}, "", err
 	}
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -152,18 +134,17 @@ func (s *Store) upsertUserPlatformCredential(
 	if err := requirePlatformTx(tx, platform, true); err != nil {
 		return PlatformCredentialSummary{}, "", err
 	}
-	credentials, err := loadCredentialsTx(tx, cipher, humanUserID)
-	if err != nil {
-		return PlatformCredentialSummary{}, "", err
-	}
 	now := time.Now().UTC()
-	credential := storedPlatformCredential{
-		Platform: platform, APIKey: apiKey, Fingerprint: secretcrypto.Fingerprint(apiKey),
-		UpdatedAt: formatTime(now),
-	}
-	credentials = upsertCredential(credentials, credential)
-	if err := saveCredentialsTx(tx, cipher, humanUserID, credentials); err != nil {
-		return PlatformCredentialSummary{}, "", err
+	_, err = tx.Exec(`INSERT INTO user_platform_credentials
+		(human_user_id, platform, credentials_json, credential_fingerprint, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(human_user_id, platform) DO UPDATE SET
+			credentials_json = excluded.credentials_json,
+			credential_fingerprint = excluded.credential_fingerprint,
+			updated_at = excluded.updated_at`,
+		humanUserID, platform, canonical, fingerprint, formatTime(now))
+	if err != nil {
+		return PlatformCredentialSummary{}, "", fmt.Errorf("upsert platform credential: %w", err)
 	}
 	if markPod {
 		if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
@@ -173,37 +154,44 @@ func (s *Store) upsertUserPlatformCredential(
 	if err := tx.Commit(); err != nil {
 		return PlatformCredentialSummary{}, "", fmt.Errorf("commit platform credential: %w", err)
 	}
-	summary, err := credentialSummary(credential)
-	return summary, user.PodID, err
+	return PlatformCredentialSummary{
+		Platform: platform, CredentialFingerprint: fingerprint, UpdatedAt: now,
+	}, user.PodID, nil
 }
 
 // ListUserPlatformCredentials returns redacted credential summaries.
-func (s *Store) ListUserPlatformCredentials(
-	cipher *secretcrypto.Cipher, humanUserID string,
-) ([]PlatformCredentialSummary, error) {
-	if cipher == nil {
-		return nil, ErrInvalidPlatform
-	}
-	row := s.db.QueryRow(`SELECT platform_credentials_enc FROM human_users
-		WHERE human_user_id = ?`, humanUserID)
-	var encrypted string
-	if err := row.Scan(&encrypted); errors.Is(err, sql.ErrNoRows) {
-		return nil, ErrNotFound
-	} else if err != nil {
-		return nil, fmt.Errorf("read platform credentials: %w", err)
-	}
-	credentials, err := decodeCredentials(cipher, encrypted)
-	if err != nil {
+func (s *Store) ListUserPlatformCredentials(humanUserID string) ([]PlatformCredentialSummary, error) {
+	if _, err := s.GetHumanUser(humanUserID); err != nil {
 		return nil, err
 	}
-	return summarizeCredentials(credentials)
+	rows, err := s.db.Query(`SELECT platform, credential_fingerprint, updated_at
+		FROM user_platform_credentials WHERE human_user_id = ? ORDER BY platform`, humanUserID)
+	if err != nil {
+		return nil, fmt.Errorf("list platform credentials: %w", err)
+	}
+	defer rows.Close()
+	summaries := make([]PlatformCredentialSummary, 0)
+	for rows.Next() {
+		var summary PlatformCredentialSummary
+		var updatedAt string
+		if err := rows.Scan(&summary.Platform, &summary.CredentialFingerprint, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan platform credential: %w", err)
+		}
+		parsed, err := parseRequiredTime(updatedAt, "user_platform_credentials.updated_at")
+		if err != nil {
+			return nil, err
+		}
+		summary.UpdatedAt = parsed
+		summaries = append(summaries, summary)
+	}
+	return summaries, rows.Err()
 }
 
-// ResolveUserPlatformCredential returns plaintext for the internal resolver only.
+// ResolveUserPlatformCredential returns plaintext credentials for the internal resolver only.
 func (s *Store) ResolveUserPlatformCredential(
-	cipher *secretcrypto.Cipher, humanUserID, platform string,
+	humanUserID, platform string,
 ) (ResolvedPlatformCredential, error) {
-	if cipher == nil || !validPlatform(platform) {
+	if !validPlatform(platform) {
 		return ResolvedPlatformCredential{}, ErrInvalidPlatform
 	}
 	if config, err := s.GetPlatformConfig(platform); err != nil {
@@ -211,41 +199,47 @@ func (s *Store) ResolveUserPlatformCredential(
 	} else if !config.Enabled {
 		return ResolvedPlatformCredential{}, ErrPlatformDisabled
 	}
-	row := s.db.QueryRow(`SELECT platform_credentials_enc FROM human_users
-		WHERE human_user_id = ?`, humanUserID)
-	var encrypted string
-	if err := row.Scan(&encrypted); errors.Is(err, sql.ErrNoRows) {
-		return ResolvedPlatformCredential{}, ErrNotFound
-	} else if err != nil {
+	row := s.db.QueryRow(`SELECT credentials_json, credential_fingerprint, updated_at
+		FROM user_platform_credentials WHERE human_user_id = ? AND platform = ?`, humanUserID, platform)
+	var credential ResolvedPlatformCredential
+	var updatedAt string
+	err := row.Scan(&credential.CredentialsJSON, &credential.CredentialFingerprint, &updatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		if _, userErr := s.GetHumanUser(humanUserID); userErr != nil {
+			return ResolvedPlatformCredential{}, userErr
+		}
+		return ResolvedPlatformCredential{}, ErrCredentialNotConfigured
+	}
+	if err != nil {
 		return ResolvedPlatformCredential{}, fmt.Errorf("read platform credential: %w", err)
 	}
-	credentials, err := decodeCredentials(cipher, encrypted)
+	parsed, err := parseRequiredTime(updatedAt, "user_platform_credentials.updated_at")
 	if err != nil {
 		return ResolvedPlatformCredential{}, err
 	}
-	return findResolvedCredential(credentials, platform)
+	credential.Platform = platform
+	credential.UpdatedAt = parsed
+	return credential, nil
 }
 
-// DeleteUserPlatformCredential atomically removes one platform key.
-func (s *Store) DeleteUserPlatformCredential(
-	cipher *secretcrypto.Cipher, humanUserID, platform string,
-) error {
-	_, err := s.deleteUserPlatformCredential(cipher, humanUserID, platform, false)
+// DeleteUserPlatformCredential atomically removes one platform credential object.
+func (s *Store) DeleteUserPlatformCredential(humanUserID, platform string) error {
+	_, err := s.deleteUserPlatformCredential(humanUserID, platform, false)
 	return err
 }
 
-// DeleteUserPlatformCredentialAndMarkPod removes one platform key and marks
-// the owning Pod pending because Skill availability may depend on credentials.
+// DeleteUserPlatformCredentialAndMarkPod removes one platform credential object
+// and marks the owning Pod pending because Skill availability may depend on credentials.
 func (s *Store) DeleteUserPlatformCredentialAndMarkPod(
-	cipher *secretcrypto.Cipher, humanUserID, platform string,
+	humanUserID, platform string,
 ) (string, error) {
-	return s.deleteUserPlatformCredential(cipher, humanUserID, platform, true)
+	return s.deleteUserPlatformCredential(humanUserID, platform, true)
 }
 
 func (s *Store) deleteUserPlatformCredential(
-	cipher *secretcrypto.Cipher, humanUserID, platform string, markPod bool,
+	humanUserID, platform string, markPod bool,
 ) (string, error) {
-	if cipher == nil || !validPlatform(platform) {
+	if !validPlatform(platform) {
 		return "", ErrInvalidPlatform
 	}
 	tx, err := s.db.Begin()
@@ -260,15 +254,12 @@ func (s *Store) deleteUserPlatformCredential(
 	if err := requirePlatformTx(tx, platform, false); err != nil {
 		return "", err
 	}
-	credentials, err := loadCredentialsTx(tx, cipher, humanUserID)
-	if err != nil {
-		return "", err
-	}
-	credentials, found := deleteCredential(credentials, platform)
-	if !found {
-		return "", ErrCredentialNotConfigured
-	}
-	if err := saveCredentialsTx(tx, cipher, humanUserID, credentials); err != nil {
+	result, err := tx.Exec(`DELETE FROM user_platform_credentials
+		WHERE human_user_id = ? AND platform = ?`, humanUserID, platform)
+	if err := affectedOrNotFound(result, err, "delete platform credential"); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return "", ErrCredentialNotConfigured
+		}
 		return "", err
 	}
 	if markPod {
@@ -293,6 +284,21 @@ func validPlatform(platform string) bool {
 	return platformPattern.MatchString(platform)
 }
 
+func canonicalPlatformCredentials(credentials map[string]any) (string, string, error) {
+	if credentials == nil {
+		return "", "", ErrInvalidPlatform
+	}
+	canonical, err := json.Marshal(credentials)
+	if err != nil {
+		return "", "", fmt.Errorf("marshal platform credentials: %w", err)
+	}
+	if len(canonical) > maxPlatformCredentialBytes {
+		return "", "", ErrInvalidPlatform
+	}
+	fingerprint := secretcrypto.Fingerprint(string(canonical))
+	return string(canonical), fingerprint, nil
+}
+
 func requirePlatformTx(tx *sql.Tx, platform string, requireEnabled bool) error {
 	var enabled int
 	if err := tx.QueryRow(`SELECT enabled FROM platform_configs
@@ -307,146 +313,11 @@ func requirePlatformTx(tx *sql.Tx, platform string, requireEnabled bool) error {
 	return nil
 }
 
-func loadCredentialsTx(
-	tx *sql.Tx, cipher *secretcrypto.Cipher, humanUserID string,
-) ([]storedPlatformCredential, error) {
-	var encrypted string
-	if err := tx.QueryRow(`SELECT platform_credentials_enc FROM human_users
-		WHERE human_user_id = ?`, humanUserID).Scan(&encrypted); errors.Is(err, sql.ErrNoRows) {
-		return nil, ErrNotFound
-	} else if err != nil {
-		return nil, fmt.Errorf("read user platform credentials: %w", err)
-	}
-	return decodeCredentials(cipher, encrypted)
-}
-
-func saveCredentialsTx(
-	tx *sql.Tx, cipher *secretcrypto.Cipher, humanUserID string,
-	credentials []storedPlatformCredential,
-) error {
-	encrypted := ""
-	if len(credentials) > 0 {
-		plain, err := json.Marshal(credentials)
-		if err != nil {
-			return fmt.Errorf("marshal platform credentials: %w", err)
-		}
-		encrypted, err = cipher.Encrypt(string(plain))
-		if err != nil {
-			return fmt.Errorf("encrypt platform credentials: %w", err)
-		}
-	}
-	res, err := tx.Exec(`UPDATE human_users SET platform_credentials_enc = ?,
-		updated_at = ? WHERE human_user_id = ?`, encrypted,
-		formatTime(time.Now().UTC()), humanUserID)
-	return affectedOrNotFound(res, err, "save platform credentials")
-}
-
-func decodeCredentials(
-	cipher *secretcrypto.Cipher, encrypted string,
-) ([]storedPlatformCredential, error) {
-	if encrypted == "" {
-		return []storedPlatformCredential{}, nil
-	}
-	plain, err := cipher.Decrypt(encrypted)
-	if err != nil {
-		return nil, fmt.Errorf("decrypt platform credentials: %w", err)
-	}
-	var credentials []storedPlatformCredential
-	if err := json.Unmarshal([]byte(plain), &credentials); err != nil {
-		return nil, fmt.Errorf("decode platform credentials: %w", err)
-	}
-	seen := make(map[string]struct{}, len(credentials))
-	for _, credential := range credentials {
-		if !validPlatform(credential.Platform) || credential.APIKey == "" ||
-			credential.Fingerprint == "" || credential.UpdatedAt == "" {
-			return nil, errors.New("repo: invalid stored platform credential")
-		}
-		if _, exists := seen[credential.Platform]; exists {
-			return nil, errors.New("repo: duplicate stored platform credential")
-		}
-		seen[credential.Platform] = struct{}{}
-	}
-	slices.SortFunc(credentials, func(left, right storedPlatformCredential) int {
-		return strings.Compare(left.Platform, right.Platform)
-	})
-	return credentials, nil
-}
-
-func upsertCredential(
-	credentials []storedPlatformCredential, next storedPlatformCredential,
-) []storedPlatformCredential {
-	for index := range credentials {
-		if credentials[index].Platform == next.Platform {
-			credentials[index] = next
-			return credentials
-		}
-	}
-	credentials = append(credentials, next)
-	slices.SortFunc(credentials, func(left, right storedPlatformCredential) int {
-		return strings.Compare(left.Platform, right.Platform)
-	})
-	return credentials
-}
-
-func deleteCredential(
-	credentials []storedPlatformCredential, platform string,
-) ([]storedPlatformCredential, bool) {
-	for index := range credentials {
-		if credentials[index].Platform == platform {
-			return append(credentials[:index], credentials[index+1:]...), true
-		}
-	}
-	return credentials, false
-}
-
-func summarizeCredentials(
-	credentials []storedPlatformCredential,
-) ([]PlatformCredentialSummary, error) {
-	summaries := make([]PlatformCredentialSummary, 0, len(credentials))
-	for _, credential := range credentials {
-		summary, err := credentialSummary(credential)
-		if err != nil {
-			return nil, err
-		}
-		summaries = append(summaries, summary)
-	}
-	return summaries, nil
-}
-
-func credentialSummary(credential storedPlatformCredential) (PlatformCredentialSummary, error) {
-	updatedAt, err := parseRequiredTime(credential.UpdatedAt, "platform credential updatedAt")
-	if err != nil {
-		return PlatformCredentialSummary{}, err
-	}
-	return PlatformCredentialSummary{
-		Platform: credential.Platform, KeyFingerprint: credential.Fingerprint, UpdatedAt: updatedAt,
-	}, nil
-}
-
-func findResolvedCredential(
-	credentials []storedPlatformCredential, platform string,
-) (ResolvedPlatformCredential, error) {
-	for _, credential := range credentials {
-		if credential.Platform != platform {
-			continue
-		}
-		updatedAt, err := parseRequiredTime(credential.UpdatedAt, "platform credential updatedAt")
-		if err != nil {
-			return ResolvedPlatformCredential{}, err
-		}
-		return ResolvedPlatformCredential{
-			Platform: credential.Platform, APIKey: credential.APIKey,
-			Fingerprint: credential.Fingerprint, UpdatedAt: updatedAt,
-		}, nil
-	}
-	return ResolvedPlatformCredential{}, ErrCredentialNotConfigured
-}
-
 func scanPlatformConfig(sc scanner) (PlatformConfig, error) {
 	var config PlatformConfig
 	var enabled int
 	var updatedAt string
-	err := sc.Scan(&config.Platform, &config.DisplayName, &config.ConfigEnc, &enabled, &updatedAt)
+	err := sc.Scan(&config.Platform, &config.DisplayName, &enabled, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PlatformConfig{}, ErrNotFound
 	}

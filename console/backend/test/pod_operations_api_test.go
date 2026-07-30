@@ -132,15 +132,18 @@ func TestPodOperationsAPI_SkillReloadWithoutPodIDsAppliesAllPods(t *testing.T) {
 func TestPodOperationsAPI_SkillReloadSyncsOnlyActivePublicSkills(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
 	createPublicSkillDir(t, e.skillsDir, "enabled-skill")
 	createPublicSkillDir(t, e.skillsDir, "disabled-skill")
 	createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "enabled-skill", Scope: repo.SkillScopePublic, Status: repo.SkillStatusActive,
 		SourcePath: filepath.Join(e.skillsDir, "enabled-skill"), ManifestHash: "sha256:enabled",
+		PlatformsJSON: `["xdr"]`,
 	})
 	createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "disabled-skill", Scope: repo.SkillScopePublic, Status: repo.SkillStatusDisabled,
 		SourcePath: filepath.Join(e.skillsDir, "disabled-skill"), ManifestHash: "sha256:disabled",
+		PlatformsJSON: `["xdr"]`,
 	})
 
 	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)

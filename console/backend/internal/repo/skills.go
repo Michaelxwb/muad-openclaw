@@ -11,8 +11,10 @@ import (
 )
 
 var (
-	ErrSkillExists  = errors.New("repo: Skill already exists")
-	ErrInvalidSkill = errors.New("repo: invalid Skill")
+	ErrSkillExists           = errors.New("repo: Skill already exists")
+	ErrInvalidSkill          = errors.New("repo: invalid Skill")
+	ErrSkillPlatformRequired = errors.New("repo: Skill platform required")
+	ErrSkillPlatformNotBound = errors.New("repo: Skill platform not bound")
 
 	skillNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 )
@@ -463,6 +465,9 @@ func validateSkillAsset(asset SkillAsset) error {
 		!validSkillAssetStatus(asset.Status) || strings.TrimSpace(asset.SourcePath) == "" ||
 		strings.TrimSpace(asset.ManifestHash) == "" || !json.Valid([]byte(asset.ManifestJSON)) ||
 		!json.Valid([]byte(asset.PlatformsJSON)) || !validSkillEntryType(asset.EntryType) {
+		return ErrInvalidSkill
+	}
+	if _, err := parseSkillPlatformList(asset.PlatformsJSON); err != nil {
 		return ErrInvalidSkill
 	}
 	if asset.Scope == SkillScopePrivate {

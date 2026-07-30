@@ -10,7 +10,10 @@ import { applyRuntimeConfig, defaultConfigPath, loadRuntimeInput } from "./injec
 import { canonicalHash, canonicalStringify } from "./openclaw-config-renderer.mjs";
 import { applyStartupContext, collectStartupContext } from "./startup-context.mjs";
 
-const REQUIRED_PROFILE_TOOLS = ["browser", "muad_run_skill", "muad_use_skill", "session_get_state"];
+const REQUIRED_PROFILE_TOOLS = ["browser", "session_get_state"];
+const DEPRECATED_RUNTIME_PLUGINS = new Set(["muad-run-skill"]);
+const DEPRECATED_RUNTIME_PLUGIN_ROOTS = new Set(["/opt/muad/muad-run-skill"]);
+const DEPRECATED_PROFILE_TOOLS = new Set(["muad_run_skill", "muad_use_skill"]);
 
 export function injectStartupConfig({ env = process.env, stdinText, configPath, writeGuidance = true } = {}) {
   const runtime = loadRuntimeInput({ env, stdinText: stdinText ?? readOptionalStdin(env) });
@@ -36,11 +39,9 @@ export function injectStartupConfig({ env = process.env, stdinText, configPath, 
 
 export function applyPersistedRuntimeContract(configPath, config) {
   const guard = config?.plugins?.entries?.["muad-runtime-guard"];
-  const runSkill = config?.plugins?.entries?.["muad-run-skill"];
-  let changed = migrateRunSkillTelemetry(config);
+  let changed = removeDeprecatedRuntimeEntries(config);
   changed = ensurePluginLoadPaths(config, IMAGE_PLUGIN_SPECS) || changed;
   changed = ensureConversationHookAccess(guard) || changed;
-  changed = ensureConversationHookAccess(runSkill) || changed;
   changed = ensureProfileTools(config) || changed;
   if (!changed) return config;
   const temporary = `${configPath}.muad.tmp`;
@@ -53,7 +54,10 @@ function ensureProfileTools(config) {
   if (!isRecord(config)) return false;
   const tools = isRecord(config.tools) ? config.tools : {};
   const current = Array.isArray(tools.alsoAllow) ? tools.alsoAllow : [];
-  const alsoAllow = [...new Set([...current, ...REQUIRED_PROFILE_TOOLS])].sort();
+  const alsoAllow = [...new Set([
+    ...current.filter((tool) => !DEPRECATED_PROFILE_TOOLS.has(tool)),
+    ...REQUIRED_PROFILE_TOOLS,
+  ])].sort();
   if (JSON.stringify(current) === JSON.stringify(alsoAllow)) return false;
   config.tools = { ...tools, alsoAllow };
   return true;
@@ -65,23 +69,31 @@ function ensureConversationHookAccess(plugin) {
   return true;
 }
 
-function migrateRunSkillTelemetry(config) {
-  const pluginConfig = config?.plugins?.entries?.["muad-run-skill"]?.config;
-  if (!isRecord(pluginConfig)) return false;
-  const legacyURL = pluginConfig.consoleInternalURL;
-  const legacyTokenFile = pluginConfig.serviceTokenFile;
-  if (legacyURL === undefined && legacyTokenFile === undefined) return false;
-  const telemetry = isRecord(pluginConfig.telemetry) ? pluginConfig.telemetry : {};
-  if (telemetry.consoleInternalURL === undefined && legacyURL !== undefined) {
-    telemetry.consoleInternalURL = legacyURL;
+function removeDeprecatedRuntimeEntries(config) {
+  let changed = false;
+  const plugins = isRecord(config?.plugins) ? config.plugins : undefined;
+  if (!plugins) return false;
+  if (Array.isArray(plugins.allow)) {
+    const nextAllow = plugins.allow.filter((id) => !DEPRECATED_RUNTIME_PLUGINS.has(id));
+    changed = nextAllow.length !== plugins.allow.length;
+    plugins.allow = nextAllow;
   }
-  if (telemetry.serviceTokenFile === undefined && legacyTokenFile !== undefined) {
-    telemetry.serviceTokenFile = legacyTokenFile;
+  if (isRecord(plugins.entries)) {
+    for (const pluginId of DEPRECATED_RUNTIME_PLUGINS) {
+      if (plugins.entries[pluginId] !== undefined) {
+        delete plugins.entries[pluginId];
+        changed = true;
+      }
+    }
   }
-  pluginConfig.telemetry = telemetry;
-  delete pluginConfig.consoleInternalURL;
-  delete pluginConfig.serviceTokenFile;
-  return true;
+  if (Array.isArray(plugins.load?.paths)) {
+    const nextPaths = plugins.load.paths.filter((root) => !DEPRECATED_RUNTIME_PLUGIN_ROOTS.has(root));
+    if (nextPaths.length !== plugins.load.paths.length) {
+      plugins.load.paths = nextPaths;
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 function isRecord(value) {

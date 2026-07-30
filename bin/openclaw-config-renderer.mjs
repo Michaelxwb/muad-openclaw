@@ -10,7 +10,10 @@ import {
 import { validateRuntimeConfig } from "./runtime-config-schema.mjs";
 import { mergeStartupContext, normalizeChannel } from "./startup-context.mjs";
 
-const REQUIRED_PROFILE_TOOLS = ["browser", "muad_run_skill", "muad_use_skill", "session_get_state"];
+const REQUIRED_PROFILE_TOOLS = ["browser", "session_get_state"];
+const DEPRECATED_RUNTIME_PLUGINS = new Set(["muad-run-skill"]);
+const DEPRECATED_RUNTIME_PLUGIN_ROOTS = new Set(["/opt/muad/muad-run-skill"]);
+const DEPRECATED_PROFILE_TOOLS = new Set(["muad_run_skill", "muad_use_skill"]);
 
 export function renderOpenClawConfig(runtime, baseline = {}) {
   validateRuntimeConfig(runtime);
@@ -29,9 +32,13 @@ export function renderOpenClawConfig(runtime, baseline = {}) {
 
 function renderGlobalToolProfile(output) {
   const tools = isRecord(output.tools) ? output.tools : {};
+  const current = Array.isArray(tools.alsoAllow) ? tools.alsoAllow : [];
   output.tools = {
     ...tools,
-    alsoAllow: uniqueSorted([...(tools.alsoAllow ?? []), ...REQUIRED_PROFILE_TOOLS]),
+    alsoAllow: uniqueSorted([
+      ...current.filter((tool) => !DEPRECATED_PROFILE_TOOLS.has(tool)),
+      ...REQUIRED_PROFILE_TOOLS,
+    ]),
   };
 }
 
@@ -113,7 +120,7 @@ function replaceManagedBlock(content) {
 }
 
 function removeLegacySkillGuidance(content) {
-  return content.replace(LEGACY_SKILL_GUIDANCE, "");
+  return content.replace(DEPRECATED_SKILL_GUIDANCE, "");
 }
 
 function renderSession(output, runtime) {
@@ -146,8 +153,12 @@ function renderAgents(output, runtime) {
 }
 
 function renderToolPolicy(policy, requireNativeSkillRead) {
-  const allow = policy.allow?.length ? [...policy.allow] : [];
-  const deny = policy.deny?.length ? [...policy.deny] : [];
+  const allow = policy.allow?.length
+    ? policy.allow.filter((tool) => !DEPRECATED_PROFILE_TOOLS.has(tool))
+    : [];
+  const deny = policy.deny?.length
+    ? policy.deny.filter((tool) => !DEPRECATED_PROFILE_TOOLS.has(tool))
+    : [];
   if (requireNativeSkillRead) allow.push("read");
   return compact({
     allow: allow.length ? uniqueSorted(allow) : undefined,
@@ -202,7 +213,6 @@ function renderProviders(output, runtime) {
 
 function renderSkills(output, runtime) {
   const existing = isRecord(output.skills?.load) ? output.skills.load : {};
-  const entries = isRecord(output.skills?.entries) ? output.skills.entries : {};
   output.skills = {
     ...(isRecord(output.skills) ? output.skills : {}),
     load: {
@@ -210,65 +220,31 @@ function renderSkills(output, runtime) {
       extraDirs: uniqueSorted([...(existing.extraDirs ?? []), runtime.skills.publicDirectory]),
       watch: true,
     },
-    entries: {
-      ...entries,
-      "__muad-runtime-skill-state": {
-        enabled: true,
-        config: {
-          generation: runtime.generation,
-          agentsHash: canonicalHash(runtime.agents.map((agent) => ({
-            id: agent.id,
-            skills: Array.isArray(agent.skills) ? agent.skills : [],
-          }))),
-        },
-      },
-    },
   };
 }
 
 function renderPlugins(output, runtime) {
   const plugins = isRecord(output.plugins) ? output.plugins : {};
   const entries = isRecord(plugins.entries) ? plugins.entries : {};
+  const existingAllow = Array.isArray(plugins.allow) ? plugins.allow : [];
+  const existingPaths = Array.isArray(plugins.load?.paths) ? plugins.load.paths : [];
   output.plugins = {
     ...plugins,
     bundledDiscovery: "allowlist",
-    allow: uniqueSorted([...(plugins.allow ?? []), ...pluginIds(MUAD_RUNTIME_PLUGIN_SPECS)]),
+    allow: uniqueSorted([
+      ...existingAllow.filter((id) => !DEPRECATED_RUNTIME_PLUGINS.has(id)),
+      ...pluginIds(MUAD_RUNTIME_PLUGIN_SPECS),
+    ]),
     load: {
       ...(isRecord(plugins.load) ? plugins.load : {}),
       paths: uniqueSorted([
-        ...(plugins.load?.paths ?? []),
+        ...existingPaths.filter((root) => !DEPRECATED_RUNTIME_PLUGIN_ROOTS.has(root)),
         ...pluginRoots(MUAD_RUNTIME_PLUGIN_SPECS),
         ...pluginRoots(IMAGE_CHANNEL_PLUGIN_SPECS),
       ]),
     },
     entries: {
-      ...entries,
-      "muad-run-skill": {
-        enabled: true,
-        hooks: {
-          allowConversationAccess: true,
-        },
-        config: {
-          skillsRoot: runtime.skills.publicDirectory,
-          privateRoot: runtime.skills.privateRoot,
-          skillPolicies: runtime.skills.agents,
-          maxConcurrency: runtime.concurrency.maxSkills,
-          activation: {
-            toolName: "muad_use_skill",
-            requireBeforeExecution: true,
-            detectSkillFileReads: true,
-            contextTimeoutMs: 6 * 60 * 60 * 1_000,
-            cleanupIntervalMs: 60_000,
-          },
-          telemetry: {
-            consoleInternalURL: runtime.consoleInternalUrl,
-            serviceTokenFile: runtime.serviceTokenFile,
-            outboxPath: runtimePath(runtime.skills.privateRoot, "muad/skill-execution-outbox.ndjson"),
-            maxQueueItems: 256,
-            maxOutboxBytes: 5 * 1024 * 1024,
-          },
-        },
-      },
+      ...activePluginEntries(entries),
       "session-manager": {
         enabled: true,
         config: {
@@ -295,6 +271,12 @@ function renderPlugins(output, runtime) {
       },
     },
   };
+}
+
+function activePluginEntries(entries) {
+  return Object.fromEntries(
+    Object.entries(entries).filter(([id]) => !DEPRECATED_RUNTIME_PLUGINS.has(id)),
+  );
 }
 
 function renderSkillReadRoots(runtime) {
@@ -347,10 +329,6 @@ function uniqueSorted(values) {
   return [...new Set(values.filter((value) => typeof value === "string" && value))].sort();
 }
 
-function runtimePath(root, suffix) {
-  return `${String(root).replace(/\/$/, "")}/${suffix}`;
-}
-
 function cloneRecord(value) {
   if (!isRecord(value)) return {};
   return JSON.parse(JSON.stringify(value));
@@ -385,7 +363,7 @@ This workspace belongs to one human who may use multiple IM channels.
 - If file-writing tools are unavailable or fail, say that memory was not saved and explain the blocker briefly.
 ${MEMORY_GUIDANCE_END}`;
 
-const LEGACY_SKILL_GUIDANCE = `- Before using any Skill instructions, scripts, or referenced files, call muad_use_skill with the exact Skill name.
+const DEPRECATED_SKILL_GUIDANCE = `- Before using any Skill instructions, scripts, or referenced files, call muad_use_skill with the exact Skill name.
 - A successful muad_use_skill result is authoritative: continue the task and never claim that Skill is not enabled.
 - For traditional-script Skills, call muad_run_skill only with a script path returned by muad_use_skill; for traditional-prompt Skills, follow the returned instructions with allowed native tools.
 - Report a Skill as unavailable only when muad_use_skill rejects the activation.`;
@@ -397,9 +375,8 @@ const MANAGED_SKILL_GUIDANCE = `${SKILL_GUIDANCE_START}
 
 - Skill activation is scoped to one user turn.
 - On every user turn, including a retry or follow-up, if the request clearly matches an available Skill, first read the exact SKILL.md path listed in <available_skills>.
-- Reading that exact SKILL.md is the native Skill activation and audit boundary. If native reading is unavailable, call muad_use_skill with the exact Skill name instead.
+- Reading that exact SKILL.md is the native Skill activation and audit boundary.
 - Do not call task tools until one of those activation methods succeeds.
 - Never reuse a prior turn's Skill activation as authorization for the current turn.
-${LEGACY_SKILL_GUIDANCE}
 ${SKILL_GUIDANCE_END}`;
 const USER_GUIDANCE = `${MEMORY_GUIDANCE}\n\n${MANAGED_SKILL_GUIDANCE}\n`;

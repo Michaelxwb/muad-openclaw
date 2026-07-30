@@ -8,30 +8,18 @@ import { DEFAULT_PAGE_SIZE, renderTablePagination, tablePagination } from "../Pa
 import { FeedbackBanner, ListToolbar, PageSection } from "../ConsolePage";
 import { PlatformEditorDialog } from "./PlatformEditorDialog";
 
-export const PLATFORM_OPTIONS = [
-  { value: "soar", label: "SOAR" },
-  { value: "sea_soar", label: "Sea_SOAR" },
-  { value: "mssw", label: "MSSW" },
-  { value: "xdr", label: "XDR" },
-  { value: "sdsp", label: "SDSP" },
-];
-
-type PlatformStatusFilter = "" | "enabled" | "disabled" | "adapter_missing";
+type PlatformStatusFilter = "" | "enabled" | "disabled";
 
 const PLATFORM_STATUS_OPTIONS = [
   { value: "", label: "全部状态" },
   { value: "enabled", label: "已启用" },
   { value: "disabled", label: "已停用" },
-  { value: "adapter_missing", label: "Adapter 缺失" },
 ];
 
 export function PlatformSettings() {
   const state = usePlatforms();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Platform | null>(null);
-  const available = PLATFORM_OPTIONS.filter(
-    (option) => !state.items.some((platform) => platform.platform === option.value),
-  );
   const openCreate = () => {
     setEditing(null);
     setEditorOpen(true);
@@ -75,7 +63,6 @@ export function PlatformSettings() {
       <PlatformEditorDialog
         visible={editorOpen}
         platform={editing}
-        available={available}
         onClose={() => setEditorOpen(false)}
         onSaved={async () => {
           setEditorOpen(false);
@@ -178,9 +165,8 @@ function filterPlatforms(
   return platforms.filter((platform) => {
     if (status === "enabled" && !platform.enabled) return false;
     if (status === "disabled" && platform.enabled) return false;
-    if (status === "adapter_missing" && platform.adapterInstalled) return false;
     if (keyword === "") return true;
-    return [platform.platform, platform.displayName, platform.configFingerprint]
+    return [platform.platform, platform.displayName]
       .filter((value): value is string => Boolean(value))
       .some((value) => value.toLowerCase().includes(keyword));
   });
@@ -206,11 +192,9 @@ function platformColumns(onEdit: (platform: Platform) => void, onDeleted: () => 
           <Tag color={platform.enabled ? "green" : "grey"}>
             {platform.enabled ? "已启用" : "已停用"}
           </Tag>
-          {!platform.adapterInstalled && <Tag color="red">Adapter 缺失</Tag>}
         </Space>
       ),
     },
-    { title: "配置指纹", dataIndex: "configFingerprint", key: "configFingerprint" },
     {
       title: "更新时间",
       key: "updatedAt",
@@ -271,7 +255,7 @@ function DeletePlatformButton({
         okButtonProps={{ type: "danger" as const }}
       >
         <FeedbackBanner error={error} />
-        <p className="hint">删除后会移除该平台配置，并清理所有用户绑定的该平台 API key。</p>
+        <p className="hint">删除后会移除该平台，并清理所有用户绑定的该平台认证信息。</p>
       </Modal>
     </>
   );

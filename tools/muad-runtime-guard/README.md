@@ -22,14 +22,22 @@
 - Tool 成功、失败或取消后均释放 lease；watchdog 回收异常遗留 lease。
 - 浏览器用户数据目录按 Agent 隔离，不能通过 Tool 参数切换到其他 Profile。
 
+## Skill 并发
+
+- 显式 `/skill:<name>` 触发的 Agent run 会在 `before_agent_run` 获取 Pod 级共享 lease。
+- 普通聊天不占用 Skill 并发。
+- `agent_end` 释放 lease；异常遗留 lease 由共享队列 TTL 回收。
+- 并发满时请求在模型调用前 fail closed，并返回稳定用户提示。
+
 ## 文件与 Skill 根策略
 
 - 业务 Agent 只允许访问自身 workspace。
 - 当前 Runtime Config 授权的 system/public/private Skill 根只读开放。
 - main、跨用户目录、未授权 Skill 根、运行时内部状态和写入操作保持拒绝。
 - `apply_patch` 校验所有目标路径，不信任模型提供的派生路径。
+- 业务 Agent 的 shell/code-exec 类工具保持拒绝，避免模型绕过文件策略读取运行时凭证。
 
-Skill 激活、mandatory tool 门禁和执行审计由 [`../muad-run-skill/`](../muad-run-skill/) 负责；Runtime Guard 只提供文件访问和健康边界。
+Skill 激活走 OpenClaw 原生 Skill 机制；Runtime Guard 只负责可信边界、显式 Skill/浏览器并发和健康检查。
 
 ## 健康检查
 
@@ -37,11 +45,10 @@ Skill 激活、mandatory tool 门禁和执行审计由 [`../muad-run-skill/`](..
 
 - Runtime DTO generation 合法且与控制面期望一致。
 - Agent、browser profile、session route 映射完整且无 quarantine 复用。
-- `session-manager`、`muad-run-skill` 等必要插件已加载。
-- Skill 和 browser 共享队列可用。
-- Skill telemetry outbox 未出现持久写入失败；pending 数量和最近错误会进入健康详情。
+- `session-manager` 已加载。
+- browser 和 Skill 共享队列可用。
 
-Console Collector 读取该结果并生成 generation mismatch、Runtime Guard unhealthy 和 telemetry outbox 告警。
+Console Collector 读取该结果并生成 generation mismatch 和 Runtime Guard unhealthy 告警。
 
 ## Service token
 
@@ -60,4 +67,4 @@ cd tools/muad-runtime-guard
 npm test
 ```
 
-测试覆盖 WeCom/WeChat 绑定、main 拦截、模型门禁、浏览器 lease、文件/Skill 根策略、插件注册及健康降级。
+测试覆盖 WeCom/WeChat 绑定、main 拦截、模型门禁、浏览器与 Skill lease、文件/Skill 根策略、插件注册及健康降级。

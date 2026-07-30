@@ -7,6 +7,8 @@ import { parseGuardConfig } from "./config.mjs";
 import { createHealthHandler } from "./health.mjs";
 import { createMainBindingReply } from "./main-binding-reply.mjs";
 import { createModelConfigDispatch } from "./model-config-reply.mjs";
+import { createSkillLeaseHooks } from "./skill-hooks.mjs";
+import { SharedSkillLeaseManager } from "./skill-lease.mjs";
 import {
   createAgentFilesPolicy,
   createBrowserProfilePolicy,
@@ -20,10 +22,12 @@ const plugin = {
   register(api) {
     const config = parseGuardConfig(api.pluginConfig);
     const leaseManager = installBrowserLease(config.maxBrowserConcurrency);
+    const skillLeaseManager = installSkillLease(config.maxSkillConcurrency);
     registerMainBindingReply(api, config);
     registerModelConfigDispatch(api, config);
     registerToolPolicies(api, config);
     registerBrowserLeaseHooks(api, config, leaseManager);
+    registerSkillLeaseHooks(api, config, skillLeaseManager);
     registerReloadPolicy(api);
     const client = createBindingClient(config);
     api.registerCommand(createBindCommand({
@@ -85,12 +89,28 @@ function registerBrowserLeaseHooks(api, config, leaseManager) {
   api.on("after_tool_call", hooks.after, { priority: 1000, timeoutMs: 1_000 });
 }
 
+function registerSkillLeaseHooks(api, config, leaseManager) {
+  const hooks = createSkillLeaseHooks({ config, leaseManager });
+  api.on("before_agent_run", hooks.before, { priority: -1000, timeoutMs: 35_000 });
+  api.on("agent_end", hooks.end, { priority: 1000, timeoutMs: 1_000 });
+}
+
 export function installBrowserLease(limit, globals = globalThis) {
   const symbol = Symbol.for("muad.browser.lease");
   const existing = globals[symbol];
   if (existing?.shared === true && existing.closed !== true && existing.limit === limit) return existing;
   existing?.close?.();
   const manager = new SharedBrowserLeaseManager({ limit });
+  globals[symbol] = manager;
+  return manager;
+}
+
+export function installSkillLease(limit, globals = globalThis) {
+  const symbol = Symbol.for("muad.skill.lease");
+  const existing = globals[symbol];
+  if (existing?.shared === true && existing.closed !== true && existing.limit === limit) return existing;
+  existing?.close?.();
+  const manager = new SharedSkillLeaseManager({ limit });
   globals[symbol] = manager;
   return manager;
 }

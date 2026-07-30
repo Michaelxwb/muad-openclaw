@@ -34,11 +34,15 @@ export class SessionService {
     this.#lockOptions = options.lock ?? {};
   }
 
-  async getState(context: TrustedContext, platform: string): Promise<SessionStateResult> {
-    const credential = await this.#resolve(context, platform);
-    validateCredential(credential, context, platform);
+  async getState(
+    context: TrustedContext, skillName: string, platform = "",
+  ): Promise<SessionStateResult> {
+    const credential = await this.#resolve(context, skillName, platform);
+    validateCredential(credential, context, skillName, platform);
     const cached = await this.#store.read(credential);
-    if (cached) return stateResult(cached, credential, "cache");
+    if (cached && await this.#cacheIsValid(credential, cached)) {
+      return stateResult(cached, credential, "cache");
+    }
     const paths = this.#store.paths(credential.agentId, credential.platform);
     await this.#store.ensureDirectory(paths);
     const lock = new RefreshLock(paths.lock, this.#lockOptions);
@@ -52,12 +56,13 @@ export class SessionService {
     return stateResult(resolved.stored, credential, resolved.source);
   }
 
-  async #resolve(context: TrustedContext, platform: string): Promise<ResolvedCredential> {
+  async #resolve(
+    context: TrustedContext, skillName: string, platform: string,
+  ): Promise<ResolvedCredential> {
     try {
-      return await this.#resolver.resolve(makeResolveRequest(context.agentId, platform));
+      return await this.#resolver.resolve(makeResolveRequest(context.agentId, skillName, platform));
     } catch (error) {
       const normalized = normalizeSessionError(error);
-      if (invalidatesCache(normalized)) await this.#store.clear(context.agentId, platform);
       throw normalized;
     }
   }
@@ -66,7 +71,7 @@ export class SessionService {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.#adapterTimeoutMs);
     try {
-      const adapter = this.#adapters.get(credential.adapter);
+      const adapter = this.#adapters.get(credential.platform);
       if (adapter.platform !== credential.platform) throw new PlatformAdapterError();
       const state = await adapter.refresh({ credential, signal: controller.signal });
       validateAdapterState(state);
@@ -82,17 +87,38 @@ export class SessionService {
       clearTimeout(timer);
     }
   }
+
+  async #cacheIsValid(credential: ResolvedCredential, cached: StoredSession): Promise<boolean> {
+    const adapter = this.#adapters.get(credential.platform);
+    if (adapter.platform !== credential.platform) throw new PlatformAdapterError();
+    if (typeof adapter.validate !== "function") return true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.#adapterTimeoutMs);
+    try {
+      const valid = await adapter.validate({ credential, state: cached.state, signal: controller.signal });
+      if (valid) return true;
+      await this.#store.clear(credential.agentId, credential.platform);
+      return false;
+    } catch (error) {
+      if (error instanceof SessionManagerError) throw error;
+      const retryable = error instanceof PlatformAdapterError && error.retryable;
+      throw new SessionManagerError("adapter_failed", retryable);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 }
 
 function validateCredential(
   credential: ResolvedCredential,
   context: TrustedContext,
+  skillName: string,
   platform: string,
 ): void {
-  if (credential.agentId !== context.agentId || credential.platform !== platform ||
-    !credential.humanUserId || !credential.podId || !credential.apiKey ||
-    !credential.credentialFingerprint || !credential.platformConfigFingerprint ||
-    credential.adapter !== platform || !isSessionMode(credential.sessionMode)) {
+  if (credential.agentId !== context.agentId || credential.skillName !== skillName ||
+    (platform && credential.platform !== platform) ||
+    !credential.humanUserId || !credential.podId || !credential.platform ||
+    !credential.credentialFingerprint || !isRecord(credential.credentials)) {
     throw new SessionManagerError("credential_service_unavailable", true);
   }
 }
@@ -120,17 +146,11 @@ function stateResult(
     storageStatePath: stored.paths.storageState,
     expiresAt: stored.meta.expiresAt,
     credentialFingerprint: credential.credentialFingerprint,
-    platformConfigFingerprint: credential.platformConfigFingerprint,
   };
 }
 
-function invalidatesCache(error: SessionManagerError): boolean {
-  return error.code === "not_configured" || error.code === "platform_disabled" ||
-    error.code === "agent_not_active";
-}
-
-function isSessionMode(value: string): boolean {
-  return value === "cookie" || value === "storage_state";
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function positive(value: number | undefined, fallback: number): number {

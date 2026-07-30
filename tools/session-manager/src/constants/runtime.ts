@@ -16,3 +16,4 @@ export const DEFAULT_LOCK_POLL_MS = 100;
 
 export const AGENT_PATTERN = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/;
 export const PLATFORM_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
+export const SKILL_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;

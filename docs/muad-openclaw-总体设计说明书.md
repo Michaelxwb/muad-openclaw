@@ -180,7 +180,7 @@
 | 消息路由 | 管理员分配 Pod + bindings | 全局 Message Router | 当前规模无需额外路由层，管理员分配即可 |
 | 业务增长 | **Skill 内容扩展**（预防流/报告等） | 另起业务运行时 | 同一 Agent/Skill 链纵向加深，架构无变更 |
 
-**关于 Hermes：** 曾深度对照 Hermes（源码级），其在多用户会话模型、持久化、群聊 per-user 隔离方面不弱于甚至优于 OpenClaw。未选其作主运行时的原因是场景匹配度：muad 的高权重场景——企微私聊交付体验、企业 Skill 分层治理、跨 IM 身份关联（identityLinks）——更匹配 OpenClaw 模型。这是场景选择，非能力高下。进度层保留 `progress-adapters/hermes` 作为备选适配。
+**关于 Hermes：** 曾深度对照 Hermes（源码级），其在多用户会话模型、持久化、群聊 per-user 隔离方面不弱于甚至优于 OpenClaw。未选其作主运行时的原因是场景匹配度：muad 的高权重场景——企微私聊交付体验、企业 Skill 分层治理、跨 IM 身份关联（identityLinks）——更匹配 OpenClaw 模型。这是场景选择，非能力高下。当前最小版本不再保留 `progress-adapters/hermes` 运行时适配链路。
 
 **演进路径：** 单 Pod 单用户（验证）→ 单 Pod 多用户（当前稳态）→ Skill 内容纵向扩展 + 专家平权（P2，无架构变更）。
 
@@ -255,27 +255,25 @@ Runtime ──► State PVC / Public Skills
 | 诉求 | 组件 | 类型 | 缺了会怎样 |
 | ---- | ---- | ---- | ---------- |
 | A. 谁能进、能碰哪 | **muad-runtime-guard** | OpenClaw 插件 | 绑定/隔离/门禁失效 |
-| B. SOP 怎么跑、怎么记账 | **muad-run-skill** | OpenClaw 插件 | 无统一 Skill 生命周期 |
+| B. SOP 怎么跑、怎么记账 | **OpenClaw 原生 Skill 激活 + Skill 执行日志** | 原生能力 + Console 审计 | 无统一 Skill 生效视图和审计入口 |
 | C. 平台怎么登、密钥不进 Skill | **session-manager** | 插件 + CLI | 凭证易泄露或无法调平台 |
-| D. 长任务用户看到哪一步 | **muad-progress** | Go CLI | 无标准进度事件 |
-| E. 进度如何进当前 IM 会话 | **progress-adapters** | 适配器（openclaw 主路径；hermes 可选） | CLI 与会话脱节 |
-| F. Skill/浏览器如何有界并发 | **runtime-concurrency** | 共享库 | Pod 易被打满 |
+| D. 长任务用户看到哪一步 | **暂不提供独立进度链路** | 后续执行层补齐 | 当前只保证最终回复 |
+| E. 进度如何进当前 IM 会话 | **不再使用 progress-adapters** | 已删除 | 旧 outbox 告警与投递链路不再适用 |
+| F. Skill/浏览器如何有界并发 | **Runtime Guard lease** | 插件内能力 | Pod 易被打满 |
 
 #### 5.4.2 主路径与配套
 
 ```text
 主路径插件/CLI
   guard ── 安全边界与绑定
-  run-skill ── Skill 执行与审计
   session-manager ── 平台登录态
-  muad-progress ── 进度事件生产
 
 配套
-  progress-adapters/openclaw ── 进度投递到会话
-  runtime-concurrency ── 被 guard/run-skill 使用的 lease 队列
+  OpenClaw 原生 Skill 激活 ── 读取 SKILL.md 与允许资源
+  Runtime Guard lease ── Skill/browser 并发控制
 ```
 
-**不是六个平行产品**，而是「3 个运行时职责插件 + 进度链路 + 横切并发」。
+当前最小版本只保留「运行时安全边界 + 平台 session 获取 + Skill/browser 并发控制」。进度投递和托管 runner 已移出当前主路径。
 
 #### 5.4.3 协作关系（实现态）
 
@@ -284,12 +282,11 @@ IM 消息
   → Gateway + bindings
   → [guard] 模型/文件/browser 门禁
   → 业务 Agent
-       → [run-skill] 激活并执行 Skill
-            → 脚本调用 [muad-progress] → [progress-adapters] → IM 进度消息
+       → OpenClaw 原生 Skill 激活并执行
             → 脚本/Tool 调用 [session-manager] → Console resolve → session-store
-            → 并发受 [runtime-concurrency] 约束
+            → Skill/browser 并发受 [guard lease] 约束
        → OpenClaw native final reply → IM 终态
-  → run-skill 上报 skill-executions（失败则 outbox）
+  → Skill 执行日志保留为 Console 审计入口
 ```
 
 #### 5.4.4 与业务扩展的关系
@@ -311,7 +308,7 @@ IM 消息
 | DF-01 | 管理配置 | 管理员 → Console → SQLite → Builder → Apply → transaction → openclaw.json |
 | DF-02 | 绑定 | 企微 `/bind` → guard → bindings/activate → Identity → apply |
 | DF-03 | 任务对话 | 企微 → Gateway → bindings → agent → LLM/Skill → **native final reply** |
-| DF-04 | Skill 执行 | run-skill → 脚本；progress 旁路；skill-executions / outbox |
+| DF-04 | Skill 执行 | OpenClaw 原生 Skill 激活 → 脚本/Tool；runtime-guard 控制 Skill/browser 并发；Skill 执行日志保留审计入口 |
 | DF-05 | 平台会话 | Skill → session-manager → resolve → adapter → session-store |
 | DF-06 | 审计告警 | 操作审计 / Guard health / apply 状态 / 执行日志 |
 
@@ -342,9 +339,9 @@ Human User 是平台用户；IM external id 是 Identity。未绑定不自动开
 
 ### 5.8 控制面故障影响（摘要）
 
-| 故障 | 已绑定对话 | 新绑定 | Skill 上报 | 平台 resolve |
+| 故障 | 已绑定对话 | 新绑定 | Skill 审计 | 平台 resolve |
 | ---- | ---------- | ------ | ---------- | ------------ |
-| Console 挂 | 通常可继续 | 失败 | outbox | 失败 |
+| Console 挂 | 通常可继续 | 失败 | 暂不可写 | 失败 |
 | 单 Runtime 挂 | 该 Pod 用户不可用 | 该 Pod 失败 | 该 Pod 失败 | 该 Pod 失败 |
 | 单用户模型失效 | 仅该用户 | — | 视任务 | — |
 
@@ -416,7 +413,7 @@ Human User 是平台用户；IM external id 是 Identity。未绑定不自动开
 
 ```text
 console/backend/internal/{api,repo,runtimeconfig,runtimeapply,driver}
-tools/{muad-runtime-guard,muad-run-skill,session-manager,muad-progress,progress-adapters,runtime-concurrency}
+tools/{muad-runtime-guard,session-manager}
 bin/*.mjs
 docs/images/total-design/
 ```

@@ -8,6 +8,8 @@
 > **参考架构**: `docs/agent-runtime-selection.md` 及已归档的 Agent Runtime 架构调研（MCP + Temporal + Capability 三层模型）
 > **架构图**: `docs/images/total-design/phase2-architecture.svg`
 
+> **当前状态提示**：本文是历史 Phase 2 草案，不代表当前最小版本实现。当前运行时保留 `muad-runtime-guard` 与 `session-manager`，已删除 `muad-run-skill`、`muad-progress`、`progress-adapters` 和 telemetry outbox。
+
 ---
 
 ## 1. 背景与问题

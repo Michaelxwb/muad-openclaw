@@ -209,7 +209,7 @@ build_session_key(
 | 跨 IM 同记忆 | 同 agent workspace + identityLinks | 无对等 identityLinks | **跨企微/微信偏 OpenClaw** |
 | 会话持久化 | 偏文件 | **state.db WAL+FTS，多进程写有工程化** | Hermes 会话库更强；企业审计在 Console |
 | 多配置域 | 多 Pod / 多 agent | profile multiplex + secret scope | 不同切分方式 |
-| 与 muad 工具链 | 已实现全套 | 仅 progress-adapters/hermes | **换 Hermes = 重做主路径** |
+| 与 muad 工具链 | 当前保留 Runtime Guard + session-manager | 无当前适配链路 | **换 Hermes = 重做主路径** |
 | 控制面 | 自研 Console | 无对等「企业开通/模型池/apply」 | 必须自研，已押 OpenClaw 契约 |
 
 > **注：Hermes 单 Pod 多用户能力不弱于 OpenClaw。** 在多用户会话模型（`SessionSource`、`build_session_key`）、会话持久化（state.db WAL+FTS）、多 profile multiplex 方面 Hermes 甚至更原生。选型差异不在能力层面，而在 **场景匹配度**（企微私聊为主、非群聊）与 **核心功能模型匹配**（Skill 分层、跨 IM 身份关联，详见 §6）。
@@ -240,7 +240,7 @@ build_session_key(
 | Skill workspace 分层贴企业 public/private + Console |
 | identityLinks 原生支持跨 IM 身份关联，Hermes 无对等机制 |
 
-**Hermes 定位：** 对照系与备选；保留 `tools/progress-adapters/hermes`；群聊强隔离若升 P0 再专项评估。
+**Hermes 定位：** 对照系与备选；`tools/progress-adapters/hermes` 已从当前最小版本移除；群聊强隔离若升 P0 再专项评估。
 
 ### 6.1 场景匹配度分析
 

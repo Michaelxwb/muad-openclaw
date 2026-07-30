@@ -18,8 +18,9 @@ test("Resolver client reads the fixed token file and retries one transient failu
       calls += 1;
       assert.equal(String(url), "http://console:8080/internal/v1/session-credentials/resolve");
       assert.equal(options.headers.Authorization, "Bearer service-token");
+      assert.equal(JSON.parse(options.body).platform, "mssw");
       if (calls === 1) throw new TypeError("network unavailable");
-      return successResponse("internal-api-key");
+      return successResponse("internal-api-key", "mssw");
     },
     readToken: async (path) => {
       tokenPaths.push(path);
@@ -31,11 +32,25 @@ test("Resolver client reads the fixed token file and retries one transient failu
     retryJitterMs: 20,
   });
 
-  const result = await client.resolve(makeResolveRequest("alice", "xdr"));
-  assert.equal(result.apiKey, "internal-api-key");
+  const result = await client.resolve(makeResolveRequest("alice", "xdr-query", "mssw"));
+  assert.equal(result.credentials.apiKey, "internal-api-key");
   assert.equal(calls, 2);
   assert.deepEqual(delays, [20]);
   assert.deepEqual(tokenPaths, [SERVICE_TOKEN_FILE]);
+});
+
+test("Resolver maps multi-platform selection errors to stable session errors", async () => {
+  for (const [code, expected] of [[40004, "platform_required"], [40005, "platform_not_bound"]]) {
+    const client = new ResolverClient({
+      baseURL: "http://console:8080",
+      readToken: async () => "service-token",
+      fetch: async () => new Response(JSON.stringify({ code, message: "domain error" }), { status: 400 }),
+    });
+    await assert.rejects(
+      () => client.resolve(makeResolveRequest("alice", "xdr-query")),
+      (error) => error instanceof SessionManagerError && error.code === expected,
+    );
+  }
 });
 
 test("Resolver client applies the timeout to both bounded attempts", async () => {
@@ -57,7 +72,7 @@ test("Resolver client applies the timeout to both bounded attempts", async () =>
   });
 
   await assert.rejects(
-    () => client.resolve(makeResolveRequest("alice", "xdr")),
+    () => client.resolve(makeResolveRequest("alice", "xdr-query")),
     (error) => error instanceof SessionManagerError && error.code === "credential_service_unavailable",
   );
   assert.equal(calls, 2);
@@ -75,26 +90,23 @@ test("Resolver domain errors are stable and are not retried", async () => {
   });
 
   await assert.rejects(
-    () => client.resolve(makeResolveRequest("alice", "xdr")),
+    () => client.resolve(makeResolveRequest("alice", "xdr-query")),
     (error) => error instanceof SessionManagerError && error.code === "platform_disabled" && error.exitCode === 11,
   );
   assert.equal(calls, 1);
 });
 
-function successResponse(apiKey) {
+function successResponse(apiKey, platform = "xdr") {
   return new Response(JSON.stringify({
     code: 0,
     data: {
       humanUserId: "user-a",
       podId: "pod-a",
       agentId: "alice",
-      platform: "xdr",
+      skillName: "xdr-query",
+      platform,
       credentialFingerprint: "sha256:credential",
-      platformConfigFingerprint: "sha256:platform",
-      apiKey,
-      sessionMode: "storage_state",
-      adapter: "xdr",
-      platformConfig: { baseUrl: "https://xdr.internal" },
+      credentials: { apiKey, baseUrl: "https://xdr.internal", sessionMode: "storage_state" },
     },
   }), { status: 200 });
 }

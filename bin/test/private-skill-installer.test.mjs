@@ -23,7 +23,7 @@ test("installs one private skill into the target agent workspace", async () => {
   assert.equal(result.name, "xdr-query");
   assert.equal(result.version, "1.2.0");
   assert.deepEqual(result.platforms, ["xdr"]);
-  assert.equal(result.progressSupported, true);
+  assert.equal(result.progressSupported, false);
   assert.equal(result.browserRequired, true);
   assert.equal(result.entryType, "managed");
   assert.match(result.manifestHash, /^sha256:/u);

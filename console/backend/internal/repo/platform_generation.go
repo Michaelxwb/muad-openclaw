@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 )
 
 func (s *Store) CreatePlatformConfigAndMarkPods(config PlatformConfig) ([]string, error) {
@@ -19,8 +17,8 @@ func (s *Store) CreatePlatformConfigAndMarkPods(config PlatformConfig) ([]string
 	}
 	defer func() { _ = tx.Rollback() }()
 	_, err = tx.Exec(`INSERT INTO platform_configs
-		(platform, display_name, config_enc, enabled, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		config.Platform, strings.TrimSpace(config.DisplayName), config.ConfigEnc,
+		(platform, display_name, enabled, updated_at) VALUES (?, ?, ?, ?)`,
+		config.Platform, strings.TrimSpace(config.DisplayName),
 		boolToInt(config.Enabled), formatTime(time.Now().UTC()))
 	if isUniqueConstraint(err) {
 		return nil, ErrPlatformExists
@@ -32,7 +30,7 @@ func (s *Store) CreatePlatformConfigAndMarkPods(config PlatformConfig) ([]string
 }
 
 func (s *Store) UpdatePlatformConfigAndMarkPods(
-	platform, displayName, configEnc string, enabled bool,
+	platform, displayName string, enabled bool,
 ) ([]string, error) {
 	if !validPlatform(platform) || strings.TrimSpace(displayName) == "" {
 		return nil, ErrInvalidPlatform
@@ -43,8 +41,8 @@ func (s *Store) UpdatePlatformConfigAndMarkPods(
 	}
 	defer func() { _ = tx.Rollback() }()
 	result, err := tx.Exec(`UPDATE platform_configs SET display_name = ?,
-		config_enc = ?, enabled = ?, updated_at = ? WHERE platform = ?`,
-		strings.TrimSpace(displayName), configEnc, boolToInt(enabled),
+		enabled = ?, updated_at = ? WHERE platform = ?`,
+		strings.TrimSpace(displayName), boolToInt(enabled),
 		formatTime(time.Now().UTC()), platform)
 	if err := affectedOrNotFound(result, err, "update platform config"); err != nil {
 		return nil, err
@@ -52,10 +50,8 @@ func (s *Store) UpdatePlatformConfigAndMarkPods(
 	return commitPlatformGeneration(tx)
 }
 
-func (s *Store) DeletePlatformConfigAndMarkPods(
-	cipher *secretcrypto.Cipher, platform string,
-) ([]string, error) {
-	if cipher == nil || !validPlatform(platform) {
+func (s *Store) DeletePlatformConfigAndMarkPods(platform string) ([]string, error) {
+	if !validPlatform(platform) {
 		return nil, ErrInvalidPlatform
 	}
 	tx, err := s.db.Begin()
@@ -67,47 +63,16 @@ func (s *Store) DeletePlatformConfigAndMarkPods(
 	if err := affectedOrNotFound(result, err, "delete platform config"); err != nil {
 		return nil, err
 	}
-	if err := deletePlatformCredentialsTx(tx, cipher, platform); err != nil {
+	if err := deletePlatformCredentialsTx(tx, platform); err != nil {
 		return nil, err
 	}
 	return commitPlatformGeneration(tx)
 }
 
-func deletePlatformCredentialsTx(
-	tx *sql.Tx, cipher *secretcrypto.Cipher, platform string,
-) error {
-	rows, err := tx.Query(`SELECT human_user_id, platform_credentials_enc FROM human_users`)
+func deletePlatformCredentialsTx(tx *sql.Tx, platform string) error {
+	_, err := tx.Exec(`DELETE FROM user_platform_credentials WHERE platform = ?`, platform)
 	if err != nil {
-		return fmt.Errorf("list platform credentials for delete: %w", err)
-	}
-	defer rows.Close()
-	type userCredentials struct {
-		humanUserID string
-		encrypted   string
-	}
-	var users []userCredentials
-	for rows.Next() {
-		var user userCredentials
-		if err := rows.Scan(&user.humanUserID, &user.encrypted); err != nil {
-			return fmt.Errorf("scan platform credentials for delete: %w", err)
-		}
-		users = append(users, user)
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterate platform credentials for delete: %w", err)
-	}
-	for _, user := range users {
-		credentials, err := decodeCredentials(cipher, user.encrypted)
-		if err != nil {
-			return err
-		}
-		next, found := deleteCredential(credentials, platform)
-		if !found {
-			continue
-		}
-		if err := saveCredentialsTx(tx, cipher, user.humanUserID, next); err != nil {
-			return err
-		}
+		return fmt.Errorf("delete platform credentials: %w", err)
 	}
 	return nil
 }

@@ -1,0 +1,7 @@
+{
+  "name": "mss-soar",
+  "platforms": ["soar"],
+  "runtime": "script",
+  "version": "0.1.0",
+  "capabilities": ["browser"]
+}

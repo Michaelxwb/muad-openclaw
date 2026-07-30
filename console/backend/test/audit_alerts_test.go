@@ -60,7 +60,6 @@ func TestAlertsExposeGenerationQueuesAndFailureThresholdsWithoutSecrets(t *testi
 			PodID: "pod-a", Healthy: true, ChannelConnected: true,
 			RuntimeGuardHealthy: false, SkillActive: 1, SkillQueued: 2,
 			BrowserActive: 1, BrowserQueued: 1, MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1,
-			SkillTelemetryPending: 3, SkillTelemetryWriteFailed: true,
 		},
 	})
 	recordRepeatedFailures(t, env, auditlog.ActionSessionResolveFail, 3)
@@ -74,8 +73,6 @@ func TestAlertsExposeGenerationQueuesAndFailureThresholdsWithoutSecrets(t *testi
 		`"kind":"skill_queue"`, `"kind":"browser_queue"`,
 		`"kind":"resolver_failures"`, `"kind":"binding_failures"`,
 		`"kind":"runtime_guard_rejections"`, `"kind":"runtime_guard_unhealthy"`)
-	assertBodyContains(t, response.Code, body, http.StatusOK,
-		`"kind":"skill_telemetry_outbox_pending"`, `"kind":"skill_telemetry_outbox_write_failed"`)
 	if strings.Contains(body, "sk-alertsecret") {
 		t.Fatalf("alert response leaked apply secret: %s", body)
 	}

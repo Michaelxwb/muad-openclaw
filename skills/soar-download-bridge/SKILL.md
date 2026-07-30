@@ -1,6 +1,6 @@
 ---
 name: soar-download-bridge
-description: 触发深信服 SOAR 原始数据下载。通过 HTTP POST 调用 muad-automation-platform API，支持按类型过滤。
+description: 触发深信服 SOAR 原始数据下载。通过 session-manager 获取当前用户平台会话后调用业务平台 API，支持按类型过滤。
 ---
 
 # 深信服数据下载桥接
@@ -20,13 +20,15 @@ description: 触发深信服 SOAR 原始数据下载。通过 HTTP POST 调用 m
 
 ## 执行方式
 
-直接用 `fetch` 或等效 HTTP 工具 POST：
+先获取当前用户的业务平台会话：
 
+```bash
+session-manager get-state --skill-name soar-download-bridge
 ```
-POST http://host.docker.internal:9000/api/v1/workflows/start
-Authorization: Bearer demo-token
-Content-Type: application/json
 
+再用返回的非敏感 session state/path/handle 调用管理员配置的平台 API。请求体示例：
+
+```json
 {
   "workflow_type": "soar.download_report",
   "parameters_json": "{\"company_name\":\"<客户名>\",\"start_date\":\"<YYYY-MM-DD>\",\"end_date\":\"<YYYY-MM-DD>\",\"type\":\"<all|event|...>\"}"

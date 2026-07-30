@@ -22,7 +22,6 @@ export type SessionMeta = {
   podId: string;
   platform: string;
   credentialFingerprint: string;
-  platformConfigFingerprint: string;
   expiresAt: string;
   source: "refresh";
   updatedAt: string;
@@ -31,6 +30,7 @@ export type SessionMeta = {
 export type StoredSession = {
   paths: SessionPaths;
   meta: SessionMeta;
+  state: AdapterSessionState;
 };
 
 export type SessionStoreOptions = {
@@ -71,14 +71,16 @@ export class SessionStore {
     if (!isSessionMeta(meta) || !this.#matches(meta, credential)) return null;
     const expiresAt = Date.parse(meta.expiresAt);
     if (!Number.isFinite(expiresAt) || expiresAt <= this.#now()) return null;
-    if (!await validStateFiles(paths)) return null;
-    return { paths, meta };
+    const state = await readStoredState(paths, meta.expiresAt);
+    if (!state) return null;
+    return { paths, meta, state };
   }
 
   async write(credential: ResolvedCredential, state: AdapterSessionState): Promise<StoredSession> {
     const paths = this.paths(credential.agentId, credential.platform);
     const expiresAt = Date.parse(state.expiresAt);
-    if (!Number.isFinite(expiresAt) || expiresAt <= this.#now() || containsSecret(state, credential.apiKey)) {
+    if (!Number.isFinite(expiresAt) || expiresAt <= this.#now() ||
+      credentialSecrets(credential).some((secret) => containsSecret(state, secret))) {
       throw new SessionManagerError("adapter_failed");
     }
     await this.ensureDirectory(paths);
@@ -87,7 +89,7 @@ export class SessionStore {
     await atomicWrite(paths.storageState, state.storageState);
     const meta = makeMeta(credential, new Date(this.#now()).toISOString(), state.expiresAt);
     await atomicWrite(paths.meta, meta);
-    return { paths, meta };
+    return { paths, meta, state };
   }
 
   async clear(agentId: string, platform: string): Promise<void> {
@@ -103,8 +105,7 @@ export class SessionStore {
     return meta.version === SESSION_MANAGER_VERSION && meta.humanUserId === credential.humanUserId &&
       meta.agentId === credential.agentId && meta.podId === credential.podId &&
       meta.platform === credential.platform &&
-      meta.credentialFingerprint === credential.credentialFingerprint &&
-      meta.platformConfigFingerprint === credential.platformConfigFingerprint;
+      meta.credentialFingerprint === credential.credentialFingerprint;
   }
 }
 
@@ -116,22 +117,25 @@ function makeMeta(credential: ResolvedCredential, updatedAt: string, expiresAt: 
     podId: credential.podId,
     platform: credential.platform,
     credentialFingerprint: credential.credentialFingerprint,
-    platformConfigFingerprint: credential.platformConfigFingerprint,
     expiresAt,
     source: "refresh",
     updatedAt,
   };
 }
 
-async function validStateFiles(paths: SessionPaths): Promise<boolean> {
+async function readStoredState(
+  paths: SessionPaths, expiresAt: string,
+): Promise<AdapterSessionState | null> {
   const [cookies, storageState] = await Promise.all([readJSON(paths.cookies), readJSON(paths.storageState)]);
   if (!Array.isArray(cookies) || !isRecord(storageState) || !Array.isArray(storageState.cookies) ||
-    !Array.isArray(storageState.origins)) return false;
+    !Array.isArray(storageState.origins)) return null;
   try {
     const [cookiesStat, storageStat] = await Promise.all([stat(paths.cookies), stat(paths.storageState)]);
-    return cookiesStat.isFile() && storageStat.isFile();
+    if (!cookiesStat.isFile() || !storageStat.isFile()) return null;
+    return { cookies: cookies as AdapterSessionState["cookies"],
+      storageState: storageState as AdapterSessionState["storageState"], expiresAt };
   } catch (error) {
-    if (isNotFound(error)) return false;
+    if (isNotFound(error)) return null;
     throw error;
   }
 }
@@ -163,11 +167,38 @@ function containsSecret(value: unknown, secret: string): boolean {
   return false;
 }
 
+function credentialSecrets(credential: ResolvedCredential): string[] {
+  const values: string[] = [];
+  collectCredentialSecrets(credential.credentials, "", values);
+  return values.filter((value) => value.length >= 8);
+}
+
+function collectCredentialSecrets(value: unknown, key: string, out: string[]): void {
+  if (typeof value === "string") {
+    if (isSensitiveCredentialKey(key)) out.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectCredentialSecrets(item, key, out);
+    return;
+  }
+  if (isRecord(value)) {
+    for (const [childKey, item] of Object.entries(value)) collectCredentialSecrets(item, childKey, out);
+  }
+}
+
+function isSensitiveCredentialKey(key: string): boolean {
+  const normalized = key.replace(/[-_]/gu, "").toLowerCase();
+  return normalized === "ak" || normalized === "sk" || normalized === "apikey" ||
+    normalized.endsWith("secret") || normalized.endsWith("token") ||
+    normalized.endsWith("password") || normalized.endsWith("cookie");
+}
+
 function isSessionMeta(value: unknown): value is SessionMeta {
   if (!isRecord(value)) return false;
   return value.version === SESSION_MANAGER_VERSION && value.source === "refresh" &&
     ["humanUserId", "agentId", "podId", "platform", "credentialFingerprint",
-      "platformConfigFingerprint", "expiresAt", "updatedAt"].every((key) => typeof value[key] === "string");
+      "expiresAt", "updatedAt"].every((key) => typeof value[key] === "string");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

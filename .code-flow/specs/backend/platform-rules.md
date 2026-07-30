@@ -57,7 +57,7 @@ json.NewEncoder(w).Encode(map[string]any{"error": "bad"})
 - **模型池**：创建用户必须绑定未占用模型配置；禁止隐式全局/Pod/用户 override 回退链
 - **IM 身份**：wecom / openclaw-weixin；已知 External ID 直接绑定，未知走一次性绑定码
 - **Skill**：system/public/private 分层；public 需显式应用到 Pod；private 装目标用户工作区；同名冲突默认不静默覆盖
-- **凭证**：通道/LLM/平台 API Key/service token 运行时注入，禁止写入镜像或入库明文可逆存储而不经 crypto
+- **凭证**：通道/LLM/service token 运行时注入，禁止写入镜像或入库明文可逆存储而不经 crypto；业务平台用户凭证按产品决策存入 `user_platform_credentials.credentials_json` 明文 JSON 便于排障，但禁止进入镜像、审计/日志明文、普通列表响应或暴露给 LLM
 - **Runtime apply**：经 `runtimeconfig` + `runtimeapply`，带 generation、分 stage、失败可回滚；不要在 handler 里半套 apply
 - 错误码保持项目约定（客户端/服务端分段 + 场景子码）；用户 message 稳定、可本地化理解
 - 健康检查与业务鉴权分离

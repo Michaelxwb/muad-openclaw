@@ -7,25 +7,8 @@
 #   BASE_TAG    基础镜像 tag（默认 latest）
 ARG BASE_IMAGE=muad-openclaw-base
 ARG BASE_TAG=latest
-FROM ${BASE_IMAGE}:${BASE_TAG}
-
-USER root
-
-# ── muad-progress（Go 编译） ──
-FROM golang:1.26 AS muad-progress-builder
-
-WORKDIR /src/tools/muad-progress
-COPY tools/muad-progress/go.mod ./
-COPY tools/muad-progress/cmd ./cmd
-COPY tools/muad-progress/internal ./internal
-RUN set -eux; \
-    go test ./...; \
-    go build -o /out/muad-progress ./cmd/muad-progress; \
-    go build -o /out/muad-skill-check ./cmd/muad-skill-check
 
 # ── session-manager（npm 编译） ──
-ARG BASE_IMAGE
-ARG BASE_TAG
 FROM ${BASE_IMAGE}:${BASE_TAG} AS session-manager-builder
 
 USER root
@@ -52,16 +35,10 @@ COPY bin/inject-env.mjs bin/inject-multi-user-config.mjs bin/openclaw-config-ren
     bin/startup-context.mjs bin/private-skill-installer.mjs bin/image-plugin-paths.mjs /opt/muad/
 COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
 
-COPY --from=muad-progress-builder /out/muad-progress /usr/local/bin/muad-progress
-COPY --from=muad-progress-builder /out/muad-skill-check /usr/local/bin/muad-skill-check
-
 COPY --from=session-manager-builder /build/session-manager/dist /opt/muad/session-manager/dist
 COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \
     tools/session-manager/openclaw.plugin.json /opt/muad/session-manager/
 
-COPY tools/progress-adapters /opt/muad/progress-adapters
-COPY tools/muad-run-skill/package.json tools/muad-run-skill/openclaw.plugin.json /opt/muad/muad-run-skill/
-COPY tools/muad-run-skill/src /opt/muad/muad-run-skill/src
 COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plugin.json \
     /opt/muad/muad-runtime-guard/
 COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
@@ -72,17 +49,12 @@ COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh
 
 RUN set -eux; \
     ln -s /opt/muad/session-manager/dist/cli.js /usr/local/bin/session-manager; \
-    chmod 0755 /usr/local/bin/muad-entrypoint.sh /usr/local/bin/muad-progress \
-      /usr/local/bin/muad-skill-check /opt/muad/session-manager/dist/cli.js \
+    chmod 0755 /usr/local/bin/muad-entrypoint.sh /opt/muad/session-manager/dist/cli.js \
       /opt/muad/runtime-image-self-check.mjs /opt/muad/private-skill-installer.mjs; \
-    chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-run-skill /opt/muad/muad-runtime-guard \
-      /opt/muad/runtime-concurrency; \
-    chown -R node:node /opt/muad/progress-adapters /opt/muad/session-manager \
-      /opt/muad/muad-run-skill /opt/muad/muad-runtime-guard /opt/muad/runtime-concurrency \
-      /opt/openclaw-skills; \
+    chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-runtime-guard /opt/muad/runtime-concurrency; \
+    chown -R node:node /opt/muad/session-manager /opt/muad/muad-runtime-guard \
+      /opt/muad/runtime-concurrency /opt/openclaw-skills; \
     su node -c "node /opt/muad/runtime-image-self-check.mjs --image-only"
-
-ENV MUAD_PROGRESS_ADAPTER_CMD="node /opt/muad/progress-adapters/openclaw/src/adapter.mjs"
 
 USER node
 WORKDIR /app

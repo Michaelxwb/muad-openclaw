@@ -184,7 +184,7 @@
   <rect x="1410" y="876" width="570" height="52" class="card" fill="#ede9fe"/>
   <text x="1695" y="908" text-anchor="middle" class="m">session-credentials/resolve ← ③ · 平台凭证</text>
   <rect x="1410" y="942" width="570" height="52" class="card" fill="#ede9fe"/>
-  <text x="1695" y="974" text-anchor="middle" class="m">skill-executions ← ② · 执行审计（失败 outbox）</text>
+  <text x="1695" y="974" text-anchor="middle" class="m">skill-executions ← 执行审计入口</text>
   <text x="1410" y="1018" class="x">健康：muad.runtime.health（①）· Collector · apply 由 Console 下推</text>
 
   <!-- ========== 5 Storage ========== -->
@@ -192,7 +192,7 @@
   <text x="56" y="908" class="sec" fill="#c2410c">5. 存储挂载（State PVC · Skills）</text>
   <rect x="60" y="928" width="400" height="72" class="card" fill="#ffedd5"/>
   <text x="260" y="958" text-anchor="middle" class="l">State · ~/.openclaw</text>
-  <text x="260" y="980" text-anchor="middle" class="x">workspace · agents/*/session-store · outbox · 配置</text>
+  <text x="260" y="980" text-anchor="middle" class="x">workspace · agents/*/session-store · 配置</text>
   <rect x="480" y="928" width="280" height="72" class="card" fill="#ffedd5"/>
   <text x="620" y="958" text-anchor="middle" class="l">Public Skills</text>
   <text x="620" y="980" text-anchor="middle" class="x">只读共享 · 授权按 grant</text>

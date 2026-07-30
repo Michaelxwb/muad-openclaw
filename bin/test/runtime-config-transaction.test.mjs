@@ -113,7 +113,6 @@ test("binding-only runtime changes do not restart gateway or pod", () => {
   }];
   next.session.identityLinks = { alice: ["mattermost:default:direct:mm-user-1"] };
   next.plugins.entries["muad-runtime-guard"].config.generation = 8;
-  next.skills.entries["__muad-runtime-skill-state"].config.generation = 8;
 
   assert.equal(selectRestartMode(current, next), "none");
 });
@@ -122,8 +121,7 @@ test("non-binding runtime changes still restart the gateway", () => {
   const current = restartBaseline();
   const next = restartBaseline();
   next.plugins.entries["muad-runtime-guard"].config.generation = 8;
-  next.skills.entries["__muad-runtime-skill-state"].config.generation = 8;
-  next.plugins.entries["muad-run-skill"].config = { maxConcurrency: 8 };
+  next.plugins.entries["session-manager"].config.consoleInternalURL = "http://console-next/internal/v1";
 
   assert.equal(selectRestartMode(current, next), "gateway");
 });
@@ -136,12 +134,7 @@ function restartBaseline() {
     plugins: {
       entries: {
         "muad-runtime-guard": { config: { generation: 7 } },
-        "muad-run-skill": { config: { maxConcurrency: 4 } },
-      },
-    },
-    skills: {
-      entries: {
-        "__muad-runtime-skill-state": { config: { generation: 7 } },
+        "session-manager": { config: { consoleInternalURL: "http://console/internal/v1" } },
       },
     },
   };

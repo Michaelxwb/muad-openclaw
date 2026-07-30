@@ -7,18 +7,16 @@ export const RUNTIME_GUARD_VERSION = 2;
 
 export function runtimeHealth(config, globals = globalThis) {
   const sessionManager = globals[Symbol.for("muad.session-manager.health")];
-  const skillQueue = globals[Symbol.for("muad.run-skill.queue")];
-  const skillTelemetry = globals[Symbol.for("muad.run-skill.telemetry")];
   const browserQueue = globals[Symbol.for("muad.browser.lease")];
+  const skillQueue = globals[Symbol.for("muad.skill.lease")];
   const sessionManagerLoaded = sessionManager?.loaded === true;
-  const skill = queueSnapshot(skillQueue, config.maxSkillConcurrency);
-  const skillRunnerLoaded = skillQueue && typeof skillQueue.snapshot === "function";
-  const telemetry = telemetrySnapshot(skillTelemetry);
   const browser = queueSnapshot(browserQueue, config.maxBrowserConcurrency);
+  const skill = queueSnapshot(skillQueue, config.maxSkillConcurrency);
   const browserGuardLoaded = browserQueue && typeof browserQueue.snapshot === "function";
+  const skillGuardLoaded = skillQueue && typeof skillQueue.snapshot === "function";
   return {
-    ok: config.valid && sessionManagerLoaded && Boolean(skillRunnerLoaded) &&
-      Boolean(browserGuardLoaded) && telemetry.loaded && !telemetry.writeFailed,
+    ok: config.valid && sessionManagerLoaded && Boolean(browserGuardLoaded) &&
+      Boolean(skillGuardLoaded),
     version: RUNTIME_GUARD_VERSION,
     generation: config.generation,
     mappings: config.agentProfiles.length,
@@ -26,23 +24,8 @@ export function runtimeHealth(config, globals = globalThis) {
       loaded: sessionManagerLoaded,
       version: Number.isInteger(sessionManager?.version) ? sessionManager.version : 0,
     },
-    skill,
     browser,
-    telemetry,
-  };
-}
-
-function telemetrySnapshot(client) {
-  if (!client || typeof client.snapshot !== "function") {
-    return { loaded: false, pending: 0, writeFailed: true, dropped: 0, lastError: "unavailable" };
-  }
-  const snapshot = client.snapshot();
-  return {
-    loaded: true,
-    pending: nonNegative(snapshot?.pending),
-    writeFailed: snapshot?.writeFailed === true,
-    dropped: nonNegative(snapshot?.dropped),
-    lastError: safeErrorCode(snapshot?.lastError),
+    skill,
   };
 }
 
@@ -81,11 +64,6 @@ function nonNegative(value) {
 
 function positive(value, fallback) {
   return Number.isInteger(value) && value > 0 ? value : fallback;
-}
-
-function safeErrorCode(value) {
-  const code = typeof value === "string" ? value.trim() : "";
-  return /^[a-z0-9_-]{0,80}$/u.test(code) ? code : "telemetry_error";
 }
 
 function readOpenClawConfig() {

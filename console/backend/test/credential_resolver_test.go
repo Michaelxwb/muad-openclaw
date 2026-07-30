@@ -13,7 +13,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
-const resolveBody = `{"agentId":"alice","platform":"xdr","purpose":"session_get_state"}`
+const resolveBody = `{"agentId":"alice","skillName":"xdr-query","purpose":"session_get_state"}`
 
 func TestCredentialResolver_ScopesActiveUserAndReturnsMinimalCredential(t *testing.T) {
 	env := newTestEnv(t)
@@ -30,47 +30,100 @@ func TestCredentialResolver_ScopesActiveUserAndReturnsMinimalCredential(t *testi
 	}
 	var response struct {
 		Data struct {
-			HumanUserID               string         `json:"humanUserId"`
-			PodID                     string         `json:"podId"`
-			AgentID                   string         `json:"agentId"`
-			APIKey                    string         `json:"apiKey"`
-			CredentialFingerprint     string         `json:"credentialFingerprint"`
-			PlatformConfigFingerprint string         `json:"platformConfigFingerprint"`
-			SessionMode               string         `json:"sessionMode"`
-			Adapter                   string         `json:"adapter"`
-			PlatformConfig            map[string]any `json:"platformConfig"`
+			HumanUserID           string         `json:"humanUserId"`
+			PodID                 string         `json:"podId"`
+			AgentID               string         `json:"agentId"`
+			SkillName             string         `json:"skillName"`
+			Platform              string         `json:"platform"`
+			CredentialFingerprint string         `json:"credentialFingerprint"`
+			Credentials           map[string]any `json:"credentials"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(success.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decode resolve response: %v", err)
 	}
 	if response.Data.HumanUserID != alice.HumanUserID || response.Data.PodID != "pod-a" ||
-		response.Data.AgentID != "alice" ||
-		response.Data.APIKey != "xdr-secret-key" || response.Data.SessionMode != "storage_state" ||
-		response.Data.Adapter != "xdr" || response.Data.PlatformConfig["baseUrl"] != "https://xdr.internal" {
+		response.Data.AgentID != "alice" || response.Data.SkillName != "xdr-query" ||
+		response.Data.Platform != "xdr" || response.Data.Credentials["apiKey"] != "xdr-secret-key" ||
+		response.Data.Credentials["baseUrl"] != "https://xdr.internal" {
 		t.Fatalf("unexpected resolve response: %+v", response.Data)
 	}
-	if !strings.HasPrefix(response.Data.CredentialFingerprint, "sha256:") ||
-		!strings.HasPrefix(response.Data.PlatformConfigFingerprint, "sha256:") {
+	if !strings.HasPrefix(response.Data.CredentialFingerprint, "sha256:") {
 		t.Fatalf("missing fingerprints: %+v", response.Data)
 	}
 
 	assertResolveError(t, env, tokenB, resolveBody, http.StatusNotFound, 40401)
 	assertResolveError(t, env, tokenA,
-		`{"agentId":"disabled","platform":"xdr","purpose":"session_get_state"}`,
+		`{"agentId":"disabled","skillName":"xdr-query","purpose":"session_get_state"}`,
 		http.StatusNotFound, 40401)
 	assertResolveError(t, env, tokenA,
-		`{"agentId":"charlie","platform":"xdr","purpose":"session_get_state"}`,
+		`{"agentId":"charlie","skillName":"xdr-query","purpose":"session_get_state"}`,
 		http.StatusNotFound, 40402)
 	assertResolveError(t, env, tokenA,
-		`{"agentId":"alice","platform":"xdr","purpose":"session_get_state","podId":"pod-b"}`,
-		http.StatusBadRequest, 40001)
+		`{"agentId":"alice","skillName":"xdr-query","purpose":"session_get_state","platform":"mssw"}`,
+		http.StatusBadRequest, 40005)
 
-	if err := env.store.UpdatePlatformConfig("xdr", "XDR", "", false); err != nil {
+	if err := env.store.UpdatePlatformConfig("xdr", "XDR", false); err != nil {
 		t.Fatalf("disable platform: %v", err)
 	}
 	assertResolveError(t, env, tokenA, resolveBody, http.StatusConflict, 40905)
 	assertResolveAuditIsRedacted(t, env, "xdr-secret-key", tokenA)
+}
+
+func TestCredentialResolver_MultiPlatformSkillRequiresExplicitBoundPlatform(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+	alice := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createTestPlatform(t, env.store, "xdr", "XDR")
+	createTestPlatform(t, env.store, "mssw", "MSSW")
+	createSkillAsset(t, env.store, repo.SkillAsset{
+		Name: "multi-report", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/multi-report", ManifestHash: "sha256:multi",
+		PlatformsJSON: `["xdr","mssw"]`,
+	})
+	for platform, apiKey := range map[string]string{"xdr": "xdr-key", "mssw": "mssw-key"} {
+		if _, err := env.store.UpsertUserPlatformCredential(alice.HumanUserID, platform, map[string]any{
+			"apiKey": apiKey, "baseUrl": "https://" + platform + ".internal",
+		}); err != nil {
+			t.Fatalf("configure credential %s: %v", platform, err)
+		}
+	}
+	assertResolveError(t, env, token,
+		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state"}`,
+		http.StatusBadRequest, 40004)
+	assertResolveError(t, env, token,
+		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state","platform":"soar"}`,
+		http.StatusBadRequest, 40005)
+
+	response := doInternalResolve(env, token,
+		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state","platform":"mssw"}`)
+	assertStatus(t, response, http.StatusOK)
+	var payload struct {
+		Data struct {
+			Platform    string         `json:"platform"`
+			Credentials map[string]any `json:"credentials"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Data.Platform != "mssw" || payload.Data.Credentials["apiKey"] != "mssw-key" {
+		t.Fatalf("unexpected multi-platform response: %+v", payload.Data)
+	}
+}
+
+func TestCredentialResolver_PlatformlessSkillHasNoSessionCredential(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+	createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createSkillAsset(t, env.store, repo.SkillAsset{
+		Name: "web-tools-guide", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/web-tools-guide", ManifestHash: "sha256:web",
+		PlatformsJSON: `[]`,
+	})
+	assertResolveError(t, env, token,
+		`{"agentId":"alice","skillName":"web-tools-guide","purpose":"session_get_state"}`,
+		http.StatusBadRequest, 40005)
 }
 
 func TestServiceTokenRotation_InvalidatesOldTokenAndAuditsFingerprint(t *testing.T) {
@@ -124,15 +177,15 @@ func TestServiceTokenRotation_StartFailureRestoresOldTokenAndSecret(t *testing.T
 
 func configureResolverPlatform(t *testing.T, env *testEnv, humanUserID, apiKey string) {
 	t.Helper()
-	cipher := envCipher(t)
-	config, err := cipher.Encrypt(`{"baseUrl":"https://xdr.internal","sessionMode":"storage_state"}`)
-	if err != nil {
-		t.Fatalf("encrypt platform config: %v", err)
-	}
-	if err := env.store.UpdatePlatformConfig("xdr", "XDR", config, true); err != nil {
-		t.Fatalf("configure platform: %v", err)
-	}
-	if _, err := env.store.UpsertUserPlatformCredential(cipher, humanUserID, "xdr", apiKey); err != nil {
+	createTestPlatform(t, env.store, "xdr", "XDR")
+	createSkillAsset(t, env.store, repo.SkillAsset{
+		Name: "xdr-query", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/xdr-query", ManifestHash: "sha256:xdr-query",
+		PlatformsJSON: `["xdr"]`,
+	})
+	if _, err := env.store.UpsertUserPlatformCredential(humanUserID, "xdr", map[string]any{
+		"apiKey": apiKey, "baseUrl": "https://xdr.internal", "sessionMode": "storage_state",
+	}); err != nil {
 		t.Fatalf("configure credential: %v", err)
 	}
 }

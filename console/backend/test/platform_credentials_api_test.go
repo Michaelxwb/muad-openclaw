@@ -5,14 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
 type platformCredentialAPIView struct {
-	HumanUserID    string `json:"humanUserId"`
-	Platform       string `json:"platform"`
-	KeyFingerprint string `json:"keyFingerprint"`
+	HumanUserID           string `json:"humanUserId"`
+	Platform              string `json:"platform"`
+	CredentialFingerprint string `json:"credentialFingerprint"`
 }
 
 func TestPlatformCredentialAPI_ReplaceAndDeleteQueuesRuntimeApply(t *testing.T) {
@@ -21,7 +20,7 @@ func TestPlatformCredentialAPI_ReplaceAndDeleteQueuesRuntimeApply(t *testing.T) 
 	e.reconcile.podIDs = nil
 	first := putCredential(t, e, user.HumanUserID, "xdr", "xdr-key-one")
 	second := putCredential(t, e, user.HumanUserID, "xdr", "xdr-key-two")
-	if first.KeyFingerprint == second.KeyFingerprint {
+	if first.CredentialFingerprint == second.CredentialFingerprint {
 		t.Fatal("credential replacement did not change fingerprint")
 	}
 	assertCredentialQueuedRuntimeApply(t, e, podBefore.ConfigGeneration+2, 2)
@@ -31,8 +30,8 @@ func TestPlatformCredentialAPI_ReplaceAndDeleteQueuesRuntimeApply(t *testing.T) 
 	if strings.Contains(rr.Body.String(), "xdr-key-two") {
 		t.Fatal("credential list exposed API key")
 	}
-	resolved, err := e.store.ResolveUserPlatformCredential(eCipher(t), user.HumanUserID, "xdr")
-	if err != nil || resolved.APIKey != "xdr-key-two" {
+	resolved, err := e.store.ResolveUserPlatformCredential(user.HumanUserID, "xdr")
+	if err != nil || !strings.Contains(resolved.CredentialsJSON, "xdr-key-two") {
 		t.Fatalf("resolved replaced credential = %+v, %v", resolved, err)
 	}
 	rr = e.do(http.MethodDelete, path+"/xdr", "")
@@ -60,7 +59,7 @@ func TestPlatformCredentialAPI_DisabledPlatformAndAuditAreSafe(t *testing.T) {
 	assertStatus(t, e.do(http.MethodDelete, path, ""), http.StatusOK)
 	rr := e.do(http.MethodPatch, "/api/v1/platforms/xdr", `{"enabled":false}`)
 	assertStatus(t, rr, http.StatusOK)
-	rr = e.do(http.MethodPut, path, `{"apiKey":"new-secret-key"}`)
+	rr = e.do(http.MethodPut, path, `{"credentials":{"apiKey":"new-secret-key"}}`)
 	assertStatus(t, rr, http.StatusConflict)
 	entries, _, err := e.store.QueryAuditFiltered(repo.AuditFilter{HumanUserID: user.HumanUserID, Limit: 100})
 	if err != nil {
@@ -77,8 +76,9 @@ func putCredential(
 	t *testing.T, e *testEnv, humanUserID, platform, apiKey string,
 ) platformCredentialAPIView {
 	t.Helper()
+	createTestPlatform(t, e.store, platform, strings.ToUpper(platform))
 	path := "/api/v1/human-users/" + humanUserID + "/platform-credentials/" + platform
-	rr := e.do(http.MethodPut, path, `{"apiKey":"`+apiKey+`"}`)
+	rr := e.do(http.MethodPut, path, `{"credentials":{"apiKey":"`+apiKey+`"}}`)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("put credential status = %d", rr.Code)
 	}
@@ -98,13 +98,4 @@ func assertCredentialQueuedRuntimeApply(t *testing.T, e *testEnv, generation int
 		t.Fatalf("credential mutation did not queue runtime apply: gen=%d queue=%v",
 			pod.ConfigGeneration, e.reconcile.podIDs)
 	}
-}
-
-func eCipher(t *testing.T) *crypto.Cipher {
-	t.Helper()
-	cipher, err := crypto.New("mk")
-	if err != nil {
-		t.Fatalf("crypto.New: %v", err)
-	}
-	return cipher
 }
