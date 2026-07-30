@@ -1,6 +1,6 @@
 ---
 name: mss-report-bridge
-description: 触发 MSS 海外客户周报/月报导出。通过 HTTP POST 调用 muad-automation-platform API，返回 workflow_id 供追踪。
+description: 触发 MSS 海外客户周报/月报导出。通过 session-manager 获取当前用户平台会话后调用业务平台 API，返回 workflow_id 供追踪。
 ---
 
 # MSS 报告导出桥接
@@ -18,13 +18,15 @@ description: 触发 MSS 海外客户周报/月报导出。通过 HTTP POST 调�
 
 ## 执行方式
 
-直接用 `fetch` 或等效 HTTP 工具 POST 以下 JSON：
+先获取当前用户的业务平台会话：
 
+```bash
+session-manager get-state --skill-name mss-report-bridge
 ```
-POST http://host.docker.internal:9000/api/v1/workflows/start
-Authorization: Bearer demo-token
-Content-Type: application/json
 
+再用返回的非敏感 session state/path/handle 调用管理员配置的平台 API。请求体示例：
+
+```json
 {
   "workflow_type": "mss.weekly_report",
   "parameters_json": "{\"company_name\":\"<客户名>\",\"report_type\":\"<weekly|monthly>\"}"

@@ -1,12 +1,18 @@
-import { AGENT_PATTERN, MAX_SESSION_KEY_LENGTH, PLATFORM_PATTERN } from "./constants/runtime.js";
+import {
+  AGENT_PATTERN,
+  MAX_SESSION_KEY_LENGTH,
+  PLATFORM_PATTERN,
+  SKILL_PATTERN,
+} from "./constants/runtime.js";
 import { SessionManagerError } from "./errors.js";
 import type { SessionStateResult, TrustedContext } from "./types.js";
 
 export const SESSION_GET_STATE_PARAMETERS = {
   type: "object",
   additionalProperties: false,
-  required: ["platform"],
+  required: ["skillName"],
   properties: {
+    skillName: { type: "string", pattern: "^[a-z][a-z0-9_-]{0,63}$" },
     platform: { type: "string", pattern: "^[a-z][a-z0-9_]{0,63}$" },
   },
 } as const;
@@ -17,7 +23,7 @@ export type OpenClawToolContext = {
 };
 
 export type SessionStateProvider = {
-  getState(context: TrustedContext, platform: string): Promise<SessionStateResult>;
+  getState(context: TrustedContext, skillName: string, platform?: string): Promise<SessionStateResult>;
 };
 
 export function createSessionGetStateTool(
@@ -31,7 +37,8 @@ export function createSessionGetStateTool(
     parameters: SESSION_GET_STATE_PARAMETERS,
     execute: async (rawParams: unknown): Promise<SessionStateResult> => {
       const context = trustedContext(toolContext);
-      return service.getState(context, platformParam(rawParams));
+      const params = stateParams(rawParams);
+      return service.getState(context, params.skillName, params.platform);
     },
   };
 }
@@ -45,13 +52,20 @@ function trustedContext(value: OpenClawToolContext): TrustedContext {
   return { agentId, sessionKey };
 }
 
-function platformParam(value: unknown): string {
-  if (!isRecord(value) || Object.keys(value).length !== 1 || typeof value.platform !== "string") {
+function stateParams(value: unknown): { skillName: string; platform?: string } {
+  if (!isRecord(value) || !validStateParamKeys(value) || typeof value.skillName !== "string") {
     throw new SessionManagerError("invalid_arguments");
   }
-  const platform = value.platform.trim();
-  if (!PLATFORM_PATTERN.test(platform)) throw new SessionManagerError("invalid_arguments");
-  return platform;
+  const skillName = value.skillName.trim();
+  if (!SKILL_PATTERN.test(skillName)) throw new SessionManagerError("invalid_arguments");
+  const platform = typeof value.platform === "string" ? value.platform.trim() : "";
+  if (platform && !PLATFORM_PATTERN.test(platform)) throw new SessionManagerError("invalid_arguments");
+  return { skillName, ...(platform ? { platform } : {}) };
+}
+
+function validStateParamKeys(value: Record<string, unknown>): boolean {
+  const keys = Object.keys(value);
+  return keys.length >= 1 && keys.length <= 2 && keys.every((key) => key === "skillName" || key === "platform");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

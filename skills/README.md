@@ -22,13 +22,15 @@
 └── references/           # 可选：参考资料
 ```
 
-`SKILL.md` 是唯一必需文件。`muad.skill.json` 是确定性编排增强，不是 Skill 可见性或基础执行的前置条件。
+`SKILL.md` 是所有 Skill 的唯一必需文件。需要 Console 管理元数据或业务平台登录态的
+public/private Skill 可额外提供 `muad.skill.json`，并在其中用 `platform` 或 `platforms`
+按需声明 0 到多个业务平台依赖。
 
 扫描器会把 Skill 分类为：
 
 - `managed`：包含合法 `muad.skill.json`。
-- `traditional-script`：无 manifest，但扫描到可执行脚本。
-- `traditional-prompt`：无 manifest，由 Agent 按说明调用 OpenClaw 原生工具。
+- `traditional-script`：无 manifest，但扫描到可执行脚本；仅 system 内置 Skill 可使用。
+- `traditional-prompt`：无 manifest，由 Agent 按说明调用 OpenClaw 原生工具；仅 system 内置 Skill 可使用。
 
 ## SKILL.md frontmatter
 
@@ -41,48 +43,40 @@ description: "MANDATORY before calling web_search, web_fetch, browser, or opencl
 
 - `name` 使用小写字母、数字、`-` 或 `_`。
 - `description` 应说明触发场景和能力，不要把密钥、内部 URL 或业务数据写入其中。
-- 对必须先阅读本 Skill 才能调用的原生工具，可使用 `MANDATORY before calling <tool list>.`。`muad-run-skill` 会从标准 description 解析工具列表，并在当前轮未激活时阻断调用、提示精确 `SKILL.md` 路径。
-- 门禁只解析 frontmatter description，不从正文中的偶然工具名猜测依赖。
+- 对必须先阅读本 Skill 才能调用的原生工具，可在 `description` 中明确触发场景。
+- Runtime Guard 只开放当前用户允许的 Skill 根，只读读取 `SKILL.md` 是当前最小版本的激活边界。
 
 ## 激活与执行
 
 Skill 激活按用户消息轮次隔离：
 
 1. Agent 优先读取 `<available_skills>` 中授权 Skill 的精确 `SKILL.md`。
-2. 原生读取不可用时调用 `muad_use_skill(skill_name)`。
-3. 后续工具调用归入当前 Skill，Agent/Runner 结束时写入终态。
-4. 用户发送“继续、重试、再次执行”等新消息时必须重新激活，并产生新的 executionId。
+2. 后续工具调用只受 Runtime Guard 的文件、浏览器和会话边界约束。
+3. 用户发送“继续、重试、再次执行”等新消息时必须重新读取本轮需要的 Skill。
 
-传统脚本通过 `muad_run_skill` 执行扫描资产中允许的相对路径。禁止绝对路径、`..`、隐藏路径、目录、未扫描脚本、符号链接逃逸和 shell 字符串拼接。
+最小版本不再提供 `muad_use_skill` / `muad_run_skill` 托管执行工具；脚本类 Skill 是否可执行由 OpenClaw 原生能力和 Runtime Guard 策略决定。
 
 ## 可选 managed manifest
 
-需要稳定步骤、参数和进度时增加 `muad.skill.json`：
+需要业务平台登录态的 Skill 可通过 `muad.skill.json` 声明平台依赖：
 
 ```json
 {
-  "name": "example-long-task",
+  "name": "mssw-query",
+  "platforms": ["mssw"],
   "runtime": "script",
-  "mode": "steps",
-  "steps": [
-    { "id": "auth", "title": "鉴权", "command": ["bash", "scripts/auth.sh"] },
-    { "id": "query", "title": "查询", "command": ["python3", "scripts/query.py"] }
-  ]
+  "version": "1.0.0",
+  "capabilities": ["browser"]
 }
 ```
 
-命令必须是 argv 数组，解释器仅允许 `bash`、`sh`、`python3` 或 `node`，脚本路径必须位于当前 Skill 根目录。
+上传时 Console 会校验非空平台依赖均已存在。无平台依赖的 Skill 可直接作为通用 Skill 使用；单平台依赖可通过 `session-manager get-state --skill-name <skill>` 自动解析；多平台依赖调用时需显式传 `--platform <platform>`。
 
-## 长任务进度
+## 长任务反馈
 
-长耗时 managed/script Skill 使用语言无关的 `muad-progress` CLI 上报业务阶段。进度只描述 Agent 已知的上层步骤，不要求每个子脚本单独上报。
+最小版本不再内置独立进度 CLI。长耗时任务先通过 OpenClaw 原生最终回复返回结果；需要阶段性反馈时，后续迭代由平台 adapter 或新的受控执行层补齐。
 
-- 进度文本面向用户，保持简短。
-- 不得包含 Cookie、Token、密码、内部 URL、SQL 或堆栈。
-- 进度消息不能替代 OpenClaw 原生最终回复。
-- 业务平台登录态通过 `session-manager` 获取，不在 Skill 中复制凭证解析逻辑。
-
-模板见 [`_templates/`](./_templates/)；运行时细节见 [`../tools/muad-run-skill/README.md`](../tools/muad-run-skill/README.md)。
+模板见 [`_templates/`](./_templates/)。
 
 ## 打包与上传
 
@@ -99,6 +93,6 @@ Public Skill 依赖共享运行目录：Docker 使用 active-only bind mount；K
 
 ## 业务 Skill 扩展
 
-预防流、周期报告、策略检查等业务 Playbook 通过新增 public/private Skill 扩展，不改变控制面与 Runtime 架构。业务 Skill 绑定平台时，产品范围以 **MSSW / SDSP** 为主（见总设 CONST-PLAT-01）。
+预防流、周期报告、策略检查等业务 Playbook 通过新增 public/private Skill 扩展，不改变控制面与 Runtime 架构。业务 Skill 绑定的平台来自 Console 中管理员手动创建的平台名称，仓库和前端不内置默认平台。
 
 仓库内 `mss-soar/SKILL.md` 仍是结构骨架，正式使用前需补齐业务接口、鉴权和操作流程，或基于 `_templates/` 创建新包。

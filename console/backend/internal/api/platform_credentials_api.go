@@ -1,9 +1,12 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"io"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
@@ -11,16 +14,18 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
+const maxPlatformCredentialPayloadBytes = 16 * 1024
+
 type putPlatformCredentialRequest struct {
-	APIKey string `json:"apiKey"`
+	Credentials json.RawMessage `json:"credentials"`
 }
 
 type platformCredentialView struct {
-	HumanUserID     string    `json:"humanUserId"`
-	Platform        string    `json:"platform"`
-	KeyFingerprint  string    `json:"keyFingerprint"`
-	PlatformEnabled bool      `json:"platformEnabled"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	HumanUserID           string    `json:"humanUserId"`
+	Platform              string    `json:"platform"`
+	CredentialFingerprint string    `json:"credentialFingerprint"`
+	PlatformEnabled       bool      `json:"platformEnabled"`
+	UpdatedAt             time.Time `json:"updatedAt"`
 }
 
 func (s *Server) handleListPlatformCredentials(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +34,7 @@ func (s *Server) handleListPlatformCredentials(w http.ResponseWriter, r *http.Re
 		writeRepoError(w, err)
 		return
 	}
-	summaries, err := s.store.ListUserPlatformCredentials(s.cipher, humanUserID)
+	summaries, err := s.store.ListUserPlatformCredentials(humanUserID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, codeInternal, "list platform credentials")
 		return
@@ -70,9 +75,9 @@ func (s *Server) handlePutPlatformCredential(w http.ResponseWriter, r *http.Requ
 		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
 		return
 	}
-	request.APIKey = strings.TrimSpace(request.APIKey)
-	if request.APIKey == "" || len(request.APIKey) > 4096 {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "apiKey is required")
+	credentials, err := decodeCredentialPayload(request.Credentials)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "credentials must be a JSON object")
 		return
 	}
 	existed, err := s.hasPlatformCredential(user.HumanUserID, platform)
@@ -81,7 +86,7 @@ func (s *Server) handlePutPlatformCredential(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	summary, podID, err := s.store.UpsertUserPlatformCredentialAndMarkPod(
-		s.cipher, user.HumanUserID, platform, request.APIKey,
+		user.HumanUserID, platform, credentials,
 	)
 	if err != nil {
 		writeRepoError(w, err)
@@ -110,7 +115,7 @@ func (s *Server) handleDeletePlatformCredential(w http.ResponseWriter, r *http.R
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "platform not found")
 		return
 	}
-	summaries, err := s.store.ListUserPlatformCredentials(s.cipher, user.HumanUserID)
+	summaries, err := s.store.ListUserPlatformCredentials(user.HumanUserID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, codeInternal, "inspect platform credential")
 		return
@@ -120,7 +125,7 @@ func (s *Server) handleDeletePlatformCredential(w http.ResponseWriter, r *http.R
 		writeRepoError(w, repo.ErrCredentialNotConfigured)
 		return
 	}
-	podID, err := s.store.DeleteUserPlatformCredentialAndMarkPod(s.cipher, user.HumanUserID, platform)
+	podID, err := s.store.DeleteUserPlatformCredentialAndMarkPod(user.HumanUserID, platform)
 	if err != nil {
 		writeRepoError(w, err)
 		return
@@ -134,7 +139,7 @@ func (s *Server) handleDeletePlatformCredential(w http.ResponseWriter, r *http.R
 }
 
 func (s *Server) hasPlatformCredential(humanUserID, platform string) (bool, error) {
-	summaries, err := s.store.ListUserPlatformCredentials(s.cipher, humanUserID)
+	summaries, err := s.store.ListUserPlatformCredentials(humanUserID)
 	if err != nil {
 		return false, err
 	}
@@ -158,9 +163,25 @@ func credentialToView(
 ) platformCredentialView {
 	return platformCredentialView{
 		HumanUserID: humanUserID, Platform: summary.Platform,
-		KeyFingerprint:  secretcrypto.DisplayFingerprint(summary.KeyFingerprint),
-		PlatformEnabled: enabled, UpdatedAt: summary.UpdatedAt,
+		CredentialFingerprint: secretcrypto.DisplayFingerprint(summary.CredentialFingerprint),
+		PlatformEnabled:       enabled, UpdatedAt: summary.UpdatedAt,
 	}
+}
+
+func decodeCredentialPayload(raw json.RawMessage) (map[string]any, error) {
+	if len(raw) == 0 || len(raw) > maxPlatformCredentialPayloadBytes {
+		return nil, errors.New("invalid credential payload")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var credentials map[string]any
+	if err := decoder.Decode(&credentials); err != nil || credentials == nil {
+		return nil, errors.New("credential payload must be an object")
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return nil, errors.New("trailing credential payload value")
+	}
+	return credentials, nil
 }
 
 func (s *Server) auditPlatformCredential(
@@ -177,7 +198,7 @@ func (s *Server) auditPlatformCredential(
 		Actor: auditlog.AdminActor(actorFrom(r.Context())), Action: action, Target: user.HumanUserID,
 		Metadata: auditlog.Metadata{
 			PodID: user.PodID, HumanUserID: user.HumanUserID, AgentID: user.AgentID,
-			Platform: summary.Platform, Fingerprint: summary.KeyFingerprint, Status: status,
+			Platform: summary.Platform, Fingerprint: summary.CredentialFingerprint, Status: status,
 		},
 	})
 	if err != nil {

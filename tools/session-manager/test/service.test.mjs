@@ -19,44 +19,40 @@ import {
   SessionStore,
 } from "../dist/index.js";
 
-test("session cache validates owner and both fingerprints without persisting API key", async (t) => {
+test("session cache validates owner and credential fingerprint without persisting API key", async (t) => {
   const harness = makeHarness(t);
-  const first = await harness.service.getState(context, "xdr");
-  const second = await harness.service.getState(context, "xdr");
+  const first = await harness.service.getState(context, "xdr-query");
+  const second = await harness.service.getState(context, "xdr-query");
   assert.equal(first.source, "refresh");
   assert.equal(second.source, "cache");
   assert.equal(harness.refreshes(), 1);
   assertPrivateFiles(first, harness.root, "api-key-memory-only");
 
   harness.setCredential({ credentialFingerprint: "sha256:credential-2" });
-  await harness.service.getState(context, "xdr");
+  await harness.service.getState(context, "xdr-query");
   assert.equal(harness.refreshes(), 2);
 
-  harness.setCredential({ platformConfigFingerprint: "sha256:platform-2" });
-  await harness.service.getState(context, "xdr");
-  assert.equal(harness.refreshes(), 3);
-
   harness.setCredential({ podId: "pod-b" });
-  await harness.service.getState(context, "xdr");
-  assert.equal(harness.refreshes(), 4);
+  await harness.service.getState(context, "xdr-query");
+  assert.equal(harness.refreshes(), 3);
 
   const meta = JSON.parse(readFileSync(harness.paths.meta, "utf8"));
   writeFileSync(harness.paths.meta, JSON.stringify({ ...meta, humanUserId: "other-user" }));
-  await harness.service.getState(context, "xdr");
-  assert.equal(harness.refreshes(), 5);
+  await harness.service.getState(context, "xdr-query");
+  assert.equal(harness.refreshes(), 4);
 });
 
-test("not configured and disabled Resolver results invalidate existing state", async (t) => {
+test("not configured and disabled Resolver results keep old state untouched", async (t) => {
   for (const code of ["not_configured", "platform_disabled"]) {
     const harness = makeHarness(t);
-    await harness.service.getState(context, "xdr");
+    await harness.service.getState(context, "xdr-query");
     harness.setResolveError(new SessionManagerError(code));
     await assert.rejects(
-      () => harness.service.getState(context, "xdr"),
+      () => harness.service.getState(context, "xdr-query"),
       (error) => error instanceof SessionManagerError && error.code === code,
     );
-    assert.equal(existsSync(harness.paths.meta), false);
-    assert.equal(existsSync(harness.paths.cookies), false);
+    assert.equal(existsSync(harness.paths.meta), true);
+    assert.equal(existsSync(harness.paths.cookies), true);
   }
 });
 
@@ -64,7 +60,7 @@ test("Resolver cannot redirect trusted context to another agent", async (t) => {
   const harness = makeHarness(t);
   harness.setCredential({ agentId: "bob", humanUserId: "user-b" });
   await assert.rejects(
-    () => harness.service.getState(context, "xdr"),
+    () => harness.service.getState(context, "xdr-query"),
     (error) => error instanceof SessionManagerError && error.code === "credential_service_unavailable",
   );
   assert.equal(harness.refreshes(), 0);
@@ -72,12 +68,12 @@ test("Resolver cannot redirect trusted context to another agent", async (t) => {
 
 test("adapter authentication failure clears the old session", async (t) => {
   const harness = makeHarness(t);
-  await harness.service.getState(context, "xdr");
+  await harness.service.getState(context, "xdr-query");
   harness.setCredential({ credentialFingerprint: "sha256:rotated" });
   harness.setAdapterError(new PlatformAdapterError(true));
 
   await assert.rejects(
-    () => harness.service.getState(context, "xdr"),
+    () => harness.service.getState(context, "xdr-query"),
     (error) => error instanceof SessionManagerError && error.code === "adapter_failed",
   );
   assert.equal(existsSync(harness.paths.meta), false);
@@ -92,11 +88,43 @@ test("adapter output containing the API key is rejected before disk write", asyn
   harness.setAdapterState(unsafe);
 
   await assert.rejects(
-    () => harness.service.getState(context, "xdr"),
+    () => harness.service.getState(context, "xdr-query"),
     (error) => error instanceof SessionManagerError && error.code === "adapter_failed",
   );
   assert.equal(existsSync(harness.paths.meta), false);
   assert.equal(existsSync(harness.paths.cookies), false);
+});
+
+test("cached sessions are refreshed when adapter health validation fails", async (t) => {
+  const root = temporaryRoot(t);
+  const store = new SessionStore({ rootDir: root });
+  const current = credential();
+  let refreshes = 0;
+  let validations = 0;
+  let healthValid = true;
+  const adapters = new AdapterRegistry([{
+    platform: "xdr",
+    refresh: async () => {
+      refreshes += 1;
+      return sessionState(`cookie-value-${refreshes}`);
+    },
+    validate: async () => {
+      validations += 1;
+      return healthValid;
+    },
+  }]);
+  const service = makeService({ resolve: async () => current }, store, adapters);
+
+  const first = await service.getState(context, "xdr-query");
+  const second = await service.getState(context, "xdr-query");
+  healthValid = false;
+  const third = await service.getState(context, "xdr-query");
+
+  assert.equal(first.source, "refresh");
+  assert.equal(second.source, "cache");
+  assert.equal(third.source, "refresh");
+  assert.equal(refreshes, 2);
+  assert.equal(validations, 2);
 });
 
 test("concurrent services perform one refresh through the file lock", async (t) => {
@@ -119,9 +147,9 @@ test("concurrent services perform one refresh through the file lock", async (t) 
   }]);
   const resolver = { resolve: async () => current };
   const options = { store, adapters, lock: { pollMs: 2, waitMs: 1_000 } };
-  const first = new SessionService(resolver, options).getState(context, "xdr");
+  const first = new SessionService(resolver, options).getState(context, "xdr-query");
   await started;
-  const second = new SessionService(resolver, options).getState(context, "xdr");
+  const second = new SessionService(resolver, options).getState(context, "xdr-query");
   releaseRefresh();
 
   const results = await Promise.all([first, second]);
@@ -135,7 +163,7 @@ test("stale crash lock is reclaimed while a live lock has bounded wait", async (
   writeFileSync(harness.paths.lock, JSON.stringify({
     token: "dead", pid: 1, startedAt: new Date(Date.now() - 10_000).toISOString(),
   }));
-  await harness.service.getState(context, "xdr");
+  await harness.service.getState(context, "xdr-query");
   assert.equal(harness.refreshes(), 1);
   assert.equal(existsSync(harness.paths.lock), false);
 
@@ -147,7 +175,7 @@ test("stale crash lock is reclaimed while a live lock has bounded wait", async (
     staleMs: 10_000, waitMs: 20, pollMs: 2,
   });
   await assert.rejects(
-    () => blocked.getState(context, "xdr"),
+    () => blocked.getState(context, "xdr-query"),
     (error) => error instanceof SessionManagerError && error.code === "adapter_failed" && error.retryable,
   );
 });
@@ -193,15 +221,14 @@ function makeService(resolver, store, adapters, lock = {}) {
 function credential() {
   return {
     humanUserId: "user-a", podId: "pod-a", agentId: "alice", platform: "xdr",
+    skillName: "xdr-query",
     credentialFingerprint: "sha256:credential",
-    platformConfigFingerprint: "sha256:platform",
-    apiKey: "api-key-memory-only", sessionMode: "storage_state", adapter: "xdr",
-    platformConfig: { baseUrl: "https://xdr.internal" },
+    credentials: { apiKey: "api-key-memory-only", baseUrl: "https://xdr.internal" },
   };
 }
 
-function sessionState() {
-  const cookies = [{ name: "sid", value: "cookie-value", domain: ".internal", path: "/" }];
+function sessionState(cookieValue = "cookie-value") {
+  const cookies = [{ name: "sid", value: cookieValue, domain: ".internal", path: "/" }];
   return {
     cookies,
     storageState: { cookies, origins: [] },

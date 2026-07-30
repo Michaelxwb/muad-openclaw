@@ -141,7 +141,6 @@ type HumanUser struct {
 	BrowserProfile         string
 	BrowserCDPPort         int
 	Status                 string
-	PlatformCredentialsEnc string
 	Notes                  string
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
@@ -203,7 +202,6 @@ type BindingCode struct {
 type PlatformConfig struct {
 	Platform    string
 	DisplayName string
-	ConfigEnc   string
 	Enabled     bool
 	UpdatedAt   time.Time
 }

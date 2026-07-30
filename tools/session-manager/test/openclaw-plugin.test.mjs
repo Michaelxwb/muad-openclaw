@@ -27,7 +27,7 @@ test("OpenClaw manifest owns the registered session_get_state tool", (t) => {
   assert.deepEqual(globalThis[healthSymbol], { loaded: true, version: 1 });
   const tool = factory({ agentId: "alice", sessionKey: "agent:alice:wecom:direct:user-a" });
   assert.equal(tool.name, "session_get_state");
-  assert.deepEqual(tool.parameters.required, ["platform"]);
+  assert.deepEqual(tool.parameters.required, ["skillName"]);
   assert.equal(tool.parameters.properties.agentId, undefined);
 });
 
@@ -35,8 +35,8 @@ test("OpenClaw Tool uses only trusted context and rejects forged agent parameter
   const calls = [];
   const output = sessionResult();
   const service = {
-    getState: async (context, platform) => {
-      calls.push({ context, platform });
+    getState: async (context, skillName, platform) => {
+      calls.push({ context, skillName, platform });
       return output;
     },
   };
@@ -44,20 +44,28 @@ test("OpenClaw Tool uses only trusted context and rejects forged agent parameter
     toolContext: { agentId: "alice", sessionKey: "trusted-session-key" },
     service,
   });
-  const result = await tool.execute("call-1", { platform: "xdr" });
+  const result = await tool.execute("call-1", { skillName: "xdr-query" });
   assert.deepEqual(result.details, output);
   assert.deepEqual(calls, [{
     context: { agentId: "alice", sessionKey: "trusted-session-key" },
-    platform: "xdr",
+    skillName: "xdr-query",
+    platform: undefined,
   }]);
 
+  await tool.execute("call-platform", { skillName: "xdr-query", platform: "mssw" });
+  assert.deepEqual(calls[1], {
+    context: { agentId: "alice", sessionKey: "trusted-session-key" },
+    skillName: "xdr-query",
+    platform: "mssw",
+  });
+
   await assert.rejects(
-    () => tool.execute("call-2", { platform: "xdr", agentId: "bob" }),
+    () => tool.execute("call-2", { skillName: "xdr-query", agentId: "bob" }),
     (error) => error instanceof SessionManagerError && error.code === "invalid_arguments",
   );
   const missing = createPluginTool({ toolContext: {}, service });
   await assert.rejects(
-    () => missing.execute("call-3", { platform: "xdr" }),
+    () => missing.execute("call-3", { skillName: "xdr-query" }),
     (error) => error instanceof SessionManagerError && error.code === "invalid_context",
   );
 });
@@ -72,6 +80,5 @@ function sessionResult() {
     storageStatePath: "/state/alice/xdr/storageState.json",
     expiresAt: "2026-07-12T00:00:00.000Z",
     credentialFingerprint: "sha256:credential",
-    platformConfigFingerprint: "sha256:platform",
   };
 }

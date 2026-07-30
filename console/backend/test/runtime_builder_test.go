@@ -50,7 +50,7 @@ func (source runtimeBuilderSource) ListLLMModelConfigs(
 }
 
 func (source runtimeBuilderSource) ResolveEffectiveSkills(
-	_ *secretcrypto.Cipher, humanUserID string, _ repo.EffectiveSkillFilter,
+	humanUserID string, _ repo.EffectiveSkillFilter,
 ) ([]repo.EffectiveSkill, int, error) {
 	skills := source.skills[humanUserID]
 	return skills, len(skills), nil
@@ -65,7 +65,6 @@ func TestRuntimeBuilder_DeterministicMultiUserConfig(t *testing.T) {
 	reversed.users = reverseCopy(source.users)
 	reversed.identities = reverseCopy(source.identities)
 	reversed.platforms = reverseCopy(source.platforms)
-	reversed.platforms[0].ConfigEnc = encryptRuntimeJSON(t, cipher, `{"z":1,"a":2}`)
 	second := buildRuntime(t, reversed, cipher)
 
 	if first.Hash != second.Hash || string(first.CanonicalJSON) != string(second.CanonicalJSON) {
@@ -193,7 +192,7 @@ func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBui
 		users: users, identities: identities,
 		platforms: []repo.PlatformConfig{
 			{Platform: "sdsp", DisplayName: "SDSP", Enabled: false},
-			{Platform: "xdr", DisplayName: "XDR", Enabled: true, ConfigEnc: encryptRuntimeJSON(t, cipher, `{"a":2,"z":1}`)},
+			{Platform: "xdr", DisplayName: "XDR", Enabled: true},
 		},
 		models: []repo.LLMModelConfig{
 			{
@@ -278,11 +277,13 @@ func assertRuntimeUsers(t *testing.T, config driver.RuntimeConfigV1) {
 		t.Fatalf("effective concurrency = %+v", config.Concurrency)
 	}
 	if !slices.Contains(config.Agents[0].Tools.Deny, "read") ||
-		!slices.Contains(config.Agents[0].Tools.Deny, "muad_use_skill") ||
+		slices.Contains(config.Agents[0].Tools.Deny, "muad_use_skill") ||
+		slices.Contains(config.Agents[0].Tools.Deny, "muad_run_skill") ||
 		!slices.Contains(config.Agents[1].Tools.Allow, "read") ||
 		!slices.Contains(config.Agents[1].Tools.Allow, "write") ||
 		!slices.Contains(config.Agents[1].Tools.Allow, "exec") ||
-		!slices.Contains(config.Agents[1].Tools.Allow, "muad_use_skill") ||
+		slices.Contains(config.Agents[1].Tools.Allow, "muad_use_skill") ||
+		slices.Contains(config.Agents[1].Tools.Allow, "muad_run_skill") ||
 		len(config.Agents[1].Tools.Deny) != 0 ||
 		!config.Agents[1].Tools.WorkspaceOnly {
 		t.Fatalf("Skill activation Tool policies = %+v", config.Agents)
@@ -332,7 +333,7 @@ func assertRuntimeRoutes(t *testing.T, config driver.RuntimeConfigV1) {
 	if len(config.IdentityLinks) != 1 || !slices.Equal(config.IdentityLinks[0].Identities, []string{"openclaw-weixin:wx-alice", "wecom:XuWenBin"}) {
 		t.Fatalf("identityLinks = %+v", config.IdentityLinks)
 	}
-	if len(config.Platforms) != 1 || string(config.Platforms[0].Config) != `{"a":2,"z":1}` {
+	if len(config.Platforms) != 1 || string(config.Platforms[0].Config) != `{}` {
 		t.Fatalf("platform config = %+v", config.Platforms)
 	}
 }

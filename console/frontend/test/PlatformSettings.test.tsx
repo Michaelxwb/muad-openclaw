@@ -20,20 +20,14 @@ vi.mock("../src/api", async (importOriginal) => {
 const xdr: Platform = {
   platform: "xdr",
   displayName: "XDR",
-  config: { baseUrl: "https://xdr.internal" },
-  configFingerprint: "sha256:xdr-config",
   enabled: true,
-  adapterInstalled: true,
   updatedAt: "2026-07-11T00:00:00Z",
 };
 
 const sdsp: Platform = {
   platform: "sdsp",
   displayName: "SDSP",
-  config: { baseUrl: "https://sdsp.internal" },
-  configFingerprint: "sha256:sdsp-config",
   enabled: false,
-  adapterInstalled: true,
   updatedAt: "2026-07-11T00:00:00Z",
 };
 
@@ -52,29 +46,28 @@ beforeEach(() => {
 afterEach(() => Toast.destroyAll());
 
 describe("PlatformSettings", () => {
-  it("lists platform state, adapter state, and configuration fingerprint", async () => {
+  it("lists platform state without default adapter or config fields", async () => {
     render(<PlatformSettings />);
 
-    expect(await screen.findByText("sha256:xdr-config")).toBeInTheDocument();
+    expect(await screen.findByText("XDR")).toBeInTheDocument();
+    expect(screen.getByText("xdr")).toBeInTheDocument();
     expect(screen.getByText("已启用")).toBeInTheDocument();
-    expect(screen.queryByText("Adapter 缺失")).not.toBeInTheDocument();
+    expect(screen.queryByText("sha256:xdr-config")).not.toBeInTheDocument();
   });
 
-  it("adds an installed platform with a minimal JSON configuration", async () => {
+  it("adds a platform with only its ID and display name", async () => {
     render(<PlatformSettings />);
-    await screen.findByText("sha256:xdr-config");
+    await screen.findByText("XDR");
     fireEvent.click(screen.getByRole("button", { name: "增加平台" }));
     expect(document.querySelector(".standard-modal")).toBeInTheDocument();
-    fireEvent.change(screen.getByRole("textbox", { name: "平台配置 JSON" }), {
-      target: { value: '{"baseUrl":"https://soar.internal"}' },
-    });
+    fireEvent.change(screen.getByLabelText("业务平台"), { target: { value: "soar" } });
+    fireEvent.change(screen.getByLabelText("平台显示名称"), { target: { value: "SOAR" } });
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
     await waitFor(() =>
       expect(apiMocks.createPlatform).toHaveBeenCalledWith({
         platform: "soar",
         displayName: "SOAR",
-        config: { baseUrl: "https://soar.internal" },
         enabled: true,
       }),
     );
@@ -83,20 +76,20 @@ describe("PlatformSettings", () => {
   it("filters platforms from the list toolbar", async () => {
     apiMocks.listPlatforms.mockResolvedValueOnce({ items: [xdr, sdsp], total: 2 });
     render(<PlatformSettings />);
-    expect(await screen.findByText("sha256:xdr-config")).toBeInTheDocument();
+    expect(await screen.findByText("XDR")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("搜索业务平台"), {
       target: { value: "sdsp" },
     });
     fireEvent.click(screen.getByRole("button", { name: "查询业务平台" }));
 
-    expect(screen.getByText("sha256:sdsp-config")).toBeInTheDocument();
-    expect(screen.queryByText("sha256:xdr-config")).not.toBeInTheDocument();
+    expect(screen.getByText("SDSP")).toBeInTheDocument();
+    expect(screen.queryByText("XDR")).not.toBeInTheDocument();
   });
 
   it("edits and disables an existing platform", async () => {
     render(<PlatformSettings />);
-    await screen.findByText("sha256:xdr-config");
+    await screen.findByText("XDR");
     fireEvent.click(screen.getByRole("button", { name: "编辑" }));
     fireEvent.click(screen.getByRole("switch", { name: "平台启用状态" }));
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
@@ -104,7 +97,6 @@ describe("PlatformSettings", () => {
     await waitFor(() =>
       expect(apiMocks.patchPlatform).toHaveBeenCalledWith("xdr", {
         displayName: "XDR",
-        config: { baseUrl: "https://xdr.internal" },
         enabled: false,
       }),
     );
@@ -112,7 +104,7 @@ describe("PlatformSettings", () => {
 
   it("deletes a platform after confirmation", async () => {
     render(<PlatformSettings />);
-    await screen.findByText("sha256:xdr-config");
+    await screen.findByText("XDR");
 
     fireEvent.click(screen.getByRole("button", { name: "删除" }));
     expect(await screen.findByText("删除 XDR")).toBeInTheDocument();

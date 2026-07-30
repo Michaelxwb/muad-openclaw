@@ -136,17 +136,22 @@ describe("Human User and credential API", () => {
     const credential = {
       humanUserId: "user-a",
       platform: "mssw",
-      keyFingerprint: "sha256:abcd",
+      credentialFingerprint: "sha256:abcd",
       platformEnabled: true,
       updatedAt: "2026-07-11T00:00:00Z",
     };
     const fetchMock = stubResponse({ credential, cacheInvalidation: "on_next_resolve" });
 
-    const result = await api.putPlatformCredential("user-a", "mssw", "test-api-key");
+    const result = await api.putPlatformCredential("user-a", "mssw", {
+      apiKey: "test-api-key",
+    });
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v1/human-users/user-a/platform-credentials/mssw",
-      expect.objectContaining({ method: "PUT", body: JSON.stringify({ apiKey: "test-api-key" }) }),
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ credentials: { apiKey: "test-api-key" } }),
+      }),
     );
     expect(result.credential).toEqual(credential);
     expect(result.credential).not.toHaveProperty("apiKey");
@@ -243,6 +248,20 @@ describe("Skill API", () => {
     expect(init.body).toBeInstanceOf(FormData);
   });
 
+  it("preserves an explicit empty platform dependency override for private Skill uploads", async () => {
+    const fetchMock = stubResponse({ skill: { skillId: "skill-a", name: "generic-skill" } });
+
+    await api.uploadPrivateSkill("user-a", {
+      bundle: new Blob(["bundle"]),
+      filename: "generic-skill.zip",
+      platforms: [],
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("platforms")).toBe("[]");
+  });
+
   it("uploads public Skill bundles through the global endpoint", async () => {
     const fetchMock = stubResponse({
       skill: { skillId: "skill-a", name: "xdr-public" },
@@ -260,6 +279,23 @@ describe("Skill API", () => {
     expect(init.method).toBe("POST");
     expect(init.headers).toEqual({ Authorization: "Bearer console-token" });
     expect(init.body).toBeInstanceOf(FormData);
+  });
+
+  it("preserves an explicit empty platform dependency override for public Skill uploads", async () => {
+    const fetchMock = stubResponse({
+      skill: { skillId: "skill-a", name: "generic-public" },
+      affectedPodIds: [],
+    });
+
+    await api.uploadPublicSkill({
+      bundle: new Blob(["bundle"]),
+      filename: "generic-public.zip",
+      platforms: [],
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("platforms")).toBe("[]");
   });
 
   it("posts Skill status and user policies through the typed client", async () => {

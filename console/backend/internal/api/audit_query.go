@@ -242,14 +242,13 @@ func configAlerts(pod repo.Pod) []alert {
 }
 
 func runtimeAlerts(pod repo.Pod, snapshot monitor.Snapshot) []alert {
-	alerts := make([]alert, 0, 9)
+	alerts := make([]alert, 0, 7)
 	if !snapshot.ChannelConnected {
 		alerts = append(alerts, alert{PodID: pod.PodID, Level: "P1", Kind: "channel_disconnected", Message: "message channel offline"})
 	}
 	if !snapshot.RuntimeGuardHealthy {
 		alerts = append(alerts, alert{PodID: pod.PodID, Level: "P1", Kind: "runtime_guard_unhealthy", Message: "Runtime Guard health check failed"})
 	}
-	alerts = append(alerts, skillTelemetryAlerts(pod.PodID, snapshot)...)
 	if snapshot.RuntimeGuardHealthy && pod.AppliedGeneration > 0 &&
 		snapshot.RuntimeGeneration > 0 && snapshot.RuntimeGeneration != pod.AppliedGeneration {
 		alerts = append(alerts, alert{
@@ -263,28 +262,6 @@ func runtimeAlerts(pod repo.Pod, snapshot monitor.Snapshot) []alert {
 	}
 	alerts = append(alerts, queueAlerts(pod.PodID, snapshot)...)
 	return append(alerts, nearReapAlert(pod.PodID, snapshot)...)
-}
-
-func skillTelemetryAlerts(podID string, snapshot monitor.Snapshot) []alert {
-	alerts := make([]alert, 0, 2)
-	if snapshot.SkillTelemetryPending > 0 {
-		alerts = append(alerts, alert{
-			PodID: podID, Level: "P2", Kind: "skill_telemetry_outbox_pending",
-			Message: "Skill execution telemetry is waiting for delivery",
-			Details: map[string]any{"pending": snapshot.SkillTelemetryPending},
-		})
-	}
-	if snapshot.SkillTelemetryWriteFailed {
-		alerts = append(alerts, alert{
-			PodID: podID, Level: "P1", Kind: "skill_telemetry_outbox_write_failed",
-			Message: "Skill execution telemetry could not be persisted",
-			Details: map[string]any{
-				"dropped": snapshot.SkillTelemetryDropped,
-				"error":   auditlog.RedactDiagnostic(snapshot.SkillTelemetryLastError),
-			},
-		})
-	}
-	return alerts
 }
 
 func queueAlerts(podID string, snapshot monitor.Snapshot) []alert {

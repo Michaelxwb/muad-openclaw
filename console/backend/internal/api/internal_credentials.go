@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 	"strings"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
-	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -20,26 +18,25 @@ const sessionCredentialPurpose = "session_get_state"
 
 var (
 	credentialAgentPattern    = regexp.MustCompile(`^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$`)
+	credentialSkillPattern    = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 	credentialPlatformPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 )
 
 type credentialResolveRequest struct {
-	AgentID  string `json:"agentId"`
-	Platform string `json:"platform"`
-	Purpose  string `json:"purpose"`
+	AgentID   string `json:"agentId"`
+	SkillName string `json:"skillName"`
+	Platform  string `json:"platform,omitempty"`
+	Purpose   string `json:"purpose"`
 }
 
 type credentialResolveResponse struct {
-	HumanUserID               string         `json:"humanUserId"`
-	PodID                     string         `json:"podId"`
-	AgentID                   string         `json:"agentId"`
-	Platform                  string         `json:"platform"`
-	CredentialFingerprint     string         `json:"credentialFingerprint"`
-	PlatformConfigFingerprint string         `json:"platformConfigFingerprint"`
-	APIKey                    string         `json:"apiKey"`
-	SessionMode               string         `json:"sessionMode"`
-	Adapter                   string         `json:"adapter"`
-	PlatformConfig            map[string]any `json:"platformConfig"`
+	HumanUserID           string         `json:"humanUserId"`
+	PodID                 string         `json:"podId"`
+	AgentID               string         `json:"agentId"`
+	SkillName             string         `json:"skillName"`
+	Platform              string         `json:"platform"`
+	CredentialFingerprint string         `json:"credentialFingerprint"`
+	Credentials           map[string]any `json:"credentials"`
 }
 
 func (s *Server) handleResolveSessionCredential(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +46,16 @@ func (s *Server) handleResolveSessionCredential(w http.ResponseWriter, r *http.R
 		return
 	}
 	var request credentialResolveRequest
-	if err := decodeJSONBody(w, r, &request); err != nil || !validCredentialRequest(request) {
+	if err := decodeJSONBody(w, r, &request); err != nil {
+		s.recordResolveFailure(r, pod, request, "invalid_request", "")
+		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		return
+	}
+	request.AgentID = strings.TrimSpace(request.AgentID)
+	request.SkillName = strings.TrimSpace(request.SkillName)
+	request.Platform = strings.TrimSpace(request.Platform)
+	request.Purpose = strings.TrimSpace(request.Purpose)
+	if !validCredentialRequest(request) {
 		s.recordResolveFailure(r, pod, request, "invalid_request", "")
 		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
 		return
@@ -64,7 +70,8 @@ func (s *Server) handleResolveSessionCredential(w http.ResponseWriter, r *http.R
 
 func validCredentialRequest(request credentialResolveRequest) bool {
 	return credentialAgentPattern.MatchString(request.AgentID) &&
-		credentialPlatformPattern.MatchString(request.Platform) &&
+		credentialSkillPattern.MatchString(request.SkillName) &&
+		(request.Platform == "" || credentialPlatformPattern.MatchString(request.Platform)) &&
 		request.Purpose == sessionCredentialPurpose
 }
 
@@ -78,65 +85,139 @@ func (s *Server) resolveSessionCredential(
 	if user.Status != repo.HumanUserStatusActive {
 		return credentialResolveResponse{}, repo.ErrNotFound
 	}
-	platform, err := s.store.GetPlatformConfig(request.Platform)
+	platform, err := s.resolveSkillPlatform(user.HumanUserID, request.SkillName, request.Platform)
 	if err != nil {
 		return credentialResolveResponse{}, err
 	}
-	if !platform.Enabled {
-		return credentialResolveResponse{}, repo.ErrPlatformDisabled
-	}
-	credential, err := s.store.ResolveUserPlatformCredential(s.cipher, user.HumanUserID, request.Platform)
+	credential, err := s.store.ResolveUserPlatformCredential(user.HumanUserID, platform)
 	if err != nil {
 		return credentialResolveResponse{}, err
 	}
-	config, canonical, err := s.decodePlatformConfig(platform.ConfigEnc)
+	credentials, err := decodeResolvedCredentialJSON(credential.CredentialsJSON)
 	if err != nil {
 		return credentialResolveResponse{}, err
-	}
-	return buildCredentialResponse(user, credential, config, canonical), nil
-}
-
-func buildCredentialResponse(
-	user repo.HumanUser, credential repo.ResolvedPlatformCredential,
-	config map[string]any, canonical []byte,
-) credentialResolveResponse {
-	sessionMode := "storage_state"
-	if configured, ok := config["sessionMode"].(string); ok && strings.TrimSpace(configured) != "" {
-		sessionMode = configured
 	}
 	return credentialResolveResponse{
-		HumanUserID: user.HumanUserID, PodID: user.PodID,
-		AgentID: user.AgentID, Platform: credential.Platform,
-		CredentialFingerprint:     credential.Fingerprint,
-		PlatformConfigFingerprint: crypto.Fingerprint(string(canonical)),
-		APIKey:                    credential.APIKey, SessionMode: sessionMode, Adapter: credential.Platform,
-		PlatformConfig: config,
+		HumanUserID: user.HumanUserID, PodID: user.PodID, AgentID: user.AgentID,
+		SkillName: request.SkillName, Platform: platform,
+		CredentialFingerprint: credential.CredentialFingerprint,
+		Credentials:           credentials,
+	}, nil
+}
+
+func (s *Server) resolveSkillPlatform(humanUserID, skillName, requested string) (string, error) {
+	skills, _, err := s.store.ResolveEffectiveSkills(humanUserID, repo.EffectiveSkillFilter{})
+	if err != nil {
+		return "", err
+	}
+	for _, skill := range skills {
+		if skill.Name != skillName {
+			continue
+		}
+		return resolveCredentialPlatform(skill, requested)
+	}
+	return "", repo.ErrNotFound
+}
+
+func resolveCredentialPlatform(skill repo.EffectiveSkill, requested string) (string, error) {
+	if !skill.Effective || skill.Status != repo.EffectiveSkillStatusEffective {
+		return "", resolveInactiveSkillCredentialError(skill, requested)
+	}
+	if requested != "" {
+		return resolveRequestedCredentialPlatform(skill.Platforms, requested)
+	}
+	switch len(skill.Platforms) {
+	case 0:
+		return "", repo.ErrSkillPlatformNotBound
+	case 1:
+		return skill.Platforms[0].Platform, nil
+	default:
+		return "", repo.ErrSkillPlatformRequired
 	}
 }
 
-func (s *Server) decodePlatformConfig(encrypted string) (map[string]any, []byte, error) {
-	plain := "{}"
-	if encrypted != "" {
-		decrypted, err := s.cipher.Decrypt(encrypted)
-		if err != nil {
-			return nil, nil, fmt.Errorf("decrypt platform config: %w", err)
-		}
-		plain = decrypted
+func resolveInactiveSkillCredentialError(skill repo.EffectiveSkill, requested string) error {
+	if skill.Status != repo.EffectiveSkillStatusMissingCredential {
+		return repo.ErrInvalidSkill
 	}
-	decoder := json.NewDecoder(bytes.NewBufferString(plain))
+	if requested != "" {
+		if err := requestedPlatformStatusError(skill.Platforms, requested); err != nil {
+			return err
+		}
+		return firstCredentialDependencyError(skill.Platforms)
+	}
+	if len(skill.Platforms) == 0 {
+		return repo.ErrSkillPlatformNotBound
+	}
+	if len(skill.Platforms) > 1 {
+		return repo.ErrSkillPlatformRequired
+	}
+	return credentialStatusError(skill.Platforms[0])
+}
+
+func resolveRequestedCredentialPlatform(
+	platforms []repo.SkillPlatformStatus, requested string,
+) (string, error) {
+	for _, platform := range platforms {
+		if platform.Platform != requested {
+			continue
+		}
+		if platform.CredentialStatus == repo.SkillCredentialConfigured {
+			return requested, nil
+		}
+		return "", credentialStatusError(platform)
+	}
+	return "", repo.ErrSkillPlatformNotBound
+}
+
+func requestedPlatformStatusError(
+	platforms []repo.SkillPlatformStatus, requested string,
+) error {
+	for _, platform := range platforms {
+		if platform.Platform != requested {
+			continue
+		}
+		if platform.CredentialStatus == repo.SkillCredentialConfigured {
+			return nil
+		}
+		return credentialStatusError(platform)
+	}
+	return repo.ErrSkillPlatformNotBound
+}
+
+func firstCredentialDependencyError(platforms []repo.SkillPlatformStatus) error {
+	for _, platform := range platforms {
+		if platform.CredentialStatus != repo.SkillCredentialConfigured {
+			return credentialStatusError(platform)
+		}
+	}
+	return repo.ErrInvalidSkill
+}
+
+func credentialStatusError(platform repo.SkillPlatformStatus) error {
+	switch platform.CredentialStatus {
+	case repo.SkillCredentialMissing:
+		return repo.ErrCredentialNotConfigured
+	case repo.SkillCredentialPlatformDisabled:
+		return repo.ErrPlatformDisabled
+	case repo.SkillCredentialPlatformMissing:
+		return repo.ErrNotFound
+	default:
+		return repo.ErrInvalidSkill
+	}
+}
+
+func decodeResolvedCredentialJSON(raw string) (map[string]any, error) {
+	decoder := json.NewDecoder(bytes.NewBufferString(raw))
 	decoder.UseNumber()
-	var config map[string]any
-	if err := decoder.Decode(&config); err != nil || config == nil {
-		return nil, nil, errors.New("invalid platform config")
+	var credentials map[string]any
+	if err := decoder.Decode(&credentials); err != nil || credentials == nil {
+		return nil, errors.New("invalid platform credential")
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return nil, nil, errors.New("invalid platform config")
+		return nil, errors.New("invalid platform credential")
 	}
-	canonical, err := json.Marshal(config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("canonicalize platform config: %w", err)
-	}
-	return config, canonical, nil
+	return credentials, nil
 }
 
 func (s *Server) writeResolveError(
@@ -153,8 +234,14 @@ func (s *Server) writeResolveError(
 		errorCode = "not_configured"
 	case errors.Is(err, repo.ErrPlatformDisabled):
 		errorCode = "platform_disabled"
+	case errors.Is(err, repo.ErrInvalidSkill):
+		errorCode = "invalid_skill"
+	case errors.Is(err, repo.ErrSkillPlatformRequired):
+		errorCode = "platform_required"
+	case errors.Is(err, repo.ErrSkillPlatformNotBound):
+		errorCode = "platform_not_bound"
 	case errors.Is(err, repo.ErrNotFound):
-		errorCode = "agent_not_active"
+		errorCode = "agent_or_skill_not_active"
 	}
 	s.recordResolveFailure(r, pod, request, errorCode, humanUserID)
 	writeRepoError(w, err)
@@ -169,7 +256,8 @@ func (s *Server) recordResolveFailure(
 		Target: request.AgentID,
 		Metadata: auditlog.Metadata{
 			PodID: pod.PodID, HumanUserID: humanUserID, AgentID: request.AgentID,
-			Platform: request.Platform, ErrorCode: errorCode,
+			SkillName: strings.TrimSpace(request.SkillName), Platform: request.Platform,
+			ErrorCode: errorCode,
 		},
 	})
 	if err != nil {

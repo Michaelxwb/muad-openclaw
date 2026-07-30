@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 
-const platform: string = String(process.argv[2] ?? "");
-if (!platform) process.exit(2);
+const skillName: string = String(process.argv[2] ?? "");
+if (!skillName) process.exit(2);
 
-const result = spawnSync("session-manager", ["get-state", "--platform", platform], {
+const result = spawnSync("session-manager", ["get-state", "--skill-name", skillName], {
   encoding: "utf8",
 });
 process.stdout.write(result.stdout ?? "");

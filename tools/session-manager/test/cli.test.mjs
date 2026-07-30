@@ -29,7 +29,7 @@ test("get-state uses trusted env context and never writes API keys", async () =>
   };
   const root = temporaryRoot();
   const result = await runCLI(
-    ["get-state", "--platform", "xdr"], env, resolver, sessionOptions(root),
+    ["get-state", "--skill-name", "xdr-query"], env, resolver, sessionOptions(root),
   );
   rmSync(root, { recursive: true, force: true });
   assert.equal(result.exitCode, 0);
@@ -50,29 +50,55 @@ test("get-state uses trusted env context and never writes API keys", async () =>
     storageStatePath: "<storageState>",
     expiresAt: "<expiresAt>",
     credentialFingerprint: "sha256:credential",
-    platformConfigFingerprint: "sha256:platform",
   });
   assert.match(output.cookiesPath, /alice\/session-store\/xdr\/default\/cookies\.json$/);
   assert.equal(requests[0].agentId, "alice");
+  assert.equal(requests[0].skillName, "xdr-query");
+  assert.equal(requests[0].platform, undefined);
   assert.equal("sessionKey" in requests[0], false);
+});
+
+test("get-state forwards an optional platform selector to the Resolver", async () => {
+  const requests = [];
+  const resolver = {
+    resolve: async (request) => {
+      requests.push(request);
+      return resolvedCredential("api-key", request.platform ?? "xdr");
+    },
+  };
+  const root = temporaryRoot();
+  const result = await runCLI(
+    ["get-state", "--skill-name", "xdr-query", "--platform", "mssw"],
+    env,
+    resolver,
+    sessionOptions(root),
+  );
+  rmSync(root, { recursive: true, force: true });
+  assert.equal(result.exitCode, 0);
+  assert.equal(requests[0].platform, "mssw");
 });
 
 test("cross-agent and unknown arguments are rejected before Resolver access", async () => {
   let calls = 0;
   const resolver = { resolve: async () => { calls += 1; return resolvedCredential("secret"); } };
-  const result = await runCLI(["get-state", "--platform", "xdr", "--agent-id", "bob"], env, resolver);
+  const result = await runCLI(["get-state", "--skill-name", "xdr-query", "--agent-id", "bob"], env, resolver);
   assert.equal(result.exitCode, 2);
   assert.equal(JSON.parse(result.stderr).error.code, "invalid_arguments");
+  assert.equal(calls, 0);
+
+  const badPlatform = await runCLI(["get-state", "--skill-name", "xdr-query", "--platform", "bad-name"], env, resolver);
+  assert.equal(badPlatform.exitCode, 2);
+  assert.equal(JSON.parse(badPlatform.stderr).error.code, "invalid_arguments");
   assert.equal(calls, 0);
 });
 
 test("missing trusted context and Resolver failures use stable redacted stderr", async () => {
-  const missing = await runCLI(["get-state", "--platform", "xdr"], {}, { resolve: async () => resolvedCredential("x") });
+  const missing = await runCLI(["get-state", "--skill-name", "xdr-query"], {}, { resolve: async () => resolvedCredential("x") });
   assert.equal(missing.exitCode, 3);
   assert.equal(JSON.parse(missing.stderr).error.code, "invalid_context");
 
   const resolver = { resolve: async () => { throw new SessionManagerError("not_configured"); } };
-  const failed = await runCLI(["get-state", "--platform", "xdr"], env, resolver);
+  const failed = await runCLI(["get-state", "--skill-name", "xdr-query"], env, resolver);
   assert.equal(failed.exitCode, 10);
   assert.equal(failed.stdout, "");
   assert.deepEqual(JSON.parse(failed.stderr).error, {
@@ -92,18 +118,15 @@ test("npm-style symlink executes the CLI main module", () => {
   assert.deepEqual(JSON.parse(result.stdout), { version: 1 });
 });
 
-function resolvedCredential(apiKey) {
+function resolvedCredential(apiKey, platform = "xdr") {
   return {
     humanUserId: "user-a",
     podId: "pod-a",
     agentId: "alice",
-    platform: "xdr",
+    skillName: "xdr-query",
+    platform,
     credentialFingerprint: "sha256:credential",
-    platformConfigFingerprint: "sha256:platform",
-    apiKey,
-    sessionMode: "storage_state",
-    adapter: "xdr",
-    platformConfig: {},
+    credentials: { apiKey, baseUrl: "https://xdr.internal" },
   };
 }
 
@@ -112,6 +135,9 @@ function sessionOptions(rootDir) {
     store: new SessionStore({ rootDir }),
     adapters: new AdapterRegistry([{
       platform: "xdr",
+      refresh: async () => sessionState(),
+    }, {
+      platform: "mssw",
       refresh: async () => sessionState(),
     }]),
   };

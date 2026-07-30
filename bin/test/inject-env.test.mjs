@@ -32,7 +32,7 @@ test("startup context replaces channel credentials and unloads disabled channel 
   };
   const baseline = {
     channels: { wecom: { botId: "old", secret: "old" }, "openclaw-weixin": {} },
-    plugins: { allow: ["browser", "wecom-openclaw-plugin", "muad-run-skill"] },
+    plugins: { allow: ["browser", "wecom-openclaw-plugin", "session-manager"] },
   };
 
   const output = applyStartupContext(
@@ -48,8 +48,8 @@ test("startup context replaces channel credentials and unloads disabled channel 
   assert.equal(output.channels["openclaw-weixin"].enabled, true);
   assert.deepEqual(output.plugins.allow, [
     "browser",
-    "muad-run-skill",
     "openclaw-weixin",
+    "session-manager",
   ]);
   assert.deepEqual(
     output.plugins.load.paths,
@@ -87,7 +87,7 @@ test("startup context renders Mattermost for Muad binding guard DMs", () => {
         "browser",
         "wecom-openclaw-plugin",
         "openclaw-weixin",
-        "muad-run-skill",
+        "session-manager",
       ],
     },
   };
@@ -109,7 +109,7 @@ test("startup context renders Mattermost for Muad binding guard DMs", () => {
   assert.deepEqual(output.plugins.allow, [
     "browser",
     "mattermost",
-    "muad-run-skill",
+    "session-manager",
   ]);
   assert.equal(
     output.plugins.load.paths.includes("/opt/openclaw-plugins/mattermost"),
@@ -209,15 +209,16 @@ test("startup preserves a newer persisted runtime generation", () => {
     profile: "coding",
     alsoAllow: ["browser", "muad_run_skill"],
   };
-  persistedConfig.plugins.load = { paths: ["/legacy/plugin-path"] };
+  persistedConfig.plugins.allow.push("muad-run-skill");
+  persistedConfig.plugins.load = {
+    paths: ["/legacy/plugin-path", "/opt/muad/muad-run-skill"],
+  };
   delete persistedConfig.plugins.entries["muad-runtime-guard"].hooks;
-  delete persistedConfig.plugins.entries["muad-run-skill"].hooks;
-  const runSkillConfig =
-    persistedConfig.plugins.entries["muad-run-skill"].config;
-  runSkillConfig.consoleInternalURL =
-    runSkillConfig.telemetry.consoleInternalURL;
-  runSkillConfig.serviceTokenFile = runSkillConfig.telemetry.serviceTokenFile;
-  delete runSkillConfig.telemetry;
+  persistedConfig.plugins.entries["muad-run-skill"] = {
+    enabled: true,
+    hooks: { allowConversationAccess: false },
+    config: { maxConcurrency: 4 },
+  };
   writeFileSync(configPath, `${JSON.stringify(persistedConfig, null, 2)}\n`);
 
   const staleRuntime = structuredClone(newerRuntime);
@@ -247,27 +248,10 @@ test("startup preserves a newer persisted runtime generation", () => {
       .allowConversationAccess,
     true,
   );
-  assert.equal(
-    migrated.plugins.entries["muad-run-skill"].hooks.allowConversationAccess,
-    true,
-  );
-  assert.deepEqual(migrated.tools.alsoAllow, [
-    "browser",
-    "muad_run_skill",
-    "muad_use_skill",
-    "session_get_state",
-  ]);
-  const migratedRunSkill = migrated.plugins.entries["muad-run-skill"].config;
-  assert.equal(migratedRunSkill.consoleInternalURL, undefined);
-  assert.equal(migratedRunSkill.serviceTokenFile, undefined);
-  assert.equal(
-    migratedRunSkill.telemetry.consoleInternalURL,
-    newerRuntime.consoleInternalUrl,
-  );
-  assert.equal(
-    migratedRunSkill.telemetry.serviceTokenFile,
-    newerRuntime.serviceTokenFile,
-  );
+  assert.equal(migrated.plugins.entries["muad-run-skill"], undefined);
+  assert.equal(migrated.plugins.allow.includes("muad-run-skill"), false);
+  assert.equal(migrated.plugins.load.paths.includes("/opt/muad/muad-run-skill"), false);
+  assert.deepEqual(migrated.tools.alsoAllow, ["browser", "session_get_state"]);
   assert.equal(migrated.channels.wecom.botId, persistedBotId);
   assert.notEqual(migrated.channels.wecom.botId, "stale-runtime-bot");
   assert.deepEqual(

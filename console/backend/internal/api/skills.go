@@ -6,6 +6,8 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -41,9 +43,11 @@ type privateSkillInstallResult struct {
 }
 
 type skillBundleUpload struct {
-	Body         []byte
-	ExpectedName string
-	Format       string
+	Body                []byte
+	ExpectedName        string
+	Format              string
+	PlatformOverride    []string
+	PlatformOverrideSet bool
 }
 
 type skillAssetView struct {
@@ -183,14 +187,25 @@ func (s *Server) handleUploadPublicSkill(w http.ResponseWriter, r *http.Request)
 	if !s.publicSkillStorageReady(w, r) {
 		return
 	}
-	bundle, ok := readPublicSkillUpload(w, r)
+	upload, ok := readPublicSkillUpload(w, r)
 	if !ok {
 		return
 	}
-	result, err := installPublicSkillBundle(bundle, s.cfg.SkillsDir, s.rejectPublicSkillConflict)
+	result, err := installPublicSkillBundle(upload.Body, s.cfg.SkillsDir, s.rejectPublicSkillConflict)
 	if err != nil {
 		log.Printf("public_skill_upload_invalid error=%v", err)
 		writeErr(w, http.StatusBadRequest, codeInvalidField, publicSkillBundleClientMessage(err))
+		return
+	}
+	result, err = applySkillPlatformOverride(result, upload)
+	if err != nil {
+		s.removePublicSkillAfterDelete(result.Name)
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖非法")
+		return
+	}
+	if err := s.requireExistingSkillPlatforms(result.Platforms); err != nil {
+		s.removePublicSkillAfterDelete(result.Name)
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖必须是已存在的业务平台")
 		return
 	}
 	asset, podIDs, err := s.store.UpsertPublicSkillAssetAndMarkPods(repo.SkillAsset{
@@ -282,7 +297,7 @@ func (s *Server) handleListHumanUserSkills(w http.ResponseWriter, r *http.Reques
 		Query:  strings.TrimSpace(r.URL.Query().Get("q")),
 		Status: strings.TrimSpace(r.URL.Query().Get("status")),
 	}
-	skills, total, err := s.store.ResolveEffectiveSkills(s.cipher, r.PathValue("humanUserId"), filter)
+	skills, total, err := s.store.ResolveEffectiveSkills(r.PathValue("humanUserId"), filter)
 	if err != nil {
 		writeRepoError(w, err)
 		return
@@ -333,6 +348,17 @@ func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request
 	)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "runtime failure")
+		return
+	}
+	result, err = applySkillPlatformOverride(result, upload)
+	if err != nil {
+		_ = s.deletePrivateSkillInPod(r, pod.PodID, user.AgentID, result.Name)
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖非法")
+		return
+	}
+	if err := s.requireExistingSkillPlatforms(result.Platforms); err != nil {
+		_ = s.deletePrivateSkillInPod(r, pod.PodID, user.AgentID, result.Name)
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖必须是已存在的业务平台")
 		return
 	}
 	if err := s.rejectPrivateSkillConflict(result.Name, user.HumanUserID); err != nil {
@@ -429,9 +455,8 @@ func readPrivateSkillUpload(w http.ResponseWriter, r *http.Request) (skillBundle
 	return readSkillBundleUpload(w, r, ".tar.gz", ".zip")
 }
 
-func readPublicSkillUpload(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
-	upload, ok := readSkillBundleUpload(w, r, ".tar.gz", ".zip")
-	return upload.Body, ok
+func readPublicSkillUpload(w http.ResponseWriter, r *http.Request) (skillBundleUpload, bool) {
+	return readSkillBundleUpload(w, r, ".tar.gz", ".zip")
 }
 
 func readSkillBundleUpload(w http.ResponseWriter, r *http.Request, allowedExts ...string) (skillBundleUpload, bool) {
@@ -457,9 +482,13 @@ func readSkillBundleUpload(w http.ResponseWriter, r *http.Request, allowedExts .
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid skill bundle")
 		return skillBundleUpload{}, false
 	}
+	platforms, platformsSet, ok := readSkillUploadPlatforms(w, r)
+	if !ok {
+		return skillBundleUpload{}, false
+	}
 	return skillBundleUpload{
 		Body: buffer.Bytes(), ExpectedName: strings.TrimSpace(r.FormValue("expectedName")),
-		Format: format,
+		Format: format, PlatformOverride: platforms, PlatformOverrideSet: platformsSet,
 	}, true
 }
 
@@ -563,6 +592,76 @@ func (s *Server) rejectPublicSkillConflict(name string) error {
 	return nil
 }
 
+func (s *Server) requireExistingSkillPlatforms(platforms []string) error {
+	for _, platform := range platforms {
+		if _, err := s.store.GetPlatformConfig(platform); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func readSkillUploadPlatforms(
+	w http.ResponseWriter, r *http.Request,
+) ([]string, bool, bool) {
+	raw := strings.TrimSpace(r.FormValue("platforms"))
+	if raw == "" {
+		return nil, false, true
+	}
+	var values []string
+	if err := json.Unmarshal([]byte(raw), &values); err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill platforms")
+		return nil, false, false
+	}
+	platforms, err := normalizeUploadPlatforms(values)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill platforms")
+		return nil, false, false
+	}
+	return platforms, true, true
+}
+
+func normalizeUploadPlatforms(values []string) ([]string, error) {
+	platforms := make([]string, 0, len(values))
+	for _, value := range values {
+		platform := normalizePlatformName(value)
+		if platform == "" {
+			return nil, repo.ErrInvalidPlatform
+		}
+		platforms = append(platforms, platform)
+	}
+	sort.Strings(platforms)
+	return slices.Compact(platforms), nil
+}
+
+func applySkillPlatformOverride(
+	result privateSkillInstallResult, upload skillBundleUpload,
+) (privateSkillInstallResult, error) {
+	if !upload.PlatformOverrideSet {
+		return result, nil
+	}
+	result.Platforms = copySkillPlatforms(upload.PlatformOverride)
+	manifestJSON, err := replaceSkillManifestPlatforms(result.ManifestJSON, result.Platforms)
+	if err != nil {
+		return privateSkillInstallResult{}, err
+	}
+	result.ManifestJSON = manifestJSON
+	return result, nil
+}
+
+func replaceSkillManifestPlatforms(raw string, platforms []string) (string, error) {
+	var manifest map[string]any
+	if err := json.Unmarshal([]byte(raw), &manifest); err != nil || manifest == nil {
+		return "", repo.ErrInvalidSkill
+	}
+	manifest["platforms"] = copySkillPlatforms(platforms)
+	encoded, err := json.Marshal(manifest)
+	if err != nil {
+		return "", err
+	}
+	return string(encoded), nil
+}
+
 func (s *Server) hasAllowOverridePolicy(humanUserID, skillName string) (bool, error) {
 	policies, err := s.store.ListSkillPoliciesByHumanUser(humanUserID)
 	if err != nil {
@@ -577,11 +676,18 @@ func (s *Server) hasAllowOverridePolicy(humanUserID, skillName string) (bool, er
 }
 
 func mustMarshalStringSlice(values []string) string {
-	encoded, err := json.Marshal(values)
+	encoded, err := json.Marshal(copySkillPlatforms(values))
 	if err != nil {
 		return "[]"
 	}
 	return string(encoded)
+}
+
+func copySkillPlatforms(values []string) []string {
+	if len(values) == 0 {
+		return []string{}
+	}
+	return append([]string(nil), values...)
 }
 
 func skillAssetFilterFromRequest(

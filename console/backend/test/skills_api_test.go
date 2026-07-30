@@ -22,15 +22,17 @@ import (
 func TestSkillAPI_ListDetailEffectiveAndPolicies(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 	publicSkill := createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePublic,
 		SourcePath: "/opt/openclaw-skills/xdr-query", ManifestHash: "sha256:public",
+		PlatformsJSON: `["xdr"]`,
 	})
 	privateSkill := createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
 		PodID: "pod-a", SourcePath: "/home/node/.openclaw/workspace-alice/skills/xdr-query",
-		ManifestHash: "sha256:private",
+		ManifestHash: "sha256:private", PlatformsJSON: `["xdr"]`,
 	})
 
 	rr := e.do(http.MethodGet, "/api/v1/skills?q=xdr&pageSize=10", "")
@@ -93,6 +95,7 @@ func TestSkillAPI_ListDetailEffectiveAndPolicies(t *testing.T) {
 func TestSkillAPI_StatusUpdateAndProtectedSystemSkill(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "soar", "SOAR")
 	if err := os.MkdirAll(filepath.Join(e.skillsDir, "soar-sync"), 0o700); err != nil {
 		t.Fatalf("create public Skill dir: %v", err)
 	}
@@ -102,6 +105,7 @@ func TestSkillAPI_StatusUpdateAndProtectedSystemSkill(t *testing.T) {
 	publicSkill := createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "soar-sync", Scope: repo.SkillScopePublic,
 		SourcePath: "/opt/openclaw-skills/soar-sync", ManifestHash: "sha256:soar",
+		PlatformsJSON: `["soar"]`,
 	})
 	systemSkill := createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "session-manager", Scope: repo.SkillScopeSystem,
@@ -159,6 +163,7 @@ func TestSkillAPI_ScanWritesSemanticAudit(t *testing.T) {
 func TestSkillAPI_PrivateUploadAndDelete(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 
 	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", []byte("bundle"))
@@ -201,6 +206,7 @@ func TestSkillAPI_PrivateUploadAndDelete(t *testing.T) {
 func TestSkillAPI_PrivateUploadAcceptsZipBundle(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 
 	rr := e.privateSkillUploadFile(
@@ -219,15 +225,67 @@ func TestSkillAPI_PrivateUploadAcceptsZipBundle(t *testing.T) {
 	}
 }
 
+func TestSkillAPI_PrivateUploadPlatformOverrideSupportsMultiplePlatforms(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "mssw", "MSSW")
+	createTestPlatform(t, e.store, "sdsp", "SDSP")
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	rr := e.privateSkillUploadFileWithPlatforms(
+		alice.HumanUserID, "xdr-private", "xdr-private.tar.gz",
+		makeSkillBundle(t, "xdr-private", map[string]any{
+			"name": "xdr-private", "runtime": "script", "platform": "xdr",
+		}),
+		[]string{"sdsp", "mssw", "sdsp"},
+	)
+	assertStatus(t, rr, http.StatusCreated)
+	created := decodeAPIData[struct {
+		Skill struct {
+			SkillID       string `json:"skillId"`
+			PlatformsJSON string `json:"platformsJson"`
+			ManifestJSON  string `json:"manifestJson"`
+		} `json:"skill"`
+	}](t, rr.Body.Bytes())
+	if created.Skill.PlatformsJSON != `["mssw","sdsp"]` ||
+		!strings.Contains(created.Skill.ManifestJSON, `"platforms":["mssw","sdsp"]`) {
+		t.Fatalf("private override platforms = %+v", created.Skill)
+	}
+}
+
+func TestSkillAPI_PrivateUploadPlatformOverrideAllowsPlatformlessSkill(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	rr := e.privateSkillUploadFileWithPlatforms(
+		alice.HumanUserID, "generic-private", "generic-private.tar.gz",
+		[]byte("bundle"), []string{},
+	)
+	assertStatus(t, rr, http.StatusCreated)
+	created := decodeAPIData[struct {
+		Skill struct {
+			Name          string `json:"name"`
+			PlatformsJSON string `json:"platformsJson"`
+			ManifestJSON  string `json:"manifestJson"`
+		} `json:"skill"`
+	}](t, rr.Body.Bytes())
+	if created.Skill.Name != "generic-private" || created.Skill.PlatformsJSON != `[]` ||
+		!strings.Contains(created.Skill.ManifestJSON, `"platforms":[]`) {
+		t.Fatalf("platformless private override = %+v", created.Skill)
+	}
+}
+
 func TestSkillAPI_PrivateDeleteRuntimeFailureDoesNotMutateDB(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 	asset := createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-private", Scope: repo.SkillScopePrivate,
 		HumanUserID: alice.HumanUserID, PodID: alice.PodID,
 		SourcePath:   "/home/node/.openclaw/workspace-alice/skills/xdr-private",
-		ManifestHash: "sha256:private",
+		ManifestHash: "sha256:private", PlatformsJSON: `["xdr"]`,
 	})
 	e.drv.execStdinErr = errors.New("runtime unavailable")
 
@@ -243,6 +301,7 @@ func TestSkillAPI_PrivateDeleteRuntimeFailureDoesNotMutateDB(t *testing.T) {
 func TestSkillAPI_PublicUploadCreatesAssetAndMarksPods(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
 
 	rr := e.publicSkillUpload("xdr-public.tar.gz", makeSkillBundle(t, "xdr-public", map[string]any{
 		"name": "xdr-public", "runtime": "script", "version": "1.2.0",
@@ -271,6 +330,76 @@ func TestSkillAPI_PublicUploadCreatesAssetAndMarksPods(t *testing.T) {
 	}
 	if len(e.reconcile.podIDs) == 0 || e.reconcile.podIDs[len(e.reconcile.podIDs)-1] != "pod-a" {
 		t.Fatalf("public upload reconcile queue = %v", e.reconcile.podIDs)
+	}
+}
+
+func TestSkillAPI_PublicUploadAllowsPlatformlessSkill(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+
+	rr := e.publicSkillUpload("web-tools-guide.tar.gz", makeSkillBundle(t, "web-tools-guide", map[string]any{
+		"name": "web-tools-guide", "runtime": "prompt",
+	}))
+	assertStatus(t, rr, http.StatusCreated)
+	created := decodeAPIData[struct {
+		Skill struct {
+			Name          string `json:"name"`
+			PlatformsJSON string `json:"platformsJson"`
+		} `json:"skill"`
+	}](t, rr.Body.Bytes())
+	if created.Skill.Name != "web-tools-guide" || created.Skill.PlatformsJSON != `[]` {
+		t.Fatalf("platformless public Skill = %+v", created.Skill)
+	}
+}
+
+func TestSkillAPI_PublicUploadPlatformOverrideAllowsPlatformlessSkill(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+
+	rr := e.publicSkillUploadWithPlatforms(
+		"generic-public.tar.gz",
+		makeSkillBundle(t, "generic-public", map[string]any{
+			"name": "generic-public", "runtime": "script", "platform": "xdr",
+		}),
+		[]string{},
+	)
+	assertStatus(t, rr, http.StatusCreated)
+	created := decodeAPIData[struct {
+		Skill struct {
+			Name          string `json:"name"`
+			PlatformsJSON string `json:"platformsJson"`
+			ManifestJSON  string `json:"manifestJson"`
+		} `json:"skill"`
+	}](t, rr.Body.Bytes())
+	if created.Skill.Name != "generic-public" || created.Skill.PlatformsJSON != `[]` ||
+		!strings.Contains(created.Skill.ManifestJSON, `"platforms":[]`) {
+		t.Fatalf("platformless public override = %+v", created.Skill)
+	}
+}
+
+func TestSkillAPI_PublicUploadPlatformOverrideSupportsMultiplePlatforms(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "mssw", "MSSW")
+	createTestPlatform(t, e.store, "sdsp", "SDSP")
+
+	rr := e.publicSkillUploadWithPlatforms(
+		"report-bridge.tar.gz",
+		makeSkillBundle(t, "report-bridge", map[string]any{
+			"name": "report-bridge", "runtime": "script",
+		}),
+		[]string{"sdsp", "mssw", "sdsp"},
+	)
+	assertStatus(t, rr, http.StatusCreated)
+	created := decodeAPIData[struct {
+		Skill struct {
+			PlatformsJSON string `json:"platformsJson"`
+			ManifestJSON  string `json:"manifestJson"`
+		} `json:"skill"`
+	}](t, rr.Body.Bytes())
+	if created.Skill.PlatformsJSON != `["mssw","sdsp"]` ||
+		!strings.Contains(created.Skill.ManifestJSON, `"platforms":["mssw","sdsp"]`) {
+		t.Fatalf("public override platforms = %+v", created.Skill)
 	}
 }
 
@@ -323,6 +452,7 @@ func TestSkillAPI_PublicUploadRequiresReadyStorage(t *testing.T) {
 func TestSkillAPI_PublicUploadAcceptsZipBundle(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "sdsp", "SDSP")
 
 	rr := e.publicSkillUpload("sdsp-public.zip", makeZipSkillBundle(t, "sdsp-public", map[string]any{
 		"name": "sdsp-public", "runtime": "script", "platform": "sdsp",
@@ -346,6 +476,7 @@ func TestSkillAPI_PublicUploadAcceptsZipBundle(t *testing.T) {
 
 func TestSkillAPI_PublicUploadIgnoresZipMetadataEntries(t *testing.T) {
 	e := newTestEnv(t)
+	createTestPlatform(t, e.store, "mssw", "MSSW")
 
 	rr := e.publicSkillUpload("mssw-public.zip", makeZipWithFiles(t, map[string][]byte{
 		"mssw-public/":                           {},
@@ -363,9 +494,11 @@ func TestSkillAPI_PublicUploadIgnoresZipMetadataEntries(t *testing.T) {
 
 func TestSkillAPI_PublicUploadUsesSkillMarkdownFrontmatterName(t *testing.T) {
 	e := newTestEnv(t)
+	createTestPlatform(t, e.store, "mssw", "MSSW")
 
 	rr := e.publicSkillUpload("web-tools-guide-1.0.2.zip", makeZipWithFiles(t, map[string][]byte{
-		"web-tools-guide-1.0.2/SKILL.md": []byte("---\nname: web-tools-guide\ndescription: test\n---\n# Web\n"),
+		"web-tools-guide-1.0.2/SKILL.md":        []byte("---\nname: web-tools-guide\ndescription: test\n---\n# Web\n"),
+		"web-tools-guide-1.0.2/muad.skill.json": []byte(`{"platform":"mssw"}`),
 	}))
 	assertStatus(t, rr, http.StatusCreated)
 	created := decodeAPIData[struct {
@@ -421,10 +554,12 @@ func TestSkillAPI_PublicUploadRejectsSystemOverrideBeforeWriting(t *testing.T) {
 func TestSkillAPI_PrivateUploadRejectsPublicConflictAndCleansRuntime(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 	createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-private", Scope: repo.SkillScopePublic,
 		SourcePath: "/opt/openclaw-skills/xdr-private", ManifestHash: "sha256:public",
+		PlatformsJSON: `["xdr"]`,
 	})
 
 	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", []byte("bundle"))
@@ -439,10 +574,12 @@ func TestSkillAPI_PrivateUploadRejectsPublicConflictAndCleansRuntime(t *testing.
 func TestSkillAPI_PrivateUploadAllowsPublicOverrideWithPolicy(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 	createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-private", Scope: repo.SkillScopePublic,
 		SourcePath: "/opt/openclaw-skills/xdr-private", ManifestHash: "sha256:public",
+		PlatformsJSON: `["xdr"]`,
 	})
 	if _, err := e.store.CreateSkillPolicy(repo.SkillPolicy{
 		HumanUserID: alice.HumanUserID, SkillName: "xdr-private",
@@ -479,9 +616,19 @@ func (e *testEnv) privateSkillUpload(
 func (e *testEnv) privateSkillUploadFile(
 	humanUserID, expectedName, filename string, bundle []byte,
 ) *httptest.ResponseRecorder {
+	return e.privateSkillUploadFileWithPlatforms(humanUserID, expectedName, filename, bundle, nil)
+}
+
+func (e *testEnv) privateSkillUploadFileWithPlatforms(
+	humanUserID, expectedName, filename string, bundle []byte, platforms []string,
+) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	_ = writer.WriteField("expectedName", expectedName)
+	if platforms != nil {
+		raw, _ := json.Marshal(platforms)
+		_ = writer.WriteField("platforms", string(raw))
+	}
 	file, _ := writer.CreateFormFile("bundle", filename)
 	_, _ = file.Write(bundle)
 	_ = writer.Close()
@@ -495,8 +642,18 @@ func (e *testEnv) privateSkillUploadFile(
 }
 
 func (e *testEnv) publicSkillUpload(filename string, bundle []byte) *httptest.ResponseRecorder {
+	return e.publicSkillUploadWithPlatforms(filename, bundle, nil)
+}
+
+func (e *testEnv) publicSkillUploadWithPlatforms(
+	filename string, bundle []byte, platforms []string,
+) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
+	if platforms != nil {
+		raw, _ := json.Marshal(platforms)
+		_ = writer.WriteField("platforms", string(raw))
+	}
 	file, _ := writer.CreateFormFile("bundle", filename)
 	_, _ = file.Write(bundle)
 	_ = writer.Close()

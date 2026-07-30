@@ -104,7 +104,9 @@ async function readSkillMetadata(skillDir, expectedName) {
   }
   const version = typeof rawManifest?.version === "string" ? rawManifest.version.trim() : "";
   const platforms = normalizePlatforms(rawManifest?.platforms ?? rawManifest?.platform);
-  const progressSupported = Boolean(rawManifest?.progress) || /muad-progress/u.test(skillMarkdown);
+  // Progress telemetry is disabled in the minimal runtime until a new audited
+  // execution layer owns it end to end.
+  const progressSupported = false;
   const browserRequired = rawManifest?.browserRequired === true ||
     (Array.isArray(rawManifest?.capabilities) && rawManifest.capabilities.includes("browser"));
   const scriptFiles = rawManifest ? [] : await scanTraditionalScripts(skillDir);
@@ -147,7 +149,13 @@ function ignoredScriptDirectory(name) {
 
 function normalizePlatforms(value) {
   const raw = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
-  const platforms = raw.map((item) => normalizePlatformName(item)).filter(Boolean);
+  const platforms = [];
+  for (const item of raw) {
+    if (!String(item ?? "").trim()) continue;
+    const platform = normalizePlatformName(item);
+    if (!platform) throw new Error("invalid platform dependency");
+    platforms.push(platform);
+  }
   return [...new Set(platforms)].sort();
 }
 

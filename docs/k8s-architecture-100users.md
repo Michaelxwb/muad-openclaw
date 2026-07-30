@@ -28,7 +28,7 @@
 | IM Identity | 企业微信、微信、后续飞书等 IM 身份 | 把不同通道的外部发送者绑定到同一个 Human User |
 | 模型池 | LLM 凭证和模型配置 | 每个 Human User 绑定一个未占用模型配置，支持不同用户使用不同 key |
 | Skill 管理 | 业务能力开发者 / 管理员 | 管理 system/public/private skill 资产、用户生效视图、冲突策略和执行记录 |
-| Skill 体系 | Agent / 业务 skill | Public skill 全局共享，Private skill 按用户隔离，最终执行由 `muad-run-skill` 统一约束 |
+| Skill 体系 | Agent / 业务 skill | Public skill 全局共享，Private skill 按用户隔离，执行走 OpenClaw 原生 Skill 激活，Runtime Guard 统一约束 Skill/browser 并发 |
 | Session Manager | 业务 skill | 位于 skill 与业务系统之间，统一处理平台 API key、Cookie 和浏览器会话状态 |
 | 业务平台 | 企业内部系统 | SOAR、Sea_SOAR、MSSW、XDR、SDSP 等业务系统由 skill 调用 |
 | Runtime Guard | 平台安全边界 | 保证 agent 只能访问自己的 workspace、browser profile 和 session-store |
@@ -67,7 +67,7 @@
 2. Runtime Pod 根据消息里的 channel、account、peer/external id 匹配 Identity。
 3. 匹配成功后，消息被路由到该 Human User 对应的 agent。
 4. Agent 读取自己的 workspace 记忆、private skill、业务平台凭证和浏览器 profile。
-5. 如果用户发起长耗时任务，skill 通过 `muad-run-skill` 和 `muad-progress` 返回阶段进度。
+5. 如果用户显式触发 Skill，OpenClaw 原生 Skill 激活负责读取和执行，Runtime Guard 只限制 Skill/browser 并发；当前最小版本不再提供阶段进度 outbox。
 6. Agent 将最终结果返回企业微信，用户可以继续追问，记忆在同一个 agent workspace 内持续积累。
 
 企业微信旅程的重点是“内部协作”：身份相对明确、权限更强、可能触发内部系统查询或处置动作，因此需要更明确的权限边界、审计和运行时隔离。
@@ -96,16 +96,16 @@
 5. API key 不写入 skill 输出、不进入普通日志；Session Manager 可把派生出的 Cookie/storageState 持久化到该用户的 session-store。
 6. 平台禁用或用户删除某个平台 key 后，下一次访问应返回明确错误，不继续复用旧 session cache。
 
-### 2.5 长任务进度反馈旅程
+### 2.5 Skill 执行与并发控制旅程
 
-OpenClaw 原生最终回复仍然负责承载最终结果，包含文本、附件、图片或卡片等内容。muad 只在长任务执行过程中补充阶段进度。
+OpenClaw 原生最终回复负责承载结果，包含文本、附件、图片或卡片等内容。当前最小版本不再提供 `muad_run_skill`、`muad-progress` 或 telemetry outbox。
 
-1. Agent 判断需要执行某个长耗时 skill。
-2. Agent 调用统一的 `muad_run_skill` tool，而不是为每个 skill 注册独立 tool。
-3. `muad-run-skill` 根据当前 agent 可见的 skill manifest 找到入口脚本，并注入可信 agent/session 上下文。
-4. Skill 脚本使用语言无关的 `muad-progress` CLI 上报阶段，例如 accepted、auth、query、analysis、done。
-5. 进度消息作为独立 IM 消息投递，避免用户长时间无反馈。
-6. Skill 执行完成后，最终结果仍走 OpenClaw native final reply 链路，保证附件和富媒体内容不丢失。
+1. Agent 判断需要执行某个授权 Skill。
+2. Agent 按 OpenClaw 原生 Skill 激活路径读取 `SKILL.md` 和允许的脚本/资源。
+3. Runtime Guard 在工具调用入口限制 Skill 与 browser 并发，普通对话不进入该限流。
+4. 涉及业务平台登录态时，Skill 调用 `session_get_state`，由 Session Manager 获取或刷新用户的平台 session。
+5. Skill 完成后结果仍走 OpenClaw native final reply 链路，保证附件和富媒体内容不丢失。
+6. Skill 执行日志 tab 先保留为简易审计入口，后续由新的执行层补齐更完整的生命周期事件。
 
 ### 2.6 异常与恢复
 
@@ -152,7 +152,7 @@ OpenClaw 原生最终回复仍然负责承载最终结果，包含文本、附�
 | `platform_configs` | 业务平台定义，首期包括 SOAR、Sea_SOAR、MSSW、XDR、SDSP |
 | `skill_assets` | system/public/private skill 元数据，记录来源、版本、依赖平台和状态 |
 | `skill_policies` | Human User 维度的 skill 策略，例如禁用或允许 private 覆盖 public |
-| `skill_execution_records` | `muad-run-skill` 上报的执行摘要、进度阶段、耗时和失败原因 |
+| `skill_execution_records` | Skill 执行日志的简易审计记录，后续可由新的执行层补齐生命周期事件 |
 | `resource_global` | Pod 默认资源配置 |
 | `audit_log` | 管理员和系统关键操作审计 |
 
@@ -169,7 +169,7 @@ OpenClaw 原生最终回复仍然负责承载最终结果，包含文本、附�
 | identityLinks | 辅助一人多 IM 的身份归一；记忆共享主要依赖多个 Identity 路由到同一个 agent |
 | browser profiles | 每个 Human User 一个浏览器 profile 和 CDP 端口 |
 | Runtime Guard | 强制工具访问当前 agent 的 workspace、browser profile 和 session-store |
-| muad-run-skill | 统一执行 script skill，注入可信 agent/session 上下文并控制并发 |
+| Runtime Guard Skill lease | 约束显式 Skill 与 browser 工具并发，普通对话不限流 |
 | Session Manager | 统一管理平台凭证解析、Cookie/storageState 和业务系统会话 |
 | State PVC | 持久化 agent workspace、browser profile、session-store、private skills |
 
@@ -248,11 +248,11 @@ Console 侧提供两个视角：
   └── skills/                                 # private skills
 ```
 
-同名覆盖要谨慎。OpenClaw 原生加载顺序允许 workspace skill 优先于 public skill，但 muad 控制面和 `muad-run-skill` 默认拒绝未经审批的同名覆盖，避免用户误替换企业公共技能。当前规则如下：
+同名覆盖要谨慎。OpenClaw 原生加载顺序允许 workspace skill 优先于 public skill，但 muad 控制面默认标记冲突，必须由管理员审批后才让 private 覆盖 public，避免用户误替换企业公共技能。当前规则如下：
 
 | 规则 | 说明 |
 |---|---|
-| system skill 受保护 | `session-manager`、`muad-run-skill`、Runtime Guard 等基础能力不允许被覆盖、禁用或删除 |
+| system skill 受保护 | `session-manager`、Runtime Guard 等基础能力不允许被覆盖、禁用或删除 |
 | public/private 同名默认冲突 | private skill 可以上传，但在 Human User 生效视图中标记 conflict，默认 public 生效 |
 | allow_override 后 private 生效 | 管理员在用户维度确认覆盖后，Runtime config 为该 agent 下发 private skill 白名单 |
 | disable 策略按用户生效 | 管理员可以只禁用某个 Human User 的某个 skill，不影响其他用户 |
@@ -262,9 +262,9 @@ Private skill 上传不由 Console 直接写 Runtime PVC。Console 通过目标 
 
 Public skill 由全局 Skill 管理页上传 `.tar.gz` 或 `.zip` bundle。Console 解包前校验路径逃逸、符号链接和 `SKILL.md`，skill 名称优先取 `muad.skill.json.name`，其次取 `SKILL.md` frontmatter 的 `name`，最后才取包内 skill 目录名；发布成功后写入 public `skill_assets` 并标记所有 Pod 配置待应用。system skill 受保护，public 上传不能覆盖同名 system skill。
 
-长耗时 script skill 必须通过 `muad-run-skill` 执行；脚本内部用 `muad-progress` 上报阶段。Python、TypeScript、Shell skill 都通过 CLI 接入，不需要为不同语言分别维护 SDK。
+当前最小版本删除 `muad-run-skill` 和 `muad-progress` 托管执行链路。Skill 执行走 OpenClaw 原生 Skill 激活与工具调用；Runtime Guard 负责 Skill/browser 并发限制，Session Manager 负责平台 session 获取。Python、TypeScript、Shell skill 都可以通过各自脚本实现业务逻辑，平台凭证统一通过 `session_get_state` 获取。
 
-`muad-run-skill` 执行前会读取当前 agent 的 skill whitelist，拒绝 disabled、conflict、unknown 或跨用户 skill。执行过程中 runner 以 best-effort 调用 Console internal API 写入 `skill_execution_records`：start/progress/done/fail 事件只保存脱敏摘要、阶段、耗时和错误信息，不保存完整 stdout、业务 payload、API key 或 Cookie。
+Skill 执行审计先保留数据模型和 Console tab，用于后续简易审计或新的执行层接入。当前最小版本不再承诺由 runtime outbox 自动写入 start/progress/done/fail 全量生命周期事件。
 
 审计日志记录以下 Skill 相关动作：`skill.asset.scan`、`skill.asset.install`、`skill.asset.update`、`skill.asset.delete`、`skill.policy.create`、`skill.policy.delete`、`skill.execution.fail`。
 
@@ -417,12 +417,12 @@ State PVC 不再表示“单用户状态卷”，而是一个 Runtime Pod 内多
 | 未绑定 sender 不自动创建正式用户 | 必须由管理员创建 Human User 或绑定码，避免未知用户占用资源 |
 | 用户模型只走模型池 | 禁止恢复 global model、Pod model override、Human User override fallback |
 | 不直接改上游插件代码 | 通过 adapter、wrapper、配置注入或 Runtime Guard 扩展 OpenClaw |
-| OpenClaw final reply 保持原生链路 | 进度消息只补充阶段反馈，最终结果仍保留文本、附件、图片、卡片等能力 |
+| OpenClaw final reply 保持原生链路 | 当前最小版本只保证最终结果链路，阶段进度由后续执行层补齐 |
 | 业务平台 key 不落入普通日志 | Session Manager 和 internal resolver 只传递必要凭证，输出必须脱敏 |
 | Public / Private skill 有边界 | Public 只读共享，Private 按 agent workspace 隔离，默认拒绝未经审批的同名覆盖 |
-| Skill 执行必须双层约束 | Runtime config 下发 per-agent whitelist，`muad-run-skill` 执行前再次校验 |
+| Skill 执行必须双层约束 | Runtime config 下发 per-agent whitelist，Runtime Guard 对显式 Skill/browser 调用做并发约束 |
 | Private skill 不跨用户安装 | Console 只通过目标 Pod installer 写入目标 agent workspace，不直接写 Runtime PVC |
-| Skill 执行记录只存摘要 | 只记录阶段、耗时、状态和脱敏错误，禁止保存完整业务 payload、API key 或 Cookie |
+| Skill 执行记录只存摘要 | 只记录必要状态和脱敏错误，禁止保存完整业务 payload、API key 或 Cookie |
 
 ---
 

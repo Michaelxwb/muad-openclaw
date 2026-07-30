@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Input, Modal, Space, Table, Tag, Toast } from "@douyinfe/semi-ui";
+import { Button, Modal, Space, Table, Tag, TextArea, Toast } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type { HumanUser, Platform, PlatformCredential } from "../../api";
 import { useMountedRef } from "../../hooks/useMountedRef";
@@ -110,10 +110,14 @@ function credentialColumns(
       ),
     },
     {
-      title: "API Key",
+      title: "认证指纹",
       key: "credential",
       render: (_: unknown, row: CredentialRow) =>
-        row.credential ? <span className="mono">{row.credential.keyFingerprint}</span> : "未配置",
+        row.credential ? (
+          <span className="mono">{row.credential.credentialFingerprint}</span>
+        ) : (
+          "未配置"
+        ),
     },
     {
       title: "更新时间",
@@ -151,35 +155,43 @@ interface CredentialDialogProps {
 }
 
 function CredentialEditorDialog(props: CredentialDialogProps) {
-  const [apiKey, setApiKey] = useState("");
+  const [credentialsJSON, setCredentialsJSON] = useState("{}");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     if (!props.row) return;
-    setApiKey("");
+    setCredentialsJSON("{}");
     setError("");
   }, [props.row]);
   const submit = async () => {
-    const secret = apiKey.trim();
-    if (!secret || !props.row) return setError("API Key 必填");
+    if (!props.row) return;
+    const credentials = parseCredentials(credentialsJSON);
+    if (typeof credentials === "string") {
+      setError(credentials);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      await api.putPlatformCredential(props.user.humanUserId, props.row.platform.platform, secret);
+      await api.putPlatformCredential(
+        props.user.humanUserId,
+        props.row.platform.platform,
+        credentials,
+      );
       props.onClose();
       Toast.success("平台凭证已保存");
       await props.onSaved();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "保存平台凭证失败");
     } finally {
-      setApiKey("");
+      setCredentialsJSON("{}");
       setBusy(false);
     }
   };
   return (
     <Modal
       className="standard-modal"
-      title={`${props.row?.credential ? "覆盖" : "配置"} ${props.row?.platform.displayName ?? ""} API Key`}
+      title={`${props.row?.credential ? "覆盖" : "配置"} ${props.row?.platform.displayName ?? ""} 认证信息`}
       visible={props.row !== null}
       onCancel={props.onClose}
       onOk={() => void submit()}
@@ -187,17 +199,28 @@ function CredentialEditorDialog(props: CredentialDialogProps) {
       confirmLoading={busy}
     >
       <FeedbackBanner error={error} />
-      <Field label="API Key">
-        <Input
-          aria-label="业务平台 API Key"
-          type="password"
-          value={apiKey}
-          onChange={setApiKey}
-          placeholder={props.row?.credential ? "输入新 API Key 以覆盖" : "输入 API Key"}
+      <Field label="认证 JSON">
+        <TextArea
+          aria-label="业务平台认证 JSON"
+          value={credentialsJSON}
+          onChange={setCredentialsJSON}
+          rows={8}
         />
       </Field>
     </Modal>
   );
+}
+
+function parseCredentials(raw: string): Record<string, unknown> | string {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return "认证信息必须是 JSON 对象";
+    }
+    return parsed as Record<string, unknown>;
+  } catch (caught) {
+    return caught instanceof Error ? `认证 JSON 无效：${caught.message}` : "认证 JSON 无效";
+  }
 }
 
 function DeleteCredentialDialog(props: CredentialDialogProps) {
@@ -230,7 +253,7 @@ function DeleteCredentialDialog(props: CredentialDialogProps) {
       okButtonProps={{ type: "danger" as const }}
     >
       <FeedbackBanner error={error} />
-      删除后，该用户调用对应平台 Skill 时将无法解析凭证。
+      删除后，该用户调用对应平台 Skill 时将无法解析认证信息。
     </Modal>
   );
 }

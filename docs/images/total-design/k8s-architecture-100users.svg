@@ -107,9 +107,9 @@
     <rect x="32" y="78" width="186" height="32" rx="10" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
     <text x="125" y="100" text-anchor="middle" class="small">Agents 默认约 10</text>
     <rect x="32" y="118" width="186" height="32" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-    <text x="125" y="140" text-anchor="middle" class="tiny">guard · run-skill · session</text>
+    <text x="125" y="140" text-anchor="middle" class="tiny">guard · session manager</text>
     <rect x="32" y="158" width="186" height="32" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-    <text x="125" y="180" text-anchor="middle" class="tiny">muad-progress</text>
+    <text x="125" y="180" text-anchor="middle" class="tiny">Skill/browser lease</text>
     <rect x="32" y="198" width="186" height="30" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
     <text x="125" y="218" text-anchor="middle" class="tiny">State / browser / private skills</text>
   </g>
@@ -121,9 +121,9 @@
     <rect x="32" y="78" width="186" height="32" rx="10" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
     <text x="125" y="100" text-anchor="middle" class="small">Agents 默认约 10</text>
     <rect x="32" y="118" width="186" height="32" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-    <text x="125" y="140" text-anchor="middle" class="tiny">guard · run-skill · session</text>
+    <text x="125" y="140" text-anchor="middle" class="tiny">guard · session manager</text>
     <rect x="32" y="158" width="186" height="32" rx="10" fill="#ffedd5" stroke="#fdba74" stroke-width="2"/>
-    <text x="125" y="180" text-anchor="middle" class="tiny">muad-progress</text>
+    <text x="125" y="180" text-anchor="middle" class="tiny">Skill/browser lease</text>
     <rect x="32" y="198" width="186" height="30" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
     <text x="125" y="218" text-anchor="middle" class="tiny">State / browser / private skills</text>
   </g>

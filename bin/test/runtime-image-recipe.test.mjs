@@ -37,7 +37,6 @@ test("worker image builds session-manager and installs all runtime plugins and C
     "COPY tools/session-manager/fixtures ./fixtures",
     "RUN npm test",
     "/opt/muad/session-manager",
-    "/opt/muad/muad-run-skill",
     "/opt/muad/muad-runtime-guard",
     "/opt/muad/muad-runtime-guard/src/binding_code_spec.json",
     "private-skill-installer.mjs",

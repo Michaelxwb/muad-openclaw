@@ -72,7 +72,7 @@ func TestCollector_CollectOnce_PopulatesCache(t *testing.T) {
 		t.Errorf("runtime defaults not inherited: %+v", snap)
 	}
 	if !snap.RuntimeGuardHealthy || snap.SkillActive != 1 || snap.SkillQueued != 2 ||
-		snap.RuntimeGeneration != 3 || snap.SkillTelemetryPending != 2 || snap.SkillTelemetryWriteFailed {
+		snap.RuntimeGeneration != 3 || snap.BrowserActive != 1 || snap.BrowserQueued != 0 {
 		t.Errorf("runtime health not aggregated: %+v", snap)
 	}
 

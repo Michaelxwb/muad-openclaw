@@ -1,5 +1,6 @@
 import {
   type AdapterRefreshInput,
+  type AdapterValidateInput,
   type AdapterSessionState,
   type BrowserStorageState,
   PlatformAdapterError,
@@ -11,6 +12,10 @@ import {
 
 const DEFAULT_SESSION_TTL_SECONDS = 15 * 60;
 const MAX_ADAPTER_RESPONSE_BYTES = 1024 * 1024;
+const CONTROL_CREDENTIAL_KEYS = new Set([
+  "baseUrl", "sessionEndpoint", "healthEndpoint", "sessionMode",
+  "sessionTtlSeconds", "sessionRequestBody",
+]);
 
 export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -26,16 +31,33 @@ export class HTTPSessionAdapter implements PlatformAdapter {
   async refresh(input: AdapterRefreshInput): Promise<AdapterSessionState> {
     if (input.credential.platform !== this.platform) throw new PlatformAdapterError();
     try {
-      const response = await this.#fetch(sessionURL(input.credential.platformConfig), {
+      const url = sessionURL(input.credential.credentials);
+      const response = await this.#fetch(url, {
         method: "POST",
         signal: input.signal,
-        headers: {
-          Authorization: `Bearer ${input.credential.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sessionMode: input.credential.sessionMode }),
+        headers: sessionHeaders(input.credential.credentials),
+        body: sessionRequestBody(input.credential.credentials),
       });
-      return await readSessionResponse(response, input.credential.platformConfig);
+      return await readSessionResponse(response, input.credential.credentials, url);
+    } catch (error) {
+      if (error instanceof PlatformAdapterError) throw error;
+      throw new PlatformAdapterError(false, true);
+    }
+  }
+
+  async validate(input: AdapterValidateInput): Promise<boolean> {
+    if (input.credential.platform !== this.platform) throw new PlatformAdapterError();
+    const url = healthURL(input.credential.credentials);
+    if (!url) return true;
+    try {
+      const response = await this.#fetch(url, {
+        method: "GET",
+        signal: input.signal,
+        headers: healthHeaders(input.credential.credentials, input.state.cookies),
+      });
+      if (response.status === 401 || response.status === 403) return false;
+      if (!response.ok) throw new PlatformAdapterError(false, response.status >= 500 || response.status === 429);
+      return true;
     } catch (error) {
       if (error instanceof PlatformAdapterError) throw error;
       throw new PlatformAdapterError(false, true);
@@ -46,6 +68,7 @@ export class HTTPSessionAdapter implements PlatformAdapter {
 async function readSessionResponse(
   response: Response,
   config: Record<string, unknown>,
+  url: URL,
 ): Promise<AdapterSessionState> {
   if (response.status === 401 || response.status === 403) throw new PlatformAdapterError(true);
   if (!response.ok) throw new PlatformAdapterError(false, response.status >= 500 || response.status === 429);
@@ -53,7 +76,12 @@ async function readSessionResponse(
   if (text.length > MAX_ADAPTER_RESPONSE_BYTES) throw new PlatformAdapterError();
   const payload = sessionPayload(text);
   const storageState = parseStorageState(payload.storageState);
-  const cookies = parseCookies(payload.cookies ?? storageState?.cookies);
+  const responseCookies = setCookieHeaders(response.headers)
+    .map((header) => parseSetCookie(header, url))
+    .filter((cookie): cookie is SessionCookie => cookie !== null);
+  const cookies = responseCookies.length > 0
+    ? responseCookies
+    : parseCookies(payload.cookies ?? storageState?.cookies);
   const normalized = storageState ?? { cookies, origins: [] };
   if (cookies.length === 0 && normalized.origins.length === 0) throw new PlatformAdapterError();
   return {
@@ -64,6 +92,7 @@ async function readSessionResponse(
 }
 
 function sessionPayload(text: string): Record<string, unknown> {
+  if (text.trim() === "") return {};
   try {
     const parsed: unknown = JSON.parse(text);
     if (!isRecord(parsed)) throw new PlatformAdapterError();
@@ -126,6 +155,43 @@ function sessionURL(config: Record<string, unknown>): URL {
   }
 }
 
+function sessionHeaders(credentials: Record<string, unknown>): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (typeof credentials.apiKey === "string" && credentials.apiKey.trim() !== "") {
+    headers.Authorization = `Bearer ${credentials.apiKey.trim()}`;
+  }
+  const ak = optionalString(credentials.ak ?? credentials.accessKey);
+  const sk = optionalString(credentials.sk ?? credentials.secretKey);
+  if (ak) headers["X-Access-Key"] = ak;
+  if (sk) headers["X-Secret-Key"] = sk;
+  return headers;
+}
+
+function healthHeaders(
+  credentials: Record<string, unknown>, cookies: readonly SessionCookie[],
+): Record<string, string> {
+  const headers = sessionHeaders(credentials);
+  delete headers["Content-Type"];
+  const cookieHeader = cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
+  if (cookieHeader) headers.Cookie = cookieHeader;
+  return headers;
+}
+
+function sessionRequestBody(credentials: Record<string, unknown>): string {
+  if (isRecord(credentials.sessionRequestBody)) return JSON.stringify(credentials.sessionRequestBody);
+  const body: Record<string, unknown> = { sessionMode: sessionMode(credentials) };
+  for (const [key, value] of Object.entries(credentials)) {
+    if (CONTROL_CREDENTIAL_KEYS.has(key) || key === "apiKey") continue;
+    body[key] = value;
+  }
+  return JSON.stringify(body);
+}
+
+function sessionMode(credentials: Record<string, unknown>): string {
+  const value = credentials.sessionMode;
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : "storage_state";
+}
+
 function sessionExpiry(value: unknown, config: Record<string, unknown>): string {
   if (typeof value === "string" && Number.isFinite(Date.parse(value)) && Date.parse(value) > Date.now()) return value;
   const configured = config.sessionTtlSeconds;
@@ -134,9 +200,81 @@ function sessionExpiry(value: unknown, config: Record<string, unknown>): string 
   return new Date(Date.now() + seconds * 1000).toISOString();
 }
 
+function healthURL(config: Record<string, unknown>): URL | null {
+  const endpoint = typeof config.healthEndpoint === "string" ? config.healthEndpoint.trim() : "";
+  if (!endpoint) return null;
+  try {
+    return new URL(endpoint, withTrailingSlash(requiredString(config.baseUrl)));
+  } catch {
+    throw new PlatformAdapterError();
+  }
+}
+
+function setCookieHeaders(headers: Headers): string[] {
+  const getSetCookie = (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
+  if (typeof getSetCookie === "function") return getSetCookie.call(headers);
+  const combined = headers.get("set-cookie");
+  return combined ? splitSetCookieHeader(combined) : [];
+}
+
+function splitSetCookieHeader(value: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] !== "," || !looksLikeCookiePair(value.slice(index + 1))) continue;
+    parts.push(value.slice(start, index).trim());
+    start = index + 1;
+  }
+  parts.push(value.slice(start).trim());
+  return parts.filter(Boolean);
+}
+
+function looksLikeCookiePair(value: string): boolean {
+  const match = /^\s*([^=;, ]+)=/u.exec(value);
+  const key = match?.[1]?.toLowerCase() ?? "";
+  return Boolean(key && !["expires", "max-age", "path", "domain"].includes(key));
+}
+
+function parseSetCookie(header: string, url: URL): SessionCookie | null {
+  const [pair = "", ...attributes] = header.split(";").map((item) => item.trim());
+  const separator = pair.indexOf("=");
+  if (separator <= 0) return null;
+  const cookie: SessionCookie = {
+    name: pair.slice(0, separator),
+    value: pair.slice(separator + 1),
+    domain: url.hostname,
+    path: "/",
+  };
+  applyCookieAttributes(cookie, attributes);
+  return cookie.name && cookie.value ? cookie : null;
+}
+
+function applyCookieAttributes(cookie: SessionCookie, attributes: readonly string[]): void {
+  for (const attribute of attributes) {
+    const [rawKey = "", ...rawValue] = attribute.split("=");
+    const key = rawKey.trim().toLowerCase();
+    const value = rawValue.join("=").trim();
+    if (key === "domain" && value) cookie.domain = value;
+    if (key === "path" && value) cookie.path = value;
+    if (key === "httponly") cookie.httpOnly = true;
+    if (key === "secure") cookie.secure = true;
+    if (key === "samesite" && isSameSite(value)) cookie.sameSite = value;
+    if (key === "expires") setCookieExpires(cookie, Date.parse(value) / 1000);
+    if (key === "max-age") setCookieExpires(cookie, Date.now() / 1000 + Number(value));
+  }
+}
+
+function setCookieExpires(cookie: SessionCookie, value: number): void {
+  if (Number.isFinite(value)) cookie.expires = Math.floor(value);
+}
+
 function requiredString(value: unknown): string {
   if (typeof value !== "string" || value.trim() === "") throw new PlatformAdapterError();
   return value;
+}
+
+function optionalString(value: unknown): string {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : "";
 }
 
 function withTrailingSlash(value: string): string {

@@ -1,12 +1,10 @@
 package runtimeconfig
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"io"
 	"slices"
 	"strings"
 
@@ -24,42 +22,15 @@ func (builder *Builder) buildPlatforms(input []repo.PlatformConfig) ([]driver.Ru
 		if !platform.Enabled {
 			continue
 		}
-		config, err := builder.platformConfig(platform.ConfigEnc)
-		if err != nil {
-			return nil, err
-		}
 		if platform.Platform == "" || strings.TrimSpace(platform.DisplayName) == "" {
 			return nil, ErrInvalidRuntimeSource
 		}
 		result = append(result, driver.RuntimePlatform{
-			ID: platform.Platform, DisplayName: strings.TrimSpace(platform.DisplayName), Config: config,
+			ID: platform.Platform, DisplayName: strings.TrimSpace(platform.DisplayName),
+			Config: json.RawMessage(`{}`),
 		})
 	}
 	return result, nil
-}
-
-func (builder *Builder) platformConfig(encrypted string) (json.RawMessage, error) {
-	if encrypted == "" {
-		return json.RawMessage(`{}`), nil
-	}
-	plain, err := builder.cipher.Decrypt(encrypted)
-	if err != nil {
-		return nil, wrapInvalid("decrypt platform config", err)
-	}
-	decoder := json.NewDecoder(bytes.NewBufferString(plain))
-	decoder.UseNumber()
-	var value map[string]any
-	if err := decoder.Decode(&value); err != nil || value == nil {
-		return nil, wrapInvalid("decode platform config", valueOrError(err))
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return nil, wrapInvalid("decode platform config", errors.New("trailing JSON value"))
-	}
-	canonical, err := json.Marshal(value)
-	if err != nil {
-		return nil, wrapInvalid("canonicalize platform config", err)
-	}
-	return canonical, nil
 }
 
 func finish(config driver.RuntimeConfigV1) (Result, error) {

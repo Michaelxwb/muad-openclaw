@@ -199,7 +199,7 @@ func (f *fakeDriver) Exec(_ context.Context, podID string, cmd ...string) (strin
 		if generation == 0 {
 			generation = 3
 		}
-		return fmt.Sprintf(`{"ok":true,"generation":%d,"skill":{"active":1,"queued":2},"browser":{"active":1,"queued":0},"telemetry":{"loaded":true,"pending":2,"writeFailed":false,"dropped":0,"lastError":""}}`, generation), nil
+		return fmt.Sprintf(`{"ok":true,"generation":%d,"skill":{"active":1,"queued":2},"browser":{"active":1,"queued":0}}`, generation), nil
 	default:
 		// `openclaw channels status --json`.
 		if f.channelDisconnected {

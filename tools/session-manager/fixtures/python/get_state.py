@@ -7,7 +7,7 @@ def main() -> int:
     if len(sys.argv) != 2:
         return 2
     result = subprocess.run(
-        ["session-manager", "get-state", "--platform", sys.argv[1]],
+        ["session-manager", "get-state", "--skill-name", sys.argv[1]],
         check=False,
         capture_output=True,
         text=True,

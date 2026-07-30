@@ -124,6 +124,8 @@ function parseEnvelope(text: string): ResolverEnvelope {
 }
 
 function resolverHTTPError(status: number, code: number): SessionManagerError {
+  if (code === 40004) return new SessionManagerError("platform_required");
+  if (code === 40005) return new SessionManagerError("platform_not_bound");
   if (code === 40402) return new SessionManagerError("not_configured");
   if (code === 40905) return new SessionManagerError("platform_disabled");
   if (code === 40401) return new SessionManagerError("agent_not_active");
@@ -132,16 +134,15 @@ function resolverHTTPError(status: number, code: number): SessionManagerError {
 }
 
 function parseCredential(value: unknown, request: ResolveRequest): ResolvedCredential {
-  if (!isRecord(value) || !isRecord(value.platformConfig)) throw unavailable();
+  if (!isRecord(value) || !isRecord(value.credentials)) throw unavailable();
   const credential = {
     humanUserId: requiredString(value.humanUserId), podId: requiredString(value.podId),
-    agentId: requiredString(value.agentId),
+    agentId: requiredString(value.agentId), skillName: requiredString(value.skillName),
     platform: requiredString(value.platform), credentialFingerprint: requiredString(value.credentialFingerprint),
-    platformConfigFingerprint: requiredString(value.platformConfigFingerprint), apiKey: requiredString(value.apiKey),
-    sessionMode: requiredString(value.sessionMode), adapter: requiredString(value.adapter),
-    platformConfig: value.platformConfig,
+    credentials: value.credentials,
   } satisfies ResolvedCredential;
-  if (credential.agentId !== request.agentId || credential.platform !== request.platform) throw unavailable();
+  if (credential.agentId !== request.agentId || credential.skillName !== request.skillName) throw unavailable();
+  if (request.platform && credential.platform !== request.platform) throw unavailable();
   return credential;
 }
 
@@ -181,6 +182,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-export function makeResolveRequest(agentId: string, platform: string): ResolveRequest {
-  return { agentId, platform, purpose: RESOLVER_PURPOSE };
+export function makeResolveRequest(agentId: string, skillName: string, platform = ""): ResolveRequest {
+  const normalized = platform.trim();
+  return {
+    agentId,
+    skillName,
+    ...(normalized ? { platform: normalized } : {}),
+    purpose: RESOLVER_PURPOSE,
+  };
 }

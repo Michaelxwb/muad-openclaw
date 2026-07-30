@@ -28,7 +28,7 @@ type Source interface {
 	ListPlatformConfigs() ([]repo.PlatformConfig, error)
 	ListLLMModelConfigs(filter repo.LLMModelConfigListFilter) ([]repo.LLMModelConfig, error)
 	ResolveEffectiveSkills(
-		cipher *secretcrypto.Cipher, humanUserID string, filter repo.EffectiveSkillFilter,
+		humanUserID string, filter repo.EffectiveSkillFilter,
 	) ([]repo.EffectiveSkill, int, error)
 }
 
@@ -170,9 +170,7 @@ func (builder *Builder) buildSkillState(
 	policies := make([]driver.RuntimeAgentSkills, 0, len(users))
 	filters := make(map[string][]string, len(users))
 	for _, user := range users {
-		effective, _, err := builder.source.ResolveEffectiveSkills(
-			builder.cipher, user.HumanUserID, repo.EffectiveSkillFilter{},
-		)
+		effective, _, err := builder.source.ResolveEffectiveSkills(user.HumanUserID, repo.EffectiveSkillFilter{})
 		if err != nil {
 			return skillState{}, err
 		}
@@ -323,7 +321,7 @@ func buildUserMappings(state string, users []repo.HumanUser) (
 
 func mainToolPolicy() driver.RuntimeToolPolicy {
 	return driver.RuntimeToolPolicy{
-		Deny:          []string{"browser", "exec", "read", "write", "edit", "muad_use_skill", "muad_run_skill", "session_get_state"},
+		Deny:          []string{"browser", "exec", "read", "write", "edit", "session_get_state"},
 		WorkspaceOnly: true,
 	}
 }
@@ -331,8 +329,8 @@ func mainToolPolicy() driver.RuntimeToolPolicy {
 func businessToolPolicy() driver.RuntimeToolPolicy {
 	return driver.RuntimeToolPolicy{
 		Allow: []string{
-			"apply_patch", "bash", "browser", "edit", "exec", "muad_run_skill",
-			"muad_use_skill", "process", "read", "session_get_state", "shell", "write",
+			"apply_patch", "bash", "browser", "edit", "exec",
+			"process", "read", "session_get_state", "shell", "write",
 		},
 		WorkspaceOnly: true,
 	}

@@ -11,6 +11,8 @@ const (
 	codeInvalidRequest          = 40001
 	codeInvalidField            = 40002
 	codeInvalidBinding          = 40003
+	codeSkillPlatformRequired   = 40004
+	codeSkillPlatformNotBound   = 40005
 	codeAdminUnauthorized       = 40101
 	codePodUnauthorized         = 40102
 	codeNotFound                = 40401
@@ -53,6 +55,10 @@ func writeRepoError(w http.ResponseWriter, err error) {
 		errors.Is(err, repo.ErrInvalidBindingCode), errors.Is(err, repo.ErrInvalidPlatform),
 		errors.Is(err, repo.ErrInvalidLLMModel), errors.Is(err, repo.ErrInvalidSkill):
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid field value")
+	case errors.Is(err, repo.ErrSkillPlatformRequired):
+		writeErr(w, http.StatusBadRequest, codeSkillPlatformRequired, "platform is required for multi-platform Skill")
+	case errors.Is(err, repo.ErrSkillPlatformNotBound):
+		writeErr(w, http.StatusBadRequest, codeSkillPlatformNotBound, "platform is not bound to Skill")
 	case errors.Is(err, repo.ErrCredentialNotConfigured):
 		writeErr(w, http.StatusNotFound, codeCredentialNotConfigured, "platform credential not configured")
 	case errors.Is(err, repo.ErrPlatformDisabled):

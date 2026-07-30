@@ -21,13 +21,13 @@ test("Python, TypeScript, and Shell fixtures delegate to the same CLI contract",
   const fixtures = fixturePaths();
 
   const results = [
-    spawnSync("python3", [fixtures.python, "xdr"], { encoding: "utf8", env }),
-    spawnSync(process.execPath, [fixtures.typescript, "xdr"], { encoding: "utf8", env }),
-    spawnSync("sh", [fixtures.shell, "xdr"], { encoding: "utf8", env }),
+    spawnSync("python3", [fixtures.python, "xdr-query"], { encoding: "utf8", env }),
+    spawnSync(process.execPath, [fixtures.typescript, "xdr-query"], { encoding: "utf8", env }),
+    spawnSync("sh", [fixtures.shell, "xdr-query"], { encoding: "utf8", env }),
   ];
   for (const result of results) {
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(JSON.parse(result.stdout), { version: 1, status: "ready", platform: "xdr" });
+    assert.deepEqual(JSON.parse(result.stdout), { version: 1, status: "ready", platform: "xdr-query" });
   }
   assert.equal(new Set(results.map((result) => result.stdout)).size, 1);
 });

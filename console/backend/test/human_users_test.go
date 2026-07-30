@@ -208,6 +208,16 @@ func createTestPod(t *testing.T, store *repo.Store, podID string, maxUsers int) 
 	}
 }
 
+func createTestPlatform(t *testing.T, store *repo.Store, platform, displayName string) {
+	t.Helper()
+	err := store.CreatePlatformConfig(repo.PlatformConfig{
+		Platform: platform, DisplayName: displayName, Enabled: true,
+	})
+	if err != nil && !errors.Is(err, repo.ErrPlatformExists) {
+		t.Fatalf("CreatePlatformConfig %s: %v", platform, err)
+	}
+}
+
 func createTestHumanUser(t *testing.T, store *repo.Store, podID, agentID, status string) repo.HumanUser {
 	t.Helper()
 	modelID := createTestLLMModel(t, store, agentID+"-model")

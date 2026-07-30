@@ -26,7 +26,6 @@ test("OpenClaw image version is pinned exactly", () => {
 test("all repository plugin manifests match their load roots and entries", () => {
   const root = join(import.meta.dirname, "..", "..");
   validatePluginArtifacts([
-    localPlugin(root, "muad-run-skill", "src/index.mjs"),
     localPlugin(root, "session-manager", "openclaw-plugin.mjs"),
     localPlugin(root, "muad-runtime-guard", "src/index.mjs"),
   ]);
