@@ -1,13 +1,13 @@
 # muad-openclaw
 
-面向企业微信和个人微信的多用户 Agent 平台，可作为 MSS 服务交付的运行时底座：服务经理在企微中发起任务，由 Agent + Skill 自动编排工具与业务平台。控制面以 Pod 为运行单元，每个 Pod 默认最多约 10 个 Human User（`max_users` 可配置）；每个用户拥有独立的 Agent、工作区、浏览器 Profile、模型配置和 IM 身份，同一用户绑定多个 IM 后复用同一份记忆与 Skill。
+面向企业微信、个人微信和 Mattermost 的多用户 Agent 平台，可作为 MSS 服务交付的运行时底座：服务经理在 IM 中发起任务，由 Agent + Skill 自动编排工具与业务平台。控制面以 Pod 为运行单元，每个 Pod 默认最多约 10 个 Human User（`max_users` 可配置）；每个用户拥有独立的 Agent、工作区、浏览器 Profile、模型配置和 IM 身份，同一用户绑定多个 IM 后复用同一份记忆与 Skill。
 
 平台不修改或 fork OpenClaw 上游源码，所有多用户隔离、Skill 执行、身份绑定和业务凭证能力都通过控制面、运行时配置及外置插件实现。
 
 ## 核心能力
 
 - **多用户单 Pod**：管理员维护 Pod 容量，用户级 Agent、会话、浏览器、模型和私有状态相互隔离。
-- **多 IM 身份**：支持企业微信 `wecom` 和个人微信 `openclaw-weixin`；已知 External ID 可直接绑定，未知身份通过一次性绑定码激活；未绑定发送者不自动开户。
+- **多 IM 身份**：支持企业微信 `wecom`、个人微信 `openclaw-weixin` 和 Mattermost `mattermost`；已知 External ID 可直接绑定，未知身份通过一次性绑定码激活；未绑定发送者不自动开户。
 - **模型池**：批量维护 OpenAI 兼容模型配置，创建用户时必须绑定一个未占用模型；不存在全局、Pod 或用户 override 回退链路。
 - **Skill 管理**：统一管理 system/public/private Skill，支持 `.tar.gz` 和 `.zip`，Public Skill 显式应用到全部 Pod，Private Skill 直接安装到目标用户工作区。业务 Skill 可扩展（预防流、报告等），不改变底座架构。
 - **业务平台凭证**：每个用户可配置业务平台 API Key；`session-manager` 按可信 Agent 上下文解析并生成隔离登录态。产品范围以 **MSSW / SDSP** 为主（实现中可能仍保留历史 adapter，以总设 CONST-PLAT-01 为准）。
@@ -18,9 +18,10 @@
 
 Worker 镜像包含：
 
-- OpenClaw `2026.6.10` 与 Chromium/Playwright。
+- OpenClaw `2026.7.1` 与 Chromium/Playwright。
 - 企业微信插件 `@wecom/wecom-openclaw-plugin`。
 - 个人微信插件 `@tencent-weixin/openclaw-weixin`。
+- Mattermost 插件 `@openclaw/mattermost`。
 - `muad-run-skill`、`muad-runtime-guard` 和 `session-manager`。
 - 多用户配置渲染、Private Skill installer、配置事务与进度 CLI。
 - `/opt/openclaw-skills` 下的内置 Skill 种子。
@@ -30,7 +31,7 @@ Worker 镜像包含：
 ## 架构概览
 
 ```text
-企业微信 / 微信
+企业微信 / 微信 / Mattermost
        │
        ▼
 OpenClaw Pod（默认约 10 个 Human User）

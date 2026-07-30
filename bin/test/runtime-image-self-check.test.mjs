@@ -5,18 +5,21 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  IMAGE_CHANNEL_PLUGINS,
   PINNED_OPENCLAW_VERSION,
   POD_SERVICE_TOKEN_FILE,
+  REQUIRED_RUNTIME_PLUGINS,
   assertOpenClawVersion,
   validatePluginArtifacts,
+  validatePluginDependencies,
   validatePluginInventory,
   validateRuntimePermissions,
   validateRuntimePluginConfig,
 } from "../runtime-image-self-check.mjs";
 
 test("OpenClaw image version is pinned exactly", () => {
-  assert.equal(PINNED_OPENCLAW_VERSION, "2026.6.10");
-  assert.doesNotThrow(() => assertOpenClawVersion("OpenClaw 2026.6.10"));
+  assert.equal(PINNED_OPENCLAW_VERSION, "2026.7.1");
+  assert.doesNotThrow(() => assertOpenClawVersion("OpenClaw 2026.7.1"));
   assert.throws(() => assertOpenClawVersion("OpenClaw 2026.6.11"), /version mismatch/);
 });
 
@@ -38,18 +41,33 @@ test("runtime assembly requires explicit allow, load path, entries, CLI, and rea
   const specs = imageSpecs();
   const config = runtimeConfig(specs);
 
-  assert.doesNotThrow(() => validateRuntimePluginConfig(config, specs));
+  assert.doesNotThrow(() => validateRuntimePluginConfig(config, specs, IMAGE_CHANNEL_PLUGINS));
   assert.doesNotThrow(() => validateRuntimePermissions(config, {
     cliPath: cli,
     access: (path, mode) => accessSync(path === POD_SERVICE_TOKEN_FILE ? token : path, mode),
   }));
 
   config.plugins.entries["muad-runtime-guard"].hooks.allowConversationAccess = false;
-  assert.throws(() => validateRuntimePluginConfig(config, specs), /conversation hook access/);
+  assert.throws(
+    () => validateRuntimePluginConfig(config, specs, IMAGE_CHANNEL_PLUGINS),
+    /conversation hook access/,
+  );
   config.plugins.entries["muad-runtime-guard"].hooks.allowConversationAccess = true;
 
   config.plugins.entries["session-manager"].enabled = false;
-  assert.throws(() => validateRuntimePluginConfig(config, specs), /not explicitly enabled/);
+  assert.throws(
+    () => validateRuntimePluginConfig(config, specs, IMAGE_CHANNEL_PLUGINS),
+    /not explicitly enabled/,
+  );
+  config.plugins.entries["session-manager"].enabled = true;
+
+  config.plugins.load.paths = config.plugins.load.paths.filter(
+    (path) => path !== IMAGE_CHANNEL_PLUGINS[0].root,
+  );
+  assert.throws(
+    () => validateRuntimePluginConfig(config, specs, IMAGE_CHANNEL_PLUGINS),
+    /image channel plugin path is missing/,
+  );
 });
 
 test("cold OpenClaw inventory must discover every plugin as enabled and healthy", () => {
@@ -60,6 +78,22 @@ test("cold OpenClaw inventory must discover every plugin as enabled and healthy"
   assert.throws(() => validatePluginInventory({ plugins }, specs), /inventory is unhealthy/);
 });
 
+test("image channel plugins must include their runtime dependencies", () => {
+  const plugins = IMAGE_CHANNEL_PLUGINS.map((item) => ({
+    id: item.id,
+    enabled: item.id === "wecom-openclaw-plugin",
+    status: item.id === "wecom-openclaw-plugin" ? "loaded" : "disabled",
+    dependencyStatus: { requiredInstalled: true, missing: [] },
+  }));
+  assert.doesNotThrow(() => validatePluginDependencies({ plugins }, IMAGE_CHANNEL_PLUGINS));
+
+  plugins[0].dependencyStatus = { requiredInstalled: false, missing: ["zod"] };
+  assert.throws(
+    () => validatePluginDependencies({ plugins }, IMAGE_CHANNEL_PLUGINS),
+    /dependencies are incomplete/,
+  );
+});
+
 function localPlugin(root, id, entry) {
   const pluginRoot = join(root, "tools", id);
   return { id,
@@ -68,15 +102,17 @@ function localPlugin(root, id, entry) {
 }
 
 function imageSpecs() {
-  return ["muad-run-skill", "session-manager", "muad-runtime-guard"].map((id) => ({
-    id, root: `/opt/muad/${id}`, manifest: "unused", entry: "unused",
+  return REQUIRED_RUNTIME_PLUGINS.map((spec) => ({
+    ...spec,
+    manifest: "unused",
+    entry: "unused",
   }));
 }
 
 function runtimeConfig(specs) {
   return { plugins: {
     allow: specs.map((item) => item.id),
-    load: { paths: specs.map((item) => item.root) },
+    load: { paths: [...specs, ...IMAGE_CHANNEL_PLUGINS].map((item) => item.root) },
     entries: Object.fromEntries(specs.map((item) => [item.id, {
       enabled: true,
       ...(item.id === "muad-runtime-guard"

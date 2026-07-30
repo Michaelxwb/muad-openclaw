@@ -2,6 +2,10 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
+import {
+  IMAGE_PLUGIN_SPECS,
+  ensurePluginLoadPaths,
+} from "./image-plugin-paths.mjs";
 import { applyRuntimeConfig, defaultConfigPath, loadRuntimeInput } from "./inject-multi-user-config.mjs";
 import { canonicalHash, canonicalStringify } from "./openclaw-config-renderer.mjs";
 import { applyStartupContext, collectStartupContext } from "./startup-context.mjs";
@@ -19,7 +23,7 @@ export function injectStartupConfig({ env = process.env, stdinText, configPath, 
       config: persisted,
       hash: canonicalHash(persisted),
       runtime,
-      channels: runtime.channels.enabled,
+      channels: enabledChannels(persisted),
       preservedGeneration: persistedGeneration,
       skippedStaleRuntime: true,
     };
@@ -34,6 +38,7 @@ export function applyPersistedRuntimeContract(configPath, config) {
   const guard = config?.plugins?.entries?.["muad-runtime-guard"];
   const runSkill = config?.plugins?.entries?.["muad-run-skill"];
   let changed = migrateRunSkillTelemetry(config);
+  changed = ensurePluginLoadPaths(config, IMAGE_PLUGIN_SPECS) || changed;
   changed = ensureConversationHookAccess(guard) || changed;
   changed = ensureConversationHookAccess(runSkill) || changed;
   changed = ensureProfileTools(config) || changed;
@@ -86,6 +91,11 @@ function isRecord(value) {
 function readPersistedGeneration(config) {
   const generation = config?.plugins?.entries?.["muad-runtime-guard"]?.config?.generation;
   return Number.isSafeInteger(generation) && generation > 0 ? generation : 0;
+}
+
+function enabledChannels(config) {
+  const channels = isRecord(config?.channels) ? config.channels : {};
+  return Object.keys(channels).filter((id) => channels[id]?.enabled === true).sort();
 }
 
 function readOptionalStdin(env) {

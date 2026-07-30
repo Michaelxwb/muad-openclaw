@@ -38,6 +38,9 @@ type Status struct {
 	SkillTelemetryWriteFailed bool
 	SkillTelemetryDropped     int
 	SkillTelemetryLastError   string
+	ConfigRevisionHash        string
+	AppliedConfigHash         string
+	ConfigApplied             bool
 }
 
 // Execer runs a command inside a Pod (satisfied by each RuntimeDriver).
@@ -58,6 +61,17 @@ func Probe(ctx context.Context, ex Execer, podID string) Status {
 	}
 	mergeRuntimeHealth(ctx, ex, podID, &st)
 	return st
+}
+
+// ProbeWithConfigRevision adds OpenClaw's applied config revision signal. It is
+// intentionally not used by the collector because it adds another gateway RPC.
+func ProbeWithConfigRevision(ctx context.Context, ex Execer, podID string) Status {
+	status := Probe(ctx, ex, podID)
+	if !status.Healthy {
+		return status
+	}
+	mergeConfigRevision(ctx, ex, podID, &status)
+	return status
 }
 
 type runtimeHealthJSON struct {
@@ -98,6 +112,29 @@ func mergeRuntimeHealth(ctx context.Context, ex Execer, podID string, status *St
 	status.SkillTelemetryWriteFailed = health.Telemetry.WriteFailed
 	status.SkillTelemetryDropped = health.Telemetry.Dropped
 	status.SkillTelemetryLastError = health.Telemetry.LastError
+}
+
+type configGetJSON struct {
+	ConfigRevisionHash string  `json:"configRevisionHash"`
+	AppliedConfigHash  *string `json:"appliedConfigHash"`
+}
+
+func mergeConfigRevision(ctx context.Context, ex Execer, podID string, status *Status) {
+	out, err := ex.Exec(ctx, podID, "openclaw", "gateway", "call", "config.get", "--json")
+	if err != nil {
+		return
+	}
+	var config configGetJSON
+	if err := json.Unmarshal([]byte(out), &config); err != nil {
+		return
+	}
+	applied := ""
+	if config.AppliedConfigHash != nil {
+		applied = *config.AppliedConfigHash
+	}
+	status.ConfigRevisionHash = config.ConfigRevisionHash
+	status.AppliedConfigHash = applied
+	status.ConfigApplied = config.ConfigRevisionHash != "" && config.ConfigRevisionHash == applied
 }
 
 // channelStatusJSON mirrors the relevant parts of `openclaw channels status --json`.

@@ -11,7 +11,7 @@ export function createBindCommand({ client, mainAgentId, onRejected }) {
       try {
         const request = activationFromCommand(context, mainAgentId);
         await client.activate(request);
-        return consumed("绑定成功，配置正在应用，请稍后重新发送业务消息。");
+        return consumed("绑定成功，配置正在应用，通常 10 秒内生效。请稍后重新发送业务消息。");
       } catch (error) {
         if (error instanceof BindingContextError) {
           onRejected?.({ code: error.code, reason: error.reason });

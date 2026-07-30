@@ -33,6 +33,27 @@ func TestInternalBindingAPI_UnboundSenderActivatesAndQueuesConfig(t *testing.T) 
 	assertBindingAuditHasNoCode(t, e, code)
 }
 
+func TestInternalBindingAPI_MattermostSenderActivatesAndQueuesConfig(t *testing.T) {
+	e, user, code := createMattermostBindingTarget(t)
+	token := e.drv.created["pod-mm"].ServiceToken.Value
+	e.reconcile.podIDs = nil
+	body := bindingBodyForChannel(
+		code, "mattermost", "mattermost", "default", "mm-user-1", "mattermost_user_id", "direct",
+	)
+	rr := doInternalBind(e, token, body)
+	assertStatus(t, rr, http.StatusOK)
+	identity, err := e.store.FindIdentityByExternalID(
+		"pod-mm", "mattermost", "default", "direct", "mm-user-1",
+	)
+	if err != nil || identity.HumanUserID != user.HumanUserID ||
+		identity.OpenClawChannel != "mattermost" || identity.ExternalIDType != "mattermost_user_id" {
+		t.Fatalf("mattermost binding result identity=%+v error=%v", identity, err)
+	}
+	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-mm" {
+		t.Fatalf("binding reconcile queue = %v", e.reconcile.podIDs)
+	}
+}
+
 func TestInternalBindingAPI_RejectsGroupWithoutConsumingCode(t *testing.T) {
 	e, _, code := createBindingTarget(t)
 	token := e.drv.created["pod-a"].ServiceToken.Value
@@ -106,6 +127,23 @@ func createBindingTarget(t *testing.T) (*testEnv, humanUserAPIView, string) {
 	return e, created.HumanUser, created.Activation.Code
 }
 
+func createMattermostBindingTarget(t *testing.T) (*testEnv, humanUserAPIView, string) {
+	t.Helper()
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, `{"podId":"pod-mm","displayName":"Mattermost Pod","maxUsers":2,`+
+		`"channels":["mattermost"],"channelConfigs":{"mattermost":{`+
+		`"baseUrl":"https://mattermost.internal","botToken":"mm-token"}}}`)
+	modelID := createLLMModelForAPI(t, e, "mattermost-model")
+	body := `{"displayName":"Mattermost User","agentId":"mmuser","modelConfigId":"` + modelID + `",` +
+		`"activation":{"channel":"mattermost"}}`
+	rr := e.do(http.MethodPost, "/api/v1/containers/pod-mm/human-users", body)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("create mattermost binding target status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	created := decodeAPIData[humanUserCreateResponse](t, rr.Body.Bytes())
+	return e, created.HumanUser, created.Activation.Code
+}
+
 func bindingTargetUserID(t *testing.T, e *testEnv) string {
 	t.Helper()
 	users, _, err := e.store.ListHumanUsersByPod("pod-a", repo.HumanUserListFilter{})
@@ -116,10 +154,16 @@ func bindingTargetUserID(t *testing.T, e *testEnv) string {
 }
 
 func bindingBody(code, accountID, sender, peerKind string) string {
+	return bindingBodyForChannel(code, "wecom", "wecom", accountID, sender, "corp_userid", peerKind)
+}
+
+func bindingBodyForChannel(
+	code, channel, openClawChannel, accountID, sender, externalIDType, peerKind string,
+) string {
 	body, _ := json.Marshal(map[string]string{
-		"code": code, "channel": "wecom", "openclawChannel": "wecom",
+		"code": code, "channel": channel, "openclawChannel": openClawChannel,
 		"accountId": accountID, "externalId": sender,
-		"externalIdType": "corp_userid", "peerKind": peerKind,
+		"externalIdType": externalIDType, "peerKind": peerKind,
 	})
 	return string(body)
 }

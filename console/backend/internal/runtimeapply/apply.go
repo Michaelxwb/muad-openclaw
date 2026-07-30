@@ -122,7 +122,7 @@ func (applier *Applier) Apply(ctx context.Context, request Request) (Result, err
 	if err := applier.restart(ctx, request.PodID, mode); err != nil {
 		return Result{}, applier.recoverFailure(ctx, request.PodID, mode, StageRestart, err)
 	}
-	if err := applier.waitForHealth(ctx, request.PodID, request.Generation); err != nil {
+	if err := applier.waitForHealth(ctx, request.PodID, request.Generation, mode); err != nil {
 		return Result{}, applier.recoverFailure(ctx, request.PodID, mode, StageHealth, err)
 	}
 	return Result{ConfigHash: prepared.ConfigHash, RestartMode: mode}, nil
@@ -186,24 +186,44 @@ func (applier *Applier) restart(ctx context.Context, podID string, mode RestartM
 	}
 }
 
-func (applier *Applier) waitForHealth(ctx context.Context, podID string, generation int64) error {
+func (applier *Applier) waitForHealth(
+	ctx context.Context, podID string, generation int64, mode RestartMode,
+) error {
 	probeCtx, cancel := context.WithTimeout(ctx, applier.options.HealthTimeout)
 	defer cancel()
 	var last gateway.Status
+	requireConfigApplied := mode == RestartNone
 	for {
-		last = gateway.Probe(probeCtx, applier.driver, podID)
-		if last.Healthy && last.RuntimeGuardHealthy && (generation == 0 || last.RuntimeGeneration == generation) {
+		last = applier.probeHealth(probeCtx, podID, requireConfigApplied)
+		if runtimeReady(last, generation) && (!requireConfigApplied || last.ConfigApplied) {
 			return nil
 		}
 		timer := time.NewTimer(applier.options.PollInterval)
 		select {
 		case <-probeCtx.Done():
 			timer.Stop()
-			return fmt.Errorf("generation %d health timeout (gateway=%t guard=%t observed=%d): %w",
-				generation, last.Healthy, last.RuntimeGuardHealthy, last.RuntimeGeneration, probeCtx.Err())
+			return fmt.Errorf(
+				"generation %d health timeout (gateway=%t guard=%t observed=%d configApplied=%t revision=%q applied=%q): %w",
+				generation, last.Healthy, last.RuntimeGuardHealthy, last.RuntimeGeneration,
+				last.ConfigApplied, last.ConfigRevisionHash, last.AppliedConfigHash, probeCtx.Err(),
+			)
 		case <-timer.C:
 		}
 	}
+}
+
+func (applier *Applier) probeHealth(
+	ctx context.Context, podID string, requireConfigApplied bool,
+) gateway.Status {
+	if requireConfigApplied {
+		return gateway.ProbeWithConfigRevision(ctx, applier.driver, podID)
+	}
+	return gateway.Probe(ctx, applier.driver, podID)
+}
+
+func runtimeReady(status gateway.Status, generation int64) bool {
+	return status.Healthy && status.RuntimeGuardHealthy &&
+		(generation == 0 || status.RuntimeGeneration == generation)
 }
 
 func (applier *Applier) abortFailure(ctx context.Context, podID string, stage Stage, cause error) *ApplyError {
@@ -227,13 +247,10 @@ func (applier *Applier) rollback(ctx context.Context, podID string, mode Restart
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		return fmt.Errorf("decode rollback result: %w", err)
 	}
-	if mode == RestartNone {
-		mode = RestartGateway
-	}
 	if err := applier.restart(ctx, podID, mode); err != nil {
 		return fmt.Errorf("restart restored config: %w", err)
 	}
-	if err := applier.waitForHealth(ctx, podID, result.Generation); err != nil {
+	if err := applier.waitForHealth(ctx, podID, result.Generation, mode); err != nil {
 		return fmt.Errorf("verify restored config: %w", err)
 	}
 	return nil

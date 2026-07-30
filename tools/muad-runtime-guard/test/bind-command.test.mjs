@@ -4,6 +4,8 @@ import test from "node:test";
 import { createBindCommand } from "../src/bind-command.mjs";
 import { BindingClientError } from "../src/binding-client.mjs";
 
+const BIND_SUCCESS = "绑定成功，配置正在应用，通常 10 秒内生效。请稍后重新发送业务消息。";
+
 test("/bind consumes WeCom direct messages and sends scoped context to Console", async () => {
   const requests = [];
   const command = createBindCommand({
@@ -19,7 +21,7 @@ test("/bind consumes WeCom direct messages and sends scoped context to Console",
 
   assert.equal(command.acceptsArgs, true);
   assert.equal(command.requireAuth, false);
-  assert.deepEqual(result, { text: "绑定成功，配置正在应用，请稍后重新发送业务消息。", continueAgent: false });
+  assert.deepEqual(result, { text: BIND_SUCCESS, continueAgent: false });
   assert.deepEqual(requests, [{
     code: "MUAD-23456789",
     channel: "wecom",
@@ -43,7 +45,7 @@ test("/bind accepts the channel-scoped sender emitted by WeCom command context",
     sessionKey: "agent:main:wecom:direct:xuwenbin",
   }));
 
-  assert.equal(result.text, "绑定成功，配置正在应用，请稍后重新发送业务消息。");
+  assert.equal(result.text, BIND_SUCCESS);
   assert.equal(requests[0].externalId, "XuWenBin");
 });
 
@@ -56,7 +58,7 @@ test("/bind accepts codes generated from the shared binding-code alphabet", asyn
 
   const result = await command.handler(commandContext({ args: "MUAD-X1GD78W5" }));
 
-  assert.equal(result.text, "绑定成功，配置正在应用，请稍后重新发送业务消息。");
+  assert.equal(result.text, BIND_SUCCESS);
   assert.equal(requests[0].code, "MUAD-X1GD78W5");
 });
 
@@ -73,7 +75,7 @@ test("/bind resolves main agent from the trusted session key when command agentI
     sessionKey: "agent:main:wecom:direct:xuwenbin",
   }));
 
-  assert.equal(result.text, "绑定成功，配置正在应用，请稍后重新发送业务消息。");
+  assert.equal(result.text, BIND_SUCCESS);
   assert.equal(requests.length, 1);
 });
 
@@ -96,6 +98,26 @@ test("/bind maps WeChat to openclaw-weixin without producing a model reply", asy
   assert.equal(requests[0].externalIdType, "wechat_peer_id");
 });
 
+test("/bind accepts Mattermost direct messages and preserves user id", async () => {
+  const requests = [];
+  const command = createBindCommand({
+    mainAgentId: "main",
+    client: { activate: async (request) => { requests.push(request); } },
+  });
+  const senderId = "mm-user-1";
+  const result = await command.handler(commandContext({
+    channel: "mattermost", channelId: "mattermost", senderId,
+    from: `mattermost:${senderId}`,
+    sessionKey: `agent:main:mattermost:direct:${senderId}`,
+  }));
+
+  assert.equal(result.continueAgent, false);
+  assert.equal(requests[0].channel, "mattermost");
+  assert.equal(requests[0].openclawChannel, "mattermost");
+  assert.equal(requests[0].externalId, senderId);
+  assert.equal(requests[0].externalIdType, "mattermost_user_id");
+});
+
 test("/bind accepts OpenClaw session-prefixed WeChat direct context", async () => {
   const requests = [];
   const command = createBindCommand({
@@ -110,7 +132,7 @@ test("/bind accepts OpenClaw session-prefixed WeChat direct context", async () =
     sessionKey: `session:agent:main:openclaw-weixin:direct:${senderId}`,
   }));
 
-  assert.equal(result.text, "绑定成功，配置正在应用，请稍后重新发送业务消息。");
+  assert.equal(result.text, BIND_SUCCESS);
   assert.equal(requests[0].channel, "wechat");
   assert.equal(requests[0].openclawChannel, "openclaw-weixin");
   assert.equal(requests[0].externalId, senderId);
@@ -131,7 +153,7 @@ test("/bind accepts linked WeChat direct sessions while preserving sender extern
     sessionKey: "agent:main:openclaw-weixin:direct:user-07550ac6",
   }));
 
-  assert.equal(result.text, "绑定成功，配置正在应用，请稍后重新发送业务消息。");
+  assert.equal(result.text, BIND_SUCCESS);
   assert.equal(requests[0].externalId, senderId);
   assert.equal(requests[0].externalIdType, "wechat_peer_id");
 });

@@ -6,17 +6,28 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import {
+  IMAGE_PLUGIN_SPECS,
+  pluginRoots,
+} from "../image-plugin-paths.mjs";
 import { injectStartupConfig } from "../inject-env.mjs";
-import { applyStartupContext, collectStartupContext } from "../startup-context.mjs";
+import {
+  applyStartupContext,
+  collectStartupContext,
+} from "../startup-context.mjs";
 
 const scriptPath = fileURLToPath(new URL("../inject-env.mjs", import.meta.url));
-const fixturePath = fileURLToPath(new URL("./fixtures/runtime-v1.json", import.meta.url));
+const fixturePath = fileURLToPath(
+  new URL("./fixtures/runtime-v1.json", import.meta.url),
+);
 
 test("startup context replaces channel credentials and unloads disabled channel plugins", () => {
   const runtime = JSON.parse(readFileSync(fixturePath, "utf8"));
   const env = {
     CHANNELS: "wechat",
-    CHANNEL_CONFIGS: JSON.stringify({ wechat: { botId: "wx-bot", secret: "wx-secret" } }),
+    CHANNEL_CONFIGS: JSON.stringify({
+      wechat: { botId: "wx-bot", secret: "wx-secret" },
+    }),
     OPENCLAW_GATEWAY_TOKEN: "gateway-test-token",
   };
   const baseline = {
@@ -24,12 +35,86 @@ test("startup context replaces channel credentials and unloads disabled channel 
     plugins: { allow: ["browser", "wecom-openclaw-plugin", "muad-run-skill"] },
   };
 
-  const output = applyStartupContext(baseline, collectStartupContext({ env, runtime }));
-  assert.deepEqual(output.gateway.auth, { mode: "token", token: "gateway-test-token" });
+  const output = applyStartupContext(
+    baseline,
+    collectStartupContext({ env, runtime }),
+  );
+  assert.deepEqual(output.gateway.auth, {
+    mode: "token",
+    token: "gateway-test-token",
+  });
   assert.deepEqual(output.channels.wecom, { enabled: false });
   assert.equal(output.channels["openclaw-weixin"].botId, "wx-bot");
   assert.equal(output.channels["openclaw-weixin"].enabled, true);
-  assert.deepEqual(output.plugins.allow, ["browser", "muad-run-skill", "openclaw-weixin"]);
+  assert.deepEqual(output.plugins.allow, [
+    "browser",
+    "muad-run-skill",
+    "openclaw-weixin",
+  ]);
+  assert.deepEqual(
+    output.plugins.load.paths,
+    [
+      "/opt/openclaw-plugins/mattermost",
+      "/opt/openclaw-plugins/openclaw-weixin",
+      "/opt/openclaw-plugins/wecom-openclaw-plugin",
+    ],
+  );
+});
+
+test("startup context renders Mattermost for Muad binding guard DMs", () => {
+  const runtime = JSON.parse(readFileSync(fixturePath, "utf8"));
+  const env = {
+    CHANNELS: "mattermost",
+    CHANNEL_CONFIGS: JSON.stringify({
+      mattermost: {
+        baseUrl: "https://mattermost.internal",
+        botToken: "mm-token",
+        allowPrivateNetwork: "true",
+      },
+    }),
+  };
+  const baseline = {
+    channels: {
+      mattermost: {
+        baseUrl: "old-url",
+        botToken: "old-token",
+        allowPrivateNetwork: "false",
+        network: { dangerouslyAllowPrivateNetwork: false },
+      },
+    },
+    plugins: {
+      allow: [
+        "browser",
+        "wecom-openclaw-plugin",
+        "openclaw-weixin",
+        "muad-run-skill",
+      ],
+    },
+  };
+
+  const output = applyStartupContext(
+    baseline,
+    collectStartupContext({ env, runtime }),
+  );
+
+  assert.deepEqual(output.channels.mattermost, {
+    baseUrl: "https://mattermost.internal",
+    botToken: "mm-token",
+    dmPolicy: "open",
+    groupPolicy: "disabled",
+    allowFrom: ["*"],
+    network: { dangerouslyAllowPrivateNetwork: true },
+    enabled: true,
+  });
+  assert.deepEqual(output.plugins.allow, [
+    "browser",
+    "mattermost",
+    "muad-run-skill",
+  ]);
+  assert.equal(
+    output.plugins.load.paths.includes("/opt/openclaw-plugins/mattermost"),
+    true,
+  );
 });
 
 test("compatibility entry renders equivalent config from env and stdin", () => {
@@ -42,15 +127,27 @@ test("compatibility entry renders equivalent config from env and stdin", () => {
   const common = {
     ...process.env,
     CHANNELS: "wecom,wechat",
-    CHANNEL_CONFIGS: JSON.stringify({ wecom: { botId: "bot", secret: "test-secret" } }),
+    CHANNEL_CONFIGS: JSON.stringify({
+      wecom: { botId: "bot", secret: "test-secret" },
+    }),
     OPENCLAW_GATEWAY_TOKEN: "gateway-test-token",
   };
 
-  const fromEnv = runEntry({ ...common, OPENCLAW_CONFIG_PATH: envConfig, MUAD_RUNTIME_CONFIG: JSON.stringify(runtime) });
-  const fromStdin = runEntry({ ...common, OPENCLAW_CONFIG_PATH: stdinConfig }, JSON.stringify(runtime));
+  const fromEnv = runEntry({
+    ...common,
+    OPENCLAW_CONFIG_PATH: envConfig,
+    MUAD_RUNTIME_CONFIG: JSON.stringify(runtime),
+  });
+  const fromStdin = runEntry(
+    { ...common, OPENCLAW_CONFIG_PATH: stdinConfig },
+    JSON.stringify(runtime),
+  );
   assert.equal(fromEnv.status, 0, fromEnv.stderr);
   assert.equal(fromStdin.status, 0, fromStdin.stderr);
-  assert.deepEqual(JSON.parse(readFileSync(envConfig, "utf8")), JSON.parse(readFileSync(stdinConfig, "utf8")));
+  assert.deepEqual(
+    JSON.parse(readFileSync(envConfig, "utf8")),
+    JSON.parse(readFileSync(stdinConfig, "utf8")),
+  );
 });
 
 test("invalid startup input exits nonzero without replacing the current config", () => {
@@ -75,11 +172,15 @@ test("compatibility function rejects malformed channel config before applying", 
   const configPath = join(root, "openclaw.json");
   writeSeed(configPath);
   assert.throws(
-    () => injectStartupConfig({
-      env: { MUAD_RUNTIME_CONFIG: JSON.stringify(runtime), CHANNEL_CONFIGS: "[]" },
-      configPath,
-      writeGuidance: false,
-    }),
+    () =>
+      injectStartupConfig({
+        env: {
+          MUAD_RUNTIME_CONFIG: JSON.stringify(runtime),
+          CHANNEL_CONFIGS: "[]",
+        },
+        configPath,
+        writeGuidance: false,
+      }),
     /CHANNEL_CONFIGS must be an object/,
   );
 });
@@ -96,11 +197,25 @@ test("startup preserves a newer persisted runtime generation", () => {
   });
   const persistedConfig = JSON.parse(readFileSync(configPath, "utf8"));
   const persistedBotId = persistedConfig.channels.wecom.botId;
-  persistedConfig.tools = { profile: "coding", alsoAllow: ["browser", "muad_run_skill"] };
+  persistedConfig.channels.mattermost = {
+    baseUrl: "https://mattermost.internal",
+    botToken: "mm-token",
+    dmPolicy: "open",
+    groupPolicy: "disabled",
+    allowFrom: ["*"],
+    enabled: true,
+  };
+  persistedConfig.tools = {
+    profile: "coding",
+    alsoAllow: ["browser", "muad_run_skill"],
+  };
+  persistedConfig.plugins.load = { paths: ["/legacy/plugin-path"] };
   delete persistedConfig.plugins.entries["muad-runtime-guard"].hooks;
   delete persistedConfig.plugins.entries["muad-run-skill"].hooks;
-  const runSkillConfig = persistedConfig.plugins.entries["muad-run-skill"].config;
-  runSkillConfig.consoleInternalURL = runSkillConfig.telemetry.consoleInternalURL;
+  const runSkillConfig =
+    persistedConfig.plugins.entries["muad-run-skill"].config;
+  runSkillConfig.consoleInternalURL =
+    runSkillConfig.telemetry.consoleInternalURL;
   runSkillConfig.serviceTokenFile = runSkillConfig.telemetry.serviceTokenFile;
   delete runSkillConfig.telemetry;
   writeFileSync(configPath, `${JSON.stringify(persistedConfig, null, 2)}\n`);
@@ -117,10 +232,25 @@ test("startup preserves a newer persisted runtime generation", () => {
   assert.equal(result.skippedStaleRuntime, true);
   assert.equal(result.preservedGeneration, 8);
   assert.equal(result.runtime.generation, 7);
+  assert.deepEqual(result.channels, [
+    "mattermost",
+    "openclaw-weixin",
+    "wecom",
+  ]);
   const migrated = JSON.parse(readFileSync(configPath, "utf8"));
-  assert.equal(migrated.plugins.entries["muad-runtime-guard"].config.generation, 8);
-  assert.equal(migrated.plugins.entries["muad-runtime-guard"].hooks.allowConversationAccess, true);
-  assert.equal(migrated.plugins.entries["muad-run-skill"].hooks.allowConversationAccess, true);
+  assert.equal(
+    migrated.plugins.entries["muad-runtime-guard"].config.generation,
+    8,
+  );
+  assert.equal(
+    migrated.plugins.entries["muad-runtime-guard"].hooks
+      .allowConversationAccess,
+    true,
+  );
+  assert.equal(
+    migrated.plugins.entries["muad-run-skill"].hooks.allowConversationAccess,
+    true,
+  );
   assert.deepEqual(migrated.tools.alsoAllow, [
     "browser",
     "muad_run_skill",
@@ -130,10 +260,20 @@ test("startup preserves a newer persisted runtime generation", () => {
   const migratedRunSkill = migrated.plugins.entries["muad-run-skill"].config;
   assert.equal(migratedRunSkill.consoleInternalURL, undefined);
   assert.equal(migratedRunSkill.serviceTokenFile, undefined);
-  assert.equal(migratedRunSkill.telemetry.consoleInternalURL, newerRuntime.consoleInternalUrl);
-  assert.equal(migratedRunSkill.telemetry.serviceTokenFile, newerRuntime.serviceTokenFile);
+  assert.equal(
+    migratedRunSkill.telemetry.consoleInternalURL,
+    newerRuntime.consoleInternalUrl,
+  );
+  assert.equal(
+    migratedRunSkill.telemetry.serviceTokenFile,
+    newerRuntime.serviceTokenFile,
+  );
   assert.equal(migrated.channels.wecom.botId, persistedBotId);
   assert.notEqual(migrated.channels.wecom.botId, "stale-runtime-bot");
+  assert.deepEqual(
+    migrated.plugins.load.paths,
+    ["/legacy/plugin-path", ...pluginRoots(IMAGE_PLUGIN_SPECS)].sort(),
+  );
 });
 
 function runtimeForRoot(root) {
@@ -144,28 +284,48 @@ function runtimeForRoot(root) {
     agent.agentDir = join(root, "agents", agent.id, "agent");
   }
   runtime.sessionManager.agents[0].workspace = runtime.agents[1].workspace;
-  runtime.sessionManager.agents[0].storeDirectory = join(root, "agents", "alice", "session-store");
+  runtime.sessionManager.agents[0].storeDirectory = join(
+    root,
+    "agents",
+    "alice",
+    "session-store",
+  );
   return runtime;
 }
 
 function runEntry(env, input) {
-  return spawnSync(process.execPath, [scriptPath], { env, input, encoding: "utf8" });
+  return spawnSync(process.execPath, [scriptPath], {
+    env,
+    input,
+    encoding: "utf8",
+  });
 }
 
 function startupEnv(runtime, botId, gatewayToken) {
   return {
     MUAD_RUNTIME_CONFIG: JSON.stringify(runtime),
     CHANNELS: "wecom,wechat",
-    CHANNEL_CONFIGS: JSON.stringify({ wecom: { botId, secret: `${botId}-secret` }, wechat: {} }),
+    CHANNEL_CONFIGS: JSON.stringify({
+      wecom: { botId, secret: `${botId}-secret` },
+      wechat: {},
+    }),
     OPENCLAW_GATEWAY_TOKEN: gatewayToken,
   };
 }
 
 function writeSeed(path) {
-  writeFileSync(path, JSON.stringify({
-    _comment: "seed",
-    gateway: { mode: "local" },
-    channels: { wecom: { connectionMode: "websocket" }, "openclaw-weixin": {} },
-    plugins: { allow: ["browser", "wecom-openclaw-plugin", "openclaw-weixin"] },
-  }));
+  writeFileSync(
+    path,
+    JSON.stringify({
+      _comment: "seed",
+      gateway: { mode: "local" },
+      channels: {
+        wecom: { connectionMode: "websocket" },
+        "openclaw-weixin": {},
+      },
+      plugins: {
+        allow: ["browser", "wecom-openclaw-plugin", "openclaw-weixin"],
+      },
+    }),
+  );
 }

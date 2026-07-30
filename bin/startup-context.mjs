@@ -1,3 +1,8 @@
+import {
+  IMAGE_CHANNEL_PLUGIN_SPECS,
+  ensurePluginLoadPaths,
+} from "./image-plugin-paths.mjs";
+
 const CHANNEL_ALIASES = {
   wechat: "openclaw-weixin",
   weixin: "openclaw-weixin",
@@ -6,9 +11,23 @@ const CHANNEL_ALIASES = {
 const CHANNEL_PLUGINS = {
   wecom: "wecom-openclaw-plugin",
   "openclaw-weixin": "openclaw-weixin",
+  mattermost: "mattermost",
 };
 
-const CREDENTIAL_FIELDS = ["botId", "secret"];
+const CHANNEL_RUNTIME_FIELDS = {
+  wecom: ["botId", "secret"],
+  mattermost: [
+    "botId",
+    "secret",
+    "baseUrl",
+    "botToken",
+    "allowFrom",
+    "allowPrivateNetwork",
+    "dmPolicy",
+    "groupPolicy",
+    "network",
+  ],
+};
 
 export function collectStartupContext({ env = process.env, runtime }) {
   const channelConfigs = readChannelConfigs(env);
@@ -55,8 +74,10 @@ function normalizeChannelConfigs(configs) {
   const normalized = {};
   for (const [channel, config] of Object.entries(configs)) {
     const id = normalizeChannel(channel);
-    if (!id || !isRecord(config)) throw new Error(`CHANNEL_CONFIGS.${channel} must be an object`);
-    if (normalized[id]) throw new Error(`CHANNEL_CONFIGS contains duplicate channel: ${id}`);
+    if (!id || !isRecord(config))
+      throw new Error(`CHANNEL_CONFIGS.${channel} must be an object`);
+    if (normalized[id])
+      throw new Error(`CHANNEL_CONFIGS contains duplicate channel: ${id}`);
     const fields = Object.entries(config);
     if (fields.some(([, value]) => typeof value !== "string")) {
       throw new Error(`CHANNEL_CONFIGS.${channel} values must be strings`);
@@ -70,7 +91,11 @@ function applyLegacyWeComCredentials(configs, env) {
   if (Object.keys(configs).length > 0) return;
   const botId = clean(env.WECOM_BOT_ID);
   const secret = clean(env.WECOM_SECRET);
-  if (botId || secret) configs.wecom = { ...(botId ? { botId } : {}), ...(secret ? { secret } : {}) };
+  if (botId || secret)
+    configs.wecom = {
+      ...(botId ? { botId } : {}),
+      ...(secret ? { secret } : {}),
+    };
 }
 
 function resolveChannels(env, runtime, configs) {
@@ -80,7 +105,9 @@ function resolveChannels(env, runtime, configs) {
     : Object.keys(configs).length > 0
       ? Object.keys(configs)
       : runtime.routes.map((route) => route.channel);
-  const channels = [...new Set(candidates.map(normalizeChannel).filter(Boolean))];
+  const channels = [
+    ...new Set(candidates.map(normalizeChannel).filter(Boolean)),
+  ];
   return channels.length > 0 ? channels : ["wecom"];
 }
 
@@ -93,12 +120,36 @@ function applyGateway(output, token) {
 function applyChannels(output, context) {
   const channels = isRecord(output.channels) ? output.channels : {};
   const selected = new Set(context.channels);
-  for (const id of new Set([...Object.keys(CHANNEL_PLUGINS), ...context.channels])) {
+  for (const id of new Set([
+    ...Object.keys(CHANNEL_PLUGINS),
+    ...context.channels,
+  ])) {
     const current = isRecord(channels[id]) ? channels[id] : {};
-    for (const field of CREDENTIAL_FIELDS) delete current[field];
-    channels[id] = { ...current, ...(context.channelConfigs[id] ?? {}), enabled: selected.has(id) };
+    for (const field of CHANNEL_RUNTIME_FIELDS[id] ?? []) delete current[field];
+    channels[id] = normalizeChannelRuntimeConfig(id, {
+      ...current,
+      ...(context.channelConfigs[id] ?? {}),
+      enabled: selected.has(id),
+    });
   }
   output.channels = channels;
+}
+
+function normalizeChannelRuntimeConfig(id, config) {
+  if (id !== "mattermost") return config;
+  const allowPrivateNetwork = config.allowPrivateNetwork === "true";
+  delete config.allowPrivateNetwork;
+  delete config.botId;
+  delete config.secret;
+  config.dmPolicy = "open";
+  config.groupPolicy = "disabled";
+  config.allowFrom = ["*"];
+  if (allowPrivateNetwork) {
+    config.network = { dangerouslyAllowPrivateNetwork: true };
+  } else {
+    delete config.network;
+  }
+  return config;
 }
 
 function applyChannelPlugins(output, channels) {
@@ -107,7 +158,11 @@ function applyChannelPlugins(output, channels) {
   const channelPluginIds = new Set(Object.values(CHANNEL_PLUGINS));
   const retained = existing.filter((id) => !channelPluginIds.has(id));
   const selected = channels.map((id) => CHANNEL_PLUGINS[id]).filter(Boolean);
-  output.plugins = { ...plugins, allow: [...new Set([...retained, ...selected])].sort() };
+  output.plugins = {
+    ...plugins,
+    allow: [...new Set([...retained, ...selected])].sort(),
+  };
+  ensurePluginLoadPaths(output, IMAGE_CHANNEL_PLUGIN_SPECS);
 }
 
 function cloneRecord(value) {

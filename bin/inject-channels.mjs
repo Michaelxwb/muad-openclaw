@@ -5,13 +5,15 @@
 //   {
 //     "channels": {
 //       "wecom":         { "connectionMode": "websocket", "botId": "...", "secret": "..." },
-//       "openclaw-weixin": {}
+//       "openclaw-weixin": {},
+//       "mattermost":    { "baseUrl": "...", "botToken": "...", "allowPrivateNetwork": "true" }
 //     },
 //     "plugins": {
-//       "allow": ["wecom-openclaw-plugin"],
+//       "allow": ["wecom-openclaw-plugin", "mattermost"],
 //       "entries": {
 //         "wecom-openclaw-plugin": { "enabled": true },
-//         "openclaw-weixin":      { "enabled": false }
+//         "openclaw-weixin":      { "enabled": false },
+//         "mattermost":           { "enabled": true }
 //       }
 //     }
 //   }
@@ -38,9 +40,19 @@
 //
 // Exit codes: 0=success, 1=error
 
-import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import {
+  IMAGE_CHANNEL_PLUGIN_SPECS,
+  ensurePluginLoadPaths,
+} from "./image-plugin-paths.mjs";
 
 const state = process.env.OPENCLAW_STATE_DIR || `${homedir()}/.openclaw`;
 const p = `${state}/openclaw.json`;
@@ -50,6 +62,7 @@ const p = `${state}/openclaw.json`;
 // Go side already maps wechat→openclaw-weixin before sending to us).
 const PLUGIN_STATE_DIRS = {
   "openclaw-weixin": `${state}/openclaw-weixin`,
+  mattermost: `${state}/mattermost`,
   // wecom stores auth via botId/secret in channels config, not on disk —
   // no separate state dir to wipe.
 };
@@ -74,7 +87,11 @@ try {
   );
 
   for (const [id, cfg] of Object.entries(inputChannels)) {
-    d.channels[id] = { ...(d.channels[id] || {}), ...cfg, enabled: true };
+    d.channels[id] = normalizeInjectedChannelConfig(id, {
+      ...(d.channels[id] || {}),
+      ...cfg,
+      enabled: true,
+    });
   }
   // Remove channel keys not in input (stale entries).
   for (const id of removedChannels) {
@@ -99,6 +116,7 @@ try {
       };
     }
   }
+  ensurePluginLoadPaths(d, IMAGE_CHANNEL_PLUGIN_SPECS);
 
   atomicWriteJSON(p, d);
 
@@ -122,19 +140,25 @@ try {
   // conversation" on re-bind. Per-channel filter keeps wecom / other
   // channels' sessions untouched.
   if (removedChannels.length > 0 && existsSync(SESSIONS_INDEX)) {
-    process.stderr.write(`[inject-channels] session-wipe: removedChannels=${JSON.stringify(removedChannels)}\n`);
+    process.stderr.write(
+      `[inject-channels] session-wipe: removedChannels=${JSON.stringify(removedChannels)}\n`,
+    );
     let sessions;
     try {
       sessions = JSON.parse(readFileSync(SESSIONS_INDEX, "utf8"));
     } catch (e) {
-      process.stderr.write(`[inject-channels] parse sessions.json: ${e.message}\n`);
+      process.stderr.write(
+        `[inject-channels] parse sessions.json: ${e.message}\n`,
+      );
       sessions = {};
     }
     const trajectoryPaths = new Set();
     let removed = 0;
     for (const [k, v] of Object.entries(sessions)) {
       // Key format: "agent:main:<channel>:<chatType>:<peer>"
-      const matches = removedChannels.some((ch) => k.startsWith(`agent:main:${ch}:`));
+      const matches = removedChannels.some((ch) =>
+        k.startsWith(`agent:main:${ch}:`),
+      );
       if (!matches) continue;
       if (v && typeof v.sessionFile === "string") {
         trajectoryPaths.add(v.sessionFile);
@@ -143,11 +167,15 @@ try {
       removed++;
     }
     if (removed > 0) {
-      process.stderr.write(`[inject-channels] session-wipe: removed=${removed} trajectories=${trajectoryPaths.size}\n`);
+      process.stderr.write(
+        `[inject-channels] session-wipe: removed=${removed} trajectories=${trajectoryPaths.size}\n`,
+      );
       try {
         atomicWriteJSON(SESSIONS_INDEX, sessions);
       } catch (e) {
-        process.stderr.write(`[inject-channels] write sessions.json: ${e.message}\n`);
+        process.stderr.write(
+          `[inject-channels] write sessions.json: ${e.message}\n`,
+        );
       }
       for (const sessionFile of trajectoryPaths) {
         // sessionFile may be absolute or relative to SESSIONS_DIR; resolve
@@ -156,7 +184,11 @@ try {
         const resolved = safeSessionPath(sessionFile);
         if (!resolved) continue;
         for (const f of [resolved]) {
-          for (const suffix of ["", ".trajectory.jsonl", ".trajectory-path.json"]) {
+          for (const suffix of [
+            "",
+            ".trajectory.jsonl",
+            ".trajectory-path.json",
+          ]) {
             try {
               rmSync(f + suffix, { force: true });
             } catch (_) {
@@ -180,16 +212,47 @@ try {
 }
 
 function atomicWriteJSON(file, value) {
-  const temporary = join(dirname(file), `.${basename(file)}.${process.pid}.tmp`);
-  writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+  const temporary = join(
+    dirname(file),
+    `.${basename(file)}.${process.pid}.tmp`,
+  );
+  writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, {
+    mode: 0o600,
+  });
   renameSync(temporary, file);
+}
+
+function normalizeInjectedChannelConfig(id, config) {
+  if (id !== "mattermost") return config;
+  const allowPrivateNetwork =
+    config.allowPrivateNetwork === "true" ||
+    config.network?.dangerouslyAllowPrivateNetwork === true;
+  delete config.allowPrivateNetwork;
+  delete config.botId;
+  delete config.secret;
+  config.dmPolicy = "open";
+  config.groupPolicy = "disabled";
+  config.allowFrom = ["*"];
+  if (allowPrivateNetwork) {
+    config.network = { dangerouslyAllowPrivateNetwork: true };
+  } else {
+    delete config.network;
+  }
+  return config;
 }
 
 function safeSessionPath(sessionFile) {
   if (typeof sessionFile !== "string" || sessionFile.includes("\0")) return "";
   const root = resolve(SESSIONS_DIR);
-  const target = resolve(isAbsolute(sessionFile) ? sessionFile : join(root, sessionFile));
+  const target = resolve(
+    isAbsolute(sessionFile) ? sessionFile : join(root, sessionFile),
+  );
   const relative = target.slice(root.length);
-  if (target !== root && relative.startsWith("/") && !relative.startsWith("/..")) return target;
+  if (
+    target !== root &&
+    relative.startsWith("/") &&
+    !relative.startsWith("/..")
+  )
+    return target;
   return "";
 }

@@ -27,8 +27,11 @@ type podAPIView struct {
 	UserCount      int    `json:"userCount"`
 	AvailableSlots int    `json:"availableSlots"`
 	ChannelConfigs map[string]struct {
-		BotID            string `json:"botId"`
-		SecretConfigured bool   `json:"secretConfigured"`
+		BotID               string `json:"botId"`
+		BaseURL             string `json:"baseUrl"`
+		AllowPrivateNetwork string `json:"allowPrivateNetwork"`
+		SecretConfigured    bool   `json:"secretConfigured"`
+		BotTokenConfigured  bool   `json:"botTokenConfigured"`
 	} `json:"channelConfigs"`
 }
 
@@ -94,6 +97,42 @@ func TestPodAPI_ChannelUpdatePreservesSecret(t *testing.T) {
 	assertEncryptedChannelConfig(t, e, "pod-a", "bot-new", testWeComSecret)
 	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
 		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	}
+}
+
+func TestPodAPI_CreateMattermostPodUsesBindingGuardPolicy(t *testing.T) {
+	e := newTestEnv(t)
+	token := "mm-test-token"
+	body := `{"podId":"pod-mm","displayName":"Mattermost Pod","maxUsers":2,` +
+		`"channels":["mattermost"],"channelConfigs":{"mattermost":{` +
+		`"baseUrl":"https://mattermost.internal","botToken":"` + token + `",` +
+		`"allowPrivateNetwork":"true"}}}`
+	rr := e.do(http.MethodPost, "/api/v1/containers", body)
+	if rr.Code != http.StatusCreated || strings.Contains(rr.Body.String(), token) {
+		t.Fatalf("create Mattermost Pod status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	view := decodeAPIData[podAPIView](t, rr.Body.Bytes())
+	cfg := view.ChannelConfigs["mattermost"]
+	if cfg.BaseURL != "https://mattermost.internal" || !cfg.SecretConfigured ||
+		!cfg.BotTokenConfigured || cfg.AllowPrivateNetwork != "true" {
+		t.Fatalf("unexpected Mattermost view: %+v", cfg)
+	}
+	runtimeCfg := decodeRuntimeChannelConfig(t, e.drv.created["pod-mm"].ChannelConfigs["mattermost"])
+	for key, want := range map[string]string{
+		"baseUrl":             "https://mattermost.internal",
+		"botToken":            token,
+		"dmPolicy":            "open",
+		"groupPolicy":         "disabled",
+		"allowFrom":           "*",
+		"allowPrivateNetwork": "true",
+	} {
+		if runtimeCfg[key] != want {
+			t.Fatalf("runtime Mattermost config %s = %q, want %q; full=%+v", key, runtimeCfg[key], want, runtimeCfg)
+		}
+	}
+	pod, err := e.store.GetPod("pod-mm")
+	if err != nil || strings.Contains(pod.ChannelConfigsEnc, token) {
+		t.Fatalf("Mattermost token stored as plaintext or missing Pod: pod=%+v err=%v", pod, err)
 	}
 }
 
@@ -248,6 +287,15 @@ func assertEncryptedChannelConfig(t *testing.T, e *testEnv, podID, botID, secret
 	if err != nil || !strings.Contains(plain, botID) || !strings.Contains(plain, secret) {
 		t.Fatalf("encrypted channel config cannot be recovered: %v", err)
 	}
+}
+
+func decodeRuntimeChannelConfig(t *testing.T, raw json.RawMessage) map[string]string {
+	t.Helper()
+	config := map[string]string{}
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("decode runtime channel config: %v", err)
+	}
+	return config
 }
 
 func decodeAPIData[T any](t *testing.T, body []byte) T {

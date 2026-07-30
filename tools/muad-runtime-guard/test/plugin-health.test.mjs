@@ -4,7 +4,7 @@ import test from "node:test";
 
 import plugin from "../src/index.mjs";
 import { parseGuardConfig } from "../src/config.mjs";
-import { runtimeHealth } from "../src/health.mjs";
+import { createHealthHandler, runtimeHealth } from "../src/health.mjs";
 
 test("plugin registers unauthenticated /bind and operator-scoped runtime health", async (t) => {
   installHealthMarkers(t);
@@ -14,6 +14,9 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.equal(registration.command.requireAuth, false);
   assert.equal(registration.method, "muad.runtime.health");
   assert.deepEqual(registration.gatewayOptions, { scope: "operator.read" });
+  assert.deepEqual(registration.reloadPolicy, {
+    noopPrefixes: ["plugins.entries.muad-runtime-guard.config.generation"],
+  });
   assert.deepEqual(registration.policies.map((policy) => policy.id), [
     "muad-browser-profile", "muad-main-deny", "muad-agent-files",
   ]);
@@ -38,6 +41,23 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     telemetry: { loaded: true, pending: 0, writeFailed: false, dropped: 0, lastError: "" },
   });
   assert.equal(JSON.stringify(health).includes("pod-service-token"), false);
+});
+
+test("health handler observes the latest guard config without plugin reload", async (t) => {
+  installHealthMarkers(t);
+  const current = openClawConfig();
+  current.plugins = {
+    entries: {
+      "muad-runtime-guard": { config: { ...validConfig(), generation: 8 } },
+    },
+  };
+  const handler = createHealthHandler(parseGuardConfig(validConfig()), globalThis, {
+    readConfig: () => current,
+  });
+
+  const health = await handler();
+  assert.equal(health.ok, true);
+  assert.equal(health.generation, 8);
 });
 
 test("health fails closed for incomplete mappings, quarantine reuse, or missing dependencies", (t) => {
@@ -102,6 +122,7 @@ function registerPlugin(t, config) {
       registration.healthHandler = handler;
       registration.gatewayOptions = options;
     },
+    registerReload: (policy) => { registration.reloadPolicy = policy; },
   });
   t.after(() => globalThis[Symbol.for("muad.browser.lease")]?.close?.());
   return registration;

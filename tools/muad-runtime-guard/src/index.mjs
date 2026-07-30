@@ -24,6 +24,7 @@ const plugin = {
     registerModelConfigDispatch(api, config);
     registerToolPolicies(api, config);
     registerBrowserLeaseHooks(api, config, leaseManager);
+    registerReloadPolicy(api);
     const client = createBindingClient(config);
     api.registerCommand(createBindCommand({
       client,
@@ -37,6 +38,12 @@ const plugin = {
     });
   },
 };
+
+function registerReloadPolicy(api) {
+  api.registerReload?.({
+    noopPrefixes: ["plugins.entries.muad-runtime-guard.config.generation"],
+  });
+}
 
 function registerMainBindingReply(api, config) {
   api.on(

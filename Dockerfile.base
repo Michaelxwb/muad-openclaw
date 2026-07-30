@@ -1,7 +1,7 @@
 # muad-openclaw 基础镜像
-# 包含：上游 OpenClaw + Chromium/Playwright + 企微/微信插件 + 系统依赖 + 基线种子
+# 包含：上游 OpenClaw + Chromium/Playwright + 企微/微信/Mattermost 插件 + 系统依赖 + 基线种子
 # 变更频率：按季度 / 上游发版 / Chromium 升级 / 通道插件更新
-ARG OPENCLAW_VERSION=2026.6.10
+ARG OPENCLAW_VERSION=2026.7.1
 
 FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 
@@ -18,6 +18,8 @@ ENV OPENCLAW_STATE_DIR=/home/node/.openclaw \
 ARG WECOM_PLUGIN_VERSION=2026.6.23
 # 微信（个人）通道插件
 ARG WECHAT_PLUGIN_VERSION=2.4.3
+# Mattermost 通道插件
+ARG MATTERMOST_PLUGIN_VERSION=2026.7.1
 
 COPY baseline-config.json /opt/muad/baseline-config.json
 COPY bin/seed-config.mjs  /opt/muad/seed-config.mjs
@@ -35,10 +37,27 @@ RUN set -eux; \
     # 安装通道插件
     su node -c "openclaw plugins install '@wecom/wecom-openclaw-plugin@${WECOM_PLUGIN_VERSION}'"; \
     su node -c "openclaw plugins install '@tencent-weixin/openclaw-weixin@${WECHAT_PLUGIN_VERSION}'"; \
+    su node -c "openclaw plugins install '@openclaw/mattermost@${MATTERMOST_PLUGIN_VERSION}'"; \
+    # 基础通道插件是镜像能力，复制到不可变路径；PVC 只保存运行态数据
+    install -d -m 0755 /opt/openclaw-plugins; \
+    copy_image_plugin() { \
+      package_path="$1"; target="$2"; \
+      source="$(find /home/node/.openclaw/npm/projects -path "*/node_modules/${package_path}" -type d -print -quit)"; \
+      test -n "$source"; \
+      node_modules_dir="$(dirname "$(dirname "$source")")"; \
+      cp -a "$source" "$target"; \
+      install -d -m 0755 "$target/node_modules"; \
+      cp -a "$node_modules_dir"/. "$target/node_modules"/; \
+      rm -rf "$target/node_modules/${package_path}"; \
+    }; \
+    copy_image_plugin '@wecom/wecom-openclaw-plugin' /opt/openclaw-plugins/wecom-openclaw-plugin; \
+    copy_image_plugin '@tencent-weixin/openclaw-weixin' /opt/openclaw-plugins/openclaw-weixin; \
+    copy_image_plugin '@openclaw/mattermost' /opt/openclaw-plugins/mattermost; \
     # 合并基线配置 → 种子
     su node -c "node /opt/muad/seed-config.mjs"; \
+    rm -rf /home/node/.openclaw/npm/projects; \
     cp -a /home/node/.openclaw /opt/openclaw-seed; \
-    chown -R node:node /opt/openclaw-seed "$PLAYWRIGHT_BROWSERS_PATH" /home/node/.cache; \
+    chown -R node:node /opt/openclaw-seed /opt/openclaw-plugins "$PLAYWRIGHT_BROWSERS_PATH" /home/node/.cache; \
     # 留一个空挂载点（PVC 首挂时按它初始化）
     rm -rf /home/node/.openclaw; \
     install -d -m 0700 -o node -g node /home/node/.openclaw

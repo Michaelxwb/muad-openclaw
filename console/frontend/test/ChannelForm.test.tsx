@@ -7,6 +7,7 @@ import { ChannelForm } from "../src/components/ChannelForm";
 // not a real <label for=>. Click the addon span to toggle.
 const wecomCheckbox = () => screen.getByText("🏢 企业微信");
 const wechatCheckbox = () => screen.getByText("💬 微信");
+const mattermostCheckbox = () => screen.getByText("M Mattermost");
 
 describe("ChannelForm", () => {
   it("renders one checkbox per registered channel", () => {
@@ -15,6 +16,7 @@ describe("ChannelForm", () => {
     );
     expect(wechatCheckbox()).toBeInTheDocument();
     expect(wecomCheckbox()).toBeInTheDocument();
+    expect(mattermostCheckbox()).toBeInTheDocument();
   });
 
   it("blocks submit when no channel is selected", () => {
@@ -79,6 +81,32 @@ describe("ChannelForm", () => {
     void inputs;
   });
 
+  it("submits Mattermost URL, token, and private network flag", () => {
+    const onSubmit = vi.fn();
+    render(
+      <ChannelForm mode="create" busy={false} error="" onSubmit={onSubmit} onCancel={() => {}} />,
+    );
+    fireEvent.click(mattermostCheckbox());
+    fireEvent.change(screen.getByPlaceholderText("https://mattermost.example.com"), {
+      target: { value: "https://mattermost.internal" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("创建令牌时显示的完整 token"), {
+      target: { value: "mm-token" },
+    });
+    fireEvent.click(screen.getByText("允许访问内网地址"));
+
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const payload = onSubmit.mock.calls[0][0];
+    expect(payload.channels).toEqual(["mattermost"]);
+    expect(payload.channelConfigs.mattermost).toEqual({
+      baseUrl: "https://mattermost.internal",
+      botToken: "mm-token",
+      allowPrivateNetwork: "true",
+    });
+  });
+
   it("skips required validation in edit mode when secret is already configured", () => {
     const onSubmit = vi.fn();
     render(
@@ -104,5 +132,36 @@ describe("ChannelForm", () => {
     expect(payload.channelConfigs.wecom.botId).toBe("wb-existing");
     // secret kept empty → backend will reuse the stored value.
     expect(payload.channelConfigs.wecom.secret ?? "").toBe("");
+  });
+
+  it("keeps existing Mattermost token in edit mode while preserving visible fields", () => {
+    const onSubmit = vi.fn();
+    render(
+      <ChannelForm
+        mode="edit"
+        initial={{
+          channels: ["mattermost"],
+          channelConfigs: {
+            mattermost: {
+              baseUrl: "https://mattermost.internal",
+              allowPrivateNetwork: "true",
+              secretConfigured: true,
+            },
+          },
+        }}
+        busy={false}
+        error=""
+        onSubmit={onSubmit}
+        onCancel={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const payload = onSubmit.mock.calls[0][0];
+    expect(payload.channelConfigs.mattermost.baseUrl).toBe("https://mattermost.internal");
+    expect(payload.channelConfigs.mattermost.allowPrivateNetwork).toBe("true");
+    expect(payload.channelConfigs.mattermost.botToken ?? "").toBe("");
   });
 });

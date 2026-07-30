@@ -6,6 +6,11 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { applyRuntimeConfig } from "../inject-multi-user-config.mjs";
+import {
+  IMAGE_CHANNEL_PLUGIN_SPECS,
+  MUAD_RUNTIME_PLUGIN_SPECS,
+  pluginRoots,
+} from "../image-plugin-paths.mjs";
 import { canonicalHash, renderOpenClawConfig } from "../openclaw-config-renderer.mjs";
 import { parseRuntimeConfig, readRuntimeConfig } from "../runtime-config-schema.mjs";
 
@@ -150,6 +155,14 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.deepEqual(
     output.plugins.allow.filter((id) => id.startsWith("muad") || id === "session-manager"),
     ["muad-run-skill", "muad-runtime-guard", "session-manager"],
+  );
+  assert.deepEqual(
+    output.plugins.load.paths,
+    [
+      "/opt/muad/channel",
+      ...pluginRoots(MUAD_RUNTIME_PLUGIN_SPECS),
+      ...pluginRoots(IMAGE_CHANNEL_PLUGIN_SPECS),
+    ].sort(),
   );
 });
 

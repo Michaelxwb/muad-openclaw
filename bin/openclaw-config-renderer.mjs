@@ -1,14 +1,15 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import {
+  IMAGE_CHANNEL_PLUGIN_SPECS,
+  MUAD_RUNTIME_PLUGIN_SPECS,
+  pluginIds,
+  pluginRoots,
+} from "./image-plugin-paths.mjs";
 import { validateRuntimeConfig } from "./runtime-config-schema.mjs";
 import { mergeStartupContext, normalizeChannel } from "./startup-context.mjs";
 
-const PLUGIN_PATHS = {
-  "muad-run-skill": "/opt/muad/muad-run-skill",
-  "session-manager": "/opt/muad/session-manager",
-  "muad-runtime-guard": "/opt/muad/muad-runtime-guard",
-};
 const REQUIRED_PROFILE_TOOLS = ["browser", "muad_run_skill", "muad_use_skill", "session_get_state"];
 
 export function renderOpenClawConfig(runtime, baseline = {}) {
@@ -231,8 +232,15 @@ function renderPlugins(output, runtime) {
   output.plugins = {
     ...plugins,
     bundledDiscovery: "allowlist",
-    allow: uniqueSorted([...(plugins.allow ?? []), ...Object.keys(PLUGIN_PATHS)]),
-    load: { paths: uniqueSorted([...(plugins.load?.paths ?? []), ...Object.values(PLUGIN_PATHS)]) },
+    allow: uniqueSorted([...(plugins.allow ?? []), ...pluginIds(MUAD_RUNTIME_PLUGIN_SPECS)]),
+    load: {
+      ...(isRecord(plugins.load) ? plugins.load : {}),
+      paths: uniqueSorted([
+        ...(plugins.load?.paths ?? []),
+        ...pluginRoots(MUAD_RUNTIME_PLUGIN_SPECS),
+        ...pluginRoots(IMAGE_CHANNEL_PLUGIN_SPECS),
+      ]),
+    },
     entries: {
       ...entries,
       "muad-run-skill": {

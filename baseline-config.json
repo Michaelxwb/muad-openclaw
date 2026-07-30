@@ -24,12 +24,22 @@
     "wecom": {
       "connectionMode": "websocket"
     },
-    "openclaw-weixin": {}
+    "openclaw-weixin": {},
+    "mattermost": {
+      "dmPolicy": "open",
+      "groupPolicy": "disabled",
+      "allowFrom": ["*"]
+    }
   },
   "plugins": {
-    "allow": ["browser", "wecom-openclaw-plugin", "openclaw-weixin", "muad-run-skill"],
+    "allow": ["browser", "wecom-openclaw-plugin", "openclaw-weixin", "mattermost", "muad-run-skill"],
     "load": {
-      "paths": ["/opt/muad/muad-run-skill"]
+      "paths": [
+        "/opt/muad/muad-run-skill",
+        "/opt/openclaw-plugins/wecom-openclaw-plugin",
+        "/opt/openclaw-plugins/openclaw-weixin",
+        "/opt/openclaw-plugins/mattermost"
+      ]
     }
   },
   "models": {

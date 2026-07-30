@@ -6,9 +6,10 @@ import { Channel } from "./api";
 export interface CredentialField {
   key: string;
   label: string;
-  type: "text" | "password";
+  type: "text" | "password" | "checkbox";
   required: boolean;
   placeholder: string;
+  help?: string;
 }
 
 export interface ChannelDef {
@@ -41,6 +42,35 @@ export const CHANNEL_DEFS: ChannelDef[] = [
     icon: "💬",
     credentialFields: [],
     hint: "无需凭证，创建后在列表点击「扫码」授权登录",
+  },
+  {
+    id: "mattermost",
+    label: "Mattermost",
+    icon: "M",
+    credentialFields: [
+      {
+        key: "baseUrl",
+        label: "Mattermost URL",
+        type: "text",
+        required: true,
+        placeholder: "https://mattermost.example.com",
+      },
+      {
+        key: "botToken",
+        label: "机器人令牌",
+        type: "password",
+        required: true,
+        placeholder: "创建令牌时显示的完整 token",
+      },
+      {
+        key: "allowPrivateNetwork",
+        label: "允许访问内网地址",
+        type: "checkbox",
+        required: false,
+        placeholder: "",
+        help: "Mattermost 部署在内网地址时启用",
+      },
+    ],
   },
 ];
 

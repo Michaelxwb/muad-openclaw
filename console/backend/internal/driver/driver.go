@@ -155,25 +155,32 @@ func putIf(m map[string]string, k, v string) {
 
 // Channel values (message channels supported by the openclaw image).
 const (
-	ChannelWeCom   = "wecom"  // 企业微信
-	ChannelWeChat  = "wechat" // 微信
-	DefaultChannel = ChannelWeCom
+	ChannelWeCom      = "wecom"      // 企业微信
+	ChannelWeChat     = "wechat"     // 微信
+	ChannelMattermost = "mattermost" // Mattermost
+	DefaultChannel    = ChannelWeCom
 )
 
 // OpenClaw channel IDs used in openclaw.json and CLI output.
 const (
-	OpenClawChannelWeCom  = "wecom"
-	OpenClawChannelWeChat = "openclaw-weixin"
+	OpenClawChannelWeCom      = "wecom"
+	OpenClawChannelWeChat     = "openclaw-weixin"
+	OpenClawChannelMattermost = "mattermost"
 )
 
 // Non-bundled plugin IDs installed in the worker image.
 const (
-	PluginWeCom  = "wecom-openclaw-plugin"
-	PluginWeChat = "openclaw-weixin"
+	PluginWeCom      = "wecom-openclaw-plugin"
+	PluginWeChat     = "openclaw-weixin"
+	PluginMattermost = "mattermost"
 )
 
 // validChannels is the set of accepted channel identifiers.
-var validChannels = map[string]bool{ChannelWeCom: true, ChannelWeChat: true}
+var validChannels = map[string]bool{
+	ChannelWeCom:      true,
+	ChannelWeChat:     true,
+	ChannelMattermost: true,
+}
 
 // IsValidChannel reports whether c is a supported channel.
 func IsValidChannel(c string) bool { return validChannels[c] }
@@ -182,8 +189,9 @@ func IsValidChannel(c string) bool { return validChannels[c] }
 // openclaw non-bundled plugin id that implements it. Used to set
 // `plugins.allow` on hot-reload so removed channels actually unload.
 var pluginForChannel = map[string]string{
-	ChannelWeCom:  PluginWeCom,
-	ChannelWeChat: PluginWeChat,
+	ChannelWeCom:      PluginWeCom,
+	ChannelWeChat:     PluginWeChat,
+	ChannelMattermost: PluginMattermost,
 }
 
 // OpenClawChannelFor maps muad's external channel id to openclaw's channel id.
@@ -193,6 +201,8 @@ func OpenClawChannelFor(channel string) string {
 		return OpenClawChannelWeCom
 	case ChannelWeChat:
 		return OpenClawChannelWeChat
+	case ChannelMattermost:
+		return OpenClawChannelMattermost
 	default:
 		return channel
 	}

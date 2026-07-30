@@ -263,7 +263,10 @@ function initialForm(
   };
 }
 
-function defaultBindingAccountId(channel: string, channelDefaultAccountIds: Record<string, string>) {
+function defaultBindingAccountId(
+  channel: string,
+  channelDefaultAccountIds: Record<string, string>,
+) {
   return channelDefaultAccountIds[channel] || "default";
 }
 
