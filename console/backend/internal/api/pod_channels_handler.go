@@ -40,11 +40,32 @@ func (s *Server) handlePutPodChannels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.enqueueReconcile(pod.PodID)
+	s.refreshPodSpecSecret(r, pod.PodID)
 	s.auditChannelUpdate(r, pod.PodID)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"podId": pod.PodID, "channels": channels,
 		"channelConfigs": channelConfigViews(channels, configs),
 	})
+}
+
+// refreshPodSpecSecret rebuilds the runtime env Secret so channel changes take
+// effect on the next Pod restart, mirroring handleApplyPodConfig. Without it the
+// Secret keeps the previous channel set and a restart would drop the new channel
+// until the next config apply.
+func (s *Server) refreshPodSpecSecret(r *http.Request, podID string) {
+	updated, err := s.store.GetPod(podID)
+	if err != nil {
+		log.Printf("pod_spec_refresh_get_failed pod=%s error=%v", podID, err)
+		return
+	}
+	spec, err := s.buildDesiredPodSpec(updated)
+	if err != nil {
+		log.Printf("pod_spec_refresh_build_failed pod=%s error=%v", podID, err)
+		return
+	}
+	if err := s.drv.UpdateSpec(r.Context(), podID, spec); err != nil {
+		log.Printf("pod_spec_refresh_update_failed pod=%s error=%v", podID, err)
+	}
 }
 
 func (s *Server) auditChannelUpdate(r *http.Request, podID string) {

@@ -10,6 +10,7 @@ import {
   tablePagination,
 } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
+import styles from "./LLM.module.css";
 import { LLMCreateDialog } from "./llm/LLMCreateDialog";
 
 const { Text } = Typography;
@@ -231,11 +232,12 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: "显示名",
       dataIndex: "displayName",
+      width: 300,
       render: (_: unknown, model: LLMModelConfig) => (
-        <div>
-          <div>{model.displayName}</div>
+        <div className={styles.tableCellStack}>
+          <div className={styles.tableCellPrimary}>{model.displayName}</div>
           <Text type="tertiary" size="small" className="mono">
-            {model.modelConfigId}
+            <span className={styles.tableCellMeta}>{model.modelConfigId}</span>
           </Text>
         </div>
       ),
@@ -243,11 +245,12 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: "模型",
       dataIndex: "model",
+      width: 160,
       render: (_: unknown, model: LLMModelConfig) => (
-        <div>
-          <div>{model.provider}</div>
+        <div className={styles.tableCellStack}>
+          <div className={styles.tableCellPrimary}>{model.provider}</div>
           <Text type="tertiary" size="small">
-            {model.model}
+            <span className={styles.tableCellMeta}>{model.model}</span>
           </Text>
         </div>
       ),
@@ -255,27 +258,30 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: "Base URL",
       dataIndex: "baseUrl",
+      width: 260,
+      render: (_: unknown, model: LLMModelConfig) => (
+        <span className={styles.tableCellLine}>{model.baseUrl}</span>
+      ),
     },
     {
       title: "API Key",
       dataIndex: "apiKey",
+      width: 360,
       render: (_: unknown, model: LLMModelConfig) => (
         <Text type="tertiary" size="small" className="mono">
-          {model.apiKey || "未配置"}
+          <span className={styles.tableCellLine}>{model.apiKey || "未配置"}</span>
         </Text>
       ),
     },
     {
       title: "绑定状态",
       dataIndex: "boundHumanUserId",
+      width: 180,
       render: (_: unknown, model: LLMModelConfig) =>
         model.boundHumanUserId ? (
-          <Space>
+          <Space className={styles.boundStatus}>
             <Tag color="orange">已绑定</Tag>
-            <span>{model.boundHumanUserName || "-"}</span>
-            <Text type="tertiary" size="small" className="mono">
-              {model.boundHumanUserId}
-            </Text>
+            <span className={styles.boundUserName}>{model.boundHumanUserName || "-"}</span>
           </Space>
         ) : (
           <Tag color="green">可分配</Tag>
@@ -284,6 +290,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: "测试结果",
       dataIndex: "test",
+      width: 110,
       render: (_: unknown, model: LLMModelConfig) => {
         if (!model.lastTestAt) return <Text type="tertiary">未测试</Text>;
         return model.lastTestOK ? (
@@ -296,6 +303,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: "操作",
       key: "actions",
+      width: 90,
       render: (_: unknown, model: LLMModelConfig) => (
         <DeleteModelButton
           model={model}
@@ -336,6 +344,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       renderPagination={renderTablePagination}
       empty="暂无模型配置"
       size="small"
+      scroll={{ x: 1520 }}
     />
   );
 }

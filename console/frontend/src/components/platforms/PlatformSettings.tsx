@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Input, Modal, Select, Space, Table, Tag, Toast } from "@douyinfe/semi-ui";
-import { IconSearch } from "@douyinfe/semi-icons";
+import { IconPlus, IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../../api";
 import type { Platform } from "../../api";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import { DEFAULT_PAGE_SIZE, renderTablePagination, tablePagination } from "../Pagination";
 import { FeedbackBanner, ListToolbar, PageSection } from "../ConsolePage";
 import { PlatformEditorDialog } from "./PlatformEditorDialog";
+import styles from "./PlatformSettings.module.css";
 
 type PlatformStatusFilter = "" | "enabled" | "disabled";
 
@@ -34,8 +35,7 @@ export function PlatformSettings() {
       <ListToolbar
         actions={
           <Space>
-            <Tag>{state.items.length} 个平台</Tag>
-            <Button theme="solid" onClick={openCreate}>
+            <Button aria-label="增加平台" icon={<IconPlus />} theme="solid" onClick={openCreate}>
               增加平台
             </Button>
           </Space>
@@ -58,6 +58,7 @@ export function PlatformSettings() {
           },
         })}
         renderPagination={renderTablePagination}
+        empty="暂无业务平台"
         size="small"
       />
       <PlatformEditorDialog
@@ -177,34 +178,40 @@ function platformColumns(onEdit: (platform: Platform) => void, onDeleted: () => 
     {
       title: "平台",
       key: "platform",
+      width: "42%",
       render: (_: unknown, platform: Platform) => (
-        <div>
-          <strong>{platform.displayName}</strong>
-          <div className="mono">{platform.platform}</div>
+        <div className={styles.tableCellStack}>
+          <strong className={styles.tableCellPrimary}>{platform.displayName}</strong>
+          <div className={`mono ${styles.tableCellMeta}`}>{platform.platform}</div>
         </div>
       ),
     },
     {
       title: "状态",
       key: "status",
+      width: "14%",
       render: (_: unknown, platform: Platform) => (
-        <Space>
-          <Tag color={platform.enabled ? "green" : "grey"}>
-            {platform.enabled ? "已启用" : "已停用"}
-          </Tag>
-        </Space>
+        <Tag color={platform.enabled ? "green" : "grey"}>
+          {platform.enabled ? "已启用" : "已停用"}
+        </Tag>
       ),
     },
     {
       title: "更新时间",
       key: "updatedAt",
-      render: (_: unknown, platform: Platform) => new Date(platform.updatedAt).toLocaleString(),
+      width: "24%",
+      render: (_: unknown, platform: Platform) => (
+        <span className={styles.tableCellLine}>
+          {new Date(platform.updatedAt).toLocaleString()}
+        </span>
+      ),
     },
     {
       title: "操作",
       key: "actions",
+      width: "20%",
       render: (_: unknown, platform: Platform) => (
-        <Space>
+        <Space className={styles.actionGroup} spacing={4}>
           <Button size="small" onClick={() => onEdit(platform)}>
             编辑
           </Button>

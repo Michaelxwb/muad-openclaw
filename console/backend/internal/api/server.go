@@ -177,15 +177,15 @@ func requestErrorLogMiddleware(next http.Handler) http.Handler {
 }
 
 func logErrorResponse(recorder *errorLogRecorder, r *http.Request, requestID string, elapsed time.Duration) {
-	if recorder.status < http.StatusBadRequest {
-		return
-	}
 	var envelope struct {
 		Code    int    `json:"code"`
 		Message string `json:"message"`
 	}
 	_ = json.Unmarshal(recorder.body.Bytes(), &envelope)
-	level := "WARN"
+	level := "INFO"
+	if recorder.status >= http.StatusBadRequest {
+		level = "WARN"
+	}
 	if recorder.status >= http.StatusInternalServerError {
 		level = "ERROR"
 	}

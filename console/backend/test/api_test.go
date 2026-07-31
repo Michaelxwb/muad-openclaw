@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -599,6 +600,12 @@ func TestPodChannelUpdateRemovesChannelAndQueuesReconcile(t *testing.T) {
 	assertEncryptedChannelConfig(t, e, "pod-channels", "bot-new", "secret-old")
 	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-channels" {
 		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	}
+	if len(e.drv.updateSpecCalls) != 1 || e.drv.updateSpecCalls[0].userID != "pod-channels" {
+		t.Fatalf("UpdateSpec calls = %+v", e.drv.updateSpecCalls)
+	}
+	if !slices.Contains(e.drv.updateSpecCalls[0].channels, "wecom") {
+		t.Fatalf("UpdateSpec channels = %v, want wecom", e.drv.updateSpecCalls[0].channels)
 	}
 }
 
