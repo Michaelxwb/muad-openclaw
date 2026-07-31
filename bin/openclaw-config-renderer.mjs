@@ -225,11 +225,13 @@ function renderSkills(output, runtime) {
 
 function renderPlugins(output, runtime) {
   const plugins = isRecord(output.plugins) ? output.plugins : {};
+  const pluginBase = { ...plugins };
+  delete pluginBase.installs;
   const entries = isRecord(plugins.entries) ? plugins.entries : {};
   const existingAllow = Array.isArray(plugins.allow) ? plugins.allow : [];
   const existingPaths = Array.isArray(plugins.load?.paths) ? plugins.load.paths : [];
   output.plugins = {
-    ...plugins,
+    ...pluginBase,
     bundledDiscovery: "allowlist",
     allow: uniqueSorted([
       ...existingAllow.filter((id) => !DEPRECATED_RUNTIME_PLUGINS.has(id)),

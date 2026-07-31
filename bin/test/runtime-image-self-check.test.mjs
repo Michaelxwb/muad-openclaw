@@ -13,8 +13,10 @@ import {
   validatePluginArtifacts,
   validatePluginDependencies,
   validatePluginInventory,
+  validateNoManagedPluginInstalls,
   validateRuntimePermissions,
   validateRuntimePluginConfig,
+  validateRuntimePluginsOfflineSafe,
   runImageSelfCheck,
 } from "../runtime-image-self-check.mjs";
 
@@ -32,6 +34,22 @@ test("all repository plugin manifests match their load roots and entries", () =>
   ]);
 });
 
+test("runtime plugins are packaged for offline startup", () => {
+  const root = join(import.meta.dirname, "..", "..");
+  assert.doesNotThrow(() => validateRuntimePluginsOfflineSafe([
+    localPlugin(root, "session-manager", "openclaw-plugin.mjs"),
+    localPlugin(root, "muad-runtime-guard", "src/index.mjs"),
+  ]));
+
+  assert.throws(
+    () => validateRuntimePluginsOfflineSafe(
+      [{ id: "bad", root: "/bad", manifest: "unused", entry: "unused" }],
+      { readFile: () => JSON.stringify({ peerDependencies: { openclaw: ">=2026.0.0" } }) },
+    ),
+    /runtime npm install/u,
+  );
+});
+
 test("runtime assembly requires explicit allow, load path, entries, CLI, and readable token", () => {
   const root = mkdtempSync(join(tmpdir(), "muad-image-check-"));
   const cli = join(root, "session-manager");
@@ -41,11 +59,16 @@ test("runtime assembly requires explicit allow, load path, entries, CLI, and rea
   const specs = imageSpecs();
   const config = runtimeConfig(specs);
 
+  assert.doesNotThrow(() => validateNoManagedPluginInstalls(config));
   assert.doesNotThrow(() => validateRuntimePluginConfig(config, specs, IMAGE_CHANNEL_PLUGINS));
   assert.doesNotThrow(() => validateRuntimePermissions(config, {
     cliPath: cli,
     access: (path, mode) => accessSync(path === POD_SERVICE_TOKEN_FILE ? token : path, mode),
   }));
+
+  config.plugins.installs = { mattermost: { source: "npm" } };
+  assert.throws(() => validateNoManagedPluginInstalls(config), /managed plugin install records/u);
+  delete config.plugins.installs;
 
   config.plugins.entries["muad-runtime-guard"].hooks.allowConversationAccess = false;
   assert.throws(
@@ -90,6 +113,7 @@ test("startup self-check skips OpenClaw CLI migration paths", () => {
       imageChannelPlugins: IMAGE_CHANNEL_PLUGINS,
       dependencies: {
         cliPath: cli,
+        readFile: () => "{}",
         access: (path, mode) => accessSync(path === POD_SERVICE_TOKEN_FILE ? token : path, mode),
       },
     }));

@@ -73,6 +73,12 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
     tools: { profile: "coding", alsoAllow: ["browser", "muad_run_skill"] },
     plugins: {
       allow: ["wecom-openclaw-plugin"],
+      installs: {
+        mattermost: {
+          source: "npm",
+          installPath: "/home/node/.openclaw/npm/projects/mattermost/node_modules/@openclaw/mattermost",
+        },
+      },
       load: { paths: ["/opt/muad/channel"] },
     },
   };
@@ -107,6 +113,7 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.equal(output.models.providers["user-alice-deepseek"].apiKey, "alice-key");
   assert.deepEqual(output.tools.alsoAllow, ["browser", "session_get_state"]);
   assert.equal(output.plugins.entries["session-manager"].enabled, true);
+  assert.equal(output.plugins.installs, undefined);
   assert.equal(output.plugins.entries["session-manager"].config.consoleInternalURL, runtime.consoleInternalUrl);
   assert.equal(output.plugins.entries["muad-run-skill"], undefined);
   assert.equal(output.skills.entries?.["__muad-runtime-skill-state"], undefined);

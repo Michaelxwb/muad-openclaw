@@ -16,6 +16,7 @@ if [[ ! -f "${STATE_DIR}/openclaw.json" ]]; then
 fi
 
 node /opt/muad/inject-env.mjs
+node /opt/muad/prune-managed-plugin-installs.mjs
 node /opt/muad/runtime-image-self-check.mjs --skip-openclaw-cli
 
 # ⑥ 定时任务：用 openclaw 原生 cron——用户在企微让 bot 设定时任务，agent 自建并自动绑定该会话为投递目标。

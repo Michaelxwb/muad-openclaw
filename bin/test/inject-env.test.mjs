@@ -213,6 +213,12 @@ test("startup preserves a newer persisted runtime generation", () => {
   persistedConfig.plugins.load = {
     paths: ["/legacy/plugin-path", "/opt/muad/muad-run-skill"],
   };
+  persistedConfig.plugins.installs = {
+    mattermost: {
+      source: "npm",
+      installPath: "/home/node/.openclaw/npm/projects/mattermost/node_modules/@openclaw/mattermost",
+    },
+  };
   delete persistedConfig.plugins.entries["muad-runtime-guard"].hooks;
   persistedConfig.plugins.entries["muad-run-skill"] = {
     enabled: true,
@@ -249,6 +255,7 @@ test("startup preserves a newer persisted runtime generation", () => {
     true,
   );
   assert.equal(migrated.plugins.entries["muad-run-skill"], undefined);
+  assert.equal(migrated.plugins.installs, undefined);
   assert.equal(migrated.plugins.allow.includes("muad-run-skill"), false);
   assert.equal(migrated.plugins.load.paths.includes("/opt/muad/muad-run-skill"), false);
   assert.deepEqual(migrated.tools.alsoAllow, ["browser", "session_get_state"]);
