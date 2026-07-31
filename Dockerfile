@@ -32,7 +32,8 @@ USER root
 
 COPY bin/inject-env.mjs bin/inject-multi-user-config.mjs bin/openclaw-config-renderer.mjs \
     bin/runtime-config-schema.mjs bin/runtime-config-transaction.mjs bin/runtime-image-self-check.mjs \
-    bin/startup-context.mjs bin/private-skill-installer.mjs bin/image-plugin-paths.mjs /opt/muad/
+    bin/startup-context.mjs bin/private-skill-installer.mjs bin/image-plugin-paths.mjs \
+    bin/prune-managed-plugin-installs.mjs /opt/muad/
 COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
 
 # 业务 Python 依赖（脚本类 skill 运行时）；基础镜像已含 python3-pip。
@@ -55,7 +56,8 @@ COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh
 RUN set -eux; \
     ln -s /opt/muad/session-manager/dist/cli.js /usr/local/bin/session-manager; \
     chmod 0755 /usr/local/bin/muad-entrypoint.sh /opt/muad/session-manager/dist/cli.js \
-      /opt/muad/runtime-image-self-check.mjs /opt/muad/private-skill-installer.mjs; \
+      /opt/muad/runtime-image-self-check.mjs /opt/muad/private-skill-installer.mjs \
+      /opt/muad/prune-managed-plugin-installs.mjs; \
     chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-runtime-guard /opt/muad/runtime-concurrency; \
     chown -R node:node /opt/muad/session-manager /opt/muad/muad-runtime-guard \
       /opt/muad/runtime-concurrency /opt/openclaw-skills; \

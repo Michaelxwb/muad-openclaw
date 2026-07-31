@@ -40,6 +40,7 @@ test("worker image builds session-manager and installs all runtime plugins and C
     "/opt/muad/muad-runtime-guard",
     "/opt/muad/muad-runtime-guard/src/binding_code_spec.json",
     "private-skill-installer.mjs",
+    "prune-managed-plugin-installs.mjs",
     "/usr/local/bin/session-manager",
     "runtime-image-self-check.mjs --image-only",
     "image-plugin-paths.mjs",
@@ -82,6 +83,7 @@ test("base image contains OpenClaw, Chromium/Playwright, channel plugins, and se
   assert.match(base, /cp -a "\$node_modules_dir"\/\. "\$target\/node_modules"\//u);
   assert.match(base, /rm -rf "\$target\/node_modules\/\$\{package_path\}"/u);
   assert.match(base, /rm -rf \/home\/node\/\.openclaw\/npm\/projects/u);
+  assert.match(entrypoint, /node \/opt\/muad\/prune-managed-plugin-installs\.mjs/u);
   // Baseline seed
   assert.match(base, /seed-config\.mjs/u);
   assert.match(base, /\/opt\/openclaw-seed/u);

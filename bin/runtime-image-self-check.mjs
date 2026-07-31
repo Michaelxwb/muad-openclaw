@@ -33,6 +33,20 @@ export function validatePluginArtifacts(specs = IMAGE_PLUGINS, dependencies = {}
   }
 }
 
+export function validateRuntimePluginsOfflineSafe(specs = REQUIRED_RUNTIME_PLUGINS, dependencies = {}) {
+  const read = dependencies.readFile ?? readFileSync;
+  for (const spec of specs) {
+    const packagePath = `${spec.root}/package.json`;
+    const manifest = parseJSON(read(packagePath, "utf8"), packagePath);
+    for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+      const entries = isRecord(manifest[field]) ? Object.keys(manifest[field]) : [];
+      if (entries.length > 0) {
+        throw new Error(`runtime plugin ${spec.id} must not require runtime npm install: ${field}`);
+      }
+    }
+  }
+}
+
 export function validateRuntimePluginConfig(
   config,
   specs = REQUIRED_RUNTIME_PLUGINS,
@@ -56,6 +70,13 @@ export function validateRuntimePluginConfig(
   }
   if (entries["muad-runtime-guard"]?.hooks?.allowConversationAccess !== true) {
     throw new Error("Muad Runtime Guard conversation hook access is not enabled");
+  }
+}
+
+export function validateNoManagedPluginInstalls(config) {
+  const installs = config?.plugins?.installs;
+  if (isRecord(installs) && Object.keys(installs).length > 0) {
+    throw new Error("OpenClaw managed plugin install records must not be present in runtime config");
   }
 }
 
@@ -106,9 +127,11 @@ export function runImageSelfCheck(options = {}) {
     assertOpenClawVersion(versionOutput);
   }
   validatePluginArtifacts(options.plugins ?? IMAGE_PLUGINS, options.dependencies);
+  validateRuntimePluginsOfflineSafe(options.requiredRuntimePlugins ?? REQUIRED_RUNTIME_PLUGINS, options.dependencies);
   if (options.imageOnly) return;
   const configPath = options.configPath ?? openClawConfigPath(process.env);
   const config = parseJSON(readFileSync(configPath, "utf8"), configPath);
+  validateNoManagedPluginInstalls(config);
   validateRuntimePluginConfig(
     config,
     options.requiredRuntimePlugins ?? REQUIRED_RUNTIME_PLUGINS,

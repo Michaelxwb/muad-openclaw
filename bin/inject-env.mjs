@@ -40,6 +40,7 @@ export function injectStartupConfig({ env = process.env, stdinText, configPath, 
 export function applyPersistedRuntimeContract(configPath, config) {
   const guard = config?.plugins?.entries?.["muad-runtime-guard"];
   let changed = removeDeprecatedRuntimeEntries(config);
+  changed = removeManagedPluginInstallRecords(config) || changed;
   changed = ensurePluginLoadPaths(config, IMAGE_PLUGIN_SPECS) || changed;
   changed = ensureConversationHookAccess(guard) || changed;
   changed = ensureProfileTools(config) || changed;
@@ -94,6 +95,13 @@ function removeDeprecatedRuntimeEntries(config) {
     }
   }
   return changed;
+}
+
+function removeManagedPluginInstallRecords(config) {
+  const plugins = isRecord(config?.plugins) ? config.plugins : undefined;
+  if (!plugins || plugins.installs === undefined) return false;
+  delete plugins.installs;
+  return true;
 }
 
 function isRecord(value) {
