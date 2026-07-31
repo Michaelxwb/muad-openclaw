@@ -208,10 +208,10 @@ func (applier *Applier) waitForHealth(
 		case <-probeCtx.Done():
 			timer.Stop()
 			return fmt.Errorf(
-				"%s generation %d health timeout (gateway=%t guard=%t observed=%d configApplied=%t revision=%q applied=%q routeVerified=%t routeChecked=%d routeFailed=%d routeGeneration=%d routeError=%q): %w",
+				"%s generation %d health timeout (gateway=%t guard=%t observed=%d configApplied=%t configGeneration=%d revision=%q applied=%q routeVerified=%t routeChecked=%d routeFailed=%d routeGeneration=%d routeError=%q): %w",
 				healthFailureCode(last, generation, requireConfigApplied, len(expectedRoutes) > 0),
 				generation, last.Healthy, last.RuntimeGuardHealthy, last.RuntimeGeneration,
-				last.ConfigApplied, last.ConfigRevisionHash, last.AppliedConfigHash,
+				last.ConfigApplied, last.ConfigGeneration, last.ConfigRevisionHash, last.AppliedConfigHash,
 				last.RouteVerified, last.RouteChecked, last.RouteFailed, last.RouteGeneration,
 				last.RouteError, probeCtx.Err(),
 			)
