@@ -146,16 +146,18 @@ type HumanUser struct {
 	UpdatedAt              time.Time
 }
 
-// LLMModelConfig is one assignable model credential. A non-empty APIKeyEnc is
-// encrypted at rest and exposed only through the fingerprint.
+// LLMModelConfig is one assignable model credential stored with its plaintext
+// API key plus the latest connectivity-test outcome.
 type LLMModelConfig struct {
 	ModelConfigID      string
 	DisplayName        string
 	Provider           string
 	BaseURL            string
-	APIKeyEnc          string
-	APIKeyFingerprint  string
+	APIKey             string
 	Model              string
+	LastTestAt         time.Time
+	LastTestOK         bool
+	LastTestError      string
 	BoundHumanUserID   string
 	BoundHumanUserName string
 	CreatedAt          time.Time

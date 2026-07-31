@@ -12,8 +12,12 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.equal(registration.command.name, "bind");
   assert.equal(registration.command.acceptsArgs, true);
   assert.equal(registration.command.requireAuth, false);
-  assert.equal(registration.method, "muad.runtime.health");
-  assert.deepEqual(registration.gatewayOptions, { scope: "operator.read" });
+  assert.deepEqual(registration.methods.map((entry) => entry.method), [
+    "muad.runtime.health", "muad.runtime.verify-routes",
+  ]);
+  assert.deepEqual(registration.methods.map((entry) => entry.options), [
+    { scope: "operator.read" }, { scope: "operator.read" },
+  ]);
   assert.deepEqual(registration.reloadPolicy, {
     noopPrefixes: ["plugins.entries.muad-runtime-guard.config.generation"],
   });
@@ -32,7 +36,7 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.equal(registration.hooks[0].handler({}, { agentId: "alice" }), undefined);
   assert.equal(registration.hooks[1].handler({}, { agentId: "alice" }), undefined);
 
-  const health = await registration.healthHandler({ params: {} });
+  const health = await registration.methods[0].handler({ params: {} });
   assert.deepEqual(health, {
     ok: true,
     version: 2,
@@ -96,7 +100,7 @@ test("manifest declares all trusted policies and package entry", () => {
 });
 
 function registerPlugin(t, config) {
-  const registration = { policies: [], hooks: [] };
+  const registration = { policies: [], hooks: [], methods: [] };
   plugin.register({
     pluginConfig: config,
     config: openClawConfig(),
@@ -109,9 +113,7 @@ function registerPlugin(t, config) {
     registerTrustedToolPolicy: (policy) => { registration.policies.push(policy); },
     on: (name, handler, options) => { registration.hooks.push({ name, handler, options }); },
     registerGatewayMethod: (method, handler, options) => {
-      registration.method = method;
-      registration.healthHandler = handler;
-      registration.gatewayOptions = options;
+      registration.methods.push({ method, handler, options });
     },
     registerReload: (policy) => { registration.reloadPolicy = policy; },
   });

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -20,10 +19,10 @@ type humanUserAPIView struct {
 	Status         string `json:"status"`
 	IdentityCount  int    `json:"identityCount"`
 	ModelConfig    struct {
-		Provider       string `json:"provider"`
-		Model          string `json:"model"`
-		KeyConfigured  bool   `json:"keyConfigured"`
-		KeyFingerprint string `json:"keyFingerprint"`
+		Provider      string `json:"provider"`
+		Model         string `json:"model"`
+		KeyConfigured bool   `json:"keyConfigured"`
+		APIKey        string `json:"apiKey"`
 	} `json:"modelConfig"`
 }
 
@@ -199,18 +198,10 @@ func createDirectHumanUser(t *testing.T) (*testEnv, humanUserAPIView) {
 
 func createLLMModelForAPI(t *testing.T, e *testEnv, name string) string {
 	t.Helper()
-	cipher, err := crypto.New("mk")
-	if err != nil {
-		t.Fatalf("create cipher: %v", err)
-	}
-	encrypted, err := cipher.Encrypt("sk-" + name)
-	if err != nil {
-		t.Fatalf("encrypt model key: %v", err)
-	}
 	models, err := e.store.CreateLLMModelConfigs([]repo.LLMModelConfigCreate{{
 		DisplayName: name, Provider: "deepseek", BaseURL: "https://api.deepseek.com",
-		APIKeyEnc: encrypted, APIKeyFingerprint: crypto.Fingerprint("sk-" + name),
-		Model: "deepseek-chat",
+		APIKey: "sk-" + name,
+		Model:  "deepseek-chat",
 	}})
 	if err != nil {
 		t.Fatalf("create LLM model: %v", err)

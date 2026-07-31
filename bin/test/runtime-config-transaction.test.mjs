@@ -23,7 +23,7 @@ test("transaction prepares, commits and rolls back an atomic config candidate", 
   const runtime = runtimeForRoot(root);
 
   const prepared = prepareTransaction({ runtime, configPath });
-  assert.equal(prepared.restartMode, "pod");
+  assert.equal(prepared.restartMode, "gateway");
   assert.equal(existsSync(`${configPath}.muad.candidate`), true);
   const committed = commitTransaction({ runtime, configPath });
   assert.equal(committed.configHash, prepared.configHash);
@@ -122,6 +122,30 @@ test("non-binding runtime changes still restart the gateway", () => {
   const next = restartBaseline();
   next.plugins.entries["muad-runtime-guard"].config.generation = 8;
   next.plugins.entries["session-manager"].config.consoleInternalURL = "http://console-next/internal/v1";
+
+  assert.equal(selectRestartMode(current, next), "gateway");
+});
+
+test("adding an agent browser profile does not require a pod restart", () => {
+  const current = restartBaseline();
+  current.browser = {
+    enabled: true,
+    profiles: { alice: { cdpPort: 18802, driver: "openclaw" } },
+  };
+  const next = restartBaseline();
+  next.browser = {
+    enabled: true,
+    profiles: {
+      alice: { cdpPort: 18802, driver: "openclaw" },
+      bob: { cdpPort: 18803, driver: "openclaw" },
+    },
+  };
+  next.bindings = [{
+    match: { channel: "mattermost", peer: { kind: "direct", id: "mm-user-2" } },
+    agentId: "bob",
+  }];
+  next.session.identityLinks = { bob: ["mattermost:default:direct:mm-user-2"] };
+  next.plugins.entries["muad-runtime-guard"].config.generation = 8;
 
   assert.equal(selectRestartMode(current, next), "gateway");
 });

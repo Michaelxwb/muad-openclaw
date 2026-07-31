@@ -29,6 +29,7 @@ type Server struct {
 	drv            driver.RuntimeDriver
 	cache          *monitor.Cache
 	reconcile      ReconcileEnqueuer
+	reconcileNow   ReconcileRunner
 	operations     PodOperationRunner
 	bindingLimiter *bindingAttemptLimiter
 	loginLimiter   *bindingAttemptLimiter
@@ -37,6 +38,11 @@ type Server struct {
 // ReconcileEnqueuer receives Pod IDs whose desired runtime generation changed.
 type ReconcileEnqueuer interface {
 	Enqueue(podID string)
+}
+
+// ReconcileRunner applies a Pod's current desired runtime generation before returning.
+type ReconcileRunner interface {
+	ReconcileNow(ctx context.Context, podID string) error
 }
 
 // PodOperationRunner serializes runtime mutations with config reconciliation.
@@ -66,6 +72,7 @@ func NewServer(
 	}
 	if len(enqueuers) > 0 {
 		server.reconcile = enqueuers[0]
+		server.reconcileNow, _ = enqueuers[0].(ReconcileRunner)
 		server.operations, _ = enqueuers[0].(PodOperationRunner)
 	}
 	return server

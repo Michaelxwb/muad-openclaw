@@ -15,6 +15,7 @@ import {
   validatePluginInventory,
   validateRuntimePermissions,
   validateRuntimePluginConfig,
+  runImageSelfCheck,
 } from "../runtime-image-self-check.mjs";
 
 test("OpenClaw image version is pinned exactly", () => {
@@ -67,6 +68,34 @@ test("runtime assembly requires explicit allow, load path, entries, CLI, and rea
     () => validateRuntimePluginConfig(config, specs, IMAGE_CHANNEL_PLUGINS),
     /image channel plugin path is missing/,
   );
+});
+
+test("startup self-check skips OpenClaw CLI migration paths", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-startup-check-"));
+  const configPath = join(root, "openclaw.json");
+  const cli = join(root, "session-manager");
+  const token = join(root, "pod-service-token");
+  writeFileSync(cli, "#!/bin/sh\n", { mode: 0o700 });
+  writeFileSync(token, "opaque", { mode: 0o400 });
+  writeFileSync(configPath, JSON.stringify(runtimeConfig(imageSpecs())));
+
+  const previousPath = process.env.PATH;
+  process.env.PATH = "";
+  try {
+    assert.doesNotThrow(() => runImageSelfCheck({
+      skipOpenClawCLI: true,
+      configPath,
+      plugins: [],
+      requiredRuntimePlugins: imageSpecs(),
+      imageChannelPlugins: IMAGE_CHANNEL_PLUGINS,
+      dependencies: {
+        cliPath: cli,
+        access: (path, mode) => accessSync(path === POD_SERVICE_TOKEN_FILE ? token : path, mode),
+      },
+    }));
+  } finally {
+    process.env.PATH = previousPath;
+  }
 });
 
 test("cold OpenClaw inventory must discover every plugin as enabled and healthy", () => {

@@ -73,6 +73,11 @@ func TestK8s_CreateProvisionsAll(t *testing.T) {
 		c.LivenessProbe.TCPSocket.Port.IntVal != GatewayPort {
 		t.Fatalf("liveness probe = %+v, want TCP %d", c.LivenessProbe, GatewayPort)
 	}
+	if c.StartupProbe == nil || c.StartupProbe.TCPSocket == nil ||
+		c.StartupProbe.TCPSocket.Port.IntVal != GatewayPort ||
+		c.StartupProbe.FailureThreshold < 60 {
+		t.Fatalf("startup probe = %+v, want long TCP startup window", c.StartupProbe)
+	}
 	if len(dep.Spec.Template.Spec.InitContainers) != 0 {
 		t.Fatalf("init containers = %d, want 0", len(dep.Spec.Template.Spec.InitContainers))
 	}

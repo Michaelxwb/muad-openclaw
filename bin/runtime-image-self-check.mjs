@@ -99,10 +99,12 @@ export function validateRuntimePermissions(config, dependencies = {}) {
 }
 
 export function runImageSelfCheck(options = {}) {
-  const versionOutput = options.versionOutput ?? execFileSync("openclaw", ["--version"], {
-    encoding: "utf8",
-  });
-  assertOpenClawVersion(versionOutput);
+  if (!options.skipOpenClawCLI) {
+    const versionOutput = options.versionOutput ?? execFileSync("openclaw", ["--version"], {
+      encoding: "utf8",
+    });
+    assertOpenClawVersion(versionOutput);
+  }
   validatePluginArtifacts(options.plugins ?? IMAGE_PLUGINS, options.dependencies);
   if (options.imageOnly) return;
   const configPath = options.configPath ?? openClawConfigPath(process.env);
@@ -113,6 +115,7 @@ export function runImageSelfCheck(options = {}) {
     options.imageChannelPlugins ?? IMAGE_CHANNEL_PLUGINS,
   );
   validateRuntimePermissions(config, options.dependencies);
+  if (options.skipOpenClawCLI) return;
   const inventory = options.inventoryOutput ?? execFileSync(
     "openclaw", ["plugins", "list", "--json"], { encoding: "utf8" },
   );
@@ -139,7 +142,10 @@ function isRecord(value) {
 
 function main() {
   try {
-    runImageSelfCheck({ imageOnly: process.argv.includes("--image-only") });
+    runImageSelfCheck({
+      imageOnly: process.argv.includes("--image-only"),
+      skipOpenClawCLI: process.argv.includes("--skip-openclaw-cli"),
+    });
     console.log(`[muad-self-check] openclaw=${PINNED_OPENCLAW_VERSION} status=ok`);
   } catch (error) {
     console.error(`[muad-self-check] ${error instanceof Error ? error.message : String(error)}`);

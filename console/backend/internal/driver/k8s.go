@@ -306,6 +306,7 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 							AllowPrivilegeEscalation: ptr(false),
 							Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 						},
+						StartupProbe:   gatewayStartupProbe(),
 						ReadinessProbe: gatewayTCPProbe(),
 						LivenessProbe:  gatewayTCPProbe(),
 						VolumeMounts:   mounts,
@@ -324,6 +325,15 @@ func gatewayTCPProbe() *corev1.Probe {
 		PeriodSeconds:       10,
 		TimeoutSeconds:      2,
 		FailureThreshold:    6,
+	}
+}
+
+func gatewayStartupProbe() *corev1.Probe {
+	return &corev1.Probe{
+		ProbeHandler:     corev1.ProbeHandler{TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(GatewayPort)}},
+		PeriodSeconds:    10,
+		TimeoutSeconds:   2,
+		FailureThreshold: 60,
 	}
 }
 

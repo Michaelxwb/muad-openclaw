@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
@@ -42,11 +41,11 @@ type createHumanUserRequest struct {
 }
 
 type assignedModelView struct {
-	Provider       string `json:"provider,omitempty"`
-	BaseURL        string `json:"baseUrl,omitempty"`
-	Model          string `json:"model,omitempty"`
-	KeyConfigured  bool   `json:"keyConfigured"`
-	KeyFingerprint string `json:"keyFingerprint,omitempty"`
+	Provider      string `json:"provider,omitempty"`
+	BaseURL       string `json:"baseUrl,omitempty"`
+	Model         string `json:"model,omitempty"`
+	KeyConfigured bool   `json:"keyConfigured"`
+	APIKey        string `json:"apiKey,omitempty"`
 }
 
 type humanUserView struct {
@@ -181,7 +180,7 @@ func identityToView(identity repo.UserIdentity) identityView {
 func modelConfigToView(model repo.LLMModelConfig) assignedModelView {
 	return assignedModelView{
 		Provider: model.Provider, BaseURL: model.BaseURL, Model: model.Model,
-		KeyConfigured:  model.APIKeyEnc != "",
-		KeyFingerprint: secretcrypto.DisplayFingerprint(model.APIKeyFingerprint),
+		KeyConfigured: model.APIKey != "",
+		APIKey:        model.APIKey,
 	}
 }

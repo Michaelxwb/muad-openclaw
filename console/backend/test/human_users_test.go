@@ -235,8 +235,8 @@ func createTestLLMModel(t *testing.T, store *repo.Store, name string) string {
 	t.Helper()
 	models, err := store.CreateLLMModelConfigs([]repo.LLMModelConfigCreate{{
 		DisplayName: name, Provider: "deepseek", BaseURL: "https://api.deepseek.com",
-		APIKeyEnc: "enc-" + name, APIKeyFingerprint: "sha256:" + name,
-		Model: "deepseek-chat",
+		APIKey: "sk-" + name,
+		Model:  "deepseek-chat",
 	}})
 	if err != nil {
 		t.Fatalf("CreateLLMModelConfigs %s: %v", name, err)

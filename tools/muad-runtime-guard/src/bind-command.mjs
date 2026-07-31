@@ -11,7 +11,7 @@ export function createBindCommand({ client, mainAgentId, onRejected }) {
       try {
         const request = activationFromCommand(context, mainAgentId);
         await client.activate(request);
-        return consumed("绑定成功，配置正在应用，通常 10 秒内生效。请稍后重新发送业务消息。");
+        return consumed("绑定成功，配置已生效。请重新发送业务消息。");
       } catch (error) {
         if (error instanceof BindingContextError) {
           onRejected?.({ code: error.code, reason: error.reason });
@@ -31,6 +31,9 @@ function bindingFailureText(error) {
   if (error instanceof BindingClientError) {
     if (error.code === "rate_limited") return "绑定尝试过于频繁，请稍后重试。";
     if (error.code === "invalid_binding") return "绑定码无效、已过期或与当前机器人不匹配。";
+    if (error.code === "config_apply_failed") {
+      return "绑定信息已保存，但运行时配置应用失败。请联系管理员处理后再发送业务消息。";
+    }
   }
   return "绑定服务暂时不可用，请稍后重试。";
 }

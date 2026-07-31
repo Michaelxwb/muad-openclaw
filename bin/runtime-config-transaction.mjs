@@ -104,7 +104,6 @@ export function abortTransaction(configPath) {
 
 export function selectRestartMode(current, next) {
   if (canonicalHash(current) === canonicalHash(next)) return "none";
-  if (canonicalHash(current.browser ?? {}) !== canonicalHash(next.browser ?? {})) return "pod";
   if (isBindingHotReloadOnly(current, next)) return "none";
   return "gateway";
 }
@@ -120,7 +119,6 @@ function cloneForRestartComparison(config) {
   deletePath(output, ["bindings"]);
   deletePath(output, ["session", "identityLinks"]);
   deletePath(output, ["plugins", "entries", "muad-runtime-guard", "config", "generation"]);
-  deletePath(output, ["skills", "entries", "__muad-runtime-skill-state", "config", "generation"]);
   return output;
 }
 

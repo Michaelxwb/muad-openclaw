@@ -57,7 +57,8 @@ try {
 - 用户可见错误必须可读，优先展示服务端 `message` / `ApiError.message`
 - 列表/详情请求必须处理 loading 与 empty；失败可重试或明确提示
 - 鉴权失效：依赖 `api.ts` 的 401 清 token + `UNAUTHORIZED_EVENT`，App 层回到登录，不静默吞
-- 会话 token 仅经 `token` helper 存 `localStorage` 的约定 key；禁止另存 LLM/平台 API Key、binding code 明文
+- 会话 token 仅经 `token` helper 存 `localStorage` 的约定 key；禁止另存平台认证 credential、binding code 明文
+- LLM 模型 API Key 例外：按产品决策明文存储并在模型管理页明文展示（管理员自维护的模型凭据，属本控制面内部配置，不进入会话存储）
 - 后台轮询/自动刷新不得把首载 `loading` 一直置 true（区分 background 刷新，避免表格闪烁）
 - 测试：纯函数与 hooks 优先单测；关键交互用 Testing Library
 
@@ -70,4 +71,4 @@ try {
 - 禁止在 `pages/**`、`components/**` 使用裸 `fetch` / axios
 - 禁止忽略 ESLint/Prettier 项目约定另起风格
 - 禁止在 UI 展示原始堆栈或内部路径
-- 禁止把 LLM/平台密钥渲染进 DOM 调试块
+- 禁止把平台认证 credential / binding code 渲染进 DOM；LLM 模型 API Key 按产品决策允许在模型管理页明文展示

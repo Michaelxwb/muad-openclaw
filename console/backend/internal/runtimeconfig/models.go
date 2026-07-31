@@ -12,11 +12,10 @@ import (
 )
 
 type modelConfig struct {
-	Provider       string `json:"provider"`
-	BaseURL        string `json:"baseUrl"`
-	APIKey         string `json:"apiKey"`
-	Model          string `json:"model"`
-	KeyFingerprint string `json:"keyFingerprint,omitempty"`
+	Provider string `json:"provider"`
+	BaseURL  string `json:"baseUrl"`
+	APIKey   string `json:"apiKey"`
+	Model    string `json:"model"`
 }
 
 func (builder *Builder) buildModels(
@@ -58,13 +57,8 @@ func (builder *Builder) modelFromConfig(stored repo.LLMModelConfig) (modelConfig
 	if stored.ModelConfigID == "" {
 		return modelConfig{}, wrapInvalid("resolve assigned model", repo.ErrNotFound)
 	}
-	key, err := builder.cipher.Decrypt(stored.APIKeyEnc)
-	if err != nil {
-		return modelConfig{}, wrapInvalid("decrypt assigned model", err)
-	}
 	return modelConfig{
-		Provider: stored.Provider, BaseURL: stored.BaseURL, APIKey: key, Model: stored.Model,
-		KeyFingerprint: stored.APIKeyFingerprint,
+		Provider: stored.Provider, BaseURL: stored.BaseURL, APIKey: stored.APIKey, Model: stored.Model,
 	}, nil
 }
 

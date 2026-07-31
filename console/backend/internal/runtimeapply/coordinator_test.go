@@ -124,9 +124,27 @@ func TestCoordinatorBoundsFailedApplyRetries(t *testing.T) {
 	go coordinator.Run(ctx)
 	coordinator.Enqueue("pod-a")
 
-	waitFor(t, func() bool { return executor.count("pod-a") == 2 })
+	waitFor(t, func() bool {
+		return executor.count("pod-a") == 2 && store.failedCount("pod-a") == 2
+	})
 	if store.failedCount("pod-a") != 2 {
 		t.Fatalf("failed status writes = %d", store.failedCount("pod-a"))
+	}
+}
+
+func TestCoordinatorReconcileNowDoesNotRetryApplyFailures(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	executor := newCoordinatorExecutor()
+	executor.applyError = errors.New("health failed")
+	coordinator := newTestCoordinator(t, store, executor, 3)
+
+	err := coordinator.ReconcileNow(context.Background(), "pod-a")
+	if err == nil {
+		t.Fatal("ReconcileNow should report apply failure")
+	}
+	if executor.count("pod-a") != 1 || store.failedCount("pod-a") != 1 {
+		t.Fatalf("sync apply should fail once, attempts=%d failures=%d",
+			executor.count("pod-a"), store.failedCount("pod-a"))
 	}
 }
 

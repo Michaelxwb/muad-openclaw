@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 )
 
 func TestApplyGatewayRestartSuccess(t *testing.T) {
@@ -23,6 +25,9 @@ func TestApplyGatewayRestartSuccess(t *testing.T) {
 	if driver.gatewayRestarts != 1 || driver.podRestarts != 0 || !driver.committed {
 		t.Fatalf("driver state = %+v", driver)
 	}
+	if driver.routeVerifyCalls == 0 {
+		t.Fatal("expected route verification")
+	}
 }
 
 func TestApplyRestartNoneSuccess(t *testing.T) {
@@ -34,6 +39,9 @@ func TestApplyRestartNoneSuccess(t *testing.T) {
 	}
 	if result.RestartMode != RestartNone || driver.gatewayRestarts != 0 || driver.podRestarts != 0 || !driver.committed {
 		t.Fatalf("result=%+v driver=%+v", result, driver)
+	}
+	if driver.routeVerifyCalls == 0 {
+		t.Fatal("expected route verification")
 	}
 }
 
@@ -50,7 +58,7 @@ func TestApplyRestartNoneWaitsForConfigRevisionApplied(t *testing.T) {
 	}
 }
 
-func TestApplyUsesPodRestartForBrowserOrResourceChange(t *testing.T) {
+func TestApplyHonorsForcePodRestartOverride(t *testing.T) {
 	for _, force := range []bool{false, true} {
 		t.Run(fmt.Sprintf("force=%t", force), func(t *testing.T) {
 			mode := RestartPod
@@ -108,6 +116,57 @@ func TestApplyHealthFailureForRestartNoneRollsBackWithoutRestart(t *testing.T) {
 	}
 }
 
+func TestApplyRouteVerificationFailureRollsBack(t *testing.T) {
+	driver := newFakeDriver(RestartGateway)
+	driver.routeVerifyFailure = true
+	applier := newTestApplier(t, driver)
+	_, err := applier.Apply(context.Background(), testRequest(false))
+	assertApplyStage(t, err, StageHealth)
+	if !driver.rolledBack || driver.gatewayRestarts != 2 || driver.routeVerifyCalls == 0 {
+		t.Fatalf("route verification failure state = %+v", driver)
+	}
+	if !strings.Contains(err.Error(), "L5_route_not_applied") {
+		t.Fatalf("error should include L5 diagnostic: %v", err)
+	}
+}
+
+func TestHealthFailureCodeReportsLayeredDiagnostics(t *testing.T) {
+	tests := []struct {
+		name   string
+		status gateway.Status
+		config bool
+		routes bool
+		want   string
+	}{
+		{name: "gateway", want: "L1_gateway_unreachable"},
+		{
+			name:   "config",
+			status: gateway.Status{Healthy: true, RuntimeGuardHealthy: true, RuntimeGeneration: 7},
+			config: true, want: "L3_config_not_applied",
+		},
+		{
+			name:   "guard",
+			status: gateway.Status{Healthy: true, RuntimeGeneration: 6, ConfigApplied: true},
+			config: true, want: "L4_guard_unready",
+		},
+		{
+			name: "route",
+			status: gateway.Status{
+				Healthy: true, RuntimeGuardHealthy: true, RuntimeGeneration: 7, ConfigApplied: true,
+			},
+			config: true, routes: true, want: "L5_route_not_applied",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := healthFailureCode(tt.status, 7, tt.config, tt.routes)
+			if got != tt.want {
+				t.Fatalf("healthFailureCode = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestApplyRestartFailureRestartsRestoredPod(t *testing.T) {
 	driver := newFakeDriver(RestartPod)
 	driver.failFirstPodRestart = true
@@ -131,6 +190,8 @@ type fakeDriver struct {
 	podRestarts             int
 	configApplyLag          int
 	configGetCalls          int
+	routeVerifyCalls        int
+	routeVerifyFailure      bool
 }
 
 func newFakeDriver(mode RestartMode) *fakeDriver {
@@ -162,6 +223,13 @@ func (driver *fakeDriver) Exec(_ context.Context, _ string, cmd ...string) (stri
 			generation = 6
 		}
 		return fmt.Sprintf(`{"ok":true,"generation":%d}`, generation), nil
+	case strings.Contains(joined, "muad.runtime.verify-routes"):
+		driver.routeVerifyCalls++
+		generation := driver.appliedHealthGeneration
+		if driver.routeVerifyFailure {
+			return fmt.Sprintf(`{"ok":false,"generation":%d,"checked":1,"failed":1,"error":"agent_mismatch"}`, generation), nil
+		}
+		return fmt.Sprintf(`{"ok":true,"generation":%d,"checked":1,"failed":0}`, generation), nil
 	case strings.Contains(joined, "config.get"):
 		driver.configGetCalls++
 		revision := driver.currentRevision()
@@ -220,7 +288,17 @@ func newTestApplier(t *testing.T, driver Driver) *Applier {
 func testRequest(force bool) Request {
 	return Request{
 		PodID: "pod-a", Generation: 7, ForcePodRestart: force,
-		RuntimeJSON: []byte(`{"podId":"pod-a","generation":7}`),
+		RuntimeJSON: []byte(`{
+			"podId":"pod-a",
+			"generation":7,
+			"routes":[{
+				"agentId":"alice",
+				"channel":"mattermost",
+				"accountId":"default",
+				"peerKind":"direct",
+				"externalId":"mm-user-1"
+			}]
+		}`),
 	}
 }
 

@@ -4,7 +4,7 @@ import test from "node:test";
 import { createBindCommand } from "../src/bind-command.mjs";
 import { BindingClientError } from "../src/binding-client.mjs";
 
-const BIND_SUCCESS = "绑定成功，配置正在应用，通常 10 秒内生效。请稍后重新发送业务消息。";
+const BIND_SUCCESS = "绑定成功，配置已生效。请重新发送业务消息。";
 
 test("/bind consumes WeCom direct messages and sends scoped context to Console", async () => {
   const requests = [];
@@ -193,6 +193,7 @@ test("/bind returns stable text without exposing code or internal errors", async
     new BindingClientError("invalid_binding"),
     new BindingClientError("rate_limited", true),
     new BindingClientError("service_unavailable", true),
+    new BindingClientError("config_apply_failed", true),
   ]) {
     const command = createBindCommand({
       mainAgentId: "main",
@@ -203,6 +204,17 @@ test("/bind returns stable text without exposing code or internal errors", async
     assert.equal(result.text.includes(code), false);
     assert.equal(result.text.includes("BindingClientError"), false);
   }
+});
+
+test("/bind reports runtime config apply failures distinctly", async () => {
+  const command = createBindCommand({
+    mainAgentId: "main",
+    client: { activate: async () => { throw new BindingClientError("config_apply_failed", true); } },
+  });
+  const result = await command.handler(commandContext());
+
+  assert.equal(result.continueAgent, false);
+  assert.equal(result.text, "绑定信息已保存，但运行时配置应用失败。请联系管理员处理后再发送业务消息。");
 });
 
 test("/bind reports only stable non-sensitive context rejection reasons", async () => {

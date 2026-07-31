@@ -308,6 +308,8 @@ export const api = {
     request<ListResult<LLMModelConfig>>("POST", "/llm/models/batch", { models }),
   testLLMModels: (modelConfigIds: string[]) =>
     request<{ results: LLMModelTestResult[] }>("POST", "/llm/models/test", { modelConfigIds }),
+  deleteLLMModel: (modelConfigId: string) =>
+    request<{ deleted: boolean }>("DELETE", `/llm/models/${segment(modelConfigId)}`),
 
   listSkills: (query: SkillAssetQuery = {}) =>
     request<PageResult<SkillAsset>>(

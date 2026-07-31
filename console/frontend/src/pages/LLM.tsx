@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, Select, Space, Table, Tag, Typography } from "@douyinfe/semi-ui";
+import { Button, Input, Modal, Select, Space, Table, Tag, Typography } from "@douyinfe/semi-ui";
 import { IconPlus, IconPulse, IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../api";
-import type { LLMModelConfig, LLMModelInput, LLMModelTestResult } from "../api";
+import type { LLMModelConfig, LLMModelInput } from "../api";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
 import {
   DEFAULT_PAGE_SIZE,
@@ -49,12 +49,11 @@ export function LLM() {
   );
 }
 
-type BusyState = "load" | "create" | "test" | null;
+type BusyState = "load" | "create" | "test" | "delete" | null;
 
 function useLLMModels() {
   const [models, setModels] = useState<LLMModelConfig[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [testResults, setTestResults] = useState<Record<string, LLMModelTestResult>>({});
   const [query, setQuery] = useState("");
   const [boundFilter, setBoundFilter] = useState<ModelBoundFilter>("");
   const [page, setPage] = useState(1);
@@ -67,7 +66,9 @@ function useLLMModels() {
 
   const load = useCallback(async () => {
     const requestId = ++requestRef.current;
-    setBusy((current) => (current === "create" || current === "test" ? current : "load"));
+    setBusy((current) =>
+      current === "create" || current === "test" || current === "delete" ? current : "load",
+    );
     try {
       const result = await api.listLLMModels(false);
       if (!mountedRef.current || requestId !== requestRef.current) return;
@@ -122,11 +123,27 @@ function useLLMModels() {
     try {
       const result = await api.testLLMModels(ids);
       if (!mountedRef.current) return;
-      setTestResults(indexTestResults(result.results));
       const okCount = result.results.filter((item) => item.ok).length;
       setMessage(`连通性测试完成：${okCount}/${result.results.length} 通过`);
+      await load();
     } catch (caught) {
       if (mountedRef.current) setError(caught instanceof Error ? caught.message : "批量测试失败");
+    } finally {
+      if (mountedRef.current) setBusy(null);
+    }
+  };
+
+  const deleteModel = async (modelConfigId: string) => {
+    setBusy("delete");
+    setError("");
+    setMessage("");
+    try {
+      await api.deleteLLMModel(modelConfigId);
+      if (!mountedRef.current) return;
+      setMessage("模型已删除");
+      await load();
+    } catch (caught) {
+      if (mountedRef.current) setError(caught instanceof Error ? caught.message : "删除模型失败");
     } finally {
       if (mountedRef.current) setBusy(null);
     }
@@ -141,7 +158,6 @@ function useLLMModels() {
     query,
     boundFilter,
     selected,
-    testResults,
     busy,
     error,
     message,
@@ -153,6 +169,7 @@ function useLLMModels() {
     setError,
     createBatch,
     testSelected,
+    deleteModel,
   };
 }
 
@@ -241,8 +258,12 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     },
     {
       title: "API Key",
-      dataIndex: "keyFingerprint",
-      render: (_: unknown, model: LLMModelConfig) => model.keyFingerprint || "已配置",
+      dataIndex: "apiKey",
+      render: (_: unknown, model: LLMModelConfig) => (
+        <Text type="tertiary" size="small" className="mono">
+          {model.apiKey || "未配置"}
+        </Text>
+      ),
     },
     {
       title: "绑定状态",
@@ -264,10 +285,24 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       title: "测试结果",
       dataIndex: "test",
       render: (_: unknown, model: LLMModelConfig) => {
-        const result = state.testResults[model.modelConfigId];
-        if (!result) return <Text type="tertiary">未测试</Text>;
-        return result.ok ? <Tag color="green">通过</Tag> : <Tag color="red">{result.error}</Tag>;
+        if (!model.lastTestAt) return <Text type="tertiary">未测试</Text>;
+        return model.lastTestOK ? (
+          <Tag color="green">通过</Tag>
+        ) : (
+          <Tag color="red">{model.lastTestError || "失败"}</Tag>
+        );
       },
+    },
+    {
+      title: "操作",
+      key: "actions",
+      render: (_: unknown, model: LLMModelConfig) => (
+        <DeleteModelButton
+          model={model}
+          onDelete={state.deleteModel}
+          busy={state.busy === "delete"}
+        />
+      ),
     },
   ];
   return (
@@ -305,6 +340,57 @@ function ModelTable({ state }: { state: LLMModelsState }) {
   );
 }
 
+function DeleteModelButton({
+  model,
+  onDelete,
+  busy,
+}: {
+  model: LLMModelConfig;
+  onDelete: (modelConfigId: string) => Promise<void>;
+  busy: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
+  const bound = Boolean(model.boundHumanUserId);
+  const confirm = async () => {
+    setError("");
+    try {
+      await onDelete(model.modelConfigId);
+      setOpen(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "删除失败");
+    }
+  };
+  return (
+    <>
+      <Button
+        aria-label={`删除模型 ${model.displayName}`}
+        size="small"
+        type="danger"
+        theme="borderless"
+        disabled={bound || busy}
+        title={bound ? "已绑定用户，不能删除" : "删除模型"}
+        onClick={() => setOpen(true)}
+      >
+        删除
+      </Button>
+      <Modal
+        title={`删除模型 ${model.displayName}`}
+        visible={open}
+        onCancel={() => setOpen(false)}
+        onOk={() => void confirm()}
+        okText="确认删除"
+        okButtonProps={{ type: "danger" as const }}
+      >
+        <FeedbackBanner error={error} />
+        <p className="hint">
+          删除后将无法再给新用户分配该模型，已绑定用户不受影响（已绑定模型不可删除）。
+        </p>
+      </Modal>
+    </>
+  );
+}
+
 function filterModels(
   models: LLMModelConfig[],
   query: string,
@@ -321,7 +407,7 @@ function filterModels(
       model.provider,
       model.model,
       model.baseUrl,
-      model.keyFingerprint,
+      model.apiKey,
       model.boundHumanUserName,
       model.boundHumanUserId,
     ]
@@ -345,12 +431,4 @@ function keepExistingSelection(
     if (selected[model.modelConfigId]) next[model.modelConfigId] = true;
   }
   return next;
-}
-
-function indexTestResults(results: LLMModelTestResult[]): Record<string, LLMModelTestResult> {
-  const indexed: Record<string, LLMModelTestResult> = {};
-  for (const result of results) {
-    if (result.modelConfigId) indexed[result.modelConfigId] = result;
-  }
-  return indexed;
 }

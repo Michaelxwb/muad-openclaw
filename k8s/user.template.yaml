@@ -56,6 +56,11 @@ spec:
           resources:
             requests: { cpu: "100m", memory: "300Mi" }  # 空闲≈269MiB（PoC 实测）→ 密集打包
             limits:   { cpu: "1500m", memory: "2Gi" }    # 浏览器峰值≈1.38GiB → 留余量
+          startupProbe:
+            tcpSocket: { port: 18789 }
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 60
           readinessProbe:
             tcpSocket: { port: 18789 }
             initialDelaySeconds: 10
