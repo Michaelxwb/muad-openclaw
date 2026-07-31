@@ -36,20 +36,35 @@ func TestProbe_Unauthorized(t *testing.T) {
 	}
 }
 
-func TestProbe_RejectsPrivateTargets(t *testing.T) {
+func TestProbe_AllowsPrivateTargets(t *testing.T) {
+	requests := 0
 	client := &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
-		t.Fatal("private target should be rejected before the request")
-		return nil, nil
+		requests++
+		return probeResponse(http.StatusOK), nil
 	})}
 
-	if err := llm.ProbeWithClient(context.Background(), "http://127.0.0.1:8080", "k", client); err == nil {
-		t.Error("expected error on private baseURL")
+	if err := llm.ProbeWithClient(context.Background(), "http://127.0.0.1:8080", "k", client); err != nil {
+		t.Errorf("Probe should allow private baseURL: %v", err)
+	}
+	if requests != 1 {
+		t.Fatalf("requests = %d, want 1", requests)
 	}
 }
 
 func TestProbe_EmptyBaseURL(t *testing.T) {
 	if err := llm.Probe(context.Background(), "", "k"); err == nil {
 		t.Error("expected error on empty baseURL")
+	}
+}
+
+func TestProbe_RejectsInvalidScheme(t *testing.T) {
+	client := &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		t.Fatal("invalid scheme should be rejected before the request")
+		return nil, nil
+	})}
+
+	if err := llm.ProbeWithClient(context.Background(), "ftp://example.com", "k", client); err == nil {
+		t.Error("expected error on invalid scheme")
 	}
 }
 
