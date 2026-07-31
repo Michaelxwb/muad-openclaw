@@ -37,6 +37,11 @@ type Status struct {
 	ConfigRevisionHash  string
 	AppliedConfigHash   string
 	ConfigApplied       bool
+	RouteVerified       bool
+	RouteChecked        int
+	RouteFailed         int
+	RouteGeneration     int64
+	RouteError          string
 }
 
 // Execer runs a command inside a Pod (satisfied by each RuntimeDriver).
@@ -68,6 +73,58 @@ func ProbeWithConfigRevision(ctx context.Context, ex Execer, podID string) Statu
 	}
 	mergeConfigRevision(ctx, ex, podID, &status)
 	return status
+}
+
+// RouteExpectation is a direct inbound route that must resolve in the running
+// Gateway process before Console marks a Runtime DTO applied.
+type RouteExpectation struct {
+	AgentID    string `json:"agentId"`
+	Channel    string `json:"channel"`
+	AccountID  string `json:"accountId"`
+	PeerKind   string `json:"peerKind"`
+	ExternalID string `json:"externalId"`
+}
+
+type RouteVerification struct {
+	OK         bool                       `json:"ok"`
+	Generation int64                      `json:"generation"`
+	Checked    int                        `json:"checked"`
+	Failed     int                        `json:"failed"`
+	Error      string                     `json:"error"`
+	Failures   []RouteVerificationFailure `json:"failures"`
+}
+
+type RouteVerificationFailure struct {
+	Index           int    `json:"index"`
+	Reason          string `json:"reason"`
+	ExpectedAgentID string `json:"expectedAgentId"`
+	ActualAgentID   string `json:"actualAgentId"`
+	MatchedBy       string `json:"matchedBy"`
+}
+
+func VerifyRoutes(
+	ctx context.Context, ex Execer, podID string, generation int64,
+	routes []RouteExpectation,
+) (RouteVerification, error) {
+	if len(routes) == 0 {
+		return RouteVerification{OK: true, Generation: generation}, nil
+	}
+	payload, err := json.Marshal(map[string]any{"generation": generation, "routes": routes})
+	if err != nil {
+		return RouteVerification{}, err
+	}
+	out, err := ex.Exec(
+		ctx, podID, "openclaw", "gateway", "call", "muad.runtime.verify-routes",
+		"--params", string(payload), "--json",
+	)
+	if err != nil {
+		return RouteVerification{}, errRouteVerificationRPC
+	}
+	var result RouteVerification
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		return RouteVerification{}, errRouteVerificationDecode
+	}
+	return result, nil
 }
 
 type runtimeHealthJSON struct {
@@ -121,6 +178,17 @@ func mergeConfigRevision(ctx context.Context, ex Execer, podID string, status *S
 	status.ConfigRevisionHash = config.ConfigRevisionHash
 	status.AppliedConfigHash = applied
 	status.ConfigApplied = config.ConfigRevisionHash != "" && config.ConfigRevisionHash == applied
+}
+
+var (
+	errRouteVerificationRPC    = routeVerificationError("rpc_failed")
+	errRouteVerificationDecode = routeVerificationError("decode_failed")
+)
+
+type routeVerificationError string
+
+func (err routeVerificationError) Error() string {
+	return string(err)
 }
 
 // channelStatusJSON mirrors the relevant parts of `openclaw channels status --json`.

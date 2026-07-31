@@ -301,11 +301,11 @@ func insertPod(t *testing.T, db *sql.DB, podID, fingerprint string) {
 func insertLLMModel(t *testing.T, db *sql.DB, modelConfigID string) {
 	t.Helper()
 	_, err := db.Exec(`INSERT INTO llm_model_configs (
-		model_config_id, display_name, provider, base_url, api_key_enc,
-		api_key_fingerprint, model, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		model_config_id, display_name, provider, base_url, api_key,
+		model, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		modelConfigID, modelConfigID, "deepseek", "https://api.deepseek.com",
-		"ciphertext", "fingerprint-"+modelConfigID, "deepseek-chat", "now", "now")
+		"sk-"+modelConfigID, "deepseek-chat", "now", "now")
 	if err != nil {
 		t.Fatalf("insert LLM model %s: %v", modelConfigID, err)
 	}

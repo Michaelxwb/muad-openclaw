@@ -18,7 +18,10 @@ func TestLLMModels_BatchCreateTestAndBindOnce(t *testing.T) {
 		`]}`
 	rr := e.do(http.MethodPost, "/api/v1/llm/models/batch", body)
 	assertStatus(t, rr, http.StatusCreated)
-	assertNoSecret(t, rr.Body.String(), "sk-alice", "sk-bob")
+	if !strings.Contains(rr.Body.String(), `"apiKey":"sk-alice"`) ||
+		!strings.Contains(rr.Body.String(), `"apiKey":"sk-bob"`) {
+		t.Fatalf("created model response should expose plaintext API key: %s", rr.Body.String())
+	}
 	created := decodeAPIData[struct {
 		Items []struct {
 			ModelConfigID string `json:"modelConfigId"`
@@ -106,13 +109,4 @@ type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (function roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) {
 	return function(request)
-}
-
-func assertNoSecret(t *testing.T, body string, secrets ...string) {
-	t.Helper()
-	for _, secret := range secrets {
-		if strings.Contains(body, secret) || strings.Contains(body, `"apiKey":`) {
-			t.Fatalf("response exposed model key material: %s", body)
-		}
-	}
 }

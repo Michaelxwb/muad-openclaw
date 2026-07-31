@@ -2,6 +2,7 @@ package test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -18,7 +19,7 @@ func TestInternalBindingAPI_UnboundSenderActivatesAndQueuesConfig(t *testing.T) 
 	rr := doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct"))
 	assertStatus(t, rr, http.StatusOK)
 	if !strings.Contains(rr.Body.String(), `"identityBound":true`) ||
-		!strings.Contains(rr.Body.String(), `"configStatus":"applying"`) {
+		!strings.Contains(rr.Body.String(), `"configStatus":"applied"`) {
 		t.Fatalf("unexpected bind response: %s", rr.Body.String())
 	}
 	stored, _ := e.store.GetHumanUser(user.HumanUserID)
@@ -31,6 +32,44 @@ func TestInternalBindingAPI_UnboundSenderActivatesAndQueuesConfig(t *testing.T) 
 	}
 	assertStatus(t, doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct")), http.StatusConflict)
 	assertBindingAuditHasNoCode(t, e, code)
+}
+
+func TestInternalBindingAPI_ReportsRuntimeApplyFailure(t *testing.T) {
+	e, user, code := createBindingTarget(t)
+	token := e.drv.created["pod-a"].ServiceToken.Value
+	e.reconcile.err = errors.New("runtime apply failed")
+	rr := doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct"))
+	assertStatus(t, rr, http.StatusBadGateway)
+	if !strings.Contains(rr.Body.String(), `"code":50202`) {
+		t.Fatalf("unexpected bind apply failure response: %s", rr.Body.String())
+	}
+	stored, _ := e.store.GetHumanUser(user.HumanUserID)
+	identity, err := e.store.FindIdentityByExternalID("pod-a", "wecom", "default", "direct", "new-sender")
+	if err != nil || stored.Status != repo.HumanUserStatusActive || identity.HumanUserID != user.HumanUserID {
+		t.Fatalf("binding should remain saved user=%+v identity=%+v error=%v", stored, identity, err)
+	}
+	assertStatus(t, doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct")), http.StatusConflict)
+}
+
+func TestInternalBindingAPI_RequiresSynchronousRuntimeApply(t *testing.T) {
+	e, user, code := createBindingTarget(t)
+	token := e.drv.created["pod-a"].ServiceToken.Value
+	queue := &enqueueOnlyQueue{}
+	e.replaceReconcile(t, queue)
+
+	rr := doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct"))
+	assertStatus(t, rr, http.StatusBadGateway)
+	if !strings.Contains(rr.Body.String(), `"code":50202`) {
+		t.Fatalf("unexpected bind apply failure response: %s", rr.Body.String())
+	}
+	if len(queue.podIDs) != 0 {
+		t.Fatalf("binding should not enqueue async reconcile when sync apply is unavailable: %v", queue.podIDs)
+	}
+	stored, _ := e.store.GetHumanUser(user.HumanUserID)
+	if stored.Status != repo.HumanUserStatusActive {
+		t.Fatalf("binding should remain saved for operator recovery: %+v", stored)
+	}
+	assertBindingAuditContains(t, e, "runtime_coordinator_unavailable")
 }
 
 func TestInternalBindingAPI_MattermostSenderActivatesAndQueuesConfig(t *testing.T) {
@@ -189,4 +228,28 @@ func assertBindingAuditHasNoCode(t *testing.T, e *testEnv, code string) {
 			t.Fatalf("audit %s exposed binding code at %s", strconv.Itoa(index), entry.Payload)
 		}
 	}
+}
+
+func assertBindingAuditContains(t *testing.T, e *testEnv, pattern string) {
+	t.Helper()
+	entries, total, err := e.store.QueryAuditFiltered(repo.AuditFilter{
+		PodID: "pod-a", Limit: 100,
+	})
+	if err != nil || total == 0 {
+		t.Fatalf("binding audit query = %d, %v", total, err)
+	}
+	for _, entry := range entries {
+		if strings.Contains(entry.Payload, pattern) {
+			return
+		}
+	}
+	t.Fatalf("audit payload does not contain %q: %+v", pattern, entries)
+}
+
+type enqueueOnlyQueue struct {
+	podIDs []string
+}
+
+func (queue *enqueueOnlyQueue) Enqueue(podID string) {
+	queue.podIDs = append(queue.podIDs, podID)
 }

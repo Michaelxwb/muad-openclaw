@@ -381,7 +381,7 @@ function globalUserColumns(
           <div className={styles.primaryText}>
             {user.modelConfig.provider}/{user.modelConfig.model}
           </div>
-          <div className="mono">{user.modelConfig.keyFingerprint || "已配置"}</div>
+          <div className="mono">{user.modelConfig.apiKey || "已配置"}</div>
         </div>
       ),
     },

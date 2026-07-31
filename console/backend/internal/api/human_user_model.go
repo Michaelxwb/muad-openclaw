@@ -10,11 +10,10 @@ import (
 var modelProviderPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 
 type llmModelDefinition struct {
-	Provider       string `json:"provider"`
-	BaseURL        string `json:"baseUrl"`
-	APIKey         string `json:"apiKey"`
-	Model          string `json:"model"`
-	KeyFingerprint string `json:"keyFingerprint,omitempty"`
+	Provider string `json:"provider"`
+	BaseURL  string `json:"baseUrl"`
+	APIKey   string `json:"apiKey"`
+	Model    string `json:"model"`
 }
 
 func validateLLMModelDefinition(model llmModelDefinition) error {

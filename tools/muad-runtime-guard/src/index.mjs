@@ -7,6 +7,7 @@ import { parseGuardConfig } from "./config.mjs";
 import { createHealthHandler } from "./health.mjs";
 import { createMainBindingReply } from "./main-binding-reply.mjs";
 import { createModelConfigDispatch } from "./model-config-reply.mjs";
+import { createRouteVerifier } from "./route-verifier.mjs";
 import { createSkillLeaseHooks } from "./skill-hooks.mjs";
 import { SharedSkillLeaseManager } from "./skill-lease.mjs";
 import {
@@ -38,6 +39,9 @@ const plugin = {
       ),
     }));
     api.registerGatewayMethod("muad.runtime.health", createHealthHandler(config), {
+      scope: "operator.read",
+    });
+    api.registerGatewayMethod("muad.runtime.verify-routes", createRouteVerifier(api), {
       scope: "operator.read",
     });
   },

@@ -84,7 +84,7 @@ const user: HumanUser = {
     baseUrl: "https://api.deepseek.com",
     model: "deepseek-chat",
     keyConfigured: true,
-    keyFingerprint: "sha256:model-key",
+    apiKey: "sk-model-key",
   },
   createdAt: "2026-07-11T00:00:00Z",
   updatedAt: "2026-07-11T00:00:00Z",
@@ -201,7 +201,7 @@ beforeEach(() => {
         baseUrl: "https://api.deepseek.com",
         model: "deepseek-chat",
         keyConfigured: true,
-        keyFingerprint: "sha256:new-model-key",
+        apiKey: "sk-new-model-key",
         createdAt: "2026-07-11T00:00:00Z",
         updatedAt: "2026-07-11T00:00:00Z",
       },
@@ -411,7 +411,7 @@ describe("HumanUsersPanel", () => {
     );
   });
 
-  it("shows bound model metadata without exposing the API key", async () => {
+  it("shows bound model metadata including the plaintext API key", async () => {
     renderPanel();
     await openUserDetail();
 
@@ -421,9 +421,7 @@ describe("HumanUsersPanel", () => {
     expect(screen.queryByText("Human User ID")).not.toBeInTheDocument();
     expect(screen.queryByText("Browser Profile")).not.toBeInTheDocument();
     expect(screen.getByText("deepseek/deepseek-chat")).toBeInTheDocument();
-    expect(screen.getByText(/sha256:model-key/)).toBeInTheDocument();
-    expect(screen.queryByLabelText("模型 API Key")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue(/sk-/)).not.toBeInTheDocument();
+    expect(screen.getByText("sk-model-key")).toBeInTheDocument();
   });
 
   it("lists cleanup impact before deleting a Human User", async () => {

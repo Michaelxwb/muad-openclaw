@@ -86,7 +86,7 @@ const user: HumanUser = {
     baseUrl: "https://api.deepseek.com",
     model: "deepseek-chat",
     keyConfigured: true,
-    keyFingerprint: "sha256:model-key",
+    apiKey: "sk-model-key",
   },
   createdAt: "2026-07-11T00:00:00Z",
   updatedAt: "2026-07-11T00:00:00Z",
@@ -125,7 +125,7 @@ beforeEach(() => {
         baseUrl: "https://api.deepseek.com",
         model: "deepseek-chat",
         keyConfigured: true,
-        keyFingerprint: "sha256:new-model-key",
+        apiKey: "sk-new-model-key",
         createdAt: "2026-07-11T00:00:00Z",
         updatedAt: "2026-07-11T00:00:00Z",
       },
@@ -153,7 +153,7 @@ describe("Users", () => {
     expect(await screen.findByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Pod A")).toBeInTheDocument();
     expect(screen.getByText("deepseek/deepseek-chat")).toBeInTheDocument();
-    expect(screen.getByText("sha256:model-key")).toBeInTheDocument();
+    expect(screen.getByText("sk-model-key")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "创建用户" })).toBeInTheDocument();
     expect(apiMocks.listAllHumanUsers).toHaveBeenCalledWith({
       page: 1,

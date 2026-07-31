@@ -126,7 +126,7 @@ function isDirectSession(sessionKey, agentId) {
   return parsed.agentId === agentId && parsed.routeType === "direct" && Boolean(parsed.peerId);
 }
 
-function parseSessionKey(sessionKey) {
+export function parseSessionKey(sessionKey) {
   const parts = String(sessionKey ?? "").split(":");
   const offset = parts[0] === "session" ? 1 : 0;
   if (parts.length - offset < 5 || parts[offset] !== "agent") return emptySession();

@@ -67,7 +67,7 @@ export interface LLMModelView {
   baseUrl?: string;
   model?: string;
   keyConfigured: boolean;
-  keyFingerprint?: string;
+  apiKey?: string;
 }
 
 export interface Pod {
@@ -321,8 +321,10 @@ export interface LLMModelConfig {
   provider: string;
   baseUrl: string;
   model: string;
-  keyConfigured: boolean;
-  keyFingerprint?: string;
+  apiKey: string;
+  lastTestAt: string;
+  lastTestOK: boolean;
+  lastTestError: string;
   boundHumanUserId?: string;
   boundHumanUserName?: string;
   createdAt: string;

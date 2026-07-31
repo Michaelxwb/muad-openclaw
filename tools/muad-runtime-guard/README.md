@@ -41,14 +41,14 @@ Skill 激活走 OpenClaw 原生 Skill 机制；Runtime Guard 只负责可信边�
 
 ## 健康检查
 
-插件注册 `muad.runtime.health`，需要 `operator.read` Gateway scope。健康结果只有在以下条件全部满足时才为 true：
+插件注册 `muad.runtime.health` 和 `muad.runtime.verify-routes`，都需要 `operator.read` Gateway scope。基础健康结果只有在以下条件全部满足时才为 true：
 
 - Runtime DTO generation 合法且与控制面期望一致。
 - Agent、browser profile、session route 映射完整且无 quarantine 复用。
 - `session-manager` 已加载。
 - browser 和 Skill 共享队列可用。
 
-Console Collector 读取该结果并生成 generation mismatch 和 Runtime Guard unhealthy 告警。
+Console Collector 读取 `muad.runtime.health` 并生成 generation mismatch 和 Runtime Guard unhealthy 告警。Runtime apply 成功判定额外调用 `muad.runtime.verify-routes`，用 Gateway 当前内存态配置和 OpenClaw 原生 `resolveAgentRoute` 验证所有 direct route 都解析到预期 Agent；它不读取 `openclaw.json` 文件作为路由已生效的证明。
 
 ## Service token
 

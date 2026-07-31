@@ -57,6 +57,7 @@ func (s *Server) registerExistingSettingsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/llm/models", s.handleListLLMModels)
 	mux.HandleFunc("POST /api/v1/llm/models/batch", s.handleCreateLLMModels)
 	mux.HandleFunc("POST /api/v1/llm/models/test", s.handleBatchTestLLMModels)
+	mux.HandleFunc("DELETE /api/v1/llm/models/{modelConfigId}", s.handleDeleteLLMModel)
 	mux.HandleFunc("GET /api/v1/skills", s.handleListSkills)
 	mux.HandleFunc("GET /api/v1/skills/public-storage", s.handleGetPublicSkillStorage)
 	mux.HandleFunc("POST /api/v1/skills/public-storage", s.handleEnsurePublicSkillStorage)

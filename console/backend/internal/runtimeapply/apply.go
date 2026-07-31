@@ -105,6 +105,10 @@ func (applier *Applier) Apply(ctx context.Context, request Request) (Result, err
 	if err := validateRequest(request); err != nil {
 		return Result{}, &ApplyError{Stage: StagePrepare, Cause: err}
 	}
+	expectedRoutes, err := expectedDirectRoutes(request.RuntimeJSON)
+	if err != nil {
+		return Result{}, &ApplyError{Stage: StagePrepare, Cause: err}
+	}
 	prepared, err := applier.prepare(ctx, request)
 	if err != nil {
 		return Result{}, &ApplyError{Stage: StagePrepare, Cause: err}
@@ -122,7 +126,7 @@ func (applier *Applier) Apply(ctx context.Context, request Request) (Result, err
 	if err := applier.restart(ctx, request.PodID, mode); err != nil {
 		return Result{}, applier.recoverFailure(ctx, request.PodID, mode, StageRestart, err)
 	}
-	if err := applier.waitForHealth(ctx, request.PodID, request.Generation, mode); err != nil {
+	if err := applier.waitForHealth(ctx, request.PodID, request.Generation, mode, expectedRoutes); err != nil {
 		return Result{}, applier.recoverFailure(ctx, request.PodID, mode, StageHealth, err)
 	}
 	return Result{ConfigHash: prepared.ConfigHash, RestartMode: mode}, nil
@@ -188,14 +192,15 @@ func (applier *Applier) restart(ctx context.Context, podID string, mode RestartM
 
 func (applier *Applier) waitForHealth(
 	ctx context.Context, podID string, generation int64, mode RestartMode,
+	expectedRoutes []gateway.RouteExpectation,
 ) error {
 	probeCtx, cancel := context.WithTimeout(ctx, applier.options.HealthTimeout)
 	defer cancel()
 	var last gateway.Status
 	requireConfigApplied := mode == RestartNone
 	for {
-		last = applier.probeHealth(probeCtx, podID, requireConfigApplied)
-		if runtimeReady(last, generation) && (!requireConfigApplied || last.ConfigApplied) {
+		last = applier.probeHealth(probeCtx, podID, generation, requireConfigApplied, expectedRoutes)
+		if applyReady(last, generation, requireConfigApplied, len(expectedRoutes) > 0) {
 			return nil
 		}
 		timer := time.NewTimer(applier.options.PollInterval)
@@ -203,9 +208,12 @@ func (applier *Applier) waitForHealth(
 		case <-probeCtx.Done():
 			timer.Stop()
 			return fmt.Errorf(
-				"generation %d health timeout (gateway=%t guard=%t observed=%d configApplied=%t revision=%q applied=%q): %w",
+				"%s generation %d health timeout (gateway=%t guard=%t observed=%d configApplied=%t revision=%q applied=%q routeVerified=%t routeChecked=%d routeFailed=%d routeGeneration=%d routeError=%q): %w",
+				healthFailureCode(last, generation, requireConfigApplied, len(expectedRoutes) > 0),
 				generation, last.Healthy, last.RuntimeGuardHealthy, last.RuntimeGeneration,
-				last.ConfigApplied, last.ConfigRevisionHash, last.AppliedConfigHash, probeCtx.Err(),
+				last.ConfigApplied, last.ConfigRevisionHash, last.AppliedConfigHash,
+				last.RouteVerified, last.RouteChecked, last.RouteFailed, last.RouteGeneration,
+				last.RouteError, probeCtx.Err(),
 			)
 		case <-timer.C:
 		}
@@ -213,17 +221,32 @@ func (applier *Applier) waitForHealth(
 }
 
 func (applier *Applier) probeHealth(
-	ctx context.Context, podID string, requireConfigApplied bool,
+	ctx context.Context, podID string, generation int64, requireConfigApplied bool,
+	expectedRoutes []gateway.RouteExpectation,
 ) gateway.Status {
+	var status gateway.Status
 	if requireConfigApplied {
-		return gateway.ProbeWithConfigRevision(ctx, applier.driver, podID)
+		status = gateway.ProbeWithConfigRevision(ctx, applier.driver, podID)
+	} else {
+		status = gateway.Probe(ctx, applier.driver, podID)
 	}
-	return gateway.Probe(ctx, applier.driver, podID)
+	if runtimeReady(status, generation) && (!requireConfigApplied || status.ConfigApplied) {
+		mergeRouteVerification(ctx, applier.driver, podID, generation, expectedRoutes, &status)
+	}
+	return status
 }
 
 func runtimeReady(status gateway.Status, generation int64) bool {
 	return status.Healthy && status.RuntimeGuardHealthy &&
 		(generation == 0 || status.RuntimeGeneration == generation)
+}
+
+func applyReady(
+	status gateway.Status, generation int64, requireConfigApplied bool, requireRoutes bool,
+) bool {
+	return runtimeReady(status, generation) &&
+		(!requireConfigApplied || status.ConfigApplied) &&
+		(!requireRoutes || status.RouteVerified)
 }
 
 func (applier *Applier) abortFailure(ctx context.Context, podID string, stage Stage, cause error) *ApplyError {
@@ -250,10 +273,63 @@ func (applier *Applier) rollback(ctx context.Context, podID string, mode Restart
 	if err := applier.restart(ctx, podID, mode); err != nil {
 		return fmt.Errorf("restart restored config: %w", err)
 	}
-	if err := applier.waitForHealth(ctx, podID, result.Generation, mode); err != nil {
+	if err := applier.waitForHealth(ctx, podID, result.Generation, mode, nil); err != nil {
 		return fmt.Errorf("verify restored config: %w", err)
 	}
 	return nil
+}
+
+func mergeRouteVerification(
+	ctx context.Context, ex gateway.Execer, podID string, generation int64,
+	expectedRoutes []gateway.RouteExpectation, status *gateway.Status,
+) {
+	result, err := gateway.VerifyRoutes(ctx, ex, podID, generation, expectedRoutes)
+	if err != nil {
+		status.RouteError = err.Error()
+		return
+	}
+	status.RouteVerified = result.OK
+	status.RouteChecked = result.Checked
+	status.RouteFailed = result.Failed
+	status.RouteGeneration = result.Generation
+	status.RouteError = result.Error
+}
+
+func expectedDirectRoutes(raw []byte) ([]gateway.RouteExpectation, error) {
+	var payload struct {
+		Routes []gateway.RouteExpectation `json:"routes"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, fmt.Errorf("decode runtime routes: %w", err)
+	}
+	return filterDirectRoutes(payload.Routes), nil
+}
+
+func filterDirectRoutes(routes []gateway.RouteExpectation) []gateway.RouteExpectation {
+	expected := make([]gateway.RouteExpectation, 0, len(routes))
+	for _, route := range routes {
+		if route.PeerKind == "direct" || route.PeerKind == "dm" {
+			expected = append(expected, route)
+		}
+	}
+	return expected
+}
+
+func healthFailureCode(
+	status gateway.Status, generation int64, requireConfigApplied bool, requireRoutes bool,
+) string {
+	switch {
+	case !status.Healthy:
+		return "L1_gateway_unreachable"
+	case requireConfigApplied && !status.ConfigApplied:
+		return "L3_config_not_applied"
+	case !status.RuntimeGuardHealthy || status.RuntimeGeneration != generation:
+		return "L4_guard_unready"
+	case requireRoutes && !status.RouteVerified:
+		return "L5_route_not_applied"
+	default:
+		return "health_timeout"
+	}
 }
 
 func (applier *Applier) transaction(ctx context.Context, podID, mode string) (string, error) {

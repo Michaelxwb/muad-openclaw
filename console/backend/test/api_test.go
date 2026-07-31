@@ -314,7 +314,9 @@ func (f *fakeDriver) EnsurePublicSkillsStorage(context.Context) (driver.PublicSk
 
 type testEnv struct {
 	h         http.Handler
+	cfg       *config.Config
 	store     *repo.Store
+	cipher    *crypto.Cipher
 	drv       *fakeDriver
 	cache     *monitor.Cache
 	reconcile *fakeReconcileQueue
@@ -322,7 +324,10 @@ type testEnv struct {
 	skillsDir string
 }
 
-type fakeReconcileQueue struct{ podIDs []string }
+type fakeReconcileQueue struct {
+	podIDs []string
+	err    error
+}
 
 func (queue *fakeReconcileQueue) Enqueue(podID string) {
 	queue.podIDs = append(queue.podIDs, podID)
@@ -332,6 +337,11 @@ func (queue *fakeReconcileQueue) RunExclusive(
 	ctx context.Context, _ string, operation func(context.Context) error,
 ) error {
 	return operation(ctx)
+}
+
+func (queue *fakeReconcileQueue) ReconcileNow(_ context.Context, podID string) error {
+	queue.podIDs = append(queue.podIDs, podID)
+	return queue.err
 }
 
 func newTestEnv(t *testing.T) *testEnv {
@@ -357,16 +367,31 @@ func newTestEnv(t *testing.T) *testEnv {
 	}
 	h := api.NewServer(cfg, store, cipher, drv, cache, reconcile).Handler()
 	return &testEnv{
-		h: h, store: store, drv: drv, cache: cache, reconcile: reconcile,
+		h: h, cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache, reconcile: reconcile,
 		token: login(t, h), skillsDir: skillsDir,
 	}
 }
 
+func (e *testEnv) replaceReconcile(t *testing.T, enqueuer api.ReconcileEnqueuer) {
+	t.Helper()
+	e.h = api.NewServer(e.cfg, e.store, e.cipher, e.drv, e.cache, enqueuer).Handler()
+	e.token = loginWithCredentials(t, e.h, "root", "pw")
+}
+
 func login(t *testing.T, h http.Handler) string {
 	t.Helper()
+	return loginWithCredentials(t, h, "root", "pw")
+}
+
+func loginWithCredentials(t *testing.T, h http.Handler, username, password string) string {
+	t.Helper()
+	body, err := json.Marshal(map[string]string{"username": username, "password": password})
+	if err != nil {
+		t.Fatalf("login request: %v", err)
+	}
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/v1/auth/login",
-		strings.NewReader(`{"username":"root","password":"pw"}`)))
+		strings.NewReader(string(body))))
 	if rr.Code != http.StatusOK {
 		t.Fatalf("login = %d: %s", rr.Code, rr.Body.String())
 	}

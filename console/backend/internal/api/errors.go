@@ -27,6 +27,7 @@ const (
 	codeRateLimited             = 42901
 	codeInternal                = 50001
 	codeRuntimeFailure          = 50201
+	codeRuntimeApplyFailed      = 50202
 	codeDependencyUnavailable   = 50301
 )
 

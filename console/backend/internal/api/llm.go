@@ -1,10 +1,12 @@
 package api
 
 import (
+	"log"
 	"net/http"
+	"strings"
 	"sync"
+	"time"
 
-	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/llm"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
@@ -86,7 +88,25 @@ func (s *Server) handleBatchTestLLMModels(w http.ResponseWriter, r *http.Request
 		writeRepoError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"results": runLLMModelTests(r, targets)})
+	results := runLLMModelTests(r, targets)
+	for _, result := range results {
+		if result.ModelConfigID == "" {
+			continue
+		}
+		if err := s.store.UpdateLLMModelTestResult(result.ModelConfigID, result.OK, result.Error); err != nil {
+			log.Printf("llm_model_test_result_failed model=%s error=%v", result.ModelConfigID, err)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+func (s *Server) handleDeleteLLMModel(w http.ResponseWriter, r *http.Request) {
+	modelConfigID := strings.TrimSpace(r.PathValue("modelConfigId"))
+	if err := s.store.DeleteLLMModelConfig(modelConfigID); err != nil {
+		writeRepoError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"deleted": true, "modelConfigId": modelConfigID})
 }
 
 type llmModelTestTarget struct {
@@ -103,18 +123,13 @@ func (s *Server) prepareLLMModelCreate(input llmModelInput) (repo.LLMModelConfig
 	if err := validateLLMModelDefinition(model); err != nil {
 		return repo.LLMModelConfigCreate{}, err
 	}
-	encrypted, err := s.cipher.Encrypt(model.APIKey)
-	if err != nil {
-		return repo.LLMModelConfigCreate{}, err
-	}
 	displayName := input.DisplayName
 	if displayName == "" {
 		displayName = input.Provider + "/" + input.Model
 	}
 	return repo.LLMModelConfigCreate{
 		DisplayName: displayName, Provider: model.Provider, BaseURL: model.BaseURL,
-		APIKeyEnc: encrypted, APIKeyFingerprint: secretcrypto.Fingerprint(model.APIKey),
-		Model: model.Model,
+		APIKey: model.APIKey, Model: model.Model,
 	}, nil
 }
 
@@ -125,13 +140,9 @@ func (s *Server) llmModelTestTargets(request llmModelBatchTestRequest) ([]llmMod
 		if err != nil {
 			return nil, err
 		}
-		key, err := s.cipher.Decrypt(model.APIKeyEnc)
-		if err != nil {
-			return nil, err
-		}
 		targets = append(targets, llmModelTestTarget{
 			ModelConfigID: model.ModelConfigID, DisplayName: model.DisplayName,
-			BaseURL: model.BaseURL, APIKey: key,
+			BaseURL: model.BaseURL, APIKey: model.APIKey,
 		})
 	}
 	for _, input := range request.Models {
@@ -182,13 +193,20 @@ func runLLMModelTests(r *http.Request, targets []llmModelTestTarget) []llmModelT
 }
 
 func llmModelView(model repo.LLMModelConfig) map[string]any {
+	lastTestAt := ""
+	if !model.LastTestAt.IsZero() {
+		lastTestAt = model.LastTestAt.Format(time.RFC3339Nano)
+	}
 	return map[string]any{
 		"modelConfigId": model.ModelConfigID, "displayName": model.DisplayName,
 		"provider": model.Provider, "baseUrl": model.BaseURL, "model": model.Model,
-		"keyConfigured":    model.APIKeyEnc != "",
-		"keyFingerprint":   secretcrypto.DisplayFingerprint(model.APIKeyFingerprint),
-		"boundHumanUserId": model.BoundHumanUserID, "createdAt": model.CreatedAt,
+		"apiKey":             model.APIKey,
+		"lastTestAt":         lastTestAt,
+		"lastTestOK":         model.LastTestOK,
+		"lastTestError":      model.LastTestError,
+		"boundHumanUserId":   model.BoundHumanUserID,
 		"boundHumanUserName": model.BoundHumanUserName,
+		"createdAt":          model.CreatedAt,
 		"updatedAt":          model.UpdatedAt,
 	}
 }

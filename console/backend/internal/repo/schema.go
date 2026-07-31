@@ -41,9 +41,11 @@ CREATE TABLE IF NOT EXISTS llm_model_configs (
 	display_name TEXT NOT NULL,
 	provider TEXT NOT NULL,
 	base_url TEXT NOT NULL,
-	api_key_enc TEXT NOT NULL,
-	api_key_fingerprint TEXT NOT NULL,
+	api_key TEXT NOT NULL DEFAULT '',
 	model TEXT NOT NULL,
+	last_test_at TEXT NOT NULL DEFAULT '',
+	last_test_ok INTEGER NOT NULL DEFAULT 0 CHECK (last_test_ok IN (0,1)),
+	last_test_error TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );

@@ -198,12 +198,12 @@ func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBui
 			{
 				ModelConfigID: "model-alice", DisplayName: "Alice Model",
 				Provider: "deepseek", BaseURL: "https://api.deepseek.com",
-				Model: "deepseek-chat", APIKeyEnc: encryptRuntimeText(t, cipher, "old-key"),
+				Model: "deepseek-chat", APIKey: "old-key",
 			},
 			{
 				ModelConfigID: "model-charlie", DisplayName: "Charlie Model",
 				Provider: "deepseek", BaseURL: "https://api.deepseek.com",
-				Model: "deepseek-chat", APIKeyEnc: encryptRuntimeText(t, cipher, "new-key"),
+				Model: "deepseek-chat", APIKey: "new-key",
 			},
 		},
 		skills: map[string][]repo.EffectiveSkill{

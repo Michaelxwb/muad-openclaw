@@ -191,7 +191,7 @@ func TestLLMModelConfig_CreateListAndUniqueBinding(t *testing.T) {
 	createTestPod(t, s, "pod-a", 10)
 	models, err := s.CreateLLMModelConfigs([]repo.LLMModelConfigCreate{{
 		DisplayName: "Alice Model", Provider: "deepseek", BaseURL: "https://api.deepseek.com",
-		APIKeyEnc: "encrypted-key", APIKeyFingerprint: "fingerprint", Model: "deepseek-chat",
+		APIKey: "sk-alice", Model: "deepseek-chat",
 	}})
 	if err != nil {
 		t.Fatalf("CreateLLMModelConfigs: %v", err)

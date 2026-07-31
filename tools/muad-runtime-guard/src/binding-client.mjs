@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 export const POD_SERVICE_TOKEN_FILE = "/run/secrets/muad/pod-service-token";
 const BINDING_PATH = "/internal/v1/bindings/activate";
 const MAX_RESPONSE_BYTES = 64 * 1024;
+const CODE_RUNTIME_APPLY_FAILED = 50202;
 
 export class BindingClientError extends Error {
   constructor(code, retryable = false) {
@@ -14,7 +15,7 @@ export class BindingClientError extends Error {
 }
 
 export class BindingClient {
-  constructor({ baseURL, tokenFile = POD_SERVICE_TOKEN_FILE, timeoutMs = 5_000, fetch: fetchLike = fetch,
+  constructor({ baseURL, tokenFile = POD_SERVICE_TOKEN_FILE, timeoutMs = 300_000, fetch: fetchLike = fetch,
     readToken = (filePath) => readFile(filePath, "utf8") }) {
     this.url = bindingURL(baseURL);
     if (tokenFile !== POD_SERVICE_TOKEN_FILE) throw new BindingClientError("service_unavailable", true);
@@ -79,6 +80,7 @@ function parseEnvelope(text) {
 function responseError(status, code) {
   if (status === 429 || code === 42901) return new BindingClientError("rate_limited", true);
   if (status === 400 || status === 409) return new BindingClientError("invalid_binding");
+  if (code === CODE_RUNTIME_APPLY_FAILED) return new BindingClientError("config_apply_failed", true);
   return new BindingClientError("service_unavailable", status >= 500 || status === 401);
 }
 

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeconfig"
@@ -111,6 +112,13 @@ func (coordinator *Coordinator) Enqueue(podID string) {
 	coordinator.pending[podID] = true
 	coordinator.mu.Unlock()
 	coordinator.signal()
+}
+
+// ReconcileNow applies the latest desired generation for one Pod before returning.
+func (coordinator *Coordinator) ReconcileNow(ctx context.Context, podID string) error {
+	return coordinator.RunExclusive(ctx, podID, func(runCtx context.Context) error {
+		return coordinator.reconcileImmediate(runCtx, podID)
+	})
 }
 
 // Run recovers unconverged Pods and dispatches one serial worker per Pod.
@@ -221,6 +229,18 @@ func (coordinator *Coordinator) reconcileWithRetry(ctx context.Context, podID st
 	return last
 }
 
+func (coordinator *Coordinator) reconcileImmediate(ctx context.Context, podID string) error {
+	for attempt := 1; ; attempt++ {
+		err := coordinator.reconcileOnce(ctx, podID)
+		if err == nil || errors.Is(err, repo.ErrNotFound) {
+			return nil
+		}
+		if !errors.Is(err, repo.ErrGenerationConflict) || attempt >= coordinator.options.MaxAttempts {
+			return err
+		}
+	}
+}
+
 func (coordinator *Coordinator) reconcileOnce(ctx context.Context, podID string) error {
 	built, err := coordinator.builder.Build(podID)
 	if err != nil {
@@ -258,7 +278,7 @@ func (coordinator *Coordinator) recordBuildFailure(podID string, cause error) er
 }
 
 func (coordinator *Coordinator) recordFailure(podID string, generation int64, cause error) error {
-	message := cause.Error()
+	message := auditlog.RedactDiagnostic(cause.Error())
 	if len(message) > 2048 {
 		message = message[:2048]
 	}

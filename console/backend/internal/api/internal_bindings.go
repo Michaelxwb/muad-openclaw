@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -53,7 +54,28 @@ func (s *Server) handleActivateBinding(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusTooManyRequests, codeRateLimited, "binding attempts are rate limited")
 		return
 	}
-	// Trim fields before persistence (validBindingContext only trimmed a copy).
+	normalizeBindingRequest(&request)
+	result, err := s.activateBindingCode(pod, request)
+	if err != nil {
+		s.auditBindingFailure(r, pod, bindingErrorStatus(err))
+		s.writeBindingActivationError(w, err)
+		return
+	}
+	s.bindingLimiter.Reset(limitKey)
+	if err := s.applyBindingRuntime(r.Context(), pod.PodID); err != nil {
+		s.auditBindingApplyFailure(r, result, bindingApplyFailureStatus(err))
+		writeErr(w, http.StatusBadGateway, codeRuntimeApplyFailed, "binding saved but runtime config apply failed")
+		return
+	}
+	s.auditBindingSuccess(r, result)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"identityBound": true, "configStatus": "applied",
+		"humanUserId": result.HumanUser.HumanUserID, "agentId": result.HumanUser.AgentID,
+		"identityId": result.Identity.IdentityID, "configGeneration": result.ConfigGeneration,
+	})
+}
+
+func normalizeBindingRequest(request *bindingActivateRequest) {
 	request.Code = strings.TrimSpace(request.Code)
 	request.Channel = strings.TrimSpace(request.Channel)
 	request.AccountID = strings.TrimSpace(request.AccountID)
@@ -61,25 +83,24 @@ func (s *Server) handleActivateBinding(w http.ResponseWriter, r *http.Request) {
 	request.ExternalIDType = strings.TrimSpace(request.ExternalIDType)
 	request.OpenClawChannel = strings.TrimSpace(request.OpenClawChannel)
 	request.PeerKind = strings.TrimSpace(request.PeerKind)
-	result, err := s.store.ActivateBindingCode(s.bindingCodec, repo.BindingActivation{
+}
+
+func (s *Server) activateBindingCode(
+	pod repo.Pod, request bindingActivateRequest,
+) (repo.BindingActivationResult, error) {
+	return s.store.ActivateBindingCode(s.bindingCodec, repo.BindingActivation{
 		Code: request.Code, PodID: pod.PodID, Channel: request.Channel,
 		OpenClawChannel: request.OpenClawChannel, AccountID: request.AccountID,
 		ExternalID: request.ExternalID, ExternalIDType: request.ExternalIDType,
 		PeerKind: request.PeerKind,
 	}, time.Now().UTC())
-	if err != nil {
-		s.auditBindingFailure(r, pod, bindingErrorStatus(err))
-		s.writeBindingActivationError(w, err)
-		return
+}
+
+func (s *Server) applyBindingRuntime(ctx context.Context, podID string) error {
+	if s.reconcileNow == nil {
+		return errRuntimeCoordinatorUnavailable
 	}
-	s.bindingLimiter.Reset(limitKey)
-	s.enqueueReconcile(pod.PodID)
-	s.auditBindingSuccess(r, result)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"identityBound": true, "configStatus": "applying",
-		"humanUserId": result.HumanUser.HumanUserID, "agentId": result.HumanUser.AgentID,
-		"identityId": result.Identity.IdentityID, "configGeneration": result.ConfigGeneration,
-	})
+	return s.reconcileNow.ReconcileNow(ctx, podID)
 }
 
 func validBindingContext(pod repo.Pod, request bindingActivateRequest) bool {
@@ -138,6 +159,24 @@ func (s *Server) auditBindingSuccess(r *http.Request, result repo.BindingActivat
 		PodID: result.HumanUser.PodID, HumanUserID: result.HumanUser.HumanUserID,
 		AgentID: result.HumanUser.AgentID, IdentityID: result.Identity.IdentityID,
 		Status: "bound", Generation: result.ConfigGeneration,
+	})
+}
+
+func bindingApplyFailureStatus(err error) string {
+	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
+		return "runtime_coordinator_unavailable"
+	}
+	return "runtime_apply_failed"
+}
+
+func (s *Server) auditBindingApplyFailure(
+	r *http.Request, result repo.BindingActivationResult, status string,
+) {
+	s.auditInternalBinding(r, auditlog.ActionRuntimeGuardBind, result.Identity.IdentityID, auditlog.Metadata{
+		PodID: result.HumanUser.PodID, HumanUserID: result.HumanUser.HumanUserID,
+		AgentID: result.HumanUser.AgentID, IdentityID: result.Identity.IdentityID,
+		Status: status, ErrorCode: status,
+		Generation: result.ConfigGeneration,
 	})
 }
 

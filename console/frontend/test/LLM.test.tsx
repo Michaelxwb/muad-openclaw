@@ -20,8 +20,10 @@ const model = {
   provider: "deepseek",
   baseUrl: "https://api.deepseek.com",
   model: "deepseek-chat",
-  keyConfigured: true,
-  keyFingerprint: "sha256:model-key",
+  apiKey: "sk-model-key",
+  lastTestAt: "2026-07-11T00:00:00Z",
+  lastTestOK: true,
+  lastTestError: "",
   boundHumanUserId: "user-a",
   boundHumanUserName: "Alice User",
   createdAt: "2026-07-11T00:00:00Z",
@@ -32,7 +34,7 @@ const availableModel = {
   ...model,
   modelConfigId: "model-b",
   displayName: "Bob Model",
-  keyFingerprint: "sha256:bob-key",
+  apiKey: "sk-bob-key",
   boundHumanUserId: undefined,
   boundHumanUserName: undefined,
 };
@@ -53,13 +55,13 @@ beforeEach(() => {
 });
 
 describe("LLM", () => {
-  it("shows model fingerprints without exposing API keys", async () => {
+  it("shows plaintext API keys and test results", async () => {
     render(<LLM />);
 
     expect(await screen.findByText("Alice Model")).toBeInTheDocument();
-    expect(screen.getByText("sha256:model-key")).toBeInTheDocument();
+    expect(screen.getByText("sk-model-key")).toBeInTheDocument();
     expect(screen.getByText("Alice User")).toBeInTheDocument();
-    expect(screen.queryByDisplayValue(/sk-/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("通过").length).toBeGreaterThan(0);
   });
 
   it("creates model configs from form fields and multiline API keys", async () => {
@@ -103,7 +105,7 @@ describe("LLM", () => {
     fireEvent.click(screen.getByRole("button", { name: "批量测试连通性" }));
 
     await waitFor(() => expect(apiMocks.testLLMModels).toHaveBeenCalledWith(["model-a"]));
-    expect(await screen.findByText("通过")).toBeInTheDocument();
+    expect(await screen.findAllByText("通过")).not.toHaveLength(0);
   });
 
   it("filters model configs from the list toolbar", async () => {
