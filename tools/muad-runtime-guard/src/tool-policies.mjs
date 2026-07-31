@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 
 const FILE_TOOLS = new Set(["apply_patch", "edit", "read", "write"]);
-const SHELL_TOOLS = new Set(["bash", "exec", "shell", "terminal"]);
 const PROFILE_MANAGEMENT_ACTIONS = new Set(["profiles"]);
 
 export function createMainDenyPolicy({ mainAgentId }) {
@@ -35,10 +34,9 @@ export function createBrowserProfilePolicy({ config, onViolation = () => {} }) {
 export function createAgentFilesPolicy({ config, resolvePaths }) {
   return {
     id: "muad-agent-files",
-    description: "Blocks file/shell access outside the trusted agent workspace.",
+    description: "Blocks file access outside the trusted agent workspace; private Skill files are read-only.",
     evaluate(event, ctx) {
       if (ctx.agentId === config.mainAgentId) return undefined;
-      if (isShellExecutionTool(event)) return deny("shell access is disabled for business agents");
       if (!FILE_TOOLS.has(event.toolName)) return undefined;
       return evaluateFileAccess(event, ctx, config, resolvePaths);
     },
@@ -64,11 +62,6 @@ export function profileForAgent(config, agentId) {
   return config.agentProfiles.find((item) => item.agentId === agentId)?.profile;
 }
 
-function isShellExecutionTool(event) {
-  const kind = typeof event.toolKind === "string" ? event.toolKind.trim() : "";
-  return SHELL_TOOLS.has(event.toolName) || kind === "code_mode_exec";
-}
-
 function evaluateFileAccess(event, ctx, config, resolvePaths) {
   if (!config.valid || !profileForAgent(config, safeId(ctx.agentId))) {
     return deny("file access requires a mapped business agent");
@@ -86,6 +79,12 @@ function evaluateFileAccess(event, ctx, config, resolvePaths) {
     if (!target || isWithin(roots.agentDir, target) || isWithin(roots.sessionStore, target) ||
       (!isWithin(roots.workspace, target) && !skillRead)) {
       return deny("file access is outside the agent workspace or authorized Skill roots");
+    }
+    // Private Skill lives under workspace/skills; agents may read it but never
+    // modify it (write/edit/apply_patch). Shell access is separately enabled,
+    // so this guards the file-tool surface.
+    if (event.toolName !== "read" && isWithin(path.join(roots.workspace, "skills"), target)) {
+      return deny("private Skill files are read-only for the agent");
     }
   }
   return undefined;

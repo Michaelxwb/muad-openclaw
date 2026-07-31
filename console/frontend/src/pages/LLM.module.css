@@ -15,3 +15,32 @@
 .full {
   grid-column: 1 / -1;
 }
+
+.tableCellStack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tableCellPrimary,
+.tableCellMeta,
+.tableCellLine,
+.boundUserName {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boundStatus {
+  width: 100%;
+  min-width: 0;
+}
+
+.boundUserName {
+  min-width: 0;
+  flex: 1;
+  color: var(--semi-color-text-0);
+}

@@ -40,3 +40,29 @@ func TestRequestErrorLogMiddlewareRecordsSafeErrorContext(t *testing.T) {
 		t.Fatal("request body leaked into the error log")
 	}
 }
+
+func TestRequestLogMiddlewareRecordsSuccessfulRequestsAsInfo(t *testing.T) {
+	var output bytes.Buffer
+	previous := log.Writer()
+	log.SetOutput(&output)
+	t.Cleanup(func() { log.SetOutput(previous) })
+
+	handler := requestErrorLogMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"code":0,"data":{}}`))
+	}))
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/containers/pod-a", nil)
+	request.Header.Set("X-Request-ID", "request-test-2")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+
+	logged := output.String()
+	for _, expected := range []string{
+		"level=INFO", "request_id=request-test-2", "method=GET",
+		`route="/api/v1/containers/pod-a"`, "status=200",
+	} {
+		if !strings.Contains(logged, expected) {
+			t.Fatalf("log %q does not contain %q", logged, expected)
+		}
+	}
+}

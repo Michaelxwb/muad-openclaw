@@ -35,6 +35,11 @@ COPY bin/inject-env.mjs bin/inject-multi-user-config.mjs bin/openclaw-config-ren
     bin/startup-context.mjs bin/private-skill-installer.mjs bin/image-plugin-paths.mjs /opt/muad/
 COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
 
+# 业务 Python 依赖（脚本类 skill 运行时）；基础镜像已含 python3-pip。
+# 变更 requirements.txt 只需重建 app 镜像，无需重建基础镜像。
+COPY requirements.txt /opt/muad/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /opt/muad/requirements.txt
+
 COPY --from=session-manager-builder /build/session-manager/dist /opt/muad/session-manager/dist
 COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \
     tools/session-manager/openclaw.plugin.json /opt/muad/session-manager/

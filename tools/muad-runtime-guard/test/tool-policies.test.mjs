@@ -46,17 +46,18 @@ test("browser policy rejects forged, unmapped and profile-management requests", 
   assert.equal(violations.length, 4);
 });
 
-test("main agent is denied while business-agent shell execution is blocked", async () => {
+test("main agent is denied while business-agent shell is enabled", async () => {
   const main = createMainDenyPolicy(config);
   assert.equal((await main.evaluate(browser({ action: "open" }), context("main"))).allow, false);
   assert.equal(await main.evaluate(browser({ action: "open" }), context("alice")), undefined);
 
+  // Shell is enabled for business agents: these events pass the file policy.
   const files = filePolicy();
   for (const event of [
     { toolName: "exec", params: { command: "id" } },
     { toolName: "bash", params: { command: "id" } },
     { toolName: "custom", toolKind: "code_mode_exec", params: {} },
-  ]) assert.equal((await files.evaluate(event, context("alice"))).allow, false);
+  ]) assert.equal(await files.evaluate(event, context("alice")), undefined);
 });
 
 test("file policy allows the current workspace and blocks cross-user and runtime state", async () => {
@@ -111,6 +112,24 @@ test("file policy allows only read access to the current agent authorized Skill 
   assert.equal((await policy.evaluate(
     file("read", "/state/workspace-bob/skills/private-report/SKILL.md"), context("alice"),
   )).allow, false);
+});
+
+test("file policy keeps private Skill files read-only for the owning agent", async () => {
+  const policy = filePolicy();
+  // Alice's private Skill lives under her workspace/skills.
+  const aliceSkill = "/state/workspace-alice/skills/private-report/SKILL.md";
+  assert.equal(await policy.evaluate(file("read", aliceSkill), context("alice")), undefined);
+  assert.equal((await policy.evaluate(file("write", aliceSkill), context("alice"))).allow, false);
+  assert.equal((await policy.evaluate(
+    { toolName: "apply_patch", params: { patch: "opaque" }, derivedPaths: [aliceSkill] },
+    context("alice"),
+  )).allow, false);
+  // Bob's authorized private Skill is readable by Bob but not writable.
+  const bobSkill = "/state/workspace-bob/skills/private-report/SKILL.md";
+  assert.equal(await policy.evaluate(file("read", bobSkill), context("bob")), undefined);
+  assert.equal((await policy.evaluate(file("write", bobSkill), context("bob"))).allow, false);
+  // Workspace files outside skills stay writable.
+  assert.equal(await policy.evaluate(file("write", "/state/workspace-alice/notes.txt"), context("alice")), undefined);
 });
 
 test("apply_patch requires host-derived paths and checks every target", async () => {

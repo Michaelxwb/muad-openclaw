@@ -14,6 +14,32 @@
   grid-column: 1 / -1;
 }
 
+.tableCellStack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tableCellPrimary,
+.tableCellMeta,
+.tableCellLine {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tableCellMeta {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+}
+
+.actionGroup {
+  white-space: nowrap;
+}
+
 @media (max-width: 680px) {
   .header {
     align-items: flex-start;
