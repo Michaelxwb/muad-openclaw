@@ -36,6 +36,7 @@ type Status struct {
 	BrowserQueued       int
 	ConfigRevisionHash  string
 	AppliedConfigHash   string
+	ConfigGeneration    int64
 	ConfigApplied       bool
 	RouteVerified       bool
 	RouteChecked        int
@@ -158,8 +159,12 @@ func mergeRuntimeHealth(ctx context.Context, ex Execer, podID string, status *St
 }
 
 type configGetJSON struct {
-	ConfigRevisionHash string  `json:"configRevisionHash"`
-	AppliedConfigHash  *string `json:"appliedConfigHash"`
+	ConfigRevisionHash string          `json:"configRevisionHash"`
+	AppliedConfigHash  *string         `json:"appliedConfigHash"`
+	Hash               string          `json:"hash"`
+	Parsed             json.RawMessage `json:"parsed"`
+	RuntimeConfig      json.RawMessage `json:"runtimeConfig"`
+	Config             json.RawMessage `json:"config"`
 }
 
 func mergeConfigRevision(ctx context.Context, ex Execer, podID string, status *Status) {
@@ -175,9 +180,59 @@ func mergeConfigRevision(ctx context.Context, ex Execer, podID string, status *S
 	if config.AppliedConfigHash != nil {
 		applied = *config.AppliedConfigHash
 	}
-	status.ConfigRevisionHash = config.ConfigRevisionHash
+	status.ConfigRevisionHash = firstNonEmpty(config.ConfigRevisionHash, config.Hash)
 	status.AppliedConfigHash = applied
-	status.ConfigApplied = config.ConfigRevisionHash != "" && config.ConfigRevisionHash == applied
+	status.ConfigGeneration = config.runtimeGeneration()
+	status.ConfigApplied = configApplied(config, status.RuntimeGeneration)
+}
+
+func configApplied(config configGetJSON, runtimeGeneration int64) bool {
+	if config.ConfigRevisionHash != "" && config.AppliedConfigHash != nil {
+		return config.ConfigRevisionHash == *config.AppliedConfigHash
+	}
+	generation := config.runtimeGeneration()
+	return generation > 0 && generation == runtimeGeneration
+}
+
+func (config configGetJSON) runtimeGeneration() int64 {
+	for _, raw := range []json.RawMessage{config.RuntimeConfig, config.Config, config.Parsed} {
+		if generation := runtimeGenerationFromConfig(raw); generation > 0 {
+			return generation
+		}
+	}
+	return 0
+}
+
+func runtimeGenerationFromConfig(raw json.RawMessage) int64 {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0
+	}
+	var payload struct {
+		Plugins struct {
+			Entries map[string]struct {
+				Config struct {
+					Generation int64 `json:"generation"`
+				} `json:"config"`
+			} `json:"entries"`
+		} `json:"plugins"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return 0
+	}
+	generation := payload.Plugins.Entries["muad-runtime-guard"].Config.Generation
+	if generation > 0 {
+		return generation
+	}
+	return 0
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 var (

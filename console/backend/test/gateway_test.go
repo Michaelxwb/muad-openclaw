@@ -95,6 +95,22 @@ func TestProbeWithConfigRevisionReportsAppliedState(t *testing.T) {
 	}
 }
 
+func TestProbeWithConfigRevisionFallsBackToRuntimeGeneration(t *testing.T) {
+	execer := probeExecer{
+		configGet: `{"hash":"sha256:cfg","runtimeConfig":{"plugins":{"entries":{"muad-runtime-guard":{"config":{"generation":7}}}}}}`,
+	}
+	status := gateway.ProbeWithConfigRevision(context.Background(), &execer, "pod-a")
+	if !status.ConfigApplied || status.ConfigGeneration != 7 || status.ConfigRevisionHash != "sha256:cfg" {
+		t.Fatalf("status = %+v", status)
+	}
+
+	execer.configGet = `{"hash":"sha256:stale","runtimeConfig":{"plugins":{"entries":{"muad-runtime-guard":{"config":{"generation":6}}}}}}`
+	status = gateway.ProbeWithConfigRevision(context.Background(), &execer, "pod-a")
+	if status.ConfigApplied {
+		t.Fatalf("stale generation reported as applied: %+v", status)
+	}
+}
+
 func TestVerifyRoutesCallsRuntimeGuardVerifier(t *testing.T) {
 	execer := &probeExecer{
 		routeVerify: `{"ok":true,"generation":8,"checked":2,"failed":0}`,

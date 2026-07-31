@@ -104,36 +104,7 @@ export function abortTransaction(configPath) {
 
 export function selectRestartMode(current, next) {
   if (canonicalHash(current) === canonicalHash(next)) return "none";
-  if (isBindingHotReloadOnly(current, next)) return "none";
   return "gateway";
-}
-
-function isBindingHotReloadOnly(current, next) {
-  const previous = cloneForRestartComparison(current);
-  const candidate = cloneForRestartComparison(next);
-  return canonicalHash(previous) === canonicalHash(candidate);
-}
-
-function cloneForRestartComparison(config) {
-  const output = cloneRecord(config);
-  deletePath(output, ["bindings"]);
-  deletePath(output, ["session", "identityLinks"]);
-  deletePath(output, ["plugins", "entries", "muad-runtime-guard", "config", "generation"]);
-  return output;
-}
-
-function cloneRecord(value) {
-  if (!value || typeof value !== "object") return {};
-  return JSON.parse(JSON.stringify(value));
-}
-
-function deletePath(target, parts) {
-  let current = target;
-  for (const part of parts.slice(0, -1)) {
-    if (!current || typeof current !== "object") return;
-    current = current[part];
-  }
-  if (current && typeof current === "object") delete current[parts.at(-1)];
 }
 
 function readConfig(path) {

@@ -104,7 +104,7 @@ test("rollback before commit keeps the current valid config", () => {
   assert.equal(existsSync(`${configPath}.muad.candidate`), false);
 });
 
-test("binding-only runtime changes do not restart gateway or pod", () => {
+test("binding-only runtime changes restart the gateway", () => {
   const current = restartBaseline();
   const next = restartBaseline();
   next.bindings = [{
@@ -114,7 +114,7 @@ test("binding-only runtime changes do not restart gateway or pod", () => {
   next.session.identityLinks = { alice: ["mattermost:default:direct:mm-user-1"] };
   next.plugins.entries["muad-runtime-guard"].config.generation = 8;
 
-  assert.equal(selectRestartMode(current, next), "none");
+  assert.equal(selectRestartMode(current, next), "gateway");
 });
 
 test("non-binding runtime changes still restart the gateway", () => {
