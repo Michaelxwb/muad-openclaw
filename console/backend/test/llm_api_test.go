@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -91,9 +92,12 @@ func modelListIncludesBinding(
 func recordingLLM(t *testing.T) (string, *[]string) {
 	t.Helper()
 	authorizations := []string{}
+	var mu sync.Mutex
 	previous := http.DefaultTransport
 	http.DefaultTransport = roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		mu.Lock()
 		authorizations = append(authorizations, r.Header.Get("Authorization"))
+		mu.Unlock()
 		return &http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(strings.NewReader(`{"data":[]}`)),
