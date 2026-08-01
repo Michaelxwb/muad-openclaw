@@ -283,10 +283,11 @@ func buildAgents(
 }
 
 func copyStrings(values []string) []string {
-	if values == nil {
-		return []string{}
-	}
-	return append([]string(nil), values...)
+	// append([]string(nil), 空values...) 会返回 nil 切片，导致
+	// validateRuntimeAgents 的 agent.Skills == nil 校验失败；显式 make 保证非 nil。
+	out := make([]string, len(values))
+	copy(out, values)
+	return out
 }
 
 func buildUserMappings(state string, users []repo.HumanUser) (
