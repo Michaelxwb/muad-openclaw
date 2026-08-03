@@ -51,6 +51,8 @@ fs.writeFileSync(target, nextConfig) // 无 backup / validate / generation
 - 重启策略（none/gateway/pod）显式选择，禁止隐式乱重启
 - 变更 inject/renderer 时同步更新 `bin/test`
 - 落盘使用临时文件 + rename，mode `0o600`
+- **skills_pending 生命周期**：apply 成功时清 pending 必须与 `CompletePodConfigApply` 同一条 UPDATE 原子完成；启动恢复扫描必须包含 pending pod（`OR skills_pending=1`）；`ClearPodSkillsPending` 必须带 `config_generation` 守卫，防止误清新代次
+- **public 同步并发**：coordinator hook 与 HTTP server 必须共享同一 Syncer 实例；public 同步用全局锁串行（带 30s 超时）；hook 路径 try-lock（锁忙且磁盘有状态则跳过），仅 reload 强制同步；同快照 partial 失败做冷却（30s），避免坏 skill 导致每次 reconcile 全量重发布 churn
 
 ## Patterns
 - 控制面构建 desired DTO，Worker 执行 transaction script

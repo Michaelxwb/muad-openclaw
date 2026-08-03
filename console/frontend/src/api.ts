@@ -61,6 +61,7 @@ import type {
   SkillExecutionQuery,
   SkillPolicy,
   SkillPolicyInput,
+  SkillReloadResult,
 } from "./types/api";
 
 export type * from "./types/api";
@@ -219,8 +220,8 @@ export const api = {
   upgrade: (podId: string, imageTag: string) =>
     request<PodUpgradeResult>("POST", `/containers/${segment(podId)}/upgrade`, { imageTag }),
   reloadSkills: (podIds: string[]) =>
-    request<{ results: Record<string, string> }>("POST", "/skills/reload", { podIds }),
-  applySkills: () => request<{ results: Record<string, string> }>("POST", "/skills/reload", {}),
+    request<SkillReloadResult>("POST", "/skills/reload", { podIds }),
+  applySkills: () => request<SkillReloadResult>("POST", "/skills/reload", {}),
 
   listHumanUsers: (podId: string, query: HumanUserListQuery = {}) =>
     request<PageResult<HumanUser>>(
@@ -359,6 +360,7 @@ export const api = {
       input.filename ?? (input.bundle instanceof File ? input.bundle.name : "skill.tar.gz");
     form.set("bundle", input.bundle, filename);
     if (input.expectedName) form.set("expectedName", input.expectedName);
+    if (input.allowOverride) form.set("allowOverride", "true");
     if (input.platforms) {
       form.set("platforms", JSON.stringify(input.platforms));
     }

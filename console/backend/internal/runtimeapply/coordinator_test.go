@@ -148,6 +148,132 @@ func TestCoordinatorReconcileNowDoesNotRetryApplyFailures(t *testing.T) {
 	}
 }
 
+func TestCoordinatorSkipsBeforeApplyHookWhenSkillsAreNotPending(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	executor := newCoordinatorExecutor()
+	hook := &coordinatorHook{}
+	coordinator, err := NewCoordinator(
+		store, coordinatorBuilder{store: store}, executor,
+		CoordinatorOptions{MaxAttempts: 1, RetryDelay: time.Millisecond, BeforeApply: hook},
+	)
+	if err != nil {
+		t.Fatalf("NewCoordinator: %v", err)
+	}
+
+	err = coordinator.ReconcileNow(context.Background(), "pod-a")
+	if err != nil {
+		t.Fatalf("ReconcileNow: %v", err)
+	}
+	if len(hook.podIDs) != 0 {
+		t.Fatalf("hook should be skipped, got %v", hook.podIDs)
+	}
+}
+
+func TestCoordinatorRunsBeforeApplyHookOnlyForPendingSkills(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	store.setSkillsPending("pod-a", true)
+	executor := newCoordinatorExecutor()
+	hook := &coordinatorHook{}
+	coordinator, err := NewCoordinator(
+		store, coordinatorBuilder{store: store}, executor,
+		CoordinatorOptions{MaxAttempts: 1, RetryDelay: time.Millisecond, BeforeApply: hook},
+	)
+	if err != nil {
+		t.Fatalf("NewCoordinator: %v", err)
+	}
+
+	err = coordinator.ReconcileNow(context.Background(), "pod-a")
+	if err != nil {
+		t.Fatalf("ReconcileNow: %v", err)
+	}
+	if fmt.Sprint(hook.podIDs) != "[pod-a]" {
+		t.Fatalf("hook pod IDs = %v", hook.podIDs)
+	}
+	if store.appliedGeneration("pod-a") != 1 {
+		t.Fatalf("generation was not completed after hook")
+	}
+	if store.skillsPending("pod-a") {
+		t.Fatal("skills pending was not cleared after successful apply")
+	}
+}
+
+func TestCoordinatorClearsPendingOnlyAppliedGeneration(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	store.setGeneration("pod-a", 2)
+	store.setAppliedGeneration("pod-a", 2)
+	store.setSkillsPending("pod-a", true)
+	executor := newCoordinatorExecutor()
+	coordinator, err := NewCoordinator(
+		store, coordinatorBuilder{store: store}, executor, CoordinatorOptions{MaxAttempts: 1},
+	)
+	if err != nil {
+		t.Fatalf("NewCoordinator: %v", err)
+	}
+
+	err = coordinator.ReconcileNow(context.Background(), "pod-a")
+	if err != nil {
+		t.Fatalf("ReconcileNow: %v", err)
+	}
+	if executor.count("pod-a") != 0 {
+		t.Fatalf("runtime apply should be skipped for applied generation: %d", executor.count("pod-a"))
+	}
+	if store.skillsPending("pod-a") {
+		t.Fatal("stale skills pending was not cleared")
+	}
+}
+
+func TestCoordinatorFailsPendingSkillsWhenHookMissing(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	store.setSkillsPending("pod-a", true)
+	executor := newCoordinatorExecutor()
+	coordinator, err := NewCoordinator(
+		store, coordinatorBuilder{store: store}, executor, CoordinatorOptions{MaxAttempts: 1},
+	)
+	if err != nil {
+		t.Fatalf("NewCoordinator: %v", err)
+	}
+
+	err = coordinator.ReconcileNow(context.Background(), "pod-a")
+	if err == nil {
+		t.Fatal("ReconcileNow should fail when Skill syncer is unavailable")
+	}
+	if executor.count("pod-a") != 0 {
+		t.Fatalf("runtime apply should not run without Skill syncer: %d", executor.count("pod-a"))
+	}
+	if !store.skillsPending("pod-a") || store.failedCount("pod-a") != 1 {
+		t.Fatalf("pending state/failure count = %v/%d", store.skillsPending("pod-a"), store.failedCount("pod-a"))
+	}
+}
+
+func TestCoordinatorFailsGenerationWhenBeforeApplyHookFails(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	store.setSkillsPending("pod-a", true)
+	executor := newCoordinatorExecutor()
+	hook := &coordinatorHook{err: errors.New("sync failed")}
+	coordinator, err := NewCoordinator(
+		store, coordinatorBuilder{store: store}, executor,
+		CoordinatorOptions{MaxAttempts: 1, RetryDelay: time.Millisecond, BeforeApply: hook},
+	)
+	if err != nil {
+		t.Fatalf("NewCoordinator: %v", err)
+	}
+
+	err = coordinator.ReconcileNow(context.Background(), "pod-a")
+	if err == nil {
+		t.Fatal("ReconcileNow should fail when hook fails")
+	}
+	if executor.count("pod-a") != 0 {
+		t.Fatalf("runtime apply should not run after hook failure: %d", executor.count("pod-a"))
+	}
+	if store.failedCount("pod-a") != 1 || store.appliedGeneration("pod-a") != 0 {
+		t.Fatalf("hook failure should fail unapplied generation: failures=%d applied=%d",
+			store.failedCount("pod-a"), store.appliedGeneration("pod-a"))
+	}
+	if !store.skillsPending("pod-a") {
+		t.Fatal("skills pending should remain set after hook failure")
+	}
+}
+
 func TestCoordinatorExtendsRetriesWhileRuntimeIsNotReady(t *testing.T) {
 	store := newCoordinatorStore("pod-a")
 	executor := newCoordinatorExecutor()
@@ -168,6 +294,16 @@ func TestCoordinatorExtendsRetriesWhileRuntimeIsNotReady(t *testing.T) {
 	if got := executor.count("pod-a"); got != 4 {
 		t.Fatalf("apply attempts = %d, want 4", got)
 	}
+}
+
+type coordinatorHook struct {
+	podIDs []string
+	err    error
+}
+
+func (hook *coordinatorHook) BeforeApply(_ context.Context, podID string) error {
+	hook.podIDs = append(hook.podIDs, podID)
+	return hook.err
 }
 
 type coordinatorStore struct {
@@ -229,6 +365,18 @@ func (store *coordinatorStore) CompletePodConfigApply(
 	return nil
 }
 
+func (store *coordinatorStore) ClearPodSkillsPending(podID string, generation int64) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	pod := store.pods[podID]
+	if pod.ConfigGeneration != generation {
+		return repo.ErrGenerationConflict
+	}
+	pod.SkillsPending = false
+	store.pods[podID] = pod
+	return nil
+}
+
 func (store *coordinatorStore) FailPodConfigApply(podID string, generation int64, _ string) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -252,6 +400,28 @@ func (store *coordinatorStore) setGeneration(podID string, generation int64) {
 	pod := store.pods[podID]
 	pod.ConfigGeneration = generation
 	store.pods[podID] = pod
+}
+
+func (store *coordinatorStore) setAppliedGeneration(podID string, generation int64) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	pod := store.pods[podID]
+	pod.AppliedGeneration = generation
+	store.pods[podID] = pod
+}
+
+func (store *coordinatorStore) setSkillsPending(podID string, pending bool) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	pod := store.pods[podID]
+	pod.SkillsPending = pending
+	store.pods[podID] = pod
+}
+
+func (store *coordinatorStore) skillsPending(podID string) bool {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	return store.pods[podID].SkillsPending
 }
 
 func (store *coordinatorStore) appliedGeneration(podID string) int64 {

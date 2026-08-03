@@ -26,6 +26,7 @@ type podView struct {
 	ConfigGeneration         int64                        `json:"configGeneration"`
 	AppliedGeneration        int64                        `json:"appliedGeneration"`
 	GenerationLag            int64                        `json:"generationLag"`
+	SkillsPending            bool                         `json:"skillsPending"`
 	LastApplyStatus          string                       `json:"lastApplyStatus"`
 	LastApplyError           string                       `json:"lastApplyError,omitempty"`
 	LastAppliedAt            *time.Time                   `json:"lastAppliedAt,omitempty"`
@@ -54,6 +55,7 @@ func (s *Server) makePodView(
 		MaxUsers: summary.MaxUsers, UserCount: summary.UserCount, AvailableSlots: summary.AvailableSlots,
 		ConfigGeneration: summary.ConfigGeneration, AppliedGeneration: summary.AppliedGeneration,
 		GenerationLag:   max(int64(0), summary.ConfigGeneration-summary.AppliedGeneration),
+		SkillsPending:   summary.SkillsPending,
 		LastApplyStatus: summary.LastApplyStatus, LastApplyError: auditlog.RedactDiagnostic(summary.LastApplyError),
 		ServiceTokenFingerprint: crypto.DisplayFingerprint(summary.ServiceTokenFingerprint),
 		CreatedAt:               summary.CreatedAt, UpdatedAt: summary.UpdatedAt,

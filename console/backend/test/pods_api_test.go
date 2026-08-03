@@ -20,13 +20,17 @@ const (
 )
 
 type podAPIView struct {
-	PodID          string `json:"podId"`
-	DisplayName    string `json:"displayName"`
-	State          string `json:"state"`
-	MaxUsers       int    `json:"maxUsers"`
-	UserCount      int    `json:"userCount"`
-	AvailableSlots int    `json:"availableSlots"`
-	ChannelConfigs map[string]struct {
+	PodID             string `json:"podId"`
+	DisplayName       string `json:"displayName"`
+	State             string `json:"state"`
+	MaxUsers          int    `json:"maxUsers"`
+	UserCount         int    `json:"userCount"`
+	AvailableSlots    int    `json:"availableSlots"`
+	ConfigGeneration  int64  `json:"configGeneration"`
+	AppliedGeneration int64  `json:"appliedGeneration"`
+	SkillsPending     bool   `json:"skillsPending"`
+	LastApplyStatus   string `json:"lastApplyStatus"`
+	ChannelConfigs    map[string]struct {
 		BotID               string `json:"botId"`
 		BaseURL             string `json:"baseUrl"`
 		AllowPrivateNetwork string `json:"allowPrivateNetwork"`
@@ -47,6 +51,14 @@ func TestPodAPI_CreateListAndDetail(t *testing.T) {
 	created := createPodThroughAPI(t, e, testPodBody)
 	if created.PodID != "pod-a" || created.State != "running" || created.AvailableSlots != 2 {
 		t.Fatalf("unexpected created Pod: %+v", created)
+	}
+	if !created.SkillsPending || created.LastApplyStatus != repo.ApplyStatusPending ||
+		created.AppliedGeneration != 0 || created.ConfigGeneration != 1 {
+		t.Fatalf("created Pod should start pending Skill sync before initial apply: %+v", created)
+	}
+	stored, err := e.store.GetPod("pod-a")
+	if err != nil || !stored.SkillsPending || stored.LastApplyStatus != repo.ApplyStatusPending {
+		t.Fatalf("stored created Pod should require initial Skill sync: %+v, %v", stored, err)
 	}
 	assertPodSecretHandling(t, e, "pod-a")
 	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))

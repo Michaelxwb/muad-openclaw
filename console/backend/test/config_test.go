@@ -3,6 +3,7 @@ package test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/config"
@@ -105,6 +106,10 @@ resources:
 browser:
   cdpPortStart: 19000
   cdpPortEnd: 19100
+k8s:
+  namespace: test-ns
+  skillsPVC: muad-skills
+  publicSkillsMountPath: /public
 `), 0o644)
 
 	c, err := config.Load()
@@ -139,6 +144,13 @@ browser:
 	if c.RuntimeTimezone != "UTC" || c.RuntimeStateDir != "/state" || c.RuntimePublicSkillsDir != "/skills-public" {
 		t.Errorf("runtime env = %q/%q/%q", c.RuntimeTimezone, c.RuntimeStateDir, c.RuntimePublicSkillsDir)
 	}
+	if c.K8sNamespace != "test-ns" || c.K8sSkillsPVC != "muad-skills" ||
+		c.K8sPublicSkillsMount != "/public" {
+		t.Errorf("k8s config = %q/%q/%q", c.K8sNamespace, c.K8sSkillsPVC, c.K8sPublicSkillsMount)
+	}
+	if c.SkillsDir != "/public/.muad-skill-assets" {
+		t.Errorf("K8s SkillsDir = %q, want /public/.muad-skill-assets", c.SkillsDir)
+	}
 	// defaults still apply for fields not in yaml
 	if c.DefaultImage != "ghcr.io/michaelxwb/muad-openclaw:latest" {
 		t.Errorf("DefaultImage = %q, want default", c.DefaultImage)
@@ -146,6 +158,71 @@ browser:
 	// MasterKey from env (not in yaml)
 	if c.MasterKey != "master-from-env" {
 		t.Errorf("MasterKey = %q, want env value", c.MasterKey)
+	}
+}
+
+func TestLoad_K8sExplicitSkillsDirOverridesNFSMountDefault(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(`
+runtime:
+  driver: k8s
+  skillsDir: /custom-skills
+k8s:
+  skillsPVC: muad-skills
+  publicSkillsMountPath: /public
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	c, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.SkillsDir != "/custom-skills" {
+		t.Fatalf("SkillsDir = %q, want explicit /custom-skills", c.SkillsDir)
+	}
+}
+
+func TestLoad_K8sSkillStorageDefaultRequiresPVCAndMountToDerive(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(`
+runtime:
+  driver: k8s
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	c, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.SkillsDir != "/var/lib/muad-console/skills" {
+		t.Fatalf("SkillsDir = %q, want default without skillsPVC", c.SkillsDir)
+	}
+}
+
+func TestLoad_K8sExplicitDefaultSkillsDirIsPreserved(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(`
+runtime:
+  driver: k8s
+  skillsDir: /var/lib/muad-console/skills
+k8s:
+  skillsPVC: muad-skills
+  publicSkillsMountPath: /public
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	c, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.SkillsDir != "/var/lib/muad-console/skills" {
+		t.Fatalf("SkillsDir = %q, want explicit default path preserved", c.SkillsDir)
 	}
 }
 
@@ -195,11 +272,15 @@ func TestLoad_EnvOverridesYAML(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(`
 runtimeDriver: docker
 listenAddr: ":9090"
+k8s:
+  publicSkillsMountPath: /yaml-public
 `), 0o644)
 
 	// env should win over yaml
 	t.Setenv("RUNTIME_DRIVER", "k8s") // env trumps yaml
 	t.Setenv("CONSOLE_LOG_DIR", "/tmp/env-console-logs")
+	t.Setenv("K8S_SKILLS_PVC", "env-skills")
+	t.Setenv("K8S_PUBLIC_SKILLS_MOUNT_PATH", "/env-public")
 	c, err := config.Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -213,6 +294,9 @@ listenAddr: ":9090"
 	if c.LogDir != "/tmp/env-console-logs" {
 		t.Errorf("LogDir = %q, want env override", c.LogDir)
 	}
+	if c.K8sPublicSkillsMount != "/env-public" {
+		t.Errorf("K8sPublicSkillsMount = %q, want env override", c.K8sPublicSkillsMount)
+	}
 }
 
 func TestLoad_LegacyFlatYAMLStillWorks(t *testing.T) {
@@ -225,6 +309,8 @@ masterKey: "legacy"
 runtimeDriver: k8s
 muadNet: legacy-net
 k8sNamespace: legacy-ns
+k8sSkillsPVC: legacy-skills
+k8sPublicSkillsMountPath: /legacy-public
 runtimeDefaults:
   memLimit: 5g
   cpuLimit: "4"
@@ -241,12 +327,33 @@ runtimeDefaults:
 		t.Fatalf("Load: %v", err)
 	}
 	if c.MasterKey != "legacy" || c.RuntimeDriver != "k8s" || c.MuadNet != "legacy-net" ||
-		c.K8sNamespace != "legacy-ns" {
+		c.K8sNamespace != "legacy-ns" || c.K8sSkillsPVC != "legacy-skills" ||
+		c.K8sPublicSkillsMount != "/legacy-public" {
 		t.Fatalf("legacy fields not loaded: %+v", c)
 	}
 	if c.RuntimeDefaults.MemLimit != "5g" || c.RuntimeDefaults.MaxBrowserConcurrency != 7 ||
 		c.RuntimeDefaults.BrowserCDPPortEnd != 20100 {
 		t.Fatalf("legacy runtimeDefaults not loaded: %+v", c.RuntimeDefaults)
+	}
+}
+
+func TestLoad_RejectsUnpairedK8sPublicSkillStorage(t *testing.T) {
+	for name, yaml := range map[string]string{
+		"pvc-only":   "runtimeDriver: k8s\nk8s:\n  skillsPVC: muad-skills\n",
+		"mount-only": "runtimeDriver: k8s\nk8s:\n  publicSkillsMountPath: /public\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("CONSOLE_MASTER_KEY", "mk")
+			t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+			if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(yaml), 0o644); err != nil {
+				t.Fatalf("write config: %v", err)
+			}
+			_, err := config.Load()
+			if err == nil || !strings.Contains(err.Error(), "must be configured together") {
+				t.Fatalf("Load error = %v, want paired storage validation", err)
+			}
+		})
 	}
 }
 

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { Toast } from "@douyinfe/semi-ui";
+import { Modal, Toast } from "@douyinfe/semi-ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   BindingCode,
@@ -35,6 +35,7 @@ const apiMocks = vi.hoisted(() => ({
   uploadPrivateSkill: vi.fn(),
   deletePrivateSkill: vi.fn(),
   createSkillPolicy: vi.fn(),
+  reloadSkills: vi.fn(),
 }));
 
 vi.mock("../src/api", async (importOriginal) => {
@@ -279,6 +280,7 @@ beforeEach(() => {
     createdBy: "admin",
     createdAt: "2026-07-11T00:00:00Z",
   });
+  apiMocks.reloadSkills.mockResolvedValue({ results: { "pod-a": "queued" } });
 });
 
 afterEach(() => Toast.destroyAll());
@@ -559,11 +561,9 @@ describe("HumanUsersPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
     await waitFor(() =>
-      expect(apiMocks.putPlatformCredential).toHaveBeenCalledWith(
-        "user-a",
-        "xdr",
-        { apiKey: "sensitive-new-key" },
-      ),
+      expect(apiMocks.putPlatformCredential).toHaveBeenCalledWith("user-a", "xdr", {
+        apiKey: "sensitive-new-key",
+      }),
     );
     expect(screen.queryByDisplayValue("sensitive-new-key")).not.toBeInTheDocument();
     expect(screen.queryByText("sensitive-new-key")).not.toBeInTheDocument();
@@ -583,11 +583,9 @@ describe("HumanUsersPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
     await waitFor(() =>
-      expect(apiMocks.putPlatformCredential).toHaveBeenCalledWith(
-        "user-a",
-        "xdr",
-        { apiKey: "first-platform-key" },
-      ),
+      expect(apiMocks.putPlatformCredential).toHaveBeenCalledWith("user-a", "xdr", {
+        apiKey: "first-platform-key",
+      }),
     );
   });
 
@@ -607,9 +605,12 @@ describe("HumanUsersPanel", () => {
   it("shows effective Skills with conflict, credential, runtime, and execution state", async () => {
     renderPanel();
     await openUserDetail();
+    expect(document.querySelector(".semi-modal")).toHaveStyle({ width: "1120px" });
     fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
 
     expect(await screen.findByText("XDR Query")).toBeInTheDocument();
+    const skillTable = screen.getByTestId("human-user-skill-table");
+    expect(skillTable.querySelector('table[role="grid"]')).toHaveStyle({ width: "1040px" });
     expect(screen.getByText("xdr-query")).toBeInTheDocument();
     expect(screen.getByText("缺少平台凭证")).toBeInTheDocument();
     expect(screen.getByText("xdr: 缺凭证")).toBeInTheDocument();
@@ -680,9 +681,115 @@ describe("HumanUsersPanel", () => {
         bundle: file,
         filename: "xdr-upload.zip",
         platforms: [],
+        allowOverride: false,
       }),
     );
     expect(screen.queryByLabelText("期望 Skill 名称")).not.toBeInTheDocument();
+  });
+
+  it("allows private Skill upload to override a same-name public Skill", async () => {
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    await screen.findByText("XDR Query");
+    fireEvent.click(screen.getByText("上传 Private Skill").closest("button") as HTMLButtonElement);
+    fireEvent.click(screen.getByText("允许覆盖同名 Public Skill"));
+    fireEvent.change(screen.getByLabelText("覆盖的 Public Skill 名称"), {
+      target: { value: "xdr-query" },
+    });
+    const file = new File(["bundle"], "xdr-query.zip", { type: "application/zip" });
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+    if (!fileInput) return;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    await waitFor(() => expect(apiMocks.uploadPrivateSkill).toHaveBeenCalled());
+    expect(apiMocks.createSkillPolicy).not.toHaveBeenCalled();
+    expect(apiMocks.uploadPrivateSkill).toHaveBeenCalledWith("user-a", {
+      bundle: file,
+      filename: "xdr-query.zip",
+      expectedName: "xdr-query",
+      platforms: [],
+      allowOverride: true,
+    });
+  });
+
+  it("applies private Skills to the current user Pod", async () => {
+    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      expect(config.title).toBe("应用 Skill 到当前用户 Pod");
+      void config.onOk?.();
+      return {} as ReturnType<typeof Modal.confirm>;
+    });
+    try {
+      renderPanel();
+      await openUserDetail();
+      fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+      await screen.findByText("XDR Query");
+      fireEvent.click(screen.getByRole("button", { name: "应用到当前用户 Pod" }));
+
+      await waitFor(() => expect(apiMocks.reloadSkills).toHaveBeenCalledWith(["pod-a"]));
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+
+  it("continues refreshing user Skills after current Pod apply is queued", async () => {
+    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      void config.onOk?.();
+      return {} as ReturnType<typeof Modal.confirm>;
+    });
+    const onPodChanged = vi.fn().mockResolvedValue(undefined);
+    const view = render(<HumanUsersPanel pod={pod} onPodChanged={onPodChanged} />);
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+    await screen.findByText("XDR Query");
+    apiMocks.listHumanUserSkills.mockClear();
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "应用到当前用户 Pod" }));
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(apiMocks.reloadSkills).toHaveBeenCalledWith(["pod-a"]);
+      expect(apiMocks.listHumanUserSkills).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(apiMocks.listHumanUserSkills).toHaveBeenCalledTimes(2);
+
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(apiMocks.listHumanUserSkills).toHaveBeenCalledTimes(3);
+
+      view.unmount();
+      await vi.advanceTimersByTimeAsync(20000);
+      expect(apiMocks.listHumanUserSkills).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+      confirm.mockRestore();
+    }
+  });
+
+  it("warns when current user Pod Skill apply returns a failed status", async () => {
+    apiMocks.reloadSkills.mockResolvedValueOnce({ results: { "pod-a": "failed_sync" } });
+    const warning = vi.spyOn(Toast, "warning").mockImplementation(() => "");
+    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      void config.onOk?.();
+      return {} as ReturnType<typeof Modal.confirm>;
+    });
+    try {
+      renderPanel();
+      await openUserDetail();
+      fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+      await screen.findByText("XDR Query");
+      fireEvent.click(screen.getByRole("button", { name: "应用到当前用户 Pod" }));
+
+      await waitFor(() => expect(warning).toHaveBeenCalledWith("当前用户 Pod Skill 同步失败"));
+    } finally {
+      confirm.mockRestore();
+      warning.mockRestore();
+    }
   });
 
   it("shows private Skill upload failures inside the dialog", async () => {

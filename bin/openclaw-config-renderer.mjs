@@ -217,10 +217,28 @@ function renderSkills(output, runtime) {
     ...(isRecord(output.skills) ? output.skills : {}),
     load: {
       ...existing,
-      extraDirs: uniqueSorted([...(existing.extraDirs ?? []), runtime.skills.publicDirectory]),
+      extraDirs: uniqueSorted([
+        ...(existing.extraDirs ?? []),
+        runtime.skills.publicDirectory,
+        ...publicSkillRootDirs(runtime),
+      ]),
       watch: true,
     },
   };
+}
+
+function publicSkillRootDirs(runtime) {
+  const publicDirectory = normalizeDirectory(runtime.skills.publicDirectory);
+  const dirs = [];
+  for (const policy of runtime.skills.agents) {
+    for (const grant of policy.allowed) {
+      const rootPath = normalizeDirectory(grant.rootPath);
+      if (grant.source === "public" && isWithinDirectory(rootPath, publicDirectory)) {
+        dirs.push(rootPath);
+      }
+    }
+  }
+  return dirs;
 }
 
 function renderPlugins(output, runtime) {
@@ -329,6 +347,15 @@ function compact(value) {
 
 function uniqueSorted(values) {
   return [...new Set(values.filter((value) => typeof value === "string" && value))].sort();
+}
+
+function normalizeDirectory(value) {
+  return typeof value === "string" && value.length > 1 ? value.replace(/\/+$/u, "") : value;
+}
+
+function isWithinDirectory(path, directory) {
+  if (directory === "/") return path.startsWith("/");
+  return path === directory || path.startsWith(`${directory}/`);
 }
 
 function cloneRecord(value) {

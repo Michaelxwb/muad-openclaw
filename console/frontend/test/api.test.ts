@@ -239,6 +239,7 @@ describe("Skill API", () => {
       bundle: new Blob(["bundle"]),
       filename: "xdr-query.tar.gz",
       expectedName: "xdr-query",
+      allowOverride: true,
     });
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -246,6 +247,7 @@ describe("Skill API", () => {
     expect(init.method).toBe("POST");
     expect(init.headers).toEqual({ Authorization: "Bearer console-token" });
     expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("allowOverride")).toBe("true");
   });
 
   it("preserves an explicit empty platform dependency override for private Skill uploads", async () => {
@@ -395,9 +397,11 @@ describe("request contract", () => {
     window.addEventListener(UNAUTHORIZED_EVENT, listener, { once: true });
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ code: 40101, message: "unauthorized" }), { status: 401 }),
-      ),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ code: 40101, message: "unauthorized" }), { status: 401 }),
+        ),
     );
 
     await expect(api.me()).rejects.toMatchObject({

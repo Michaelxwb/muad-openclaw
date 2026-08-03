@@ -36,6 +36,7 @@ func TestSkillsReload_RollingRestart(t *testing.T) {
 	e := newTestEnv(t)
 	createWeChatPod(t, e, "pod-alice")
 	createWeChatPod(t, e, "pod-bob")
+	markPodSkillsPending(t, e.store, "pod-alice")
 	e.reconcile.podIDs = nil
 
 	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-alice"]}`)

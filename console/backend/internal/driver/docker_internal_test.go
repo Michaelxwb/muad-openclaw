@@ -1,12 +1,8 @@
 package driver
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -80,6 +76,21 @@ func TestDockerSyncPublicSkills_MirrorsActiveSkillsOnly(t *testing.T) {
 	writeDockerSkillFile(t, source, "enabled-skill", "SKILL.md", "# enabled\n")
 	activeRoot := filepath.Join(skillsRoot, dockerActivePublicSkillsDir)
 	writeDockerSkillFile(t, activeRoot, "stale-skill", "SKILL.md", "# stale\n")
+	writeDockerSkillFile(t, activeRoot, "manual-skill", "SKILL.md", "# manual\n")
+	if err := os.WriteFile(
+		filepath.Join(activeRoot, publicSkillIndexFile),
+		[]byte("stale-skill\n"),
+		0o600,
+	); err != nil {
+		t.Fatalf("write previous public Skill index: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(source, PublicSkillRemoveIndexFile),
+		[]byte("stale-skill\n"),
+		0o600,
+	); err != nil {
+		t.Fatalf("write public Skill remove index: %v", err)
+	}
 	before, err := os.Stat(activeRoot)
 	if err != nil {
 		t.Fatalf("stat active root before sync: %v", err)
@@ -101,35 +112,145 @@ func TestDockerSyncPublicSkills_MirrorsActiveSkillsOnly(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(activeRoot, "stale-skill")); !os.IsNotExist(err) {
 		t.Fatalf("stale Skill should be removed from runtime mount: %v", err)
 	}
+	if _, err := os.Stat(filepath.Join(activeRoot, "manual-skill", "SKILL.md")); err != nil {
+		t.Fatalf("unmanaged Skill should be preserved: %v", err)
+	}
 	if _, err := os.Stat(filepath.Join(source, "enabled-skill", "SKILL.md")); err != nil {
 		t.Fatalf("source Skill should stay intact: %v", err)
 	}
 }
 
-func TestBuildPublicSkillsArchive_KeepsManagedIndexSeparateFromActiveFiles(t *testing.T) {
+func TestDockerSyncPublicSkills_PreservesMissingManagedSkillUnlessRemoved(t *testing.T) {
+	skillsRoot := t.TempDir()
 	source := t.TempDir()
-	writeDockerSkillFile(t, source, "enabled-skill", "SKILL.md", "# enabled\n")
+	driver := &DockerDriver{skillsDir: skillsRoot}
+	activeRoot := filepath.Join(skillsRoot, dockerActivePublicSkillsDir)
+	writeDockerSkillFile(t, source, "good-skill", "SKILL.md", "# good\n")
+	writeDockerSkillFile(t, activeRoot, "bad-skill", "SKILL.md", "# last-good\n")
 	if err := os.WriteFile(
 		filepath.Join(source, publicSkillIndexFile),
-		[]byte("disabled-skill\nenabled-skill\n"),
+		[]byte("bad-skill\ngood-skill\n"),
 		0o600,
 	); err != nil {
-		t.Fatalf("write managed index: %v", err)
+		t.Fatalf("write public Skill index: %v", err)
 	}
 
-	payload, err := buildPublicSkillsArchive(source)
+	if err := driver.SyncPublicSkills(context.Background(), "pod-a", source); err != nil {
+		t.Fatalf("SyncPublicSkills: %v", err)
+	}
+	body, err := os.ReadFile(filepath.Join(activeRoot, "bad-skill", "SKILL.md"))
 	if err != nil {
-		t.Fatalf("buildPublicSkillsArchive: %v", err)
+		t.Fatalf("bad Skill last-good should be preserved: %v", err)
 	}
-	files := readPublicSkillArchive(t, payload)
-	if files[publicSkillIndexFile] != "disabled-skill\nenabled-skill\n" {
-		t.Fatalf("managed index = %q", files[publicSkillIndexFile])
+	if string(body) != "# last-good\n" {
+		t.Fatalf("bad Skill body = %q, want last-good", body)
 	}
-	if files["enabled-skill/SKILL.md"] != "# enabled\n" {
-		t.Fatalf("enabled Skill file = %q", files["enabled-skill/SKILL.md"])
+	if _, err := os.Stat(filepath.Join(activeRoot, "good-skill", "SKILL.md")); err != nil {
+		t.Fatalf("good Skill was not published: %v", err)
 	}
-	if _, exists := files["disabled-skill/SKILL.md"]; exists {
-		t.Fatal("disabled Skill files should not be included in active archive")
+}
+
+func TestDockerSyncPublicSkills_CleansVisibleSyncArtifacts(t *testing.T) {
+	skillsRoot := t.TempDir()
+	source := t.TempDir()
+	driver := &DockerDriver{skillsDir: skillsRoot}
+	activeRoot := filepath.Join(skillsRoot, dockerActivePublicSkillsDir)
+	writeDockerSkillFile(t, source, "enabled-skill", "SKILL.md", "# enabled\n")
+	writeDockerSkillFile(t, activeRoot, ".muad-sync-left", "SKILL.md", "# staging\n")
+	writeDockerSkillFile(t, activeRoot, ".muad-old-stale-skill-left", "SKILL.md", "# backup\n")
+	writeDockerSkillFile(t, activeRoot, ".manual.muad-old-left", "SKILL.md", "# keep\n")
+	if err := os.WriteFile(filepath.Join(activeRoot, ".muad-public-index.muad-new"), []byte("old"), 0o600); err != nil {
+		t.Fatalf("write stale staged index: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(activeRoot, ".custom.muad-new"), []byte("keep"), 0o600); err != nil {
+		t.Fatalf("write non-artifact hidden file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(skillsRoot, ".muad-public-signature.muad-new-left"), []byte("old"), 0o600); err != nil {
+		t.Fatalf("write parent staged metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(skillsRoot, ".custom.muad-new-left"), []byte("keep"), 0o600); err != nil {
+		t.Fatalf("write parent non-artifact hidden file: %v", err)
+	}
+
+	if err := driver.SyncPublicSkills(context.Background(), "pod-a", source); err != nil {
+		t.Fatalf("SyncPublicSkills: %v", err)
+	}
+	for _, name := range []string{".muad-sync-left", ".muad-old-stale-skill-left", ".muad-public-index.muad-new"} {
+		if _, err := os.Stat(filepath.Join(activeRoot, name)); !os.IsNotExist(err) {
+			t.Fatalf("sync artifact %s should be removed, stat err=%v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(skillsRoot, ".muad-public-signature.muad-new-left")); !os.IsNotExist(err) {
+		t.Fatalf("parent sync artifact should be removed, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(activeRoot, ".manual.muad-old-left")); err != nil {
+		t.Fatalf("non-artifact backup-like directory should be preserved: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(activeRoot, ".custom.muad-new")); err != nil {
+		t.Fatalf("non-artifact new-like file should be preserved: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(skillsRoot, ".custom.muad-new-left")); err != nil {
+		t.Fatalf("parent non-artifact new-like file should be preserved: %v", err)
+	}
+}
+
+func TestReplacePublicSkillEntryRestoresBackupWhenPublishFails(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "active", "report-skill")
+	writeDockerSkillFile(t, filepath.Dir(target), filepath.Base(target), "SKILL.md", "# old\n")
+
+	err := replacePublicSkillEntry(filepath.Join(root, "missing-source"), target, root)
+	if err == nil || !strings.Contains(err.Error(), "publish public Skill") {
+		t.Fatalf("replacePublicSkillEntry error = %v, want publish failure", err)
+	}
+	body, err := os.ReadFile(filepath.Join(target, "SKILL.md"))
+	if err != nil {
+		t.Fatalf("old target was not restored: %v", err)
+	}
+	if string(body) != "# old\n" {
+		t.Fatalf("restored target body = %q", body)
+	}
+}
+
+func TestDockerPublicSkillFilesSignatureDetectsMissingActiveSkill(t *testing.T) {
+	skillsRoot := t.TempDir()
+	source := t.TempDir()
+	driver := &DockerDriver{skillsDir: skillsRoot}
+	writeDockerSkillFile(t, source, "enabled-skill", "SKILL.md", "# enabled\n")
+	for name, body := range map[string]string{
+		publicSkillIndexFile:       "enabled-skill\n",
+		PublicSkillActiveIndexFile: "enabled-skill\n",
+		PublicSkillSignatureFile:   "sha256:published\n",
+	} {
+		if err := os.WriteFile(filepath.Join(source, name), []byte(body), 0o600); err != nil {
+			t.Fatalf("write source metadata %s: %v", name, err)
+		}
+	}
+	if err := driver.SyncPublicSkills(context.Background(), "pod-a", source); err != nil {
+		t.Fatalf("SyncPublicSkills: %v", err)
+	}
+	signature, err := driver.PublicSkillFilesSignature(context.Background())
+	if err != nil || signature != "sha256:published" {
+		t.Fatalf("PublicSkillFilesSignature = %q, %v", signature, err)
+	}
+
+	if err := os.RemoveAll(filepath.Join(skillsRoot, dockerActivePublicSkillsDir, "enabled-skill")); err != nil {
+		t.Fatalf("remove active Skill: %v", err)
+	}
+	signature, err = driver.PublicSkillFilesSignature(context.Background())
+	if err != nil || signature != "" {
+		t.Fatalf("missing active Skill signature = %q, %v; want empty", signature, err)
+	}
+
+	if err := driver.SyncPublicSkills(context.Background(), "pod-a", source); err != nil {
+		t.Fatalf("resync public Skills: %v", err)
+	}
+	if err := os.Remove(filepath.Join(skillsRoot, dockerActivePublicSkillsDir, PublicSkillActiveIndexFile)); err != nil {
+		t.Fatalf("remove active index: %v", err)
+	}
+	signature, err = driver.PublicSkillFilesSignature(context.Background())
+	if err != nil || signature != "" {
+		t.Fatalf("missing active index signature = %q, %v; want empty", signature, err)
 	}
 }
 
@@ -141,34 +262,6 @@ func TestDockerPublicSkillsStorageStatusReadyBeforeRuntimeDirExists(t *testing.T
 	}
 	if !status.Configured || !status.Ready || status.Phase != "Pending" {
 		t.Fatalf("unexpected Docker public Skill status: %+v", status)
-	}
-}
-
-func readPublicSkillArchive(t *testing.T, payload []byte) map[string]string {
-	t.Helper()
-	gz, err := gzip.NewReader(bytes.NewReader(payload))
-	if err != nil {
-		t.Fatalf("open gzip: %v", err)
-	}
-	defer gz.Close()
-	reader := tar.NewReader(gz)
-	files := map[string]string{}
-	for {
-		header, err := reader.Next()
-		if errors.Is(err, io.EOF) {
-			return files
-		}
-		if err != nil {
-			t.Fatalf("read tar: %v", err)
-		}
-		if header.Typeflag != tar.TypeReg {
-			continue
-		}
-		body, err := io.ReadAll(reader)
-		if err != nil {
-			t.Fatalf("read tar body: %v", err)
-		}
-		files[header.Name] = string(body)
 	}
 }
 
@@ -206,6 +299,25 @@ func TestDockerCreate_RetainedVolumeRequiresExplicitAdopt(t *testing.T) {
 	spec.AdoptState = true
 	if err := driver.Create(context.Background(), spec); err != nil {
 		t.Fatalf("Create with adopt: %v", err)
+	}
+}
+
+func TestDockerExec_MapsRuntimeReadinessErrors(t *testing.T) {
+	driver := &DockerDriver{runHook: func(_ context.Context, args []string) (string, error) {
+		if !slices.Equal(args, []string{"exec", ContainerName("pod-a"), "true"}) {
+			t.Fatalf("unexpected docker args: %v", args)
+		}
+		return "", errors.New("Error response from daemon: Container abc is not running")
+	}}
+	if _, err := driver.Exec(context.Background(), "pod-a", "true"); !errors.Is(err, ErrRuntimeNotReady) {
+		t.Fatalf("Exec error = %v, want ErrRuntimeNotReady", err)
+	}
+}
+
+func TestDockerExecStdin_MapsMissingContainerToRuntimeNotReady(t *testing.T) {
+	err := dockerExecRuntimeError(errors.New("docker exec: exit status 1: No such container: muad-oc-pod-a"))
+	if !errors.Is(err, ErrRuntimeNotReady) {
+		t.Fatalf("ExecStdin error = %v, want ErrRuntimeNotReady", err)
 	}
 }
 

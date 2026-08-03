@@ -85,6 +85,7 @@ export interface Pod {
   configGeneration: number;
   appliedGeneration: number;
   generationLag: number;
+  skillsPending: boolean;
   lastApplyStatus: ApplyStatus;
   lastApplyError?: string;
   lastAppliedAt?: string;
@@ -433,6 +434,7 @@ export interface PrivateSkillUploadInput {
   filename?: string;
   expectedName?: string;
   platforms?: string[];
+  allowOverride?: boolean;
 }
 
 export interface PublicSkillUploadInput {
@@ -448,6 +450,11 @@ export interface PrivateSkillUploadResult {
 export interface PublicSkillUploadResult {
   skill: SkillAsset;
   affectedPodIds: string[];
+}
+
+export interface SkillReloadResult {
+  results: Record<string, string>;
+  warnings?: string[];
 }
 
 export interface PublicSkillStorageStatus {

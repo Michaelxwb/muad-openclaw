@@ -19,14 +19,14 @@ const podColumns = `pod_id, display_name, image_tag, state, max_users, channels,
 	channel_configs_enc, mem_limit, cpu_limit, restart_policy,
 	max_skill_concurrency, max_browser_concurrency, service_token_enc,
 	service_token_fingerprint, service_token_rotated_at, config_generation,
-	applied_generation, last_config_hash, last_apply_status, last_apply_error,
+	applied_generation, skills_pending, last_config_hash, last_apply_status, last_apply_error,
 	last_applied_at, created_at, updated_at`
 
 const podColumnsWithAlias = `p.pod_id, p.display_name, p.image_tag, p.state, p.max_users, p.channels,
 	p.channel_configs_enc, p.mem_limit, p.cpu_limit, p.restart_policy,
 	p.max_skill_concurrency, p.max_browser_concurrency, p.service_token_enc,
 	p.service_token_fingerprint, p.service_token_rotated_at, p.config_generation,
-	p.applied_generation, p.last_config_hash, p.last_apply_status, p.last_apply_error,
+	p.applied_generation, p.skills_pending, p.last_config_hash, p.last_apply_status, p.last_apply_error,
 	p.last_applied_at, p.created_at, p.updated_at`
 
 // PodListFilter controls Repository-level Pod pagination and filtering.
@@ -76,14 +76,14 @@ func (s *Store) CreatePod(p Pod) error {
 		channel_configs_enc, mem_limit, cpu_limit, restart_policy,
 		max_skill_concurrency, max_browser_concurrency, service_token_enc,
 		service_token_fingerprint, service_token_rotated_at, config_generation,
-		applied_generation, last_config_hash, last_apply_status, last_apply_error,
+		applied_generation, skills_pending, last_config_hash, last_apply_status, last_apply_error,
 		last_applied_at, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.PodID, p.DisplayName, p.ImageTag, p.State, p.MaxUsers, p.Channels,
 		p.ChannelConfigsEnc, p.MemLimit, p.CPULimit, p.RestartPolicy,
 		p.MaxSkillConcurrency, p.MaxBrowserConcurrency, p.ServiceTokenEnc,
 		p.ServiceTokenFingerprint, formatTime(p.ServiceTokenRotatedAt), p.ConfigGeneration,
-		p.AppliedGeneration, p.LastConfigHash, p.LastApplyStatus, p.LastApplyError,
+		p.AppliedGeneration, boolToInt(p.SkillsPending), p.LastConfigHash, p.LastApplyStatus, p.LastApplyError,
 		formatOptionalTime(p.LastAppliedAt), formatTime(p.CreatedAt), formatTime(p.UpdatedAt),
 	)
 	if isUniqueConstraint(err) {
@@ -265,6 +265,30 @@ func (s *Store) MarkPodConfigPending(podID string) (int64, error) {
 	return generation, nil
 }
 
+// MarkPodSkillsPending increments the desired generation and marks Skill files
+// or policies pending for one Pod.
+func (s *Store) MarkPodSkillsPending(podID string) (int64, error) {
+	row := s.db.QueryRow(`UPDATE pods SET config_generation = config_generation + 1,
+		skills_pending = 1, last_apply_status = 'pending', last_apply_error = '', updated_at = ?
+		WHERE pod_id = ? RETURNING config_generation`, formatTime(time.Now().UTC()), podID)
+	var generation int64
+	if err := row.Scan(&generation); errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNotFound
+	} else if err != nil {
+		return 0, fmt.Errorf("mark Pod Skills pending: %w", err)
+	}
+	return generation, nil
+}
+
+// ClearPodSkillsPending clears the Skill pending marker for the same generation
+// that was synchronized. A newer generation keeps the marker set.
+func (s *Store) ClearPodSkillsPending(podID string, generation int64) error {
+	res, err := s.db.Exec(`UPDATE pods SET skills_pending = 0, updated_at = ?
+		WHERE pod_id = ? AND config_generation = ? AND skills_pending = 1`,
+		formatTime(time.Now().UTC()), podID, generation)
+	return s.skillPendingMutationResult(podID, generation, res, err)
+}
+
 // StartPodConfigApply claims the current expected generation.
 func (s *Store) StartPodConfigApply(podID string, generation int64) error {
 	res, err := s.db.Exec(`UPDATE pods SET last_apply_status = 'applying',
@@ -277,7 +301,7 @@ func (s *Store) StartPodConfigApply(podID string, generation int64) error {
 // CompletePodConfigApply records only a result for the still-current generation.
 func (s *Store) CompletePodConfigApply(podID string, generation int64, hash string, appliedAt time.Time) error {
 	res, err := s.db.Exec(`UPDATE pods SET applied_generation = ?,
-		last_config_hash = ?, last_apply_status = 'applied', last_apply_error = '',
+		skills_pending = 0, last_config_hash = ?, last_apply_status = 'applied', last_apply_error = '',
 		last_applied_at = ?, updated_at = ? WHERE pod_id = ? AND config_generation = ?`,
 		generation, hash, formatTime(appliedAt), formatTime(time.Now().UTC()), podID, generation)
 	return s.configMutationResult(podID, res, err, "complete Pod config apply")
@@ -294,8 +318,9 @@ func (s *Store) FailPodConfigApply(podID string, generation int64, message strin
 // ListPodsNeedingApply supports startup recovery of unconverged Pods.
 func (s *Store) ListPodsNeedingApply() ([]Pod, error) {
 	rows, err := s.db.Query(`SELECT ` + podColumns + ` FROM pods
-		WHERE applied_generation < config_generation
-		AND last_apply_status IN ('pending','applying','failed') ORDER BY pod_id`)
+		WHERE (applied_generation < config_generation
+		AND last_apply_status IN ('pending','applying','failed')) OR skills_pending = 1
+		ORDER BY pod_id`)
 	if err != nil {
 		return nil, fmt.Errorf("list Pods needing apply: %w", err)
 	}
@@ -379,13 +404,15 @@ func scanPod(sc scanner) (Pod, error) {
 func scanPodValues(sc scanner, trailing ...any) (Pod, error) {
 	var pod Pod
 	var rotatedAt, lastAppliedAt, createdAt, updatedAt string
+	var skillsPending int
 	dest := []any{
 		&pod.PodID, &pod.DisplayName, &pod.ImageTag, &pod.State, &pod.MaxUsers,
 		&pod.Channels, &pod.ChannelConfigsEnc, &pod.MemLimit, &pod.CPULimit,
 		&pod.RestartPolicy, &pod.MaxSkillConcurrency,
 		&pod.MaxBrowserConcurrency, &pod.ServiceTokenEnc, &pod.ServiceTokenFingerprint,
-		&rotatedAt, &pod.ConfigGeneration, &pod.AppliedGeneration, &pod.LastConfigHash,
-		&pod.LastApplyStatus, &pod.LastApplyError, &lastAppliedAt, &createdAt, &updatedAt,
+		&rotatedAt, &pod.ConfigGeneration, &pod.AppliedGeneration, &skillsPending,
+		&pod.LastConfigHash, &pod.LastApplyStatus, &pod.LastApplyError,
+		&lastAppliedAt, &createdAt, &updatedAt,
 	}
 	dest = append(dest, trailing...)
 	if err := sc.Scan(dest...); errors.Is(err, sql.ErrNoRows) {
@@ -396,6 +423,7 @@ func scanPodValues(sc scanner, trailing ...any) (Pod, error) {
 	if err := parsePodTimes(&pod, rotatedAt, lastAppliedAt, createdAt, updatedAt); err != nil {
 		return Pod{}, err
 	}
+	pod.SkillsPending = skillsPending == 1
 	return pod, nil
 }
 
@@ -480,4 +508,35 @@ func (s *Store) configMutationResult(podID string, result sql.Result, err error,
 		return fmt.Errorf("inspect Pod generation conflict: %w", err)
 	}
 	return ErrGenerationConflict
+}
+
+func (s *Store) skillPendingMutationResult(
+	podID string, generation int64, result sql.Result, err error,
+) error {
+	if err != nil {
+		return fmt.Errorf("clear Pod Skills pending: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("clear Pod Skills pending rows affected: %w", err)
+	}
+	if count > 0 {
+		return nil
+	}
+	return s.inspectSkillPendingMutation(podID, generation)
+}
+
+func (s *Store) inspectSkillPendingMutation(podID string, generation int64) error {
+	var currentGeneration int64
+	err := s.db.QueryRow(`SELECT config_generation FROM pods WHERE pod_id = ?`, podID).Scan(&currentGeneration)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("inspect Pod Skills pending conflict: %w", err)
+	}
+	if currentGeneration != generation {
+		return ErrGenerationConflict
+	}
+	return nil
 }

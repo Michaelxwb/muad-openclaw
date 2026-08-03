@@ -3,26 +3,34 @@ package driver
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 )
 
 // newFakeK8s builds a K8sDriver backed by a fake clientset (no real cluster).
-func newFakeK8s() *K8sDriver {
+func newFakeK8s(t *testing.T) *K8sDriver {
+	t.Helper()
 	return &K8sDriver{
-		client:    fake.NewSimpleClientset(),
-		namespace: "muad",
-		skillsPVC: "muad-skills",
-		stateSize: "5Gi",
+		client:            fake.NewSimpleClientset(),
+		namespace:         "muad",
+		skillsPVC:         "muad-skills",
+		publicSkillsMount: t.TempDir(),
+		stateSize:         "5Gi",
 	}
 }
 
 func TestK8s_CreateProvisionsAll(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	ctx := context.Background()
 	spec := testPodSpec("alice", "img:1")
 	spec.Channels = []string{"wechat"}
@@ -141,7 +149,7 @@ func assertServiceTokenVolume(t *testing.T, volumes []corev1.Volume, name string
 }
 
 func TestK8s_EnsurePublicSkillsStorageCreatesRWXPVC(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	d.skillsStorageClass = "nfs-rwx"
 	d.skillsSize = "7Gi"
 	ctx := context.Background()
@@ -176,7 +184,7 @@ func TestK8s_EnsurePublicSkillsStorageCreatesRWXPVC(t *testing.T) {
 }
 
 func TestK8s_PublicSkillsStorageRejectsBoundNonRWXPVC(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	ctx := context.Background()
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "muad-skills", Namespace: "muad"},
@@ -202,15 +210,89 @@ func TestK8s_PublicSkillsStorageRejectsBoundNonRWXPVC(t *testing.T) {
 }
 
 func TestK8s_SyncPublicSkillsFailsFastWhenPVCNotReady(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	err := d.SyncPublicSkills(context.Background(), "pod-a", t.TempDir())
 	if !errors.Is(err, ErrRuntimeNotReady) {
 		t.Fatalf("SyncPublicSkills without ready PVC = %v, want ErrRuntimeNotReady", err)
 	}
 }
 
+func TestK8s_SyncPublicSkillsWritesConsoleMountAndPatchesWorker(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	if _, err := d.client.CoreV1().PersistentVolumeClaims("muad").Create(ctx, &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "muad-skills", Namespace: "muad"},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
+		},
+		Status: corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimBound},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("create public Skill PVC: %v", err)
+	}
+	if err := d.Create(ctx, testPodSpec("pod-a", "img:1")); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	source := t.TempDir()
+	writeDockerSkillFile(t, source, "enabled-skill", "SKILL.md", "# enabled\n")
+
+	if err := d.SyncPublicSkills(ctx, "pod-a", source); err != nil {
+		t.Fatalf("SyncPublicSkills: %v", err)
+	}
+	activeRoot := filepath.Join(d.publicSkillsMount, dockerActivePublicSkillsDir)
+	if _, err := os.ReadFile(filepath.Join(activeRoot, "enabled-skill", "SKILL.md")); err != nil {
+		t.Fatalf("public Skill was not written through Console mount: %v", err)
+	}
+	dep, err := d.client.AppsV1().Deployments("muad").Get(ctx, ContainerName("pod-a"), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get worker deployment: %v", err)
+	}
+	if !hasVolumeMountWithSubPath(
+		dep.Spec.Template.Spec.Containers[0].VolumeMounts,
+		"skills", "/opt/openclaw-skills", dockerActivePublicSkillsDir,
+	) {
+		t.Fatalf("worker deployment missing active public Skill subPath mount: %+v",
+			dep.Spec.Template.Spec.Containers[0].VolumeMounts)
+	}
+	pods, err := d.client.CoreV1().Pods("muad").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("list pods: %v", err)
+	}
+	if len(pods.Items) != 0 {
+		t.Fatalf("SyncPublicSkills should not create temporary pods: %+v", pods.Items)
+	}
+}
+
+func TestK8s_PublicSkillsStorageRequiresConsoleMountPath(t *testing.T) {
+	d := newFakeK8s(t)
+	d.publicSkillsMount = ""
+	ctx := context.Background()
+	status, err := d.PublicSkillsStorageStatus(ctx)
+	if err != nil {
+		t.Fatalf("PublicSkillsStorageStatus: %v", err)
+	}
+	if status.Configured || status.Message != "未配置 k8s.publicSkillsMountPath" {
+		t.Fatalf("status without mount path = %+v", status)
+	}
+	if err := d.SyncPublicSkills(ctx, "pod-a", t.TempDir()); !errors.Is(err, ErrInvalidPodSpec) {
+		t.Fatalf("SyncPublicSkills without mount path = %v, want ErrInvalidPodSpec", err)
+	}
+}
+
+func TestK8s_DeploymentDoesNotMountPublicSkillsWhenStorageUnpaired(t *testing.T) {
+	d := newFakeK8s(t)
+	d.publicSkillsMount = ""
+
+	dep := d.deployment(testPodSpec("pod-a", "img:1"), ContainerName("pod-a"))
+	if hasPVCVolume(dep.Spec.Template.Spec.Volumes, "skills", "muad-skills", true) {
+		t.Fatal("deployment should not include public Skill volume without Console mount path")
+	}
+	if hasVolumeMount(dep.Spec.Template.Spec.Containers[0].VolumeMounts, "skills", "/opt/openclaw-skills") {
+		t.Fatal("deployment should not mount public Skill volume without active subPath")
+	}
+}
+
 func TestK8s_EnsurePublicSkillsMountPatchesExistingDeployment(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	ctx := context.Background()
 	name := ContainerName("legacy")
 	dep := &appsv1.Deployment{
@@ -250,10 +332,63 @@ func TestK8s_EnsurePublicSkillsMountPatchesExistingDeployment(t *testing.T) {
 	if !hasVolumeMount(got.Spec.Template.Spec.Containers[0].VolumeMounts, "skills", "/opt/openclaw-skills") {
 		t.Fatal("deployment is missing read-only public Skill mount")
 	}
+	if !hasVolumeMountWithSubPath(
+		got.Spec.Template.Spec.Containers[0].VolumeMounts,
+		"skills", "/opt/openclaw-skills", dockerActivePublicSkillsDir,
+	) {
+		t.Fatal("deployment public Skill mount is missing active subPath")
+	}
+}
+
+func TestK8s_EnsurePublicSkillsMountRetriesUpdateConflict(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	name := ContainerName("legacy")
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "muad"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: d.labels("legacy")},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: d.labels("legacy")},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "openclaw", Image: "img:1"}}},
+			},
+		},
+	}
+	if _, err := d.client.AppsV1().Deployments("muad").Create(ctx, dep, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("create legacy deployment: %v", err)
+	}
+	client := d.client.(*fake.Clientset)
+	conflicts := 1
+	client.Fake.PrependReactor("update", "deployments", func(k8stesting.Action) (bool, runtime.Object, error) {
+		if conflicts == 0 {
+			return false, nil, nil
+		}
+		conflicts--
+		err := errors.New("resource version changed")
+		resource := schema.GroupResource{Group: "apps", Resource: "deployments"}
+		return true, nil, apierrors.NewConflict(resource, name, err)
+	})
+
+	if err := d.ensurePublicSkillsMount(ctx, "legacy"); err != nil {
+		t.Fatalf("ensurePublicSkillsMount: %v", err)
+	}
+	if conflicts != 0 {
+		t.Fatal("expected one simulated update conflict")
+	}
+	got, err := d.client.AppsV1().Deployments("muad").Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get patched deployment: %v", err)
+	}
+	if !hasVolumeMountWithSubPath(
+		got.Spec.Template.Spec.Containers[0].VolumeMounts,
+		"skills", "/opt/openclaw-skills", dockerActivePublicSkillsDir,
+	) {
+		t.Fatal("deployment public Skill mount is missing active subPath")
+	}
 }
 
 func TestK8s_EnsurePublicSkillsMountReplacesStaleVolumeAndMount(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	ctx := context.Background()
 	name := ContainerName("legacy")
 	dep := &appsv1.Deployment{
@@ -296,10 +431,16 @@ func TestK8s_EnsurePublicSkillsMountReplacesStaleVolumeAndMount(t *testing.T) {
 	if !hasVolumeMount(got.Spec.Template.Spec.Containers[0].VolumeMounts, "skills", "/opt/openclaw-skills") {
 		t.Fatal("stale public Skill mount was not replaced")
 	}
+	if !hasVolumeMountWithSubPath(
+		got.Spec.Template.Spec.Containers[0].VolumeMounts,
+		"skills", "/opt/openclaw-skills", dockerActivePublicSkillsDir,
+	) {
+		t.Fatal("stale public Skill mount was not replaced with active subPath")
+	}
 }
 
 func TestK8s_StartStopScales(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	ctx := context.Background()
 	_ = d.Create(ctx, testPodSpec("bob", "img:1"))
 
@@ -323,7 +464,7 @@ func TestK8s_RemoveKeepStateVsDeleteVolume(t *testing.T) {
 	ctx := context.Background()
 
 	// keepState=true → PVC stays
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	_ = d.Create(ctx, testPodSpec("carol", "img:1"))
 	if err := d.Remove(ctx, "carol", true); err != nil {
 		t.Fatalf("Remove keepState: %v", err)
@@ -348,7 +489,7 @@ func TestK8s_RemoveKeepStateVsDeleteVolume(t *testing.T) {
 	}
 
 	// keepState=false → PVC deleted
-	d2 := newFakeK8s()
+	d2 := newFakeK8s(t)
 	_ = d2.Create(ctx, testPodSpec("dave", "img:1"))
 	if err := d2.Remove(ctx, "dave", false); err != nil {
 		t.Fatalf("Remove deleteVolume: %v", err)
@@ -359,14 +500,14 @@ func TestK8s_RemoveKeepStateVsDeleteVolume(t *testing.T) {
 }
 
 func TestK8s_RemoveIdempotent(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	if err := d.Remove(context.Background(), "ghost", false); err != nil {
 		t.Errorf("Remove of absent user should be nil, got %v", err)
 	}
 }
 
 func TestK8s_UpdateSpecRotatesOnlyServiceToken(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	ctx := context.Background()
 	spec := testPodSpec("rotate", "img:1")
 	if err := d.Create(ctx, spec); err != nil {
@@ -400,7 +541,7 @@ func TestK8s_UpdateSpecRotatesOnlyServiceToken(t *testing.T) {
 }
 
 func TestK8s_ListMapsState(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	ctx := context.Background()
 	_ = d.Create(ctx, testPodSpec("alice", "img:1"))
 	_ = d.Create(ctx, testPodSpec("bob", "img:2"))
@@ -424,7 +565,7 @@ func TestK8s_ListMapsState(t *testing.T) {
 }
 
 func TestK8s_PodNameWaitsForRunningPod(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	ctx := context.Background()
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "muad-oc-wait-1", Namespace: "muad", Labels: map[string]string{"muad-pod": "wait"}},
@@ -446,7 +587,7 @@ func TestK8s_PodNameWaitsForRunningPod(t *testing.T) {
 }
 
 func TestK8s_PodNameTreatsMissingPodAsNotReady(t *testing.T) {
-	d := newFakeK8s()
+	d := newFakeK8s(t)
 	if _, err := d.podName(context.Background(), "missing"); !errors.Is(err, ErrRuntimeNotReady) {
 		t.Fatalf("missing podName error = %v, want ErrRuntimeNotReady", err)
 	}
@@ -469,6 +610,16 @@ func testPodSpec(podID, image string) PodSpec {
 func hasVolumeMount(mounts []corev1.VolumeMount, name, path string) bool {
 	for _, mount := range mounts {
 		if mount.Name == name && mount.MountPath == path && mount.ReadOnly {
+			return true
+		}
+	}
+	return false
+}
+
+func hasVolumeMountWithSubPath(mounts []corev1.VolumeMount, name, mountPath, subPath string) bool {
+	for _, mount := range mounts {
+		if mount.Name == name && mount.MountPath == mountPath &&
+			mount.ReadOnly && mount.SubPath == subPath {
 			return true
 		}
 	}

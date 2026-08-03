@@ -19,6 +19,7 @@ type CoordinatorStore interface {
 	StartPodConfigApply(podID string, generation int64) error
 	CompletePodConfigApply(podID string, generation int64, hash string, appliedAt time.Time) error
 	FailPodConfigApply(podID string, generation int64, message string) error
+	ClearPodSkillsPending(podID string, generation int64) error
 	ListPodsNeedingApply() ([]repo.Pod, error)
 }
 
@@ -30,16 +31,22 @@ type ApplyExecutor interface {
 	Apply(ctx context.Context, request Request) (Result, error)
 }
 
+type BeforeApplyHook interface {
+	BeforeApply(ctx context.Context, podID string) error
+}
+
 type CoordinatorOptions struct {
 	MaxAttempts         int
 	NotReadyMaxAttempts int
 	RetryDelay          time.Duration
+	BeforeApply         BeforeApplyHook
 }
 
 type Coordinator struct {
 	store    CoordinatorStore
 	builder  RuntimeBuilder
 	executor ApplyExecutor
+	hook     BeforeApplyHook
 	options  CoordinatorOptions
 
 	mu      sync.Mutex
@@ -67,7 +74,7 @@ func NewCoordinator(
 		options.RetryDelay = 2 * time.Second
 	}
 	return &Coordinator{
-		store: store, builder: builder, executor: executor, options: options,
+		store: store, builder: builder, executor: executor, hook: options.BeforeApply, options: options,
 		pending: map[string]bool{}, running: map[string]bool{}, locks: map[string]chan struct{}{},
 		wake: make(chan struct{}, 1),
 	}, nil
@@ -255,10 +262,23 @@ func (coordinator *Coordinator) reconcileOnce(ctx context.Context, podID string)
 		return repo.ErrGenerationConflict
 	}
 	if pod.AppliedGeneration >= generation {
+		if pod.SkillsPending {
+			return coordinator.store.ClearPodSkillsPending(podID, generation)
+		}
 		return nil
 	}
 	if err := coordinator.store.StartPodConfigApply(podID, generation); err != nil {
 		return err
+	}
+	if pod.SkillsPending && coordinator.hook == nil {
+		return coordinator.recordFailure(podID, generation, errors.New("Skill syncer unavailable"))
+	}
+	if pod.SkillsPending {
+		// Skill files are part of the generation contract. Do not mark runtime
+		// config applied if the runtime-visible Skill tree cannot be synchronized.
+		if err := coordinator.hook.BeforeApply(ctx, podID); err != nil {
+			return coordinator.recordFailure(podID, generation, err)
+		}
 	}
 	result, err := coordinator.executor.Apply(ctx, Request{
 		PodID: podID, Generation: generation, RuntimeJSON: built.CanonicalJSON,
@@ -266,7 +286,15 @@ func (coordinator *Coordinator) reconcileOnce(ctx context.Context, podID string)
 	if err != nil {
 		return coordinator.recordFailure(podID, generation, err)
 	}
-	return coordinator.store.CompletePodConfigApply(podID, generation, result.ConfigHash, time.Now().UTC())
+	if err := coordinator.store.CompletePodConfigApply(
+		podID, generation, result.ConfigHash, time.Now().UTC(),
+	); err != nil {
+		return err
+	}
+	if pod.SkillsPending {
+		return coordinator.store.ClearPodSkillsPending(podID, generation)
+	}
+	return nil
 }
 
 func (coordinator *Coordinator) recordBuildFailure(podID string, cause error) error {

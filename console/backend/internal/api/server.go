@@ -10,6 +10,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
@@ -18,6 +19,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/skillsync"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/web"
 )
 
@@ -29,9 +31,11 @@ type Server struct {
 	bindingCodec   *crypto.BindingCodeCodec
 	drv            driver.RuntimeDriver
 	cache          *monitor.Cache
+	skillSyncer    *skillsync.Syncer
 	reconcile      ReconcileEnqueuer
 	reconcileNow   ReconcileRunner
 	operations     PodOperationRunner
+	skillUploadMu  sync.Mutex
 	bindingLimiter *bindingAttemptLimiter
 	loginLimiter   *bindingAttemptLimiter
 }
@@ -56,10 +60,11 @@ var errRuntimeCoordinatorUnavailable = errors.New("runtime coordinator unavailab
 // NewServer constructs the API server.
 func NewServer(
 	cfg *config.Config, store *repo.Store, cipher *crypto.Cipher,
-	drv driver.RuntimeDriver, cache *monitor.Cache, enqueuers ...ReconcileEnqueuer,
+	drv driver.RuntimeDriver, cache *monitor.Cache, skillSyncer *skillsync.Syncer,
+	enqueuers ...ReconcileEnqueuer,
 ) *Server {
 	server := &Server{
-		cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache,
+		cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache, skillSyncer: skillSyncer,
 		bindingLimiter: newBindingAttemptLimiter(10*time.Minute, 10, 4096),
 		loginLimiter:   newBindingAttemptLimiter(10*time.Minute, 5, 4096),
 	}

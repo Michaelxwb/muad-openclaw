@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { MutableRefObject, ReactNode } from "react";
 import {
   Banner,
   Button,
@@ -14,12 +14,19 @@ import {
 } from "@douyinfe/semi-ui";
 import { IconPlus, IconRefresh, IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../api";
-import type { PublicSkillStorageStatus, SkillAsset, SkillScope, SkillStatus } from "../api";
+import type {
+  PublicSkillStorageStatus,
+  SkillAsset,
+  SkillReloadResult,
+  SkillScope,
+  SkillStatus,
+} from "../api";
 import {
   DEFAULT_PAGE_SIZE,
   renderTablePagination,
   tablePagination,
 } from "../components/Pagination";
+import { requestAlertsRefresh } from "../components/NotificationBell";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
 import { useMountedRef } from "../hooks/useMountedRef";
 import { PublicSkillUploadDialog } from "./skills/PublicSkillUploadDialog";
@@ -56,6 +63,11 @@ const STATUS_OPTIONS = [
 ];
 
 const SKILL_DETAIL_SHEET_WIDTH = 720;
+const POST_APPLY_REFRESH_DELAYS_MS = [1000, 3000, 7000, 15000];
+
+interface RefreshOptions {
+  background?: boolean;
+}
 
 export function Skills() {
   const state = useSkillAssets();
@@ -65,11 +77,34 @@ export function Skills() {
   const [pendingAction, setPendingAction] = useState<SkillStatusAction | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [applying, setApplying] = useState(false);
+  const applyRefreshTimersRef = useRef<number[]>([]);
   const mountedRef = useMountedRef();
+
+  useEffect(
+    () => () => {
+      clearApplyRefreshTimers(applyRefreshTimersRef);
+    },
+    [],
+  );
+
   const refreshAfterUpload = async () => {
     state.setPage(1);
     await state.refresh();
     await storage.refresh();
+  };
+  const refreshApplyState = () => {
+    requestAlertsRefresh();
+    void state.refresh({ background: true });
+  };
+  const schedulePostApplyRefresh = () => {
+    clearApplyRefreshTimers(applyRefreshTimersRef);
+    refreshApplyState();
+    applyRefreshTimersRef.current = POST_APPLY_REFRESH_DELAYS_MS.map((delay) =>
+      window.setTimeout(() => {
+        if (!mountedRef.current) return;
+        refreshApplyState();
+      }, delay),
+    );
   };
   const applyStatusAction = async () => {
     if (!pendingAction) return;
@@ -96,16 +131,20 @@ export function Skills() {
       okText: "应用 Skill",
       onOk: async () => {
         setApplying(true);
+        let submitted = false;
         try {
           const result = await api.applySkills();
           if (!mountedRef.current) return;
-          Toast.success(skillApplyMessage(result.results));
-          await state.refresh();
+          notifySkillApplyResult(result);
+          submitted = true;
         } catch (caught) {
           if (mountedRef.current)
             Toast.error(caught instanceof Error ? caught.message : "应用 Skill 失败");
         } finally {
           if (mountedRef.current) setApplying(false);
+        }
+        if (submitted && mountedRef.current) {
+          schedulePostApplyRefresh();
         }
       },
     });
@@ -143,6 +182,19 @@ export function Skills() {
   );
 }
 
+function notifySkillApplyResult(result: SkillReloadResult) {
+  const results = result.results;
+  const hasWarning = Object.values(results).some((status) =>
+    ["failed_sync", "failed_queue", "skipped_not_running"].includes(status),
+  );
+  const message = skillApplyMessage(results, result.warnings ?? []);
+  if (hasWarning || (result.warnings?.length ?? 0) > 0) {
+    Toast.warning(message);
+    return;
+  }
+  Toast.success(message);
+}
+
 function SkillApplyNotice() {
   return (
     <Banner
@@ -156,15 +208,23 @@ function SkillApplyNotice() {
   );
 }
 
-function skillApplyMessage(results: Record<string, string>) {
+function skillApplyMessage(results: Record<string, string>, warnings: string[] = []) {
   const entries = Object.values(results);
   const queued = entries.filter((status) => status === "queued").length;
+  const synced = entries.filter((status) => status === "synced").length;
   const skipped = entries.filter((status) => status === "skipped_not_running").length;
   const failed = entries.filter((status) => status === "failed_sync").length;
-  if (failed > 0) {
-    return `Skill 应用已提交：${queued} 个 Pod 排队，${failed} 个同步失败，${skipped} 个未运行跳过。`;
+  const failedQueue = entries.filter((status) => status === "failed_queue").length;
+  const suffix = warnings.length > 0 ? ` ${warnings.join("；")}` : "";
+  if (queued === 0 && failed === 0 && failedQueue === 0 && skipped === 0 && synced > 0) {
+    return `Skill 已同步：${synced} 个 Pod 已刷新文件。${suffix}`;
   }
-  return `Skill 应用已提交：${queued} 个 Pod 排队，${skipped} 个未运行跳过。`;
+  return `Skill 应用已提交：${queued} 个 Pod 排队，${synced} 个已同步，${failed} 个同步失败，${failedQueue} 个排队失败，${skipped} 个未运行跳过。${suffix}`;
+}
+
+function clearApplyRefreshTimers(ref: MutableRefObject<number[]>) {
+  for (const timer of ref.current) window.clearTimeout(timer);
+  ref.current = [];
 }
 
 function usePublicSkillStorage() {
@@ -175,20 +235,23 @@ function usePublicSkillStorage() {
   const [message, setMessage] = useState("");
   const mountedRef = useMountedRef();
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const result = await api.getPublicSkillStorage();
-      if (!mountedRef.current) return;
-      setStatus(result);
-    } catch (caught) {
-      if (mountedRef.current)
-        setError(caught instanceof Error ? caught.message : "加载 PVC 状态失败");
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  }, [mountedRef]);
+  const refresh = useCallback(
+    async (options: RefreshOptions = {}) => {
+      if (!options.background) setLoading(true);
+      setError("");
+      try {
+        const result = await api.getPublicSkillStorage();
+        if (!mountedRef.current) return;
+        setStatus(result);
+      } catch (caught) {
+        if (mountedRef.current)
+          setError(caught instanceof Error ? caught.message : "加载 PVC 状态失败");
+      } finally {
+        if (mountedRef.current && !options.background) setLoading(false);
+      }
+    },
+    [mountedRef],
+  );
 
   useEffect(() => {
     void refresh();
@@ -227,30 +290,41 @@ function useSkillAssets() {
   const [message, setMessage] = useState("");
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
+  const foregroundRequestRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    const requestId = ++requestRef.current;
-    setLoading(true);
-    setError("");
-    try {
-      const result = await api.listSkills({
-        page,
-        pageSize,
-        q: query,
-        scope: scope || undefined,
-        status: status || undefined,
-      });
-      if (!mountedRef.current || requestId !== requestRef.current) return;
-      setItems(result.items);
-      setTotal(result.total);
-    } catch (caught) {
-      if (mountedRef.current && requestId === requestRef.current) {
-        setError(caught instanceof Error ? caught.message : "加载 Skill 失败");
+  const refresh = useCallback(
+    async (options: RefreshOptions = {}) => {
+      const requestId = ++requestRef.current;
+      const foregroundRequestId = options.background ? 0 : ++foregroundRequestRef.current;
+      if (!options.background) setLoading(true);
+      setError("");
+      try {
+        const result = await api.listSkills({
+          page,
+          pageSize,
+          q: query,
+          scope: scope || undefined,
+          status: status || undefined,
+        });
+        if (!mountedRef.current || requestId !== requestRef.current) return;
+        setItems(result.items);
+        setTotal(result.total);
+      } catch (caught) {
+        if (mountedRef.current && requestId === requestRef.current) {
+          setError(caught instanceof Error ? caught.message : "加载 Skill 失败");
+        }
+      } finally {
+        if (
+          mountedRef.current &&
+          !options.background &&
+          foregroundRequestId === foregroundRequestRef.current
+        ) {
+          setLoading(false);
+        }
       }
-    } finally {
-      if (mountedRef.current && requestId === requestRef.current) setLoading(false);
-    }
-  }, [mountedRef, page, pageSize, query, scope, status]);
+    },
+    [mountedRef, page, pageSize, query, scope, status],
+  );
 
   useEffect(() => {
     void refresh();
@@ -328,7 +402,7 @@ function SkillToolbar({
             上传 Public Skill
           </Button>
           <Button loading={applying} onClick={onApply}>
-            应用 Skill
+            应用到全部 Pod
           </Button>
           <PublicStorageAction storage={storage} />
           <Button
@@ -422,7 +496,7 @@ function PublicStorageNotice({ storage }: { storage: PublicSkillStorageState }) 
 
 function publicStorageDescription(status: PublicSkillStorageStatus) {
   if (!status.configured) {
-    return "当前后端是 K8s 模式，但未配置 k8sSkillsPVC。请在后端配置 Public Skill PVC 名称并重启 Console。";
+    return "当前后端是 K8s 模式，但未配置 k8s.skillsPVC 或 k8s.publicSkillsMountPath。请补齐 Public Skill 存储配置并重启 Console。";
   }
   return `${status.message || "Public Skill PVC 未就绪"}。上传 Public Skill 前需要先创建并等待 PVC 绑定。`;
 }

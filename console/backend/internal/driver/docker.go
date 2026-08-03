@@ -301,13 +301,29 @@ func (d *DockerDriver) StatsAll(ctx context.Context) (map[string]Stats, error) {
 // Exec runs a command inside the user's container.
 func (d *DockerDriver) Exec(ctx context.Context, userID string, cmd ...string) (string, error) {
 	args := append([]string{"exec", ContainerName(userID)}, cmd...)
-	return d.run(ctx, args...)
+	out, err := d.run(ctx, args...)
+	return out, dockerExecRuntimeError(err)
 }
 
 // ExecStdin runs a command with stdin piped from the reader.
 func (d *DockerDriver) ExecStdin(ctx context.Context, userID string, stdin io.Reader, cmd ...string) (string, error) {
 	args := append([]string{"exec", "-i", ContainerName(userID)}, cmd...)
-	return d.runStdin(ctx, stdin, args...)
+	out, err := d.runStdin(ctx, stdin, args...)
+	return out, dockerExecRuntimeError(err)
+}
+
+func dockerExecRuntimeError(err error) error {
+	if err == nil || !isDockerRuntimeNotReadyErr(err) {
+		return err
+	}
+	return fmt.Errorf("%w: %v", ErrRuntimeNotReady, err)
+}
+
+func isDockerRuntimeNotReadyErr(err error) bool {
+	s := strings.ToLower(err.Error())
+	return strings.Contains(s, "no such container") ||
+		strings.Contains(s, "is not running") ||
+		strings.Contains(s, "is restarting")
 }
 
 func (d *DockerDriver) runStdin(ctx context.Context, stdin io.Reader, args ...string) (string, error) {

@@ -8,7 +8,9 @@
 # 说明：
 # - 这个清单用于本地/单节点 K8s 验证，不是正式环境方案。
 # - hostPath 不提供真正的多节点共享能力；多节点正式环境请使用 NFS/CephFS/Longhorn RWX/EFS 等 RWX StorageClass。
-# - PVC 名称对齐 Console 配置：k8sSkillsPVC: muad-skills。
+# - PVC 名称对齐 Console 配置：k8s.skillsPVC: muad-skills。
+# - 本地 go run Console 时，k8s.publicSkillsMountPath 需要指向同一个 hostPath。
+# - Console Pod 运行在 K8s 内时，应把这个 PVC 挂载到 k8s.publicSkillsMountPath（默认 /public）。
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -27,7 +29,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: muad-local-rwx
   hostPath:
-    path: /data/muad-skills
+    path: /Users/jahan/workspace/muad-openclaw/.local/muad-skills
     type: DirectoryOrCreate
 ---
 apiVersion: v1

@@ -112,6 +112,10 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.notEqual(output.browser.profiles.alice.color, output.browser.profiles.quarantine.color);
   assert.equal(output.models.providers["user-alice-deepseek"].apiKey, "alice-key");
   assert.deepEqual(output.tools.alsoAllow, ["browser", "session_get_state"]);
+  assert.deepEqual(output.skills.load.extraDirs, [
+    "/opt/openclaw-skills",
+    "/opt/openclaw-skills/xdr-query",
+  ]);
   assert.equal(output.plugins.entries["session-manager"].enabled, true);
   assert.equal(output.plugins.installs, undefined);
   assert.equal(output.plugins.entries["session-manager"].config.consoleInternalURL, runtime.consoleInternalUrl);

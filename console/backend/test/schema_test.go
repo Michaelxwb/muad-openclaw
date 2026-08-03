@@ -52,6 +52,9 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 			t.Errorf("index %q was not created", index)
 		}
 	}
+	if !tableColumnExists(t, db, "pods", "skills_pending") {
+		t.Error("pods.skills_pending column was not created")
+	}
 
 	assertPragmaInt(t, db, "foreign_keys", 1)
 	assertPragmaInt(t, db, "busy_timeout", 5000)
@@ -88,6 +91,36 @@ func TestSchemaSkillExecutionSupportsAuditStateMachine(t *testing.T) {
 		if !tableColumnExists(t, db, "skill_execution_records", column) {
 			t.Errorf("skill_execution_records column %q was not created", column)
 		}
+	}
+}
+
+func TestOpen_MigratesPodSkillsPendingColumn(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-pods.db")
+	db := openSchemaDB(t, path)
+	if _, err := db.Exec(legacyPodsWithoutSkillsPendingSchema); err != nil {
+		t.Fatalf("create legacy Pods table: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open migrated database: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+	if err := store.CreatePod(repo.Pod{
+		PodID: "pod-a", DisplayName: "Pod A",
+		ServiceTokenEnc: "enc", ServiceTokenFingerprint: "sha256:a",
+	}); err != nil {
+		t.Fatalf("CreatePod after migration: %v", err)
+	}
+	pod, err := store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod after migration: %v", err)
+	}
+	if pod.SkillsPending {
+		t.Fatalf("new Pod should default skills_pending=false: %+v", pod)
 	}
 }
 
@@ -377,3 +410,32 @@ const legacySkillExecutionFixture = `INSERT INTO skill_execution_records (
 	skill_version, status, started_at, created_at
 ) VALUES ('execution-legacy', 'pod-a', 'user-a', 'agent-a', 'legacy-skill',
 	'public', '', 'succeeded', '2026-07-14T12:00:00Z', '2026-07-14T12:00:00Z')`
+
+const legacyPodsWithoutSkillsPendingSchema = `CREATE TABLE pods (
+	pod_id TEXT PRIMARY KEY,
+	display_name TEXT NOT NULL,
+	image_tag TEXT NOT NULL DEFAULT '',
+	state TEXT NOT NULL DEFAULT 'creating'
+		CHECK (state IN ('creating','running','stopped','unhealthy','error','deleting')),
+	max_users INTEGER NOT NULL DEFAULT 10 CHECK (max_users > 0),
+	channels TEXT NOT NULL DEFAULT '[]',
+	channel_configs_enc TEXT NOT NULL DEFAULT '',
+	mem_limit TEXT NOT NULL DEFAULT '',
+	cpu_limit TEXT NOT NULL DEFAULT '',
+	restart_policy TEXT NOT NULL DEFAULT '',
+	max_skill_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_skill_concurrency >= 0),
+	max_browser_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_browser_concurrency >= 0),
+	service_token_enc TEXT NOT NULL,
+	service_token_fingerprint TEXT NOT NULL UNIQUE,
+	service_token_rotated_at TEXT NOT NULL,
+	config_generation INTEGER NOT NULL DEFAULT 1 CHECK (config_generation > 0),
+	applied_generation INTEGER NOT NULL DEFAULT 0 CHECK (applied_generation >= 0),
+	last_config_hash TEXT NOT NULL DEFAULT '',
+	last_apply_status TEXT NOT NULL DEFAULT 'pending'
+		CHECK (last_apply_status IN ('pending','applying','applied','failed')),
+	last_apply_error TEXT NOT NULL DEFAULT '',
+	last_applied_at TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	CHECK (applied_generation <= config_generation)
+);`

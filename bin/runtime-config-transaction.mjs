@@ -2,9 +2,11 @@
 import {
   copyFileSync,
   existsSync,
+  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -23,6 +25,8 @@ import { readRuntimeConfig } from "./runtime-config-schema.mjs";
 const CANDIDATE_SUFFIX = ".muad.candidate";
 const PREVIOUS_SUFFIX = ".muad.previous";
 const SAFE_AGENT_ID = /^[A-Za-z0-9._-]+$/u;
+const COMMAND_MAX_BUFFER_BYTES = 4 * 1024 * 1024;
+const SKILL_INVENTORY_TIMEOUT_MS = 15_000;
 
 export function prepareTransaction({ runtime, configPath }) {
   const current = readConfig(configPath);
@@ -38,14 +42,167 @@ export function prepareTransaction({ runtime, configPath }) {
 
 export function validateCandidate(configPath, runner = spawnSync) {
   const candidatePath = `${configPath}${CANDIDATE_SUFFIX}`;
-  if (!existsSync(candidatePath)) throw new Error("runtime config candidate is missing");
+  if (!existsSync(candidatePath))
+    throw new Error("runtime config candidate is missing");
+  validateOpenClawConfig(candidatePath, runner);
+  validateCandidateSkills(candidatePath, readConfig(candidatePath));
+  return { valid: true };
+}
+
+function validateOpenClawConfig(candidatePath, runner) {
   const result = runner("openclaw", ["config", "validate", "--json"], {
     encoding: "utf8",
     env: { ...process.env, OPENCLAW_CONFIG_PATH: candidatePath },
+    maxBuffer: COMMAND_MAX_BUFFER_BYTES,
+    timeout: SKILL_INVENTORY_TIMEOUT_MS,
   });
-  if (result.error) throw new Error(`OpenClaw config validation failed: ${result.error.message}`);
-  if (result.status !== 0) throw new Error(`OpenClaw config validation failed: ${validationMessage(result)}`);
-  return { valid: true };
+  if (result.error)
+    throw new Error(
+      `OpenClaw config validation failed: ${result.error.message}`,
+    );
+  if (result.status !== 0)
+    throw new Error(
+      `OpenClaw config validation failed: ${validationMessage(result)}`,
+    );
+}
+
+export function validateCandidateSkills(candidatePath, config) {
+  const stateDir = dirname(candidatePath);
+  for (const agent of candidateBusinessAgents(config)) {
+    const roots = skillRootsForAgent(config, agent.id, stateDir);
+    const actual = agent.skills.filter(
+      (skill) =>
+        !isSkillDisabled(config, skill) && findSkillInRoots(skill, roots),
+    );
+    assertAgentSkillsMatch(agent.id, agent.skills, actual);
+  }
+}
+
+function candidateBusinessAgents(config) {
+  const agents = Array.isArray(config?.agents?.list) ? config.agents.list : [];
+  return agents
+    .filter((agent) => agent?.default !== true)
+    .map((agent) => {
+      const id = String(agent?.id ?? "").trim();
+      if (!SAFE_AGENT_ID.test(id))
+        throw new Error(
+          `OpenClaw skill validation failed: invalid agent ID ${id}`,
+        );
+      return {
+        id,
+        skills: uniqueStrings(Array.isArray(agent.skills) ? agent.skills : []),
+      };
+    });
+}
+
+function skillRootsForAgent(config, agentID, stateDir) {
+  const roots = [];
+  const agent = (
+    Array.isArray(config?.agents?.list) ? config.agents.list : []
+  ).find((item) => String(item?.id ?? "").trim() === agentID);
+  const workspace = String(agent?.workspace ?? "").trim();
+  if (workspace) roots.push(join(resolveUserPath(workspace), "skills"));
+  roots.push(join(stateDir, "skills"));
+  for (const dir of config?.skills?.load?.extraDirs ?? []) {
+    const root = String(dir ?? "").trim();
+    if (root) roots.push(resolveUserPath(root));
+  }
+  return uniqueStrings(roots);
+}
+
+function isSkillDisabled(config, skill) {
+  return config?.skills?.entries?.[skill]?.enabled === false;
+}
+
+function findSkillInRoots(skill, roots) {
+  return roots.some((root) =>
+    findSkillInRoot(skill, root, { dirs: 0, seen: new Set() }, 0),
+  );
+}
+
+function findSkillInRoot(skill, root, budget, depth) {
+  if (budget.dirs > 512 || depth > 6) return false;
+  const dir = resolveUserPath(root);
+  if (budget.seen.has(dir)) return false;
+  budget.seen.add(dir);
+  budget.dirs += 1;
+  const meta = readOpenClawSkillMetadata(join(dir, "SKILL.md"));
+  if (meta) return meta.name === skill;
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  return entries
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        !entry.name.startsWith(".") &&
+        entry.name !== "node_modules",
+    )
+    .map((entry) => entry.name)
+    .sort()
+    .slice(0, 256)
+    .some((name) => findSkillInRoot(skill, join(dir, name), budget, depth + 1));
+}
+
+function readOpenClawSkillMetadata(filePath) {
+  try {
+    const stat = statSync(filePath);
+    if (!stat.isFile() || stat.size > 256 * 1024) return null;
+  } catch {
+    return null;
+  }
+  return parseOpenClawSkillFrontmatter(readFileSync(filePath, "utf8"));
+}
+
+function parseOpenClawSkillFrontmatter(markdown) {
+  const normalized = String(markdown ?? "").replaceAll("\r\n", "\n");
+  if (!normalized.startsWith("---\n")) return null;
+  const metadata = {};
+  for (const line of normalized.split("\n").slice(1)) {
+    const item = line.trim();
+    if (item === "---") {
+      return metadata.name && metadata.description ? metadata : null;
+    }
+    const separator = item.indexOf(":");
+    if (separator <= 0) continue;
+    const key = item.slice(0, separator).trim();
+    if (key !== "name" && key !== "description") continue;
+    metadata[key] = trimFrontmatterString(item.slice(separator + 1));
+  }
+  return null;
+}
+
+function trimFrontmatterString(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/^['"]|['"]$/gu, "");
+}
+
+function resolveUserPath(pathValue) {
+  const value = String(pathValue ?? "").trim();
+  if (value === "~") return process.env.HOME || value;
+  if (value.startsWith("~/"))
+    return join(process.env.HOME || "", value.slice(2));
+  return resolve(value);
+}
+
+function assertAgentSkillsMatch(agentID, expected, actual) {
+  const expectedSet = new Set(expected);
+  const actualSet = new Set(actual);
+  const missing = expected.filter((skill) => !actualSet.has(skill));
+  const unexpected = actual.filter((skill) => !expectedSet.has(skill));
+  if (missing.length === 0 && unexpected.length === 0) return;
+  const parts = [];
+  if (missing.length > 0)
+    parts.push(`missing model-visible Skills: ${missing.join(", ")}`);
+  if (unexpected.length > 0)
+    parts.push(`unexpected model-visible Skills: ${unexpected.join(", ")}`);
+  throw new Error(
+    `OpenClaw skill validation failed for agent ${agentID}: ${parts.join("; ")}`,
+  );
 }
 
 export function commitTransaction({ runtime, configPath }) {
@@ -53,7 +210,8 @@ export function commitTransaction({ runtime, configPath }) {
   const candidatePath = `${configPath}${CANDIDATE_SUFFIX}`;
   const candidate = readConfig(candidatePath);
   const expected = renderOpenClawConfig(runtime, current);
-  if (canonicalHash(candidate) !== canonicalHash(expected)) throw new Error("runtime config candidate is stale");
+  if (canonicalHash(candidate) !== canonicalHash(expected))
+    throw new Error("runtime config candidate is stale");
   writeAgentGuidance(runtime);
   copyAtomic(configPath, `${configPath}${PREVIOUS_SUFFIX}`);
   renameSync(candidatePath, configPath);
@@ -61,15 +219,26 @@ export function commitTransaction({ runtime, configPath }) {
     cleanupStaleMainSessions({ config: candidate, configPath });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[runtime-config-transaction] stale main session cleanup skipped: ${message}`);
+    console.error(
+      `[runtime-config-transaction] stale main session cleanup skipped: ${message}`,
+    );
   }
-  return { generation: runtime.generation, configHash: canonicalHash(candidate) };
+  return {
+    generation: runtime.generation,
+    configHash: canonicalHash(candidate),
+  };
 }
 
 export function cleanupStaleMainSessions({ config, configPath }) {
   const mainAgentId = resolveMainAgentId(config);
   const keys = mainBindingSessionKeys(config, mainAgentId);
-  const sessionsPath = join(dirname(configPath), "agents", mainAgentId, "sessions", "sessions.json");
+  const sessionsPath = join(
+    dirname(configPath),
+    "agents",
+    mainAgentId,
+    "sessions",
+    "sessions.json",
+  );
   if (keys.length === 0 || !existsSync(sessionsPath)) return { removed: 0 };
 
   const sessions = readJSONRecord(sessionsPath);
@@ -79,7 +248,8 @@ export function cleanupStaleMainSessions({ config, configPath }) {
     delete sessions[key];
     removed += 1;
   }
-  if (removed > 0) writeAtomic(sessionsPath, `${JSON.stringify(sessions, null, 2)}\n`);
+  if (removed > 0)
+    writeAtomic(sessionsPath, `${JSON.stringify(sessions, null, 2)}\n`);
   return { removed };
 }
 
@@ -88,13 +258,19 @@ export function rollbackTransaction(configPath) {
   if (existsSync(candidatePath)) {
     const current = readConfig(configPath);
     abortTransaction(configPath);
-    return { generation: runtimeGeneration(current), configHash: canonicalHash(current) };
+    return {
+      generation: runtimeGeneration(current),
+      configHash: canonicalHash(current),
+    };
   }
   const previousPath = `${configPath}${PREVIOUS_SUFFIX}`;
   const previous = readConfig(previousPath);
   copyAtomic(previousPath, configPath);
   abortTransaction(configPath);
-  return { generation: runtimeGeneration(previous), configHash: canonicalHash(previous) };
+  return {
+    generation: runtimeGeneration(previous),
+    configHash: canonicalHash(previous),
+  };
 }
 
 export function abortTransaction(configPath) {
@@ -137,18 +313,24 @@ function copyAtomic(source, target) {
 }
 
 function runtimeGeneration(config) {
-  const value = config?.plugins?.entries?.["muad-runtime-guard"]?.config?.generation;
+  const value =
+    config?.plugins?.entries?.["muad-runtime-guard"]?.config?.generation;
   return Number.isSafeInteger(value) && value > 0 ? value : 0;
 }
 
 function resolveMainAgentId(config) {
-  const value = String(config?.plugins?.entries?.["muad-runtime-guard"]?.config?.mainAgentId ?? "main").trim();
+  const value = String(
+    config?.plugins?.entries?.["muad-runtime-guard"]?.config?.mainAgentId ??
+      "main",
+  ).trim();
   return SAFE_AGENT_ID.test(value) ? value : "main";
 }
 
 function mainBindingSessionKeys(config, mainAgentId) {
   const bindings = Array.isArray(config?.bindings) ? config.bindings : [];
-  return uniqueStrings(bindings.map((binding) => mainSessionKey(binding, mainAgentId)));
+  return uniqueStrings(
+    bindings.map((binding) => mainSessionKey(binding, mainAgentId)),
+  );
 }
 
 function mainSessionKey(binding, mainAgentId) {
@@ -170,11 +352,17 @@ function hasMissingSessionFile(entry) {
 }
 
 function uniqueStrings(values) {
-  return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      values.map((value) => String(value ?? "").trim()).filter(Boolean),
+    ),
+  ];
 }
 
 function validationMessage(result) {
-  const output = String(result.stderr || result.stdout || "validation command failed").trim();
+  const output = String(
+    result.stderr || result.stdout || "validation command failed",
+  ).trim();
   return output.slice(-2048);
 }
 
@@ -185,7 +373,10 @@ function readRuntimeFromStdin() {
 function executeMode(mode, configPath) {
   switch (mode) {
     case "prepare":
-      return prepareTransaction({ runtime: readRuntimeFromStdin(), configPath });
+      return prepareTransaction({
+        runtime: readRuntimeFromStdin(),
+        configPath,
+      });
     case "validate":
       return validateCandidate(configPath);
     case "commit":
@@ -204,9 +395,12 @@ function main() {
     const result = executeMode(process.argv[2], defaultConfigPath());
     process.stdout.write(`${JSON.stringify(result)}\n`);
   } catch (error) {
-    console.error(`[runtime-config-transaction] ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `[runtime-config-transaction] ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exitCode = 1;
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+  main();

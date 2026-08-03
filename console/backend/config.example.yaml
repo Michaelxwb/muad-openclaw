@@ -37,8 +37,10 @@ runtime:
   driver: docker
   # 建 Pod/容器时默认使用的 openclaw worker 镜像
   defaultImage: ghcr.io/michaelxwb/muad-openclaw:latest
-  # Console Public Skill 原始资产库目录；docker 模式会从该目录派生 .muad-active-public-skills 运行视图
-  skillsDir: /var/lib/muad-console/skills
+  # Console Skill 原始资产库目录。K8s 模式如未显式配置此项且配置了
+  # k8s.publicSkillsMountPath，会自动使用 <publicSkillsMountPath>/.muad-skill-assets，
+  # 让上传阶段直接保存到 RWX NFS；docker 模式会从该目录派生 .muad-active-public-skills 运行视图。
+  # skillsDir: /var/lib/muad-console/skills
   # 注入到 worker 的运行时环境
   timezone: Asia/Shanghai
   stateDir: /home/node/.openclaw
@@ -65,8 +67,11 @@ browser:
 # K8s driver（仅 runtime.driver=k8s 时生效）
 k8s:
   namespace: muad
-  # 共享 Public Skill 的 RWX PVC 名。正式环境需 NFS/CephFS/Longhorn RWX/EFS 等 RWX StorageClass。
+  # 共享 Public Skill 的 RWX PVC 名。必须同时挂载到 Console Pod 的 publicSkillsMountPath。
+  # 正式环境需 NFS/CephFS/Longhorn RWX/EFS 等 RWX StorageClass。
   # skillsPVC: muad-skills
+  # Console Pod 内对同一个 RWX PVC 的读写挂载路径；k8s/console.yaml 默认挂载到 /public。
+  # publicSkillsMountPath: /public
   # Public Skill PVC 的 RWX StorageClass（如 nfs/cephfs/efs）
   # skillsStorageClass: ""
   skillsSize: 5Gi

@@ -186,6 +186,32 @@ func TestPod_ConfigGenerationRejectsStaleResults(t *testing.T) {
 	}
 }
 
+func TestPod_SkillsPendingGenerationAndClear(t *testing.T) {
+	s := newStore(t)
+	pod := repo.Pod{PodID: "pod-a", DisplayName: "A", ServiceTokenEnc: "enc", ServiceTokenFingerprint: "sha256:a"}
+	if err := s.CreatePod(pod); err != nil {
+		t.Fatalf("CreatePod: %v", err)
+	}
+	generation, err := s.MarkPodSkillsPending("pod-a")
+	if err != nil || generation != 2 {
+		t.Fatalf("MarkPodSkillsPending = %d, %v; want 2", generation, err)
+	}
+	got, err := s.GetPod("pod-a")
+	if err != nil || !got.SkillsPending || got.LastApplyStatus != repo.ApplyStatusPending {
+		t.Fatalf("unexpected pending Pod: %+v err=%v", got, err)
+	}
+	if err := s.ClearPodSkillsPending("pod-a", 1); err != repo.ErrGenerationConflict {
+		t.Fatalf("stale clear = %v, want ErrGenerationConflict", err)
+	}
+	if err := s.ClearPodSkillsPending("pod-a", generation); err != nil {
+		t.Fatalf("ClearPodSkillsPending: %v", err)
+	}
+	got, err = s.GetPod("pod-a")
+	if err != nil || got.SkillsPending {
+		t.Fatalf("Skill pending was not cleared: %+v err=%v", got, err)
+	}
+}
+
 func TestLLMModelConfig_CreateListAndUniqueBinding(t *testing.T) {
 	s := newStore(t)
 	createTestPod(t, s, "pod-a", 10)

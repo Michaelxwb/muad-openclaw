@@ -1,9 +1,11 @@
 # muad 控制台在 K8S 上的部署（console 自管 worker）。
 # console 经受限 ServiceAccount + RBAC，在 muad 命名空间内建/删/伸缩/exec/取日志
 # 每用户 worker（Deployment + PVC + Secret）——替代单机 docker.sock 的 root 风险。
+# Public Skill 使用 RWX PVC：Console 读写挂载到 /public，worker 只读挂载 active 子目录。
 #
 # 用法：
 #   kubectl create namespace muad
+#   # 先准备 Public Skill RWX PVC；本地单节点测试可用：kubectl apply -f k8s/public-skills-local-rwx.yaml
 #   # 先按 console/backend/config.example.yaml 写好 config.yaml（runtime.driver: k8s, security.masterKey, admin.password 等）
 #   kubectl -n muad create secret generic muad-console-config --from-file=config.yaml=./config.yaml
 #   kubectl apply -f k8s/console.yaml
@@ -25,7 +27,7 @@ rules:
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
     resources: ["pods"]
-    verbs: ["get", "list", "watch", "create", "update", "delete"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get", "list", "watch"]
@@ -33,8 +35,11 @@ rules:
     resources: ["pods/exec"]
     verbs: ["create"]
   - apiGroups: [""]
-    resources: ["secrets", "persistentvolumeclaims"]
+    resources: ["secrets"]
     verbs: ["get", "list", "create", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
   - apiGroups: ["metrics.k8s.io"]
     resources: ["pods"]
     verbs: ["get", "list"]
@@ -106,6 +111,8 @@ spec:
               readOnly: true
             - name: data
               mountPath: /var/lib/muad-console
+            - name: public-skills
+              mountPath: /public
           readinessProbe:
             httpGet: { path: /healthz, port: 8080 }
             initialDelaySeconds: 3
@@ -121,6 +128,11 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: muad-console-data
+        - name: public-skills
+          persistentVolumeClaim:
+            # 必须预先创建 RWX PVC，并与 config.yaml 中的 k8s.skillsPVC 保持一致。
+            # 未绑定时 Console Pod 会停在 ContainerCreating。
+            claimName: muad-skills
 ---
 apiVersion: v1
 kind: Service

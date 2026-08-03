@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { Modal } from "@douyinfe/semi-ui";
+import { Modal, Toast } from "@douyinfe/semi-ui";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Skills } from "../src/pages/Skills";
 
@@ -143,10 +143,90 @@ describe("Skills", () => {
     render(<Skills />);
     await screen.findByText("XDR Query");
 
-    fireEvent.click(screen.getByRole("button", { name: "应用 Skill" }));
+    fireEvent.click(screen.getByRole("button", { name: "应用到全部 Pod" }));
 
     await waitFor(() => expect(apiMocks.applySkills).toHaveBeenCalledOnce());
     confirm.mockRestore();
+  });
+
+  it("continues refreshing the Skill list after an apply request is queued", async () => {
+    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      void config.onOk?.();
+      return {} as ReturnType<typeof Modal.confirm>;
+    });
+    const view = render(<Skills />);
+    await screen.findByText("XDR Query");
+    apiMocks.listSkills.mockClear();
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "应用到全部 Pod" }));
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(apiMocks.applySkills).toHaveBeenCalledOnce();
+      expect(apiMocks.listSkills).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(apiMocks.listSkills).toHaveBeenCalledTimes(2);
+
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(apiMocks.listSkills).toHaveBeenCalledTimes(3);
+
+      view.unmount();
+      await vi.advanceTimersByTimeAsync(20000);
+      expect(apiMocks.listSkills).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+      confirm.mockRestore();
+    }
+  });
+
+  it("warns when applying Skill configuration fails for some Pods", async () => {
+    apiMocks.applySkills.mockResolvedValueOnce({
+      results: { "pod-a": "failed_sync", "pod-b": "failed_queue" },
+    });
+    const warning = vi.spyOn(Toast, "warning").mockImplementation(() => "");
+    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      void config.onOk?.();
+      return {} as ReturnType<typeof Modal.confirm>;
+    });
+    try {
+      render(<Skills />);
+      await screen.findByText("XDR Query");
+
+      fireEvent.click(screen.getByRole("button", { name: "应用到全部 Pod" }));
+
+      await waitFor(() =>
+        expect(warning).toHaveBeenCalledWith(expect.stringContaining("1 个同步失败，1 个排队失败")),
+      );
+    } finally {
+      confirm.mockRestore();
+      warning.mockRestore();
+    }
+  });
+
+  it("shows backend public Skill sync warnings after applying Skills", async () => {
+    apiMocks.applySkills.mockResolvedValueOnce({
+      results: { "pod-a": "queued" },
+      warnings: ["1 个 Public Skill 同步失败：bad-skill"],
+    });
+    const warning = vi.spyOn(Toast, "warning").mockImplementation(() => "");
+    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
+      void config.onOk?.();
+      return {} as ReturnType<typeof Modal.confirm>;
+    });
+    try {
+      render(<Skills />);
+      await screen.findByText("XDR Query");
+
+      fireEvent.click(screen.getByRole("button", { name: "应用到全部 Pod" }));
+
+      await waitFor(() =>
+        expect(warning).toHaveBeenCalledWith(expect.stringContaining("bad-skill")),
+      );
+    } finally {
+      confirm.mockRestore();
+      warning.mockRestore();
+    }
   });
 
   it("uploads a public Skill bundle from the Skill management toolbar", async () => {

@@ -48,6 +48,7 @@ writeFileSync(file, secretsJson) // 默认 umask，可能过宽
 - 日志与 progress 事件禁止包含 token、cookie、Authorization
 - 镜像自检（`runtime-image-self-check`）应能发现缺失插件/技能种子与错误 token 路径，但不依赖外部密钥
 - 原子写：先写临时文件再 rename，避免半截密钥文件
+- **installer 长名处理**：解析 GNU `L` / PAX `x/g` 长名数据段、对解析出的真实路径/linkpath 做路径校验后放行，不裸 reject；裸 reject 会破坏自身 Go 重打包工具链（`archive/tar` 对 >100 字节路径段产 PAX 头），且长名真实路径必须过 `assertSafeArchivePath`
 
 ## Patterns
 - inject-env / inject-channels / inject-multi-user-config 作为注入单一入口

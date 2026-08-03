@@ -22,6 +22,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/skillsync"
 )
 
 // fakeDriver records calls so handler logic is testable without Docker.
@@ -59,8 +60,11 @@ type fakeDriver struct {
 	updateServiceTokenErr error
 	syncPublicSkillCalls  []syncPublicSkillCall
 	syncPublicSkillErr    error
+	publicSkillSignature  string
+	publicSkillMountCalls []string
 	publicSkillStorage    driver.PublicSkillsStorageStatus
 	publicSkillStorageErr error
+	privateSkillHashes    map[string]map[string]string
 	startErr              error
 	stopErr               error
 	startErrors           []error
@@ -91,13 +95,16 @@ type syncPublicSkillCall struct {
 	sourceDir        string
 	sourceSkillNames []string
 	sourceIndex      string
+	sourceRemove     string
+	sourceSignature  string
 }
 
 func newFakeDriver() *fakeDriver {
 	return &fakeDriver{
 		created: map[string]driver.PodSpec{}, removed: map[string]bool{}, restarted: map[string]int{},
 		keepState: map[string]bool{}, restartErrors: map[string]error{},
-		serviceTokens: map[string]driver.SecretFileSpec{},
+		serviceTokens:      map[string]driver.SecretFileSpec{},
+		privateSkillHashes: map[string]map[string]string{},
 		publicSkillStorage: driver.PublicSkillsStorageStatus{
 			Driver: "docker", Name: "test-skills", Configured: true, Ready: true, Phase: "directory",
 		},
@@ -226,12 +233,20 @@ func (f *fakeDriver) ExecStdin(_ context.Context, userID string, stdin io.Reader
 		return "", f.execStdinErr
 	}
 	joined := strings.Join(cmd, " ")
+	if strings.Contains(joined, "/opt/muad/private-skill-installer.mjs list") {
+		agentID := argValue(cmd, "--agent-id")
+		return privateSkillListJSON(f.privateSkillHashes[agentID]), nil
+	}
 	if strings.Contains(joined, "/opt/muad/private-skill-installer.mjs install") {
 		name := "xdr-private"
-		for i, value := range cmd {
-			if value == "--expected-name" && i+1 < len(cmd) {
-				name = cmd[i+1]
+		if expected := argValue(cmd, "--expected-name"); expected != "" {
+			name = expected
+		}
+		if agentID := argValue(cmd, "--agent-id"); agentID != "" {
+			if f.privateSkillHashes[agentID] == nil {
+				f.privateSkillHashes[agentID] = map[string]string{}
 			}
+			f.privateSkillHashes[agentID][name] = "sha256:" + name
 		}
 		return fmt.Sprintf(`{"ok":true,"name":%q,"version":"1.0.0",`+
 			`"platforms":["xdr"],"progressSupported":true,"browserRequired":false,`+
@@ -242,6 +257,29 @@ func (f *fakeDriver) ExecStdin(_ context.Context, userID string, stdin io.Reader
 		return `{"ok":true,"deleted":true}`, nil
 	}
 	return "ok", nil
+}
+
+func argValue(args []string, name string) string {
+	for i, value := range args {
+		if value == name && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
+func privateSkillListJSON(hashes map[string]string) string {
+	type installed struct {
+		Name         string `json:"name"`
+		ManifestHash string `json:"manifestHash"`
+	}
+	skills := make([]installed, 0, len(hashes))
+	for name, hash := range hashes {
+		skills = append(skills, installed{Name: name, ManifestHash: hash})
+	}
+	sort.Slice(skills, func(i, j int) bool { return skills[i].Name < skills[j].Name })
+	body, _ := json.Marshal(map[string]any{"ok": true, "skills": skills})
+	return string(body)
 }
 func (f *fakeDriver) Reap(context.Context, string) error   { return nil }
 func (f *fakeDriver) Revive(context.Context, string) error { return nil }
@@ -266,12 +304,30 @@ func (f *fakeDriver) UpdateServiceToken(_ context.Context, podID string, secret 
 	return nil
 }
 
-func (f *fakeDriver) SyncPublicSkills(_ context.Context, podID, sourceDir string) error {
+func (f *fakeDriver) SyncPublicSkillFiles(_ context.Context, sourceDir string) error {
 	f.syncPublicSkillCalls = append(f.syncPublicSkillCalls, syncPublicSkillCall{
-		podID: podID, sourceDir: sourceDir, sourceSkillNames: snapshotSourceSkillNames(sourceDir),
-		sourceIndex: snapshotSourceIndex(sourceDir),
+		sourceDir: sourceDir, sourceSkillNames: snapshotSourceSkillNames(sourceDir),
+		sourceIndex: snapshotSourceIndex(sourceDir), sourceRemove: snapshotSourceRemove(sourceDir),
+		sourceSignature: snapshotSourceSignature(sourceDir),
 	})
+	f.publicSkillSignature = snapshotSourceSignature(sourceDir)
 	return f.syncPublicSkillErr
+}
+
+func (f *fakeDriver) PublicSkillFilesSignature(context.Context) (string, error) {
+	return f.publicSkillSignature, nil
+}
+
+func (f *fakeDriver) EnsurePublicSkillsMount(_ context.Context, podID string) error {
+	f.publicSkillMountCalls = append(f.publicSkillMountCalls, podID)
+	return nil
+}
+
+func (f *fakeDriver) SyncPublicSkills(ctx context.Context, podID, sourceDir string) error {
+	if err := f.SyncPublicSkillFiles(ctx, sourceDir); err != nil {
+		return err
+	}
+	return f.EnsurePublicSkillsMount(ctx, podID)
 }
 
 func snapshotSourceSkillNames(sourceDir string) []string {
@@ -300,6 +356,22 @@ func snapshotSourceIndex(sourceDir string) string {
 	return string(body)
 }
 
+func snapshotSourceRemove(sourceDir string) string {
+	body, err := os.ReadFile(filepath.Join(sourceDir, driver.PublicSkillRemoveIndexFile))
+	if err != nil {
+		return ""
+	}
+	return string(body)
+}
+
+func snapshotSourceSignature(sourceDir string) string {
+	body, err := os.ReadFile(filepath.Join(sourceDir, driver.PublicSkillSignatureFile))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(body))
+}
+
 func (f *fakeDriver) PublicSkillsStorageStatus(context.Context) (driver.PublicSkillsStorageStatus, error) {
 	return f.publicSkillStorage, f.publicSkillStorageErr
 }
@@ -321,13 +393,15 @@ type testEnv struct {
 	drv       *fakeDriver
 	cache     *monitor.Cache
 	reconcile *fakeReconcileQueue
+	syncer    *skillsync.Syncer
 	token     string
 	skillsDir string
 }
 
 type fakeReconcileQueue struct {
-	podIDs []string
-	err    error
+	podIDs       []string
+	runDeadlines []time.Duration
+	err          error
 }
 
 func (queue *fakeReconcileQueue) Enqueue(podID string) {
@@ -337,6 +411,11 @@ func (queue *fakeReconcileQueue) Enqueue(podID string) {
 func (queue *fakeReconcileQueue) RunExclusive(
 	ctx context.Context, _ string, operation func(context.Context) error,
 ) error {
+	if deadline, ok := ctx.Deadline(); ok {
+		queue.runDeadlines = append(queue.runDeadlines, time.Until(deadline))
+	} else {
+		queue.runDeadlines = append(queue.runDeadlines, 0)
+	}
 	return operation(ctx)
 }
 
@@ -363,19 +442,23 @@ func newTestEnv(t *testing.T) *testEnv {
 	drv := newFakeDriver()
 	cache := monitor.NewCache()
 	reconcile := &fakeReconcileQueue{}
+	syncer, err := skillsync.New(store, drv, cfg.SkillsDir, cfg.RuntimeStateDir)
+	if err != nil {
+		t.Fatalf("Skill syncer: %v", err)
+	}
 	if err := api.BootstrapAdmin(store, "root", "pw"); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
-	h := api.NewServer(cfg, store, cipher, drv, cache, reconcile).Handler()
+	h := api.NewServer(cfg, store, cipher, drv, cache, syncer, reconcile).Handler()
 	return &testEnv{
 		h: h, cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache, reconcile: reconcile,
-		token: login(t, h), skillsDir: skillsDir,
+		syncer: syncer, token: login(t, h), skillsDir: skillsDir,
 	}
 }
 
 func (e *testEnv) replaceReconcile(t *testing.T, enqueuer api.ReconcileEnqueuer) {
 	t.Helper()
-	e.h = api.NewServer(e.cfg, e.store, e.cipher, e.drv, e.cache, enqueuer).Handler()
+	e.h = api.NewServer(e.cfg, e.store, e.cipher, e.drv, e.cache, e.syncer, enqueuer).Handler()
 	e.token = loginWithCredentials(t, e.h, "root", "pw")
 }
 
