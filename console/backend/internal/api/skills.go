@@ -347,7 +347,7 @@ func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request
 		r, pod.PodID, user.AgentID, upload.ExpectedName, upload.Format, upload.Body,
 	)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "runtime failure")
+		writeRuntimeFailure(w, err, "install private Skill failed")
 		return
 	}
 	result, err = applySkillPlatformOverride(result, upload)
@@ -399,7 +399,7 @@ func (s *Server) handleDeletePrivateSkill(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := s.deletePrivateSkillInPod(r, pod.PodID, user.AgentID, asset.Name); err != nil {
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "runtime failure")
+		writeRuntimeFailure(w, err, "delete private Skill failed")
 		return
 	}
 	deleted, err := s.store.DeletePrivateSkillAssetAndMarkPod(asset.SkillID, user.HumanUserID)

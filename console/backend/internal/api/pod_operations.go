@@ -164,7 +164,7 @@ func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
 	results, err := s.enqueueSkillConfigApply(r.Context(), podIDs)
 	if err != nil {
 		log.Printf("skill_reload_enqueue_failed error=%v", err)
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "inspect Pod runtimes failed")
+		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "reload Skills failed")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"results": results})
@@ -217,6 +217,7 @@ func (s *Server) enqueueSkillConfigApply(ctx context.Context, podIDs []string) (
 	defer cleanup()
 	for _, podID := range reload {
 		if err := s.drv.SyncPublicSkills(ctx, podID, syncDir); err != nil {
+			log.Printf("skill_sync_failed pod=%s error=%v", podID, err)
 			results[podID] = "failed_sync"
 			continue
 		}
