@@ -89,6 +89,10 @@ func (s *Server) performPodUpgrade(ctx context.Context, current repo.Pod, imageT
 	if err := s.store.StartPodConfigApply(target.PodID, target.ConfigGeneration); err != nil {
 		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, false, err)
 	}
+	if err := s.syncSkillsBeforeDirectApply(ctx, target); err != nil {
+		_ = s.store.FailPodConfigApply(target.PodID, target.ConfigGeneration, auditlog.RedactDiagnostic(err.Error()))
+		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, false, err)
+	}
 	runtimeChanged, err := s.replacePodRuntime(ctx, desired, false)
 	if err == nil {
 		err = s.completePodUpgrade(target, desired)
@@ -133,6 +137,11 @@ func (s *Server) completePodUpgrade(target repo.Pod, desired desiredPodRuntime) 
 	); err != nil {
 		return err
 	}
+	if target.SkillsPending {
+		if err := s.store.ClearPodSkillsPending(target.PodID, target.ConfigGeneration); err != nil {
+			return err
+		}
+	}
 	return s.store.UpdatePodState(target.PodID, repo.PodStateRunning)
 }
 
@@ -168,10 +177,24 @@ func (s *Server) restorePodRuntime(ctx context.Context, restored repo.Pod) error
 	if err := s.store.StartPodConfigApply(restored.PodID, restored.ConfigGeneration); err != nil {
 		return err
 	}
+	if err := s.syncSkillsBeforeDirectApply(ctx, restored); err != nil {
+		_ = s.store.FailPodConfigApply(restored.PodID, restored.ConfigGeneration, auditlog.RedactDiagnostic(err.Error()))
+		return err
+	}
 	if _, err := s.replacePodRuntime(ctx, desired, false); err != nil {
 		return err
 	}
 	return s.completePodUpgrade(restored, desired)
+}
+
+func (s *Server) syncSkillsBeforeDirectApply(ctx context.Context, pod repo.Pod) error {
+	if !pod.SkillsPending {
+		return nil
+	}
+	if s.skillSyncer == nil {
+		return errors.New("Skill syncer unavailable")
+	}
+	return s.skillSyncer.SyncPod(ctx, pod.PodID)
 }
 
 func waitForPodHealth(ctx context.Context, runtime gateway.Execer, podID string, generation int64) error {

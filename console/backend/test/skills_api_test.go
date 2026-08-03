@@ -7,12 +7,14 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
@@ -83,8 +85,8 @@ func TestSkillAPI_ListDetailEffectiveAndPolicies(t *testing.T) {
 	if policy.PolicyID == "" || policy.Action != repo.SkillPolicyAllowOverride {
 		t.Fatalf("policy response = %+v", policy)
 	}
-	if len(e.reconcile.podIDs) == 0 || e.reconcile.podIDs[len(e.reconcile.podIDs)-1] != "pod-a" {
-		t.Fatalf("policy did not enqueue reconcile: %v", e.reconcile.podIDs)
+	if len(e.reconcile.podIDs) != 1 {
+		t.Fatalf("policy should mark pending without enqueueing another reconcile: %v", e.reconcile.podIDs)
 	}
 
 	rr = e.do(http.MethodDelete,
@@ -166,7 +168,9 @@ func TestSkillAPI_PrivateUploadAndDelete(t *testing.T) {
 	createTestPlatform(t, e.store, "xdr", "XDR")
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 
-	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", []byte("bundle"))
+	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", makeSkillBundle(
+		t, "xdr-private", map[string]any{"name": "xdr-private", "runtime": "script", "platform": "xdr"},
+	))
 	assertStatus(t, rr, http.StatusCreated)
 	created := decodeAPIData[struct {
 		Skill struct {
@@ -180,13 +184,14 @@ func TestSkillAPI_PrivateUploadAndDelete(t *testing.T) {
 		created.Skill.HumanUserID != alice.HumanUserID {
 		t.Fatalf("private Skill response = %+v", created)
 	}
-	if len(e.drv.execStdinCalls) != 1 || !strings.Contains(
-		strings.Join(e.drv.execStdinCalls[0].cmd, " "), "private-skill-installer.mjs install",
-	) {
-		t.Fatalf("installer calls = %+v", e.drv.execStdinCalls)
+	if len(e.drv.execStdinCalls) != 0 {
+		t.Fatalf("private upload should not exec installer before apply: %+v", e.drv.execStdinCalls)
 	}
-	if len(e.reconcile.podIDs) == 0 || e.reconcile.podIDs[len(e.reconcile.podIDs)-1] != "pod-a" {
-		t.Fatalf("upload reconcile queue = %v", e.reconcile.podIDs)
+	if len(e.reconcile.podIDs) != 1 {
+		t.Fatalf("private upload should mark pending without enqueueing another reconcile: %v", e.reconcile.podIDs)
+	}
+	if _, err := os.ReadFile(filepath.Join(e.skillsDir, "_private", alice.HumanUserID, "xdr-private", "SKILL.md")); err != nil {
+		t.Fatalf("private Skill was not saved locally: %v", err)
 	}
 
 	rr = e.do(http.MethodDelete,
@@ -196,10 +201,8 @@ func TestSkillAPI_PrivateUploadAndDelete(t *testing.T) {
 	if err != nil || got.Status != repo.SkillStatusDeleted {
 		t.Fatalf("deleted private Skill = %+v, %v", got, err)
 	}
-	if len(e.drv.execStdinCalls) != 2 || !strings.Contains(
-		strings.Join(e.drv.execStdinCalls[1].cmd, " "), "private-skill-installer.mjs delete",
-	) {
-		t.Fatalf("delete installer calls = %+v", e.drv.execStdinCalls)
+	if len(e.drv.execStdinCalls) != 0 {
+		t.Fatalf("private delete should not exec installer before apply: %+v", e.drv.execStdinCalls)
 	}
 }
 
@@ -207,6 +210,7 @@ func TestSkillAPI_PrivateUploadAcceptsZipBundle(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createTestPlatform(t, e.store, "xdr", "XDR")
+	createTestPlatform(t, e.store, "sdsp", "SDSP")
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 
 	rr := e.privateSkillUploadFile(
@@ -216,12 +220,8 @@ func TestSkillAPI_PrivateUploadAcceptsZipBundle(t *testing.T) {
 		}),
 	)
 	assertStatus(t, rr, http.StatusCreated)
-	if len(e.drv.execStdinCalls) != 1 {
-		t.Fatalf("installer calls = %+v", e.drv.execStdinCalls)
-	}
-	cmd := strings.Join(e.drv.execStdinCalls[0].cmd, " ")
-	if !strings.Contains(cmd, "--bundle-format zip") {
-		t.Fatalf("installer did not receive zip format: %v", e.drv.execStdinCalls[0].cmd)
+	if len(e.drv.execStdinCalls) != 0 {
+		t.Fatalf("zip private upload should not exec installer before apply: %+v", e.drv.execStdinCalls)
 	}
 }
 
@@ -260,7 +260,9 @@ func TestSkillAPI_PrivateUploadPlatformOverrideAllowsPlatformlessSkill(t *testin
 
 	rr := e.privateSkillUploadFileWithPlatforms(
 		alice.HumanUserID, "generic-private", "generic-private.tar.gz",
-		[]byte("bundle"), []string{},
+		makeSkillBundle(t, "generic-private", map[string]any{
+			"name": "generic-private", "runtime": "script",
+		}), []string{},
 	)
 	assertStatus(t, rr, http.StatusCreated)
 	created := decodeAPIData[struct {
@@ -276,7 +278,7 @@ func TestSkillAPI_PrivateUploadPlatformOverrideAllowsPlatformlessSkill(t *testin
 	}
 }
 
-func TestSkillAPI_PrivateDeleteRuntimeFailureDoesNotMutateDB(t *testing.T) {
+func TestSkillAPI_PrivateDeleteDoesNotDependOnRuntime(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createTestPlatform(t, e.store, "xdr", "XDR")
@@ -291,11 +293,35 @@ func TestSkillAPI_PrivateDeleteRuntimeFailureDoesNotMutateDB(t *testing.T) {
 
 	rr := e.do(http.MethodDelete,
 		"/api/v1/human-users/"+alice.HumanUserID+"/skills/private/"+asset.SkillID, "")
-	assertStatus(t, rr, http.StatusBadGateway)
+	assertStatus(t, rr, http.StatusOK)
 	got, err := e.store.GetSkillAsset(asset.SkillID)
-	if err != nil || got.Status != repo.SkillStatusActive {
-		t.Fatalf("private Skill should remain active after runtime failure: %+v, %v", got, err)
+	if err != nil || got.Status != repo.SkillStatusDeleted {
+		t.Fatalf("private Skill should be deleted without runtime access: %+v, %v", got, err)
 	}
+}
+
+func TestSkillAPI_PrivateDeleteThenUploadSameName(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	rr := e.privateSkillUpload(alice.HumanUserID, "replace-private", makeSkillBundle(
+		t, "replace-private", map[string]any{"name": "replace-private", "runtime": "script", "version": "1.0.0"},
+	))
+	assertStatus(t, rr, http.StatusCreated)
+	created := decodeAPIData[struct {
+		Skill struct {
+			SkillID string `json:"skillId"`
+		} `json:"skill"`
+	}](t, rr.Body.Bytes())
+
+	rr = e.do(http.MethodDelete,
+		"/api/v1/human-users/"+alice.HumanUserID+"/skills/private/"+created.Skill.SkillID, "")
+	assertStatus(t, rr, http.StatusOK)
+	rr = e.privateSkillUpload(alice.HumanUserID, "replace-private", makeSkillBundle(
+		t, "replace-private", map[string]any{"name": "replace-private", "runtime": "script", "version": "2.0.0"},
+	))
+	assertStatus(t, rr, http.StatusCreated)
 }
 
 func TestSkillAPI_PublicUploadCreatesAssetAndMarksPods(t *testing.T) {
@@ -328,9 +354,79 @@ func TestSkillAPI_PublicUploadCreatesAssetAndMarksPods(t *testing.T) {
 	if _, err := os.ReadFile(filepath.Join(e.skillsDir, "xdr-public", "SKILL.md")); err != nil {
 		t.Fatalf("public Skill was not written: %v", err)
 	}
-	if len(e.reconcile.podIDs) == 0 || e.reconcile.podIDs[len(e.reconcile.podIDs)-1] != "pod-a" {
-		t.Fatalf("public upload reconcile queue = %v", e.reconcile.podIDs)
+	if len(e.reconcile.podIDs) != 1 {
+		t.Fatalf("public upload should mark pending without enqueueing another reconcile: %v", e.reconcile.podIDs)
 	}
+}
+
+func TestSkillAPI_ConcurrentPublicUploadSameNameDoesNotRemoveWinner(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	start := make(chan struct{})
+	bundles := [][]byte{
+		makeSkillBundle(t, "race-public", map[string]any{
+			"name": "race-public", "runtime": "script", "version": "1.0.0",
+		}),
+		makeSkillBundle(t, "race-public", map[string]any{
+			"name": "race-public", "runtime": "script", "version": "2.0.0",
+		}),
+	}
+	responses := make([]*httptest.ResponseRecorder, 2)
+	var wg sync.WaitGroup
+	for index, bundle := range bundles {
+		wg.Add(1)
+		go func(index int, bundle []byte) {
+			defer wg.Done()
+			<-start
+			responses[index] = e.publicSkillUpload("race-public.tar.gz", bundle)
+		}(index, bundle)
+	}
+	close(start)
+	wg.Wait()
+
+	created, conflicted := 0, 0
+	for _, rr := range responses {
+		switch rr.Code {
+		case http.StatusCreated:
+			created++
+		case http.StatusConflict:
+			conflicted++
+		default:
+			t.Fatalf("concurrent upload status = %d, body=%s", rr.Code, rr.Body.String())
+		}
+	}
+	if created != 1 || conflicted != 1 {
+		t.Fatalf("concurrent upload statuses: created=%d conflict=%d", created, conflicted)
+	}
+	assets, err := e.store.ListSkillAssetsByName("race-public")
+	if err != nil || len(assets) != 1 {
+		t.Fatalf("race public Skill assets = %+v, %v", assets, err)
+	}
+	if _, err := os.ReadFile(filepath.Join(e.skillsDir, "race-public", "SKILL.md")); err != nil {
+		t.Fatalf("winning public Skill files were removed: %v", err)
+	}
+}
+
+func TestSkillAPI_PublicDeleteThenUploadSameName(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+
+	rr := e.publicSkillUpload("replace-public.tar.gz", makeSkillBundle(t, "replace-public", map[string]any{
+		"name": "replace-public", "runtime": "script", "version": "1.0.0",
+	}))
+	assertStatus(t, rr, http.StatusCreated)
+	created := decodeAPIData[struct {
+		Skill struct {
+			SkillID string `json:"skillId"`
+		} `json:"skill"`
+	}](t, rr.Body.Bytes())
+
+	rr = e.do(http.MethodPatch, "/api/v1/skills/"+created.Skill.SkillID, `{"status":"deleted"}`)
+	assertStatus(t, rr, http.StatusOK)
+	rr = e.publicSkillUpload("replace-public.tar.gz", makeSkillBundle(t, "replace-public", map[string]any{
+		"name": "replace-public", "runtime": "script", "version": "2.0.0",
+	}))
+	assertStatus(t, rr, http.StatusCreated)
 }
 
 func TestSkillAPI_PublicUploadAllowsPlatformlessSkill(t *testing.T) {
@@ -480,7 +576,7 @@ func TestSkillAPI_PublicUploadIgnoresZipMetadataEntries(t *testing.T) {
 
 	rr := e.publicSkillUpload("mssw-public.zip", makeZipWithFiles(t, map[string][]byte{
 		"mssw-public/":                           {},
-		"mssw-public/SKILL.md":                   []byte("# MSSW\n"),
+		"mssw-public/SKILL.md":                   []byte("---\nname: mssw-public\ndescription: MSSW public Skill.\n---\n# MSSW\n"),
 		"mssw-public/muad.skill.json":            []byte(`{"name":"mssw-public","platform":"mssw"}`),
 		"mssw-public/.DS_Store":                  []byte("metadata"),
 		"__MACOSX/mssw-public/._SKILL.md":        []byte("metadata"),
@@ -513,6 +609,40 @@ func TestSkillAPI_PublicUploadUsesSkillMarkdownFrontmatterName(t *testing.T) {
 	}
 	if _, err := os.ReadFile(filepath.Join(e.skillsDir, "web-tools-guide", "SKILL.md")); err != nil {
 		t.Fatalf("frontmatter public Skill was not written: %v", err)
+	}
+}
+
+func TestSkillAPI_PublicUploadRejectsMissingOpenClawFrontmatter(t *testing.T) {
+	e := newTestEnv(t)
+
+	rr := e.publicSkillUpload("policy-check.zip", makeZipWithFiles(t, map[string][]byte{
+		"policy-check/SKILL.md":        []byte("# Policy Check\n"),
+		"policy-check/muad.skill.json": []byte(`{"name":"policy-check"}`),
+	}))
+
+	assertStatus(t, rr, http.StatusBadRequest)
+	if !strings.Contains(rr.Body.String(), "frontmatter") {
+		t.Fatalf("frontmatter upload error not surfaced: %s", rr.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(e.skillsDir, "policy-check")); !os.IsNotExist(err) {
+		t.Fatalf("invalid public Skill directory should not be written: %v", err)
+	}
+}
+
+func TestSkillAPI_PublicUploadRejectsManifestFrontmatterNameMismatch(t *testing.T) {
+	e := newTestEnv(t)
+
+	rr := e.publicSkillUpload("policy-check.zip", makeZipWithFiles(t, map[string][]byte{
+		"policy-check/SKILL.md":        []byte("---\nname: policy-check\ndescription: Policy check Skill.\n---\n# Policy\n"),
+		"policy-check/muad.skill.json": []byte(`{"name":"extract"}`),
+	}))
+
+	assertStatus(t, rr, http.StatusBadRequest)
+	if !strings.Contains(rr.Body.String(), "frontmatter name") {
+		t.Fatalf("name mismatch upload error not surfaced: %s", rr.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(e.skillsDir, "extract")); !os.IsNotExist(err) {
+		t.Fatalf("mismatched public Skill directory should not be written: %v", err)
 	}
 }
 
@@ -551,7 +681,7 @@ func TestSkillAPI_PublicUploadRejectsSystemOverrideBeforeWriting(t *testing.T) {
 	}
 }
 
-func TestSkillAPI_PrivateUploadRejectsPublicConflictAndCleansRuntime(t *testing.T) {
+func TestSkillAPI_PrivateUploadRejectsPublicConflictAndCleansLocalStaging(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createTestPlatform(t, e.store, "xdr", "XDR")
@@ -562,12 +692,48 @@ func TestSkillAPI_PrivateUploadRejectsPublicConflictAndCleansRuntime(t *testing.
 		PlatformsJSON: `["xdr"]`,
 	})
 
-	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", []byte("bundle"))
+	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", makeSkillBundle(
+		t, "xdr-private", map[string]any{"name": "xdr-private", "runtime": "script", "platform": "xdr"},
+	))
 	assertStatus(t, rr, http.StatusConflict)
-	if len(e.drv.execStdinCalls) != 2 || !strings.Contains(
-		strings.Join(e.drv.execStdinCalls[1].cmd, " "), "private-skill-installer.mjs delete",
-	) {
-		t.Fatalf("conflict cleanup calls = %+v", e.drv.execStdinCalls)
+	if len(e.drv.execStdinCalls) != 0 {
+		t.Fatalf("private upload conflict should not touch runtime: %+v", e.drv.execStdinCalls)
+	}
+	if _, err := os.Stat(filepath.Join(e.skillsDir, "_private", alice.HumanUserID, "xdr-private")); !os.IsNotExist(err) {
+		t.Fatalf("conflicted private Skill directory should be cleaned up: %v", err)
+	}
+}
+
+func TestSkillAPI_PrivateUploadRejectsExistingPrivateWithoutReplacingFiles(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	privateDir := filepath.Join(e.skillsDir, "_private", alice.HumanUserID, "xdr-private")
+	if err := os.MkdirAll(privateDir, 0o700); err != nil {
+		t.Fatalf("mkdir private Skill dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(privateDir, "SKILL.md"), []byte("# old\n"), 0o600); err != nil {
+		t.Fatalf("write private Skill file: %v", err)
+	}
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "xdr-private", Scope: repo.SkillScopePrivate,
+		HumanUserID: alice.HumanUserID, PodID: alice.PodID,
+		SourcePath: privateDir, ManifestHash: "sha256:private", PlatformsJSON: `[]`,
+	})
+
+	rr := e.privateSkillUploadFile(alice.HumanUserID, "xdr-private", "xdr-private.zip", makeZipWithFiles(
+		t, map[string][]byte{
+			"xdr-private/SKILL.md":        []byte("# new\n"),
+			"xdr-private/muad.skill.json": []byte(`{"name":"xdr-private","runtime":"script"}`),
+		},
+	))
+	assertStatus(t, rr, http.StatusConflict)
+	got, err := os.ReadFile(filepath.Join(privateDir, "SKILL.md"))
+	if err != nil || string(got) != "# old\n" {
+		t.Fatalf("existing private Skill file was changed: %q, %v", got, err)
+	}
+	if len(e.drv.execStdinCalls) != 0 {
+		t.Fatalf("private upload conflict should not touch runtime: %+v", e.drv.execStdinCalls)
 	}
 }
 
@@ -588,11 +754,48 @@ func TestSkillAPI_PrivateUploadAllowsPublicOverrideWithPolicy(t *testing.T) {
 		t.Fatalf("CreateSkillPolicy: %v", err)
 	}
 
-	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", []byte("bundle"))
+	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", makeSkillBundle(
+		t, "xdr-private", map[string]any{"name": "xdr-private", "runtime": "script", "platform": "xdr"},
+	))
 	assertStatus(t, rr, http.StatusCreated)
 }
 
-func TestSkillAPI_PrivateUploadRejectsNonRunningPod(t *testing.T) {
+func TestSkillAPI_PrivateUploadAllowOverrideCreatesPolicyAtomically(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "xdr-private", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/xdr-private", ManifestHash: "sha256:public",
+		PlatformsJSON: `["xdr"]`,
+	})
+
+	rr := e.privateSkillUploadFileWithOptions(
+		alice.HumanUserID, "xdr-private", "xdr-private.tar.gz", []byte("not a bundle"), nil, true,
+	)
+	assertStatus(t, rr, http.StatusBadRequest)
+	policies, err := e.store.ListSkillPoliciesByHumanUser(alice.HumanUserID)
+	if err != nil || len(policies) != 0 {
+		t.Fatalf("failed upload should not create policy: %+v, %v", policies, err)
+	}
+
+	rr = e.privateSkillUploadFileWithOptions(
+		alice.HumanUserID, "xdr-private", "xdr-private.tar.gz",
+		makeSkillBundle(t, "xdr-private", map[string]any{
+			"name": "xdr-private", "runtime": "script", "platform": "xdr",
+		}), nil, true,
+	)
+	assertStatus(t, rr, http.StatusCreated)
+	policies, err = e.store.ListSkillPoliciesByHumanUser(alice.HumanUserID)
+	if err != nil || len(policies) != 1 ||
+		policies[0].SkillName != "xdr-private" ||
+		policies[0].Action != repo.SkillPolicyAllowOverride {
+		t.Fatalf("successful override policy = %+v, %v", policies, err)
+	}
+}
+
+func TestSkillAPI_PrivateUploadAllowsNonRunningPod(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	if err := e.store.UpdatePodState("pod-a", repo.PodStateStopped); err != nil {
@@ -600,10 +803,12 @@ func TestSkillAPI_PrivateUploadRejectsNonRunningPod(t *testing.T) {
 	}
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 
-	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", []byte("bundle"))
-	assertStatus(t, rr, http.StatusConflict)
+	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", makeSkillBundle(
+		t, "xdr-private", map[string]any{"name": "xdr-private", "runtime": "script"},
+	))
+	assertStatus(t, rr, http.StatusCreated)
 	if len(e.drv.execStdinCalls) != 0 {
-		t.Fatalf("non-running Pod should not exec installer: %+v", e.drv.execStdinCalls)
+		t.Fatalf("non-running Pod upload should not exec installer: %+v", e.drv.execStdinCalls)
 	}
 }
 
@@ -622,12 +827,23 @@ func (e *testEnv) privateSkillUploadFile(
 func (e *testEnv) privateSkillUploadFileWithPlatforms(
 	humanUserID, expectedName, filename string, bundle []byte, platforms []string,
 ) *httptest.ResponseRecorder {
+	return e.privateSkillUploadFileWithOptions(
+		humanUserID, expectedName, filename, bundle, platforms, false,
+	)
+}
+
+func (e *testEnv) privateSkillUploadFileWithOptions(
+	humanUserID, expectedName, filename string, bundle []byte, platforms []string, allowOverride bool,
+) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	_ = writer.WriteField("expectedName", expectedName)
 	if platforms != nil {
 		raw, _ := json.Marshal(platforms)
 		_ = writer.WriteField("platforms", string(raw))
+	}
+	if allowOverride {
+		_ = writer.WriteField("allowOverride", "true")
 	}
 	file, _ := writer.CreateFormFile("bundle", filename)
 	_, _ = file.Write(bundle)
@@ -670,7 +886,7 @@ func makeSkillBundle(t *testing.T, name string, manifest map[string]any) []byte 
 	var body bytes.Buffer
 	gz := gzip.NewWriter(&body)
 	tarball := tar.NewWriter(gz)
-	writeTarFile(t, tarball, name+"/SKILL.md", []byte("# "+name+"\n"))
+	writeTarFile(t, tarball, name+"/SKILL.md", []byte(skillMarkdownFixture(name)))
 	rawManifest, err := json.Marshal(manifest)
 	if err != nil {
 		t.Fatalf("marshal manifest: %v", err)
@@ -689,7 +905,7 @@ func makeZipSkillBundle(t *testing.T, name string, manifest map[string]any) []by
 	t.Helper()
 	var body bytes.Buffer
 	archive := zip.NewWriter(&body)
-	writeZipFile(t, archive, name+"/SKILL.md", []byte("# "+name+"\n"))
+	writeZipFile(t, archive, name+"/SKILL.md", []byte(skillMarkdownFixture(name)))
 	rawManifest, err := json.Marshal(manifest)
 	if err != nil {
 		t.Fatalf("marshal manifest: %v", err)
@@ -699,6 +915,10 @@ func makeZipSkillBundle(t *testing.T, name string, manifest map[string]any) []by
 		t.Fatalf("close zip: %v", err)
 	}
 	return body.Bytes()
+}
+
+func skillMarkdownFixture(name string) string {
+	return fmt.Sprintf("---\nname: %s\ndescription: %s test Skill.\n---\n# %s\n", name, name, name)
 }
 
 func makeZipWithFiles(t *testing.T, files map[string][]byte) []byte {

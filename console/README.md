@@ -68,7 +68,7 @@ Pod ── Runtime generation / service token / state volume
 | `server.consoleInternalURL` | `CONSOLE_INTERNAL_URL` | `http://muad-console:8080` | Worker 上报和 Resolver 地址 |
 | `runtime.driver` | `RUNTIME_DRIVER` | `docker` | `docker` 或 `k8s` |
 | `runtime.defaultImage` | `DEFAULT_IMAGE` | GHCR latest | Worker 默认镜像 |
-| `runtime.skillsDir` | `CONSOLE_SKILLS_DIR` | `/var/lib/muad-console/skills` | Public Skill 原始资产目录 |
+| `runtime.skillsDir` | `CONSOLE_SKILLS_DIR` | `/var/lib/muad-console/skills` | Skill 原始资产目录；K8s 配了 `publicSkillsMountPath` 且未显式覆盖时自动落到 `<mount>/.muad-skill-assets` |
 | `runtime.timezone` | `CONSOLE_RUNTIME_TIMEZONE` | `Asia/Shanghai` | Worker 时区 |
 | `runtime.stateDir` | `CONSOLE_RUNTIME_STATE_DIR` | `/home/node/.openclaw` | Worker 状态挂载点 |
 | `runtime.publicSkillsDir` | `CONSOLE_RUNTIME_PUBLIC_SKILLS_DIR` | `/opt/openclaw-skills` | Worker Public Skill 目录 |
@@ -79,6 +79,7 @@ Pod ── Runtime generation / service token / state volume
 | `browser.cdpPortStart/end` | `CONSOLE_RUNTIME_BROWSER_CDP_PORT_START/END` | `18802/65535` | 用户浏览器端口池 |
 | `k8s.namespace` | `K8S_NAMESPACE` | `muad` | Worker namespace |
 | `k8s.skillsPVC` | `K8S_SKILLS_PVC` | 空 | Public Skill RWX PVC 名 |
+| `k8s.publicSkillsMountPath` | `K8S_PUBLIC_SKILLS_MOUNT_PATH` | 空 | Console Pod 内同一 RWX PVC 的读写挂载路径 |
 | `k8s.skillsStorageClass` | `K8S_SKILLS_STORAGE_CLASS` | 空 | 可动态创建 RWX PVC 的 StorageClass |
 | `k8s.skillsSize` | `K8S_SKILLS_SIZE` | `5Gi` | Public Skill PVC 容量 |
 | `k8s.storageClass/stateSize` | `K8S_STORAGE_CLASS/K8S_STATE_SIZE` | 集群默认 / `5Gi` | 每 Pod state PVC |
@@ -111,6 +112,7 @@ runtime:
 k8s:
   namespace: muad
   skillsPVC: muad-skills
+  publicSkillsMountPath: /public
   skillsStorageClass: nfs-rwx
   skillsSize: 5Gi
   storageClass: local-path
@@ -118,8 +120,9 @@ k8s:
 ```
 
 - 每个 Worker Pod 使用独立 state PVC 保存用户工作区、会话、浏览器 Profile 和 Private Skill。
-- Public Skill 使用共享 RWX PVC。正式环境应使用 NFS、CephFS、EFS 或其他支持 RWX 的存储。
-- `skillsPVC` 和 `skillsStorageClass` 已配置时，可在 Skill 管理页创建 PVC；PVC Ready 前禁止上传 Public Skill。
+- Public Skill 使用共享 RWX PVC。Console 读写挂载同一个 PVC 到 `publicSkillsMountPath`，上传源默认保存到 `<publicSkillsMountPath>/.muad-skill-assets`，Worker 只读挂载 active 子目录。
+- `skillsPVC`、`publicSkillsMountPath` 和 `skillsStorageClass` 已配置时，Skill 管理页会检查 Public Skill 存储状态；PVC Ready 前禁止上传 Public Skill。
+- 使用 `k8s/console.yaml` 部署时，需要先准备好与 `k8s.skillsPVC` 同名的 RWX PVC，否则 Console Pod 会因 `/public` 挂载失败无法启动。
 - 只有 RWO 的默认 `local-path` 不能作为多 Pod Public Skill 共享卷。本地单节点可使用仓库 `k8s/` 下的 hostPath 静态 PV 进行功能测试。
 
 ## Skill 生效
@@ -127,12 +130,12 @@ k8s:
 ### Public Skill
 
 1. 上传 `.tar.gz` 或 `.zip`，包内必须且只能有一个有效 `SKILL.md`；需要业务登录态的 Skill 可通过 `muad.skill.json` 声明 1 到多个已创建平台，通用 Skill 可不声明平台。
-2. 上传、启用、禁用和删除先更新控制面状态并标记 Pod pending。
-3. 管理员点击“应用 Skill”后，控制面同步 active-only Public Skill 目录并对所有运行中 Pod 应用 Runtime Config。
+2. 上传、启用、禁用和删除先更新控制面状态并标记 Pod pending；K8s 模式下上传源默认已在 RWX NFS 中。
+3. 管理员点击“应用 Skill”后，控制面从上传源发布 active-only Public Skill 目录，并对所有运行中 Pod 应用 Runtime Config。
 
 ### Private Skill
 
-Private Skill 从用户详情上传。Console 通过 `ExecStdin` 调用目标 Pod 内的 installer，将文件写入该 Agent 的工作区；安装或删除后只调和目标 Pod，不需要全局“应用 Skill”。
+Private Skill 从用户详情上传。上传只保存控制面元数据和 Console 本地/NFS 私有目录，不立即写入 worker。管理员在用户详情的 Skill 页点击“应用到当前用户 Pod”后，Console 才会调用目标 Pod 内的 installer 同步该用户 active Private Skill，并应用该 Pod 的 Runtime Config。
 
 最小版本不再内置自研 Skill 执行/进度上报插件。Skill 上传、启禁用、删除和应用进入操作审计；“Skill 执行日志”保留为后续简易审计入口，实际执行反馈走 OpenClaw 原生回复。
 

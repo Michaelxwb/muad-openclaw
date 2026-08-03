@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -48,6 +49,7 @@ type skillBundleUpload struct {
 	Format              string
 	PlatformOverride    []string
 	PlatformOverrideSet bool
+	AllowOverride       bool
 }
 
 type skillAssetView struct {
@@ -191,8 +193,14 @@ func (s *Server) handleUploadPublicSkill(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
+	s.skillUploadMu.Lock()
+	defer s.skillUploadMu.Unlock()
 	result, err := installPublicSkillBundle(upload.Body, s.cfg.SkillsDir, s.rejectPublicSkillConflict)
 	if err != nil {
+		if errors.Is(err, repo.ErrSkillExists) || errors.Is(err, repo.ErrInvalidSkill) {
+			writeRepoError(w, err)
+			return
+		}
 		log.Printf("public_skill_upload_invalid error=%v", err)
 		writeErr(w, http.StatusBadRequest, codeInvalidField, publicSkillBundleClientMessage(err))
 		return
@@ -208,22 +216,41 @@ func (s *Server) handleUploadPublicSkill(w http.ResponseWriter, r *http.Request)
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖必须是已存在的业务平台")
 		return
 	}
-	asset, podIDs, err := s.store.UpsertPublicSkillAssetAndMarkPods(repo.SkillAsset{
-		Name: result.Name, Scope: repo.SkillScopePublic, DisplayName: result.Name,
-		Version: result.Version, SourcePath: result.TargetDir, ManifestHash: result.ManifestHash,
-		ManifestJSON: result.ManifestJSON, EntryType: result.EntryType,
-		PlatformsJSON:     mustMarshalStringSlice(result.Platforms),
-		ProgressSupported: result.ProgressSupported, BrowserRequired: result.BrowserRequired,
-	})
+	asset, podIDs, err := upsertPublicSkillAssetWithCleanup(
+		result.Name,
+		s.cfg.SkillsDir,
+		s.store.UpsertPublicSkillAssetAndMarkPods,
+		repo.SkillAsset{
+			Name: result.Name, Scope: repo.SkillScopePublic, DisplayName: result.Name,
+			Version: result.Version, SourcePath: result.TargetDir, ManifestHash: result.ManifestHash,
+			ManifestJSON: result.ManifestJSON, EntryType: result.EntryType,
+			PlatformsJSON:     mustMarshalStringSlice(result.Platforms),
+			ProgressSupported: result.ProgressSupported, BrowserRequired: result.BrowserRequired,
+		},
+	)
 	if err != nil {
 		writeRepoError(w, err)
 		return
 	}
-	s.enqueuePodIDs(podIDs)
 	s.auditSkill(r, auditlog.ActionSkillAssetInstall, asset, "installed", len(podIDs))
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"skill": skillAssetToView(asset), "affectedPodIds": podIDs,
 	})
+}
+
+func upsertPublicSkillAssetWithCleanup(
+	skillName, skillsRoot string,
+	upsert func(repo.SkillAsset) (repo.SkillAsset, []string, error),
+	asset repo.SkillAsset,
+) (repo.SkillAsset, []string, error) {
+	created, podIDs, err := upsert(asset)
+	if err != nil {
+		if cleanupErr := removePublicSkillDirectory(skillsRoot, skillName); cleanupErr != nil {
+			log.Printf("public_skill_upload_cleanup_failed skill=%s error=%v", skillName, cleanupErr)
+		}
+		return repo.SkillAsset{}, nil, err
+	}
+	return created, podIDs, nil
 }
 
 func (s *Server) publicSkillStorageReady(w http.ResponseWriter, r *http.Request) bool {
@@ -261,7 +288,6 @@ func (s *Server) handlePatchSkill(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, err)
 		return
 	}
-	s.enqueuePodIDs(podIDs)
 	if publicDeleteName != "" {
 		s.removePublicSkillAfterDelete(publicDeleteName)
 	}
@@ -289,6 +315,28 @@ func (s *Server) publicSkillDeleteTarget(
 func (s *Server) removePublicSkillAfterDelete(skillName string) {
 	if err := removePublicSkillDirectory(s.cfg.SkillsDir, skillName); err != nil {
 		log.Printf("public_skill_delete_cleanup_failed skill=%s error=%v", skillName, err)
+	}
+}
+
+func (s *Server) installPrivateSkillBundleForUser(
+	bundle []byte, humanUserID, expectedName string, allowOverride bool,
+) (privateSkillInstallResult, error) {
+	return installPrivateSkillBundle(
+		bundle, s.cfg.SkillsDir, humanUserID, expectedName,
+		func(name string) error {
+			return s.rejectPrivateSkillConflict(name, humanUserID, allowOverride)
+		},
+	)
+}
+
+func (s *Server) removePrivateSkillAfterDelete(humanUserID, skillName string) {
+	root, err := resolvePrivateSkillRoot(s.cfg.SkillsDir, humanUserID)
+	if err != nil {
+		log.Printf("private_skill_delete_cleanup_failed user=%s skill=%s error=%v", humanUserID, skillName, err)
+		return
+	}
+	if err := removePublicSkillDirectory(root, skillName); err != nil {
+		log.Printf("private_skill_delete_cleanup_failed user=%s skill=%s error=%v", humanUserID, skillName, err)
 	}
 }
 
@@ -329,7 +377,6 @@ func (s *Server) handleCreateSkillPolicy(w http.ResponseWriter, r *http.Request)
 		writeRepoError(w, err)
 		return
 	}
-	s.enqueueReconcile(podID)
 	s.auditSkillPolicy(r, auditlog.ActionSkillPolicyCreate, created, podID, "created")
 	writeJSON(w, http.StatusCreated, skillPolicyToView(created))
 }
@@ -343,49 +390,70 @@ func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	result, err := s.installPrivateSkillInPod(
-		r, pod.PodID, user.AgentID, upload.ExpectedName, upload.Format, upload.Body,
+	if upload.AllowOverride && strings.TrimSpace(upload.ExpectedName) == "" {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "覆盖 Public Skill 时必须指定 Skill 名称")
+		return
+	}
+	s.skillUploadMu.Lock()
+	defer s.skillUploadMu.Unlock()
+	result, err := s.installPrivateSkillBundleForUser(
+		upload.Body, user.HumanUserID, upload.ExpectedName, upload.AllowOverride,
 	)
 	if err != nil {
-		writeRuntimeFailure(w, err, "install private Skill failed")
+		if errors.Is(err, repo.ErrSkillExists) || errors.Is(err, repo.ErrInvalidSkill) {
+			writeRepoError(w, err)
+			return
+		}
+		log.Printf("private_skill_upload_invalid user=%s error=%v", user.HumanUserID, err)
+		writeErr(w, http.StatusBadRequest, codeInvalidField, publicSkillBundleClientMessage(err))
 		return
 	}
 	result, err = applySkillPlatformOverride(result, upload)
 	if err != nil {
-		_ = s.deletePrivateSkillInPod(r, pod.PodID, user.AgentID, result.Name)
+		s.removePrivateSkillAfterDelete(user.HumanUserID, result.Name)
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖非法")
 		return
 	}
 	if err := s.requireExistingSkillPlatforms(result.Platforms); err != nil {
-		_ = s.deletePrivateSkillInPod(r, pod.PodID, user.AgentID, result.Name)
+		s.removePrivateSkillAfterDelete(user.HumanUserID, result.Name)
 		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖必须是已存在的业务平台")
 		return
 	}
-	if err := s.rejectPrivateSkillConflict(result.Name, user.HumanUserID); err != nil {
-		_ = s.deletePrivateSkillInPod(r, pod.PodID, user.AgentID, result.Name)
-		writeRepoError(w, err)
-		return
-	}
-	asset, err := s.store.CreatePrivateSkillAssetAndMarkPod(repo.SkillAsset{
+	policy := privateUploadPolicy(upload, user.HumanUserID, result.Name, actorFrom(r.Context()))
+	asset, policyCreated, err := s.store.CreatePrivateSkillAssetAndPolicyAndMarkPod(repo.SkillAsset{
 		Name: result.Name, Scope: repo.SkillScopePrivate, HumanUserID: user.HumanUserID,
 		PodID: pod.PodID, DisplayName: result.Name, Version: result.Version,
 		SourcePath: result.TargetDir, ManifestHash: result.ManifestHash,
 		ManifestJSON: result.ManifestJSON, EntryType: result.EntryType,
 		PlatformsJSON:     mustMarshalStringSlice(result.Platforms),
 		ProgressSupported: result.ProgressSupported, BrowserRequired: result.BrowserRequired,
-	})
+	}, policy)
 	if err != nil {
-		_ = s.deletePrivateSkillInPod(r, pod.PodID, user.AgentID, result.Name)
+		s.removePrivateSkillAfterDelete(user.HumanUserID, result.Name)
 		writeRepoError(w, err)
 		return
 	}
-	s.enqueueReconcile(pod.PodID)
 	s.auditSkill(r, auditlog.ActionSkillAssetInstall, asset, "installed", 1)
+	if policyCreated != nil {
+		s.auditSkillPolicy(r, auditlog.ActionSkillPolicyCreate, *policyCreated, pod.PodID, "created")
+	}
 	writeJSON(w, http.StatusCreated, map[string]any{"skill": skillAssetToView(asset)})
 }
 
+func privateUploadPolicy(
+	upload skillBundleUpload, humanUserID, skillName, actor string,
+) *repo.SkillPolicy {
+	if !upload.AllowOverride {
+		return nil
+	}
+	return &repo.SkillPolicy{
+		HumanUserID: humanUserID, SkillName: skillName,
+		Action: repo.SkillPolicyAllowOverride, Reason: "console", CreatedBy: actor,
+	}
+}
+
 func (s *Server) handleDeletePrivateSkill(w http.ResponseWriter, r *http.Request) {
-	user, pod, ok := s.privateSkillTarget(w, r.PathValue("humanUserId"))
+	user, _, ok := s.privateSkillTarget(w, r.PathValue("humanUserId"))
 	if !ok {
 		return
 	}
@@ -398,16 +466,12 @@ func (s *Server) handleDeletePrivateSkill(w http.ResponseWriter, r *http.Request
 		writeRepoError(w, repo.ErrNotFound)
 		return
 	}
-	if err := s.deletePrivateSkillInPod(r, pod.PodID, user.AgentID, asset.Name); err != nil {
-		writeRuntimeFailure(w, err, "delete private Skill failed")
-		return
-	}
 	deleted, err := s.store.DeletePrivateSkillAssetAndMarkPod(asset.SkillID, user.HumanUserID)
 	if err != nil {
 		writeRepoError(w, err)
 		return
 	}
-	s.enqueueReconcile(pod.PodID)
+	s.removePrivateSkillAfterDelete(user.HumanUserID, asset.Name)
 	s.auditSkill(r, auditlog.ActionSkillAssetDelete, deleted, "deleted", 1)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": true, "skillId": asset.SkillID})
 }
@@ -424,7 +488,6 @@ func (s *Server) handleDeleteSkillPolicy(w http.ResponseWriter, r *http.Request)
 		writeRepoError(w, err)
 		return
 	}
-	s.enqueueReconcile(podID)
 	s.auditSkillPolicy(r, auditlog.ActionSkillPolicyDelete, repo.SkillPolicy{
 		PolicyID: r.PathValue("policyId"), HumanUserID: r.PathValue("humanUserId"),
 	}, podID, "deleted")
@@ -442,10 +505,6 @@ func (s *Server) privateSkillTarget(
 	pod, err := s.store.GetPod(user.PodID)
 	if err != nil {
 		writeRepoError(w, err)
-		return repo.HumanUser{}, repo.Pod{}, false
-	}
-	if pod.State != repo.PodStateRunning {
-		writeErr(w, http.StatusConflict, codePodStateConflict, "Pod state does not allow this operation")
 		return repo.HumanUser{}, repo.Pod{}, false
 	}
 	return user, pod, true
@@ -486,9 +545,14 @@ func readSkillBundleUpload(w http.ResponseWriter, r *http.Request, allowedExts .
 	if !ok {
 		return skillBundleUpload{}, false
 	}
+	allowOverride, ok := readSkillUploadAllowOverride(w, r)
+	if !ok {
+		return skillBundleUpload{}, false
+	}
 	return skillBundleUpload{
 		Body: buffer.Bytes(), ExpectedName: strings.TrimSpace(r.FormValue("expectedName")),
 		Format: format, PlatformOverride: platforms, PlatformOverrideSet: platformsSet,
+		AllowOverride: allowOverride,
 	}, true
 }
 
@@ -505,13 +569,21 @@ func skillBundleFormat(filename string, allowedExts []string) (string, bool) {
 func publicSkillBundleClientMessage(err error) string {
 	message := err.Error()
 	switch {
-	case strings.Contains(message, "exactly one SKILL.md"):
-		return "Skill 包必须且只能包含一个 SKILL.md"
+	case strings.Contains(message, "OpenClaw frontmatter name and description"):
+		return "Public Skill 的 SKILL.md 必须包含 OpenClaw YAML frontmatter：name 和 description"
+	case strings.Contains(message, "must match SKILL.md frontmatter name"):
+		return "muad.skill.json.name 必须与 SKILL.md frontmatter name 一致"
+	case strings.Contains(message, "must contain a SKILL.md") ||
+		strings.Contains(message, "must contain SKILL.md"):
+		return "Skill 包必须包含一个明确的主 SKILL.md"
+	case strings.Contains(message, "multiple top-level Skill roots"):
+		return "Skill 包包含多个同层 Skill 根目录，请拆分后分别上传"
 	case strings.Contains(message, "invalid skill name"):
 		return "Skill 名称非法，请在 muad.skill.json.name 中使用小写字母、数字、- 或 _"
 	case strings.Contains(message, "invalid platform dependency"):
 		return "Skill 平台依赖非法"
-	case strings.Contains(message, "decode Skill manifest"):
+	case strings.Contains(message, "decode Skill manifest") ||
+		strings.Contains(message, "invalid Skill manifest"):
 		return "muad.skill.json 格式非法"
 	case strings.Contains(message, "parent path") ||
 		strings.Contains(message, "absolute path") ||
@@ -525,54 +597,28 @@ func publicSkillBundleClientMessage(err error) string {
 	}
 }
 
-func (s *Server) installPrivateSkillInPod(
-	r *http.Request, podID, agentID, expectedName, format string, bundle []byte,
-) (privateSkillInstallResult, error) {
-	args := []string{
-		"node", "/opt/muad/private-skill-installer.mjs", "install",
-		"--agent-id", agentID, "--bundle-format", format,
-	}
-	if expectedName != "" {
-		args = append(args, "--expected-name", expectedName)
-	}
-	output, err := s.drv.ExecStdin(r.Context(), podID, bytes.NewReader(bundle), args...)
-	if err != nil {
-		log.Printf("private_skill_install_failed pod=%s agent=%s error=%v", podID, agentID, err)
-		return privateSkillInstallResult{}, err
-	}
-	var result privateSkillInstallResult
-	if err := json.Unmarshal([]byte(output), &result); err != nil || !result.OK || result.Name == "" {
-		return privateSkillInstallResult{}, errors.New("invalid installer response")
-	}
-	return result, nil
-}
-
-func (s *Server) deletePrivateSkillInPod(
-	r *http.Request, podID, agentID, skillName string,
+func (s *Server) rejectPrivateSkillConflict(
+	name, humanUserID string, requestedAllowOverride bool,
 ) error {
-	_, err := s.drv.ExecStdin(r.Context(), podID, strings.NewReader(""),
-		"node", "/opt/muad/private-skill-installer.mjs", "delete",
-		"--agent-id", agentID, "--skill-name", skillName)
-	if err != nil {
-		log.Printf("private_skill_delete_failed pod=%s agent=%s skill=%s error=%v", podID, agentID, skillName, err)
-	}
-	return err
-}
-
-func (s *Server) rejectPrivateSkillConflict(name, humanUserID string) error {
 	assets, err := s.store.ListSkillAssetsByName(name)
 	if err != nil {
 		return err
 	}
-	allowOverride, err := s.hasAllowOverridePolicy(humanUserID, name)
-	if err != nil {
-		return err
+	allowOverride := requestedAllowOverride
+	if !allowOverride {
+		allowOverride, err = s.hasAllowOverridePolicy(humanUserID, name)
+		if err != nil {
+			return err
+		}
 	}
 	for _, asset := range assets {
 		if asset.Scope == repo.SkillScopeSystem {
 			return repo.ErrInvalidSkill
 		}
 		if asset.Scope == repo.SkillScopePublic && !allowOverride {
+			return repo.ErrSkillExists
+		}
+		if asset.Scope == repo.SkillScopePrivate && asset.HumanUserID == strings.TrimSpace(humanUserID) {
 			return repo.ErrSkillExists
 		}
 	}
@@ -587,6 +633,9 @@ func (s *Server) rejectPublicSkillConflict(name string) error {
 	for _, asset := range assets {
 		if asset.Scope == repo.SkillScopeSystem {
 			return repo.ErrInvalidSkill
+		}
+		if asset.Scope == repo.SkillScopePublic {
+			return repo.ErrSkillExists
 		}
 	}
 	return nil
@@ -619,6 +668,19 @@ func readSkillUploadPlatforms(
 		return nil, false, false
 	}
 	return platforms, true, true
+}
+
+func readSkillUploadAllowOverride(w http.ResponseWriter, r *http.Request) (bool, bool) {
+	raw := strings.TrimSpace(r.FormValue("allowOverride"))
+	if raw == "" {
+		return false, true
+	}
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid allowOverride")
+		return false, false
+	}
+	return value, true
 }
 
 func normalizeUploadPlatforms(values []string) ([]string, error) {

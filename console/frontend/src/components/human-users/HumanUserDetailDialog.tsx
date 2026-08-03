@@ -12,6 +12,7 @@ import { PlatformCredentialManager } from "./PlatformCredentialManager";
 import styles from "../HumanUsersPanel.module.css";
 
 const BASIC_FORM_ID = "human-user-basic-form";
+const DETAIL_DIALOG_WIDTH = 1120;
 
 interface Props {
   pod: Pod;
@@ -61,7 +62,7 @@ export function HumanUserDetailDialog(props: Props) {
   };
   return (
     <Modal
-      className="standard-modal"
+      className={`standard-modal ${styles.detailDialog}`}
       title={`用户详情 ${state.detail?.humanUser.displayName ?? ""}`}
       visible={props.humanUserId !== null}
       onCancel={props.onClose}
@@ -78,7 +79,7 @@ export function HumanUserDetailDialog(props: Props) {
           </Button>
         </div>
       }
-      width={760}
+      width={DETAIL_DIALOG_WIDTH}
     >
       <FeedbackBanner error={state.error} />
       {state.loading && !state.detail ? (

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS pods (
 	service_token_rotated_at TEXT NOT NULL,
 	config_generation INTEGER NOT NULL DEFAULT 1 CHECK (config_generation > 0),
 	applied_generation INTEGER NOT NULL DEFAULT 0 CHECK (applied_generation >= 0),
+	skills_pending INTEGER NOT NULL DEFAULT 0 CHECK (skills_pending IN (0,1)),
 	last_config_hash TEXT NOT NULL DEFAULT '',
 	last_apply_status TEXT NOT NULL DEFAULT 'pending'
 		CHECK (last_apply_status IN ('pending','applying','applied','failed')),
@@ -218,11 +219,30 @@ func (s *Store) migrate() error {
 	if _, err := s.db.Exec(schemaDDL); err != nil {
 		return fmt.Errorf("create multi-user schema: %w", err)
 	}
+	if err := s.migratePodSkillsPending(); err != nil {
+		return err
+	}
 	if err := s.migrateSkillAssetEntryTypes(); err != nil {
 		return err
 	}
 	if err := s.migrateSkillExecutionRecords(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (s *Store) migratePodSkillsPending() error {
+	exists, err := columnExists(s.db, "skills_pending")
+	if err != nil {
+		return fmt.Errorf("inspect Pod skills_pending column: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	_, err = s.db.Exec(`ALTER TABLE pods ADD COLUMN skills_pending INTEGER NOT NULL DEFAULT 0
+		CHECK (skills_pending IN (0,1))`)
+	if err != nil {
+		return fmt.Errorf("add Pod skills_pending column: %w", err)
 	}
 	return nil
 }
@@ -254,4 +274,26 @@ func tableExists(db *sql.DB, name string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func columnExists(db *sql.DB, column string) (bool, error) {
+	rows, err := db.Query(`PRAGMA table_info(pods)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notNull int
+		var defaultValue sql.NullString
+		var primaryKey int
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &defaultValue, &primaryKey); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
 }

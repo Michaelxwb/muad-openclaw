@@ -11,9 +11,14 @@ const LEVEL_COLORS: Record<Alert["level"], string> = {
   P2: "var(--semi-color-warning)",
   P3: "var(--semi-color-text-2)",
 };
+const ALERTS_REFRESH_EVENT = "muad:alerts-refresh";
 
 interface Props {
   loadAlerts?: () => Promise<Alert[]>;
+}
+
+export function requestAlertsRefresh() {
+  window.dispatchEvent(new Event(ALERTS_REFRESH_EVENT));
 }
 
 export function NotificationBell({ loadAlerts = api.alerts }: Props) {
@@ -79,7 +84,11 @@ function useAlerts(loadAlerts: () => Promise<Alert[]>) {
   useEffect(() => {
     refresh();
     const timer = setInterval(refresh, 30000);
-    return () => clearInterval(timer);
+    window.addEventListener(ALERTS_REFRESH_EVENT, refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(ALERTS_REFRESH_EVENT, refresh);
+    };
   }, [refresh]);
   return { alerts, error, refresh };
 }
@@ -128,6 +137,7 @@ function AlertDetails({ alert }: { alert: Alert }) {
     detail(alert, "queued", "排队"),
     detail(alert, "limit", "上限"),
     detail(alert, "count", "次数"),
+    detail(alert, "error", "错误"),
   ].filter((value): value is string => Boolean(value));
   return details.length > 0 ? <span className={styles.details}>{details.join(" · ")}</span> : null;
 }

@@ -83,7 +83,8 @@ func (s *Store) effectiveSkillContext(user HumanUser) (effectiveSkillContext, er
 		Platforms:      indexPlatformConfigs(platforms),
 		Credentials:    indexCredentialSummaries(credentials),
 		LastExecutions: last,
-		RuntimePending: pod.LastApplyStatus != ApplyStatusApplied || pod.AppliedGeneration < pod.ConfigGeneration,
+		RuntimePending: pod.SkillsPending ||
+			pod.LastApplyStatus != ApplyStatusApplied || pod.AppliedGeneration < pod.ConfigGeneration,
 	}, nil
 }
 

@@ -114,7 +114,7 @@ func (s *Server) newPodRecord(request createPodRequest) (repo.Pod, serviceTokenM
 		MemLimit: request.MemLimit, CPULimit: request.CPULimit, RestartPolicy: request.RestartPolicy,
 		MaxSkillConcurrency: request.MaxSkillConcurrency, MaxBrowserConcurrency: request.MaxBrowserConcurrency,
 		ServiceTokenEnc: token.encrypted, ServiceTokenFingerprint: token.fingerprint,
-		ServiceTokenRotatedAt: token.rotatedAt,
+		ServiceTokenRotatedAt: token.rotatedAt, SkillsPending: true,
 	}, token, nil
 }
 

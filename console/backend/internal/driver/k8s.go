@@ -36,6 +36,7 @@ type K8sDriver struct {
 	restConfig         *rest.Config // for exec; nil in unit tests
 	namespace          string
 	skillsPVC          string // shared RWX claim name, mounted read-only (optional)
+	publicSkillsMount  string // Console-local mount path for the shared RWX claim
 	skillsStorageClass string
 	skillsSize         string
 	runtime            RuntimeOptions
@@ -47,6 +48,7 @@ type K8sDriver struct {
 type K8sOptions struct {
 	Namespace          string
 	SkillsPVC          string
+	PublicSkillsMount  string
 	SkillsStorageClass string
 	SkillsSize         string
 	Runtime            RuntimeOptions
@@ -87,8 +89,9 @@ func NewK8sDriver(o K8sOptions) (*K8sDriver, error) {
 	}
 	return &K8sDriver{
 		client: cs, metrics: mc, restConfig: cfg,
-		namespace: ns, skillsPVC: o.SkillsPVC, skillsStorageClass: o.SkillsStorageClass,
-		skillsSize: skillsSize, runtime: o.Runtime.withDefaults(),
+		namespace: ns, skillsPVC: o.SkillsPVC, publicSkillsMount: o.PublicSkillsMount,
+		skillsStorageClass: o.SkillsStorageClass,
+		skillsSize:         skillsSize, runtime: o.Runtime.withDefaults(),
 		storageClass: o.StorageClass, stateSize: size,
 	}, nil
 }
@@ -118,6 +121,11 @@ func (d *K8sDriver) Create(ctx context.Context, spec PodSpec) error {
 	}
 	if err := d.upsertServiceTokenSecret(ctx, spec); err != nil {
 		return err
+	}
+	if d.publicSkillsConfigured() {
+		if err := d.ensurePublicSkillsActiveDir(); err != nil {
+			return err
+		}
 	}
 	return d.upsertDeployment(ctx, spec, name)
 }
@@ -266,7 +274,7 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 			Name: "service-token-runtime", MountPath: "/run/secrets/muad", ReadOnly: true,
 		})
 	}
-	if d.skillsPVC != "" {
+	if d.publicSkillsConfigured() {
 		vols = append(vols, publicSkillsVolume(d.skillsPVC))
 		mounts = append(mounts, d.publicSkillsVolumeMount())
 	}
@@ -350,11 +358,19 @@ func publicSkillsVolume(claimName string) corev1.Volume {
 }
 
 func (d *K8sDriver) publicSkillsVolumeMount() corev1.VolumeMount {
-	return corev1.VolumeMount{
+	mount := corev1.VolumeMount{
 		Name:      "skills",
 		MountPath: d.runtime.withDefaults().PublicSkillsDir,
 		ReadOnly:  true,
 	}
+	if strings.TrimSpace(d.publicSkillsMount) != "" {
+		mount.SubPath = dockerActivePublicSkillsDir
+	}
+	return mount
+}
+
+func (d *K8sDriver) publicSkillsConfigured() bool {
+	return strings.TrimSpace(d.skillsPVC) != "" && strings.TrimSpace(d.publicSkillsMount) != ""
 }
 
 func (d *K8sDriver) scale(ctx context.Context, podID string, n int32) error {

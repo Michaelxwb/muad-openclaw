@@ -78,36 +78,75 @@ func (s *Store) CreateSkillAsset(asset SkillAsset) (SkillAsset, error) {
 // CreatePrivateSkillAssetAndMarkPod inserts private Skill metadata and marks
 // the owning Pod pending in one transaction.
 func (s *Store) CreatePrivateSkillAssetAndMarkPod(asset SkillAsset) (SkillAsset, error) {
-	prepared, err := prepareSkillAsset(asset)
+	created, _, err := s.CreatePrivateSkillAssetAndPolicyAndMarkPod(asset, nil)
+	return created, err
+}
+
+// CreatePrivateSkillAssetAndPolicyAndMarkPod inserts private Skill metadata,
+// optionally inserts its allow_override policy, and marks the Pod pending.
+func (s *Store) CreatePrivateSkillAssetAndPolicyAndMarkPod(
+	asset SkillAsset, policy *SkillPolicy,
+) (SkillAsset, *SkillPolicy, error) {
+	prepared, preparedPolicy, err := preparePrivateSkillAssetPolicy(asset, policy)
 	if err != nil {
-		return SkillAsset{}, err
-	}
-	if prepared.Scope != SkillScopePrivate {
-		return SkillAsset{}, ErrInvalidSkill
+		return SkillAsset{}, nil, err
 	}
 	tx, err := s.db.Begin()
 	if err != nil {
-		return SkillAsset{}, fmt.Errorf("begin create private Skill asset: %w", err)
+		return SkillAsset{}, nil, fmt.Errorf("begin create private Skill asset: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 	if err := ensurePodExists(tx, prepared.PodID); err != nil {
-		return SkillAsset{}, err
+		return SkillAsset{}, nil, err
 	}
 	if _, err := getHumanUserTx(tx, prepared.HumanUserID); err != nil {
-		return SkillAsset{}, err
+		return SkillAsset{}, nil, err
 	}
 	if err := insertSkillAssetTx(tx, prepared); isUniqueConstraint(err) {
-		return SkillAsset{}, ErrSkillExists
+		return SkillAsset{}, nil, ErrSkillExists
 	} else if err != nil {
-		return SkillAsset{}, err
+		return SkillAsset{}, nil, err
 	}
-	if err := markPodConfigPendingTx(tx, prepared.PodID); err != nil {
-		return SkillAsset{}, err
+	if preparedPolicy != nil {
+		if err := insertSkillPolicy(tx, *preparedPolicy); err != nil {
+			return SkillAsset{}, nil, err
+		}
+	}
+	if err := markPodSkillsPendingTx(tx, prepared.PodID); err != nil {
+		return SkillAsset{}, nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		return SkillAsset{}, fmt.Errorf("commit create private Skill asset: %w", err)
+		return SkillAsset{}, nil, fmt.Errorf("commit create private Skill asset: %w", err)
 	}
-	return prepared, nil
+	if preparedPolicy == nil {
+		return prepared, nil, nil
+	}
+	return prepared, preparedPolicy, nil
+}
+
+func preparePrivateSkillAssetPolicy(
+	asset SkillAsset, policy *SkillPolicy,
+) (SkillAsset, *SkillPolicy, error) {
+	prepared, err := prepareSkillAsset(asset)
+	if err != nil {
+		return SkillAsset{}, nil, err
+	}
+	if prepared.Scope != SkillScopePrivate {
+		return SkillAsset{}, nil, ErrInvalidSkill
+	}
+	if policy == nil {
+		return prepared, nil, nil
+	}
+	preparedPolicy, err := prepareSkillPolicy(*policy)
+	if err != nil {
+		return SkillAsset{}, nil, err
+	}
+	if preparedPolicy.HumanUserID != prepared.HumanUserID ||
+		preparedPolicy.SkillName != prepared.Name ||
+		preparedPolicy.Action != SkillPolicyAllowOverride {
+		return SkillAsset{}, nil, ErrInvalidSkill
+	}
+	return prepared, &preparedPolicy, nil
 }
 
 // UpsertPublicSkillAssetAndMarkPods creates or updates public Skill metadata
@@ -145,7 +184,7 @@ func (s *Store) UpsertPublicSkillAssetAndMarkPods(asset SkillAsset) (SkillAsset,
 			return SkillAsset{}, nil, err
 		}
 	}
-	podIDs, err := markAllPodsConfigPendingTx(tx)
+	podIDs, err := markAllPodsSkillsPendingTx(tx)
 	if err != nil {
 		return SkillAsset{}, nil, err
 	}
@@ -232,7 +271,7 @@ func (s *Store) DeletePrivateSkillAssetAndMarkPod(skillID, humanUserID string) (
 	if err := affectedOrNotFound(result, err, "delete private Skill asset"); err != nil {
 		return SkillAsset{}, err
 	}
-	if err := markPodConfigPendingTx(tx, asset.PodID); err != nil {
+	if err := markPodSkillsPendingTx(tx, asset.PodID); err != nil {
 		return SkillAsset{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -308,7 +347,7 @@ func (s *Store) CreateSkillPolicyAndMarkPod(policy SkillPolicy) (SkillPolicy, st
 	if err := insertSkillPolicy(tx, prepared); err != nil {
 		return SkillPolicy{}, "", err
 	}
-	if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
+	if err := markPodSkillsPendingTx(tx, user.PodID); err != nil {
 		return SkillPolicy{}, "", err
 	}
 	if err := tx.Commit(); err != nil {
@@ -358,7 +397,7 @@ func (s *Store) DeleteSkillPolicyForHumanUserAndMarkPod(policyID, humanUserID st
 	if err := affectedOrNotFound(res, err, "delete Skill policy"); err != nil {
 		return "", err
 	}
-	if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
+	if err := markPodSkillsPendingTx(tx, user.PodID); err != nil {
 		return "", err
 	}
 	if err := tx.Commit(); err != nil {
@@ -663,12 +702,41 @@ func getSkillPolicyTx(tx *sql.Tx, policyID string) (SkillPolicy, error) {
 
 func markSkillAssetPodsPendingTx(tx *sql.Tx, asset SkillAsset) ([]string, error) {
 	if asset.Scope == SkillScopePrivate {
-		if err := markPodConfigPendingTx(tx, asset.PodID); err != nil {
+		if err := markPodSkillsPendingTx(tx, asset.PodID); err != nil {
 			return nil, err
 		}
 		return []string{asset.PodID}, nil
 	}
-	return markAllPodsConfigPendingTx(tx)
+	return markAllPodsSkillsPendingTx(tx)
+}
+
+func markPodSkillsPendingTx(tx *sql.Tx, podID string) error {
+	res, err := tx.Exec(`UPDATE pods SET config_generation = config_generation + 1,
+		skills_pending = 1, last_apply_status = 'pending', last_apply_error = '', updated_at = ?
+		WHERE pod_id = ?`, formatTime(time.Now().UTC()), podID)
+	return affectedOrNotFound(res, err, "mark Pod Skills pending")
+}
+
+func markAllPodsSkillsPendingTx(tx *sql.Tx) ([]string, error) {
+	rows, err := tx.Query(`UPDATE pods SET config_generation = config_generation + 1,
+		skills_pending = 1, last_apply_status = 'pending', last_apply_error = '', updated_at = ?
+		RETURNING pod_id`, formatTime(time.Now().UTC()))
+	if err != nil {
+		return nil, fmt.Errorf("mark all Pod Skills pending: %w", err)
+	}
+	defer rows.Close()
+	var podIDs []string
+	for rows.Next() {
+		var podID string
+		if err := rows.Scan(&podID); err != nil {
+			return nil, fmt.Errorf("scan Pod Skills pending: %w", err)
+		}
+		podIDs = append(podIDs, podID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate Pod Skills pending: %w", err)
+	}
+	return podIDs, nil
 }
 
 func skillAssetWhere(filter SkillAssetListFilter) (string, []any) {

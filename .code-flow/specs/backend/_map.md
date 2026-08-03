@@ -13,6 +13,7 @@
 - Storage: SQLite via `internal/repo`（modernc.org/sqlite）
 - Runtime: `internal/driver` 抽象 Docker / Kubernetes
 - Apply path: `runtimeconfig` 构建 DTO → `runtimeapply` 事务应用
+- Skill 同步: `skillsync` 单实例串行（公共锁/try-lock/冷却）→ `driver` 直写共享存储生成 active 视图
 - Frontend: 生产构建由 `internal/web` 嵌入
 
 ## Key Files
@@ -25,6 +26,7 @@
 | `console/backend/internal/driver/` | RuntimeDriver（docker/k8s） |
 | `console/backend/internal/runtimeconfig/` | 多用户 runtime 配置构建 |
 | `console/backend/internal/runtimeapply/` | 配置事务 apply + 健康/回滚 |
+| `console/backend/internal/skillsync/` | 控制面 skill 文件与运行时对齐（public/private 同步、全局锁、hash 检测） |
 | `console/backend/internal/auth/` / `crypto/` | 鉴权与敏感字段编解码 |
 | `console/backend/internal/audit/` / `collector/` | 操作审计与采集 |
 | `console/backend/internal/config/` | 服务配置加载 |
@@ -41,6 +43,7 @@ console/backend/
 │   ├── driver/           # Docker/K8s runtime
 │   ├── runtimeconfig/    # desired config builder
 │   ├── runtimeapply/     # atomic apply pipeline
+│   ├── skillsync/        # skill 同步与并发安全
 │   ├── auth/ crypto/ llm/ gateway/ monitor/
 │   └── web/              # embed SPA
 ├── test/

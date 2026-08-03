@@ -113,8 +113,16 @@ type RuntimeDriver interface {
 	UpdateSpec(ctx context.Context, podID string, spec PodSpec) error
 	// UpdateServiceToken rotates only the fixed secret file/Secret resource.
 	UpdateServiceToken(ctx context.Context, podID string, secret SecretFileSpec) error
-	// SyncPublicSkills makes Console-managed public Skill files visible to the
-	// running runtime before the Runtime DTO is applied.
+	// SyncPublicSkillFiles publishes Console-managed public Skill files into
+	// the shared runtime-visible storage.
+	SyncPublicSkillFiles(ctx context.Context, sourceDir string) error
+	// PublicSkillFilesSignature returns the signature published with the
+	// currently runtime-visible public Skill files, or an empty string when absent.
+	PublicSkillFilesSignature(ctx context.Context) (string, error)
+	// EnsurePublicSkillsMount makes the shared public Skill storage visible to
+	// one running runtime.
+	EnsurePublicSkillsMount(ctx context.Context, podID string) error
+	// SyncPublicSkills keeps the old combined operation for direct driver tests.
 	SyncPublicSkills(ctx context.Context, podID, sourceDir string) error
 	PublicSkillsStorageStatus(ctx context.Context) (PublicSkillsStorageStatus, error)
 	EnsurePublicSkillsStorage(ctx context.Context) (PublicSkillsStorageStatus, error)

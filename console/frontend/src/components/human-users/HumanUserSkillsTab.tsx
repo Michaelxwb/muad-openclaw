@@ -1,10 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Input, Modal, Select, Space, Table, Tag, Toast, Upload } from "@douyinfe/semi-ui";
+import type { MutableRefObject } from "react";
+import {
+  Button,
+  Checkbox,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Toast,
+  Upload,
+} from "@douyinfe/semi-ui";
 import type { FileItem } from "@douyinfe/semi-ui/lib/es/upload";
-import { IconPlus, IconSearch, IconRefresh } from "@douyinfe/semi-icons";
+import { IconPlay, IconPlus, IconSearch, IconRefresh } from "@douyinfe/semi-icons";
 import { api } from "../../api";
 import type { EffectiveSkill, HumanUser, Platform } from "../../api";
 import { FeedbackBanner, ListToolbar } from "../ConsolePage";
+import { requestAlertsRefresh } from "../NotificationBell";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import styles from "../HumanUsersPanel.module.css";
 
@@ -17,6 +30,12 @@ const SKILL_STATUS_OPTIONS = [
   { label: "缺凭证", value: "missing_credential" },
   { label: "禁用", value: "disabled" },
 ];
+const SKILL_TABLE_SCROLL_X = 1040;
+const POST_APPLY_REFRESH_DELAYS_MS = [1000, 3000, 7000, 15000];
+
+interface RefreshOptions {
+  background?: boolean;
+}
 
 export function HumanUserSkillsTab({
   user,
@@ -27,17 +46,90 @@ export function HumanUserSkillsTab({
 }) {
   const state = useHumanUserSkills(user.humanUserId);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const applyRefreshTimersRef = useRef<number[]>([]);
+  const mountedRef = useMountedRef();
+
+  useEffect(
+    () => () => {
+      clearApplyRefreshTimers(applyRefreshTimersRef);
+    },
+    [],
+  );
+
   const changed = async () => {
     await Promise.all([state.refresh(), onChanged()]);
   };
+  const refreshApplyState = () => {
+    requestAlertsRefresh();
+    void state.refresh({ background: true });
+  };
+  const schedulePostApplyRefresh = () => {
+    clearApplyRefreshTimers(applyRefreshTimersRef);
+    refreshApplyState();
+    void onChanged().catch((caught) => {
+      if (mountedRef.current)
+        Toast.warning(caught instanceof Error ? caught.message : "应用已提交，但刷新状态失败");
+    });
+    applyRefreshTimersRef.current = POST_APPLY_REFRESH_DELAYS_MS.map((delay) =>
+      window.setTimeout(() => {
+        if (!mountedRef.current) return;
+        refreshApplyState();
+      }, delay),
+    );
+  };
+  const applyCurrentPodSkills = () => {
+    Modal.confirm({
+      title: "应用 Skill 到当前用户 Pod",
+      content: `将同步 ${user.displayName || user.humanUserId} 的 Private Skill、Public Skill 和 allow skills 配置。`,
+      okText: "应用 Skill",
+      onOk: async () => {
+        setApplying(true);
+        let submitted = false;
+        try {
+          const result = await api.reloadSkills([user.podId]);
+          if (!mountedRef.current) return;
+          const status = result.results[user.podId] ?? "unknown";
+          const warning = result.warnings?.join("；");
+          if (warning) {
+            Toast.warning(`${userSkillApplyMessage(status)} ${warning}`);
+          } else if (status === "queued") {
+            Toast.success("Skill 应用已提交到当前用户 Pod");
+          } else if (status === "synced") {
+            Toast.success("当前用户 Pod 的 Skill 文件已同步");
+          } else {
+            Toast.warning(userSkillApplyMessage(status));
+          }
+          submitted = true;
+        } catch (caught) {
+          if (mountedRef.current) {
+            Toast.error(caught instanceof Error ? caught.message : "应用 Skill 失败");
+          }
+        } finally {
+          if (mountedRef.current) setApplying(false);
+        }
+        if (submitted && mountedRef.current) {
+          schedulePostApplyRefresh();
+        }
+      },
+    });
+  };
   return (
-    <div>
+    <div className={styles.skillTab}>
       <FeedbackBanner error={state.error} message={state.message} />
       <ListToolbar
         actions={
           <Space>
             <Button icon={<IconPlus />} onClick={() => setUploadOpen(true)}>
               上传 Private Skill
+            </Button>
+            <Button
+              aria-label="应用到当前用户 Pod"
+              icon={<IconPlay />}
+              loading={applying}
+              onClick={applyCurrentPodSkills}
+            >
+              应用到当前用户 Pod
             </Button>
             <Button
               icon={<IconRefresh />}
@@ -50,15 +142,18 @@ export function HumanUserSkillsTab({
         }
         filters={<SkillFilters state={state} />}
       />
-      <Table
-        rowKey="name"
-        dataSource={state.items}
-        columns={skillColumns(user.humanUserId, state) as never}
-        loading={false}
-        pagination={false}
-        empty={state.loading ? "正在加载 Skill" : "暂无可见 Skill"}
-        size="small"
-      />
+      <div className={styles.skillTableShell} data-testid="human-user-skill-table">
+        <Table
+          rowKey="name"
+          dataSource={state.items}
+          columns={skillColumns(user.humanUserId, state) as never}
+          loading={false}
+          pagination={false}
+          empty={state.loading ? "正在加载 Skill" : "暂无可见 Skill"}
+          size="small"
+          scroll={{ x: SKILL_TABLE_SCROLL_X }}
+        />
+      </div>
       <PrivateSkillUploadDialog
         user={user}
         visible={uploadOpen}
@@ -67,6 +162,30 @@ export function HumanUserSkillsTab({
       />
     </div>
   );
+}
+
+function userSkillApplyMessage(status: string) {
+  switch (status) {
+    case "queued":
+      return "Skill 应用已提交到当前用户 Pod";
+    case "synced":
+      return "当前用户 Pod 的 Skill 文件已同步";
+    case "failed_sync":
+      return "当前用户 Pod Skill 同步失败";
+    case "failed_queue":
+      return "当前用户 Pod Skill 应用排队失败";
+    case "skipped_not_running":
+      return "当前用户 Pod 未运行，已跳过应用";
+    case "not_found":
+      return "当前用户 Pod 不存在";
+    default:
+      return "当前用户 Pod Skill 应用未排队";
+  }
+}
+
+function clearApplyRefreshTimers(ref: MutableRefObject<number[]>) {
+  for (const timer of ref.current) window.clearTimeout(timer);
+  ref.current = [];
 }
 
 function useHumanUserSkills(humanUserId: string) {
@@ -78,26 +197,37 @@ function useHumanUserSkills(humanUserId: string) {
   const [message, setMessage] = useState("");
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
+  const foregroundRequestRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    const requestId = ++requestRef.current;
-    setLoading(true);
-    setError("");
-    try {
-      const result = await api.listHumanUserSkills(humanUserId, {
-        q: query,
-        status: status || undefined,
-      });
-      if (!mountedRef.current || requestId !== requestRef.current) return;
-      setItems(normalizeEffectiveSkills(result.items));
-    } catch (caught) {
-      if (mountedRef.current && requestId === requestRef.current) {
-        setError(caught instanceof Error ? caught.message : "加载用户 Skill 失败");
+  const refresh = useCallback(
+    async (options: RefreshOptions = {}) => {
+      const requestId = ++requestRef.current;
+      const foregroundRequestId = options.background ? 0 : ++foregroundRequestRef.current;
+      if (!options.background) setLoading(true);
+      setError("");
+      try {
+        const result = await api.listHumanUserSkills(humanUserId, {
+          q: query,
+          status: status || undefined,
+        });
+        if (!mountedRef.current || requestId !== requestRef.current) return;
+        setItems(normalizeEffectiveSkills(result.items));
+      } catch (caught) {
+        if (mountedRef.current && requestId === requestRef.current) {
+          setError(caught instanceof Error ? caught.message : "加载用户 Skill 失败");
+        }
+      } finally {
+        if (
+          mountedRef.current &&
+          !options.background &&
+          foregroundRequestId === foregroundRequestRef.current
+        ) {
+          setLoading(false);
+        }
       }
-    } finally {
-      if (mountedRef.current && requestId === requestRef.current) setLoading(false);
-    }
-  }, [humanUserId, mountedRef, query, status]);
+    },
+    [humanUserId, mountedRef, query, status],
+  );
 
   useEffect(() => {
     void refresh();
@@ -352,6 +482,8 @@ function PrivateSkillUploadDialog({
   const [fileList, setFileList] = useState<FileItem[]>([]);
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [platformOptions, setPlatformOptions] = useState<Platform[]>([]);
+  const [allowOverride, setAllowOverride] = useState(false);
+  const [overrideSkillName, setOverrideSkillName] = useState("");
   const [platformLoading, setPlatformLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -378,6 +510,8 @@ function PrivateSkillUploadDialog({
     setFile(null);
     setFileList([]);
     setPlatforms([]);
+    setAllowOverride(false);
+    setOverrideSkillName("");
     setError("");
   };
   const close = () => {
@@ -389,13 +523,20 @@ function PrivateSkillUploadDialog({
       setError("请选择 .tar.gz 或 .zip Skill 包");
       return;
     }
+    const expectedName = allowOverride ? overrideSkillName.trim() : "";
+    if (allowOverride && expectedName === "") {
+      setError("请填写要覆盖的 Public Skill 名称");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       await api.uploadPrivateSkill(user.humanUserId, {
         bundle: file,
         filename: file.name,
+        expectedName: expectedName || undefined,
         platforms,
+        allowOverride,
       });
       Toast.success("Private Skill 上传成功");
       close();
@@ -450,6 +591,24 @@ function PrivateSkillUploadDialog({
           <span className={styles.uploadTrigger}>选择 .tar.gz / .zip 包</span>
         </Upload>
         {file && <span className="mono">{file.name}</span>}
+        <Checkbox
+          checked={allowOverride}
+          onChange={(event) => setAllowOverride(Boolean(event.target.checked))}
+        >
+          允许覆盖同名 Public Skill
+        </Checkbox>
+        {allowOverride && (
+          <div className={styles.field}>
+            <label>Public Skill 名称</label>
+            <Input
+              aria-label="覆盖的 Public Skill 名称"
+              placeholder="skill-name"
+              value={overrideSkillName}
+              onChange={setOverrideSkillName}
+              style={{ width: 320 }}
+            />
+          </div>
+        )}
         <Select
           multiple
           placeholder="业务平台依赖（可选）"

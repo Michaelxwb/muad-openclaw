@@ -21,6 +21,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeapply"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeconfig"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/skillsync"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/usercleanup"
 )
 
@@ -31,10 +32,11 @@ func main() {
 }
 
 type dependencies struct {
-	cfg    *config.Config
-	store  *repo.Store
-	cipher *crypto.Cipher
-	driver driver.RuntimeDriver
+	cfg         *config.Config
+	store       *repo.Store
+	cipher      *crypto.Cipher
+	driver      driver.RuntimeDriver
+	skillSyncer *skillsync.Syncer
 }
 
 func run() error {
@@ -52,7 +54,9 @@ func run() error {
 		log.Printf("[console] daily file logging enabled directory=%s", deps.cfg.LogDir)
 	}
 	cache := monitor.NewCache()
-	coordinator, err := newRuntimeCoordinator(deps.cfg, deps.store, deps.cipher, deps.driver)
+	coordinator, err := newRuntimeCoordinator(
+		deps.cfg, deps.store, deps.cipher, deps.driver, deps.skillSyncer,
+	)
 	if err != nil {
 		return fmt.Errorf("runtime coordinator: %w", err)
 	}
@@ -99,6 +103,7 @@ func loadDependencies() (*dependencies, error) {
 	drv, err := driver.New(cfg.RuntimeDriver, cfg.MuadNet, cfg.SkillsDir, driver.K8sOptions{
 		Namespace:          cfg.K8sNamespace,
 		SkillsPVC:          cfg.K8sSkillsPVC,
+		PublicSkillsMount:  cfg.K8sPublicSkillsMount,
 		SkillsStorageClass: cfg.K8sSkillsStorageClass,
 		SkillsSize:         cfg.K8sSkillsSize,
 		StorageClass:       cfg.K8sStorageClass,
@@ -108,11 +113,18 @@ func loadDependencies() (*dependencies, error) {
 		store.Close()
 		return nil, fmt.Errorf("driver: %w", err)
 	}
+	syncer, err := skillsync.New(store, drv, cfg.SkillsDir, cfg.RuntimeStateDir)
+	if err != nil {
+		store.Close()
+		return nil, fmt.Errorf("Skill syncer: %w", err)
+	}
 	if err := api.BootstrapAdmin(store, cfg.AdminUser, cfg.AdminPassword); err != nil {
 		store.Close()
 		return nil, fmt.Errorf("bootstrap admin: %w", err)
 	}
-	return &dependencies{cfg: cfg, store: store, cipher: cipher, driver: drv}, nil
+	return &dependencies{
+		cfg: cfg, store: store, cipher: cipher, driver: drv, skillSyncer: syncer,
+	}, nil
 }
 
 func startBackground(
@@ -138,7 +150,7 @@ func newHTTPServer(
 	return &http.Server{
 		Addr: deps.cfg.ListenAddr,
 		Handler: api.NewServer(
-			deps.cfg, deps.store, deps.cipher, deps.driver, cache, coordinator,
+			deps.cfg, deps.store, deps.cipher, deps.driver, cache, deps.skillSyncer, coordinator,
 		).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
@@ -169,7 +181,11 @@ func shutdown(srv *http.Server) error {
 
 func newRuntimeCoordinator(
 	cfg *config.Config, store *repo.Store, cipher *crypto.Cipher, drv driver.RuntimeDriver,
+	syncer *skillsync.Syncer,
 ) (*runtimeapply.Coordinator, error) {
+	if syncer == nil {
+		return nil, errors.New("Skill syncer unavailable")
+	}
 	builder, err := runtimeconfig.New(store, cipher, runtimeconfig.Options{
 		ConsoleInternalURL:    cfg.ConsoleInternalURL,
 		MaxSkillConcurrency:   cfg.RuntimeDefaults.MaxSkillConcurrency,
@@ -182,5 +198,7 @@ func newRuntimeCoordinator(
 	if err != nil {
 		return nil, err
 	}
-	return runtimeapply.NewCoordinator(store, builder, applier, runtimeapply.CoordinatorOptions{})
+	return runtimeapply.NewCoordinator(store, builder, applier, runtimeapply.CoordinatorOptions{
+		BeforeApply: syncer,
+	})
 }

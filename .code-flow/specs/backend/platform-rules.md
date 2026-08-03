@@ -57,6 +57,10 @@ json.NewEncoder(w).Encode(map[string]any{"error": "bad"})
 - **模型池**：创建用户必须绑定未占用模型配置；禁止隐式全局/Pod/用户 override 回退链
 - **IM 身份**：wecom / openclaw-weixin；已知 External ID 直接绑定，未知走一次性绑定码
 - **Skill**：system/public/private 分层；public 需显式应用到 Pod；private 装目标用户工作区；同名冲突默认不静默覆盖
+- **Public Skill 同步（单路径）**：console 直写共享存储（k8s RWX PVC / 本地 hostPath）生成 active 视图（`.muad-active-public-skills`），worker 只读 subPath 挂载；禁止创建临时 Pod 中转
+- **Skill 删除走显式 remove-index**：仅 disabled/deleted 的 skill 进删除列表；同步失败的 active skill 保留磁盘 last-good，不删除
+- **ManifestHash = 主 Skill 目录内容 hash**：Go 与 JS 算法须逐字节一致（同文件集、忽略 `.`/node_modules/__pycache__、拒 symlink、`path+\0+content+\0`、`sha256:` 前缀）；脚本变而 SKILL.md 不变必须触发重装，两端算法漂移会破坏重装检测
+- **Skill 同步 partial 失败降级**：单个 skill 同步失败 → 跳过并记 warning（reload 响应带 `warnings` 透传前端），不阻断整批 apply 与 private 同步；仅驱动层失败才返回 error
 - **凭证**：通道/LLM/service token 运行时注入，禁止写入镜像或入库明文可逆存储而不经 crypto；业务平台用户凭证按产品决策存入 `user_platform_credentials.credentials_json` 明文 JSON 便于排障，但禁止进入镜像、审计/日志明文、普通列表响应或暴露给 LLM
 - **Runtime apply**：经 `runtimeconfig` + `runtimeapply`，带 generation、分 stage、失败可回滚；不要在 handler 里半套 apply
 - 错误码保持项目约定（客户端/服务端分段 + 场景子码）；用户 message 稳定、可本地化理解

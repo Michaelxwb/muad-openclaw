@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -50,6 +51,12 @@ type skillBundleManifest struct {
 	Scripts         []string `json:"scripts"`
 }
 
+type skillMarkdownMetadata struct {
+	Present     bool
+	Name        string
+	Description string
+}
+
 func installPublicSkillBundle(
 	bundle []byte, publicRoot string, validateName func(string) error,
 ) (privateSkillInstallResult, error) {
@@ -57,6 +64,22 @@ func installPublicSkillBundle(
 	if err != nil {
 		return privateSkillInstallResult{}, errors.New("invalid public Skill root")
 	}
+	return installSkillBundleToRoot(bundle, root, "", "public", validateName)
+}
+
+func installPrivateSkillBundle(
+	bundle []byte, skillsRoot, humanUserID, expectedName string, validateName func(string) error,
+) (privateSkillInstallResult, error) {
+	root, err := resolvePrivateSkillRoot(skillsRoot, humanUserID)
+	if err != nil {
+		return privateSkillInstallResult{}, errors.New("invalid private Skill root")
+	}
+	return installSkillBundleToRoot(bundle, root, expectedName, "private", validateName)
+}
+
+func installSkillBundleToRoot(
+	bundle []byte, root, expectedName, defaultVisibility string, validateName func(string) error,
+) (privateSkillInstallResult, error) {
 	tempRoot, err := os.MkdirTemp("", "muad-public-skill-")
 	if err != nil {
 		return privateSkillInstallResult{}, fmt.Errorf("create temp Skill dir: %w", err)
@@ -69,13 +92,16 @@ func installPublicSkillBundle(
 	if err := extractSkillBundle(bundle, extractRoot); err != nil {
 		return privateSkillInstallResult{}, err
 	}
-	skillDir, err := findSingleSkillDir(extractRoot)
+	skillDir, err := findPrimarySkillDir(extractRoot)
 	if err != nil {
 		return privateSkillInstallResult{}, err
 	}
-	metadata, err := readSkillBundleMetadata(skillDir)
+	metadata, err := readSkillBundleMetadata(skillDir, defaultVisibility)
 	if err != nil {
 		return privateSkillInstallResult{}, err
+	}
+	if expected := strings.TrimSpace(expectedName); expected != "" && metadata.Name != expected {
+		return privateSkillInstallResult{}, errors.New("unexpected skill name")
 	}
 	if validateName != nil {
 		if err := validateName(metadata.Name); err != nil {
@@ -91,6 +117,22 @@ func installPublicSkillBundle(
 	}
 	metadata.TargetDir = targetDir
 	return metadata, nil
+}
+
+func resolvePrivateSkillRoot(skillsRoot, humanUserID string) (string, error) {
+	root, err := resolvePublicSkillRoot(skillsRoot)
+	if err != nil {
+		return "", err
+	}
+	userID := strings.TrimSpace(humanUserID)
+	if userID == "" || strings.ContainsAny(userID, `/\:`) || strings.Contains(userID, "..") {
+		return "", errors.New("invalid human user")
+	}
+	target := filepath.Join(root, "_private", userID)
+	if !pathWithin(root, target) {
+		return "", errors.New("target path escapes private Skill root")
+	}
+	return target, nil
 }
 
 func resolvePublicSkillRoot(publicRoot string) (string, error) {
@@ -111,11 +153,17 @@ func resolvePublicSkillRoot(publicRoot string) (string, error) {
 func extractSkillBundle(bundle []byte, targetRoot string) error {
 	if err := extractTarGzSkillBundle(bundle, targetRoot); err == nil {
 		return nil
+	} else if !isInvalidTarGzBundle(err) {
+		return err
 	}
 	if err := extractZipSkillBundle(bundle, targetRoot); err != nil {
 		return fmt.Errorf("invalid skill bundle: %w", err)
 	}
 	return nil
+}
+
+func isInvalidTarGzBundle(err error) bool {
+	return strings.HasPrefix(err.Error(), "invalid skill bundle:")
 }
 
 func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
@@ -278,7 +326,96 @@ func safeArchivePath(name string) (string, error) {
 	return cleaned, nil
 }
 
-func findSingleSkillDir(root string) (string, error) {
+func buildSkillDirectoryBundle(sourceDir, skillName string) ([]byte, error) {
+	name := strings.TrimSpace(skillName)
+	if !skillNameRegexp.MatchString(name) {
+		return nil, errors.New("invalid skill name")
+	}
+	root := filepath.Clean(strings.TrimSpace(sourceDir))
+	if root == "" || root == "." {
+		return nil, errors.New("empty Skill directory")
+	}
+	if stat, err := os.Stat(root); err != nil {
+		return nil, fmt.Errorf("stat Skill directory: %w", err)
+	} else if !stat.IsDir() {
+		return nil, errors.New("Skill source is not a directory")
+	}
+	var out bytes.Buffer
+	gz := gzip.NewWriter(&out)
+	tw := tar.NewWriter(gz)
+	if err := filepath.WalkDir(root, func(item string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		return addSkillDirectoryBundlePath(tw, root, item, entry, name)
+	}); err != nil {
+		_ = tw.Close()
+		_ = gz.Close()
+		return nil, err
+	}
+	if err := tw.Close(); err != nil {
+		return nil, fmt.Errorf("close Skill archive: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return nil, fmt.Errorf("close Skill gzip: %w", err)
+	}
+	return out.Bytes(), nil
+}
+
+func addSkillDirectoryBundlePath(
+	tw *tar.Writer, root, item string, entry fs.DirEntry, skillName string,
+) error {
+	relative, err := filepath.Rel(root, item)
+	if err != nil {
+		return err
+	}
+	archiveName := strings.Trim(strings.ReplaceAll(filepath.ToSlash(relative), "\\", "/"), "/")
+	if archiveName == "." || archiveName == "" {
+		archiveName = skillName
+	} else {
+		archiveName = path.Join(skillName, archiveName)
+	}
+	if _, err := safeArchivePath(archiveName); err != nil {
+		return err
+	}
+	info, err := entry.Info()
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return errors.New("Skill source must not contain symlinks")
+	}
+	if entry.IsDir() {
+		return writeSkillDirectoryBundleHeader(tw, archiveName+"/", info, tar.TypeDir)
+	}
+	if !info.Mode().IsRegular() {
+		return nil
+	}
+	if err := writeSkillDirectoryBundleHeader(tw, archiveName, info, tar.TypeReg); err != nil {
+		return err
+	}
+	file, err := os.Open(item)
+	if err != nil {
+		return fmt.Errorf("open Skill file: %w", err)
+	}
+	defer file.Close()
+	_, err = io.Copy(tw, file)
+	return err
+}
+
+func writeSkillDirectoryBundleHeader(
+	tw *tar.Writer, name string, info fs.FileInfo, typ byte,
+) error {
+	header, err := tar.FileInfoHeader(info, "")
+	if err != nil {
+		return err
+	}
+	header.Name = name
+	header.Typeflag = typ
+	return tw.WriteHeader(header)
+}
+
+func findPrimarySkillDir(root string) (string, error) {
 	found := make([]string, 0, 1)
 	err := filepath.WalkDir(root, func(item string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -296,13 +433,24 @@ func findSingleSkillDir(root string) (string, error) {
 		return "", err
 	}
 	if len(found) == 0 {
-		return "", errors.New("bundle must contain SKILL.md")
+		return "", errors.New("bundle must contain a SKILL.md")
 	}
 	sortSkillDirs(root, found)
+	topDepth := archivePathDepth(root, found[0])
+	topLevelRoots := 1
+	for _, candidate := range found[1:] {
+		if archivePathDepth(root, candidate) != topDepth {
+			break
+		}
+		topLevelRoots++
+	}
+	if topLevelRoots > 1 {
+		return "", errors.New("bundle contains multiple top-level Skill roots")
+	}
 	return found[0], nil
 }
 
-func readSkillBundleMetadata(skillDir string) (privateSkillInstallResult, error) {
+func readSkillBundleMetadata(skillDir, defaultVisibility string) (privateSkillInstallResult, error) {
 	skillMarkdown, err := os.ReadFile(filepath.Join(skillDir, "SKILL.md"))
 	if err != nil {
 		return privateSkillInstallResult{}, fmt.Errorf("read SKILL.md: %w", err)
@@ -311,13 +459,13 @@ func readSkillBundleMetadata(skillDir string) (privateSkillInstallResult, error)
 	if err != nil {
 		return privateSkillInstallResult{}, err
 	}
-	name := firstSkillName(
-		manifest.Name,
-		skillMarkdownFrontmatterName(string(skillMarkdown)),
-		filepath.Base(skillDir),
-	)
+	frontmatter := skillMarkdownFrontmatter(string(skillMarkdown))
+	name := firstSkillName(manifest.Name, frontmatter.Name, filepath.Base(skillDir))
 	if name == "" || !skillNameRegexp.MatchString(name) {
 		return privateSkillInstallResult{}, errors.New("invalid skill name")
+	}
+	if err := validateOpenClawSkillMetadata(manifest, frontmatter, name, defaultVisibility); err != nil {
+		return privateSkillInstallResult{}, err
 	}
 	platforms, err := normalizeSkillPlatforms(manifest)
 	if err != nil {
@@ -335,7 +483,7 @@ func readSkillBundleMetadata(skillDir string) (privateSkillInstallResult, error)
 	metadata := map[string]any{
 		"name": name, "version": strings.TrimSpace(manifest.Version),
 		"runtime": manifest.Runtime, "mode": manifest.Mode,
-		"visibility": valueOrDefault(manifest.Visibility, "public"),
+		"visibility": valueOrDefault(manifest.Visibility, skillDefaultVisibility(defaultVisibility)),
 		"platforms":  platforms, "progressSupported": progressSupported,
 		"browserRequired": browserRequired, "entryType": entryType,
 	}
@@ -363,12 +511,71 @@ func readSkillBundleMetadata(skillDir string) (privateSkillInstallResult, error)
 	if err != nil {
 		return privateSkillInstallResult{}, fmt.Errorf("marshal Skill manifest: %w", err)
 	}
+	manifestHash, err := hashSkillDirectory(skillDir)
+	if err != nil {
+		return privateSkillInstallResult{}, err
+	}
 	return privateSkillInstallResult{
 		OK: true, Name: name, Version: strings.TrimSpace(manifest.Version),
 		Platforms: platforms, ProgressSupported: progressSupported,
 		BrowserRequired: browserRequired, EntryType: entryType,
-		ManifestHash: hashBytes(skillMarkdown), ManifestJSON: string(manifestJSON),
+		ManifestHash: manifestHash, ManifestJSON: string(manifestJSON),
 	}, nil
+}
+
+func skillDefaultVisibility(value string) string {
+	if strings.TrimSpace(value) == "private" {
+		return "private"
+	}
+	return "public"
+}
+
+func hashSkillDirectory(skillDir string) (string, error) {
+	files := make([]string, 0)
+	err := filepath.WalkDir(skillDir, func(item string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.Type()&fs.ModeSymlink != 0 {
+			return errors.New("Skill directory must not contain symlinks")
+		}
+		if item != skillDir && entry.IsDir() && ignoredSkillScriptDirectory(entry.Name()) {
+			return filepath.SkipDir
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		relative, err := filepath.Rel(skillDir, item)
+		if err != nil || !pathWithin(skillDir, item) {
+			return errors.New("Skill file escapes bundle root")
+		}
+		files = append(files, filepath.ToSlash(relative))
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	sort.Strings(files)
+	hash := sha256.New()
+	separator := []byte{0}
+	for _, file := range files {
+		content, err := os.ReadFile(filepath.Join(skillDir, filepath.FromSlash(file)))
+		if err != nil {
+			return "", fmt.Errorf("read Skill file for hash: %w", err)
+		}
+		hash.Write([]byte(file))
+		hash.Write(separator)
+		hash.Write(content)
+		hash.Write(separator)
+	}
+	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func readSkillManifest(path string) (skillBundleManifest, bool, error) {
@@ -438,22 +645,54 @@ func supportedSkillScriptExtension(extension string) bool {
 	}
 }
 
-func skillMarkdownFrontmatterName(markdown string) string {
+func validateOpenClawSkillMetadata(
+	manifest skillBundleManifest, frontmatter skillMarkdownMetadata, resolvedName, defaultVisibility string,
+) error {
+	if skillDefaultVisibility(defaultVisibility) != "public" {
+		return nil
+	}
+	if !frontmatter.Present || strings.TrimSpace(frontmatter.Name) == "" ||
+		strings.TrimSpace(frontmatter.Description) == "" {
+		return errors.New("public Skill SKILL.md must include OpenClaw frontmatter name and description")
+	}
+	frontmatterName := strings.TrimSpace(frontmatter.Name)
+	if !skillNameRegexp.MatchString(frontmatterName) {
+		return errors.New("invalid skill name")
+	}
+	if strings.TrimSpace(manifest.Name) != "" && normalizeSkillName(manifest.Name) != frontmatterName {
+		return errors.New("public Skill muad.skill.json name must match SKILL.md frontmatter name")
+	}
+	if resolvedName != frontmatterName {
+		return errors.New("public Skill name must match SKILL.md frontmatter name")
+	}
+	return nil
+}
+
+func skillMarkdownFrontmatter(markdown string) skillMarkdownMetadata {
 	normalized := strings.ReplaceAll(markdown, "\r\n", "\n")
 	if !strings.HasPrefix(normalized, "---\n") {
-		return ""
+		return skillMarkdownMetadata{}
 	}
+	metadata := skillMarkdownMetadata{Present: true}
 	lines := strings.Split(normalized, "\n")
 	for index := 1; index < len(lines); index++ {
 		line := strings.TrimSpace(lines[index])
 		if line == "---" {
-			return ""
+			return metadata
 		}
 		if strings.HasPrefix(line, "name:") {
-			return strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "name:")), `"'`)
+			metadata.Name = trimFrontmatterString(strings.TrimPrefix(line, "name:"))
+			continue
+		}
+		if strings.HasPrefix(line, "description:") {
+			metadata.Description = trimFrontmatterString(strings.TrimPrefix(line, "description:"))
 		}
 	}
-	return ""
+	return metadata
+}
+
+func trimFrontmatterString(value string) string {
+	return strings.Trim(strings.TrimSpace(value), `"'`)
 }
 
 func normalizeSkillPlatforms(manifest skillBundleManifest) ([]string, error) {
@@ -555,23 +794,48 @@ func replaceSkillDirectory(source, target string) error {
 	if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
 		return fmt.Errorf("create public Skill root: %w", err)
 	}
-	staging := filepath.Join(filepath.Dir(target), "."+filepath.Base(target)+".tmp")
-	if err := os.RemoveAll(staging); err != nil {
-		return fmt.Errorf("clean staging Skill dir: %w", err)
+	staging, err := os.MkdirTemp(filepath.Dir(target), "."+filepath.Base(target)+".tmp-")
+	if err != nil {
+		return fmt.Errorf("create staging Skill dir: %w", err)
 	}
+	backup := staging + ".bak"
+	defer func() { _ = os.RemoveAll(staging) }()
 	if err := copySkillDirectory(source, staging); err != nil {
-		_ = os.RemoveAll(staging)
 		return err
 	}
-	if err := os.RemoveAll(target); err != nil {
-		_ = os.RemoveAll(staging)
-		return fmt.Errorf("remove old public Skill: %w", err)
+	hadTarget := true
+	if err := os.Rename(target, backup); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("stage old public Skill: %w", err)
+		}
+		hadTarget = false
 	}
 	if err := os.Rename(staging, target); err != nil {
-		_ = os.RemoveAll(staging)
+		if restoreErr := restoreSkillDirectoryBackup(backup, target, hadTarget); restoreErr != nil {
+			return errors.Join(fmt.Errorf("publish public Skill: %w", err), restoreErr)
+		}
 		return fmt.Errorf("publish public Skill: %w", err)
 	}
+	if hadTarget {
+		cleanupSkillDirectoryBackup(backup, target)
+	}
 	return nil
+}
+
+func restoreSkillDirectoryBackup(backup, target string, hadTarget bool) error {
+	if !hadTarget {
+		return nil
+	}
+	if err := os.Rename(backup, target); err != nil {
+		return fmt.Errorf("restore old public Skill: %w", err)
+	}
+	return nil
+}
+
+func cleanupSkillDirectoryBackup(backup, target string) {
+	if err := os.RemoveAll(backup); err != nil {
+		log.Printf("skill_directory_backup_cleanup_failed target=%s error=%v", target, err)
+	}
 }
 
 func removePublicSkillDirectory(publicRoot, skillName string) error {
@@ -632,11 +896,6 @@ func writeCopiedFile(target string, source io.Reader) error {
 func pathWithin(root, candidate string) bool {
 	relative, err := filepath.Rel(filepath.Clean(root), filepath.Clean(candidate))
 	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
-}
-
-func hashBytes(value []byte) string {
-	sum := sha256.Sum256(value)
-	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func stringSliceContains(values []string, expected string) bool {

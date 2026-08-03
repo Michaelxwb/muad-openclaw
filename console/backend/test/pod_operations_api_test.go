@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
@@ -70,6 +71,8 @@ func TestPodOperationsAPI_SkillReloadReportsPartialResults(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
+	markPodSkillsPending(t, e.store, "pod-a")
+	markPodSkillsPending(t, e.store, "pod-b")
 	podABefore, _ := e.store.GetPod("pod-a")
 	podBBefore, _ := e.store.GetPod("pod-b")
 	e.reconcile.podIDs = nil
@@ -92,21 +95,18 @@ func TestPodOperationsAPI_SkillReloadReportsPartialResults(t *testing.T) {
 	if strings.Join(e.reconcile.podIDs, ",") != "pod-a,pod-b" {
 		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
 	}
-	if len(e.drv.syncPublicSkillCalls) != 2 ||
-		e.drv.syncPublicSkillCalls[0].podID != "pod-a" ||
-		e.drv.syncPublicSkillCalls[1].podID != "pod-b" {
-		t.Fatalf("public Skill sync calls = %+v", e.drv.syncPublicSkillCalls)
-	}
 	if e.drv.restarted["pod-a"] != 0 || e.drv.restarted["pod-b"] != 0 {
 		t.Fatalf("Skill reload should enqueue config apply instead of direct restart: %+v", e.drv.restarted)
 	}
 	podAAfter, _ := e.store.GetPod("pod-a")
 	podBAfter, _ := e.store.GetPod("pod-b")
-	if podAAfter.ConfigGeneration != podABefore.ConfigGeneration+1 ||
-		podBAfter.ConfigGeneration != podBBefore.ConfigGeneration+1 {
-		t.Fatalf("Skill reload did not mark Pods pending: before=%d/%d after=%d/%d",
+	if podAAfter.ConfigGeneration != podABefore.ConfigGeneration ||
+		podBAfter.ConfigGeneration != podBBefore.ConfigGeneration ||
+		podAAfter.SkillsPending || podBAfter.SkillsPending {
+		t.Fatalf("Skill reload did not clear pending state: before=%d/%d after=%d/%d pending=%v/%v",
 			podABefore.ConfigGeneration, podBBefore.ConfigGeneration,
-			podAAfter.ConfigGeneration, podBAfter.ConfigGeneration)
+			podAAfter.ConfigGeneration, podBAfter.ConfigGeneration,
+			podAAfter.SkillsPending, podBAfter.SkillsPending)
 	}
 }
 
@@ -114,6 +114,8 @@ func TestPodOperationsAPI_SkillReloadWithoutPodIDsAppliesAllPods(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
+	markPodSkillsPending(t, e.store, "pod-a")
+	markPodSkillsPending(t, e.store, "pod-b")
 	e.reconcile.podIDs = nil
 
 	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{}`)
@@ -126,6 +128,33 @@ func TestPodOperationsAPI_SkillReloadWithoutPodIDsAppliesAllPods(t *testing.T) {
 	}
 	if strings.Join(e.reconcile.podIDs, ",") != "pod-a,pod-b" {
 		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadAlreadyAppliedResyncsFilesWithoutQueue(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	markPodApplied(t, e.store, "pod-a")
+	createPublicSkillDir(t, e.skillsDir, "drift-public")
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "drift-public", Scope: repo.SkillScopePublic, Status: repo.SkillStatusActive,
+		SourcePath: filepath.Join(e.skillsDir, "drift-public"), ManifestHash: "sha256:drift",
+		PlatformsJSON: `[]`,
+	})
+	e.reconcile.podIDs = nil
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)
+	assertStatus(t, rr, http.StatusOK)
+	data := decodeAPIData[struct {
+		Results map[string]string `json:"results"`
+	}](t, rr.Body.Bytes())
+	if data.Results["pod-a"] != "synced" {
+		t.Fatalf("result[pod-a] = %q", data.Results["pod-a"])
+	}
+	if len(e.drv.syncPublicSkillCalls) != 1 || len(e.drv.execStdinCalls) != 0 ||
+		len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("reload should repair files without queueing config apply: public=%v private=%v queue=%v",
+			e.drv.syncPublicSkillCalls, e.drv.execStdinCalls, e.reconcile.podIDs)
 	}
 }
 
@@ -145,6 +174,7 @@ func TestPodOperationsAPI_SkillReloadSyncsOnlyActivePublicSkills(t *testing.T) {
 		SourcePath: filepath.Join(e.skillsDir, "disabled-skill"), ManifestHash: "sha256:disabled",
 		PlatformsJSON: `["xdr"]`,
 	})
+	markPodSkillsPending(t, e.store, "pod-a")
 
 	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)
 	assertStatus(t, rr, http.StatusOK)
@@ -157,11 +187,102 @@ func TestPodOperationsAPI_SkillReloadSyncsOnlyActivePublicSkills(t *testing.T) {
 	if got := e.drv.syncPublicSkillCalls[0].sourceIndex; got != "disabled-skill\nenabled-skill\n" {
 		t.Fatalf("managed public Skill index = %q", got)
 	}
+	if got := e.drv.syncPublicSkillCalls[0].sourceRemove; got != "disabled-skill\n" {
+		t.Fatalf("remove public Skill index = %q", got)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadWarnsAndContinuesWhenPublicAssetStagingFails(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createPublicSkillDir(t, e.skillsDir, "good-skill")
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "good-skill", Scope: repo.SkillScopePublic, Status: repo.SkillStatusActive,
+		SourcePath: filepath.Join(e.skillsDir, "good-skill"), ManifestHash: "sha256:good",
+		PlatformsJSON: `[]`,
+	})
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "bad-skill", Scope: repo.SkillScopePublic, Status: repo.SkillStatusActive,
+		SourcePath: filepath.Join(e.skillsDir, "missing-bad-skill"), ManifestHash: "sha256:bad",
+		PlatformsJSON: `[]`,
+	})
+	markPodSkillsPending(t, e.store, "pod-a")
+	e.reconcile.podIDs = nil
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)
+	assertStatus(t, rr, http.StatusOK)
+	data := decodeAPIData[struct {
+		Results  map[string]string `json:"results"`
+		Warnings []string          `json:"warnings"`
+	}](t, rr.Body.Bytes())
+	if data.Results["pod-a"] != "queued" {
+		t.Fatalf("result[pod-a] = %q, want queued", data.Results["pod-a"])
+	}
+	if len(data.Warnings) != 1 || !strings.Contains(data.Warnings[0], "bad-skill") {
+		t.Fatalf("warnings = %v", data.Warnings)
+	}
+	if got := strings.Join(e.drv.syncPublicSkillCalls[0].sourceSkillNames, ","); got != "good-skill" {
+		t.Fatalf("published public Skills = %q, want good-skill", got)
+	}
+	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
+		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadSyncsPublicFilesOnceForMultiplePods(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
+	createPublicSkillDir(t, e.skillsDir, "shared-public")
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "shared-public", Scope: repo.SkillScopePublic, Status: repo.SkillStatusActive,
+		SourcePath: filepath.Join(e.skillsDir, "shared-public"), ManifestHash: "sha256:shared",
+		PlatformsJSON: `[]`,
+	})
+	markPodSkillsPending(t, e.store, "pod-a")
+	markPodSkillsPending(t, e.store, "pod-b")
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{}`)
+	assertStatus(t, rr, http.StatusOK)
+	if len(e.drv.syncPublicSkillCalls) != 1 {
+		t.Fatalf("public Skill files should sync once, got %+v", e.drv.syncPublicSkillCalls)
+	}
+	if strings.Join(e.drv.publicSkillMountCalls, ",") != "pod-a,pod-b" {
+		t.Fatalf("public Skill mounts = %v, want pod-a,pod-b", e.drv.publicSkillMountCalls)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadUsesPerPodDeadlines(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
+	markPodSkillsPending(t, e.store, "pod-a")
+	markPodSkillsPending(t, e.store, "pod-b")
+	e.reconcile.runDeadlines = nil
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a","pod-b"]}`)
+	assertStatus(t, rr, http.StatusOK)
+	if len(e.reconcile.runDeadlines) != 2 {
+		t.Fatalf("run deadlines = %v, want one per pod", e.reconcile.runDeadlines)
+	}
+	for _, duration := range e.reconcile.runDeadlines {
+		if duration <= 0 || duration > 70*time.Second {
+			t.Fatalf("pod sync deadline = %s, want fresh per-pod deadline near 60s", duration)
+		}
+	}
 }
 
 func TestPodOperationsAPI_SkillReloadStopsBeforeApplyWhenPublicSkillSyncFails(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
+	createPublicSkillDir(t, e.skillsDir, "public-sync-failure")
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "public-sync-failure", Scope: repo.SkillScopePublic, Status: repo.SkillStatusActive,
+		SourcePath:   filepath.Join(e.skillsDir, "public-sync-failure"),
+		ManifestHash: "sha256:public-sync-failure", PlatformsJSON: `["xdr"]`,
+	})
+	markPodSkillsPending(t, e.store, "pod-a")
 	e.reconcile.podIDs = nil
 	e.drv.syncPublicSkillErr = errors.New("sync failed")
 
@@ -181,20 +302,161 @@ func TestPodOperationsAPI_SkillReloadStopsBeforeApplyWhenPublicSkillSyncFails(t 
 	}
 }
 
+func TestPodOperationsAPI_SkillReloadInstallsActivePrivateSkills(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", makeSkillBundle(
+		t, "xdr-private", map[string]any{"name": "xdr-private", "runtime": "script", "platform": "xdr"},
+	))
+	assertStatus(t, rr, http.StatusCreated)
+	e.drv.execStdinCalls = nil
+	e.reconcile.podIDs = nil
+
+	rr = e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)
+	assertStatus(t, rr, http.StatusOK)
+	data := decodeAPIData[struct {
+		Results map[string]string `json:"results"`
+	}](t, rr.Body.Bytes())
+	if data.Results["pod-a"] != "queued" {
+		t.Fatalf("result[pod-a] = %q", data.Results["pod-a"])
+	}
+	if len(e.drv.execStdinCalls) != 2 {
+		t.Fatalf("private Skill install calls = %+v", e.drv.execStdinCalls)
+	}
+	call := e.drv.execStdinCalls[1]
+	if call.userID != "pod-a" ||
+		!strings.Contains(strings.Join(call.cmd, " "), "private-skill-installer.mjs install") ||
+		!strings.Contains(strings.Join(call.cmd, " "), "--expected-name xdr-private") ||
+		!strings.Contains(strings.Join(call.cmd, " "), "--state-dir /home/node/.openclaw") {
+		t.Fatalf("private Skill install call = %+v", call)
+	}
+	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
+		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadSkipsUnchangedPrivateSkill(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createPrivateSkillAsset(t, e, alice, "stable-private", repo.SkillStatusActive)
+	e.drv.privateSkillHashes["alice"] = map[string]string{"stable-private": "sha256:stable-private"}
+	markPodSkillsPending(t, e.store, "pod-a")
+	e.drv.execStdinCalls = nil
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)
+	assertStatus(t, rr, http.StatusOK)
+
+	for _, call := range e.drv.execStdinCalls {
+		if strings.Contains(strings.Join(call.cmd, " "), "private-skill-installer.mjs install") {
+			t.Fatalf("unchanged private Skill should not reinstall: %+v", e.drv.execStdinCalls)
+		}
+	}
+	if len(e.drv.execStdinCalls) != 1 ||
+		!strings.Contains(strings.Join(e.drv.execStdinCalls[0].cmd, " "), "private-skill-installer.mjs list") {
+		t.Fatalf("private Skill sync should only list installed hashes: %+v", e.drv.execStdinCalls)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadDeletesSameNamePrivateSkillPerUser(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	bob := createTestHumanUser(t, e.store, "pod-a", "bob", repo.HumanUserStatusActive)
+	createPrivateSkillAsset(t, e, alice, "shared-private", repo.SkillStatusActive)
+	createPrivateSkillAsset(t, e, bob, "shared-private", repo.SkillStatusDeleted)
+	markPodSkillsPending(t, e.store, "pod-a")
+	e.drv.execStdinCalls = nil
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)
+	assertStatus(t, rr, http.StatusOK)
+
+	installCount, deleteCount := 0, 0
+	for _, call := range e.drv.execStdinCalls {
+		joined := strings.Join(call.cmd, " ")
+		if strings.Contains(joined, "private-skill-installer.mjs install") {
+			installCount++
+		}
+		if strings.Contains(joined, "private-skill-installer.mjs delete") {
+			deleteCount++
+			if !strings.Contains(joined, "--agent-id bob") ||
+				!strings.Contains(joined, "--skill-name shared-private") {
+				t.Fatalf("unexpected delete call = %+v", call)
+			}
+		}
+	}
+	if installCount != 1 || deleteCount != 1 {
+		t.Fatalf("private Skill sync calls install=%d delete=%d all=%+v",
+			installCount, deleteCount, e.drv.execStdinCalls)
+	}
+}
+
+func TestPodOperationsAPI_SkillReloadStopsBeforeApplyWhenPrivateSkillSyncFails(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", makeSkillBundle(
+		t, "xdr-private", map[string]any{"name": "xdr-private", "runtime": "script", "platform": "xdr"},
+	))
+	assertStatus(t, rr, http.StatusCreated)
+	e.drv.execStdinCalls = nil
+	e.reconcile.podIDs = nil
+	e.drv.execStdinErr = errors.New("installer unavailable")
+
+	rr = e.do(http.MethodPost, "/api/v1/skills/reload", `{"podIds":["pod-a"]}`)
+	assertStatus(t, rr, http.StatusOK)
+	data := decodeAPIData[struct {
+		Results map[string]string `json:"results"`
+	}](t, rr.Body.Bytes())
+	if data.Results["pod-a"] != "failed_sync" {
+		t.Fatalf("result[pod-a] = %q", data.Results["pod-a"])
+	}
+	if len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	}
+	if strings.Contains(rr.Body.String(), "installer unavailable") {
+		t.Fatal("Skill reload response exposed private sync error details")
+	}
+}
+
 func TestPodOperationsAPI_UpgradeAppliesTargetGeneration(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
+	createPublicSkillDir(t, e.skillsDir, "upgrade-public")
+	createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "upgrade-public", Scope: repo.SkillScopePublic, Status: repo.SkillStatusActive,
+		SourcePath:   filepath.Join(e.skillsDir, "upgrade-public"),
+		ManifestHash: "sha256:upgrade-public", PlatformsJSON: `["xdr"]`,
+	})
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createPrivateSkillAsset(t, e, alice, "upgrade-private", repo.SkillStatusActive)
+	markPodSkillsPending(t, e.store, "pod-a")
+	e.drv.execStdinCalls = nil
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/upgrade", `{"imageTag":"img:v2"}`)
 	assertStatus(t, rr, http.StatusOK)
 	pod, err := e.store.GetPod("pod-a")
 	if err != nil {
 		t.Fatalf("GetPod: %v", err)
 	}
-	if pod.ImageTag != "img:v2" || pod.AppliedGeneration != pod.ConfigGeneration || pod.State != repo.PodStateRunning {
+	if pod.ImageTag != "img:v2" || pod.AppliedGeneration != pod.ConfigGeneration ||
+		pod.State != repo.PodStateRunning || pod.SkillsPending {
 		t.Fatalf("unexpected upgraded Pod: %+v", pod)
 	}
 	if e.drv.created["pod-a"].ImageTag != "img:v2" || !e.drv.keepState["pod-a"] {
 		t.Fatalf("unexpected upgraded runtime: %+v", e.drv.created["pod-a"])
+	}
+	if len(e.drv.syncPublicSkillCalls) == 0 {
+		t.Fatal("upgrade should sync public Skills before applying runtime generation")
+	}
+	if len(e.drv.execStdinCalls) != 2 ||
+		!strings.Contains(strings.Join(e.drv.execStdinCalls[1].cmd, " "), "--expected-name upgrade-private") {
+		t.Fatalf("upgrade should sync private Skills before applying runtime generation: %+v", e.drv.execStdinCalls)
 	}
 }
 
@@ -235,4 +497,29 @@ func createPublicSkillDir(t *testing.T, root, name string) {
 	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("# "+name+"\n"), 0o600); err != nil {
 		t.Fatalf("write public Skill %s: %v", name, err)
 	}
+}
+
+func markPodSkillsPending(t *testing.T, store *repo.Store, podID string) {
+	t.Helper()
+	if _, err := store.MarkPodSkillsPending(podID); err != nil {
+		t.Fatalf("MarkPodSkillsPending %s: %v", podID, err)
+	}
+}
+
+func createPrivateSkillAsset(
+	t *testing.T, e *testEnv, user repo.HumanUser, name, status string,
+) repo.SkillAsset {
+	t.Helper()
+	root := filepath.Join(e.skillsDir, "_private", user.HumanUserID, name)
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		t.Fatalf("mkdir private Skill %s: %v", name, err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte("# "+name+"\n"), 0o600); err != nil {
+		t.Fatalf("write private Skill %s: %v", name, err)
+	}
+	return createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: name, Scope: repo.SkillScopePrivate, HumanUserID: user.HumanUserID,
+		PodID: user.PodID, Status: status, SourcePath: root, ManifestHash: "sha256:" + name,
+		PlatformsJSON: `["xdr"]`,
+	})
 }

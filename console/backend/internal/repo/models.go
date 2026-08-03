@@ -123,6 +123,7 @@ type Pod struct {
 	ServiceTokenRotatedAt   time.Time
 	ConfigGeneration        int64
 	AppliedGeneration       int64
+	SkillsPending           bool
 	LastConfigHash          string
 	LastApplyStatus         string
 	LastApplyError          string
@@ -133,17 +134,17 @@ type Pod struct {
 
 // HumanUser is a natural person hosted by a Pod.
 type HumanUser struct {
-	HumanUserID            string
-	PodID                  string
-	ModelConfigID          string
-	DisplayName            string
-	AgentID                string
-	BrowserProfile         string
-	BrowserCDPPort         int
-	Status                 string
-	Notes                  string
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
+	HumanUserID    string
+	PodID          string
+	ModelConfigID  string
+	DisplayName    string
+	AgentID        string
+	BrowserProfile string
+	BrowserCDPPort int
+	Status         string
+	Notes          string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // LLMModelConfig is one assignable model credential stored with its plaintext

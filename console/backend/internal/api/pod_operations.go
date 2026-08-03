@@ -5,10 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
-	"sort"
-	"strings"
+	"time"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
@@ -16,7 +13,10 @@ import (
 )
 
 const (
-	maxSkillReloadPods = 100
+	maxSkillReloadPods           = 100
+	skillReloadDriverListTimeout = 15 * time.Second
+	skillReloadPublicSyncTimeout = 2 * time.Minute
+	skillReloadPerPodSyncTimeout = 60 * time.Second
 )
 
 func (s *Server) handleAction(w http.ResponseWriter, r *http.Request) {
@@ -135,6 +135,11 @@ type applyRequest struct {
 	PodIDs []string `json:"podIds"`
 }
 
+type skillReloadResponse struct {
+	Results  map[string]string `json:"results"`
+	Warnings []string          `json:"warnings,omitempty"`
+}
+
 func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
 	if s.reconcile == nil {
 		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime reconciler unavailable")
@@ -161,13 +166,13 @@ func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	results, err := s.enqueueSkillConfigApply(r.Context(), podIDs)
+	results, warnings, err := s.enqueueSkillConfigApply(r.Context(), podIDs)
 	if err != nil {
-		log.Printf("skill_reload_enqueue_failed error=%v", err)
+		log.Printf("skill_reload_enqueue_failed error=%s", auditlog.RedactDiagnostic(err.Error()))
 		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "reload Skills failed")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"results": results})
+	writeJSON(w, http.StatusOK, skillReloadResponse{Results: results, Warnings: warnings})
 }
 
 func (s *Server) allPodIDs() ([]string, error) {
@@ -199,107 +204,81 @@ func validPodIDs(input []string) ([]string, bool) {
 	return append([]string(nil), input...), true
 }
 
-func (s *Server) enqueueSkillConfigApply(ctx context.Context, podIDs []string) (map[string]string, error) {
+func (s *Server) enqueueSkillConfigApply(
+	ctx context.Context, podIDs []string,
+) (map[string]string, []string, error) {
 	pods, _, err := s.store.ListPods(repo.PodListFilter{})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	infos, err := s.drv.List(ctx)
+	listCtx, cancel := context.WithTimeout(ctx, skillReloadDriverListTimeout)
+	infos, err := s.drv.List(listCtx)
+	cancel()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	known, running := podSets(pods, infos)
 	results, reload := classifyReloadTargets(podIDs, known, running)
-	syncDir, cleanup, err := s.activePublicSkillSyncDir()
-	if err != nil {
-		return nil, err
+	if s.skillSyncer == nil {
+		return nil, nil, errors.New("Skill syncer unavailable")
 	}
-	defer cleanup()
+	var hasPublic bool
+	var publicErr error
+	var warnings []string
+	if len(reload) > 0 {
+		publicCtx, publicCancel := context.WithTimeout(ctx, skillReloadPublicSyncTimeout)
+		publicResult, err := s.skillSyncer.SyncPublicForced(publicCtx)
+		publicCancel()
+		hasPublic, warnings, publicErr = publicResult.HasPublic, publicResult.Warnings, err
+	}
 	for _, podID := range reload {
-		if err := s.drv.SyncPublicSkills(ctx, podID, syncDir); err != nil {
-			log.Printf("skill_sync_failed pod=%s error=%v", podID, err)
-			results[podID] = "failed_sync"
-			continue
-		}
-		if _, err := s.store.MarkPodConfigPending(podID); err != nil {
-			log.Printf("skill_reload_mark_pending_failed pod=%s error=%v", podID, err)
-			results[podID] = "failed_queue"
-			continue
-		}
-		s.enqueueReconcile(podID)
-		results[podID] = "queued"
+		podCtx, podCancel := context.WithTimeout(ctx, skillReloadPerPodSyncTimeout)
+		results[podID] = s.applyPodSkills(podCtx, podID, hasPublic, publicErr)
+		podCancel()
 	}
-	return results, nil
+	return results, warnings, nil
 }
 
-func (s *Server) activePublicSkillSyncDir() (string, func(), error) {
-	root, err := resolvePublicSkillRoot(s.cfg.SkillsDir)
+func (s *Server) applyPodSkills(
+	ctx context.Context, podID string, hasPublic bool, publicErr error,
+) string {
+	status := "failed_queue"
+	err := s.runPodExclusive(ctx, podID, func(runCtx context.Context) error {
+		status = s.syncPodSkillsForReload(runCtx, podID, hasPublic, publicErr)
+		return nil
+	})
 	if err != nil {
-		return "", func() {}, err
+		log.Printf("skill_reload_lock_failed pod=%s error=%s", podID, auditlog.RedactDiagnostic(err.Error()))
+		return "failed_queue"
 	}
-	assets, managedNames, err := s.publicSkillAssetsForSync()
+	return status
+}
+
+func (s *Server) syncPodSkillsForReload(
+	ctx context.Context, podID string, hasPublic bool, publicErr error,
+) string {
+	if publicErr != nil {
+		log.Printf("skill_public_sync_failed pod=%s error=%s", podID, auditlog.RedactDiagnostic(publicErr.Error()))
+		return "failed_sync"
+	}
+	pod, err := s.store.GetPod(podID)
 	if err != nil {
-		return "", func() {}, err
+		log.Printf("skill_reload_get_pod_failed pod=%s error=%s", podID, auditlog.RedactDiagnostic(err.Error()))
+		return "failed_queue"
 	}
-	tempRoot, err := os.MkdirTemp("", "muad-active-public-skills-")
-	if err != nil {
-		return "", func() {}, err
+	if err := s.skillSyncer.SyncPodAfterPublicSync(ctx, podID, hasPublic); err != nil {
+		log.Printf("skill_sync_failed pod=%s error=%s", podID, auditlog.RedactDiagnostic(err.Error()))
+		return "failed_sync"
 	}
-	cleanup := func() { _ = os.RemoveAll(tempRoot) }
-	for _, asset := range assets {
-		source := activePublicSkillSource(root, asset)
-		target := filepath.Join(tempRoot, asset.Name)
-		if err := copySkillDirectory(source, target); err != nil {
-			cleanup()
-			return "", func() {}, err
-		}
+	if !pod.SkillsPending {
+		return "synced"
 	}
-	if err := writePublicSkillManagedIndex(tempRoot, managedNames); err != nil {
-		cleanup()
-		return "", func() {}, err
+	if err := s.store.ClearPodSkillsPending(podID, pod.ConfigGeneration); err != nil {
+		log.Printf("skill_reload_clear_pending_failed pod=%s error=%s", podID, auditlog.RedactDiagnostic(err.Error()))
+		return "failed_queue"
 	}
-	return tempRoot, cleanup, nil
-}
-
-func (s *Server) publicSkillAssetsForSync() ([]repo.SkillAsset, []string, error) {
-	var active []repo.SkillAsset
-	managed := map[string]struct{}{}
-	for _, status := range []string{repo.SkillStatusActive, repo.SkillStatusDisabled, repo.SkillStatusDeleted} {
-		assets, _, err := s.store.ListSkillAssets(repo.SkillAssetListFilter{
-			Scope: repo.SkillScopePublic, Status: status,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-		for _, asset := range assets {
-			managed[asset.Name] = struct{}{}
-			if asset.Status == repo.SkillStatusActive {
-				active = append(active, asset)
-			}
-		}
-	}
-	names := make([]string, 0, len(managed))
-	for name := range managed {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return active, names, nil
-}
-
-func writePublicSkillManagedIndex(root string, names []string) error {
-	body := strings.Join(names, "\n")
-	if body != "" {
-		body += "\n"
-	}
-	return os.WriteFile(filepath.Join(root, ".muad-public-index"), []byte(body), 0o600)
-}
-
-func activePublicSkillSource(root string, asset repo.SkillAsset) string {
-	source := filepath.Clean(strings.TrimSpace(asset.SourcePath))
-	if source != "" && filepath.IsAbs(source) && pathWithin(root, source) {
-		return source
-	}
-	return filepath.Join(root, asset.Name)
+	s.enqueueReconcile(podID)
+	return "queued"
 }
 
 func podSets(pods []repo.PodSummary, infos []driver.ContainerInfo) (map[string]bool, map[string]bool) {

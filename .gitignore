@@ -8,6 +8,7 @@ tools/session-manager/dist/
 *.log
 .DS_Store
 .idea/
+.local/
 
 # 运行态 SQLite DB（控制台），绝不入库
 console/backend/data/

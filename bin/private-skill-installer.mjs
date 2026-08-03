@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createGunzip } from "node:zlib";
 
-const MAX_BUNDLE_BYTES = 5 * 1024 * 1024;
+const MAX_BUNDLE_BYTES = 25 * 1024 * 1024;
 const MAX_EXTRACTED_BYTES = 25 * 1024 * 1024;
 const MAX_EXTRACTED_ENTRIES = 2048;
 const SKILL_NAME_RE = /^[a-z][a-z0-9_-]{0,63}$/u;
@@ -33,7 +35,7 @@ export async function installPrivateSkill({ bundle, agentId, stateDir, expectedN
     await extractBundle(bundlePath, extractRoot, format);
     await assertNoLinks(extractRoot);
     await assertExtractedLimits(extractRoot);
-    const skillDir = await findSingleSkillDir(extractRoot);
+    const skillDir = await findPrimarySkillDir(extractRoot);
     const metadata = await readSkillMetadata(skillDir, expectedName);
     const targetDir = path.join(skillsRoot, metadata.name);
     await assertWithin(skillsRoot, targetDir);
@@ -54,6 +56,23 @@ export async function deletePrivateSkill({ agentId, stateDir, skillName }) {
   return { ok: true, action: "delete", name: skillName, targetDir };
 }
 
+export async function listPrivateSkills({ agentId, stateDir }) {
+  validateAgentId(agentId);
+  const root = path.resolve(stateDir || DEFAULT_STATE_DIR);
+  const skillsRoot = path.join(root, `workspace-${agentId}`, "skills");
+  await assertWithin(root, skillsRoot);
+  const entries = await readDirIfExists(skillsRoot);
+  const skills = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !SKILL_NAME_RE.test(entry.name)) continue;
+    const skillDir = path.join(skillsRoot, entry.name);
+    if (!await fileExists(path.join(skillDir, "SKILL.md"))) continue;
+    skills.push({ name: entry.name, manifestHash: await hashSkillDirectory(skillDir) });
+  }
+  skills.sort((left, right) => left.name.localeCompare(right.name));
+  return { ok: true, action: "list", skills };
+}
+
 async function extractBundle(bundlePath, extractRoot, format) {
   if (format === "zip") {
     await validateZipBundle(bundlePath);
@@ -65,32 +84,224 @@ async function extractBundle(bundlePath, extractRoot, format) {
 }
 
 async function validateTarBundle(bundlePath) {
-  const names = runTar(["-tzf", bundlePath]).stdout.split(/\r?\n/u).filter(Boolean);
-  if (names.length === 0) throw new Error("bundle is empty");
-  for (const name of names) assertSafeArchivePath(name);
-  const verbose = runTar(["-tvzf", bundlePath]).stdout.split(/\r?\n/u).filter(Boolean);
-  for (const line of verbose) {
-    const type = line[0];
-    if (type === "l" || type === "h") throw new Error("bundle must not contain links");
-  }
+  await validateTarGzipMetadata(bundlePath);
 }
 
 async function validateZipBundle(bundlePath) {
   const names = runUnzip(["-Z1", bundlePath]).stdout.split(/\r?\n/u).filter(Boolean);
   if (names.length === 0) throw new Error("bundle is empty");
+  validateArchiveEntryCount(names.length);
   for (const name of names) assertSafeArchivePath(name);
-  // Reject symlink/hardlink entries before extract (tar path already does this).
+  let totalBytes = 0;
   const verbose = runUnzip(["-Z", bundlePath]).stdout.split(/\r?\n/u).filter(Boolean);
   for (const line of verbose) {
-    if (/\bs(?:ym)?l(?:ink)?\b/iu.test(line) || /\b->\b/.test(line) || line.includes(" symlink ")) {
+    const entry = parseZipListingLine(line);
+    if (!entry) continue;
+    if (entry.attrs.startsWith("l")) {
       throw new Error("bundle must not contain links");
     }
-    // Info-ZIP -Z long listing: attributes often start with 'l' for links.
-    const attrs = line.trim().split(/\s+/u)[0] || "";
-    if (attrs.startsWith("l") || attrs.includes("lrwx") || attrs.includes("lrwxrwxrwx")) {
-      throw new Error("bundle must not contain links");
-    }
+    totalBytes += entry.size;
+    validateArchiveTotalBytes(totalBytes);
   }
+}
+
+async function validateTarGzipMetadata(bundlePath) {
+  const stream = createReadStream(bundlePath).pipe(createGunzip());
+  let buffer = Buffer.alloc(0);
+  const state = newTarValidationState();
+  for await (const chunk of stream) {
+    buffer = Buffer.concat([buffer, chunk]);
+    buffer = validateTarBuffer(buffer, state);
+    if (state.done) return;
+  }
+  if (state.entries === 0) throw new Error("bundle is empty");
+  if (state.skipRemaining > 0 || state.pendingBody) throw new Error("read skill bundle");
+}
+
+function newTarValidationState() {
+  return {
+    done: false, entries: 0, totalBytes: 0, skipRemaining: 0,
+    pendingBody: null, nextPath: "", nextLinkPath: "",
+  };
+}
+
+function validateTarBuffer(buffer, state) {
+  for (;;) {
+    if (state.pendingBody) {
+      buffer = consumePendingTarBody(buffer, state);
+      if (state.pendingBody) break;
+      continue;
+    }
+    if (state.skipRemaining > 0) {
+      buffer = skipTarBytes(buffer, state);
+      if (state.skipRemaining > 0) break;
+      continue;
+    }
+    if (buffer.length < 512) break;
+    if (tarBlockIsEmpty(buffer.subarray(0, 512))) {
+      buffer = consumeTarEndBlock(buffer, state);
+      if (state.done) break;
+      continue;
+    }
+    const entry = parseTarHeader(buffer.subarray(0, 512));
+    buffer = buffer.subarray(512);
+    startTarEntryValidation(entry, state);
+  }
+  return buffer;
+}
+
+function skipTarBytes(buffer, state) {
+  if (buffer.length <= state.skipRemaining) {
+    state.skipRemaining -= buffer.length;
+    return Buffer.alloc(0);
+  }
+  const next = buffer.subarray(state.skipRemaining);
+  state.skipRemaining = 0;
+  return next;
+}
+
+function consumeTarEndBlock(buffer, state) {
+  buffer = buffer.subarray(512);
+  if (buffer.length >= 512 && tarBlockIsEmpty(buffer.subarray(0, 512))) {
+    if (state.entries === 0) throw new Error("bundle is empty");
+    state.done = true;
+  }
+  return buffer;
+}
+
+function startTarEntryValidation(entry, state) {
+  if (entry.type === "g") throw new Error("bundle contains unsupported tar metadata entries");
+  if (entry.type === "L" || entry.type === "K" || entry.type === "x") {
+    assertSafeArchivePath(entry.name);
+    state.pendingBody = {
+      type: entry.type, remaining: entry.size, chunks: [],
+      padding: Math.ceil(entry.size / 512) * 512 - entry.size,
+    };
+    return;
+  }
+  validateTarPayloadEntry(entry, state);
+  state.skipRemaining = Math.ceil(entry.size / 512) * 512;
+}
+
+function validateTarPayloadEntry(entry, state) {
+  const name = state.nextPath || entry.name;
+  const linkPath = state.nextLinkPath || entry.linkName;
+  state.nextPath = "";
+  state.nextLinkPath = "";
+  assertSafeArchivePath(name);
+  if (linkPath) assertSafeArchivePath(linkPath);
+  state.entries++;
+  validateArchiveEntryCount(state.entries);
+  if (entry.type === "1" || entry.type === "2") throw new Error("bundle must not contain links");
+  if (entry.type === "0" || entry.type === "\0" || entry.type === "7") {
+    state.totalBytes += entry.size;
+    validateArchiveTotalBytes(state.totalBytes);
+  }
+}
+
+function consumePendingTarBody(buffer, state) {
+  const body = state.pendingBody;
+  const take = Math.min(buffer.length, body.remaining);
+  if (take > 0) body.chunks.push(buffer.subarray(0, take));
+  body.remaining -= take;
+  buffer = buffer.subarray(take);
+  if (body.remaining > 0) return buffer;
+  applyTarMetadataBody(Buffer.concat(body.chunks), body.type, state);
+  state.pendingBody = null;
+  state.skipRemaining = body.padding;
+  return buffer;
+}
+
+function applyTarMetadataBody(body, type, state) {
+  if (type === "L") {
+    state.nextPath = tarMetadataPath(body);
+    assertSafeArchivePath(state.nextPath);
+    return;
+  }
+  if (type === "K") {
+    state.nextLinkPath = tarMetadataPath(body);
+    assertSafeArchivePath(state.nextLinkPath);
+    return;
+  }
+  const records = parsePaxRecords(body);
+  if (records.path) {
+    state.nextPath = records.path;
+    assertSafeArchivePath(state.nextPath);
+  }
+  if (records.linkpath) {
+    state.nextLinkPath = records.linkpath;
+    assertSafeArchivePath(state.nextLinkPath);
+  }
+}
+
+function parseTarHeader(header) {
+  const name = tarHeaderString(header, 0, 100);
+  const prefix = tarHeaderString(header, 345, 155);
+  return {
+    name: prefix ? `${prefix}/${name}` : name,
+    size: parseTarOctal(header, 124, 12),
+    type: String.fromCharCode(header[156] || 0),
+    linkName: tarHeaderString(header, 157, 100),
+  };
+}
+
+function tarMetadataPath(body) {
+  const end = body.indexOf(0);
+  return body.subarray(0, end === -1 ? body.length : end).toString("utf8").trim();
+}
+
+function parsePaxRecords(body) {
+  const records = {};
+  for (let offset = 0; offset < body.length;) {
+    const space = body.indexOf(0x20, offset);
+    if (space < 0) throw new Error("bundle contains invalid pax metadata");
+    const length = Number.parseInt(body.subarray(offset, space).toString("ascii"), 10);
+    if (!Number.isFinite(length) || length <= 0 || offset + length > body.length) {
+      throw new Error("bundle contains invalid pax metadata");
+    }
+    const rawRecord = body.subarray(space + 1, offset + length);
+    if (rawRecord.length === 0 || rawRecord[rawRecord.length - 1] !== 0x0a) {
+      throw new Error("bundle contains invalid pax metadata");
+    }
+    const record = rawRecord.subarray(0, rawRecord.length - 1).toString("utf8");
+    const equals = record.indexOf("=");
+    if (equals > 0) records[record.slice(0, equals)] = record.slice(equals + 1);
+    offset += length;
+  }
+  return records;
+}
+
+function tarBlockIsEmpty(block) {
+  return block.every((item) => item === 0);
+}
+
+function tarHeaderString(header, offset, length) {
+  const raw = header.subarray(offset, offset + length);
+  const end = raw.indexOf(0);
+  return raw.subarray(0, end === -1 ? raw.length : end).toString("utf8").trim();
+}
+
+function parseTarOctal(header, offset, length) {
+  const raw = tarHeaderString(header, offset, length).replaceAll("\0", "").trim();
+  const value = Number.parseInt(raw || "0", 8);
+  if (!Number.isFinite(value) || value < 0) throw new Error("bundle contains an invalid file size");
+  return value;
+}
+
+function parseZipListingLine(line) {
+  const fields = line.trim().split(/\s+/u);
+  if (fields.length < 4 || !/^[dl-][rwxStTs-]{9}$/u.test(fields[0])) return null;
+  const size = Number.parseInt(fields[3], 10);
+  if (!Number.isFinite(size) || size < 0) throw new Error("bundle contains an invalid file size");
+  return { attrs: fields[0], size };
+}
+
+function validateArchiveEntryCount(entries) {
+  if (entries > MAX_EXTRACTED_ENTRIES) throw new Error("bundle contains too many files");
+}
+
+function validateArchiveTotalBytes(totalBytes) {
+  if (totalBytes > MAX_EXTRACTED_BYTES) throw new Error("bundle extracted size is too large");
 }
 
 async function readSkillMetadata(skillDir, expectedName) {
@@ -120,7 +331,7 @@ async function readSkillMetadata(skillDir, expectedName) {
   });
   return {
     name, version, platforms, progressSupported, browserRequired, entryType,
-    manifestHash: await hashFile(path.join(skillDir, "SKILL.md")), manifestJson: manifestJSON,
+    manifestHash: await hashSkillDirectory(skillDir), manifestJson: manifestJSON,
   };
 }
 
@@ -189,13 +400,24 @@ async function replaceDirectory(source, target, tempRoot) {
   await fs.writeFile(path.join(tempRoot, "installed"), target);
 }
 
-async function findSingleSkillDir(root) {
+async function findPrimarySkillDir(root) {
   const found = [];
   await walk(root, async (entryPath, stat) => {
     if (stat.isFile() && path.basename(entryPath) === "SKILL.md") found.push(path.dirname(entryPath));
   });
-  if (found.length === 0) throw new Error("bundle must contain SKILL.md");
-  found.sort((left, right) => archivePathDepth(root, left) - archivePathDepth(root, right) || left.localeCompare(right));
+  if (found.length === 0) throw new Error("bundle must contain a SKILL.md");
+  found.sort((left, right) => {
+    const depthDiff = archivePathDepth(root, left) - archivePathDepth(root, right);
+    if (depthDiff !== 0) return depthDiff;
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
+  const topDepth = archivePathDepth(root, found[0]);
+  let topLevelRoots = 1;
+  for (const candidate of found.slice(1)) {
+    if (archivePathDepth(root, candidate) !== topDepth) break;
+    topLevelRoots++;
+  }
+  if (topLevelRoots > 1) throw new Error("bundle contains multiple top-level Skill roots");
   return found[0];
 }
 
@@ -231,19 +453,67 @@ async function readJSONIfExists(filePath) {
     return JSON.parse(await fs.readFile(filePath, "utf8"));
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") return null;
-    if (error instanceof SyntaxError) return null;
+    if (error instanceof SyntaxError) throw new Error("invalid Skill manifest");
     throw error;
   }
 }
 
-async function hashFile(filePath) {
+async function readDirIfExists(dirPath) {
+  try {
+    return await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function fileExists(filePath) {
+  try {
+    await fs.access(filePath, fsConstants.F_OK);
+    return true;
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+async function hashSkillDirectory(skillDir) {
+  const files = [];
+  await collectHashFiles(skillDir, skillDir, files);
+  files.sort(compareUTF8Path);
   const hash = createHash("sha256");
-  hash.update(await fs.readFile(filePath));
+  const separator = Buffer.from([0]);
+  for (const file of files) {
+    hash.update(file, "utf8");
+    hash.update(separator);
+    hash.update(await fs.readFile(path.join(skillDir, file.split("/").join(path.sep))));
+    hash.update(separator);
+  }
   return `sha256:${hash.digest("hex")}`;
+}
+
+async function collectHashFiles(root, current, files) {
+  for (const entry of await fs.readdir(current, { withFileTypes: true })) {
+    const entryPath = path.join(current, entry.name);
+    if (entry.isSymbolicLink()) throw new Error("Skill directory must not contain symlinks");
+    if (entry.isDirectory()) {
+      if (!ignoredScriptDirectory(entry.name)) await collectHashFiles(root, entryPath, files);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    files.push(path.relative(root, entryPath).split(path.sep).join("/"));
+  }
+}
+
+function compareUTF8Path(left, right) {
+  return Buffer.compare(Buffer.from(left, "utf8"), Buffer.from(right, "utf8"));
 }
 
 function assertSafeArchivePath(name) {
   const normalized = name.replaceAll("\\", "/");
+  if (normalized === "") {
+    throw new Error("bundle contains an invalid path");
+  }
   if (normalized.startsWith("/") || /^[A-Za-z]:/u.test(normalized)) {
     throw new Error("bundle contains an absolute path");
   }
@@ -299,7 +569,7 @@ async function readStdinLimited() {
   let total = 0;
   for await (const chunk of process.stdin) {
     total += chunk.length;
-    if (total > MAX_BUNDLE_BYTES) throw new Error("bundle exceeds 5 MiB");
+    if (total > MAX_BUNDLE_BYTES) throw new Error("bundle exceeds 25 MiB");
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);
@@ -400,6 +670,9 @@ async function main() {
     return deletePrivateSkill({
       agentId: options["agent-id"], stateDir: options["state-dir"], skillName: options["skill-name"],
     });
+  }
+  if (command === "list") {
+    return listPrivateSkills({ agentId: options["agent-id"], stateDir: options["state-dir"] });
   }
   throw new Error("usage: private-skill-installer.mjs install|delete --agent-id <id>");
 }

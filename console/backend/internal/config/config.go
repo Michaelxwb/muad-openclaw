@@ -12,6 +12,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,6 +42,7 @@ type yamlFile struct {
 	// k8s driver (used when runtimeDriver=k8s)
 	K8sNamespace          *string               `yaml:"k8sNamespace"`
 	K8sSkillsPVC          *string               `yaml:"k8sSkillsPVC"`
+	K8sPublicSkillsMount  *string               `yaml:"k8sPublicSkillsMountPath"`
 	K8sSkillsStorageClass *string               `yaml:"k8sSkillsStorageClass"`
 	K8sSkillsSize         *string               `yaml:"k8sSkillsSize"`
 	K8sStorageClass       *string               `yaml:"k8sStorageClass"`
@@ -101,6 +103,7 @@ type dockerYAML struct {
 type k8sYAML struct {
 	Namespace          *string `yaml:"namespace"`
 	SkillsPVC          *string `yaml:"skillsPVC"`
+	PublicSkillsMount  *string `yaml:"publicSkillsMountPath"`
 	SkillsStorageClass *string `yaml:"skillsStorageClass"`
 	SkillsSize         *string `yaml:"skillsSize"`
 	StorageClass       *string `yaml:"storageClass"`
@@ -155,16 +158,24 @@ type Config struct {
 	RuntimePublicSkillsDir  string
 	K8sNamespace            string
 	K8sSkillsPVC            string
+	K8sPublicSkillsMount    string
 	K8sSkillsStorageClass   string
 	K8sSkillsSize           string
 	K8sStorageClass         string
 	K8sStateSize            string
+	skillsDirExplicit       bool
 }
 
 var validDrivers = map[string]bool{"docker": true, "k8s": true}
 var validRestartPolicies = map[string]bool{
 	"no": true, "on-failure": true, "always": true, "unless-stopped": true,
 }
+
+const (
+	defaultSkillsDir        = "/var/lib/muad-console/skills"
+	k8sPublicSkillAssetsDir = ".muad-skill-assets"
+)
+
 var (
 	memLimitPattern = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?[bkmgBKMG]$`)
 	cpuLimitPattern = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
@@ -177,7 +188,7 @@ func defaults() *Config {
 		RuntimeDriver:           "docker",
 		DefaultImage:            "ghcr.io/michaelxwb/muad-openclaw:latest",
 		MuadNet:                 "muad-net",
-		SkillsDir:               "/var/lib/muad-console/skills",
+		SkillsDir:               defaultSkillsDir,
 		ListenAddr:              ":8080",
 		DBPath:                  "/var/lib/muad-console/console.db",
 		ConsoleInternalURL:      "http://muad-console:8080",
@@ -230,11 +241,20 @@ func Load() (*Config, error) {
 	if c.JWTSecret == "" {
 		c.JWTSecret = c.MasterKey
 	}
+	c.applyK8sSkillStorageDefaults()
 
 	if err := c.validate(); err != nil {
 		return nil, err
 	}
 	return c, nil
+}
+
+func (c *Config) applyK8sSkillStorageDefaults() {
+	if c.RuntimeDriver != "k8s" || strings.TrimSpace(c.K8sPublicSkillsMount) == "" ||
+		strings.TrimSpace(c.K8sSkillsPVC) == "" || c.skillsDirExplicit {
+		return
+	}
+	c.SkillsDir = path.Join(c.K8sPublicSkillsMount, k8sPublicSkillAssetsDir)
 }
 
 // --- yaml ---
@@ -253,7 +273,7 @@ func applyLegacyYAML(c *Config, f *yamlFile) {
 	applyString(&c.RuntimeDriver, f.RuntimeDriver)
 	applyString(&c.DefaultImage, f.DefaultImage)
 	applyString(&c.MuadNet, f.MuadNet)
-	applyString(&c.SkillsDir, f.SkillsDir)
+	applyExplicitString(&c.SkillsDir, &c.skillsDirExplicit, f.SkillsDir)
 	applyString(&c.MasterKey, f.MasterKey)
 	applyString(&c.ListenAddr, f.ListenAddr)
 	applyString(&c.LogDir, f.LogDir)
@@ -266,6 +286,7 @@ func applyLegacyYAML(c *Config, f *yamlFile) {
 	applyString(&c.AutomationPlatformToken, f.AutomationPlatformToken)
 	applyString(&c.K8sNamespace, f.K8sNamespace)
 	applyString(&c.K8sSkillsPVC, f.K8sSkillsPVC)
+	applyString(&c.K8sPublicSkillsMount, f.K8sPublicSkillsMount)
 	applyString(&c.K8sSkillsStorageClass, f.K8sSkillsStorageClass)
 	applyString(&c.K8sSkillsSize, f.K8sSkillsSize)
 	applyString(&c.K8sStorageClass, f.K8sStorageClass)
@@ -316,7 +337,7 @@ func applyServerYAML(c *Config, src *serverYAML) {
 func applyRuntimeYAML(c *Config, src *runtimeYAML) {
 	applyString(&c.RuntimeDriver, src.Driver)
 	applyString(&c.DefaultImage, src.DefaultImage)
-	applyString(&c.SkillsDir, src.SkillsDir)
+	applyExplicitString(&c.SkillsDir, &c.skillsDirExplicit, src.SkillsDir)
 	applyString(&c.RuntimeTimezone, src.Timezone)
 	applyString(&c.RuntimeStateDir, src.StateDir)
 	applyString(&c.RuntimePublicSkillsDir, src.PublicSkillsDir)
@@ -325,6 +346,7 @@ func applyRuntimeYAML(c *Config, src *runtimeYAML) {
 func applyK8sYAML(c *Config, src *k8sYAML) {
 	applyString(&c.K8sNamespace, src.Namespace)
 	applyString(&c.K8sSkillsPVC, src.SkillsPVC)
+	applyString(&c.K8sPublicSkillsMount, src.PublicSkillsMount)
 	applyString(&c.K8sSkillsStorageClass, src.SkillsStorageClass)
 	applyString(&c.K8sSkillsSize, src.SkillsSize)
 	applyString(&c.K8sStorageClass, src.StorageClass)
@@ -375,6 +397,14 @@ func applyString(dst *string, src *string) {
 	}
 }
 
+func applyExplicitString(dst *string, explicit *bool, src *string) {
+	if src == nil || strings.TrimSpace(*src) == "" {
+		return
+	}
+	*dst = strings.TrimSpace(*src)
+	*explicit = true
+}
+
 // --- env ---
 
 func (c *Config) overrideFromEnv() error {
@@ -384,7 +414,7 @@ func (c *Config) overrideFromEnv() error {
 	envOverride(&c.RuntimeDriver, "RUNTIME_DRIVER")
 	envOverride(&c.DefaultImage, "DEFAULT_IMAGE")
 	envOverride(&c.MuadNet, "MUAD_NET")
-	envOverride(&c.SkillsDir, "CONSOLE_SKILLS_DIR")
+	envOverrideExplicit(&c.SkillsDir, &c.skillsDirExplicit, "CONSOLE_SKILLS_DIR")
 	envOverride(&c.ListenAddr, "CONSOLE_LISTEN")
 	envOverride(&c.LogDir, "CONSOLE_LOG_DIR")
 	envOverride(&c.DBPath, "CONSOLE_DB")
@@ -401,6 +431,7 @@ func (c *Config) overrideFromEnv() error {
 	}
 	envOverride(&c.K8sNamespace, "K8S_NAMESPACE")
 	envOverride(&c.K8sSkillsPVC, "K8S_SKILLS_PVC")
+	envOverride(&c.K8sPublicSkillsMount, "K8S_PUBLIC_SKILLS_MOUNT_PATH")
 	envOverride(&c.K8sSkillsStorageClass, "K8S_SKILLS_STORAGE_CLASS")
 	envOverride(&c.K8sSkillsSize, "K8S_SKILLS_SIZE")
 	envOverride(&c.K8sStorageClass, "K8S_STORAGE_CLASS")
@@ -430,6 +461,13 @@ func (c *Config) overrideFromEnv() error {
 func envOverride(dst *string, key string) {
 	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
 		*dst = v
+	}
+}
+
+func envOverrideExplicit(dst *string, explicit *bool, key string) {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		*dst = v
+		*explicit = true
 	}
 }
 
@@ -466,6 +504,18 @@ func (c *Config) validate() error {
 	}
 	if err := validateRuntimePath("runtime.publicSkillsDir", c.RuntimePublicSkillsDir); err != nil {
 		return err
+	}
+	if strings.TrimSpace(c.K8sPublicSkillsMount) != "" {
+		if err := validateRuntimePath("k8s.publicSkillsMountPath", c.K8sPublicSkillsMount); err != nil {
+			return err
+		}
+	}
+	if c.RuntimeDriver == "k8s" {
+		pvcConfigured := strings.TrimSpace(c.K8sSkillsPVC) != ""
+		mountConfigured := strings.TrimSpace(c.K8sPublicSkillsMount) != ""
+		if pvcConfigured != mountConfigured {
+			return fmt.Errorf("k8s.skillsPVC and k8s.publicSkillsMountPath must be configured together")
+		}
 	}
 	if strings.TrimSpace(c.RuntimeTimezone) == "" {
 		return fmt.Errorf("runtime.timezone must not be empty")
