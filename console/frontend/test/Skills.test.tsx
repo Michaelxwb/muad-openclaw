@@ -24,6 +24,7 @@ const skill = {
   skillId: "351e9298-76cb-4b35-a605-e1c406c85fac",
   name: "xdr-query",
   scope: "public" as const,
+  source: "platform" as const,
   displayName: "XDR Query",
   version: "1.0.0",
   status: "active" as const,
@@ -90,7 +91,9 @@ describe("Skills", () => {
     render(<Skills />);
 
     expect(await screen.findByText("XDR Query")).toBeInTheDocument();
-    expect(screen.getByText(/需要点击「应用 Skill」/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "应用到全部 Pod" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Skill 自动同步说明" })).toBeInTheDocument();
+    expect(screen.queryByText(/需要点击「应用 Skill」/)).not.toBeInTheDocument();
     expect(screen.getByText("Public Skill 资产库")).toBeInTheDocument();
     expect(screen.queryByText(skill.sourcePath)).not.toBeInTheDocument();
     expect(screen.getByText("public")).toBeInTheDocument();

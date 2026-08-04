@@ -22,7 +22,7 @@ var (
 const skillAssetColumns = `skill_id, name, scope, COALESCE(human_user_id, ''),
 	COALESCE(pod_id, ''), display_name, version, status, source_path,
 	manifest_hash, manifest_json, entry_type, platforms_json, browser_required,
-	progress_supported, system_protected, created_at, updated_at`
+	progress_supported, system_protected, source, created_at, updated_at`
 
 const skillPolicyColumns = `policy_id, human_user_id, skill_name, action, reason,
 	created_by, expires_at, created_at`
@@ -487,6 +487,9 @@ func prepareSkillAsset(asset SkillAsset) (SkillAsset, error) {
 	if asset.EntryType == "" {
 		asset.EntryType = SkillEntryManaged
 	}
+	if asset.Source == "" {
+		asset.Source = SkillSourcePlatform
+	}
 	if asset.ManifestJSON == "" {
 		asset.ManifestJSON = "{}"
 	}
@@ -503,7 +506,8 @@ func validateSkillAsset(asset SkillAsset) error {
 	if !validSkillName(asset.Name) || !validSkillScope(asset.Scope) ||
 		!validSkillAssetStatus(asset.Status) || strings.TrimSpace(asset.SourcePath) == "" ||
 		strings.TrimSpace(asset.ManifestHash) == "" || !json.Valid([]byte(asset.ManifestJSON)) ||
-		!json.Valid([]byte(asset.PlatformsJSON)) || !validSkillEntryType(asset.EntryType) {
+		!json.Valid([]byte(asset.PlatformsJSON)) || !validSkillEntryType(asset.EntryType) ||
+		!validSkillSource(asset.Source) {
 		return ErrInvalidSkill
 	}
 	if _, err := parseSkillPlatformList(asset.PlatformsJSON); err != nil {
@@ -637,13 +641,13 @@ func insertSkillAssetTx(db interface {
 	_, err := db.Exec(`INSERT INTO skill_assets (
 		skill_id, name, scope, human_user_id, pod_id, display_name, version,
 		status, source_path, manifest_hash, manifest_json, entry_type, platforms_json,
-		browser_required, progress_supported, system_protected, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		browser_required, progress_supported, system_protected, source, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		asset.SkillID, asset.Name, asset.Scope, nullIfEmpty(asset.HumanUserID),
 		nullIfEmpty(asset.PodID), asset.DisplayName, asset.Version, asset.Status,
 		asset.SourcePath, asset.ManifestHash, asset.ManifestJSON, asset.EntryType,
 		asset.PlatformsJSON, boolToInt(asset.BrowserRequired), boolToInt(asset.ProgressSupported),
-		boolToInt(asset.SystemProtected), formatTime(asset.CreatedAt), formatTime(asset.UpdatedAt))
+		boolToInt(asset.SystemProtected), asset.Source, formatTime(asset.CreatedAt), formatTime(asset.UpdatedAt))
 	if err != nil {
 		return fmt.Errorf("insert Skill asset: %w", err)
 	}
@@ -849,7 +853,7 @@ func scanSkillAsset(sc scanner) (SkillAsset, error) {
 	err := sc.Scan(&asset.SkillID, &asset.Name, &asset.Scope, &asset.HumanUserID,
 		&asset.PodID, &asset.DisplayName, &asset.Version, &asset.Status, &asset.SourcePath,
 		&asset.ManifestHash, &asset.ManifestJSON, &asset.EntryType, &asset.PlatformsJSON,
-		&browserRequired, &progressSupported, &systemProtected, &createdAt, &updatedAt)
+		&browserRequired, &progressSupported, &systemProtected, &asset.Source, &createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SkillAsset{}, ErrNotFound
 	}
@@ -950,6 +954,10 @@ func validSkillScope(scope string) bool {
 	default:
 		return false
 	}
+}
+
+func validSkillSource(source string) bool {
+	return source == SkillSourceUser || source == SkillSourcePlatform
 }
 
 func validSkillAssetStatus(status string) bool {

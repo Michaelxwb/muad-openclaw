@@ -125,6 +125,29 @@ def _apply_evidence(context: SpecContext, evidence: tuple[Mapping[str, object], 
     return replace(context, bindings=tuple(bindings))
 
 
+def _binding_confirmations(binding: SpecBinding) -> dict[str, Mapping[str, object]]:
+    """Feed recorded `manual_verification` decisions back as verifier confirmations.
+
+    Manual verifiers only produce `verified` evidence when a human confirmation is
+    supplied (the verifier forbids agent identity). The owner records the decision
+    via `cf-spec decision`; without this mapping the Done gate re-runs the manual
+    verifier confirmation-less and silently demotes the recorded decision.
+    """
+    confirmations: dict[str, Mapping[str, object]] = {}
+    for rule in binding.rules:
+        status = rule.stage_status.get("code")
+        decision = status.decision if status is not None else None
+        if decision is None or decision.kind != "manual_verification":
+            continue
+        confirmations[rule.ref] = {
+            "reason": decision.reason,
+            "confirmed_by": decision.confirmed_by,
+            "confirmed_at": decision.confirmed_at,
+            "source": decision.source,
+        }
+    return confirmations
+
+
 def run_done_gate(root: str, task_dir: str) -> DoneResult:
     scope_result = evaluate_scope(root, task_dir)
     if scope_result.decision == "pause":
@@ -134,7 +157,12 @@ def run_done_gate(root: str, task_dir: str) -> DoneResult:
     all_evidence: list[Mapping[str, object]] = []
     for binding in context.bindings:
         metadata = load_spec_metadata(str(Path(root) / ".code-flow/specs" / binding.path))
-        result = run_all_verifiers(metadata, VerificationScope(root, scope_result.files, diff_hash))
+        confirmations = _binding_confirmations(binding)
+        result = run_all_verifiers(
+            metadata,
+            VerificationScope(root, scope_result.files, diff_hash),
+            confirmations=confirmations,
+        )
         all_evidence.extend(_evidence_data(item) for item in result.evidence)
     updated = _apply_evidence(context, tuple(all_evidence))
     save_context(_context_path(task_dir), updated)

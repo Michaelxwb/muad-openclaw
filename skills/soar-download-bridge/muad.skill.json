@@ -1,6 +1,0 @@
-{
-  "name": "soar-download-bridge",
-  "platforms": ["soar"],
-  "runtime": "script",
-  "version": "0.1.0"
-}

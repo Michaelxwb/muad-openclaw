@@ -232,8 +232,9 @@ func skillFromAsset(
 ) EffectiveSkill {
 	skill := EffectiveSkill{
 		Name: asset.Name, DisplayName: asset.DisplayName, Effective: effective,
-		EffectiveSource: asset.Scope, Status: status, Version: asset.Version, EntryType: asset.EntryType,
-		ScriptFiles:       scriptFilesFromAsset(asset),
+		EffectiveSource: asset.Scope, Source: asset.Source, Status: status, Version: asset.Version,
+		EntryType:        asset.EntryType,
+		ScriptFiles:      scriptFilesFromAsset(asset),
 		ProgressSupported: asset.ProgressSupported, BrowserRequired: asset.BrowserRequired,
 		Conflict: conflict, ConflictReason: reason,
 	}

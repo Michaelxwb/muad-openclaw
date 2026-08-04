@@ -279,8 +279,20 @@ export function abortTransaction(configPath) {
 }
 
 export function selectRestartMode(current, next) {
-  if (canonicalHash(current) === canonicalHash(next)) return "none";
+  if (canonicalHash(stripRestartNoop(current)) === canonicalHash(stripRestartNoop(next))) {
+    return "none";
+  }
   return "gateway";
+}
+
+// runtime-guard declares plugins.entries.muad-runtime-guard.config.generation as
+// noop (src/index.mjs noopPrefixes); a generation bump is version bookkeeping,
+// not a runtime change, so exclude it from the restart-mode byte comparison.
+function stripRestartNoop(config) {
+  const cleaned = JSON.parse(JSON.stringify(config));
+  const guard = cleaned?.plugins?.entries?.["muad-runtime-guard"]?.config;
+  if (guard && typeof guard === "object") delete guard.generation;
+  return cleaned;
 }
 
 function readConfig(path) {

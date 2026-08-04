@@ -42,6 +42,12 @@ const (
 	SkillStatusDeleted  = "deleted"
 )
 
+// Skill asset sources: user-authored (skill-upload/ingest) vs platform/admin.
+const (
+	SkillSourceUser     = "user"
+	SkillSourcePlatform = "platform"
+)
+
 // Skill policy actions are scoped to one Human User in the first version.
 const (
 	SkillPolicyDisable       = "disable"
@@ -227,6 +233,7 @@ type SkillAsset struct {
 	BrowserRequired   bool
 	ProgressSupported bool
 	SystemProtected   bool
+	Source            string
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }
@@ -276,6 +283,7 @@ type EffectiveSkill struct {
 	DisplayName       string
 	Effective         bool
 	EffectiveSource   string
+	Source            string
 	Status            string
 	Version           string
 	EntryType         string

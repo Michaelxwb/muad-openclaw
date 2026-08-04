@@ -13,6 +13,7 @@ export type SkillScope = "system" | "public" | "private";
 export type SkillStatus = "active" | "disabled" | "deleted";
 export type EffectiveSkillStatus = "effective" | "conflict" | "disabled" | "missing_credential";
 export type SkillPolicyAction = "disable" | "allow_override";
+export type SkillSource = "user" | "platform";
 export type SkillExecutionStatus = "running" | "succeeded" | "failed" | "cancelled" | "rejected";
 export type SkillEntryType = "managed" | "traditional-script" | "traditional-prompt";
 export type SkillActivationMode = "tool" | "path-detected" | "runner";
@@ -219,6 +220,7 @@ export interface PatchHumanUserInput {
   displayName?: string;
   status?: Exclude<HumanUserStatus, "deleting">;
   notes?: string;
+  modelConfigId?: string;
 }
 
 export interface HumanUserDetail {
@@ -364,6 +366,7 @@ export interface SkillAsset {
   browserRequired: boolean;
   progressSupported: boolean;
   systemProtected: boolean;
+  source: SkillSource;
   createdAt: string;
   updatedAt: string;
 }
@@ -397,6 +400,7 @@ export interface EffectiveSkill {
   displayName: string;
   effective: boolean;
   effectiveSource: SkillScope;
+  source: SkillSource;
   status: EffectiveSkillStatus;
   version: string;
   systemSkillId?: string;

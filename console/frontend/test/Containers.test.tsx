@@ -170,4 +170,27 @@ describe("Containers create Pod flow", () => {
     expect(await screen.findByText("Pod already exists")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("muad-pod-01")).toBeInTheDocument();
   });
+
+  it("can select 接管同名保留状态卷 and sends adoptState=true", async () => {
+    apiMocks.createPod.mockResolvedValue({ ...pod, podId: "pod-new", displayName: "pod-new" });
+    render(<Containers />);
+    await screen.findByText("Pod A");
+    openCreateModal();
+    fillMinimalCreateForm();
+
+    const adopt = screen.getByRole("checkbox", { name: /接管同名保留状态卷/ });
+    // 回归守卫：Semi Checkbox 不能被 <label> 包裹——浏览器 label 激活会对内部控制元素
+    // 再派发一次合成 click，导致 onChange 触发两次、勾选被立刻抵消（真实浏览器必现）。
+    expect(adopt.closest("label")).toBeNull();
+    fireEvent.click(adopt);
+    expect(adopt).toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+
+    await waitFor(() =>
+      expect(apiMocks.createPod).toHaveBeenCalledWith(
+        expect.objectContaining({ podId: "pod-new", adoptState: true }),
+      ),
+    );
+  });
 });

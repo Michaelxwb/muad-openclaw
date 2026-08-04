@@ -18,6 +18,10 @@
   margin: 8px 0 12px;
 }
 
+.toolbarInfoIcon {
+  color: var(--semi-color-text-2);
+}
+
 .statusActionBody {
   display: grid;
   gap: 10px;

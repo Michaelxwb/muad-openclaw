@@ -153,6 +153,7 @@ CREATE TABLE IF NOT EXISTS skill_assets (
 	browser_required INTEGER NOT NULL DEFAULT 0 CHECK (browser_required IN (0,1)),
 	progress_supported INTEGER NOT NULL DEFAULT 0 CHECK (progress_supported IN (0,1)),
 	system_protected INTEGER NOT NULL DEFAULT 0 CHECK (system_protected IN (0,1)),
+	source TEXT NOT NULL DEFAULT 'platform',
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL,
 	FOREIGN KEY (human_user_id, pod_id)
@@ -225,6 +226,9 @@ func (s *Store) migrate() error {
 	if err := s.migrateSkillAssetEntryTypes(); err != nil {
 		return err
 	}
+	if err := s.migrateSkillAssetSource(); err != nil {
+		return err
+	}
 	if err := s.migrateSkillExecutionRecords(); err != nil {
 		return err
 	}
@@ -232,7 +236,7 @@ func (s *Store) migrate() error {
 }
 
 func (s *Store) migratePodSkillsPending() error {
-	exists, err := columnExists(s.db, "skills_pending")
+	exists, err := columnExists(s.db, "pods", "skills_pending")
 	if err != nil {
 		return fmt.Errorf("inspect Pod skills_pending column: %w", err)
 	}
@@ -261,6 +265,24 @@ func (s *Store) migrateSkillAssetEntryTypes() error {
 	return nil
 }
 
+// migrateSkillAssetSource adds the `source` column ('user'|'platform', default
+// 'platform') for UI distinction of user-authored vs platform skills. Existing
+// rows stay 'platform'; operators may backfill ingest-uploaded skills to 'user'.
+func (s *Store) migrateSkillAssetSource() error {
+	exists, err := columnExists(s.db, "skill_assets", "source")
+	if err != nil {
+		return fmt.Errorf("inspect Skill asset source column: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	if _, err := s.db.Exec(`ALTER TABLE skill_assets
+		ADD COLUMN source TEXT NOT NULL DEFAULT 'platform'`); err != nil {
+		return fmt.Errorf("add Skill asset source column: %w", err)
+	}
+	return nil
+}
+
 func tableExists(db *sql.DB, name string) (bool, error) {
 	var found string
 	err := db.QueryRow(
@@ -276,8 +298,8 @@ func tableExists(db *sql.DB, name string) (bool, error) {
 	return true, nil
 }
 
-func columnExists(db *sql.DB, column string) (bool, error) {
-	rows, err := db.Query(`PRAGMA table_info(pods)`)
+func columnExists(db *sql.DB, table, column string) (bool, error) {
+	rows, err := db.Query(`PRAGMA table_info(`+table+`)`)
 	if err != nil {
 		return false, err
 	}

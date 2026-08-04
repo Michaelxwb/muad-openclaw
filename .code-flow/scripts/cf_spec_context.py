@@ -838,16 +838,21 @@ def _refresh_artifacts(
     statuses = dict(rule.stage_status)
     changes: list[DriftChange] = []
     for stage, status in rule.stage_status.items():
+        refs: list[ArtifactRef] = []
         for reference in status.refs:
             path = artifact_root / reference.artifact
             current = _file_sha256(path) if path.is_file() else "missing"
             if current == reference.artifact_sha256:
+                refs.append(reference)
                 continue
-            statuses[stage] = replace(status, status="stale")
+            # Working-document artifacts (design.md / task .md) evolve during align/plan/start.
+            # Re-capture the current hash instead of blocking as stale; spec-file drift is
+            # still caught via rules_sha256/text_sha256 in _refresh_existing_rule.
+            refs.append(replace(reference, artifact_sha256=current))
             changes.append(
-                DriftChange("artifact_changed", spec_id, rule.ref, reference.artifact_sha256, current, (stage,))
+                DriftChange("artifact_rebased", spec_id, rule.ref, reference.artifact_sha256, current, (stage,))
             )
-            break
+        statuses[stage] = replace(status, refs=tuple(refs))
     return replace(rule, stage_status=statuses), tuple(changes)
 
 

@@ -146,7 +146,8 @@ function renderAgents(output, runtime) {
       workspace: agent.workspace,
       agentDir: agent.agentDir,
       model: agent.model ? { primary: agent.model } : undefined,
-      skills: Array.isArray(agent.skills) ? [...agent.skills] : [],
+      // No per-agent skills allowlist: agents can use all public Skills plus
+      // their own workspace Skills (openclaw "unrestricted" semantics).
       tools: renderToolPolicy(agent.tools, !agent.default),
     })),
   };
@@ -212,6 +213,9 @@ function renderProviders(output, runtime) {
 }
 
 function renderSkills(output, runtime) {
+  // Only the public directory root is listed; openclaw watches it and
+  // auto-discovers child Skills, so a public Skill add/remove does not change
+  // the config bytes (no gateway restart) while still hot-loading new Skills.
   const existing = isRecord(output.skills?.load) ? output.skills.load : {};
   output.skills = {
     ...(isRecord(output.skills) ? output.skills : {}),
@@ -220,25 +224,10 @@ function renderSkills(output, runtime) {
       extraDirs: uniqueSorted([
         ...(existing.extraDirs ?? []),
         runtime.skills.publicDirectory,
-        ...publicSkillRootDirs(runtime),
       ]),
       watch: true,
     },
   };
-}
-
-function publicSkillRootDirs(runtime) {
-  const publicDirectory = normalizeDirectory(runtime.skills.publicDirectory);
-  const dirs = [];
-  for (const policy of runtime.skills.agents) {
-    for (const grant of policy.allowed) {
-      const rootPath = normalizeDirectory(grant.rootPath);
-      if (grant.source === "public" && isWithinDirectory(rootPath, publicDirectory)) {
-        dirs.push(rootPath);
-      }
-    }
-  }
-  return dirs;
 }
 
 function renderPlugins(output, runtime) {
@@ -303,7 +292,13 @@ function renderSkillReadRoots(runtime) {
   const policies = new Map(runtime.skills.agents.map((policy) => [policy.agentId, policy]));
   return runtime.agents.filter((agent) => !agent.default).map((agent) => ({
     agentId: agent.id,
-    roots: uniqueSorted((policies.get(agent.id)?.allowed ?? []).map((grant) => grant.rootPath)),
+    // Directory-level roots: public Skills live under the public directory and
+    // private Skills under the agent workspace skills root, so this stays byte
+    // stable across Skill add/remove (no gateway restart). isWithin covers the
+    // concrete child Skill directories.
+    roots: uniqueSorted(
+      (policies.get(agent.id)?.allowed ?? []).map((grant) => dirname(grant.rootPath)),
+    ),
   }));
 }
 
@@ -347,15 +342,6 @@ function compact(value) {
 
 function uniqueSorted(values) {
   return [...new Set(values.filter((value) => typeof value === "string" && value))].sort();
-}
-
-function normalizeDirectory(value) {
-  return typeof value === "string" && value.length > 1 ? value.replace(/\/+$/u, "") : value;
-}
-
-function isWithinDirectory(path, directory) {
-  if (directory === "/") return path.startsWith("/");
-  return path === directory || path.startsWith(`${directory}/`);
 }
 
 function cloneRecord(value) {
@@ -407,5 +393,11 @@ const MANAGED_SKILL_GUIDANCE = `${SKILL_GUIDANCE_START}
 - Reading that exact SKILL.md is the native Skill activation and audit boundary.
 - Do not call task tools until one of those activation methods succeeds.
 - Never reuse a prior turn's Skill activation as authorization for the current turn.
+
+# 用户自建 Skill
+
+- 用户说"写/创建 skill"时：与用户多轮对话澄清需求，把草稿写到 skill-staging/<name>/（含 SKILL.md，frontmatter 的 name 与目录同名）；完成后提示用户可继续修改。
+- 用户说"上传 / 生效 / 提交 skill"时：才调用 skill-upload 把 staging 草稿上传到控制台。
+- 【重要】只在用户明确要求上传时调用 skill-upload；写草稿不自动上传，上传时机由用户决定。
 ${SKILL_GUIDANCE_END}`;
 const USER_GUIDANCE = `${MEMORY_GUIDANCE}\n\n${MANAGED_SKILL_GUIDANCE}\n`;

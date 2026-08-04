@@ -34,10 +34,10 @@ test("Runtime DTO accepts older agent payloads without skill filters", () => {
 
   const parsed = parseRuntimeConfig(runtime);
   const output = renderOpenClawConfig(parsed, {});
-  assert.deepEqual(
-    output.agents.list.map((agent) => agent.skills),
-    parsed.agents.map(() => []),
-  );
+  // No per-agent skills allowlist is rendered (openclaw unrestricted semantics).
+  for (const agent of output.agents.list) {
+    assert.equal(Object.hasOwn(agent, "skills"), false, "agents.list[].skills must be absent");
+  }
 });
 
 test("renderer adds native Skill read access to older business agent policies", () => {
@@ -90,8 +90,8 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.equal(output.agents.defaults.systemPrompt, undefined);
   assert.equal(output.agents.list[0].id, "main");
   assert.equal(output.agents.list[0].default, true);
-  assert.deepEqual(output.agents.list[0].skills, []);
-  assert.deepEqual(output.agents.list[1].skills, ["web-tools-guide", "xdr-query"]);
+  assert.equal(Object.hasOwn(output.agents.list[0], "skills"), false, "no skills allowlist for agent 0");
+  assert.equal(Object.hasOwn(output.agents.list[1], "skills"), false, "no skills allowlist for agent 1");
   assert.equal(output.agents.list[1].tools.fs.workspaceOnly, true);
   assert.equal(output.agents.list[1].tools.deny, undefined);
   assert.equal(output.agents.list[0].tools.deny.includes("muad_use_skill"), false);
@@ -114,7 +114,6 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.deepEqual(output.tools.alsoAllow, ["browser", "session_get_state"]);
   assert.deepEqual(output.skills.load.extraDirs, [
     "/opt/openclaw-skills",
-    "/opt/openclaw-skills/xdr-query",
   ]);
   assert.equal(output.plugins.entries["session-manager"].enabled, true);
   assert.equal(output.plugins.installs, undefined);
@@ -124,7 +123,7 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.equal(output.plugins.bundledDiscovery, "allowlist");
   assert.equal(output.plugins.entries["muad-runtime-guard"].config.generation, 7);
   assert.deepEqual(output.plugins.entries["muad-runtime-guard"].config.skillReadRoots, [
-    { agentId: "alice", roots: ["/opt/openclaw-skills/xdr-query"] },
+    { agentId: "alice", roots: ["/opt/openclaw-skills"] },
   ]);
   assert.deepEqual(output.plugins.entries["muad-runtime-guard"].hooks, {
     allowConversationAccess: true,

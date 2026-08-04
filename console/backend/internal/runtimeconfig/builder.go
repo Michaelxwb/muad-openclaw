@@ -328,10 +328,12 @@ func mainToolPolicy() driver.RuntimeToolPolicy {
 }
 
 func businessToolPolicy() driver.RuntimeToolPolicy {
+	// "shell" is not a real OpenClaw tool name (bash/exec are); listing it makes
+	// agents attempt a nonexistent tool and fail exec with an Exec failed.
 	return driver.RuntimeToolPolicy{
 		Allow: []string{
 			"apply_patch", "bash", "browser", "edit", "exec",
-			"process", "read", "session_get_state", "shell", "write",
+			"process", "read", "session_get_state", "write",
 		},
 		WorkspaceOnly: true,
 	}
