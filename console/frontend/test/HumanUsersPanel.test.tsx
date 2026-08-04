@@ -35,7 +35,6 @@ const apiMocks = vi.hoisted(() => ({
   uploadPrivateSkill: vi.fn(),
   deletePrivateSkill: vi.fn(),
   createSkillPolicy: vi.fn(),
-  reloadSkills: vi.fn(),
 }));
 
 vi.mock("../src/api", async (importOriginal) => {
@@ -149,6 +148,7 @@ const effectiveSkill: EffectiveSkill = {
   displayName: "XDR Query",
   effective: true,
   effectiveSource: "public",
+  source: "platform",
   status: "missing_credential",
   version: "1.0.0",
   publicSkillId: "skill-public-xdr",
@@ -176,6 +176,7 @@ const conflictSkill: EffectiveSkill = {
   displayName: "SOAR Sync",
   effective: false,
   effectiveSource: "public",
+  source: "user",
   status: "conflict",
   version: "1.0.0",
   publicSkillId: "skill-public-soar",
@@ -280,7 +281,6 @@ beforeEach(() => {
     createdBy: "admin",
     createdAt: "2026-07-11T00:00:00Z",
   });
-  apiMocks.reloadSkills.mockResolvedValue({ results: { "pod-a": "queued" } });
 });
 
 afterEach(() => Toast.destroyAll());
@@ -422,7 +422,7 @@ describe("HumanUsersPanel", () => {
     expect(screen.getByText("已绑定 IM 数")).toBeInTheDocument();
     expect(screen.queryByText("Human User ID")).not.toBeInTheDocument();
     expect(screen.queryByText("Browser Profile")).not.toBeInTheDocument();
-    expect(screen.getByText("deepseek/deepseek-chat")).toBeInTheDocument();
+    expect(screen.getByText(/deepseek\/deepseek-chat/)).toBeInTheDocument();
     expect(screen.getByText("sk-model-key")).toBeInTheDocument();
   });
 
@@ -620,6 +620,7 @@ describe("HumanUsersPanel", () => {
     expect(screen.getByText("SOAR Sync")).toBeInTheDocument();
     expect(screen.getAllByText("冲突").length).toBeGreaterThan(0);
     expect(screen.getByText("private_overrides_public_requires_approval")).toBeInTheDocument();
+    expect(screen.getAllByText("用户上传").length).toBeGreaterThan(0);
     expect(document.querySelector('select[aria-label="Skill 状态过滤"]')).not.toBeInTheDocument();
   });
 
@@ -714,82 +715,6 @@ describe("HumanUsersPanel", () => {
       platforms: [],
       allowOverride: true,
     });
-  });
-
-  it("applies private Skills to the current user Pod", async () => {
-    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
-      expect(config.title).toBe("应用 Skill 到当前用户 Pod");
-      void config.onOk?.();
-      return {} as ReturnType<typeof Modal.confirm>;
-    });
-    try {
-      renderPanel();
-      await openUserDetail();
-      fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
-
-      await screen.findByText("XDR Query");
-      fireEvent.click(screen.getByRole("button", { name: "应用到当前用户 Pod" }));
-
-      await waitFor(() => expect(apiMocks.reloadSkills).toHaveBeenCalledWith(["pod-a"]));
-    } finally {
-      confirm.mockRestore();
-    }
-  });
-
-  it("continues refreshing user Skills after current Pod apply is queued", async () => {
-    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
-      void config.onOk?.();
-      return {} as ReturnType<typeof Modal.confirm>;
-    });
-    const onPodChanged = vi.fn().mockResolvedValue(undefined);
-    const view = render(<HumanUsersPanel pod={pod} onPodChanged={onPodChanged} />);
-    await openUserDetail();
-    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
-    await screen.findByText("XDR Query");
-    apiMocks.listHumanUserSkills.mockClear();
-    vi.useFakeTimers();
-    try {
-      fireEvent.click(screen.getByRole("button", { name: "应用到当前用户 Pod" }));
-
-      await vi.advanceTimersByTimeAsync(0);
-      expect(apiMocks.reloadSkills).toHaveBeenCalledWith(["pod-a"]);
-      expect(apiMocks.listHumanUserSkills).toHaveBeenCalledTimes(1);
-
-      await vi.advanceTimersByTimeAsync(1000);
-      expect(apiMocks.listHumanUserSkills).toHaveBeenCalledTimes(2);
-
-      await vi.advanceTimersByTimeAsync(2000);
-      expect(apiMocks.listHumanUserSkills).toHaveBeenCalledTimes(3);
-
-      view.unmount();
-      await vi.advanceTimersByTimeAsync(20000);
-      expect(apiMocks.listHumanUserSkills).toHaveBeenCalledTimes(3);
-    } finally {
-      vi.useRealTimers();
-      confirm.mockRestore();
-    }
-  });
-
-  it("warns when current user Pod Skill apply returns a failed status", async () => {
-    apiMocks.reloadSkills.mockResolvedValueOnce({ results: { "pod-a": "failed_sync" } });
-    const warning = vi.spyOn(Toast, "warning").mockImplementation(() => "");
-    const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
-      void config.onOk?.();
-      return {} as ReturnType<typeof Modal.confirm>;
-    });
-    try {
-      renderPanel();
-      await openUserDetail();
-      fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
-
-      await screen.findByText("XDR Query");
-      fireEvent.click(screen.getByRole("button", { name: "应用到当前用户 Pod" }));
-
-      await waitFor(() => expect(warning).toHaveBeenCalledWith("当前用户 Pod Skill 同步失败"));
-    } finally {
-      confirm.mockRestore();
-      warning.mockRestore();
-    }
   });
 
   it("shows private Skill upload failures inside the dialog", async () => {

@@ -11,8 +11,9 @@ import {
   Table,
   Tag,
   Toast,
+  Tooltip,
 } from "@douyinfe/semi-ui";
-import { IconPlus, IconRefresh, IconSearch } from "@douyinfe/semi-icons";
+import { IconInfoCircle, IconPlus, IconRefresh, IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../api";
 import type {
   PublicSkillStorageStatus,
@@ -113,7 +114,7 @@ export function Skills() {
       await api.updateSkill(pendingAction.skill.skillId, { status: pendingAction.status });
       if (!mountedRef.current) return;
       Toast.warning(
-        `${pendingAction.skill.name} 已${pendingAction.label}，需要点击「应用 Skill」后才会对所有 Pod 生效。`,
+        `${pendingAction.skill.name} 已${pendingAction.label}，Skill 变更将自动同步到所有 Pod。`,
       );
       setPendingAction(null);
       await state.refresh();
@@ -162,7 +163,6 @@ export function Skills() {
           onApply={applyAllSkills}
           onUpload={() => setUploadOpen(true)}
         />
-        <SkillApplyNotice />
         <PublicStorageNotice storage={storage} />
         <SkillTable state={state} onOpen={setSelected} onStatusAction={setPendingAction} />
       </PageSection>
@@ -193,19 +193,6 @@ function notifySkillApplyResult(result: SkillReloadResult) {
     return;
   }
   Toast.success(message);
-}
-
-function SkillApplyNotice() {
-  return (
-    <Banner
-      className={styles.storageNotice}
-      type="warning"
-      description="启用、禁用或删除 Skill 后，需要点击「应用 Skill」才会同步 Public Skill，并对所有运行中的 Pod 生效。"
-      fullMode={false}
-      bordered
-      closeIcon={null}
-    />
-  );
 }
 
 function skillApplyMessage(results: Record<string, string>, warnings: string[] = []) {
@@ -404,6 +391,9 @@ function SkillToolbar({
           <Button loading={applying} onClick={onApply}>
             应用到全部 Pod
           </Button>
+          <Tooltip content="Skill 变更自动同步；如需强制重同步可点击「应用 Skill」">
+            <IconInfoCircle aria-label="Skill 自动同步说明" className={styles.toolbarInfoIcon} />
+          </Tooltip>
           <PublicStorageAction storage={storage} />
           <Button
             aria-label="扫描 Skill"
@@ -552,8 +542,13 @@ function skillColumns(
     {
       title: "范围",
       dataIndex: "scope",
-      width: 90,
-      render: (_: unknown, skill: SkillAsset) => <ScopeTag scope={skill.scope} />,
+      width: 150,
+      render: (_: unknown, skill: SkillAsset) => (
+        <Space spacing={4}>
+          <ScopeTag scope={skill.scope} />
+          {skill.source === "user" && <Tag color="green">用户上传</Tag>}
+        </Space>
+      ),
     },
     {
       title: "状态",
@@ -691,7 +686,7 @@ function SkillStatusActionDialog({
             <StatusTag status={action.status} />。
           </div>
           <div className={styles.subtle}>
-            该操作会更新控制面配置；需要在 Skill 管理页点击「应用 Skill」后才会对所有 Pod 生效。
+            该操作会更新控制面配置；Skill 变更将自动同步到所有 Pod。
           </div>
           {action.status === "deleted" && (
             <div className={styles.subtle}>

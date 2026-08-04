@@ -155,9 +155,7 @@ function RuntimeMetadata({ detail }: { detail: HumanUserDetail }) {
     { key: "运行 Agent", value: user.agentId },
     { key: "浏览器配置", value: user.browserProfile },
     { key: "浏览器端口", value: user.browserCdpPort },
-    { key: "模型配置", value: `${user.modelConfig.provider}/${user.modelConfig.model}` },
-    { key: "模型 Key", value: user.modelConfig.apiKey || "已配置" },
     { key: "已绑定 IM 数", value: detail.identities.length },
   ];
-  return <Descriptions className={styles.detailSummary} data={items} row size="small" column={2} />;
+  return <Descriptions className={styles.detailSummary} data={items} row size="small" column={5} />;
 }

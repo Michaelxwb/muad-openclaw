@@ -2,6 +2,8 @@ package api
 
 import (
 	"bytes"
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log"
@@ -69,6 +71,7 @@ type skillAssetView struct {
 	BrowserRequired   bool      `json:"browserRequired"`
 	ProgressSupported bool      `json:"progressSupported"`
 	SystemProtected   bool      `json:"systemProtected"`
+	Source            string    `json:"source"`
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
 }
@@ -78,6 +81,7 @@ type effectiveSkillView struct {
 	DisplayName       string                 `json:"displayName"`
 	Effective         bool                   `json:"effective"`
 	EffectiveSource   string                 `json:"effectiveSource"`
+	Source            string                 `json:"source"`
 	Status            string                 `json:"status"`
 	Version           string                 `json:"version"`
 	SystemSkillID     string                 `json:"systemSkillId,omitempty"`
@@ -233,9 +237,20 @@ func (s *Server) handleUploadPublicSkill(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	s.auditSkill(r, auditlog.ActionSkillAssetInstall, asset, "installed", len(podIDs))
+	s.enqueueReconcileForPods(podIDs)
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"skill": skillAssetToView(asset), "affectedPodIds": podIDs,
 	})
+}
+
+// enqueueReconcileForPods 在 public Skill 变更（上传/禁用/启用/删除）后把受影响
+// Pod 入队 reconcile，让 apply 链把共享 public Skill 文件同步到 worker 挂载目录，
+// 无需手动「应用配置」。apply 链不重启 gateway（openclaw.json 不含 skill 列表，
+// selectRestartMode=none），skill 文件经 PVC 挂载自动生效。
+func (s *Server) enqueueReconcileForPods(podIDs []string) {
+	for _, podID := range podIDs {
+		s.enqueueReconcile(podID)
+	}
 }
 
 func upsertPublicSkillAssetWithCleanup(
@@ -292,6 +307,7 @@ func (s *Server) handlePatchSkill(w http.ResponseWriter, r *http.Request) {
 		s.removePublicSkillAfterDelete(publicDeleteName)
 	}
 	s.auditSkill(r, auditlog.ActionSkillAssetUpdate, asset, asset.Status, len(podIDs))
+	s.enqueueReconcileForPods(podIDs)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"skill": skillAssetToView(asset), "affectedPodIds": podIDs,
 	})
@@ -378,7 +394,94 @@ func (s *Server) handleCreateSkillPolicy(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	s.auditSkillPolicy(r, auditlog.ActionSkillPolicyCreate, created, podID, "created")
+	// Auto-sync: policy is part of the runtime contract; enqueue reconcile so the
+	// apply chain propagates it to the worker without a manual「应用配置」.
+	s.enqueueReconcile(podID)
 	writeJSON(w, http.StatusCreated, skillPolicyToView(created))
+}
+
+type ingestPrivateSkillRequest struct {
+	AgentID      string `json:"agentId"`
+	BundleFormat string `json:"bundleFormat"`
+	BundleBase64 string `json:"bundle"`
+}
+
+// handleIngestPrivateSkill is the worker-side private skill upload path
+// (POST /internal/v1/skills/private/ingest, pod service token authenticated).
+// skill-upload packages a user-authored staging skill via `installer export`,
+// POSTs it here; the console validates with the existing skill_bundle pipeline,
+// records the private skill asset, then syncs it directly to the workspace
+// (no config_generation bump, no gateway restart — the openclaw watcher picks
+// the installed files up).
+func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request) {
+	var request ingestPrivateSkillRequest
+	if err := decodeJSONBody(w, r, &request); err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		return
+	}
+	request.AgentID = strings.TrimSpace(request.AgentID)
+	request.BundleFormat = strings.TrimSpace(request.BundleFormat)
+	if request.AgentID == "" || request.BundleBase64 == "" {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "agentId and bundle are required")
+		return
+	}
+	if request.BundleFormat != "tar.gz" && request.BundleFormat != "zip" {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid bundle format")
+		return
+	}
+	bundle, err := base64.StdEncoding.DecodeString(request.BundleBase64)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid bundle encoding")
+		return
+	}
+	user, err := s.store.GetHumanUserByAgentID(request.AgentID)
+	if err != nil {
+		writeRepoError(w, err)
+		return
+	}
+	s.skillUploadMu.Lock()
+	defer s.skillUploadMu.Unlock()
+	result, err := installPrivateSkillBundle(
+		bundle, s.cfg.SkillsDir, user.HumanUserID, "",
+		func(name string) error { return s.rejectPrivateSkillConflict(name, user.HumanUserID, false) },
+	)
+	if err != nil {
+		if errors.Is(err, repo.ErrSkillExists) || errors.Is(err, repo.ErrInvalidSkill) {
+			writeRepoError(w, err)
+			return
+		}
+		log.Printf("private_skill_ingest_invalid user=%s error=%s",
+			user.HumanUserID, auditlog.RedactDiagnostic(err.Error()))
+		writeErr(w, http.StatusBadRequest, codeInvalidField, publicSkillBundleClientMessage(err))
+		return
+	}
+	asset, err := s.store.CreateSkillAsset(repo.SkillAsset{
+		Name: result.Name, Scope: repo.SkillScopePrivate, HumanUserID: user.HumanUserID,
+		PodID: user.PodID, DisplayName: result.Name, Version: result.Version,
+		SourcePath: result.TargetDir, ManifestHash: result.ManifestHash,
+		ManifestJSON: result.ManifestJSON, EntryType: result.EntryType,
+		PlatformsJSON:     mustMarshalStringSlice(result.Platforms),
+		ProgressSupported: result.ProgressSupported, BrowserRequired: result.BrowserRequired,
+		Source: repo.SkillSourceUser,
+	})
+	if err != nil {
+		s.removePrivateSkillAfterDelete(user.HumanUserID, result.Name)
+		writeRepoError(w, err)
+		return
+	}
+	// Direct sync without a config generation bump: the skill is installed to the
+	// workspace now; the watcher discovers it without a gateway restart. A sync
+	// failure leaves the asset recorded for a later reconcile/reload to retry.
+	if s.skillSyncer != nil {
+		syncCtx, cancel := context.WithTimeout(r.Context(), podRuntimeOpTimeout)
+		defer cancel()
+		if err := s.skillSyncer.SyncPod(syncCtx, user.PodID); err != nil {
+			log.Printf("private_skill_ingest_sync_failed user=%s skill=%s error=%v",
+				user.HumanUserID, result.Name, auditlog.RedactDiagnostic(err.Error()))
+		}
+	}
+	s.auditSkill(r, auditlog.ActionSkillAssetInstall, asset, "ingested", 1)
+	writeJSON(w, http.StatusOK, map[string]any{"skill": skillAssetToView(asset)})
 }
 
 func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request) {
@@ -437,6 +540,9 @@ func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request
 	if policyCreated != nil {
 		s.auditSkillPolicy(r, auditlog.ActionSkillPolicyCreate, *policyCreated, pod.PodID, "created")
 	}
+	// Auto-sync: mark pending alone does not reach the worker; enqueue reconcile so
+	// the apply chain runs SyncPod (installer → workspace) without a gateway restart.
+	s.enqueueReconcile(pod.PodID)
 	writeJSON(w, http.StatusCreated, map[string]any{"skill": skillAssetToView(asset)})
 }
 
@@ -453,7 +559,7 @@ func privateUploadPolicy(
 }
 
 func (s *Server) handleDeletePrivateSkill(w http.ResponseWriter, r *http.Request) {
-	user, _, ok := s.privateSkillTarget(w, r.PathValue("humanUserId"))
+	user, pod, ok := s.privateSkillTarget(w, r.PathValue("humanUserId"))
 	if !ok {
 		return
 	}
@@ -473,6 +579,9 @@ func (s *Server) handleDeletePrivateSkill(w http.ResponseWriter, r *http.Request
 	}
 	s.removePrivateSkillAfterDelete(user.HumanUserID, asset.Name)
 	s.auditSkill(r, auditlog.ActionSkillAssetDelete, deleted, "deleted", 1)
+	// Auto-sync: enqueue reconcile so the apply chain removes the Skill from the
+	// workspace (SyncPod → installer) and clears skills_pending without a restart.
+	s.enqueueReconcile(pod.PodID)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": true, "skillId": asset.SkillID})
 }
 
@@ -491,6 +600,7 @@ func (s *Server) handleDeleteSkillPolicy(w http.ResponseWriter, r *http.Request)
 	s.auditSkillPolicy(r, auditlog.ActionSkillPolicyDelete, repo.SkillPolicy{
 		PolicyID: r.PathValue("policyId"), HumanUserID: r.PathValue("humanUserId"),
 	}, podID, "deleted")
+	s.enqueueReconcile(podID)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": true, "policyId": r.PathValue("policyId")})
 }
 
@@ -790,7 +900,8 @@ func skillAssetToView(asset repo.SkillAsset) skillAssetView {
 		ManifestHash: asset.ManifestHash, ManifestJSON: asset.ManifestJSON,
 		EntryType: asset.EntryType, PlatformsJSON: asset.PlatformsJSON,
 		BrowserRequired: asset.BrowserRequired, ProgressSupported: asset.ProgressSupported,
-		SystemProtected: asset.SystemProtected, CreatedAt: asset.CreatedAt, UpdatedAt: asset.UpdatedAt,
+		SystemProtected: asset.SystemProtected, Source: asset.Source,
+		CreatedAt: asset.CreatedAt, UpdatedAt: asset.UpdatedAt,
 	}
 }
 
@@ -805,7 +916,8 @@ func effectiveSkillViews(skills []repo.EffectiveSkill) []effectiveSkillView {
 func effectiveSkillToView(skill repo.EffectiveSkill) effectiveSkillView {
 	view := effectiveSkillView{
 		Name: skill.Name, DisplayName: skill.DisplayName, Effective: skill.Effective,
-		EffectiveSource: skill.EffectiveSource, Status: skill.Status, Version: skill.Version,
+		EffectiveSource: skill.EffectiveSource, Source: skill.Source,
+		Status: skill.Status, Version: skill.Version,
 		SystemSkillID: skill.SystemSkillID, PublicSkillID: skill.PublicSkillID,
 		PrivateSkillID: skill.PrivateSkillID, Conflict: skill.Conflict,
 		ConflictReason: skill.ConflictReason, ProgressSupported: skill.ProgressSupported,

@@ -73,6 +73,28 @@ export async function listPrivateSkills({ agentId, stateDir }) {
   return { ok: true, action: "list", skills };
 }
 
+// export packages a user-authored skill (staging draft first, then the installed
+// real skills dir) as a tar.gz archive whose root member is <skill-name>/, so the
+// console skill_bundle validator can resolve SKILL.md. The raw bundle is returned
+// for skill-upload to POST to the console ingest endpoint.
+export async function exportPrivateSkill({ agentId, stateDir, skillName }) {
+  validateAgentId(agentId);
+  validateSkillName(skillName);
+  const root = path.resolve(stateDir || DEFAULT_STATE_DIR);
+  const workspace = path.join(root, `workspace-${agentId}`);
+  await assertWithin(root, workspace);
+  const stagingDir = path.join(workspace, "skill-staging", skillName);
+  const realDir = path.join(workspace, "skills", skillName);
+  const stagingOk = await fileExists(path.join(stagingDir, "SKILL.md"));
+  const realOk = await fileExists(path.join(realDir, "SKILL.md"));
+  if (!stagingOk && !realOk) throw new Error(`skill not found: ${skillName}`);
+  const sourceDir = stagingOk ? stagingDir : realDir;
+  await assertNoLinks(sourceDir);
+  const parentDir = path.dirname(sourceDir);
+  const bundle = runTarRaw(["-czf", "-", "-C", parentDir, skillName], MAX_EXTRACTED_BYTES);
+  return { ok: true, action: "export", name: skillName, bundle, bundleHash: hashBytes(bundle) };
+}
+
 async function extractBundle(bundlePath, extractRoot, format) {
   if (format === "zip") {
     await validateZipBundle(bundlePath);
@@ -550,6 +572,21 @@ function runTar(args) {
   return result;
 }
 
+// runTarRaw captures binary stdout (no utf8 re-encoding) for archive packaging.
+function runTarRaw(args, maxBuffer) {
+  const result = spawnSync("tar", args, { maxBuffer });
+  if (result.status !== 0) {
+    throw new Error((result.stderr || result.stdout || "tar failed").toString().trim());
+  }
+  return result.stdout;
+}
+
+function hashBytes(value) {
+  const hash = createHash("sha256");
+  hash.update(value);
+  return "sha256:" + hash.digest("hex");
+}
+
 function runUnzip(args) {
   const result = spawnSync("unzip", args, { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
   if (result.status !== 0) {
@@ -674,12 +711,23 @@ async function main() {
   if (command === "list") {
     return listPrivateSkills({ agentId: options["agent-id"], stateDir: options["state-dir"] });
   }
-  throw new Error("usage: private-skill-installer.mjs install|delete --agent-id <id>");
+  if (command === "export") {
+    const result = await exportPrivateSkill({
+      agentId: options["agent-id"], stateDir: options["state-dir"], skillName: options["skill-name"],
+    });
+    // Raw tar.gz goes to stdout so skill-upload can capture and POST it.
+    process.stdout.write(result.bundle);
+    return;
+  }
+  throw new Error("usage: private-skill-installer.mjs install|delete|list|export --agent-id <id>");
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   main().then((result) => {
-    process.stdout.write(`${JSON.stringify(result)}\n`);
+    // export already wrote its binary bundle to stdout; skip the JSON envelope.
+    if (result !== undefined) {
+      process.stdout.write(`${JSON.stringify(result)}\n`);
+    }
   }).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;

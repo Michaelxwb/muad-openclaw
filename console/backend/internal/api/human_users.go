@@ -11,9 +11,10 @@ import (
 )
 
 type patchHumanUserRequest struct {
-	DisplayName *string `json:"displayName"`
-	Status      *string `json:"status"`
-	Notes       *string `json:"notes"`
+	DisplayName   *string `json:"displayName"`
+	Status        *string `json:"status"`
+	Notes         *string `json:"notes"`
+	ModelConfigID *string `json:"modelConfigId"`
 }
 
 func (s *Server) handleCreateHumanUser(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +238,10 @@ func (s *Server) handlePatchHumanUser(w http.ResponseWriter, r *http.Request) {
 func (s *Server) humanUserPatch(
 	user repo.HumanUser, request patchHumanUserRequest,
 ) (repo.HumanUserUpdate, bool, bool, error) {
-	update := repo.HumanUserUpdate{DisplayName: user.DisplayName, Status: user.Status, Notes: user.Notes}
+	update := repo.HumanUserUpdate{
+		DisplayName: user.DisplayName, Status: user.Status, Notes: user.Notes,
+		ModelConfigID: user.ModelConfigID,
+	}
 	if request.DisplayName != nil {
 		update.DisplayName = strings.TrimSpace(*request.DisplayName)
 	}
@@ -247,6 +251,9 @@ func (s *Server) humanUserPatch(
 	if request.Notes != nil {
 		update.Notes = *request.Notes
 	}
+	if request.ModelConfigID != nil {
+		update.ModelConfigID = strings.TrimSpace(*request.ModelConfigID)
+	}
 	if update.DisplayName == "" || len(update.DisplayName) > 128 || len(update.Notes) > 4000 ||
 		!validHumanUserStatus(update.Status) || update.Status == repo.HumanUserStatusDeleting {
 		return repo.HumanUserUpdate{}, false, false, errors.New("invalid mutable fields")
@@ -254,8 +261,10 @@ func (s *Server) humanUserPatch(
 	if err := s.validateHumanUserStatus(user, update.Status); err != nil {
 		return repo.HumanUserUpdate{}, false, false, err
 	}
-	changed := update.DisplayName != user.DisplayName || update.Status != user.Status || update.Notes != user.Notes
-	return update, changed, update.Status != user.Status, nil
+	changed := update.DisplayName != user.DisplayName || update.Status != user.Status ||
+		update.Notes != user.Notes || update.ModelConfigID != user.ModelConfigID
+	stateChanged := update.Status != user.Status || update.ModelConfigID != user.ModelConfigID
+	return update, changed, stateChanged, nil
 }
 
 func (s *Server) validateHumanUserStatus(user repo.HumanUser, next string) error {

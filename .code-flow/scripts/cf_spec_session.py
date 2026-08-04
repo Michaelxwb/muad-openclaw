@@ -25,9 +25,60 @@ class SessionProjection:
     truncated: bool
 
 
+def _stable_stage(status: RuleStageStatus) -> dict[str, object]:
+    decision = status.decision
+    return {
+        "status": status.status,
+        # Artifact content hashes and evidence are routine coding progress; keep
+        # only the artifact identity (path) so doc edits do not drift the marker.
+        "refs": [ref.artifact for ref in status.refs],
+        "decision": None if decision is None else {
+            "kind": decision.kind, "reason": decision.reason, "source": decision.source,
+        },
+    }
+
+
+def _stable_rule(rule: RuleBinding) -> dict[str, object]:
+    return {
+        "ref": rule.ref,
+        "text_sha256": rule.text_sha256,
+        "enforcement": rule.enforcement,
+        "verifier_ref": rule.verifier_ref,
+        "stage_status": {stage: _stable_stage(st) for stage, st in rule.stage_status.items()},
+    }
+
+
+def _stable_binding(binding: SpecBinding) -> dict[str, object]:
+    return {
+        "spec_id": binding.spec_id,
+        "path": binding.path,
+        "hashes": {
+            "file_sha256": binding.hashes.file_sha256,
+            "metadata_sha256": binding.hashes.metadata_sha256,
+            "rules_sha256": binding.hashes.rules_sha256,
+        },
+        "enforcement": binding.enforcement,
+        "stages": list(binding.stages),
+        "rules": [_stable_rule(rule) for rule in binding.rules],
+    }
+
+
 def context_sha256(context: SpecContext) -> str:
-    data = yaml.safe_dump(context_to_data(context), sort_keys=True, allow_unicode=True).encode()
-    return hashlib.sha256(data).hexdigest()
+    # Hash only the stable core of the context: spec bindings, rule text hashes,
+    # statuses, and decision kind/reason. Volatile fields (updated_at, artifact
+    # content hashes, decision timestamps, evidence) are excluded so routine
+    # doc edits and re-saves during coding do not drift the active marker.
+    # Spec-file drift (hashes.rules_sha256 / text_sha256) and status transitions
+    # still change the hash and require re-activation.
+    data = {
+        "version": context.version,
+        "task": context.task,
+        "enforcement": context.enforcement,
+        "sources": [{"type": item.type, "ref": item.ref} for item in context.sources],
+        "bindings": [_stable_binding(binding) for binding in context.bindings],
+    }
+    payload = yaml.safe_dump(data, sort_keys=True, allow_unicode=True).encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _task_section(text: str, task_id: str) -> str:
@@ -70,7 +121,7 @@ def _rule_line(ref: str, rule: RuleBinding, compact: bool = False) -> str:
 
 
 def project_task_session(
-    context: SpecContext, task_file: str, task_id: str, max_chars: int = 4000
+    context: SpecContext, task_file: str, task_id: str, max_chars: int = 12000
 ) -> SessionProjection:
     section = _task_section(Path(task_file).read_text(encoding="utf-8"), task_id)
     refs = _refs(section)

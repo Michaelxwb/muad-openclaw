@@ -132,6 +132,29 @@ test("file policy keeps private Skill files read-only for the owning agent", asy
   assert.equal(await policy.evaluate(file("write", "/state/workspace-alice/notes.txt"), context("alice")), undefined);
 });
 
+test("file policy allows writing the user staging area while real Skills stay read-only", async () => {
+  const policy = filePolicy();
+  // S-01: skill-staging (sibling of skills/, within workspace) is writable by the owning agent.
+  const stagingSkill = "/state/workspace-alice/skill-staging/my-skill/SKILL.md";
+  assert.equal(await policy.evaluate(file("write", stagingSkill), context("alice")), undefined);
+  assert.equal(await policy.evaluate(file("edit", stagingSkill), context("alice")), undefined);
+  assert.equal(await policy.evaluate(
+    { toolName: "apply_patch", params: { patch: "opaque" }, derivedPaths: [stagingSkill] },
+    context("alice"),
+  ), undefined);
+  // E-02: real private Skill under workspace/skills stays read-only.
+  const aliceSkill = "/state/workspace-alice/skills/private-report/SKILL.md";
+  assert.equal((await policy.evaluate(file("write", aliceSkill), context("alice"))).allow, false);
+  // E-03: another user's staging area is outside this workspace -> denied.
+  assert.equal((await policy.evaluate(
+    file("write", "/state/workspace-bob/skill-staging/other-skill/SKILL.md"), context("alice"),
+  )).allow, false);
+  // E-03: ".." traversal out of the workspace via staging -> denied.
+  assert.equal((await policy.evaluate(
+    file("write", "/state/workspace-alice/skill-staging/../../../workspace-bob/x.txt"), context("alice"),
+  )).allow, false);
+});
+
 test("apply_patch requires host-derived paths and checks every target", async () => {
   const policy = filePolicy();
   const allowed = { toolName: "apply_patch", params: { patch: "opaque" },

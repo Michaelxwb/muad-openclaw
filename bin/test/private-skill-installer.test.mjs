@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
 
-import { deletePrivateSkill, installPrivateSkill, listPrivateSkills } from "../private-skill-installer.mjs";
+import { deletePrivateSkill, exportPrivateSkill, installPrivateSkill, listPrivateSkills } from "../private-skill-installer.mjs";
 
 test("installs one private skill into the target agent workspace", async () => {
   const root = mkdtempSync(join(tmpdir(), "muad-skill-install-"));
@@ -30,6 +30,42 @@ test("installs one private skill into the target agent workspace", async () => {
   assert.equal(result.entryType, "managed");
   assert.match(result.manifestHash, /^sha256:/u);
   assert.equal(readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "SKILL.md"), "utf8"), "# XDR\n");
+});
+
+test("export packages a staging skill as a tar.gz bundle", async () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-skill-export-staging-"));
+  const staging = join(root, "workspace-alice", "skill-staging", "draft-skill");
+  mkdirSync(staging, { recursive: true });
+  writeFileSync(join(staging, "SKILL.md"), "# Draft\n");
+  writeFileSync(join(staging, "run.py"), "print('draft')\n");
+
+  const result = await exportPrivateSkill({ agentId: "alice", stateDir: root, skillName: "draft-skill" });
+  assert.equal(result.name, "draft-skill");
+  assert.ok(result.bundle.length > 0, "bundle should be non-empty");
+
+  // Re-extract: the archive must contain draft-skill/SKILL.md for console skill_bundle validation.
+  const extractDir = join(root, "extract-check");
+  mkdirSync(extractDir, { recursive: true });
+  const bundlePath = join(root, "bundle.tar.gz");
+  writeFileSync(bundlePath, result.bundle);
+  execFileSync("tar", ["-xzf", bundlePath, "-C", extractDir]);
+  assert.equal(readFileSync(join(extractDir, "draft-skill", "SKILL.md"), "utf8"), "# Draft\n");
+  assert.equal(readFileSync(join(extractDir, "draft-skill", "run.py"), "utf8"), "print('draft')\n");
+});
+
+test("export falls back to the installed real skills dir and rejects missing skills", async () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-skill-export-real-"));
+  const bundle = makeBundle(root, { name: "installed-skill" });
+  await installPrivateSkill({ bundle, agentId: "alice", stateDir: root, expectedName: "installed-skill" });
+
+  const result = await exportPrivateSkill({ agentId: "alice", stateDir: root, skillName: "installed-skill" });
+  assert.equal(result.name, "installed-skill");
+  assert.ok(result.bundle.length > 0);
+
+  await assert.rejects(
+    () => exportPrivateSkill({ agentId: "alice", stateDir: root, skillName: "missing-skill" }),
+    /skill not found/u,
+  );
 });
 
 test("classifies a manifest-free private Skill with nested scripts", async () => {

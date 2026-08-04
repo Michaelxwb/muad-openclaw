@@ -1,6 +1,0 @@
-{
-  "name": "mss-report-bridge",
-  "platforms": ["mssw"],
-  "runtime": "script",
-  "version": "0.1.0"
-}

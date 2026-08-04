@@ -39,9 +39,10 @@ type HumanUserListFilter struct {
 
 // HumanUserUpdate contains fields mutable through the normal PATCH path.
 type HumanUserUpdate struct {
-	DisplayName string
-	Status      string
-	Notes       string
+	DisplayName   string
+	Status        string
+	Notes         string
+	ModelConfigID string
 }
 
 // CreateHumanUser atomically checks capacity, allocates a stable port, inserts
@@ -79,6 +80,17 @@ func (s *Store) GetHumanUser(humanUserID string) (HumanUser, error) {
 func (s *Store) GetHumanUserByAgent(podID, agentID string) (HumanUser, error) {
 	row := s.db.QueryRow(`SELECT `+humanUserColumns+`
 		FROM human_users WHERE pod_id = ? AND agent_id = ?`, podID, agentID)
+	return scanHumanUser(row)
+}
+
+// GetHumanUserByAgentID resolves a user across Pods by its unique agent id
+// (used by the worker skill-ingest path, which only knows the agent id).
+func (s *Store) GetHumanUserByAgentID(agentID string) (HumanUser, error) {
+	if strings.TrimSpace(agentID) == "" {
+		return HumanUser{}, ErrNotFound
+	}
+	row := s.db.QueryRow(`SELECT `+humanUserColumns+`
+		FROM human_users WHERE agent_id = ? ORDER BY pod_id LIMIT 1`, agentID)
 	return scanHumanUser(row)
 }
 
@@ -148,13 +160,25 @@ func (s *Store) UpdateHumanUser(humanUserID string, update HumanUserUpdate) erro
 			return err
 		}
 	}
+	modelChanged := update.ModelConfigID != "" && update.ModelConfigID != current.ModelConfigID
+	if modelChanged {
+		// Model pool rule: only an unbound model may be bound; the previous
+		// model is implicitly released by no longer being referenced.
+		if err := ensureLLMModelAvailable(tx, update.ModelConfigID); err != nil {
+			return err
+		}
+	}
+	if !modelChanged {
+		update.ModelConfigID = current.ModelConfigID
+	}
 	res, err := tx.Exec(`UPDATE human_users SET display_name = ?, status = ?,
-		notes = ?, updated_at = ? WHERE human_user_id = ?`, strings.TrimSpace(update.DisplayName),
-		update.Status, update.Notes, formatTime(time.Now().UTC()), humanUserID)
+		notes = ?, model_config_id = ?, updated_at = ? WHERE human_user_id = ?`,
+		strings.TrimSpace(update.DisplayName), update.Status, update.Notes,
+		nullIfEmpty(update.ModelConfigID), formatTime(time.Now().UTC()), humanUserID)
 	if err := affectedOrNotFound(res, err, "update Human User"); err != nil {
 		return err
 	}
-	if current.Status != update.Status {
+	if current.Status != update.Status || modelChanged {
 		if err := markPodConfigPendingTx(tx, current.PodID); err != nil {
 			return err
 		}

@@ -126,7 +126,9 @@ function CreatePodFields({
         max={1000}
         onChange={(value) => set("maxBrowserConcurrency", value)}
       />
-      <label className={`${styles.field} ${styles.full}`}>
+      {/* 不能用 <label> 包裹 Semi Checkbox：label 激活会对控制元素再派发一次合成 click，
+          导致 onChange 触发两次、勾选被立刻抵消（Chrome 实测）。用 div 保持同样布局。 */}
+      <div className={`${styles.field} ${styles.full}`}>
         <Checkbox
           checked={form.adoptState}
           onChange={(event) => setForm({ ...form, adoptState: Boolean(event.target.checked) })}
@@ -136,7 +138,7 @@ function CreatePodFields({
         <span>
           仅当删除 Pod 时选择了保留 PVC 后使用；会复用原 workspace、记忆、会话和 private Skill。
         </span>
-      </label>
+      </div>
     </div>
   );
 }

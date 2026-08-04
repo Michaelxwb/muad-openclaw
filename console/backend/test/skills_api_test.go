@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,6 +76,7 @@ func TestSkillAPI_ListDetailEffectiveAndPolicies(t *testing.T) {
 		t.Fatalf("effective Skill conflict = %+v", effective)
 	}
 
+	e.reconcile.podIDs = nil // ignore pod-creation enqueues from setup
 	rr = e.do(http.MethodPost, "/api/v1/human-users/"+alice.HumanUserID+"/skill-policies",
 		`{"skillName":"xdr-query","action":"allow_override","reason":"approved"}`)
 	assertStatus(t, rr, http.StatusCreated)
@@ -85,8 +87,8 @@ func TestSkillAPI_ListDetailEffectiveAndPolicies(t *testing.T) {
 	if policy.PolicyID == "" || policy.Action != repo.SkillPolicyAllowOverride {
 		t.Fatalf("policy response = %+v", policy)
 	}
-	if len(e.reconcile.podIDs) != 1 {
-		t.Fatalf("policy should mark pending without enqueueing another reconcile: %v", e.reconcile.podIDs)
+	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
+		t.Fatalf("skill policy change should auto-enqueue reconcile: %v", e.reconcile.podIDs)
 	}
 
 	rr = e.do(http.MethodDelete,
@@ -114,10 +116,14 @@ func TestSkillAPI_StatusUpdateAndProtectedSystemSkill(t *testing.T) {
 		SourcePath: "/opt/system/session-manager", ManifestHash: "sha256:system",
 	})
 
+	e.reconcile.podIDs = nil // ignore pod-creation enqueues from setup
 	rr := e.do(http.MethodPatch, "/api/v1/skills/"+publicSkill.SkillID, `{"status":"disabled"}`)
 	assertStatus(t, rr, http.StatusOK)
 	if !strings.Contains(rr.Body.String(), `"affectedPodIds":["pod-a"]`) {
 		t.Fatalf("patch Skill response = %s", rr.Body.String())
+	}
+	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
+		t.Fatalf("public Skill status change should auto-enqueue reconcile: %v", e.reconcile.podIDs)
 	}
 	got, err := e.store.GetSkillAsset(publicSkill.SkillID)
 	if err != nil || got.Status != repo.SkillStatusDisabled {
@@ -167,6 +173,7 @@ func TestSkillAPI_PrivateUploadAndDelete(t *testing.T) {
 	createPodThroughAPI(t, e, testPodBody)
 	createTestPlatform(t, e.store, "xdr", "XDR")
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	e.reconcile.podIDs = nil // ignore pod-creation enqueues from setup
 
 	rr := e.privateSkillUpload(alice.HumanUserID, "xdr-private", makeSkillBundle(
 		t, "xdr-private", map[string]any{"name": "xdr-private", "runtime": "script", "platform": "xdr"},
@@ -187,8 +194,8 @@ func TestSkillAPI_PrivateUploadAndDelete(t *testing.T) {
 	if len(e.drv.execStdinCalls) != 0 {
 		t.Fatalf("private upload should not exec installer before apply: %+v", e.drv.execStdinCalls)
 	}
-	if len(e.reconcile.podIDs) != 1 {
-		t.Fatalf("private upload should mark pending without enqueueing another reconcile: %v", e.reconcile.podIDs)
+	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
+		t.Fatalf("private upload should auto-enqueue reconcile for the user Pod: %v", e.reconcile.podIDs)
 	}
 	if _, err := os.ReadFile(filepath.Join(e.skillsDir, "_private", alice.HumanUserID, "xdr-private", "SKILL.md")); err != nil {
 		t.Fatalf("private Skill was not saved locally: %v", err)
@@ -203,6 +210,97 @@ func TestSkillAPI_PrivateUploadAndDelete(t *testing.T) {
 	}
 	if len(e.drv.execStdinCalls) != 0 {
 		t.Fatalf("private delete should not exec installer before apply: %+v", e.drv.execStdinCalls)
+	}
+	if len(e.reconcile.podIDs) != 2 || e.reconcile.podIDs[1] != "pod-a" {
+		t.Fatalf("private delete should auto-enqueue reconcile for the user Pod: %v", e.reconcile.podIDs)
+	}
+}
+
+func TestSkillAPI_PrivateIngestCreatesAssetAndDirectSyncs(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	bundle := makeSkillBundle(t, "ingest-skill", map[string]any{"name": "ingest-skill"})
+	body := fmt.Sprintf(`{"agentId":%q,"bundleFormat":"tar.gz","bundle":%q}`,
+		alice.AgentID, base64.StdEncoding.EncodeToString(bundle))
+	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
+	e.reconcile.podIDs = nil // ignore pod-creation enqueues from setup
+	rr := httptest.NewRecorder()
+	e.h.ServeHTTP(rr, req)
+	assertStatus(t, rr, http.StatusOK)
+
+	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
+		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID, PodID: alice.PodID,
+	})
+	if err != nil || len(assets) != 1 || assets[0].Name != "ingest-skill" {
+		t.Fatalf("ingest assets = %+v, %v", assets, err)
+	}
+	// Direct sync: the installer should have been invoked without a reconcile
+	// enqueue (no config_generation bump / no gateway restart path).
+	if len(e.drv.execStdinCalls) == 0 {
+		t.Fatalf("ingest should trigger direct installer sync")
+	}
+	if len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("ingest should not enqueue reconcile: %v", e.reconcile.podIDs)
+	}
+}
+
+func TestSkillAPI_PrivateIngestDoesNotBumpConfigGeneration(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	podBefore, err := e.store.GetPod(alice.PodID)
+	if err != nil {
+		t.Fatalf("get pod before: %v", err)
+	}
+	bundle := makeSkillBundle(t, "decouple-skill", map[string]any{"name": "decouple-skill"})
+	body := fmt.Sprintf(`{"agentId":%q,"bundleFormat":"tar.gz","bundle":%q}`,
+		alice.AgentID, base64.StdEncoding.EncodeToString(bundle))
+	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
+	rr := httptest.NewRecorder()
+	e.h.ServeHTTP(rr, req)
+	assertStatus(t, rr, http.StatusOK)
+
+	// Decoupling: skill ingest syncs files directly and must NOT bump
+	// config_generation (no config apply / no gateway restart).
+	podAfter, err := e.store.GetPod(alice.PodID)
+	if err != nil {
+		t.Fatalf("get pod after: %v", err)
+	}
+	if podAfter.ConfigGeneration != podBefore.ConfigGeneration {
+		t.Fatalf("ingest must not bump config_generation: %d -> %d",
+			podBefore.ConfigGeneration, podAfter.ConfigGeneration)
+	}
+	// skills_pending is a pod-creation artifact (new pod syncs skills); the
+	// ingest must not change it (no new config apply is queued).
+	if podAfter.SkillsPending != podBefore.SkillsPending {
+		t.Fatalf("ingest must not alter skills_pending: %v -> %v",
+			podBefore.SkillsPending, podAfter.SkillsPending)
+	}
+}
+
+func TestSkillAPI_PrivateIngestRejectsInvalidBundle(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	body := fmt.Sprintf(`{"agentId":%q,"bundleFormat":"tar.gz","bundle":%q}`,
+		alice.AgentID, base64.StdEncoding.EncodeToString([]byte("not-a-bundle")))
+	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
+	rr := httptest.NewRecorder()
+	e.h.ServeHTTP(rr, req)
+	assertStatus(t, rr, http.StatusBadRequest)
+
+	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
+		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID, PodID: alice.PodID,
+	})
+	if err != nil || len(assets) != 0 {
+		t.Fatalf("invalid ingest should not create an asset: %+v, %v", assets, err)
 	}
 }
 
@@ -328,6 +426,7 @@ func TestSkillAPI_PublicUploadCreatesAssetAndMarksPods(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createTestPlatform(t, e.store, "xdr", "XDR")
+	e.reconcile.podIDs = nil // ignore pod-creation enqueues from setup
 
 	rr := e.publicSkillUpload("xdr-public.tar.gz", makeSkillBundle(t, "xdr-public", map[string]any{
 		"name": "xdr-public", "runtime": "script", "version": "1.2.0",
@@ -354,8 +453,8 @@ func TestSkillAPI_PublicUploadCreatesAssetAndMarksPods(t *testing.T) {
 	if _, err := os.ReadFile(filepath.Join(e.skillsDir, "xdr-public", "SKILL.md")); err != nil {
 		t.Fatalf("public Skill was not written: %v", err)
 	}
-	if len(e.reconcile.podIDs) != 1 {
-		t.Fatalf("public upload should mark pending without enqueueing another reconcile: %v", e.reconcile.podIDs)
+	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
+		t.Fatalf("public upload should auto-enqueue reconcile for affected Pods: %v", e.reconcile.podIDs)
 	}
 }
 

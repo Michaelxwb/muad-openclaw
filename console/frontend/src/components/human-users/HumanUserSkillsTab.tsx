@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { MutableRefObject } from "react";
 import {
   Button,
   Checkbox,
@@ -13,11 +12,10 @@ import {
   Upload,
 } from "@douyinfe/semi-ui";
 import type { FileItem } from "@douyinfe/semi-ui/lib/es/upload";
-import { IconPlay, IconPlus, IconSearch, IconRefresh } from "@douyinfe/semi-icons";
+import { IconPlus, IconSearch, IconRefresh } from "@douyinfe/semi-icons";
 import { api } from "../../api";
-import type { EffectiveSkill, HumanUser, Platform } from "../../api";
+import type { EffectiveSkill, HumanUser, Platform, SkillScope } from "../../api";
 import { FeedbackBanner, ListToolbar } from "../ConsolePage";
-import { requestAlertsRefresh } from "../NotificationBell";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import styles from "../HumanUsersPanel.module.css";
 
@@ -31,7 +29,6 @@ const SKILL_STATUS_OPTIONS = [
   { label: "禁用", value: "disabled" },
 ];
 const SKILL_TABLE_SCROLL_X = 1040;
-const POST_APPLY_REFRESH_DELAYS_MS = [1000, 3000, 7000, 15000];
 
 interface RefreshOptions {
   background?: boolean;
@@ -46,73 +43,9 @@ export function HumanUserSkillsTab({
 }) {
   const state = useHumanUserSkills(user.humanUserId);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [applying, setApplying] = useState(false);
-  const applyRefreshTimersRef = useRef<number[]>([]);
-  const mountedRef = useMountedRef();
-
-  useEffect(
-    () => () => {
-      clearApplyRefreshTimers(applyRefreshTimersRef);
-    },
-    [],
-  );
 
   const changed = async () => {
     await Promise.all([state.refresh(), onChanged()]);
-  };
-  const refreshApplyState = () => {
-    requestAlertsRefresh();
-    void state.refresh({ background: true });
-  };
-  const schedulePostApplyRefresh = () => {
-    clearApplyRefreshTimers(applyRefreshTimersRef);
-    refreshApplyState();
-    void onChanged().catch((caught) => {
-      if (mountedRef.current)
-        Toast.warning(caught instanceof Error ? caught.message : "应用已提交，但刷新状态失败");
-    });
-    applyRefreshTimersRef.current = POST_APPLY_REFRESH_DELAYS_MS.map((delay) =>
-      window.setTimeout(() => {
-        if (!mountedRef.current) return;
-        refreshApplyState();
-      }, delay),
-    );
-  };
-  const applyCurrentPodSkills = () => {
-    Modal.confirm({
-      title: "应用 Skill 到当前用户 Pod",
-      content: `将同步 ${user.displayName || user.humanUserId} 的 Private Skill、Public Skill 和 allow skills 配置。`,
-      okText: "应用 Skill",
-      onOk: async () => {
-        setApplying(true);
-        let submitted = false;
-        try {
-          const result = await api.reloadSkills([user.podId]);
-          if (!mountedRef.current) return;
-          const status = result.results[user.podId] ?? "unknown";
-          const warning = result.warnings?.join("；");
-          if (warning) {
-            Toast.warning(`${userSkillApplyMessage(status)} ${warning}`);
-          } else if (status === "queued") {
-            Toast.success("Skill 应用已提交到当前用户 Pod");
-          } else if (status === "synced") {
-            Toast.success("当前用户 Pod 的 Skill 文件已同步");
-          } else {
-            Toast.warning(userSkillApplyMessage(status));
-          }
-          submitted = true;
-        } catch (caught) {
-          if (mountedRef.current) {
-            Toast.error(caught instanceof Error ? caught.message : "应用 Skill 失败");
-          }
-        } finally {
-          if (mountedRef.current) setApplying(false);
-        }
-        if (submitted && mountedRef.current) {
-          schedulePostApplyRefresh();
-        }
-      },
-    });
   };
   return (
     <div className={styles.skillTab}>
@@ -122,14 +55,6 @@ export function HumanUserSkillsTab({
           <Space>
             <Button icon={<IconPlus />} onClick={() => setUploadOpen(true)}>
               上传 Private Skill
-            </Button>
-            <Button
-              aria-label="应用到当前用户 Pod"
-              icon={<IconPlay />}
-              loading={applying}
-              onClick={applyCurrentPodSkills}
-            >
-              应用到当前用户 Pod
             </Button>
             <Button
               icon={<IconRefresh />}
@@ -162,30 +87,6 @@ export function HumanUserSkillsTab({
       />
     </div>
   );
-}
-
-function userSkillApplyMessage(status: string) {
-  switch (status) {
-    case "queued":
-      return "Skill 应用已提交到当前用户 Pod";
-    case "synced":
-      return "当前用户 Pod 的 Skill 文件已同步";
-    case "failed_sync":
-      return "当前用户 Pod Skill 同步失败";
-    case "failed_queue":
-      return "当前用户 Pod Skill 应用排队失败";
-    case "skipped_not_running":
-      return "当前用户 Pod 未运行，已跳过应用";
-    case "not_found":
-      return "当前用户 Pod 不存在";
-    default:
-      return "当前用户 Pod Skill 应用未排队";
-  }
-}
-
-function clearApplyRefreshTimers(ref: MutableRefObject<number[]>) {
-  for (const timer of ref.current) window.clearTimeout(timer);
-  ref.current = [];
 }
 
 function useHumanUserSkills(humanUserId: string) {
@@ -332,10 +233,15 @@ function skillColumns(humanUserId: string, state: HumanUserSkillsState) {
       ),
     },
     {
-      title: "来源",
-      key: "source",
-      width: 110,
-      render: (_: unknown, skill: EffectiveSkill) => <Tag>{skill.effectiveSource}</Tag>,
+      title: "范围",
+      key: "scope",
+      width: 150,
+      render: (_: unknown, skill: EffectiveSkill) => (
+        <Space spacing={4}>
+          <EffectiveScopeTag scope={skill.effectiveSource} />
+          {skill.source === "user" && <Tag color="green">用户上传</Tag>}
+        </Space>
+      ),
     },
     {
       title: "状态",
@@ -396,6 +302,11 @@ function skillColumns(humanUserId: string, state: HumanUserSkillsState) {
       ),
     },
   ];
+}
+
+function EffectiveScopeTag({ scope }: { scope: SkillScope }) {
+  const color = scope === "system" ? "red" : scope === "private" ? "violet" : "blue";
+  return <Tag color={color}>{scope}</Tag>;
 }
 
 function SkillState({ skill }: { skill: EffectiveSkill }) {

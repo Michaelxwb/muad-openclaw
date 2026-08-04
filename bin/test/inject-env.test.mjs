@@ -265,6 +265,56 @@ test("startup preserves a newer persisted runtime generation", () => {
     migrated.plugins.load.paths,
     ["/legacy/plugin-path", ...pluginRoots(IMAGE_PLUGIN_SPECS)].sort(),
   );
+  // 即使整体保留旧配置，gateway token 也必须刷新为 env 的当前派生 token
+  // （删除→重建接管旧 PVC 时旧 token 已随旧 pod 销毁，不刷新则 apply 探测 token_mismatch）。
+  assert.equal(migrated.gateway.auth.token, "stale-token");
+});
+
+test("adopting a retained PVC refreshes the gateway token while preserving the old config", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-inject-adopt-"));
+  const configPath = join(root, "openclaw.json");
+  // 旧 pod 留下的配置：generation 高于新 runtime、携带旧 token。
+  const oldConfig = {
+    gateway: { auth: { mode: "token", token: "old-gateway-token" }, mode: "local" },
+    channels: { mattermost: { enabled: true, baseUrl: "https://mm.internal", botToken: "mm-bot" } },
+    plugins: {
+      allow: ["browser", "mattermost", "session-manager"],
+      entries: {
+        "muad-runtime-guard": {
+          enabled: true,
+          config: { generation: 42, mainAgentId: "main", agentProfiles: [], sessionAgentIds: [] },
+          hooks: { allowConversationAccess: true },
+        },
+      },
+    },
+    tools: { profile: "coding", alsoAllow: ["browser", "session_get_state"] },
+  };
+  writeFileSync(configPath, `${JSON.stringify(oldConfig, null, 2)}\n`);
+
+  const runtime = runtimeForRoot(root);
+  runtime.generation = 1; // 新 pod 的 generation 从 1 重新计数
+  const result = injectStartupConfig({
+    env: {
+      MUAD_RUNTIME_CONFIG: JSON.stringify(runtime),
+      CHANNELS: "mattermost",
+      CHANNEL_CONFIGS: JSON.stringify({
+        mattermost: { baseUrl: "https://mm.internal", botToken: "mm-bot" },
+      }),
+      OPENCLAW_GATEWAY_TOKEN: "new-derived-token",
+    },
+    configPath,
+    writeGuidance: false,
+  });
+
+  assert.equal(result.skippedStaleRuntime, true);
+  const migrated = JSON.parse(readFileSync(configPath, "utf8"));
+  // 旧配置保留：generation、通道凭证、plugin 结构不变
+  assert.equal(migrated.plugins.entries["muad-runtime-guard"].config.generation, 42);
+  assert.equal(migrated.channels.mattermost.botToken, "mm-bot");
+  assert.equal(migrated.plugins.allow.includes("browser"), true);
+  // gateway token 刷新为 env 的新派生 token
+  assert.equal(migrated.gateway.auth.token, "new-derived-token");
+  assert.equal(migrated.gateway.auth.mode, "token");
 });
 
 function runtimeForRoot(root) {

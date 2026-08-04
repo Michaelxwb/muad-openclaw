@@ -97,27 +97,39 @@ def _document(config: Mapping[str, object], scope: VerificationScope) -> _Outcom
     return _Outcome(present and hash_matches, None if present and hash_matches else "document_mismatch", artifact_hash, details)
 
 
+def _files_patterns(config: Mapping[str, object]) -> tuple[str, ...]:
+    """Resolve verifier `files` (single glob or list of globs) to patterns."""
+    files = config.get("files")
+    if isinstance(files, str):
+        return (files,) if files else ("*",)
+    if isinstance(files, list):
+        patterns = tuple(item for item in files if isinstance(item, str) and item)
+        return patterns if patterns else ("*",)
+    return ("*",)
+
+
 def _regex(config: Mapping[str, object], metadata: SpecMetadata, scope: VerificationScope) -> _Outcome:
     pattern = _config_string(config, "pattern")
-    files = _config_string(config, "files") or "*"
+    patterns = _files_patterns(config)
     check_id = _config_string(config, "check_id")
     if check_id:
         check = next((item for item in metadata.checks if item.get("id") == check_id), None)
         if check is None:
             return _Outcome(False, "check_not_found", None, {"check_id": check_id})
         pattern = check.get("pattern") if isinstance(check.get("pattern"), str) else None
-        files = check.get("files") if isinstance(check.get("files"), str) else "*"
+        patterns = _files_patterns({"files": check.get("files")})
     if pattern is None:
         return _Outcome(False, "invalid_verifier_config", None, {"required": ["pattern"]})
     selected = tuple(
         relative
         for relative in scope.files
-        if fnmatch.fnmatch(relative, files) and (Path(scope.root) / relative).is_file()
+        if any(fnmatch.fnmatch(relative, item) for item in patterns)
+        and (Path(scope.root) / relative).is_file()
     )
     contents, error = _read_scope_files(VerificationScope(scope.root, selected, scope.diff_sha256))
     if error is not None:
         return error
-    violations, skipped = run_regex_verifier(pattern, files, contents)
+    violations, skipped = run_regex_verifier(pattern, "*", contents)
     if skipped:
         return _Outcome(False, "regex_unavailable", None, {"skipped": skipped})
     details = {"checked_files": len(contents), "violations": violations}
