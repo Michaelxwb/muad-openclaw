@@ -5,7 +5,7 @@ const ID_PATTERN = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/;
 const TOP_LEVEL_KEYS = [
   "version", "podId", "generation", "consoleInternalUrl", "serviceTokenFile",
   "concurrency", "channels", "agents", "routes", "identityLinks", "browser", "providers",
-  "platforms", "skills", "sessionManager", "guard",
+  "platforms", "skills", "sessionManager", "guard", "guidance",
 ];
 
 export function parseRuntimeConfig(input) {
@@ -30,7 +30,8 @@ export function readRuntimeConfig({ env = process.env, stdinText = "" } = {}) {
 
 export function validateRuntimeConfig(value) {
   assertRecord(value, "runtime");
-  assertExactKeys(value, TOP_LEVEL_KEYS, "runtime");
+  assertExactKeys(value, TOP_LEVEL_KEYS, "runtime",
+    TOP_LEVEL_KEYS.filter((key) => key !== "guidance"));
   if (value.version !== RUNTIME_VERSION) throw new Error(`unsupported runtime version: ${value.version}`);
   assertID(value.podId, "runtime.podId");
   assertPositiveInteger(value.generation, "runtime.generation");
@@ -48,7 +49,21 @@ export function validateRuntimeConfig(value) {
   validateSkills(value.skills, agents);
   validateSessionManager(value.sessionManager, agents);
   validateGuard(value.guard, agents, profiles);
+  validateGuidance(value.guidance);
   return value;
+}
+
+function validateGuidance(value) {
+  if (value === undefined) return;
+  assertRecord(value, "runtime.guidance");
+  // All three blocks are optional: empty fields fall back to renderer defaults,
+  // so an empty object (or any subset) is valid.
+  assertExactKeys(value, ["userSkill", "memory", "main"], "runtime.guidance", []);
+  for (const key of ["userSkill", "memory", "main"]) {
+    if (value[key] !== undefined && typeof value[key] !== "string") {
+      throw new Error(`runtime.guidance.${key} must be a string`);
+    }
+  }
 }
 
 function validateChannels(value) {

@@ -519,7 +519,7 @@ func createPrivateSkillAsset(
 	}
 	return createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: name, Scope: repo.SkillScopePrivate, HumanUserID: user.HumanUserID,
-		PodID: user.PodID, Status: status, SourcePath: root, ManifestHash: "sha256:" + name,
+		Status: status, SourcePath: root, ManifestHash: "sha256:" + name,
 		PlatformsJSON: `["xdr"]`,
 	})
 }

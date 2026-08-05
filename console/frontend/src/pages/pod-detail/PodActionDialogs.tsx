@@ -101,13 +101,16 @@ function DeleteDialog({
       okText="确认删除"
       okButtonProps={{ type: "danger" as const }}
     >
-      <div>删除后 Pod、Human User 和 Identity 控制面记录将被移除。</div>
+      <div>
+        删除后 Pod 与运行环境将被移除；Pod 内的 Human User 及其 IM Identity / private Skill
+        保留为未绑定状态（agent_id 不变），可在重建 Pod 时一键恢复或绑定到其他 Pod。
+      </div>
       <RadioGroup
         className={styles.dangerChoice}
         value={deleteState ? "delete" : "retain"}
         direction="vertical"
         options={[
-          { value: "retain", label: "保留 PVC，运行时状态可供后续显式接管" },
+          { value: "retain", label: "保留 PVC，记忆/workspace 可供重建同名 Pod 时接管" },
           { value: "delete", label: "删除 PVC，workspace、记忆、会话和 private Skill 将永久丢失" },
         ]}
         onChange={(event) => setDeleteState(event.target.value === "delete")}

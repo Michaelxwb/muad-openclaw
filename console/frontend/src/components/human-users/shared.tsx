@@ -7,7 +7,7 @@ export type UserStatusFilter = "" | Exclude<HumanUserStatus, "deleting">;
 
 export const USER_STATUS_OPTIONS = [
   { value: "", label: "全部状态" },
-  { value: "pending", label: "待绑定" },
+  { value: "pending", label: "未激活" },
   { value: "active", label: "已启用" },
   { value: "disabled", label: "已停用" },
 ];
@@ -32,7 +32,7 @@ export function UserStatusTag({ status }: { status: HumanUserStatus }) {
         ? "已停用"
         : status === "deleting"
           ? "删除中"
-          : "待绑定";
+          : "未激活";
   return <Tag color={color}>{label}</Tag>;
 }
 

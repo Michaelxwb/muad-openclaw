@@ -40,7 +40,7 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 		"idx_binding_codes_user_status", "idx_binding_codes_scope",
 		"idx_binding_codes_expiry", "idx_audit_ts", "idx_audit_actor",
 		"idx_skill_assets_scope_name", "idx_skill_assets_human_user",
-		"idx_skill_assets_pod", "idx_skill_assets_status",
+		"idx_skill_assets_status",
 		"uidx_skill_public_name", "uidx_skill_private_user_name",
 		"idx_skill_policies_human_user", "idx_skill_policies_skill_name",
 		"idx_skill_executions_human_user_started", "idx_skill_executions_pod_started",
@@ -54,6 +54,17 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 	}
 	if !tableColumnExists(t, db, "pods", "skills_pending") {
 		t.Error("pods.skills_pending column was not created")
+	}
+	// Pod-agnostic user schema: user assets survive Pod deletion, pod membership
+	// is derived from human_users.pod_id only.
+	if !tableColumnExists(t, db, "human_users", "last_pod_id") {
+		t.Error("human_users.last_pod_id column was not created")
+	}
+	if tableColumnExists(t, db, "user_identities", "pod_id") {
+		t.Error("user_identities.pod_id column must be removed")
+	}
+	if tableColumnExists(t, db, "skill_assets", "pod_id") {
+		t.Error("skill_assets.pod_id column must be removed")
 	}
 
 	assertPragmaInt(t, db, "foreign_keys", 1)

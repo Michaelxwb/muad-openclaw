@@ -22,7 +22,7 @@ func (s *Store) CreateHumanUserWithIdentity(
 	if err != nil {
 		return HumanUserBootstrapResult{}, err
 	}
-	identity.HumanUserID, identity.PodID = user.HumanUserID, user.PodID
+	identity.HumanUserID = user.HumanUserID
 	if err := prepareIdentity(&identity); err != nil {
 		return HumanUserBootstrapResult{}, err
 	}
@@ -35,6 +35,9 @@ func (s *Store) CreateHumanUserWithIdentity(
 	}
 	defer func() { _ = tx.Rollback() }()
 	user, err = insertPreparedHumanUser(tx, user, portStart, portEnd)
+	if err == nil {
+		err = ensurePodExternalIDAvailableTx(tx, user.PodID, user.HumanUserID, identity.Channel, identity.AccountID, identity.ExternalID)
+	}
 	if err == nil {
 		err = insertIdentity(tx, identity)
 	}

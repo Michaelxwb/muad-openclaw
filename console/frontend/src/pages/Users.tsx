@@ -5,6 +5,7 @@ import { api } from "../api";
 import type { HumanUser, HumanUserActivation, HumanUserBootstrapResult, Pod } from "../api";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
 import { ActivationCodeDialog } from "../components/human-users/ActivationCodeDialog";
+import { AttachHumanUsersDialog } from "../components/human-users/AttachHumanUsersDialog";
 import { CreateHumanUserDialog } from "../components/human-users/CreateHumanUserDialog";
 import { HumanUserDetailDialog } from "../components/human-users/HumanUserDetailDialog";
 import { DeleteHumanUser } from "../components/human-users/DeleteHumanUser";
@@ -37,6 +38,7 @@ export function Users({ onOpenPod }: UsersProps) {
   const [selectedUser, setSelectedUser] = useState<SelectedUser | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [activation, setActivation] = useState<HumanUserActivation | null>(null);
+  const [attachUserIds, setAttachUserIds] = useState<string[] | null>(null);
   const selectedPod = useSelectedPod(selectedUser?.podId ?? "", pods.byId);
 
   const changed = async () => {
@@ -46,6 +48,13 @@ export function Users({ onOpenPod }: UsersProps) {
     setCreateOpen(false);
     if (result.activation) setActivation(result.activation);
     await changed();
+  };
+  const openUser = (user: HumanUser) => {
+    if (user.podId === "") {
+      setAttachUserIds([user.humanUserId]);
+      return;
+    }
+    setSelectedUser({ humanUserId: user.humanUserId, podId: user.podId });
   };
 
   return (
@@ -61,7 +70,8 @@ export function Users({ onOpenPod }: UsersProps) {
         <GlobalUserTable
           users={users}
           pods={pods.byId}
-          onOpen={(user) => setSelectedUser({ humanUserId: user.humanUserId, podId: user.podId })}
+          onOpen={openUser}
+          onAttach={setAttachUserIds}
           onOpenPod={onOpenPod}
           onDeleted={changed}
         />
@@ -76,6 +86,14 @@ export function Users({ onOpenPod }: UsersProps) {
         />
       )}
       <ActivationCodeDialog activation={activation} onClose={() => setActivation(null)} />
+      {attachUserIds && (
+        <AttachHumanUsersDialog
+          humanUserIds={attachUserIds}
+          pods={pods.items}
+          onClose={() => setAttachUserIds(null)}
+          onAttached={changed}
+        />
+      )}
       {selectedPod.pod && (
         <HumanUserDetailDialog
           pod={selectedPod.pod}
@@ -95,12 +113,14 @@ interface GlobalUsersState {
   total: number;
   query: string;
   status: UserStatusFilter;
+  unboundOnly: boolean;
   loading: boolean;
   error: string;
   setPage: (page: number) => void;
   setPageSize: (pageSize: number) => void;
   setQuery: (query: string) => void;
   setStatus: (status: UserStatusFilter) => void;
+  setUnboundOnly: (value: boolean) => void;
   refresh: () => Promise<void>;
 }
 
@@ -111,6 +131,7 @@ function useGlobalHumanUsers(): GlobalUsersState {
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<UserStatusFilter>("");
+  const [unboundOnly, setUnboundOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const mountedRef = useMountedRef();
@@ -129,6 +150,7 @@ function useGlobalHumanUsers(): GlobalUsersState {
           pageSize,
           q: query,
           status: status || undefined,
+          unbound: unboundOnly || undefined,
         });
         if (!mountedRef.current || requestId !== requestRef.current) return;
         setItems(result.items);
@@ -141,7 +163,7 @@ function useGlobalHumanUsers(): GlobalUsersState {
           setLoading(false);
       }
     },
-    [mountedRef, page, pageSize, query, status],
+    [mountedRef, page, pageSize, query, status, unboundOnly],
   );
 
   useEffect(() => {
@@ -157,12 +179,14 @@ function useGlobalHumanUsers(): GlobalUsersState {
     total,
     query,
     status,
+    unboundOnly,
     loading,
     error,
     setPage,
     setPageSize,
     setQuery,
     setStatus,
+    setUnboundOnly,
     refresh,
   };
 }
@@ -256,6 +280,10 @@ function GlobalUserToolbar({
     users.setPage(1);
     users.setStatus(status);
   };
+  const filterBinding = (value: "all" | "unbound") => {
+    users.setPage(1);
+    users.setUnboundOnly(value === "unbound");
+  };
   return (
     <ListToolbar
       actions={
@@ -286,6 +314,15 @@ function GlobalUserToolbar({
             onChange={(value) => filterStatus(normalizeStatus(String(value ?? "")))}
             style={{ width: 120 }}
           />
+          <Select
+            value={users.unboundOnly ? "unbound" : "all"}
+            optionList={[
+              { value: "all", label: "全部绑定状态" },
+              { value: "unbound", label: "只看未绑定" },
+            ]}
+            onChange={(value) => filterBinding(value === "unbound" ? "unbound" : "all")}
+            style={{ width: 140 }}
+          />
         </Space>
       }
     />
@@ -296,18 +333,20 @@ function GlobalUserTable({
   users,
   pods,
   onOpen,
+  onAttach,
   onOpenPod,
   onDeleted,
 }: {
   users: GlobalUsersState;
   pods: Map<string, Pod>;
   onOpen: (user: HumanUser) => void;
+  onAttach: (humanUserIds: string[]) => void;
   onOpenPod: (podId: string) => void;
   onDeleted: () => Promise<void>;
 }) {
   return (
     <Table
-      columns={globalUserColumns(pods, onOpen, onOpenPod, onDeleted) as never}
+      columns={globalUserColumns(pods, onOpen, onAttach, onOpenPod, onDeleted) as never}
       dataSource={users.items}
       rowKey="humanUserId"
       loading={users.loading}
@@ -330,6 +369,7 @@ function GlobalUserTable({
 function globalUserColumns(
   pods: Map<string, Pod>,
   onOpen: (user: HumanUser) => void,
+  onAttach: (humanUserIds: string[]) => void,
   onOpenPod: (podId: string) => void,
   onDeleted: () => Promise<void>,
 ) {
@@ -348,8 +388,16 @@ function globalUserColumns(
     {
       title: "Pod",
       key: "pod",
-      width: 170,
+      width: 190,
       render: (_: unknown, user: HumanUser) => {
+        if (user.podId === "") {
+          return (
+            <div>
+              <Tag color="orange">未绑定</Tag>
+              <div className={styles.mutedText}>原 Pod: {user.lastPodId || "-"}</div>
+            </div>
+          );
+        }
         const pod = pods.get(user.podId);
         return (
           <div>
@@ -406,12 +454,18 @@ function globalUserColumns(
     {
       title: "操作",
       key: "actions",
-      width: 140,
+      width: 150,
       render: (_: unknown, user: HumanUser) => (
         <Space spacing={4}>
-          <Button size="small" onClick={() => onOpen(user)}>
-            详情
-          </Button>
+          {user.podId === "" ? (
+            <Button size="small" onClick={() => onAttach([user.humanUserId])}>
+              绑定
+            </Button>
+          ) : (
+            <Button size="small" onClick={() => onOpen(user)}>
+              详情
+            </Button>
+          )}
           <DeleteHumanUser user={user} compact onDeleted={() => void onDeleted()} />
         </Space>
       ),

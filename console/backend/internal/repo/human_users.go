@@ -29,12 +29,14 @@ var (
 	runtimeIDPattern = regexp.MustCompile(`^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$`)
 )
 
-// HumanUserListFilter controls user pagination.
+// HumanUserListFilter controls user pagination. Unbound selects users whose
+// Pod was deleted (pod_id IS NULL).
 type HumanUserListFilter struct {
-	Offset int
-	Limit  int
-	Status string
-	Query  string
+	Offset  int
+	Limit   int
+	Status  string
+	Query   string
+	Unbound bool
 }
 
 // HumanUserUpdate contains fields mutable through the normal PATCH path.
@@ -90,7 +92,8 @@ func (s *Store) GetHumanUserByAgentID(agentID string) (HumanUser, error) {
 		return HumanUser{}, ErrNotFound
 	}
 	row := s.db.QueryRow(`SELECT `+humanUserColumns+`
-		FROM human_users WHERE agent_id = ? ORDER BY pod_id LIMIT 1`, agentID)
+		FROM human_users WHERE agent_id = ?
+		ORDER BY CASE WHEN pod_id IS NULL THEN 1 ELSE 0 END, pod_id LIMIT 1`, agentID)
 	return scanHumanUser(row)
 }
 
@@ -200,6 +203,30 @@ func (s *Store) MarkHumanUserDeleting(humanUserID string) error {
 	})
 }
 
+// DeleteUnboundHumanUser physically deletes a user that has no Pod. The
+// runtime cleanup loop execs into a Pod, so unbound users (whose Pod was
+// deleted) are removed synchronously; user assets cascade with the row.
+func (s *Store) DeleteUnboundHumanUser(humanUserID string) error {
+	res, err := s.db.Exec(`DELETE FROM human_users
+		WHERE human_user_id = ? AND pod_id IS NULL`, humanUserID)
+	if err != nil {
+		return fmt.Errorf("delete unbound Human User: %w", err)
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete unbound Human User rows affected: %w", err)
+	}
+	if count == 0 {
+		if _, err := s.GetHumanUser(humanUserID); errors.Is(err, ErrNotFound) {
+			return ErrNotFound
+		} else if err != nil {
+			return err
+		}
+		return ErrInvalidStateTransition
+	}
+	return nil
+}
+
 // DeleteHumanUser physically deletes only a user already in deleting state.
 func (s *Store) DeleteHumanUser(humanUserID string) error {
 	res, err := s.db.Exec(`DELETE FROM human_users
@@ -240,7 +267,7 @@ func (s *Store) ListDeletingHumanUsers(podID string) ([]HumanUser, error) {
 }
 
 const humanUserColumns = `human_user_id, pod_id, model_config_id, display_name, agent_id,
-	browser_profile, browser_cdp_port, status, notes, created_at, updated_at`
+	browser_profile, browser_cdp_port, status, notes, last_pod_id, created_at, updated_at`
 
 func prepareNewHumanUser(user *HumanUser) error {
 	if user.HumanUserID == "" {
@@ -253,6 +280,11 @@ func prepareNewHumanUser(user *HumanUser) error {
 	user.DisplayName = strings.TrimSpace(user.DisplayName)
 	if user.Status == "" {
 		user.Status = HumanUserStatusPending
+	}
+	// A newly created user is bound to its Pod; LastPodID remembers the most
+	// recent binding so a recreated Pod can restore it automatically.
+	if user.LastPodID == "" {
+		user.LastPodID = user.PodID
 	}
 	if user.DisplayName == "" || user.PodID == "" || !validRuntimeID(user.AgentID) ||
 		!validRuntimeID(user.BrowserProfile) || !validHumanUserStatus(user.Status) ||
@@ -332,10 +364,10 @@ func allocateBrowserPort(tx *sql.Tx, podID string, start, end int) (int, error) 
 func insertHumanUser(tx *sql.Tx, user HumanUser) error {
 	_, err := tx.Exec(`INSERT INTO human_users (
 		human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile,
-		browser_cdp_port, status, notes, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, user.HumanUserID, user.PodID,
+		browser_cdp_port, status, notes, last_pod_id, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, user.HumanUserID, user.PodID,
 		nullIfEmpty(user.ModelConfigID), user.DisplayName, user.AgentID, user.BrowserProfile, user.BrowserCDPPort,
-		user.Status, user.Notes,
+		user.Status, user.Notes, user.LastPodID,
 		formatTime(user.CreatedAt), formatTime(user.UpdatedAt))
 	if isUniqueConstraint(err) {
 		return ErrHumanUserExists
@@ -403,6 +435,9 @@ func humanUserFilterSQL(podID string, filter HumanUserListFilter) (string, []any
 		clauses = append(clauses, "pod_id = ?")
 		args = append(args, podID)
 	}
+	if filter.Unbound {
+		clauses = append(clauses, "pod_id IS NULL")
+	}
 	if filter.Status != "" {
 		clauses = append(clauses, "status = ?")
 		args = append(args, filter.Status)
@@ -432,16 +467,18 @@ func collectHumanUsers(rows *sql.Rows) ([]HumanUser, error) {
 
 func scanHumanUser(sc scanner) (HumanUser, error) {
 	var user HumanUser
-	var modelConfigID sql.NullString
+	var podID, modelConfigID sql.NullString
 	var createdAt, updatedAt string
-	err := sc.Scan(&user.HumanUserID, &user.PodID, &modelConfigID, &user.DisplayName, &user.AgentID,
-		&user.BrowserProfile, &user.BrowserCDPPort, &user.Status, &user.Notes, &createdAt, &updatedAt)
+	err := sc.Scan(&user.HumanUserID, &podID, &modelConfigID, &user.DisplayName, &user.AgentID,
+		&user.BrowserProfile, &user.BrowserCDPPort, &user.Status, &user.Notes, &user.LastPodID,
+		&createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return HumanUser{}, ErrNotFound
 	}
 	if err != nil {
 		return HumanUser{}, fmt.Errorf("scan Human User: %w", err)
 	}
+	user.PodID = podID.String
 	user.ModelConfigID = modelConfigID.String
 	user.CreatedAt, err = parseRequiredTime(createdAt, "human_users.created_at")
 	if err != nil {

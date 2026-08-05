@@ -20,7 +20,7 @@ var (
 )
 
 const skillAssetColumns = `skill_id, name, scope, COALESCE(human_user_id, ''),
-	COALESCE(pod_id, ''), display_name, version, status, source_path,
+	display_name, version, status, source_path,
 	manifest_hash, manifest_json, entry_type, platforms_json, browser_required,
 	progress_supported, system_protected, source, created_at, updated_at`
 
@@ -96,10 +96,14 @@ func (s *Store) CreatePrivateSkillAssetAndPolicyAndMarkPod(
 		return SkillAsset{}, nil, fmt.Errorf("begin create private Skill asset: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := ensurePodExists(tx, prepared.PodID); err != nil {
+	user, err := getHumanUserTx(tx, prepared.HumanUserID)
+	if err != nil {
 		return SkillAsset{}, nil, err
 	}
-	if _, err := getHumanUserTx(tx, prepared.HumanUserID); err != nil {
+	if user.PodID == "" {
+		return SkillAsset{}, nil, ErrInvalidStateTransition
+	}
+	if err := ensurePodExists(tx, user.PodID); err != nil {
 		return SkillAsset{}, nil, err
 	}
 	if err := insertSkillAssetTx(tx, prepared); isUniqueConstraint(err) {
@@ -112,7 +116,7 @@ func (s *Store) CreatePrivateSkillAssetAndPolicyAndMarkPod(
 			return SkillAsset{}, nil, err
 		}
 	}
-	if err := markPodSkillsPendingTx(tx, prepared.PodID); err != nil {
+	if err := markPodSkillsPendingTx(tx, user.PodID); err != nil {
 		return SkillAsset{}, nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -271,8 +275,14 @@ func (s *Store) DeletePrivateSkillAssetAndMarkPod(skillID, humanUserID string) (
 	if err := affectedOrNotFound(result, err, "delete private Skill asset"); err != nil {
 		return SkillAsset{}, err
 	}
-	if err := markPodSkillsPendingTx(tx, asset.PodID); err != nil {
+	user, err := getHumanUserTx(tx, asset.HumanUserID)
+	if err != nil {
 		return SkillAsset{}, err
+	}
+	if user.PodID != "" {
+		if err := markPodSkillsPendingTx(tx, user.PodID); err != nil {
+			return SkillAsset{}, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return SkillAsset{}, fmt.Errorf("commit delete private Skill asset: %w", err)
@@ -514,12 +524,12 @@ func validateSkillAsset(asset SkillAsset) error {
 		return ErrInvalidSkill
 	}
 	if asset.Scope == SkillScopePrivate {
-		if strings.TrimSpace(asset.HumanUserID) == "" || strings.TrimSpace(asset.PodID) == "" {
+		if strings.TrimSpace(asset.HumanUserID) == "" {
 			return ErrInvalidSkill
 		}
 		return nil
 	}
-	if strings.TrimSpace(asset.HumanUserID) != "" || strings.TrimSpace(asset.PodID) != "" {
+	if strings.TrimSpace(asset.HumanUserID) != "" {
 		return ErrInvalidSkill
 	}
 	return nil
@@ -639,12 +649,12 @@ func insertSkillAssetTx(db interface {
 	Exec(query string, args ...any) (sql.Result, error)
 }, asset SkillAsset) error {
 	_, err := db.Exec(`INSERT INTO skill_assets (
-		skill_id, name, scope, human_user_id, pod_id, display_name, version,
+		skill_id, name, scope, human_user_id, display_name, version,
 		status, source_path, manifest_hash, manifest_json, entry_type, platforms_json,
 		browser_required, progress_supported, system_protected, source, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		asset.SkillID, asset.Name, asset.Scope, nullIfEmpty(asset.HumanUserID),
-		nullIfEmpty(asset.PodID), asset.DisplayName, asset.Version, asset.Status,
+		asset.DisplayName, asset.Version, asset.Status,
 		asset.SourcePath, asset.ManifestHash, asset.ManifestJSON, asset.EntryType,
 		asset.PlatformsJSON, boolToInt(asset.BrowserRequired), boolToInt(asset.ProgressSupported),
 		boolToInt(asset.SystemProtected), asset.Source, formatTime(asset.CreatedAt), formatTime(asset.UpdatedAt))
@@ -706,10 +716,17 @@ func getSkillPolicyTx(tx *sql.Tx, policyID string) (SkillPolicy, error) {
 
 func markSkillAssetPodsPendingTx(tx *sql.Tx, asset SkillAsset) ([]string, error) {
 	if asset.Scope == SkillScopePrivate {
-		if err := markPodSkillsPendingTx(tx, asset.PodID); err != nil {
+		user, err := getHumanUserTx(tx, asset.HumanUserID)
+		if err != nil {
 			return nil, err
 		}
-		return []string{asset.PodID}, nil
+		if user.PodID == "" {
+			return nil, nil
+		}
+		if err := markPodSkillsPendingTx(tx, user.PodID); err != nil {
+			return nil, err
+		}
+		return []string{user.PodID}, nil
 	}
 	return markAllPodsSkillsPendingTx(tx)
 }
@@ -748,12 +765,18 @@ func skillAssetWhere(filter SkillAssetListFilter) (string, []any) {
 	args := make([]any, 0, 8)
 	for _, item := range []struct{ clause, value string }{
 		{"scope = ?", filter.Scope},
-		{"human_user_id = ?", filter.HumanUserID}, {"pod_id = ?", filter.PodID},
+		{"human_user_id = ?", filter.HumanUserID},
 	} {
 		if strings.TrimSpace(item.value) != "" {
 			clauses = append(clauses, item.clause)
 			args = append(args, strings.TrimSpace(item.value))
 		}
+	}
+	// Private Skill Pod scope is derived from the owning Human User.
+	if podID := strings.TrimSpace(filter.PodID); podID != "" {
+		clauses = append(clauses, `EXISTS (SELECT 1 FROM human_users h
+			WHERE h.human_user_id = skill_assets.human_user_id AND h.pod_id = ?)`)
+		args = append(args, podID)
 	}
 	if status := strings.TrimSpace(filter.Status); status != "" {
 		clauses = append(clauses, "status = ?")
@@ -851,7 +874,7 @@ func scanSkillAsset(sc scanner) (SkillAsset, error) {
 	var browserRequired, progressSupported, systemProtected int
 	var createdAt, updatedAt string
 	err := sc.Scan(&asset.SkillID, &asset.Name, &asset.Scope, &asset.HumanUserID,
-		&asset.PodID, &asset.DisplayName, &asset.Version, &asset.Status, &asset.SourcePath,
+		&asset.DisplayName, &asset.Version, &asset.Status, &asset.SourcePath,
 		&asset.ManifestHash, &asset.ManifestJSON, &asset.EntryType, &asset.PlatformsJSON,
 		&browserRequired, &progressSupported, &systemProtected, &asset.Source, &createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {

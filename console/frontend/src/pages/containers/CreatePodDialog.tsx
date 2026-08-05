@@ -131,12 +131,32 @@ function CreatePodFields({
       <div className={`${styles.field} ${styles.full}`}>
         <Checkbox
           checked={form.adoptState}
-          onChange={(event) => setForm({ ...form, adoptState: Boolean(event.target.checked) })}
+          onChange={(event) =>
+            setForm({
+              ...form,
+              adoptState: Boolean(event.target.checked),
+              // 恢复原 Pod 用户依赖接管保留卷：取消接管时同时取消恢复。
+              restoreUsers: event.target.checked ? form.restoreUsers : false,
+            })
+          }
         >
           接管同名保留状态卷
         </Checkbox>
         <span>
           仅当删除 Pod 时选择了保留 PVC 后使用；会复用原 workspace、记忆、会话和 private Skill。
+        </span>
+      </div>
+      <div className={`${styles.field} ${styles.full}`}>
+        <Checkbox
+          checked={form.adoptState && form.restoreUsers}
+          disabled={!form.adoptState}
+          onChange={(event) => setForm({ ...form, restoreUsers: Boolean(event.target.checked) })}
+        >
+          恢复原 Pod 用户（agent_id 与记忆）
+        </Checkbox>
+        <span>
+          需先勾选「接管同名保留状态卷」；自动把删除该 Pod 时保留的未绑定用户重新绑定回来， IM
+          身份按新 Pod 通道集路由，未启用的通道身份保留但不路由。
         </span>
       </div>
     </div>

@@ -78,6 +78,16 @@ type RuntimeConfigV1 struct {
 	Skills             RuntimeSkills         `json:"skills"`
 	SessionManager     RuntimeSessionManager `json:"sessionManager"`
 	Guard              RuntimeGuard          `json:"guard"`
+	Guidance           RuntimeGuidance       `json:"guidance,omitempty"`
+}
+
+// RuntimeGuidance carries admin-configurable agent workspace guidance that the
+// runtime renderer writes into AGENTS.md / BOOTSTRAP.md. Empty fields fall back
+// to the renderer's built-in defaults.
+type RuntimeGuidance struct {
+	UserSkill string `json:"userSkill,omitempty"`
+	Memory    string `json:"memory,omitempty"`
+	Main      string `json:"main,omitempty"`
 }
 
 type RuntimeConcurrency struct {

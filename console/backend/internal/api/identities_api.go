@@ -34,20 +34,25 @@ func (s *Server) handleCreateIdentity(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, err)
 		return
 	}
-	identity.HumanUserID, identity.PodID = user.HumanUserID, user.PodID
+	identity.HumanUserID = user.HumanUserID
 	created, err := s.store.CreateIdentity(identity)
 	if err != nil {
 		writeRepoError(w, err)
 		return
 	}
 	s.enqueueReconcile(user.PodID)
-	s.auditIdentity(r, auditlog.ActionIdentityCreate, created, "active")
+	s.auditIdentity(r, auditlog.ActionIdentityCreate, user.PodID, created, "active")
 	writeJSON(w, http.StatusCreated, identityToView(created))
 }
 
 func (s *Server) handlePatchIdentity(w http.ResponseWriter, r *http.Request) {
 	identity, ok := s.identityForPath(w, r)
 	if !ok {
+		return
+	}
+	user, err := s.store.GetHumanUser(identity.HumanUserID)
+	if err != nil {
+		writeRepoError(w, err)
 		return
 	}
 	var request patchIdentityRequest
@@ -65,8 +70,10 @@ func (s *Server) handlePatchIdentity(w http.ResponseWriter, r *http.Request) {
 			writeRepoError(w, err)
 			return
 		}
-		s.enqueueReconcile(identity.PodID)
-		s.auditIdentity(r, auditlog.ActionIdentityUpdate, identity, request.Status)
+		if user.PodID != "" {
+			s.enqueueReconcile(user.PodID)
+		}
+		s.auditIdentity(r, auditlog.ActionIdentityUpdate, user.PodID, identity, request.Status)
 	}
 	updated, err := s.store.GetIdentity(identity.IdentityID)
 	if err != nil {
@@ -81,12 +88,19 @@ func (s *Server) handleDeleteIdentity(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	user, err := s.store.GetHumanUser(identity.HumanUserID)
+	if err != nil {
+		writeRepoError(w, err)
+		return
+	}
 	if err := s.store.DeleteIdentity(identity.IdentityID); err != nil {
 		writeRepoError(w, err)
 		return
 	}
-	s.enqueueReconcile(identity.PodID)
-	s.auditIdentity(r, auditlog.ActionIdentityDelete, identity, "deleted")
+	if user.PodID != "" {
+		s.enqueueReconcile(user.PodID)
+	}
+	s.auditIdentity(r, auditlog.ActionIdentityDelete, user.PodID, identity, "deleted")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"humanUserId": identity.HumanUserID, "identityId": identity.IdentityID, "deleted": true,
 	})
@@ -106,12 +120,12 @@ func (s *Server) identityForPath(w http.ResponseWriter, r *http.Request) (repo.U
 }
 
 func (s *Server) auditIdentity(
-	r *http.Request, action auditlog.Action, identity repo.UserIdentity, status string,
+	r *http.Request, action auditlog.Action, podID string, identity repo.UserIdentity, status string,
 ) {
 	err := auditlog.Record(r.Context(), s.store, auditlog.Event{
 		Actor: auditlog.AdminActor(actorFrom(r.Context())), Action: action, Target: identity.IdentityID,
 		Metadata: auditlog.Metadata{
-			PodID: identity.PodID, HumanUserID: identity.HumanUserID,
+			PodID: podID, HumanUserID: identity.HumanUserID,
 			IdentityID: identity.IdentityID, Status: status,
 		},
 	})

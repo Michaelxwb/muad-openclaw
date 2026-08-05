@@ -74,6 +74,17 @@ func (s *Store) effectiveSkillContext(user HumanUser) (effectiveSkillContext, er
 	if err != nil {
 		return effectiveSkillContext{}, err
 	}
+	// An unbound user (its Pod was deleted) has no runtime to reflect pending
+	// state; skills remain resolvable so the console can still manage them.
+	if user.PodID == "" {
+		return effectiveSkillContext{
+			Policies:       indexSkillPolicies(policies),
+			Platforms:      indexPlatformConfigs(platforms),
+			Credentials:    indexCredentialSummaries(credentials),
+			LastExecutions: last,
+			RuntimePending: false,
+		}, nil
+	}
 	pod, err := s.GetPod(user.PodID)
 	if err != nil {
 		return effectiveSkillContext{}, err
@@ -233,8 +244,8 @@ func skillFromAsset(
 	skill := EffectiveSkill{
 		Name: asset.Name, DisplayName: asset.DisplayName, Effective: effective,
 		EffectiveSource: asset.Scope, Source: asset.Source, Status: status, Version: asset.Version,
-		EntryType:        asset.EntryType,
-		ScriptFiles:      scriptFilesFromAsset(asset),
+		EntryType:         asset.EntryType,
+		ScriptFiles:       scriptFilesFromAsset(asset),
 		ProgressSupported: asset.ProgressSupported, BrowserRequired: asset.BrowserRequired,
 		Conflict: conflict, ConflictReason: reason,
 	}

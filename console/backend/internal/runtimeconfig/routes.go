@@ -15,13 +15,13 @@ type activeIdentity struct {
 }
 
 func buildRoutesAndLinks(
-	podID string, users []repo.HumanUser, identities []repo.UserIdentity,
+	users []repo.HumanUser, identities []repo.UserIdentity, enabledChannels []string,
 ) ([]driver.RuntimeRoute, []driver.RuntimeIdentityLink, error) {
 	agents := make(map[string]string, len(users))
 	for _, user := range users {
 		agents[user.HumanUserID] = user.AgentID
 	}
-	active, err := selectActiveIdentities(podID, agents, identities)
+	active, err := selectActiveIdentities(agents, identities, enabledChannels)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -37,19 +37,27 @@ func buildRoutesAndLinks(
 	return routes, buildIdentityLinks(active, linkCounts), nil
 }
 
+// selectActiveIdentities keeps identities whose owner is a user of the rendered
+// Pod (membership in agents) and whose channel the Pod enables. Identities are
+// user-owned and survive Pod deletion, so an identity for a channel the Pod
+// does not enable must not produce a route referencing an unconfigured channel.
 func selectActiveIdentities(
-	podID string, agents map[string]string, identities []repo.UserIdentity,
+	agents map[string]string, identities []repo.UserIdentity, enabledChannels []string,
 ) ([]activeIdentity, error) {
+	enabled := make(map[string]struct{}, len(enabledChannels))
+	for _, channel := range enabledChannels {
+		enabled[channel] = struct{}{}
+	}
 	active := make([]activeIdentity, 0, len(identities))
 	for _, identity := range identities {
-		if identity.PodID != podID {
-			return nil, ErrInvalidRuntimeSource
-		}
 		if identity.Status == repo.IdentityStatusDisabled {
 			continue
 		}
 		if identity.Status != repo.IdentityStatusActive {
 			return nil, ErrInvalidRuntimeSource
+		}
+		if _, ok := enabled[identity.Channel]; !ok {
+			continue
 		}
 		agentID, included := agents[identity.HumanUserID]
 		if !included {

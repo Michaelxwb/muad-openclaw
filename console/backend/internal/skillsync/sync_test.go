@@ -318,8 +318,11 @@ func (store *syncTestStore) ListSkillAssets(
 		if filter.Scope != "" && asset.Scope != filter.Scope {
 			continue
 		}
-		if filter.PodID != "" && asset.PodID != filter.PodID {
-			continue
+		if filter.PodID != "" {
+			owner, ok := store.users[asset.HumanUserID]
+			if !ok || owner.PodID != filter.PodID {
+				continue
+			}
 		}
 		if filter.Status != "" && asset.Status != filter.Status {
 			continue
@@ -483,7 +486,7 @@ func syncTestPrivateAsset(
 	writeSyncTestSkill(t, source, name)
 	return repo.SkillAsset{
 		SkillID: "skill-" + userID + "-" + name, Name: name, Scope: repo.SkillScopePrivate,
-		HumanUserID: userID, PodID: podID, Status: status, SourcePath: source,
+		HumanUserID: userID, Status: status, SourcePath: source,
 		ManifestHash: hash, UpdatedAt: time.Unix(1, 0).UTC(),
 	}
 }

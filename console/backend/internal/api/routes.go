@@ -32,6 +32,7 @@ func (s *Server) registerHumanUserRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/human-users", s.handleListAllHumanUsers)
 	mux.HandleFunc("GET /api/v1/containers/{podId}/human-users", s.handleListHumanUsers)
 	mux.HandleFunc("POST /api/v1/containers/{podId}/human-users", s.handleCreateHumanUser)
+	mux.HandleFunc("POST /api/v1/containers/{podId}/human-users/attach", s.handleAttachHumanUsers)
 	mux.HandleFunc("GET /api/v1/human-users/{humanUserId}", s.handleGetHumanUser)
 	mux.HandleFunc("PATCH /api/v1/human-users/{humanUserId}", s.handlePatchHumanUser)
 	mux.HandleFunc("DELETE /api/v1/human-users/{humanUserId}", s.handleDeleteHumanUser)
@@ -77,6 +78,8 @@ func (s *Server) registerExistingSettingsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/alerts", s.handleAlerts)
 	mux.HandleFunc("GET /api/v1/settings/resources", s.handleGetResources)
 	mux.HandleFunc("PUT /api/v1/settings/resources", s.handleSetResources)
+	mux.HandleFunc("GET /api/v1/settings/agent-guidance", s.handleGetAgentGuidance)
+	mux.HandleFunc("PUT /api/v1/settings/agent-guidance", s.handleSetAgentGuidance)
 }
 
 func (s *Server) registerInternalRoutes(mux *http.ServeMux) {

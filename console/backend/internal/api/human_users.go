@@ -163,6 +163,7 @@ func humanUserListFilterFromRequest(
 	return repo.HumanUserListFilter{
 		Offset: (page - 1) * pageSize, Limit: pageSize, Status: status,
 		Query: strings.TrimSpace(r.URL.Query().Get("q")),
+		Unbound: r.URL.Query().Get("unbound") == "true",
 	}, page, pageSize, true
 }
 
@@ -294,6 +295,19 @@ func (s *Server) handleDeleteHumanUser(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, err)
 		return
 	}
+	// An unbound user (its Pod was deleted) has no runtime to exec cleanup
+	// into; delete the row and its user-owned assets synchronously.
+	if user.PodID == "" {
+		if err := s.store.DeleteUnboundHumanUser(user.HumanUserID); err != nil {
+			writeRepoError(w, err)
+			return
+		}
+		s.auditHumanUser(r, auditlog.ActionHumanUserDelete, user, "deleted_unbound")
+		writeJSON(w, http.StatusOK, map[string]any{
+			"humanUserId": user.HumanUserID, "podId": "", "deleted": true,
+		})
+		return
+	}
 	if s.reconcile == nil {
 		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime reconciler unavailable")
 		return
@@ -343,11 +357,11 @@ func (s *Server) makeHumanUserView(user repo.HumanUser, identityCount int) (huma
 		return humanUserView{}, err
 	}
 	return humanUserView{
-		HumanUserID: user.HumanUserID, PodID: user.PodID, DisplayName: user.DisplayName,
-		ModelConfigID: user.ModelConfigID, AgentID: user.AgentID, BrowserProfile: user.BrowserProfile,
-		BrowserCDPPort: user.BrowserCDPPort, Status: user.Status, Notes: user.Notes,
-		IdentityCount: identityCount, ModelConfig: modelConfigToView(config),
-		CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
+		HumanUserID: user.HumanUserID, PodID: user.PodID, LastPodID: user.LastPodID,
+		DisplayName: user.DisplayName, ModelConfigID: user.ModelConfigID, AgentID: user.AgentID,
+		BrowserProfile: user.BrowserProfile, BrowserCDPPort: user.BrowserCDPPort,
+		Status: user.Status, Notes: user.Notes, IdentityCount: identityCount,
+		ModelConfig: modelConfigToView(config), CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
 	}, nil
 }
 

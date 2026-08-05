@@ -31,7 +31,7 @@ func TestSkillAsset_CRUDListAndConstraints(t *testing.T) {
 
 	private := createSkillAsset(t, store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID, PodID: "pod-a",
+		HumanUserID: alice.HumanUserID,
 		SourcePath:    "/home/node/.openclaw/workspace-alice/skills/xdr-query",
 		ManifestHash:  "sha256:private",
 		PlatformsJSON: `["xdr"]`,
@@ -41,7 +41,7 @@ func TestSkillAsset_CRUDListAndConstraints(t *testing.T) {
 	}
 	if _, err := store.CreateSkillAsset(repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID, PodID: "pod-a",
+		HumanUserID: alice.HumanUserID,
 		SourcePath: "/duplicate", ManifestHash: "sha256:duplicate",
 		PlatformsJSON: `["xdr"]`,
 	}); !errors.Is(err, repo.ErrSkillExists) {
@@ -262,7 +262,7 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 	})
 	createSkillAsset(t, store, repo.SkillAsset{
 		Name: "session-manager", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID, PodID: "pod-a",
+		HumanUserID: alice.HumanUserID,
 		SourcePath:    "/home/node/.openclaw/workspace-alice/skills/session-manager",
 		ManifestHash:  "sha256:private-system",
 		PlatformsJSON: `["xdr"]`,
@@ -274,7 +274,7 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 	})
 	privateXDR := createSkillAsset(t, store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID, PodID: "pod-a",
+		HumanUserID: alice.HumanUserID,
 		SourcePath:   "/home/node/.openclaw/workspace-alice/skills/xdr-query",
 		ManifestHash: "sha256:private", Version: "2.0.0", PlatformsJSON: `["xdr"]`,
 	})

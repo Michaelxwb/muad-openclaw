@@ -68,7 +68,7 @@ func TestIdentity_CannotEnableForDisabledHumanUser(t *testing.T) {
 	createTestPod(t, store, "pod-a", 10)
 	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusPending)
 	identity, err := store.CreateIdentity(repo.UserIdentity{
-		HumanUserID: alice.HumanUserID, PodID: alice.PodID, Channel: "wecom",
+		HumanUserID: alice.HumanUserID, Channel: "wecom",
 		OpenClawChannel: "wecom", ExternalID: "alice", ExternalIDType: "scoped_userid",
 		Status: repo.IdentityStatusDisabled,
 	})
@@ -98,7 +98,7 @@ func createTestIdentity(
 
 func identityFor(user repo.HumanUser, accountID, externalID string) repo.UserIdentity {
 	return repo.UserIdentity{
-		HumanUserID: user.HumanUserID, PodID: user.PodID, Channel: "wecom",
+		HumanUserID: user.HumanUserID, Channel: "wecom",
 		OpenClawChannel: "wecom", AccountID: accountID, ExternalID: externalID,
 		ExternalIDType: "scoped_userid", PeerKind: "direct", Status: repo.IdentityStatusActive,
 	}

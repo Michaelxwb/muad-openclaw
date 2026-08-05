@@ -198,6 +198,28 @@ func (s *Store) UpdatePodResources(podID string, update PodResourceUpdate) (int6
 	return generation, nil
 }
 
+// MarkAllPodsConfigPending bumps every Pod's desired generation so the
+// coordinator re-renders and re-applies config (e.g. after global guidance or
+// resource changes), returning the affected Pod IDs.
+func (s *Store) MarkAllPodsConfigPending() ([]string, error) {
+	rows, err := s.db.Query(`UPDATE pods SET config_generation = config_generation + 1,
+		last_apply_status = 'pending', last_apply_error = '', updated_at = ?
+		RETURNING pod_id`, formatTime(time.Now().UTC()))
+	if err != nil {
+		return nil, fmt.Errorf("mark all Pods config pending: %w", err)
+	}
+	defer rows.Close()
+	var podIDs []string
+	for rows.Next() {
+		var podID string
+		if err := rows.Scan(&podID); err != nil {
+			return nil, fmt.Errorf("scan pending Pod: %w", err)
+		}
+		podIDs = append(podIDs, podID)
+	}
+	return podIDs, rows.Err()
+}
+
 // MarkPodsInheritingResourcesPending updates all Pods affected by global changes.
 func (s *Store) MarkPodsInheritingResourcesPending(
 	memChanged, cpuChanged, restartChanged bool,
@@ -233,10 +255,26 @@ func (s *Store) UpdatePodState(podID, state string) error {
 	return affectedOrNotFound(res, err, "update Pod state")
 }
 
-// DeletePod deletes the aggregate; foreign keys cascade owned records.
+// DeletePod detaches the Pod's Human Users (pod_id NULL, last_pod_id backfill,
+// browser port released) so user assets survive, then deletes the Pod row.
+// Pending binding codes cascade away with the Pod.
 func (s *Store) DeletePod(podID string) error {
-	res, err := s.db.Exec(`DELETE FROM pods WHERE pod_id = ?`, podID)
-	return affectedOrNotFound(res, err, "delete Pod")
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin delete Pod: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := detachPodUsersTx(tx, podID); err != nil {
+		return err
+	}
+	res, err := tx.Exec(`DELETE FROM pods WHERE pod_id = ?`, podID)
+	if err := affectedOrNotFound(res, err, "delete Pod"); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit delete Pod: %w", err)
+	}
+	return nil
 }
 
 // RotatePodServiceToken atomically replaces encrypted token material.

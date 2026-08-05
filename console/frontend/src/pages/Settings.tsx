@@ -9,6 +9,7 @@ import {
   PageSection,
 } from "../components/ConsolePage";
 import { PlatformSettings } from "../components/platforms/PlatformSettings";
+import { AgentGuidanceSettings } from "../components/settings/AgentGuidanceSettings";
 import { useMountedRef } from "../hooks/useMountedRef";
 import styles from "./Settings.module.css";
 
@@ -25,7 +26,7 @@ export function Settings() {
   const resources = useGlobalResources();
   return (
     <div>
-      <PageHeader title="资源与平台" description="设置 Pod 默认资源，并管理业务平台接入配置" />
+      <PageHeader title="系统配置" description="配置 Pod 资源、Agent 工作区指导与业务平台接入" />
       <PageSection
         title="Pod 资源默认值"
         extra={
@@ -37,6 +38,9 @@ export function Settings() {
         <FeedbackBanner error={resources.error} message={resources.message} />
         <ResourceForm state={resources} />
         {resources.config && <EffectiveResources config={resources.config} />}
+      </PageSection>
+      <PageSection title="Agent 工作区指导">
+        <AgentGuidanceSettings />
       </PageSection>
       <PlatformSettings />
     </div>

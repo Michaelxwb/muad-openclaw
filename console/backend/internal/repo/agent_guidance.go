@@ -1,0 +1,60 @@
+package repo
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+)
+
+// AgentGuidance holds admin-configurable agent workspace guidance text that is
+// shipped to the runtime DTO and written into AGENTS.md / BOOTSTRAP.md. Empty
+// fields fall back to the runtime renderer's built-in defaults.
+type AgentGuidance struct {
+	UserSkill string
+	Memory    string
+	Main      string
+	UpdatedAt time.Time
+}
+
+// GetAgentGuidance returns the singleton guidance record; a missing row yields
+// an empty record (renderer defaults apply).
+func (s *Store) GetAgentGuidance() (AgentGuidance, error) {
+	row := s.db.QueryRow(`SELECT user_skill, memory, main, updated_at
+		FROM agent_guidance WHERE id = 1`)
+	return scanAgentGuidance(row)
+}
+
+// SetAgentGuidance upserts the singleton guidance record.
+func (s *Store) SetAgentGuidance(guidance AgentGuidance) error {
+	res, err := s.db.Exec(`INSERT INTO agent_guidance (id, user_skill, memory, main, updated_at)
+		VALUES (1, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET user_skill = excluded.user_skill,
+			memory = excluded.memory, main = excluded.main, updated_at = excluded.updated_at`,
+		guidance.UserSkill, guidance.Memory, guidance.Main,
+		formatTime(time.Now().UTC()))
+	if err != nil {
+		return fmt.Errorf("set Agent guidance: %w", err)
+	}
+	if _, err := res.RowsAffected(); err != nil {
+		return fmt.Errorf("set Agent guidance rows affected: %w", err)
+	}
+	return nil
+}
+
+func scanAgentGuidance(sc scanner) (AgentGuidance, error) {
+	var guidance AgentGuidance
+	var updatedAt string
+	err := sc.Scan(&guidance.UserSkill, &guidance.Memory, &guidance.Main, &updatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return AgentGuidance{}, nil
+	}
+	if err != nil {
+		return AgentGuidance{}, fmt.Errorf("scan Agent guidance: %w", err)
+	}
+	guidance.UpdatedAt, err = parseRequiredTime(updatedAt, "agent_guidance.updated_at")
+	if err != nil {
+		return AgentGuidance{}, err
+	}
+	return guidance, nil
+}
