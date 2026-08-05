@@ -10,11 +10,19 @@ import (
 
 var ErrIdentityExists = errors.New("repo: scoped IM identity already exists")
 
-const identityColumns = `identity_id, human_user_id, pod_id, channel,
+const identityColumns = `identity_id, human_user_id, channel,
 	openclaw_channel, account_id, external_id, external_id_type, peer_kind,
 	status, created_at, updated_at`
 
+// identityColumnsQualified prefixes columns with the user_identities alias for
+// queries that JOIN human_users (pod scoping now derives from the user).
+const identityColumnsQualified = `i.identity_id, i.human_user_id, i.channel,
+	i.openclaw_channel, i.account_id, i.external_id, i.external_id_type, i.peer_kind,
+	i.status, i.created_at, i.updated_at`
+
 // CreateIdentity inserts an IM identity and activates a pending Human User.
+// The identity's Pod is the user's Pod; another user in the same Pod cannot
+// already hold the same (channel, external_id).
 func (s *Store) CreateIdentity(identity UserIdentity) (UserIdentity, error) {
 	if err := prepareIdentity(&identity); err != nil {
 		return UserIdentity{}, err
@@ -31,8 +39,11 @@ func (s *Store) CreateIdentity(identity UserIdentity) (UserIdentity, error) {
 	if err != nil {
 		return UserIdentity{}, err
 	}
-	if user.PodID != identity.PodID || user.Status == HumanUserStatusDisabled || user.Status == HumanUserStatusDeleting {
+	if user.PodID == "" || user.Status == HumanUserStatusDisabled || user.Status == HumanUserStatusDeleting {
 		return UserIdentity{}, ErrInvalidStateTransition
+	}
+	if err := ensurePodExternalIDAvailableTx(tx, user.PodID, identity.HumanUserID, identity.Channel, identity.AccountID, identity.ExternalID); err != nil {
+		return UserIdentity{}, err
 	}
 	if err := insertIdentity(tx, identity); err != nil {
 		return UserIdentity{}, err
@@ -42,7 +53,7 @@ func (s *Store) CreateIdentity(identity UserIdentity) (UserIdentity, error) {
 			return UserIdentity{}, err
 		}
 	}
-	if err := markPodConfigPendingTx(tx, identity.PodID); err != nil {
+	if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
 		return UserIdentity{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -58,13 +69,15 @@ func (s *Store) GetIdentity(identityID string) (UserIdentity, error) {
 	return scanIdentity(row)
 }
 
-// FindIdentityByExternalID performs an exact, scoped external-ID lookup.
+// FindIdentityByExternalID performs an exact, Pod-scoped external-ID lookup.
+// The Pod scope is derived from the owning Human User.
 func (s *Store) FindIdentityByExternalID(
 	podID, openClawChannel, accountID, peerKind, externalID string,
 ) (UserIdentity, error) {
-	row := s.db.QueryRow(`SELECT `+identityColumns+` FROM user_identities
-		WHERE pod_id = ? AND openclaw_channel = ? AND account_id = ?
-		AND peer_kind = ? AND external_id = ?`, podID, openClawChannel,
+	row := s.db.QueryRow(`SELECT `+identityColumnsQualified+`
+		FROM user_identities i JOIN human_users h ON h.human_user_id = i.human_user_id
+		WHERE h.pod_id = ? AND i.openclaw_channel = ? AND i.account_id = ?
+		AND i.peer_kind = ? AND i.external_id = ?`, podID, openClawChannel,
 		accountID, peerKind, externalID)
 	return scanIdentity(row)
 }
@@ -80,10 +93,12 @@ func (s *Store) ListIdentitiesByHumanUser(humanUserID string) ([]UserIdentity, e
 	return collectIdentities(rows)
 }
 
-// ListIdentitiesByPod returns all Pod identities without per-user queries.
+// ListIdentitiesByPod returns identities of the users currently bound to a Pod,
+// derived through the owning Human User.
 func (s *Store) ListIdentitiesByPod(podID string) ([]UserIdentity, error) {
-	rows, err := s.db.Query(`SELECT `+identityColumns+` FROM user_identities
-		WHERE pod_id = ? ORDER BY openclaw_channel, account_id, peer_kind, external_id`, podID)
+	rows, err := s.db.Query(`SELECT `+identityColumnsQualified+`
+		FROM user_identities i JOIN human_users h ON h.human_user_id = i.human_user_id
+		WHERE h.pod_id = ? ORDER BY i.openclaw_channel, i.account_id, i.peer_kind, i.external_id`, podID)
 	if err != nil {
 		return nil, fmt.Errorf("list Pod Identities: %w", err)
 	}
@@ -91,15 +106,16 @@ func (s *Store) ListIdentitiesByPod(podID string) ([]UserIdentity, error) {
 	return collectIdentities(rows)
 }
 
-// CountIdentitiesByHumanUser returns Identity counts keyed by Human User ID.
+// CountIdentitiesByHumanUser returns Identity counts keyed by Human User ID,
+// optionally scoped to the identities of a Pod's users.
 func (s *Store) CountIdentitiesByHumanUser(podID string) (map[string]int, error) {
-	query := `SELECT human_user_id, COUNT(*) FROM user_identities`
+	query := `SELECT i.human_user_id, COUNT(*) FROM user_identities i`
 	var args []any
 	if podID != "" {
-		query += ` WHERE pod_id = ?`
+		query += ` JOIN human_users h ON h.human_user_id = i.human_user_id WHERE h.pod_id = ?`
 		args = append(args, podID)
 	}
-	query += ` GROUP BY human_user_id`
+	query += ` GROUP BY i.human_user_id`
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("count Identities by Human User: %w", err)
@@ -127,7 +143,7 @@ func (s *Store) UpdateIdentityStatus(identityID, status string) error {
 		return fmt.Errorf("begin update Identity: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	identity, user, err := identityAndUserTx(tx, identityID)
+	_, user, err := identityAndUserTx(tx, identityID)
 	if err != nil {
 		return err
 	}
@@ -143,8 +159,10 @@ func (s *Store) UpdateIdentityStatus(identityID, status string) error {
 	if err := reconcileHumanUserIdentityStatus(tx, user, status); err != nil {
 		return err
 	}
-	if err := markPodConfigPendingTx(tx, identity.PodID); err != nil {
-		return err
+	if user.PodID != "" {
+		if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
+			return err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit update Identity: %w", err)
@@ -159,7 +177,7 @@ func (s *Store) DeleteIdentity(identityID string) error {
 		return fmt.Errorf("begin delete Identity: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	identity, user, err := identityAndUserTx(tx, identityID)
+	_, user, err := identityAndUserTx(tx, identityID)
 	if err != nil {
 		return err
 	}
@@ -170,8 +188,10 @@ func (s *Store) DeleteIdentity(identityID string) error {
 	if err := reconcileHumanUserIdentityStatus(tx, user, IdentityStatusDisabled); err != nil {
 		return err
 	}
-	if err := markPodConfigPendingTx(tx, identity.PodID); err != nil {
-		return err
+	if user.PodID != "" {
+		if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
+			return err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit delete Identity: %w", err)
@@ -204,7 +224,7 @@ func prepareIdentity(identity *UserIdentity) error {
 
 func validateIdentity(identity UserIdentity) error {
 	values := []string{
-		identity.IdentityID, identity.HumanUserID, identity.PodID, identity.Channel,
+		identity.IdentityID, identity.HumanUserID, identity.Channel,
 		identity.OpenClawChannel, identity.AccountID, identity.ExternalID,
 		identity.ExternalIDType, identity.PeerKind,
 	}
@@ -221,10 +241,10 @@ func validateIdentity(identity UserIdentity) error {
 
 func insertIdentity(tx *sql.Tx, identity UserIdentity) error {
 	_, err := tx.Exec(`INSERT INTO user_identities (
-		identity_id, human_user_id, pod_id, channel, openclaw_channel, account_id,
+		identity_id, human_user_id, channel, openclaw_channel, account_id,
 		external_id, external_id_type, peer_kind, status, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, identity.IdentityID,
-		identity.HumanUserID, identity.PodID, identity.Channel, identity.OpenClawChannel,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, identity.IdentityID,
+		identity.HumanUserID, identity.Channel, identity.OpenClawChannel,
 		identity.AccountID, identity.ExternalID, identity.ExternalIDType,
 		identity.PeerKind, identity.Status, formatTime(identity.CreatedAt),
 		formatTime(identity.UpdatedAt))
@@ -269,6 +289,28 @@ func reconcileHumanUserIdentityStatus(tx *sql.Tx, user HumanUser, changedStatus 
 	return nil
 }
 
+// ensurePodExternalIDAvailableTx rejects creating an identity whose
+// (channel, account_id, external_id) is already claimed by another user in the
+// same Pod, replacing the per-Pod UNIQUE that the removed user_identities.pod_id
+// column used to provide (routes must stay unambiguous). account_id matters so
+// distinct accounts on the same channel are not falsely treated as conflicts.
+func ensurePodExternalIDAvailableTx(
+	tx *sql.Tx, podID, humanUserID, channel, accountID, externalID string,
+) error {
+	var count int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM user_identities i
+		JOIN human_users h ON h.human_user_id = i.human_user_id
+		WHERE h.pod_id = ? AND i.human_user_id != ? AND i.channel = ?
+		AND i.account_id = ? AND i.external_id = ?`,
+		podID, humanUserID, channel, accountID, externalID).Scan(&count); err != nil {
+		return fmt.Errorf("check Pod external ID availability: %w", err)
+	}
+	if count > 0 {
+		return ErrIdentityExists
+	}
+	return nil
+}
+
 func setHumanUserStatusTx(tx *sql.Tx, humanUserID, status string) error {
 	res, err := tx.Exec(`UPDATE human_users SET status = ?, updated_at = ?
 		WHERE human_user_id = ?`, status, formatTime(time.Now().UTC()), humanUserID)
@@ -290,7 +332,7 @@ func collectIdentities(rows *sql.Rows) ([]UserIdentity, error) {
 func scanIdentity(sc scanner) (UserIdentity, error) {
 	var identity UserIdentity
 	var createdAt, updatedAt string
-	err := sc.Scan(&identity.IdentityID, &identity.HumanUserID, &identity.PodID,
+	err := sc.Scan(&identity.IdentityID, &identity.HumanUserID,
 		&identity.Channel, &identity.OpenClawChannel, &identity.AccountID,
 		&identity.ExternalID, &identity.ExternalIDType, &identity.PeerKind,
 		&identity.Status, &createdAt, &updatedAt)

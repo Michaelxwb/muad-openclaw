@@ -6,7 +6,6 @@ import { FeedbackBanner, PageHeader, PageSection } from "../components/ConsolePa
 import { EditChannelModal } from "../components/EditChannelModal";
 import { tablePagination } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
-import { PodDetail } from "./PodDetail";
 import { ContainersToolbar } from "./containers/ContainersToolbar";
 import { CreatePodDialog } from "./containers/CreatePodDialog";
 import { PodResourceDialog } from "./containers/PodResourceDialog";
@@ -15,23 +14,14 @@ import { PodUpgradeDialog } from "./containers/PodUpgradeDialog";
 import { usePodList } from "./containers/usePodList";
 import { PodLogDialog, PodQrDialog } from "./pod-detail/PodActionDialogs";
 
-export function Containers() {
+export function Containers({ onOpenPod }: { onOpenPod: (podId: string) => void }) {
   const state = useContainersController();
-  if (state.dialogs.detailPodId) {
-    return (
-      <PodDetail
-        podId={state.dialogs.detailPodId}
-        onBack={() => state.dialogs.setDetailPodId(null)}
-        onDeleted={() => void state.detailDeleted()}
-      />
-    );
-  }
-  return <PodListView state={state} />;
+  return <PodListView state={state} onOpenPod={onOpenPod} />;
 }
 
 function useContainersController() {
   const dialogs = useListDialogs();
-  const list = usePodList({ enabled: dialogs.detailPodId === null });
+  const list = usePodList();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const mountedRef = useMountedRef();
   const runAction = async (podId: string, action: PodAction) => {
@@ -45,10 +35,6 @@ function useContainersController() {
         Toast.error(caught instanceof Error ? caught.message : "Pod 操作失败");
     }
   };
-  const detailDeleted = async () => {
-    dialogs.setDetailPodId(null);
-    await list.refresh();
-  };
   const created = async (pod: Pod) => {
     dialogs.setCreateOpen(false);
     Toast.success(`Pod ${pod.podId} 创建成功`);
@@ -61,14 +47,19 @@ function useContainersController() {
     selectedIds,
     setSelectedIds,
     runAction,
-    detailDeleted,
     created,
   };
 }
 
 type ContainersState = ReturnType<typeof useContainersController>;
 
-function PodListView({ state }: { state: ContainersState }) {
+function PodListView({
+  state,
+  onOpenPod,
+}: {
+  state: ContainersState;
+  onOpenPod: (podId: string) => void;
+}) {
   const { list, dialogs } = state;
   return (
     <div>
@@ -91,7 +82,7 @@ function PodListView({ state }: { state: ContainersState }) {
           selectedIds={state.selectedIds}
           pagination={podTablePagination(state)}
           onSelected={state.setSelectedIds}
-          onDetail={dialogs.setDetailPodId}
+          onDetail={onOpenPod}
           onLogs={dialogs.setLogPodId}
           onQr={dialogs.setQrPodId}
           onChannels={dialogs.setEditPodId}
@@ -124,7 +115,6 @@ function podTablePagination(state: ContainersState) {
 
 function useListDialogs() {
   const [createOpen, setCreateOpen] = useState(false);
-  const [detailPodId, setDetailPodId] = useState<string | null>(null);
   const [logPodId, setLogPodId] = useState<string | null>(null);
   const [qrPodId, setQrPodId] = useState<string | null>(null);
   const [editPodId, setEditPodId] = useState<string | null>(null);
@@ -132,14 +122,12 @@ function useListDialogs() {
   const [upgradeIds, setUpgradeIds] = useState<string[]>([]);
   return {
     createOpen,
-    detailPodId,
     logPodId,
     qrPodId,
     editPodId,
     resourcePod,
     upgradeIds,
     setCreateOpen,
-    setDetailPodId,
     setLogPodId,
     setQrPodId,
     setEditPodId,

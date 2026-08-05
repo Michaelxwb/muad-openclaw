@@ -24,3 +24,17 @@
     display: none;
   }
 }
+
+.guidanceField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  max-width: 720px;
+}
+
+.guidanceField label {
+  color: var(--semi-color-text-2);
+  font-size: 13px;
+  font-weight: 600;
+}

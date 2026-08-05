@@ -91,6 +91,23 @@ func TestRuntimeBuilder_RejectsInvalidStatusAndChannelAlias(t *testing.T) {
 	}
 }
 
+// TestRuntimeBuilderSkipsIdentityForDisabledChannel verifies the Pod-agnostic
+// routing rule: an identity whose channel the Pod does not enable must not
+// produce a route referencing an unconfigured channel.
+func TestRuntimeBuilderSkipsIdentityForDisabledChannel(t *testing.T) {
+	cipher := mustRuntimeCipher(t)
+	source := runtimeBuilderFixture(t, cipher)
+	// Pod enables only wechat; the retained wecom identity must be skipped.
+	source.pod.Channels = `["wechat"]`
+	source.pod.ChannelConfigsEnc = encryptRuntimeJSON(t, cipher, `{"wechat":{}}`)
+	config := buildRuntime(t, source, cipher).Config
+	for _, route := range config.Routes {
+		if route.Channel == "wecom" {
+			t.Fatalf("wecom route rendered for a Pod without wecom: %+v", config.Routes)
+		}
+	}
+}
+
 func TestRuntimeBuilder_MattermostDirectIdentity(t *testing.T) {
 	cipher := mustRuntimeCipher(t)
 	source := runtimeBuilderFixture(t, cipher)
@@ -99,7 +116,7 @@ func TestRuntimeBuilder_MattermostDirectIdentity(t *testing.T) {
 		`{"wecom":{"botId":"bot-a","secret":"channel-secret"},"wechat":{},`+
 			`"mattermost":{"baseUrl":"https://mattermost.internal","botToken":"mm-token","allowPrivateNetwork":"true"}}`)
 	source.identities = append(source.identities, repo.UserIdentity{
-		IdentityID: "i-mattermost", HumanUserID: "u-charlie", PodID: "pod-a",
+		IdentityID: "i-mattermost", HumanUserID: "u-charlie",
 		Channel: "mattermost", OpenClawChannel: "mattermost", AccountID: "default",
 		ExternalID: "mm-user-1", ExternalIDType: "mattermost_user_id",
 		PeerKind: "direct", Status: repo.IdentityStatusActive,
@@ -179,9 +196,9 @@ func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBui
 		{HumanUserID: "u-alice", PodID: "pod-a", ModelConfigID: "model-alice", AgentID: "alice", BrowserProfile: "alice", BrowserCDPPort: 18802, Status: repo.HumanUserStatusActive},
 	}
 	identities := []repo.UserIdentity{
-		{IdentityID: "i-wechat", HumanUserID: "u-alice", PodID: "pod-a", Channel: "wechat", OpenClawChannel: "openclaw-weixin", AccountID: "default", ExternalID: "wx-alice", PeerKind: "direct", Status: repo.IdentityStatusActive},
-		{IdentityID: "i-disabled", HumanUserID: "u-disabled", PodID: "pod-a", Channel: "wecom", OpenClawChannel: "wecom", AccountID: "default", ExternalID: "disabled-id", PeerKind: "direct", Status: repo.IdentityStatusActive},
-		{IdentityID: "i-wecom", HumanUserID: "u-alice", PodID: "pod-a", Channel: "wecom", OpenClawChannel: "wecom", AccountID: "default", ExternalID: "XuWenBin", PeerKind: "direct", Status: repo.IdentityStatusActive},
+		{IdentityID: "i-wechat", HumanUserID: "u-alice", Channel: "wechat", OpenClawChannel: "openclaw-weixin", AccountID: "default", ExternalID: "wx-alice", PeerKind: "direct", Status: repo.IdentityStatusActive},
+		{IdentityID: "i-disabled", HumanUserID: "u-disabled", Channel: "wecom", OpenClawChannel: "wecom", AccountID: "default", ExternalID: "disabled-id", PeerKind: "direct", Status: repo.IdentityStatusActive},
+		{IdentityID: "i-wecom", HumanUserID: "u-alice", Channel: "wecom", OpenClawChannel: "wecom", AccountID: "default", ExternalID: "XuWenBin", PeerKind: "direct", Status: repo.IdentityStatusActive},
 	}
 	return runtimeBuilderSource{
 		pod: repo.Pod{

@@ -3,9 +3,18 @@ import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Settings } from "../src/pages/Settings";
 
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+
 const apiMocks = vi.hoisted(() => ({
   getResources: vi.fn(),
   setResources: vi.fn(),
+  getAgentGuidance: vi.fn(),
+  setAgentGuidance: vi.fn(),
   listPlatforms: vi.fn(),
 }));
 
@@ -46,6 +55,8 @@ beforeEach(() => {
   for (const mock of Object.values(apiMocks)) mock.mockReset();
   apiMocks.getResources.mockResolvedValue(resources);
   apiMocks.setResources.mockResolvedValue({ configured: true, affectedPodIds: ["pod-a"] });
+  apiMocks.getAgentGuidance.mockResolvedValue({ userSkill: "", memory: "", main: "", updatedAt: "" });
+  apiMocks.setAgentGuidance.mockResolvedValue({ userSkill: "", memory: "", main: "", updatedAt: "" });
   apiMocks.listPlatforms.mockResolvedValue({ items: [], total: 0 });
 });
 
@@ -74,5 +85,17 @@ describe("Settings", () => {
       }),
     );
     expect(await screen.findByText(/1 个 Pod 等待应用/)).toBeInTheDocument();
+  });
+
+  it("saves agent workspace guidance", async () => {
+    render(<Settings />);
+    const area = await screen.findByLabelText("用户自建 Skill 规则");
+    fireEvent.change(area, { target: { value: "- 自定义语言规则" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存 Agent 工作区指导" }));
+    await waitFor(() =>
+      expect(apiMocks.setAgentGuidance).toHaveBeenCalledWith(
+        expect.objectContaining({ userSkill: "- 自定义语言规则" }),
+      ),
+    );
   });
 });

@@ -41,6 +41,9 @@ type createPodRequest struct {
 	MaxSkillConcurrency   int                           `json:"maxSkillConcurrency"`
 	MaxBrowserConcurrency int                           `json:"maxBrowserConcurrency"`
 	AdoptState            bool                          `json:"adoptState"`
+	// RestoreUsers re-attaches the unbound users whose last Pod was this pod
+	// (default true) so agent_id and memory link back on recreate.
+	RestoreUsers *bool `json:"restoreUsers"`
 }
 
 type patchPodRequest struct {
@@ -67,6 +70,16 @@ func (s *Server) handleCreatePod(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.CreatePod(pod); err != nil {
 		writeRepoError(w, err)
 		return
+	}
+	// Restore the users detached by a previous deletion of the same Pod before
+	// provisioning, so the first rendered config already references their
+	// agent_id and the retained state memory links back.
+	if request.RestoreUsers == nil || *request.RestoreUsers {
+		if err := s.restorePodUsers(pod.PodID); err != nil {
+			_ = s.store.DeletePod(pod.PodID)
+			writeRepoError(w, err)
+			return
+		}
 	}
 	if err := s.provisionPod(r, pod, token, request.AdoptState); err != nil {
 		s.writeProvisionError(w, err)
@@ -356,6 +369,9 @@ func (s *Server) handleDeletePod(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, err)
 		return
 	}
+	// Count retained users BEFORE the delete; DeletePod detaches them to
+	// pod_id=NULL so a post-delete pod-scoped count would always be zero.
+	_, retainedUsers, _ := s.store.ListHumanUsersByPod(pod.PodID, repo.HumanUserListFilter{})
 	err = s.runPodExclusive(r.Context(), pod.PodID, func(ctx context.Context) error {
 		opCtx, cancel := podRuntimeOperationContext(ctx)
 		defer cancel()
@@ -380,9 +396,9 @@ func (s *Server) handleDeletePod(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "delete Pod runtime failed")
 		return
 	}
-	status := "state_retained"
+	status := fmt.Sprintf("state_retained users_retained=%d", retainedUsers)
 	if deleteState {
-		status = "state_deleted"
+		status = fmt.Sprintf("state_deleted users_retained=%d", retainedUsers)
 	}
 	s.auditPodMutation(r, auditlog.ActionPodDelete, pod.PodID, status)
 	writeJSON(w, http.StatusOK, map[string]any{"podId": pod.PodID, "deleted": true, "stateRetained": !deleteState})

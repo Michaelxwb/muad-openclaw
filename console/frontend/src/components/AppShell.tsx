@@ -28,13 +28,14 @@ import styles from "./AppShell.module.css";
 type Page = "pods" | "users" | "skills" | "llm" | "settings" | "audit";
 
 const PAGE_KEY = "muad_console_page";
+const DETAIL_POD_KEY = "muad_console_pod_id";
 
 const NAV_ITEMS: { key: Page; label: string; icon: ReactNode }[] = [
   { key: "pods", label: "Pod 管理", icon: <IconServerStroked size="large" /> },
   { key: "users", label: "用户管理", icon: <IconUserGroup size="large" /> },
   { key: "skills", label: "Skill 管理", icon: <IconPuzzle size="large" /> },
   { key: "llm", label: "模型配置", icon: <IconComponentStroked size="large" /> },
-  { key: "settings", label: "资源与平台", icon: <IconSettingStroked size="large" /> },
+  { key: "settings", label: "系统配置", icon: <IconSettingStroked size="large" /> },
   { key: "audit", label: "审计日志", icon: <IconSearchStroked size="large" /> },
 ];
 
@@ -46,20 +47,25 @@ interface Props {
 
 export function AppShell({ theme, onTheme, onLogout }: Props) {
   const [page, setPage] = useState<Page>(readInitialPage);
-  const [detailPodId, setDetailPodId] = useState<string | null>(null);
+  const [detailPodId, setDetailPodId] = useState<string | null>(readInitialDetailPodId);
   const [collapsed, setCollapsed] = useResponsiveSidebar();
   const user = useCurrentUser();
   const changePage = (next: Page) => {
     setDetailPodId(null);
+    writeDetailPodId(null);
     setPage(next);
     writePage(next);
   };
   const openPodDetail = (podId: string) => {
     setDetailPodId(podId);
+    writeDetailPodId(podId);
     setPage("pods");
     writePage("pods");
   };
-  const closePodDetail = () => setDetailPodId(null);
+  const closePodDetail = () => {
+    setDetailPodId(null);
+    writeDetailPodId(null);
+  };
   return (
     <div className={styles.layout}>
       <AppSidebar
@@ -92,6 +98,25 @@ function readInitialPage(): Page {
   } catch (caught) {
     console.warn("page_preference_read_failed", caught);
     return "pods";
+  }
+}
+
+function readInitialDetailPodId(): string | null {
+  try {
+    const value = localStorage.getItem(DETAIL_POD_KEY)?.trim();
+    return value ? value : null;
+  } catch (caught) {
+    console.warn("pod_detail_preference_read_failed", caught);
+    return null;
+  }
+}
+
+function writeDetailPodId(podId: string | null) {
+  try {
+    if (podId) localStorage.setItem(DETAIL_POD_KEY, podId);
+    else localStorage.removeItem(DETAIL_POD_KEY);
+  } catch (caught) {
+    console.warn("pod_detail_preference_write_failed", caught);
   }
 }
 
@@ -259,5 +284,5 @@ function PageContent({
   if (page === "llm") return <LLM />;
   if (page === "settings") return <Settings />;
   if (page === "audit") return <Audit onOpenPod={onOpenPod} />;
-  return <Containers />;
+  return <Containers onOpenPod={onOpenPod} />;
 }

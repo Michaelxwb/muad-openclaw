@@ -3,7 +3,10 @@
 
 import type {
   ActivationInput,
+  AgentGuidance,
+  AgentGuidanceInput,
   Alert,
+  AttachHumanUsersInput,
   AuditEntry,
   AuditQuery,
   BindingCode,
@@ -241,7 +244,14 @@ export const api = {
         pageSize: query.pageSize,
         q: query.q,
         status: query.status,
+        unbound: query.unbound,
       }),
+    ),
+  attachHumanUsers: (podId: string, input: AttachHumanUsersInput) =>
+    request<{ podId: string; attached: number }>(
+      "POST",
+      `/containers/${segment(podId)}/human-users/attach`,
+      input,
     ),
   createHumanUser: (podId: string, input: CreateHumanUserInput) =>
     request<HumanUserBootstrapResult>("POST", `/containers/${segment(podId)}/human-users`, input),
@@ -402,6 +412,9 @@ export const api = {
   getSkillExecution: (executionId: string) =>
     request<SkillExecutionDetail>("GET", `/skill-executions/${segment(executionId)}`),
   getResources: () => request<GlobalResourceConfig>("GET", "/settings/resources"),
+  getAgentGuidance: () => request<AgentGuidance>("GET", "/settings/agent-guidance"),
+  setAgentGuidance: (input: AgentGuidanceInput) =>
+    request<AgentGuidance>("PUT", "/settings/agent-guidance", input),
   setResources: (input: ResourceConfig) =>
     request<{ configured: true; affectedPodIds: string[] }>("PUT", "/settings/resources", input),
   getPodResources: (podId: string) =>

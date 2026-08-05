@@ -66,10 +66,17 @@ export function writeAgentGuidance(runtime) {
   for (const agent of runtime.agents) {
     const file = agent.id === "main" ? `${agent.workspace}/BOOTSTRAP.md` : `${agent.workspace}/AGENTS.md`;
     if (agent.id === "main") {
-      writeGuidanceWhenMissing(file, MAIN_GUIDANCE);
+      // Only overwrite BOOTSTRAP.md when the admin explicitly configured main
+      // guidance; the default keeps the legacy write-if-missing semantics so a
+      // manually maintained BOOTSTRAP.md is never silently replaced.
+      if (runtime?.guidance?.main?.trim()) {
+        upsertGuidanceFile(file, mainGuidance(runtime));
+      } else {
+        writeGuidanceWhenMissing(file, DEFAULT_MAIN_GUIDANCE);
+      }
       continue;
     }
-    upsertUserGuidance(file);
+    upsertUserGuidance(file, runtime);
   }
 }
 
@@ -79,25 +86,37 @@ function writeGuidanceWhenMissing(file, content) {
   writeFileSync(file, content, { mode: 0o600 });
 }
 
-function upsertUserGuidance(file) {
+// upsertGuidanceFile writes a whole-file guidance (e.g. the main agent's
+// BOOTSTRAP.md) when missing or when the configured content changed.
+function upsertGuidanceFile(file, content) {
   if (!existsSync(file)) {
-    writeGuidanceWhenMissing(file, USER_GUIDANCE);
+    writeGuidanceWhenMissing(file, content);
     return;
   }
   const current = readFileSync(file, "utf8");
-  const withMemory = replaceMemoryGuidance(removeLegacyMemoryGuidance(current));
-  const next = replaceManagedBlock(removeLegacySkillGuidance(withMemory));
+  if (current !== content) writeFileSync(file, content, { mode: 0o600 });
+}
+
+function upsertUserGuidance(file, runtime) {
+  if (!existsSync(file)) {
+    writeGuidanceWhenMissing(file, userGuidance(runtime));
+    return;
+  }
+  const current = readFileSync(file, "utf8");
+  const withMemory = replaceMemoryGuidance(removeLegacyMemoryGuidance(current), runtime);
+  const next = replaceManagedBlock(removeLegacySkillGuidance(withMemory), runtime);
   if (next !== current) writeFileSync(file, next, { mode: 0o600 });
 }
 
-function replaceMemoryGuidance(content) {
+function replaceMemoryGuidance(content, runtime) {
+  const guidance = memoryGuidance(runtime);
   const start = content.indexOf(MEMORY_GUIDANCE_START);
   const end = content.indexOf(MEMORY_GUIDANCE_END);
   if (start >= 0 && end >= start) {
     const suffix = end + MEMORY_GUIDANCE_END.length;
-    return `${content.slice(0, start)}${MEMORY_GUIDANCE}${content.slice(suffix)}`;
+    return `${content.slice(0, start)}${guidance}${content.slice(suffix)}`;
   }
-  return `${MEMORY_GUIDANCE}\n\n${content.trimStart()}`;
+  return `${guidance}\n\n${content.trimStart()}`;
 }
 
 function removeLegacyMemoryGuidance(content) {
@@ -109,14 +128,15 @@ function removeLegacyMemoryGuidance(content) {
   return `${content.slice(0, start)}${content.slice(end)}`;
 }
 
-function replaceManagedBlock(content) {
+function replaceManagedBlock(content, runtime) {
+  const guidance = managedSkillGuidance(runtime);
   const start = content.indexOf(SKILL_GUIDANCE_START);
   const end = content.indexOf(SKILL_GUIDANCE_END);
   if (start >= 0 && end >= start) {
     const suffix = end + SKILL_GUIDANCE_END.length;
-    return `${content.slice(0, start)}${MANAGED_SKILL_GUIDANCE}${content.slice(suffix)}`;
+    return `${content.slice(0, start)}${guidance}${content.slice(suffix)}`;
   }
-  return `${content.trimEnd()}\n\n${MANAGED_SKILL_GUIDANCE}\n`;
+  return `${content.trimEnd()}\n\n${guidance}\n`;
 }
 
 function removeLegacySkillGuidance(content) {
@@ -353,7 +373,7 @@ function isRecord(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-const MAIN_GUIDANCE = `# Binding guidance
+const DEFAULT_MAIN_GUIDANCE = `# Binding guidance
 
 This is the unbound-user fallback agent. Only explain how to bind or contact an administrator.
 Never access business tools, user memory, Browser profiles, Skills, files, or platform credentials.
@@ -361,8 +381,7 @@ Never access business tools, user memory, Browser profiles, Skills, files, or pl
 
 const MEMORY_GUIDANCE_START = "<!-- muad:memory:start -->";
 const MEMORY_GUIDANCE_END = "<!-- muad:memory:end -->";
-const MEMORY_GUIDANCE = `${MEMORY_GUIDANCE_START}
-# Shared memory boundary
+const DEFAULT_MEMORY_GUIDANCE = `# Shared memory boundary
 
 This workspace belongs to one human who may use multiple IM channels.
 - Treat this workspace as that person's shared memory boundary.
@@ -375,8 +394,7 @@ This workspace belongs to one human who may use multiple IM channels.
 - Store assistant identity, name, vibe, and emoji in \`IDENTITY.md\`; store user facts, names, preferences, and notes in \`USER.md\`.
 - Read the current file first, then use a file-writing tool to persist the change. Do not rely on chat history as memory.
 - Never say a fact has been saved, remembered, or written until the file-writing tool has completed successfully.
-- If file-writing tools are unavailable or fail, say that memory was not saved and explain the blocker briefly.
-${MEMORY_GUIDANCE_END}`;
+- If file-writing tools are unavailable or fail, say that memory was not saved and explain the blocker briefly.`;
 
 const DEPRECATED_SKILL_GUIDANCE = `- Before using any Skill instructions, scripts, or referenced files, call muad_use_skill with the exact Skill name.
 - A successful muad_use_skill result is authoritative: continue the task and never claim that Skill is not enabled.
@@ -385,19 +403,35 @@ const DEPRECATED_SKILL_GUIDANCE = `- Before using any Skill instructions, script
 
 const SKILL_GUIDANCE_START = "<!-- muad:skill-activation:start -->";
 const SKILL_GUIDANCE_END = "<!-- muad:skill-activation:end -->";
-const MANAGED_SKILL_GUIDANCE = `${SKILL_GUIDANCE_START}
-# Skill activation boundary
+// System activation mechanics stay locked; only the "用户自建 Skill" product rules
+// are admin-configurable via runtime.guidance.userSkill.
+const ACTIVATION_BOUNDARY_GUIDANCE = `# Skill activation boundary
 
 - Skill activation is scoped to one user turn.
 - On every user turn, including a retry or follow-up, if the request clearly matches an available Skill, first read the exact SKILL.md path listed in <available_skills>.
 - Reading that exact SKILL.md is the native Skill activation and audit boundary.
 - Do not call task tools until one of those activation methods succeeds.
-- Never reuse a prior turn's Skill activation as authorization for the current turn.
+- Never reuse a prior turn's Skill activation as authorization for the current turn.`;
 
-# 用户自建 Skill
-
-- 用户说"写/创建 skill"时：与用户多轮对话澄清需求，把草稿写到 skill-staging/<name>/（含 SKILL.md，frontmatter 的 name 与目录同名）；完成后提示用户可继续修改。
+const DEFAULT_USER_SKILL_GUIDANCE = `- 用户说"写/创建 skill"时：与用户多轮对话澄清需求，把草稿写到 skill-staging/<name>/（含 SKILL.md，frontmatter 的 name 与目录同名）；完成后提示用户可继续修改。
 - 用户说"上传 / 生效 / 提交 skill"时：才调用 skill-upload 把 staging 草稿上传到控制台。
-- 【重要】只在用户明确要求上传时调用 skill-upload；写草稿不自动上传，上传时机由用户决定。
-${SKILL_GUIDANCE_END}`;
-const USER_GUIDANCE = `${MEMORY_GUIDANCE}\n\n${MANAGED_SKILL_GUIDANCE}\n`;
+- 用户说"修改 / 更新已上传的 skill"时：同样走 skill-upload——先读现有内容，把修改写到 skill-staging/<name>/ 草稿，再重传；若控制台返回 "skill already exists"，如实告知用户需先联系管理员在控制台删除旧 skill，再重新上传。
+- 【重要】不要直接编辑 workspace/skills/ 下的平台托管私有 skill（guard 只读，直接改不生效且会被同步覆盖）；写草稿不自动上传，上传/修改时机由用户决定。`;
+
+function mainGuidance(runtime) {
+  return runtime?.guidance?.main?.trim() || DEFAULT_MAIN_GUIDANCE;
+}
+
+function memoryGuidance(runtime) {
+  const inner = runtime?.guidance?.memory?.trim() || DEFAULT_MEMORY_GUIDANCE;
+  return `${MEMORY_GUIDANCE_START}\n${inner}\n${MEMORY_GUIDANCE_END}`;
+}
+
+function managedSkillGuidance(runtime) {
+  const inner = runtime?.guidance?.userSkill?.trim() || DEFAULT_USER_SKILL_GUIDANCE;
+  return `${SKILL_GUIDANCE_START}\n${ACTIVATION_BOUNDARY_GUIDANCE}\n\n# 用户自建 Skill\n\n${inner}\n${SKILL_GUIDANCE_END}`;
+}
+
+function userGuidance(runtime) {
+  return `${memoryGuidance(runtime)}\n\n${managedSkillGuidance(runtime)}\n`;
+}

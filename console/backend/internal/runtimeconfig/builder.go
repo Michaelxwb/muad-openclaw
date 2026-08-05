@@ -58,6 +58,13 @@ type sourceData struct {
 	identities []repo.UserIdentity
 	platforms  []repo.PlatformConfig
 	models     []repo.LLMModelConfig
+	guidance   repo.AgentGuidance
+}
+
+// GuidanceSource is implemented by Stores that expose admin-configured agent
+// workspace guidance; builders fall back to renderer defaults when absent.
+type GuidanceSource interface {
+	GetAgentGuidance() (repo.AgentGuidance, error)
 }
 
 type skillState struct {
@@ -86,7 +93,11 @@ func (builder *Builder) Build(podID string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	routes, links, err := buildRoutesAndLinks(data.pod.PodID, users, data.identities)
+	channels, err := builder.buildChannels(data.pod)
+	if err != nil {
+		return Result{}, err
+	}
+	routes, links, err := buildRoutesAndLinks(users, data.identities, channels.Enabled)
 	if err != nil {
 		return Result{}, err
 	}
@@ -102,12 +113,17 @@ func (builder *Builder) Build(podID string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	channels, err := builder.buildChannels(data.pod)
-	if err != nil {
-		return Result{}, err
-	}
 	config := builder.assemble(data.pod, users, routes, links, providers, models, platforms, channels, skills)
+	config.Guidance = runtimeGuidance(data.guidance)
 	return finish(config)
+}
+
+func runtimeGuidance(g repo.AgentGuidance) driver.RuntimeGuidance {
+	return driver.RuntimeGuidance{
+		UserSkill: strings.TrimSpace(g.UserSkill),
+		Memory:    strings.TrimSpace(g.Memory),
+		Main:      strings.TrimSpace(g.Main),
+	}
 }
 
 func (builder *Builder) load(podID string) (sourceData, error) {
@@ -131,9 +147,15 @@ func (builder *Builder) load(podID string) (sourceData, error) {
 	if err != nil {
 		return sourceData{}, err
 	}
+	guidance := repo.AgentGuidance{}
+	if source, ok := builder.source.(GuidanceSource); ok {
+		if loaded, err := source.GetAgentGuidance(); err == nil {
+			guidance = loaded
+		}
+	}
 	return sourceData{
 		pod: pod, users: users, identities: identities,
-		platforms: platforms, models: models,
+		platforms: platforms, models: models, guidance: guidance,
 	}, nil
 }
 

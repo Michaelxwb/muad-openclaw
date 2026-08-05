@@ -53,14 +53,15 @@ CREATE TABLE IF NOT EXISTS llm_model_configs (
 
 CREATE TABLE IF NOT EXISTS human_users (
 	human_user_id TEXT PRIMARY KEY,
-	pod_id TEXT NOT NULL REFERENCES pods(pod_id) ON DELETE CASCADE,
+	pod_id TEXT REFERENCES pods(pod_id),
 	model_config_id TEXT NOT NULL REFERENCES llm_model_configs(model_config_id) ON DELETE RESTRICT,
 	display_name TEXT NOT NULL,
 	agent_id TEXT NOT NULL,
 	browser_profile TEXT NOT NULL,
-	browser_cdp_port INTEGER NOT NULL CHECK (browser_cdp_port BETWEEN 1024 AND 65535),
+	browser_cdp_port INTEGER NOT NULL CHECK (browser_cdp_port = 0 OR browser_cdp_port BETWEEN 1024 AND 65535),
 	status TEXT NOT NULL CHECK (status IN ('pending','active','disabled','deleting')),
 	notes TEXT NOT NULL DEFAULT '',
+	last_pod_id TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL,
 	CHECK (agent_id NOT IN ('main','quarantine')),
@@ -77,7 +78,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_human_users_model_config
 CREATE TABLE IF NOT EXISTS user_identities (
 	identity_id TEXT PRIMARY KEY,
 	human_user_id TEXT NOT NULL,
-	pod_id TEXT NOT NULL REFERENCES pods(pod_id) ON DELETE CASCADE,
 	channel TEXT NOT NULL,
 	openclaw_channel TEXT NOT NULL,
 	account_id TEXT NOT NULL DEFAULT 'default',
@@ -87,9 +87,8 @@ CREATE TABLE IF NOT EXISTS user_identities (
 	status TEXT NOT NULL CHECK (status IN ('active','disabled')),
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL,
-	FOREIGN KEY (human_user_id, pod_id)
-		REFERENCES human_users(human_user_id, pod_id) ON DELETE CASCADE,
-	UNIQUE (pod_id, openclaw_channel, account_id, peer_kind, external_id)
+	FOREIGN KEY (human_user_id) REFERENCES human_users(human_user_id) ON DELETE CASCADE,
+	UNIQUE (human_user_id, openclaw_channel, account_id, peer_kind, external_id)
 );
 CREATE INDEX IF NOT EXISTS idx_identities_human_user ON user_identities(human_user_id);
 
@@ -140,7 +139,6 @@ CREATE TABLE IF NOT EXISTS skill_assets (
 	name TEXT NOT NULL,
 	scope TEXT NOT NULL CHECK (scope IN ('system','public','private')),
 	human_user_id TEXT,
-	pod_id TEXT,
 	display_name TEXT NOT NULL,
 	version TEXT NOT NULL DEFAULT '',
 	status TEXT NOT NULL DEFAULT 'active'
@@ -156,16 +154,14 @@ CREATE TABLE IF NOT EXISTS skill_assets (
 	source TEXT NOT NULL DEFAULT 'platform',
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL,
-	FOREIGN KEY (human_user_id, pod_id)
-		REFERENCES human_users(human_user_id, pod_id) ON DELETE CASCADE,
+	FOREIGN KEY (human_user_id) REFERENCES human_users(human_user_id) ON DELETE CASCADE,
 	CHECK (
-		(scope = 'private' AND human_user_id IS NOT NULL AND pod_id IS NOT NULL)
-		OR (scope IN ('system','public') AND human_user_id IS NULL AND pod_id IS NULL)
+		(scope = 'private' AND human_user_id IS NOT NULL)
+		OR (scope IN ('system','public') AND human_user_id IS NULL)
 	)
 );
 CREATE INDEX IF NOT EXISTS idx_skill_assets_scope_name ON skill_assets(scope, name);
 CREATE INDEX IF NOT EXISTS idx_skill_assets_human_user ON skill_assets(human_user_id, status);
-CREATE INDEX IF NOT EXISTS idx_skill_assets_pod ON skill_assets(pod_id, status);
 CREATE INDEX IF NOT EXISTS idx_skill_assets_status ON skill_assets(status, updated_at);
 CREATE UNIQUE INDEX IF NOT EXISTS uidx_skill_public_name
 	ON skill_assets(name) WHERE scope IN ('system','public') AND status != 'deleted';
@@ -207,6 +203,14 @@ CREATE TABLE IF NOT EXISTS resource_global (
 	cpu_limit TEXT NOT NULL DEFAULT '',
 	restart_policy TEXT NOT NULL DEFAULT '',
 	updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_guidance (
+	id INTEGER PRIMARY KEY CHECK (id = 1),
+	user_skill TEXT NOT NULL DEFAULT '',
+	memory TEXT NOT NULL DEFAULT '',
+	main TEXT NOT NULL DEFAULT '',
+	updated_at TEXT NOT NULL
 );`
 
 func (s *Store) migrate() error {
@@ -227,6 +231,9 @@ func (s *Store) migrate() error {
 		return err
 	}
 	if err := s.migrateSkillAssetSource(); err != nil {
+		return err
+	}
+	if err := s.migratePodAgnosticUsers(); err != nil {
 		return err
 	}
 	if err := s.migrateSkillExecutionRecords(); err != nil {

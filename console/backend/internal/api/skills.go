@@ -59,7 +59,6 @@ type skillAssetView struct {
 	Name              string    `json:"name"`
 	Scope             string    `json:"scope"`
 	HumanUserID       string    `json:"humanUserId,omitempty"`
-	PodID             string    `json:"podId,omitempty"`
 	DisplayName       string    `json:"displayName"`
 	Version           string    `json:"version"`
 	Status            string    `json:"status"`
@@ -457,7 +456,7 @@ func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request
 	}
 	asset, err := s.store.CreateSkillAsset(repo.SkillAsset{
 		Name: result.Name, Scope: repo.SkillScopePrivate, HumanUserID: user.HumanUserID,
-		PodID: user.PodID, DisplayName: result.Name, Version: result.Version,
+		DisplayName: result.Name, Version: result.Version,
 		SourcePath: result.TargetDir, ManifestHash: result.ManifestHash,
 		ManifestJSON: result.ManifestJSON, EntryType: result.EntryType,
 		PlatformsJSON:     mustMarshalStringSlice(result.Platforms),
@@ -525,7 +524,7 @@ func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request
 	policy := privateUploadPolicy(upload, user.HumanUserID, result.Name, actorFrom(r.Context()))
 	asset, policyCreated, err := s.store.CreatePrivateSkillAssetAndPolicyAndMarkPod(repo.SkillAsset{
 		Name: result.Name, Scope: repo.SkillScopePrivate, HumanUserID: user.HumanUserID,
-		PodID: pod.PodID, DisplayName: result.Name, Version: result.Version,
+		DisplayName: result.Name, Version: result.Version,
 		SourcePath: result.TargetDir, ManifestHash: result.ManifestHash,
 		ManifestJSON: result.ManifestJSON, EntryType: result.EntryType,
 		PlatformsJSON:     mustMarshalStringSlice(result.Platforms),
@@ -895,7 +894,7 @@ func skillAssetViews(assets []repo.SkillAsset) []skillAssetView {
 func skillAssetToView(asset repo.SkillAsset) skillAssetView {
 	return skillAssetView{
 		SkillID: asset.SkillID, Name: asset.Name, Scope: asset.Scope,
-		HumanUserID: asset.HumanUserID, PodID: asset.PodID, DisplayName: asset.DisplayName,
+		HumanUserID: asset.HumanUserID, DisplayName: asset.DisplayName,
 		Version: asset.Version, Status: asset.Status, SourcePath: asset.SourcePath,
 		ManifestHash: asset.ManifestHash, ManifestJSON: asset.ManifestJSON,
 		EntryType: asset.EntryType, PlatformsJSON: asset.PlatformsJSON,
@@ -980,10 +979,16 @@ func (s *Server) auditSkill(
 	if target == "" {
 		target = "skills"
 	}
+	// Internal ingest (pod service token) has no admin actor in context; audit as
+	// the Pod so skill installs via the agent still leave an audit trail.
+	actor := auditlog.AdminActor(actorFrom(r.Context()))
+	if pod, ok := podFromContext(r.Context()); ok {
+		actor = auditlog.PodActor(pod.PodID)
+	}
 	err := auditlog.Record(r.Context(), s.store, auditlog.Event{
-		Actor: auditlog.AdminActor(actorFrom(r.Context())), Action: action, Target: target,
+		Actor: actor, Action: action, Target: target,
 		Metadata: auditlog.Metadata{
-			PodID: asset.PodID, HumanUserID: asset.HumanUserID,
+			HumanUserID: asset.HumanUserID,
 			SkillID: asset.SkillID, SkillName: asset.Name, Status: status, Count: count,
 		},
 	})

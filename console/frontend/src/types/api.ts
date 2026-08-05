@@ -119,6 +119,7 @@ export interface CreatePodInput {
   maxSkillConcurrency?: number;
   maxBrowserConcurrency?: number;
   adoptState?: boolean;
+  restoreUsers?: boolean;
 }
 
 export interface PatchPodInput {
@@ -162,6 +163,7 @@ export interface PodUpgradeResult {
 export interface HumanUser {
   humanUserId: string;
   podId: string;
+  lastPodId?: string;
   modelConfigId: string;
   displayName: string;
   agentId: string;
@@ -177,6 +179,12 @@ export interface HumanUser {
 
 export interface HumanUserListQuery extends PageQuery {
   status?: Exclude<HumanUserStatus, "deleting">;
+  unbound?: boolean;
+}
+
+export interface AttachHumanUsersInput {
+  humanUserIds: string[];
+  confirmNoMemory?: boolean;
 }
 
 export interface IdentityInput {
@@ -531,6 +539,19 @@ export interface ResourceConfig {
   memLimit: string;
   cpuLimit: string;
   restartPolicy: string;
+}
+
+export interface AgentGuidance {
+  userSkill: string;
+  memory: string;
+  main: string;
+  updatedAt: string;
+}
+
+export interface AgentGuidanceInput {
+  userSkill?: string;
+  memory?: string;
+  main?: string;
 }
 
 export interface GlobalResourceConfig extends ResourceConfig {

@@ -48,7 +48,7 @@ describe("AppShell", () => {
     expect(screen.getByText("Skills Page")).toBeInTheDocument();
     fireEvent.click(screen.getByText("模型配置"));
     expect(screen.getByText("LLM Page")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("资源与平台"));
+    fireEvent.click(screen.getByText("系统配置"));
     expect(screen.getByText("Settings Page")).toBeInTheDocument();
     fireEvent.click(screen.getByText("审计日志"));
     expect(screen.getByText("Audit Page")).toBeInTheDocument();
@@ -71,6 +71,19 @@ describe("AppShell", () => {
 
     expect(screen.getByText("Pod Detail pod-a")).toBeInTheDocument();
     expect(localStorage.getItem("muad_console_page")).toBe("pods");
+  });
+
+  it("restores the open Pod detail after a browser refresh", () => {
+    localStorage.setItem("muad_console_pod_id", "pod-a");
+
+    render(<AppShell theme="dark" onTheme={vi.fn()} onLogout={vi.fn()} />);
+
+    expect(screen.getByText("Pod Detail pod-a")).toBeInTheDocument();
+
+    // Navigating to another page clears the persisted detail.
+    fireEvent.click(screen.getByText("用户管理"));
+    expect(screen.getByText("Users Page")).toBeInTheDocument();
+    expect(localStorage.getItem("muad_console_pod_id")).toBeNull();
   });
 
   it("collapses the navigation when the viewport becomes compact", () => {

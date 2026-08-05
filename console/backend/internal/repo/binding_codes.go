@@ -338,6 +338,9 @@ func activateBindingTx(
 	if err != nil {
 		return BindingActivationResult{}, err
 	}
+	if err := ensurePodExternalIDAvailableTx(tx, record.PodID, identity.HumanUserID, identity.Channel, identity.AccountID, identity.ExternalID); err != nil {
+		return BindingActivationResult{}, err
+	}
 	if err := insertIdentity(tx, identity); err != nil {
 		return BindingActivationResult{}, err
 	}
@@ -370,7 +373,7 @@ func bindingIdentity(
 		return UserIdentity{}, fmt.Errorf("generate Identity ID: %w", err)
 	}
 	return UserIdentity{
-		IdentityID: id, HumanUserID: record.HumanUserID, PodID: record.PodID,
+		IdentityID: id, HumanUserID: record.HumanUserID,
 		Channel: record.Channel, OpenClawChannel: record.OpenClawChannel,
 		AccountID: record.AccountID, ExternalID: activation.ExternalID,
 		ExternalIDType: activation.ExternalIDType, PeerKind: activation.PeerKind,

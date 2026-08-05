@@ -193,4 +193,23 @@ describe("Containers create Pod flow", () => {
       ),
     );
   });
+
+  it("restore users requires adopting state and is forced off otherwise", async () => {
+    apiMocks.createPod.mockResolvedValue({ ...pod, podId: "pod-new", displayName: "pod-new" });
+    render(<Containers />);
+    await screen.findByText("Pod A");
+    openCreateModal();
+    fillMinimalCreateForm();
+
+    const restore = screen.getByRole("checkbox", { name: /恢复原 Pod 用户/ });
+    // Without adopting the retained state volume, restoring users is disabled.
+    expect(restore).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+    await waitFor(() =>
+      expect(apiMocks.createPod).toHaveBeenCalledWith(
+        expect.objectContaining({ adoptState: false, restoreUsers: false }),
+      ),
+    );
+  });
 });

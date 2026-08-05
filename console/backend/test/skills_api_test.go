@@ -34,7 +34,7 @@ func TestSkillAPI_ListDetailEffectiveAndPolicies(t *testing.T) {
 	})
 	privateSkill := createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
-		PodID: "pod-a", SourcePath: "/home/node/.openclaw/workspace-alice/skills/xdr-query",
+		SourcePath: "/home/node/.openclaw/workspace-alice/skills/xdr-query",
 		ManifestHash: "sha256:private", PlatformsJSON: `["xdr"]`,
 	})
 
@@ -232,7 +232,7 @@ func TestSkillAPI_PrivateIngestCreatesAssetAndDirectSyncs(t *testing.T) {
 	assertStatus(t, rr, http.StatusOK)
 
 	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
-		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID, PodID: alice.PodID,
+		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
 	})
 	if err != nil || len(assets) != 1 || assets[0].Name != "ingest-skill" {
 		t.Fatalf("ingest assets = %+v, %v", assets, err)
@@ -297,7 +297,7 @@ func TestSkillAPI_PrivateIngestRejectsInvalidBundle(t *testing.T) {
 	assertStatus(t, rr, http.StatusBadRequest)
 
 	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
-		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID, PodID: alice.PodID,
+		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
 	})
 	if err != nil || len(assets) != 0 {
 		t.Fatalf("invalid ingest should not create an asset: %+v, %v", assets, err)
@@ -383,7 +383,7 @@ func TestSkillAPI_PrivateDeleteDoesNotDependOnRuntime(t *testing.T) {
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 	asset := createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-private", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID, PodID: alice.PodID,
+		HumanUserID: alice.HumanUserID,
 		SourcePath:   "/home/node/.openclaw/workspace-alice/skills/xdr-private",
 		ManifestHash: "sha256:private", PlatformsJSON: `["xdr"]`,
 	})
@@ -816,7 +816,7 @@ func TestSkillAPI_PrivateUploadRejectsExistingPrivateWithoutReplacingFiles(t *te
 	}
 	createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-private", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID, PodID: alice.PodID,
+		HumanUserID: alice.HumanUserID,
 		SourcePath: privateDir, ManifestHash: "sha256:private", PlatformsJSON: `[]`,
 	})
 

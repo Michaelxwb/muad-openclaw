@@ -138,7 +138,9 @@ type Pod struct {
 	UpdatedAt               time.Time
 }
 
-// HumanUser is a natural person hosted by a Pod.
+// HumanUser is a natural person hosted by a Pod. PodID is empty while the
+// user is unbound (its Pod was deleted); LastPodID remembers the most recent
+// Pod for one-click restore on recreate.
 type HumanUser struct {
 	HumanUserID    string
 	PodID          string
@@ -149,6 +151,7 @@ type HumanUser struct {
 	BrowserCDPPort int
 	Status         string
 	Notes          string
+	LastPodID      string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -171,11 +174,12 @@ type LLMModelConfig struct {
 	UpdatedAt          time.Time
 }
 
-// UserIdentity maps one channel-scoped sender to a Human User.
+// UserIdentity maps one channel-scoped sender to a Human User. The owning
+// Pod is derived from HumanUser.PodID; identities are user-owned and survive
+// Pod deletion.
 type UserIdentity struct {
 	IdentityID      string
 	HumanUserID     string
-	PodID           string
 	Channel         string
 	OpenClawChannel string
 	AccountID       string
@@ -216,12 +220,13 @@ type PlatformConfig struct {
 }
 
 // SkillAsset is metadata for a system, public, or Human User private Skill.
+// Private Skills follow the owning Human User; their Pod is derived from
+// HumanUser.PodID (no pod_id column).
 type SkillAsset struct {
 	SkillID           string
 	Name              string
 	Scope             string
 	HumanUserID       string
-	PodID             string
 	DisplayName       string
 	Version           string
 	Status            string

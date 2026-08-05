@@ -51,6 +51,7 @@ type assignedModelView struct {
 type humanUserView struct {
 	HumanUserID    string            `json:"humanUserId"`
 	PodID          string            `json:"podId"`
+	LastPodID      string            `json:"lastPodId,omitempty"`
 	ModelConfigID  string            `json:"modelConfigId"`
 	DisplayName    string            `json:"displayName"`
 	AgentID        string            `json:"agentId"`

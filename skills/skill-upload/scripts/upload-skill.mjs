@@ -9,7 +9,7 @@
 //   - console internal URL + pod service token are read from openclaw.json
 //     (plugins.entries.muad-runtime-guard.config) so the agent does not need to
 //     know them.
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -34,26 +34,59 @@ function readRuntimeConfig() {
   }
 }
 
+const NON_USER_WORKSPACES = new Set(["main", "quarantine", "attestations"]);
+
 function findAgentWorkspace() {
-  // The agent's workspace dir is workspace-<agentId> under the state dir; the
-  // helper runs inside the agent session so the runtime sets OPENCLAW_AGENT_ID.
+  // 1) Explicit runtime env, when the session manager sets it.
   const agentId = process.env.OPENCLAW_AGENT_ID;
   if (agentId && SKILL_NAME_RE.test(agentId)) return agentId;
-  // Fallback only when there is exactly one workspace (safe). With multiple
-  // workspaces an unset identity must not guess, or the Skill would be bound
-  // to the wrong user; let the caller fail explicitly instead.
+  // 2) Derive from the process cwd: agent tools run inside workspace-<agentId>.
+  const fromCwd = agentIdFromCwd();
+  if (fromCwd) return fromCwd;
+  // 3) The guard config lists session agent ids; a single session is unambiguous.
+  const fromSessions = singleSessionAgent();
+  if (fromSessions) return fromSessions;
+  // 4) Last resort: only when there is exactly one workspace (safe). With
+  // multiple workspaces an unset identity must not guess, or the Skill would be
+  // bound to the wrong user; let the caller fail explicitly instead.
   const workspaces = readdirSync(STATE_DIR).filter(
-    (entry) => entry.startsWith("workspace-") && entry !== "workspace",
+    (entry) => entry.startsWith("workspace-") && !NON_USER_WORKSPACES.has(entry.slice("workspace-".length)),
   );
   if (workspaces.length === 1) return workspaces[0].slice("workspace-".length);
   return "";
 }
 
+function agentIdFromCwd() {
+  const segments = process.cwd().split("/");
+  for (let i = segments.length - 1; i >= 0; i--) {
+    if (segments[i].startsWith("workspace-")) {
+      const id = segments[i].slice("workspace-".length);
+      if (id && !NON_USER_WORKSPACES.has(id) && SKILL_NAME_RE.test(id)) return id;
+    }
+  }
+  return "";
+}
+
+function singleSessionAgent() {
+  const sessionAgents = readRuntimeConfig().sessionAgentIds;
+  if (Array.isArray(sessionAgents) && sessionAgents.length === 1) {
+    const id = String(sessionAgents[0]);
+    if (!NON_USER_WORKSPACES.has(id) && SKILL_NAME_RE.test(id)) return id;
+  }
+  return "";
+}
+
 async function main() {
-  const skillName = process.argv[2]?.trim();
+  let skillName = process.argv[2]?.trim();
   if (!skillName || !SKILL_NAME_RE.test(skillName)) {
-    fail("usage: upload-skill.mjs <skillName>");
-    return;
+    // No/invalid explicit name: auto-detect when exactly one staged Skill
+    // exists, otherwise fail with an actionable message.
+    const detected = detectStagedSkillName();
+    if (!detected.name) {
+      fail(detected.message);
+      return;
+    }
+    skillName = detected.name;
   }
   const agentId = findAgentWorkspace();
   if (!agentId) {
@@ -106,7 +139,14 @@ async function main() {
     fail(`上传失败：${text}`);
     return;
   }
-  process.stdout.write(`Skill「${skillName}」上传成功。\n`);
+  // Remove the staging draft so a new session does not treat it as a pending
+  // (un-uploaded) Skill again and ask to re-upload.
+  try {
+    rmSync(staging, { recursive: true, force: true });
+  } catch {
+    // Non-fatal: a leftover draft only causes a redundant upload offer.
+  }
+  process.stdout.write(`Skill「${skillName}」上传成功，已清理草稿目录。\n`);
 }
 
 async function exists(path) {
@@ -116,6 +156,30 @@ async function exists(path) {
   } catch {
     return false;
   }
+}
+
+// detectStagedSkillName returns the single staged Skill in the current agent's
+// skill-staging/ directory, or a message explaining why it cannot auto-pick.
+function detectStagedSkillName() {
+  const agentId = findAgentWorkspace();
+  if (!agentId) return { message: "cannot resolve agent workspace (OPENCLAW_AGENT_ID unset)" };
+  const stagingRoot = join(STATE_DIR, `workspace-${agentId}`, "skill-staging");
+  let entries;
+  try {
+    entries = readdirSync(stagingRoot, { withFileTypes: true });
+  } catch {
+    return { message: `未在 skill-staging/ 找到草稿 Skill（请先写好 SKILL.md，或指定 skillName）` };
+  }
+  const candidates = entries.filter(
+    (entry) => entry.isDirectory() && SKILL_NAME_RE.test(entry.name),
+  );
+  if (candidates.length === 1) return { name: candidates[0].name };
+  if (candidates.length === 0) {
+    return { message: `未在 skill-staging/ 找到草稿 Skill（请先写好 SKILL.md，或指定 skillName）` };
+  }
+  return {
+    message: `skill-staging/ 有多个草稿（${candidates.map((c) => c.name).join("、")}），请指定 skillName`,
+  };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
