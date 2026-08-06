@@ -43,11 +43,13 @@ type resourceValues struct {
 func validateResourceRequest(request resourceFieldsRequest) error {
 	if request.MemLimit != nil {
 		value := strings.TrimSpace(*request.MemLimit)
-		if value != "" && !memPattern.MatchString(value) {
-			return errors.New("memLimit must look like 512m / 2g / 2.5g")
-		}
 		if value != "" {
-			if _, err := driver.MemoryLimitMiB(value); err != nil {
+			// 裸数字按 GiB 解释；归一化为 "Ng" 后按既有格式校验。
+			normalized := normalizeMemLimit(value)
+			if !memPattern.MatchString(normalized) {
+				return errors.New("memLimit must be a number (GiB) or like 512m / 2g / 2.5g")
+			}
+			if _, err := driver.MemoryLimitMiB(normalized); err != nil {
 				return err
 			}
 		}
@@ -66,6 +68,23 @@ func validateResourceRequest(request resourceFieldsRequest) error {
 		}
 	}
 	return nil
+}
+
+// normalizeMemLimit 把裸数字（按 GiB 解释）归一化为 "Ng"，带单位的值原样返回。
+func normalizeMemLimit(value string) string {
+	value = strings.TrimSpace(value)
+	if cpuPattern.MatchString(value) { // ^[0-9]+(\.[0-9]+)?$ 纯数字
+		return value + "g"
+	}
+	return value
+}
+
+func normalizeMemLimitPtr(field *string) *string {
+	if field == nil {
+		return nil
+	}
+	normalized := normalizeMemLimit(*field)
+	return &normalized
 }
 
 func validateConcurrency(request podResourceRequest) error {
@@ -100,7 +119,12 @@ func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request resourceFieldsRequest
-	if err := decodeJSONBody(w, r, &request); err != nil || validateResourceRequest(request) != nil {
+	if err := decodeJSONBody(w, r, &request); err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid resource limits")
+		return
+	}
+	request.MemLimit = normalizeMemLimitPtr(request.MemLimit)
+	if validateResourceRequest(request) != nil {
 		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid resource limits")
 		return
 	}
@@ -146,8 +170,12 @@ func (s *Server) handleSetPodResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request podResourceRequest
-	if err := decodeJSONBody(w, r, &request); err != nil ||
-		validateResourceRequest(request.resourceFieldsRequest) != nil || validateConcurrency(request) != nil {
+	if err := decodeJSONBody(w, r, &request); err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid resource limits")
+		return
+	}
+	request.MemLimit = normalizeMemLimitPtr(request.MemLimit)
+	if validateResourceRequest(request.resourceFieldsRequest) != nil || validateConcurrency(request) != nil {
 		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid resource limits")
 		return
 	}

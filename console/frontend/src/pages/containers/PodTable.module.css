@@ -19,6 +19,13 @@
   font-size: 12px;
 }
 
+.resourceCell {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
 .statusDot {
   display: inline-block;
   width: 6px;

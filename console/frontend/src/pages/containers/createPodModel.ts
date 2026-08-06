@@ -37,8 +37,8 @@ export function validateCreateForm(form: CreateFormState): string {
   if (form.maxUsers < 1 || form.maxUsers > 10) return "用户上限必须在 1 到 10 之间";
   if (/\s/.test(form.imageTag)) return "镜像地址不能包含空格";
   const memLimit = form.memLimit.trim();
-  if (memLimit && !/^[0-9]+(?:\.[0-9]+)?[bkmg]$/i.test(memLimit)) {
-    return "内存上限需要包含单位，例如 16g";
+  if (memLimit && !/^[0-9]+(?:\.[0-9]+)?([bkmg])?$/i.test(memLimit)) {
+    return "内存上限请填写数字（单位 GiB），例如 16";
   }
   const cpuLimit = form.cpuLimit.trim();
   if (cpuLimit && (!/^[0-9]+(?:\.[0-9]+)?$/.test(cpuLimit) || Number(cpuLimit) <= 0)) {

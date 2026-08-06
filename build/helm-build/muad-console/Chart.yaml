@@ -1,0 +1,10 @@
+apiVersion: v2
+name: muad-console
+description: muad 控制台（console）Helm Chart 内网部署用
+type: application
+
+# Chart 版本：内网构建时由 `make console-helm-package` 以 VERSION 覆盖
+version: 0.1.0
+
+# 应用版本：默认锚定镜像 tag（image.tag 未填时使用）
+appVersion: "0.1.0"

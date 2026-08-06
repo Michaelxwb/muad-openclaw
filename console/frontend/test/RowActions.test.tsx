@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { RowActions } from "../src/components/RowActions";
 import type { Pod } from "../src/api";
@@ -30,12 +30,11 @@ const basePod: Pod = {
   updatedAt: "2026-07-11T00:00:00Z",
 };
 
-function renderActions(pod: Pod, onOpenDetail = vi.fn()) {
+function renderActions(pod: Pod) {
   render(
     <RowActions
       pod={pod}
       actions={[]}
-      onOpenDetail={onOpenDetail}
       onViewLogs={vi.fn()}
       onOpenQr={vi.fn()}
       onEditChannels={vi.fn()}
@@ -54,14 +53,5 @@ describe("RowActions", () => {
   it("shows QR action for WeChat containers", () => {
     renderActions({ ...basePod, channels: ["wecom", "wechat"] });
     expect(screen.getByRole("button", { name: "扫码" })).toBeInTheDocument();
-  });
-
-  it("opens the Pod user management view", () => {
-    const onOpenDetail = vi.fn();
-    renderActions(basePod, onOpenDetail);
-
-    fireEvent.click(screen.getByRole("button", { name: "用户管理" }));
-
-    expect(onOpenDetail).toHaveBeenCalledWith("pod-a");
   });
 });

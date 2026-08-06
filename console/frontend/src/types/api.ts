@@ -92,7 +92,10 @@ export interface Pod {
   lastAppliedAt?: string;
   serviceTokenFingerprint: string;
   cpuPercent: number;
+  cpuMills: number;
+  cpuLimitCores: string;
   memMiB: number;
+  memLimitMiB: number;
   skillActive: number;
   skillQueued: number;
   browserActive: number;

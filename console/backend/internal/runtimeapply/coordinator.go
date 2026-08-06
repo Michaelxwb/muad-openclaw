@@ -191,9 +191,7 @@ func (coordinator *Coordinator) dispatch(ctx context.Context) {
 func (coordinator *Coordinator) runPod(ctx context.Context, podID string) {
 	defer coordinator.wg.Done()
 	for {
-		err := coordinator.RunExclusive(ctx, podID, func(runCtx context.Context) error {
-			return coordinator.reconcileWithRetry(runCtx, podID)
-		})
+		err := coordinator.reconcileWithRetry(ctx, podID)
 		if err != nil && ctx.Err() == nil {
 			log.Printf("runtime_reconcile_failed pod=%s error=%v", podID, err)
 		}
@@ -215,10 +213,15 @@ func (coordinator *Coordinator) repeatPending(ctx context.Context, podID string)
 	return false
 }
 
+// reconcileWithRetry 每次尝试独立获取 per-pod 锁，重试间的等待在锁外进行。
+// 这样对 runtime not ready 的 Pod（如坏镜像 ImagePullBackOff）长时间重试时不会独占
+// per-pod 锁饿死用户的升级/删除操作——用户操作最多等一次尝试即可拿到锁。
 func (coordinator *Coordinator) reconcileWithRetry(ctx context.Context, podID string) error {
 	var last error
 	for attempt := 1; ; attempt++ {
-		last = coordinator.reconcileOnce(ctx, podID)
+		last = coordinator.RunExclusive(ctx, podID, func(runCtx context.Context) error {
+			return coordinator.reconcileOnce(runCtx, podID)
+		})
 		if last == nil || errors.Is(last, repo.ErrNotFound) {
 			return nil
 		}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -417,7 +418,9 @@ func ParseStats(s string) (Stats, error) {
 	if err != nil {
 		return Stats{}, err
 	}
-	return Stats{CPUPercent: cpu, MemMiB: mib}, nil
+	// docker stats CPU% 是每核百分比（100% = 占满 1 核）。换算成绝对毫核
+	// （×10）后由 collector 按 limit 统一计算"已使用/总量"百分比，与 k8s 路径一致。
+	return Stats{CPUm: int64(math.Round(cpu * 10)), CPUPercent: cpu, MemMiB: mib}, nil
 }
 
 // ParseMemMiB converts a docker memory string like "123.4MiB" / "1.2GiB" to MiB.

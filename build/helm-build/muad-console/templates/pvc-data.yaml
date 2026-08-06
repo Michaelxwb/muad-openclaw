@@ -1,0 +1,21 @@
+# Console 数据 PVC（SQLite 数据库 + 日志，RWO）。
+# 注：公共 Skill 的 RWX PVC（.Values.publicSkills.pvcName）需预先创建，此模板不负责创建它。
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.data.pvcName }}
+  namespace: {{ .Release.Namespace }}
+  {{- with .Values.data.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "muad-console.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- with .Values.data.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.data.storageRequest }}

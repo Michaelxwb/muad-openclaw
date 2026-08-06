@@ -118,19 +118,34 @@ describe("Containers create Pod flow", () => {
     expect(apiMocks.createPod).not.toHaveBeenCalled();
   });
 
-  it("validates resource units before sending", async () => {
+  it("rejects non-numeric memory limits before sending", async () => {
     render(<Containers />);
     await screen.findByText("Pod A");
     openCreateModal();
     fillMinimalCreateForm();
-    fireEvent.change(screen.getByPlaceholderText("留空继承，如 2g"), {
+    fireEvent.change(screen.getByPlaceholderText("留空继承，如 16"), {
+      target: { value: "abc" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+
+    expect(await screen.findByText("内存上限请填写数字（单位 GiB），例如 16")).toBeInTheDocument();
+    expect(apiMocks.createPod).not.toHaveBeenCalled();
+  });
+
+  it("accepts a bare numeric memory limit (GiB)", async () => {
+    apiMocks.createPod.mockResolvedValue({ ...pod, podId: "pod-new" });
+    render(<Containers />);
+    await screen.findByText("Pod A");
+    openCreateModal();
+    fillMinimalCreateForm();
+    fireEvent.change(screen.getByPlaceholderText("留空继承，如 16"), {
       target: { value: "16" },
     });
 
     fireEvent.click(screen.getByRole("button", { name: "创建" }));
 
-    expect(await screen.findByText("内存上限需要包含单位，例如 16g")).toBeInTheDocument();
-    expect(apiMocks.createPod).not.toHaveBeenCalled();
+    await waitFor(() => expect(apiMocks.createPod).toHaveBeenCalled());
   });
 
   it("creates a Pod with capacity, resource, concurrency, and channel fields", async () => {

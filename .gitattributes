@@ -1,0 +1,10 @@
+# 所有文本文件默认
+* text=auto
+
+# 显式指定 .sh 为文本文件，且强制使用 LF
+*.sh text eol=lf
+
+# 其他脚本文件
+*.bash text eol=lf
+*.zsh text eol=lf
+*.fish text eol=lf

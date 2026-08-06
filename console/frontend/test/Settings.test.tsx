@@ -64,7 +64,7 @@ describe("Settings", () => {
   it("shows effective Pod limits and runtime concurrency defaults", async () => {
     render(<Settings />);
 
-    expect(await screen.findByDisplayValue("4g")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("4")).toBeInTheDocument();
     expect(screen.getByText("Skill 并发默认值")).toBeInTheDocument();
     expect(screen.getByText("Browser 并发默认值")).toBeInTheDocument();
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
@@ -74,12 +74,12 @@ describe("Settings", () => {
   it("saves global defaults and reports affected Pods", async () => {
     render(<Settings />);
     const memory = await screen.findByLabelText("全局 Pod 内存上限");
-    fireEvent.change(memory, { target: { value: "6g" } });
+    fireEvent.change(memory, { target: { value: "6" } });
     fireEvent.click(screen.getByRole("button", { name: "保存资源默认值" }));
 
     await waitFor(() =>
       expect(apiMocks.setResources).toHaveBeenCalledWith({
-        memLimit: "6g",
+        memLimit: "6",
         cpuLimit: "2",
         restartPolicy: "unless-stopped",
       }),

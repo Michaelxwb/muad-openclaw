@@ -50,7 +50,7 @@ func TestCollector_CollectOnce_PopulatesCache(t *testing.T) {
 	if !ok {
 		t.Fatal("alice missing from cache")
 	}
-	if snap.MemMiB != 200 || snap.CPUPercent != 1.5 {
+	if snap.MemMiB != 200 || snap.CPUm != 1500 || snap.CPUPercent != 75 {
 		t.Errorf("stats not applied: %+v", snap)
 	}
 	if !snap.ChannelConnected {

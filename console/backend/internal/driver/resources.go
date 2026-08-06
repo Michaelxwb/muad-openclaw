@@ -42,6 +42,28 @@ var memoryUnitMiB = map[byte]float64{
 	'g': 1024,
 }
 
+// CPULimitMilli parses a CPU limit string like "6" / "2.5" / "1000m" into milli-cores.
+// Returns an error when value is empty, non-numeric, or <= 0.
+// Pure-numeric strings are interpreted as cores (k8s/docker convention).
+func CPULimitMilli(value string) (int64, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, fmt.Errorf("empty cpu limit")
+	}
+	if strings.HasSuffix(value, "m") {
+		n, err := strconv.ParseInt(strings.TrimSuffix(value, "m"), 10, 64)
+		if err != nil || n <= 0 {
+			return 0, fmt.Errorf("invalid cpu limit %q", value)
+		}
+		return n, nil
+	}
+	cores, err := strconv.ParseFloat(value, 64)
+	if err != nil || cores <= 0 {
+		return 0, fmt.Errorf("invalid cpu limit %q", value)
+	}
+	return int64(cores * 1000), nil
+}
+
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
 		if value = strings.TrimSpace(value); value != "" {

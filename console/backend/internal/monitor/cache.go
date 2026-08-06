@@ -15,6 +15,7 @@ type Snapshot struct {
 	MaxUsers                 int
 	AvailableSlots           int
 	CPUPercent               float64
+	CPUm                     int64
 	MemMiB                   int
 	EffectiveMemLimit        string
 	EffectiveMemLimitMiB     int

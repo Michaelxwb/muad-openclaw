@@ -18,6 +18,14 @@ var (
 	ErrRuntimeNotReady = errors.New("driver: runtime not ready")
 )
 
+// WorkloadBlockedChecker reports whether a workload can never become Ready
+// (e.g. persistent ImagePullBackOff on an unusable image) rather than merely
+// not-ready-yet. K8sDriver implements it so the upgrade health wait fails fast
+// and rolls back instead of polling until the timeout.
+type WorkloadBlockedChecker interface {
+	WorkloadBlocked(ctx context.Context, podID string) (bool, error)
+}
+
 // Built-in resource defaults are defensive fallbacks only. Deployment defaults
 // should come from config.yaml.
 const (
@@ -34,7 +42,15 @@ var validRestartPolicies = map[string]bool{
 func IsValidRestartPolicy(p string) bool { return validRestartPolicies[p] }
 
 // Stats is a one-shot resource sample (no streaming, RULE-06).
+//
+// CPU 语义：
+//   - CPUm: 绝对毫核数（1 核 = 1000m）。k8s 路径直接填；docker 路径把 `docker stats`
+//     的每核百分比换算（100% = 占满 1 核 = 1000m，×10）填入，两条驱动都填。
+//   - CPUPercent: 相对该 Pod limit 的百分比，由 collector 统一用 CPUm / limitMilli * 100
+//     算出，保证两条路径"已使用/总量"语义一致；驱动层不填最终值（docker 的原始
+//     每核百分比仅作为中间量保留在字段里，collector 优先用 CPUm 计算）。
 type Stats struct {
+	CPUm       int64
 	CPUPercent float64
 	MemMiB     int
 }

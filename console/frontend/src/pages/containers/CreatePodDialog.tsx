@@ -101,10 +101,10 @@ function CreatePodFields({
       />
       <RestartField value={form.restartPolicy} onChange={(value) => set("restartPolicy", value)} />
       <TextField
-        label="内存上限"
+        label="内存上限 (GiB)"
         value={form.memLimit}
         onChange={(value) => set("memLimit", value)}
-        placeholder="留空继承，如 2g"
+        placeholder="留空继承，如 16"
       />
       <TextField
         label="CPU 上限"

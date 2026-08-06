@@ -165,8 +165,15 @@ func mergeResourceStats(snapshots map[string]monitor.Snapshot, stats map[string]
 		if !exists {
 			continue
 		}
-		snapshot.CPUPercent = sample.CPUPercent
+		snapshot.CPUm = sample.CPUm
 		snapshot.MemMiB = sample.MemMiB
+		if sample.CPUm > 0 {
+			if limitMilli, err := driver.CPULimitMilli(snapshot.EffectiveCPULimit); err == nil && limitMilli > 0 {
+				snapshot.CPUPercent = float64(sample.CPUm) / float64(limitMilli) * 100
+			}
+		} else if sample.CPUPercent > 0 {
+			snapshot.CPUPercent = sample.CPUPercent
+		}
 		snapshots[podID] = snapshot
 	}
 }

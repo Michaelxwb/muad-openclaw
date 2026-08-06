@@ -72,6 +72,40 @@ func TestResources_GlobalChangeQueuesOnlyInheritingPods(t *testing.T) {
 	assertQueuedPods(t, env, "pod-b")
 }
 
+func TestResources_AcceptsBareMemLimitAsGiB(t *testing.T) {
+	env := newTestEnv(t)
+	createTestPod(t, env.store, "pod-a", 10)
+
+	// Pod 覆盖：只填数字按 GiB 解释并归一化为 "Ng"
+	response := env.do(http.MethodPut, "/api/v1/containers/pod-a/resources", `{"memLimit":"4"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("bare Pod memLimit = %d: %s", response.Code, response.Body.String())
+	}
+	stored, err := env.store.GetPod("pod-a")
+	if err != nil || stored.MemLimit != "4g" {
+		t.Fatalf("stored Pod MemLimit = %q, %v", stored.MemLimit, err)
+	}
+
+	// 全局：只填数字同样归一化
+	response = env.do(http.MethodPut, "/api/v1/settings/resources", `{"memLimit":"6"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("bare global memLimit = %d: %s", response.Code, response.Body.String())
+	}
+	response = env.do(http.MethodGet, "/api/v1/settings/resources", "")
+	assertBodyContains(t, response.Code, response.Body.String(), http.StatusOK, `"memLimit":"6g"`)
+
+	// 新建 Pod：create 的 memLimit 只填数字
+	response = env.do(http.MethodPost, "/api/v1/containers",
+		`{"podId":"pod-b","displayName":"b","imageTag":"img:1","maxUsers":2,"channels":["wechat"],"memLimit":"8"}`)
+	if response.Code != http.StatusCreated {
+		t.Fatalf("create with bare memLimit = %d: %s", response.Code, response.Body.String())
+	}
+	created, err := env.store.GetPod("pod-b")
+	if err != nil || created.MemLimit != "8g" {
+		t.Fatalf("created Pod MemLimit = %q, %v", created.MemLimit, err)
+	}
+}
+
 func TestResources_RejectsInvalidLimitsAndConcurrency(t *testing.T) {
 	env := newTestEnv(t)
 	createTestPod(t, env.store, "pod-a", 10)

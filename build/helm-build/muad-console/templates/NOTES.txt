@@ -1,0 +1,13 @@
+muad-console 已部署到 {{ .Release.Namespace }}。
+
+使用提示：
+1. 配置：config.yaml 已由 values.configFile.content 生成 Secret "muad-console-config"
+   并挂载到 /etc/muad-console/config.yaml（环境变量 CONSOLE_CONFIG）.
+2. runtime.driver 需在 config.yaml 中设为 k8s，且 defaultImage 指向内网 worker 镜像。
+3. 公共 Skill RWX PVC（{{ .Values.publicSkills.pvcName }}）需预先创建并绑定到
+   .Values.publicSkills.mountPath，否则 Pod 会停在 ContainerCreating。
+4. 镜像仓库：{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+
+查看状态：
+  kubectl -n {{ .Release.Namespace }} get all -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "muad-console.fullname" . }} -f

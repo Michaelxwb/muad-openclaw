@@ -40,18 +40,41 @@ export function PodTable(props: Props) {
   );
 }
 
+function renderResourceCell(used: string, total: string, percent: number) {
+  const pct = percent > 0 ? `${percent.toFixed(1)}%` : "—";
+  return (
+    <div className={styles.resourceCell}>
+      {used && (
+        <span className="mono">
+          {used}
+          {total ? ` / ${total}` : ""}
+        </span>
+      )}
+      <span className={styles.mutedText}>{pct}</span>
+    </div>
+  );
+}
+
+// 内存显示压成短单位：>=1024MiB 转 GiB，避免「456 MiB / 3072 MiB」在窄列里换行。
+function formatMiB(mib: number): string {
+  if (mib >= 1024) {
+    const gib = mib / 1024;
+    return `${gib % 1 === 0 ? gib.toFixed(0) : gib.toFixed(1)} GiB`;
+  }
+  return `${mib} MiB`;
+}
+
 function podColumns(actions: Props) {
   return [
     ...podDataColumns(actions.onDetail),
     {
       title: "操作",
       key: "ops",
-      width: 280,
+      width: 220,
       render: (_: unknown, pod: Pod) => (
         <RowActions
           pod={pod}
           actions={POD_ACTIONS}
-          onOpenDetail={actions.onDetail}
           onViewLogs={actions.onLogs}
           onOpenQr={actions.onQr}
           onEditChannels={actions.onChannels}
@@ -68,7 +91,7 @@ function podDataColumns(onDetail: (id: string) => void) {
     {
       title: "Pod",
       key: "podId",
-      width: 170,
+      width: 180,
       render: (_: unknown, pod: Pod) => (
         <div className={styles.identityCell}>
           <Button
@@ -86,39 +109,49 @@ function podDataColumns(onDetail: (id: string) => void) {
     {
       title: "消息通道",
       key: "channels",
-      width: 180,
+      width: 140,
       render: (_: unknown, pod: Pod) => <ChannelTags pod={pod} />,
     },
     {
       title: "用户容量",
       key: "capacity",
-      width: 110,
+      width: 95,
       render: (_: unknown, pod: Pod) => <CapacityCell pod={pod} onOpen={onDetail} />,
     },
     {
       title: "配置状态",
       key: "generation",
-      width: 120,
+      width: 105,
       render: (_: unknown, pod: Pod) => <GenerationCell pod={pod} />,
     },
     {
       title: "状态",
       key: "state",
-      width: 90,
+      width: 85,
       render: (_: unknown, pod: Pod) => <PodStatus pod={pod} />,
     },
-    { title: "镜像", dataIndex: "imageTag", key: "imageTag", width: 160, className: "mono" },
+    { title: "镜像", dataIndex: "imageTag", key: "imageTag", width: 180, className: "mono" },
     {
       title: "CPU",
       key: "cpu",
-      width: 65,
-      render: (_: unknown, pod: Pod) => `${pod.cpuPercent.toFixed(1)}%`,
+      width: 120,
+      render: (_: unknown, pod: Pod) =>
+        renderResourceCell(
+          pod.cpuMills > 0 ? `${pod.cpuMills}m` : "",
+          pod.cpuLimitCores ? `${pod.cpuLimitCores}核` : "",
+          pod.cpuPercent,
+        ),
     },
     {
       title: "内存",
       key: "mem",
-      width: 75,
-      render: (_: unknown, pod: Pod) => `${pod.memMiB} MiB`,
+      width: 160,
+      render: (_: unknown, pod: Pod) =>
+        renderResourceCell(
+          formatMiB(pod.memMiB),
+          pod.memLimitMiB > 0 ? formatMiB(pod.memLimitMiB) : "",
+          pod.memLimitMiB > 0 ? (pod.memMiB / pod.memLimitMiB) * 100 : 0,
+        ),
     },
   ];
 }
