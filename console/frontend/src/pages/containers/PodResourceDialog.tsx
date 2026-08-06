@@ -4,6 +4,7 @@ import { api } from "../../api";
 import type { Pod, ResourceConfig } from "../../api";
 import { FeedbackBanner } from "../../components/ConsolePage";
 import { useMountedRef } from "../../hooks/useMountedRef";
+import { memLimitToGB } from "../../utils/memLimit";
 import styles from "../Containers.module.css";
 
 interface Props {
@@ -61,7 +62,7 @@ function usePodResourceForm(pod: Pod | null) {
       const resources = await api.getPodResources(pod.podId);
       if (!mountedRef.current || requestId !== requestRef.current) return;
       setForm({
-        memLimit: resources.overrides.memLimit,
+        memLimit: memLimitToGB(resources.overrides.memLimit),
         cpuLimit: resources.overrides.cpuLimit,
         restartPolicy: resources.overrides.restartPolicy,
       });
@@ -87,7 +88,7 @@ function ResourceFields({
   return (
     <div className={styles.dialogFields}>
       <ResourceInput
-        label="内存上限"
+        label="内存上限 (GiB)"
         value={form.memLimit}
         onChange={(memLimit) => setForm({ ...form, memLimit })}
       />

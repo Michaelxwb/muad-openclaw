@@ -10,6 +10,7 @@ import (
 	"time"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
@@ -201,6 +202,13 @@ func waitForPodHealth(ctx context.Context, runtime gateway.Execer, podID string,
 	probeCtx, cancel := context.WithTimeout(ctx, upgradeHealthTimeout)
 	defer cancel()
 	for {
+		// 镜像拉取失败（ErrImagePull/ImagePullBackOff 等）是终态：等多久都不会 Ready，
+		// 立即失败触发回滚，而不是轮询到 upgradeHealthTimeout。
+		if checker, ok := runtime.(driver.WorkloadBlockedChecker); ok {
+			if blocked, err := checker.WorkloadBlocked(probeCtx, podID); err == nil && blocked {
+				return fmt.Errorf("Pod %s image pull failed (workload blocked)", podID)
+			}
+		}
 		status := gateway.Probe(probeCtx, runtime, podID)
 		if status.Healthy && status.RuntimeGuardHealthy && status.RuntimeGeneration == generation {
 			return nil

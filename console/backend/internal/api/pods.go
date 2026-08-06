@@ -103,6 +103,8 @@ func (s *Server) newPodRecord(request createPodRequest) (repo.Pod, serviceTokenM
 	if request.MaxUsers == 0 {
 		request.MaxUsers = maxUsersPerPod
 	}
+	// 内存上限支持只填数字（按 GiB 解释），落库前归一化为 "Ng"。
+	request.MemLimit = normalizeMemLimit(request.MemLimit)
 	if !validPodRequest(request) {
 		return repo.Pod{}, serviceTokenMaterial{}, errInvalidPodRequest
 	}

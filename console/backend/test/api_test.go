@@ -172,7 +172,7 @@ func (f *fakeDriver) StatsAll(context.Context) (map[string]driver.Stats, error) 
 	out := map[string]driver.Stats{}
 	for id := range f.created {
 		if !f.removed[id] {
-			out[id] = driver.Stats{CPUPercent: 1.5, MemMiB: 200}
+			out[id] = driver.Stats{CPUm: 1500, CPUPercent: 1.5, MemMiB: 200}
 		}
 	}
 	return out, nil

@@ -482,7 +482,7 @@ func (d *K8sDriver) StatsAll(ctx context.Context) (map[string]Stats, error) {
 			milliCPU += c.Usage.Cpu().MilliValue()
 			memBytes += c.Usage.Memory().Value()
 		}
-		out[podID] = Stats{CPUPercent: float64(milliCPU) / 10.0, MemMiB: int(memBytes / 1024 / 1024)}
+		out[podID] = Stats{CPUm: milliCPU, MemMiB: int(memBytes / 1024 / 1024)}
 	}
 	return out, nil
 }
@@ -577,4 +577,27 @@ func (d *K8sDriver) podName(ctx context.Context, podID string) (string, error) {
 		return "", fmt.Errorf("%w: Pod %s phase=%s", ErrRuntimeNotReady, pod.Name, pod.Status.Phase)
 	}
 	return "", fmt.Errorf("%w: no workload Pod for %q", ErrRuntimeNotReady, podID)
+}
+
+// WorkloadBlocked reports whether the workload can never become Ready — currently
+// a persistent image pull failure (ErrImagePull / ImagePullBackOff / etc.). The
+// upgrade health wait uses this to fail fast and roll back instead of polling
+// until upgradeHealthTimeout.
+func (d *K8sDriver) WorkloadBlocked(ctx context.Context, podID string) (bool, error) {
+	pods, err := d.client.CoreV1().Pods(d.namespace).List(ctx, metav1.ListOptions{LabelSelector: "muad-pod=" + podID})
+	if err != nil {
+		return false, err
+	}
+	for i := range pods.Items {
+		for _, cs := range pods.Items[i].Status.ContainerStatuses {
+			if cs.State.Waiting == nil {
+				continue
+			}
+			switch cs.State.Waiting.Reason {
+			case "ErrImagePull", "ImagePullBackOff", "ErrImageNeverPull", "InvalidImageName":
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }

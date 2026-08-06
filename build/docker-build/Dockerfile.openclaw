@@ -1,0 +1,84 @@
+# muad-openclaw 应用镜像 Dockerfile（千流 CI 内网构建版）
+#
+# 与仓库根 Dockerfile 的区别：
+#   - 根 Dockerfile 供外网 GitHub Actions 使用，BASE_IMAGE 默认 muad-openclaw-base，npm/pip 走公网源
+#   - 本 Dockerfile 供内网千流 CI 使用，BASE_IMAGE 默认指向内网仓库，npm/pip 走内网镜像源
+# 两者结构一致，仅 ARG 默认值与依赖源不同；改动一处时请同步另一处。
+#
+# 千流 Task4 (docker:latest 镜像) 执行步骤：
+#   1. docker login docker.sangfor.com
+#   2. cd <repo-root>
+#   3. bash build/docker-build/task4-openclaw.sh
+#      （task4 脚本会先用 mss-fe-node:20.9.0 容器构建 session-manager dist，
+#       再调本 Dockerfile 构建 app 镜像）
+#
+# 构建上下文：仓库根（需包含 bin/、tools/、skills/、requirements.txt、
+#              console/backend/internal/crypto/binding_code_spec.json 等业务代码，
+#              以及 task4 脚本预构建的 tools/session-manager/dist/）
+#
+# 前置条件（base 镜像人工中转）：
+#   ghcr.io/openclaw/openclaw:<OPENCLAW_VERSION> 需先人工中转到
+#   docker.sangfor.com/mss-base/muad-openclaw-base:<OPENCLAW_VERSION>
+#   详见 build/qianliu-ci-snippets.md 的「muad-openclaw base 镜像中转」章节
+#
+# 构建参数:
+#   BASE_IMAGE  基础镜像 registry 地址（默认内网仓库，base 镜像由人工中转）
+#   BASE_TAG    基础镜像 tag（默认锁定具体版本，避免 latest 漂移；升级 base 时改这里）
+ARG BASE_IMAGE=docker.sangfor.com/mss-base/muad-openclaw-base
+ARG BASE_TAG=2026.7.1
+
+FROM ${BASE_IMAGE}:${BASE_TAG}
+
+LABEL io.muad.image.role="app"
+
+USER root
+
+COPY bin/inject-env.mjs bin/inject-multi-user-config.mjs bin/openclaw-config-renderer.mjs \
+    bin/runtime-config-schema.mjs bin/runtime-config-transaction.mjs bin/runtime-image-self-check.mjs \
+    bin/startup-context.mjs bin/private-skill-installer.mjs bin/image-plugin-paths.mjs \
+    bin/prune-managed-plugin-installs.mjs /opt/muad/
+COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
+
+# 业务 Python 依赖（脚本类 skill 运行时）；基础镜像已含 python3-pip。
+# 变更 requirements.txt 只需重建 app 镜像，无需重建基础镜像。
+# 走内网 pypi 镜像源（http，需 --trusted-host）。
+# --progress-bar off：禁用 rich 进度条，避免其在 docker build 容器（cgroup pids 限制）下
+# 启动刷新线程失败导致 `RuntimeError: can't start new thread`。千流 CI 多次复现。
+COPY requirements.txt /opt/muad/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5 \
+    --progress-bar off \
+    -i http://mirrors.sangfor.org/pypi/simple --trusted-host mirrors.sangfor.org \
+    -r /opt/muad/requirements.txt
+
+# session-manager dist 由 task4 脚本预构建（在 mss-fe-node:20.9.0 容器里跑 npm install + test + build）
+# 这里直接 COPY 已构建的 dist，不在镜像内跑 npm（避免 base 镜像里 node worker thread abort）
+COPY tools/session-manager/dist /opt/muad/session-manager/dist
+COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \
+    tools/session-manager/openclaw.plugin.json /opt/muad/session-manager/
+
+COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plugin.json \
+    /opt/muad/muad-runtime-guard/
+COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
+COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
+COPY tools/runtime-concurrency /opt/muad/runtime-concurrency
+COPY skills /opt/openclaw-skills
+COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh
+
+# 不在 build 期跑 `node /opt/muad/runtime-image-self-check.mjs --image-only`：
+# 千流 docker build 容器在 cgroup pids 限制下，node 启动 WorkerThreadsTaskRunner 会触发
+# `uv_thread_create` 断言失败（exit 134）。运行期 self-check 已在 entrypoint.sh 跑
+# （K8s pod cgroup 限制宽松，不会触发），build 期跳过即可。
+RUN set -eux; \
+    ln -s /opt/muad/session-manager/dist/cli.js /usr/local/bin/session-manager; \
+    chmod 0755 /usr/local/bin/muad-entrypoint.sh /opt/muad/session-manager/dist/cli.js \
+      /opt/muad/runtime-image-self-check.mjs /opt/muad/private-skill-installer.mjs \
+      /opt/muad/prune-managed-plugin-installs.mjs; \
+    chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-runtime-guard /opt/muad/runtime-concurrency; \
+    chown -R node:node /opt/muad/session-manager /opt/muad/muad-runtime-guard \
+      /opt/muad/runtime-concurrency /opt/openclaw-skills
+
+USER node
+WORKDIR /app
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+    CMD node -e "const net=require('net');const s=net.connect(18789,'127.0.0.1');s.setTimeout(2000);s.once('connect',()=>{s.destroy();process.exit(0)});s.once('timeout',()=>process.exit(1));s.once('error',()=>process.exit(1));"
+ENTRYPOINT ["/usr/local/bin/muad-entrypoint.sh"]

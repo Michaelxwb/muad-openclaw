@@ -32,7 +32,10 @@ type podView struct {
 	LastAppliedAt            *time.Time                   `json:"lastAppliedAt,omitempty"`
 	ServiceTokenFingerprint  string                       `json:"serviceTokenFingerprint"`
 	CPUPercent               float64                      `json:"cpuPercent"`
+	CPUMills                 int64                        `json:"cpuMills"`
+	CPULimitCores            string                       `json:"cpuLimitCores"`
 	MemMiB                   int                          `json:"memMiB"`
+	MemLimitMiB              int                          `json:"memLimitMiB"`
 	SkillActive              int                          `json:"skillActive"`
 	SkillQueued              int                          `json:"skillQueued"`
 	BrowserActive            int                          `json:"browserActive"`
@@ -75,7 +78,10 @@ func (s *Server) makePodView(
 
 func mergePodMetrics(view *podView, snapshot monitor.Snapshot) {
 	view.CPUPercent = snapshot.CPUPercent
+	view.CPUMills = snapshot.CPUm
+	view.CPULimitCores = snapshot.EffectiveCPULimit
 	view.MemMiB = snapshot.MemMiB
+	view.MemLimitMiB = snapshot.EffectiveMemLimitMiB
 	view.ChannelStatuses = snapshot.ChannelStatuses
 	view.ChannelDefaultAccountIDs = normalizeChannelDefaultAccountIDs(snapshot.ChannelDefaultAccountIDs)
 	view.SkillActive = snapshot.SkillActive

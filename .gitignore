@@ -10,6 +10,9 @@ tools/session-manager/dist/
 .idea/
 .local/
 
+# 千流流水线 task 脚本（未定稿，先不提交）
+build/docker-build/task*.sh
+
 # 运行态 SQLite DB（控制台），绝不入库
 console/backend/data/
 

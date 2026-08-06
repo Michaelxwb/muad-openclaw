@@ -296,6 +296,38 @@ func TestCoordinatorExtendsRetriesWhileRuntimeIsNotReady(t *testing.T) {
 	}
 }
 
+// 坏镜像等「runtime not ready」Pod 会让 reconcile 长时间重试；锁必须在每次尝试之间
+// 释放，否则会饿死用户的升级/删除操作。这里验证重试间隙外部 RunExclusive 能快速拿到锁。
+func TestCoordinatorReleasesLockBetweenNotReadyRetries(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	executor := newCoordinatorExecutor()
+	executor.notReadyFailures = 1 << 20 // 始终 not-ready
+	coordinator, err := NewCoordinator(
+		store, coordinatorBuilder{store: store}, executor,
+		CoordinatorOptions{MaxAttempts: 1, NotReadyMaxAttempts: 100000, RetryDelay: 50 * time.Millisecond},
+	)
+	if err != nil {
+		t.Fatalf("NewCoordinator: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer stopCoordinator(cancel, coordinator, ctx)
+	go coordinator.Run(ctx)
+	coordinator.Enqueue("pod-a")
+
+	// 等第一个 not-ready 尝试完成并进入重试等待（锁已释放）
+	time.Sleep(120 * time.Millisecond)
+
+	opCtx, opCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+	defer opCancel()
+	start := time.Now()
+	if err := coordinator.RunExclusive(opCtx, "pod-a", func(context.Context) error { return nil }); err != nil {
+		t.Fatalf("RunExclusive blocked across not-ready retries: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > 400*time.Millisecond {
+		t.Fatalf("lock held across not-ready retries: op took %v", elapsed)
+	}
+}
+
 type coordinatorHook struct {
 	podIDs []string
 	err    error

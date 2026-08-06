@@ -1,0 +1,113 @@
+# muad-console Helm values
+#
+# 生成产物：`make console-helm-package`（helm package）→ build/helm-build/dist/muad-console-<version>.tgz
+# 部署形态为 K8s + runtime.driver=k8s，无需 docker.sock / docker-cli。
+
+# 副本数与升级策略（单实例 + RWO PVC，用 Recreate）
+replicaCount: 1
+updateStrategy:
+  type: Recreate
+
+# 镜像信息
+image:
+  repository: docker.sangfor.com/mss-dev/muad-console
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+# 内网镜像仓库若需认证，在此提供 pull secret 名称
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # K8s driver 需要 console 以受限 SA + RBAC 在命名词内建删 worker
+  create: true
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# 容器级安全上下文
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  readOnlyRootFilesystem: false
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  # 仅 type=NodePort 时渲染（对齐平台 mss-auth-go 惯例）
+  nodePort: null
+  # 仅 type=NodePort 时渲染，Cluster/Local
+  externalTrafficPolicy: Cluster
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: 128Mi
+  limits:
+    cpu: "500m"
+    memory: 512Mi
+
+# ===== 调度与平台惯例（对齐 mss-auth-go，全部通过 --set 注入）=====
+# Pod 注解（如 prometheus 抓取：--set podAnnotations.'prometheus\.io/scrape'=true）
+podAnnotations: {}
+# 节点选择（平台惯例：--set nodeSelector.app=api-server）
+nodeSelector: {}
+# 污点容忍
+tolerations: []
+# Pod 节点亲和性
+affinity: {}
+
+# 健康检查端点（console 提供 /healthz）
+probe:
+  path: /healthz
+  port: 8080
+
+# 持久化
+data:
+  # Console SQLite 数据库 / 日志 的 PVC 名称（RWO）
+  pvcName: muad-console-data
+  storageRequest: 5Gi
+  # 留空用集群默认 StorageClass
+  storageClassName: ""
+  mountPath: /var/lib/muad-console
+  # 本地卷（WaitForFirstConsumer SC）pin 节点时透传 selected-node 注解，
+  # 保证 Pod 与持久化数据落在同一节点。生产留空即可。
+  # 示例：{volume.kubernetes.io/selected-node: middleware01}
+  annotations: {}
+
+# 公共 Skill RWX PVC（需要预先创建，未绑定则 Pod 停在 ContainerCreating）
+publicSkills:
+  pvcName: muad-skills
+  mountPath: /public
+
+# Console 配置文件（含 security.masterKey / admin.password / runtime.driver: k8s 等机密）。
+# 内容整段作为 Secret 的 config.yaml 挂载到 /etc/muad-console/config.yaml。
+configFile:
+  enabled: true
+  # 原始 YAML 内容，示例：
+  # security:
+  #   masterKey: ""      # openssl rand -hex 32
+  # admin:
+  #   user: admin
+  #   password: ""
+  # server:
+  #   listenAddr: ":8080"
+  #   dbPath: /var/lib/muad-console/console.db
+  #   consoleInternalURL: http://muad-console:8080
+  # runtime:
+  #   driver: k8s
+  #   defaultImage: docker.sangfor.com/mss-dev/muad-openclaw:latest
+  # k8s:
+  #   namespace: muad
+  #   skillsPVC: muad-skills
+  #   publicSkillsMountPath: /public
+  content: ""

@@ -11,6 +11,7 @@ import {
 import { PlatformSettings } from "../components/platforms/PlatformSettings";
 import { AgentGuidanceSettings } from "../components/settings/AgentGuidanceSettings";
 import { useMountedRef } from "../hooks/useMountedRef";
+import { memLimitToGB } from "../utils/memLimit";
 import styles from "./Settings.module.css";
 
 const RESTART_OPTIONS = [
@@ -54,13 +55,14 @@ function ResourceForm({ state }: { state: ResourceState }) {
     state.setForm((previous) => ({ ...previous, [key]: value }));
   return (
     <div className={styles.formGrid}>
-      <label htmlFor="resource-memory">内存上限</label>
+      <label htmlFor="resource-memory">内存上限 (GiB)</label>
       <Input
         id="resource-memory"
         aria-label="全局 Pod 内存上限"
         value={state.form.memLimit}
         onChange={(value) => set("memLimit", value)}
-        placeholder="2g"
+        placeholder="2"
+        suffix="GiB"
       />
       <label htmlFor="resource-cpu">CPU 上限</label>
       <Input
@@ -116,7 +118,7 @@ function useGlobalResources() {
       if (!mountedRef.current || requestId !== requestRef.current) return;
       setConfig(result);
       setForm({
-        memLimit: result.memLimit,
+        memLimit: memLimitToGB(result.memLimit),
         cpuLimit: result.cpuLimit,
         restartPolicy: result.restartPolicy,
       });
