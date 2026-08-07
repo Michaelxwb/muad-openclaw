@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -478,6 +479,30 @@ func TestPodOperationsAPI_UpgradeFailureRestoresOldImage(t *testing.T) {
 	}
 	if strings.Contains(rr.Body.String(), "simulated create failure") {
 		t.Fatal("upgrade response exposed a runtime error")
+	}
+}
+
+func TestPodOperationsAPI_RestartRebuildsMissingWorkload(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	// Deployment 缺失（坏镜像升级清掉 workload 后回滚失败）：Restart 返回
+	// ErrWorkloadMissing → 应 fallback 用 DB spec 重建。
+	e.drv.restartErrors["pod-a"] = driver.ErrWorkloadMissing
+	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/actions/restart", "")
+	assertStatus(t, rr, http.StatusOK)
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.State != repo.PodStateRunning {
+		t.Fatalf("pod state = %s, want running", pod.State)
+	}
+	if e.drv.restarted["pod-a"] != 1 {
+		t.Fatalf("Restart should be attempted once, got %d", e.drv.restarted["pod-a"])
+	}
+	// rebuild 的 Create 会带 AdoptState=true，用于证明重建确实发生（初始创建不带）。
+	if !e.drv.created["pod-a"].AdoptState {
+		t.Fatalf("restart did not rebuild workload with AdoptState: %+v", e.drv.created["pod-a"])
 	}
 }
 

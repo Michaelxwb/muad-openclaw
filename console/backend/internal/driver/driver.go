@@ -16,6 +16,9 @@ var (
 	ErrNotImplemented = errors.New("driver: not implemented")
 	// ErrRuntimeNotReady indicates that the workload exists but cannot accept exec calls yet.
 	ErrRuntimeNotReady = errors.New("driver: runtime not ready")
+	// ErrWorkloadMissing indicates the runtime workload (e.g. k8s Deployment) does
+	// not exist at all — the action caller may fall back to recreating it.
+	ErrWorkloadMissing = errors.New("driver: workload missing")
 )
 
 // WorkloadBlockedChecker reports whether a workload can never become Ready

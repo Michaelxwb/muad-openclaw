@@ -81,10 +81,33 @@ func (s *Server) executePodAction(ctx context.Context, podID, action string) err
 	case "stop":
 		return s.drv.Stop(ctx, podID)
 	case "restart":
-		return s.drv.Restart(ctx, podID)
+		if err := s.drv.Restart(ctx, podID); errors.Is(err, driver.ErrWorkloadMissing) {
+			// Deployment 已不存在（坏镜像升级把 workload 清掉后回滚失败等），
+			// 用 DB 里的 spec 重建，作为「重启」的恢复兜底。
+			return s.rebuildPodRuntime(ctx, podID)
+		} else {
+			return err
+		}
 	default:
 		return errors.New("unsupported Pod action")
 	}
+}
+
+// rebuildPodRuntime 用 DB 中的 Pod spec 重建缺失的 k8s Deployment（接管保留的状态卷）。
+func (s *Server) rebuildPodRuntime(ctx context.Context, podID string) error {
+	pod, err := s.store.GetPod(podID)
+	if err != nil {
+		return err
+	}
+	desired, err := s.buildDesiredPodRuntime(pod)
+	if err != nil {
+		return err
+	}
+	desired.spec.AdoptState = true
+	if err := s.drv.Create(ctx, desired.spec); err != nil {
+		return err
+	}
+	return waitForPodHealth(ctx, s.drv, podID, desired.runtime.Config.Generation)
 }
 
 func (s *Server) handleApplyPodConfig(w http.ResponseWriter, r *http.Request) {

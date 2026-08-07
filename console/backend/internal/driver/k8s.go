@@ -392,6 +392,11 @@ func (d *K8sDriver) Restart(ctx context.Context, podID string) error {
 		`{"spec":{"template":{"metadata":{"annotations":{"muad/restartedAt":%q}}}}}`,
 		time.Now().Format(time.RFC3339)))
 	_, err := d.client.AppsV1().Deployments(d.namespace).Patch(ctx, name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
+	if apierrors.IsNotFound(err) {
+		// Deployment 已不存在（如坏镜像升级把 workload 清掉后回滚失败），
+		// 让调用方 fallback 到用 DB spec 重建。
+		return ErrWorkloadMissing
+	}
 	return err
 }
 

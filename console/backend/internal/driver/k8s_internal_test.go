@@ -707,3 +707,12 @@ func createTestWorkerPod(
 	_, err := d.client.CoreV1().Pods(d.namespace).Create(ctx, pod, metav1.CreateOptions{})
 	return err
 }
+
+func TestK8s_RestartMissingWorkloadReturnsErrWorkloadMissing(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	err := d.Restart(ctx, "pod-missing")
+	if !errors.Is(err, ErrWorkloadMissing) {
+		t.Fatalf("Restart on missing Deployment = %v, want ErrWorkloadMissing", err)
+	}
+}
