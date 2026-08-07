@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Descriptions, Modal, Spin, TabPane, Tabs } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import type { HumanUserDetail, Pod } from "../../api";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import { FeedbackBanner } from "../ConsolePage";
+import { errorMessage } from "../../utils/error";
 import { BasicUserForm } from "./BasicUserForm";
 import { BindingCodeManager } from "./BindingCodeManager";
 import { IdentityManager } from "./IdentityManager";
@@ -40,7 +42,7 @@ function useHumanUserDetail(humanUserId: string | null) {
       if (mountedRef.current && requestId === requestRef.current) setDetail(result);
     } catch (caught) {
       if (!mountedRef.current || requestId !== requestRef.current) return;
-      setError(caught instanceof Error ? caught.message : "加载用户详情失败");
+      setError(errorMessage(caught, "user.loadDetailFailed"));
     } finally {
       if (mountedRef.current && requestId === requestRef.current) setLoading(false);
     }
@@ -55,6 +57,7 @@ function useHumanUserDetail(humanUserId: string | null) {
 }
 
 export function HumanUserDetailDialog(props: Props) {
+  const { t } = useTranslation();
   const state = useHumanUserDetail(props.humanUserId);
   const [basicBusy, setBasicBusy] = useState(false);
   const changed = async () => {
@@ -63,7 +66,7 @@ export function HumanUserDetailDialog(props: Props) {
   return (
     <Modal
       className={`standard-modal ${styles.detailDialog}`}
-      title={`用户详情 ${state.detail?.humanUser.displayName ?? ""}`}
+      title={t("user.detailTitle", { name: state.detail?.humanUser.displayName ?? "" })}
       visible={props.humanUserId !== null}
       onCancel={props.onClose}
       footer={
@@ -75,7 +78,7 @@ export function HumanUserDetailDialog(props: Props) {
             loading={basicBusy}
             disabled={!state.detail || state.loading}
           >
-            保存
+            {t("common.save")}
           </Button>
         </div>
       }
@@ -109,11 +112,12 @@ function DetailContent({
   onChanged: () => Promise<void>;
   onBasicBusyChange: (busy: boolean) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <RuntimeMetadata detail={detail} />
       <Tabs type="line" defaultActiveKey="basic" tabPaneMotion={false}>
-        <TabPane tab="基本信息" itemKey="basic">
+        <TabPane tab={t("user.tabBasic")} itemKey="basic">
           <BasicUserForm
             user={detail.humanUser}
             onSaved={onChanged}
@@ -121,7 +125,7 @@ function DetailContent({
             onBusyChange={onBasicBusyChange}
           />
         </TabPane>
-        <TabPane tab="身份标识" itemKey="identity">
+        <TabPane tab={t("user.identity")} itemKey="identity">
           <IdentityManager
             user={detail.humanUser}
             identities={detail.identities}
@@ -129,7 +133,7 @@ function DetailContent({
             onChanged={onChanged}
           />
         </TabPane>
-        <TabPane tab="绑定码" itemKey="binding-code">
+        <TabPane tab={t("user.tabBindingCodes")} itemKey="binding-code">
           <BindingCodeManager
             user={detail.humanUser}
             channels={pod.channels}
@@ -137,7 +141,7 @@ function DetailContent({
             channelDefaultAccountIds={pod.channelDefaultAccountIds}
           />
         </TabPane>
-        <TabPane tab="平台凭证" itemKey="platform-credential">
+        <TabPane tab={t("user.platformCredentials")} itemKey="platform-credential">
           <PlatformCredentialManager user={detail.humanUser} />
         </TabPane>
         <TabPane tab="Skill" itemKey="skills">
@@ -149,13 +153,14 @@ function DetailContent({
 }
 
 function RuntimeMetadata({ detail }: { detail: HumanUserDetail }) {
+  const { t } = useTranslation();
   const user = detail.humanUser;
   const items = [
-    { key: "用户 ID", value: user.humanUserId },
-    { key: "运行 Agent", value: user.agentId },
-    { key: "浏览器配置", value: user.browserProfile },
-    { key: "浏览器端口", value: user.browserCdpPort },
-    { key: "已绑定 IM 数", value: detail.identities.length },
+    { key: t("user.id"), value: user.humanUserId },
+    { key: t("user.runningAgent"), value: user.agentId },
+    { key: t("user.browserConfig"), value: user.browserProfile },
+    { key: t("user.browserPort"), value: user.browserCdpPort },
+    { key: t("user.boundIdentityCount"), value: detail.identities.length },
   ];
   return <Descriptions className={styles.detailSummary} data={items} row size="small" column={5} />;
 }

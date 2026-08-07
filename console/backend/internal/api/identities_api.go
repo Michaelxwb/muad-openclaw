@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -16,28 +17,28 @@ type patchIdentityRequest struct {
 func (s *Server) handleCreateIdentity(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(r.PathValue("humanUserId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	pod, err := s.store.GetPod(user.PodID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request identityInput
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	identity, err := normalizeIdentityInput(pod, request)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	identity.HumanUserID = user.HumanUserID
 	created, err := s.store.CreateIdentity(identity)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.enqueueReconcile(user.PodID)
@@ -52,22 +53,22 @@ func (s *Server) handlePatchIdentity(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := s.store.GetHumanUser(identity.HumanUserID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request patchIdentityRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	request.Status = strings.TrimSpace(request.Status)
 	if request.Status != repo.IdentityStatusActive && request.Status != repo.IdentityStatusDisabled {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Identity status")
+		writeErr(w, r, errcode.InvalidIdentityStatus)
 		return
 	}
 	if request.Status != identity.Status {
 		if err := s.store.UpdateIdentityStatus(identity.IdentityID, request.Status); err != nil {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		if user.PodID != "" {
@@ -77,7 +78,7 @@ func (s *Server) handlePatchIdentity(w http.ResponseWriter, r *http.Request) {
 	}
 	updated, err := s.store.GetIdentity(identity.IdentityID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, identityToView(updated))
@@ -90,11 +91,11 @@ func (s *Server) handleDeleteIdentity(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := s.store.GetHumanUser(identity.HumanUserID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if err := s.store.DeleteIdentity(identity.IdentityID); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if user.PodID != "" {
@@ -109,11 +110,11 @@ func (s *Server) handleDeleteIdentity(w http.ResponseWriter, r *http.Request) {
 func (s *Server) identityForPath(w http.ResponseWriter, r *http.Request) (repo.UserIdentity, bool) {
 	identity, err := s.store.GetIdentity(r.PathValue("identityId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return repo.UserIdentity{}, false
 	}
 	if identity.HumanUserID != r.PathValue("humanUserId") {
-		writeErr(w, http.StatusNotFound, codeNotFound, "resource not found")
+		writeErr(w, r, errcode.NotFound)
 		return repo.UserIdentity{}, false
 	}
 	return identity, true

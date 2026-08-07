@@ -10,6 +10,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -27,6 +28,7 @@ type yamlFile struct {
 	DefaultImage            *string              `yaml:"defaultImage"`
 	MuadNet                 *string              `yaml:"muadNet"`
 	SkillsDir               *string              `yaml:"skillsDir"`
+	SkillMaxUploadBundle    *string              `yaml:"maxSkillUploadBundleSize"`
 	ListenAddr              *string              `yaml:"listenAddr"`
 	LogDir                  *string              `yaml:"logDir"`
 	DBPath                  *string              `yaml:"dbPath"`
@@ -137,33 +139,35 @@ type RuntimeDefaults struct {
 
 // Config holds the validated console configuration.
 type Config struct {
-	MasterKey               string
-	RuntimeDriver           string
-	DefaultImage            string
-	MuadNet                 string
-	SkillsDir               string
-	ListenAddr              string
-	LogDir                  string
-	DBPath                  string
-	JWTSecret               string
-	AdminUser               string
-	AdminPassword           string
-	CollectIntervalSec      int
-	ConsoleInternalURL      string
-	AutomationPlatformURL   string
-	AutomationPlatformToken string
-	RuntimeDefaults         RuntimeDefaults
-	RuntimeTimezone         string
-	RuntimeStateDir         string
-	RuntimePublicSkillsDir  string
-	K8sNamespace            string
-	K8sSkillsPVC            string
-	K8sPublicSkillsMount    string
-	K8sSkillsStorageClass   string
-	K8sSkillsSize           string
-	K8sStorageClass         string
-	K8sStateSize            string
-	skillsDirExplicit       bool
+	MasterKey                 string
+	RuntimeDriver             string
+	DefaultImage              string
+	MuadNet                   string
+	SkillsDir                 string
+	ListenAddr                string
+	LogDir                    string
+	DBPath                    string
+	JWTSecret                 string
+	AdminUser                 string
+	AdminPassword             string
+	CollectIntervalSec        int
+	ConsoleInternalURL        string
+	AutomationPlatformURL     string
+	AutomationPlatformToken   string
+	RuntimeDefaults           RuntimeDefaults
+	SkillMaxUploadBundleSize  string // 原始字符串（如 "5m"），validate 时解析
+	SkillMaxUploadBundleBytes int64  // 解析后的上传压缩包大小上限（字节）
+	RuntimeTimezone           string
+	RuntimeStateDir           string
+	RuntimePublicSkillsDir    string
+	K8sNamespace              string
+	K8sSkillsPVC              string
+	K8sPublicSkillsMount      string
+	K8sSkillsStorageClass     string
+	K8sSkillsSize             string
+	K8sStorageClass           string
+	K8sStateSize              string
+	skillsDirExplicit         bool
 }
 
 var validDrivers = map[string]bool{"docker": true, "k8s": true}
@@ -207,12 +211,13 @@ func defaults() *Config {
 			BrowserCDPPortStart:   18802,
 			BrowserCDPPortEnd:     65535,
 		},
-		RuntimeTimezone:        "Asia/Shanghai",
-		RuntimeStateDir:        "/home/node/.openclaw",
-		RuntimePublicSkillsDir: "/opt/openclaw-skills",
-		K8sNamespace:           "muad",
-		K8sSkillsSize:          "5Gi",
-		K8sStateSize:           "5Gi",
+		SkillMaxUploadBundleSize: "5m",
+		RuntimeTimezone:          "Asia/Shanghai",
+		RuntimeStateDir:          "/home/node/.openclaw",
+		RuntimePublicSkillsDir:   "/opt/openclaw-skills",
+		K8sNamespace:             "muad",
+		K8sSkillsSize:            "5Gi",
+		K8sStateSize:             "5Gi",
 	}
 }
 
@@ -274,6 +279,7 @@ func applyLegacyYAML(c *Config, f *yamlFile) {
 	applyString(&c.DefaultImage, f.DefaultImage)
 	applyString(&c.MuadNet, f.MuadNet)
 	applyExplicitString(&c.SkillsDir, &c.skillsDirExplicit, f.SkillsDir)
+	applyString(&c.SkillMaxUploadBundleSize, f.SkillMaxUploadBundle)
 	applyString(&c.MasterKey, f.MasterKey)
 	applyString(&c.ListenAddr, f.ListenAddr)
 	applyString(&c.LogDir, f.LogDir)
@@ -385,6 +391,36 @@ func applyBrowserYAML(dst *RuntimeDefaults, src *browserYAML) {
 	applyInt(&dst.BrowserCDPPortEnd, src.CDPPortEnd)
 }
 
+// parseSizeBytes parses a size string like "512k" / "5m" / "1g" (b/k/m/g,
+// case-insensitive, optional decimal) into bytes. Reuses memLimitPattern's
+// shape so size fields share one format with resources.memLimit.
+func parseSizeBytes(value string) (int64, error) {
+	raw := strings.TrimSpace(value)
+	if !memLimitPattern.MatchString(raw) {
+		return 0, errors.New("must look like 512k / 5m / 1g")
+	}
+	number, err := strconv.ParseFloat(raw[:len(raw)-1], 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid size: %w", err)
+	}
+	var multiplier int64
+	switch raw[len(raw)-1] {
+	case 'b', 'B':
+		multiplier = 1
+	case 'k', 'K':
+		multiplier = 1 << 10
+	case 'm', 'M':
+		multiplier = 1 << 20
+	case 'g', 'G':
+		multiplier = 1 << 30
+	}
+	bytes := int64(number * float64(multiplier))
+	if bytes <= 0 {
+		return 0, errors.New("must be positive")
+	}
+	return bytes, nil
+}
+
 func applyInt(dst *int, src *int) {
 	if src != nil {
 		*dst = *src
@@ -415,6 +451,7 @@ func (c *Config) overrideFromEnv() error {
 	envOverride(&c.DefaultImage, "DEFAULT_IMAGE")
 	envOverride(&c.MuadNet, "MUAD_NET")
 	envOverrideExplicit(&c.SkillsDir, &c.skillsDirExplicit, "CONSOLE_SKILLS_DIR")
+	envOverride(&c.SkillMaxUploadBundleSize, "CONSOLE_MAX_SKILL_UPLOAD_BUNDLE_SIZE")
 	envOverride(&c.ListenAddr, "CONSOLE_LISTEN")
 	envOverride(&c.LogDir, "CONSOLE_LOG_DIR")
 	envOverride(&c.DBPath, "CONSOLE_DB")
@@ -520,6 +557,11 @@ func (c *Config) validate() error {
 	if strings.TrimSpace(c.RuntimeTimezone) == "" {
 		return fmt.Errorf("runtime.timezone must not be empty")
 	}
+	parsed, err := parseSizeBytes(c.SkillMaxUploadBundleSize)
+	if err != nil {
+		return fmt.Errorf("maxSkillUploadBundleSize: %w", err)
+	}
+	c.SkillMaxUploadBundleBytes = parsed
 	if err := c.RuntimeDefaults.validate(); err != nil {
 		return err
 	}

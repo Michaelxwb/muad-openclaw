@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
-var ErrIdentityExists = errors.New("repo: scoped IM identity already exists")
+var ErrIdentityExists = &Error{Code: errcode.ConflictIdentityExists, Msg: "repo: scoped IM identity already exists"}
 
 const identityColumns = `identity_id, human_user_id, channel,
 	openclaw_channel, account_id, external_id, external_id_type, peer_kind,

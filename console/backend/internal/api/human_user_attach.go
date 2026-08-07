@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 type attachHumanUsersRequest struct {
@@ -18,38 +19,37 @@ type attachHumanUsersRequest struct {
 func (s *Server) handleAttachHumanUsers(w http.ResponseWriter, r *http.Request) {
 	podID := r.PathValue("podId")
 	if _, err := s.store.GetPod(podID); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request attachHumanUsersRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	if len(request.HumanUserIDs) == 0 {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "humanUserIds is required")
+		writeErr(w, r, errcode.InvalidHumanUserIdsRequired)
 		return
 	}
 	for _, humanUserID := range request.HumanUserIDs {
 		user, err := s.store.GetHumanUser(humanUserID)
 		if err != nil {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		if user.PodID != "" {
-			writeErr(w, http.StatusConflict, codePodStateConflict, "only unbound Human Users can be attached")
+			writeErr(w, r, errcode.ConflictAttachUnboundOnly)
 			return
 		}
 		if user.LastPodID != "" && user.LastPodID != podID && !request.ConfirmNoMemory {
-			writeErr(w, http.StatusBadRequest, codeInvalidField,
-				"attaching to a different Pod requires confirmNoMemory")
+			writeErr(w, r, errcode.InvalidAttachConfirmNoMemory)
 			return
 		}
 	}
 	attached, err := s.store.AttachUsers(request.HumanUserIDs, podID,
 		s.cfg.RuntimeDefaults.BrowserCDPPortStart, s.cfg.RuntimeDefaults.BrowserCDPPortEnd)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.enqueueReconcile(podID)

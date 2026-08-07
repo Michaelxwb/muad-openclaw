@@ -5,38 +5,39 @@ import (
 	"net/http"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 func (s *Server) handlePutPodChannels(w http.ResponseWriter, r *http.Request) {
 	pod, err := s.store.GetPod(r.PathValue("podId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request podChannelsRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	_, current, err := s.decodeChannelSettings(pod)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "decode channel configuration")
+		writeErr(w, r, errcode.InternalDecodeChannelConfig)
 		return
 	}
 	channels, configs, err := s.normalizeChannelSettings(request, current)
 	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid channel configuration")
+		writeErr(w, r, errcode.InvalidChannelConfig)
 		return
 	}
 	channelsJSON, configsEnc, err := s.encodeChannelSettings(channels, configs)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "encode channel configuration")
+		writeErr(w, r, errcode.InternalEncodeChannelConfig)
 		return
 	}
 	update := podUpdateFrom(pod)
 	update.Channels, update.ChannelConfigsEnc = channelsJSON, configsEnc
 	if err := s.store.UpdatePod(pod.PodID, update); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.enqueueReconcile(pod.PodID)

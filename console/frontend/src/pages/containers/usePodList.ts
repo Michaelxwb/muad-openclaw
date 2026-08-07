@@ -3,6 +3,7 @@ import { api } from "../../api";
 import type { Pod } from "../../api";
 import { DEFAULT_PAGE_SIZE } from "../../components/Pagination";
 import { useMountedRef } from "../../hooks/useMountedRef";
+import { errorMessage } from "../../utils/error";
 import type { PodStateFilter } from "./model";
 
 interface UsePodListOptions {
@@ -33,7 +34,7 @@ export function usePodList({ enabled = true }: UsePodListOptions = {}) {
         setTotal(result.total);
       } catch (caught) {
         if (!mountedRef.current || requestId !== requestRef.current) return;
-        setError(caught instanceof Error ? caught.message : "加载 Pod 失败");
+        setError(errorMessage(caught, "pod.listLoadFailed"));
       } finally {
         if (mountedRef.current && requestId === requestRef.current && !background)
           setLoading(false);

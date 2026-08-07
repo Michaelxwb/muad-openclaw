@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Input, Select, Tag } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import type { GlobalResourceConfig, ResourceConfig } from "../api";
+import { errorMessage } from "../utils/error";
 import {
   FeedbackBanner,
   MetricDescriptions,
@@ -24,15 +26,16 @@ const RESTART_OPTIONS = [
 const EMPTY: ResourceConfig = { memLimit: "", cpuLimit: "", restartPolicy: "unless-stopped" };
 
 export function Settings() {
+  const { t } = useTranslation();
   const resources = useGlobalResources();
   return (
     <div>
-      <PageHeader title="系统配置" description="配置 Pod 资源、Agent 工作区指导与业务平台接入" />
+      <PageHeader title={t("nav.settings")} description={t("settings.pageDescription")} />
       <PageSection
-        title="Pod 资源默认值"
+        title={t("settings.resourceDefaults")}
         extra={
           <Tag color={resources.config?.configured ? "green" : "grey"}>
-            {resources.config?.configured ? "已配置" : "运行时默认"}
+            {resources.config?.configured ? t("settings.configured") : t("settings.runtimeDefault")}
           </Tag>
         }
       >
@@ -40,7 +43,7 @@ export function Settings() {
         <ResourceForm state={resources} />
         {resources.config && <EffectiveResources config={resources.config} />}
       </PageSection>
-      <PageSection title="Agent 工作区指导">
+      <PageSection title={t("settings.agentGuidance")}>
         <AgentGuidanceSettings />
       </PageSection>
       <PlatformSettings />
@@ -51,30 +54,31 @@ export function Settings() {
 type ResourceState = ReturnType<typeof useGlobalResources>;
 
 function ResourceForm({ state }: { state: ResourceState }) {
+  const { t } = useTranslation();
   const set = (key: keyof ResourceConfig, value: string) =>
     state.setForm((previous) => ({ ...previous, [key]: value }));
   return (
     <div className={styles.formGrid}>
-      <label htmlFor="resource-memory">内存上限 (GiB)</label>
+      <label htmlFor="resource-memory">{t("settings.memLimit")}</label>
       <Input
         id="resource-memory"
-        aria-label="全局 Pod 内存上限"
+        aria-label={t("settings.memLimitLabel")}
         value={state.form.memLimit}
         onChange={(value) => set("memLimit", value)}
         placeholder="2"
         suffix="GiB"
       />
-      <label htmlFor="resource-cpu">CPU 上限</label>
+      <label htmlFor="resource-cpu">{t("settings.cpuLimit")}</label>
       <Input
         id="resource-cpu"
-        aria-label="全局 Pod CPU 上限"
+        aria-label={t("settings.cpuLimitLabel")}
         value={state.form.cpuLimit}
         onChange={(value) => set("cpuLimit", value)}
         placeholder="1.5"
       />
-      <label>重启策略</label>
+      <label>{t("settings.restartPolicy")}</label>
       <Select
-        aria-label="全局 Pod 重启策略"
+        aria-label={t("settings.restartPolicyLabel")}
         value={state.form.restartPolicy}
         optionList={RESTART_OPTIONS}
         onChange={(value) => set("restartPolicy", String(value ?? ""))}
@@ -82,28 +86,30 @@ function ResourceForm({ state }: { state: ResourceState }) {
       />
       <div />
       <Button theme="solid" loading={state.busy} onClick={() => void state.save()}>
-        保存资源默认值
+        {t("settings.saveResourceDefaults")}
       </Button>
     </div>
   );
 }
 
 function EffectiveResources({ config }: { config: GlobalResourceConfig }) {
+  const { t } = useTranslation();
   return (
     <MetricDescriptions
       columns={5}
       items={[
-        { label: "有效内存", value: config.effective.memLimit },
-        { label: "有效 CPU", value: config.effective.cpuLimit },
-        { label: "重启策略", value: config.effective.restartPolicy },
-        { label: "Skill 并发默认值", value: config.effective.maxSkillConcurrency },
-        { label: "Browser 并发默认值", value: config.effective.maxBrowserConcurrency },
+        { label: t("settings.effectiveMem"), value: config.effective.memLimit },
+        { label: t("settings.effectiveCpu"), value: config.effective.cpuLimit },
+        { label: t("settings.restartPolicy"), value: config.effective.restartPolicy },
+        { label: t("settings.skillConcurrency"), value: config.effective.maxSkillConcurrency },
+        { label: t("settings.browserConcurrency"), value: config.effective.maxBrowserConcurrency },
       ]}
     />
   );
 }
 
 function useGlobalResources() {
+  const { t } = useTranslation();
   const [form, setForm] = useState<ResourceConfig>(EMPTY);
   const [config, setConfig] = useState<GlobalResourceConfig | null>(null);
   const [busy, setBusy] = useState(false);
@@ -124,7 +130,7 @@ function useGlobalResources() {
       });
     } catch (caught) {
       if (!mountedRef.current || requestId !== requestRef.current) return;
-      setError(caught instanceof Error ? caught.message : "加载资源配置失败");
+      setError(errorMessage(caught, "settings.loadFailed"));
     }
   }, [mountedRef]);
   useEffect(() => {
@@ -137,11 +143,11 @@ function useGlobalResources() {
     try {
       const result = await api.setResources(form);
       if (!mountedRef.current) return;
-      setMessage(`已更新默认值，${result.affectedPodIds.length} 个 Pod 等待应用`);
+      setMessage(t("settings.updatedDefaults", { count: result.affectedPodIds.length }));
       await load();
     } catch (caught) {
       if (mountedRef.current) {
-        setError(caught instanceof Error ? caught.message : "保存资源配置失败");
+        setError(errorMessage(caught, "settings.saveFailed"));
       }
     } finally {
       if (mountedRef.current) setBusy(false);

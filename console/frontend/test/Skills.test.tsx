@@ -126,7 +126,7 @@ describe("Skills", () => {
     render(<Skills />);
     await screen.findByText("XDR Query");
 
-    fireEvent.click(screen.getByRole("button", { name: "禁用" }));
+    fireEvent.click(screen.getByRole("button", { name: "停用" }));
     expect(screen.getByText(/将 Skill/)).toBeInTheDocument();
     expect(screen.getByText(/该操作会更新控制面配置/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));

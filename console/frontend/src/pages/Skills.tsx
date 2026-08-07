@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode } from "react";
 import {
   Banner,
@@ -14,7 +14,11 @@ import {
   Tooltip,
 } from "@douyinfe/semi-ui";
 import { IconInfoCircle, IconPlus, IconRefresh, IconSearch } from "@douyinfe/semi-icons";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { api } from "../api";
+import i18n from "../i18n";
+import { errorMessage } from "../utils/error";
 import type {
   PublicSkillStorageStatus,
   SkillAsset,
@@ -50,19 +54,6 @@ interface SkillStatusAction {
   danger?: boolean;
 }
 
-const SCOPE_OPTIONS = [
-  { value: "", label: "全部范围" },
-  { value: "system", label: "System" },
-  { value: "public", label: "Public" },
-  { value: "private", label: "Private" },
-];
-
-const STATUS_OPTIONS = [
-  { value: "", label: "全部状态" },
-  { value: "active", label: "启用" },
-  { value: "disabled", label: "禁用" },
-];
-
 const SKILL_DETAIL_SHEET_WIDTH = 720;
 const POST_APPLY_REFRESH_DELAYS_MS = [1000, 3000, 7000, 15000];
 
@@ -71,6 +62,7 @@ interface RefreshOptions {
 }
 
 export function Skills() {
+  const { t } = useTranslation();
   const state = useSkillAssets();
   const storage = usePublicSkillStorage();
   const [selected, setSelected] = useState<SkillAsset | null>(null);
@@ -114,22 +106,24 @@ export function Skills() {
       await api.updateSkill(pendingAction.skill.skillId, { status: pendingAction.status });
       if (!mountedRef.current) return;
       Toast.warning(
-        `${pendingAction.skill.name} 已${pendingAction.label}，Skill 变更将自动同步到所有 Pod。`,
+        t("skill.applyStatusToast", {
+          name: pendingAction.skill.name,
+          action: pendingAction.label,
+        }),
       );
       setPendingAction(null);
       await state.refresh();
     } catch (caught) {
-      if (mountedRef.current)
-        Toast.error(caught instanceof Error ? caught.message : "更新 Skill 状态失败");
+      if (mountedRef.current) Toast.error(errorMessage(caught, "skill.updateStatusFailed"));
     } finally {
       if (mountedRef.current) setActionBusy(false);
     }
   };
   const applyAllSkills = () => {
     Modal.confirm({
-      title: "应用 Skill 到所有 Pod",
-      content: "将同步 Public Skill，并对所有运行中的 Pod 应用最新 Skill 配置。",
-      okText: "应用 Skill",
+      title: t("skill.applyAllTitle"),
+      content: t("skill.applyAllContent"),
+      okText: t("skill.applySkill"),
       onOk: async () => {
         setApplying(true);
         let submitted = false;
@@ -139,8 +133,7 @@ export function Skills() {
           notifySkillApplyResult(result);
           submitted = true;
         } catch (caught) {
-          if (mountedRef.current)
-            Toast.error(caught instanceof Error ? caught.message : "应用 Skill 失败");
+          if (mountedRef.current) Toast.error(errorMessage(caught, "skill.applyAllFailed"));
         } finally {
           if (mountedRef.current) setApplying(false);
         }
@@ -152,7 +145,7 @@ export function Skills() {
   };
   return (
     <div>
-      <PageHeader title="Skill 管理" description="查看系统、公共和用户私有 Skill 的资产状态" />
+      <PageHeader title={t("nav.skills")} description={t("skill.pageDescription")} />
       <FeedbackBanner error={state.error} message={state.message} />
       <FeedbackBanner error={storage.error} message={storage.message} />
       <PageSection>
@@ -204,9 +197,9 @@ function skillApplyMessage(results: Record<string, string>, warnings: string[] =
   const failedQueue = entries.filter((status) => status === "failed_queue").length;
   const suffix = warnings.length > 0 ? ` ${warnings.join("；")}` : "";
   if (queued === 0 && failed === 0 && failedQueue === 0 && skipped === 0 && synced > 0) {
-    return `Skill 已同步：${synced} 个 Pod 已刷新文件。${suffix}`;
+    return i18n.t("skill.applyAllSynced", { synced, suffix });
   }
-  return `Skill 应用已提交：${queued} 个 Pod 排队，${synced} 个已同步，${failed} 个同步失败，${failedQueue} 个排队失败，${skipped} 个未运行跳过。${suffix}`;
+  return i18n.t("skill.applySubmitted", { queued, synced, failed, failedQueue, skipped, suffix });
 }
 
 function clearApplyRefreshTimers(ref: MutableRefObject<number[]>) {
@@ -215,6 +208,7 @@ function clearApplyRefreshTimers(ref: MutableRefObject<number[]>) {
 }
 
 function usePublicSkillStorage() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<PublicSkillStorageStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -231,8 +225,7 @@ function usePublicSkillStorage() {
         if (!mountedRef.current) return;
         setStatus(result);
       } catch (caught) {
-        if (mountedRef.current)
-          setError(caught instanceof Error ? caught.message : "加载 PVC 状态失败");
+        if (mountedRef.current) setError(errorMessage(caught, "skill.loadPvcFailed"));
       } finally {
         if (mountedRef.current && !options.background) setLoading(false);
       }
@@ -252,9 +245,9 @@ function usePublicSkillStorage() {
       const result = await api.ensurePublicSkillStorage();
       if (!mountedRef.current) return;
       setStatus(result);
-      setMessage(result.ready ? "Public Skill PVC 已就绪" : "Public Skill PVC 已创建，等待绑定");
+      setMessage(result.ready ? t("skill.pvcReady") : t("skill.pvcCreatedPending"));
     } catch (caught) {
-      if (mountedRef.current) setError(caught instanceof Error ? caught.message : "创建 PVC 失败");
+      if (mountedRef.current) setError(errorMessage(caught, "skill.createPvcFailed"));
     } finally {
       if (mountedRef.current) setCreating(false);
     }
@@ -264,6 +257,7 @@ function usePublicSkillStorage() {
 }
 
 function useSkillAssets() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<SkillAsset[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -298,7 +292,7 @@ function useSkillAssets() {
         setTotal(result.total);
       } catch (caught) {
         if (mountedRef.current && requestId === requestRef.current) {
-          setError(caught instanceof Error ? caught.message : "加载 Skill 失败");
+          setError(errorMessage(caught, "skill.loadFailed"));
         }
       } finally {
         if (
@@ -324,10 +318,10 @@ function useSkillAssets() {
     try {
       const result = await api.scanSkills();
       if (!mountedRef.current) return;
-      setMessage(`扫描完成：${result.scanned} 个 Skill`);
+      setMessage(t("skill.scanDone", { count: result.scanned }));
       await refresh();
     } catch (caught) {
-      if (mountedRef.current) setError(caught instanceof Error ? caught.message : "扫描失败");
+      if (mountedRef.current) setError(errorMessage(caught, "skill.scanFailed"));
     } finally {
       if (mountedRef.current) setScanning(false);
     }
@@ -371,7 +365,25 @@ function SkillToolbar({
   onApply: () => void;
   onUpload: () => void;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
+  const scopeOptions = useMemo(
+    () => [
+      { value: "", label: t("skill.scopeFilterAll") },
+      { value: "system", label: "System" },
+      { value: "public", label: "Public" },
+      { value: "private", label: "Private" },
+    ],
+    [t],
+  );
+  const statusOptions = useMemo(
+    () => [
+      { value: "", label: t("skill.statusFilterAll") },
+      { value: "active", label: t("status.active") },
+      { value: "disabled", label: t("status.disabled") },
+    ],
+    [t],
+  );
   const submit = () => {
     state.setPage(1);
     state.setQuery(search.trim());
@@ -381,28 +393,31 @@ function SkillToolbar({
       actions={
         <Space>
           <Button
-            aria-label="上传 Public Skill"
+            aria-label={t("skill.upload")}
             icon={<IconPlus />}
             disabled={!storage.status?.ready}
             onClick={onUpload}
           >
-            上传 Public Skill
+            {t("skill.upload")}
           </Button>
           <Button loading={applying} onClick={onApply}>
-            应用到全部 Pod
+            {t("skill.applyAllPods")}
           </Button>
-          <Tooltip content="Skill 变更自动同步；如需强制重同步可点击「应用 Skill」">
-            <IconInfoCircle aria-label="Skill 自动同步说明" className={styles.toolbarInfoIcon} />
+          <Tooltip content={t("skill.autoSyncTooltip")}>
+            <IconInfoCircle
+              aria-label={t("skill.autoSyncInfo")}
+              className={styles.toolbarInfoIcon}
+            />
           </Tooltip>
           <PublicStorageAction storage={storage} />
           <Button
-            aria-label="扫描 Skill"
+            aria-label={t("skill.scan")}
             icon={<IconRefresh />}
             loading={state.scanning}
             disabled={state.loading}
             onClick={() => void state.scan()}
           >
-            扫描 Skill
+            {t("skill.scan")}
           </Button>
         </Space>
       }
@@ -413,13 +428,13 @@ function SkillToolbar({
             value={search}
             onChange={setSearch}
             onEnterPress={submit}
-            placeholder="名称、ID 或路径"
+            placeholder={t("skill.searchPlaceholder")}
             style={{ width: 240 }}
           />
-          <Button aria-label="查询 Skill" icon={<IconSearch />} onClick={submit} />
+          <Button aria-label={t("skill.query")} icon={<IconSearch />} onClick={submit} />
           <Select
             value={state.scope}
-            optionList={SCOPE_OPTIONS}
+            optionList={scopeOptions}
             onChange={(value) => {
               state.setPage(1);
               state.setScope(String(value ?? "") as ScopeFilter);
@@ -428,7 +443,7 @@ function SkillToolbar({
           />
           <Select
             value={state.status}
-            optionList={STATUS_OPTIONS}
+            optionList={statusOptions}
             onChange={(value) => {
               state.setPage(1);
               state.setStatus(String(value ?? "") as StatusFilter);
@@ -442,28 +457,30 @@ function SkillToolbar({
 }
 
 function PublicStorageAction({ storage }: { storage: PublicSkillStorageState }) {
+  const { t } = useTranslation();
   const status = storage.status;
   if (!status || status.ready || !status.configured) return null;
   return (
     <Button
-      aria-label="创建 Public Skill PVC"
+      aria-label={t("skill.createPvcLabel")}
       icon={<IconPlus />}
       loading={storage.creating}
       onClick={() => void storage.create()}
     >
-      创建 PVC
+      {t("skill.createPvc")}
     </Button>
   );
 }
 
 function PublicStorageNotice({ storage }: { storage: PublicSkillStorageState }) {
+  const { t } = useTranslation();
   const status = storage.status;
   if (storage.loading && !status) {
     return (
       <Banner
         className={styles.storageNotice}
         type="info"
-        description="正在检查 Public Skill 存储状态"
+        description={t("skill.checkingStorage")}
         fullMode={false}
         bordered
         closeIcon={null}
@@ -486,9 +503,11 @@ function PublicStorageNotice({ storage }: { storage: PublicSkillStorageState }) 
 
 function publicStorageDescription(status: PublicSkillStorageStatus) {
   if (!status.configured) {
-    return "当前后端是 K8s 模式，但未配置 k8s.skillsPVC 或 k8s.publicSkillsMountPath。请补齐 Public Skill 存储配置并重启 Console。";
+    return i18n.t("skill.storageUnconfigured");
   }
-  return `${status.message || "Public Skill PVC 未就绪"}。上传 Public Skill 前需要先创建并等待 PVC 绑定。`;
+  return i18n.t("skill.storageNotReady", {
+    message: status.message || i18n.t("skill.pvcNotReady"),
+  });
 }
 
 function SkillTable({
@@ -500,9 +519,10 @@ function SkillTable({
   onOpen: (skill: SkillAsset) => void;
   onStatusAction: (action: SkillStatusAction) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Table
-      columns={skillColumns(onOpen, onStatusAction) as never}
+      columns={skillColumns(t, onOpen, onStatusAction) as never}
       dataSource={state.items}
       rowKey="skillId"
       loading={state.loading}
@@ -517,13 +537,14 @@ function SkillTable({
         },
       })}
       renderPagination={renderTablePagination}
-      empty="暂无 Skill"
+      empty={t("skill.empty")}
       size="small"
     />
   );
 }
 
 function skillColumns(
+  t: TFunction,
   onOpen: (skill: SkillAsset) => void,
   onStatusAction: (action: SkillStatusAction) => void,
 ) {
@@ -540,30 +561,30 @@ function skillColumns(
       ),
     },
     {
-      title: "范围",
+      title: t("skill.scope"),
       dataIndex: "scope",
       width: 150,
       render: (_: unknown, skill: SkillAsset) => (
         <Space spacing={4}>
           <ScopeTag scope={skill.scope} />
-          {skill.source === "user" && <Tag color="green">用户上传</Tag>}
+          {skill.source === "user" && <Tag color="green">{t("skill.userUploaded")}</Tag>}
         </Space>
       ),
     },
     {
-      title: "状态",
+      title: t("common.status"),
       dataIndex: "status",
       width: 90,
       render: (_: unknown, skill: SkillAsset) => <StatusTag status={skill.status} />,
     },
     {
-      title: "版本",
+      title: t("skill.version"),
       dataIndex: "version",
       width: 120,
       render: (_: unknown, skill: SkillAsset) => skill.version || "-",
     },
     {
-      title: "平台",
+      title: t("skill.platform"),
       key: "platforms",
       width: 180,
       render: (_: unknown, skill: SkillAsset) => (
@@ -571,13 +592,13 @@ function skillColumns(
       ),
     },
     {
-      title: "能力",
+      title: t("skill.features"),
       key: "features",
       width: 160,
       render: (_: unknown, skill: SkillAsset) => (
         <Space spacing={4}>
-          {skill.progressSupported && <Tag>进度</Tag>}
-          {skill.browserRequired && <Tag>浏览器</Tag>}
+          {skill.progressSupported && <Tag>{t("skill.featureProgress")}</Tag>}
+          {skill.browserRequired && <Tag>{t("skill.featureBrowser")}</Tag>}
           {!skill.progressSupported && !skill.browserRequired && (
             <span className={styles.subtle}>-</span>
           )}
@@ -585,13 +606,13 @@ function skillColumns(
       ),
     },
     {
-      title: "归属",
+      title: t("skill.owner"),
       key: "owner",
       width: 210,
       render: (_: unknown, skill: SkillAsset) => <SkillOwner skill={skill} />,
     },
     {
-      title: "操作",
+      title: t("common.actions"),
       key: "actions",
       width: 190,
       render: (_: unknown, skill: SkillAsset) => (
@@ -602,8 +623,9 @@ function skillColumns(
 }
 
 function SkillOwner({ skill }: { skill: SkillAsset }) {
-  if (skill.scope === "system") return <span>系统内置</span>;
-  if (skill.scope === "public") return <span>Public Skill 资产库</span>;
+  const { t } = useTranslation();
+  if (skill.scope === "system") return <span>{t("skill.ownerSystem")}</span>;
+  if (skill.scope === "public") return <span>{t("skill.ownerPublic")}</span>;
   return (
     <div>
       <div>Private Skill</div>
@@ -621,11 +643,12 @@ function SkillRowActions({
   onOpen: (skill: SkillAsset) => void;
   onStatusAction: (action: SkillStatusAction) => void;
 }) {
+  const { t } = useTranslation();
   const actions = skillStatusActions(skill);
   return (
     <Space spacing={4}>
       <Button size="small" onClick={() => onOpen(skill)}>
-        详情
+        {t("skill.detail")}
       </Button>
       {actions.map((action) => (
         <Button
@@ -646,13 +669,13 @@ function skillStatusActions(skill: SkillAsset): SkillStatusAction[] {
   if (skill.systemProtected) return [];
   const actions: SkillStatusAction[] = [];
   if (skill.status === "active") {
-    actions.push({ skill, status: "disabled", label: "禁用" });
+    actions.push({ skill, status: "disabled", label: i18n.t("status.disable") });
   }
   if (skill.status === "disabled") {
-    actions.push({ skill, status: "active", label: "启用" });
+    actions.push({ skill, status: "active", label: i18n.t("status.enable") });
   }
   if (skill.status !== "deleted" && skill.scope === "public") {
-    actions.push({ skill, status: "deleted", label: "删除", danger: true });
+    actions.push({ skill, status: "deleted", label: i18n.t("common.delete"), danger: true });
   }
   return actions;
 }
@@ -668,31 +691,28 @@ function SkillStatusActionDialog({
   onClose: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal
       className="standard-modal"
-      title={action ? `${action.label} ${action.skill.name}` : "更新 Skill 状态"}
+      title={action ? `${action.label} ${action.skill.name}` : t("skill.updateStatusTitle")}
       visible={Boolean(action)}
       onCancel={onClose}
       onOk={onConfirm}
-      okText={`确认${action?.label ?? ""}`}
+      okText={t("skill.confirmAction", { action: action?.label ?? "" })}
       confirmLoading={busy}
       okButtonProps={{ type: action?.danger ? ("danger" as const) : ("primary" as const) }}
     >
       {action && (
         <div className={styles.statusActionBody}>
           <div>
-            将 Skill <span className="mono">{action.skill.name}</span> 状态更新为{" "}
-            <StatusTag status={action.status} />。
+            {t("skill.statusUpdateBodyPrefix", { name: action.skill.name })}
+            <StatusTag status={action.status} />
+            {t("skill.statusUpdateBodySuffix")}
           </div>
-          <div className={styles.subtle}>
-            该操作会更新控制面配置；Skill 变更将自动同步到所有 Pod。
-          </div>
+          <div className={styles.subtle}>{t("skill.statusUpdateHint")}</div>
           {action.status === "deleted" && (
-            <div className={styles.subtle}>
-              删除会移除 Console 管理的 Public Skill 目录；应用 Skill 后会从所有 Pod 的公共 Skill
-              目录移除。
-            </div>
+            <div className={styles.subtle}>{t("skill.statusDeleteHint")}</div>
           )}
         </div>
       )}
@@ -706,8 +726,14 @@ function ScopeTag({ scope }: { scope: SkillScope }) {
 }
 
 function StatusTag({ status }: { status: SkillStatus }) {
+  const { t } = useTranslation();
   const color = status === "active" ? "green" : status === "disabled" ? "grey" : "orange";
-  const label = status === "active" ? "启用" : status === "disabled" ? "禁用" : "已删除";
+  const label =
+    status === "active"
+      ? t("status.active")
+      : status === "disabled"
+        ? t("status.disabled")
+        : t("skill.statusDeleted");
   return <Tag color={color}>{label}</Tag>;
 }
 
@@ -724,22 +750,23 @@ function PlatformTags({ platformsJson }: { platformsJson: string }) {
 }
 
 function SkillDetailDrawer({ skill, onClose }: { skill: SkillAsset | null; onClose: () => void }) {
+  const { t } = useTranslation();
   const detailRows: DetailFieldRow[] = skill
     ? [
         { label: "Skill ID", value: skill.skillId, wide: true, mono: true },
-        { label: "范围", value: <ScopeTag scope={skill.scope} /> },
-        { label: "状态", value: <StatusTag status={skill.status} /> },
-        { label: "版本", value: skill.version || "-" },
-        { label: "入口类型", value: skill.entryType || "-" },
+        { label: t("skill.scope"), value: <ScopeTag scope={skill.scope} /> },
+        { label: t("common.status"), value: <StatusTag status={skill.status} /> },
+        { label: t("skill.version"), value: skill.version || "-" },
+        { label: t("skill.entryType"), value: skill.entryType || "-" },
         { label: "Manifest", value: skill.manifestHash || "-", wide: true, mono: true },
         { label: "Human User", value: skill.humanUserId || "-", mono: Boolean(skill.humanUserId) },
         { label: "Pod", value: skill.podId || "-", mono: Boolean(skill.podId) },
-        { label: "来源路径", value: skill.sourcePath || "-", wide: true, mono: true },
+        { label: t("skill.sourcePath"), value: skill.sourcePath || "-", wide: true, mono: true },
       ]
     : [];
   return (
     <SideSheet
-      title={skill ? `Skill 详情 ${skill.name}` : "Skill 详情"}
+      title={skill ? `${t("skill.detailTitle")} ${skill.name}` : t("skill.detailTitle")}
       visible={Boolean(skill)}
       onCancel={onClose}
       width={SKILL_DETAIL_SHEET_WIDTH}
@@ -754,7 +781,7 @@ function SkillDetailDrawer({ skill, onClose }: { skill: SkillAsset | null; onClo
             ))}
           </div>
           <div>
-            <div className={styles.subtle}>平台</div>
+            <div className={styles.subtle}>{t("skill.platform")}</div>
             <PlatformTags platformsJson={skill.platformsJson} />
           </div>
           <div>

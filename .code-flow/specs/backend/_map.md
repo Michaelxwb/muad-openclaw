@@ -22,6 +22,7 @@
 |------|---------|
 | `console/backend/cmd/console/main.go` | 进程入口、依赖装配、信号退出 |
 | `console/backend/internal/api/` | HTTP 路由、handler、错误码 |
+| `console/backend/internal/errcode/` | 稳定错误码常量 + `AllCodes`（前后端契约） |
 | `console/backend/internal/repo/` | 持久化、schema、查询 |
 | `console/backend/internal/driver/` | RuntimeDriver（docker/k8s） |
 | `console/backend/internal/runtimeconfig/` | 多用户 runtime 配置构建 |
@@ -39,6 +40,7 @@ console/backend/
 ├── cmd/console/          # main
 ├── internal/
 │   ├── api/              # HTTP surface
+│   ├── errcode/          # 稳定错误码 + AllCodes
 │   ├── repo/             # SQLite + domain models
 │   ├── driver/           # Docker/K8s runtime
 │   ├── runtimeconfig/    # desired config builder

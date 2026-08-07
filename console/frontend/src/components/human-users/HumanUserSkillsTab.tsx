@@ -13,21 +13,28 @@ import {
 } from "@douyinfe/semi-ui";
 import type { FileItem } from "@douyinfe/semi-ui/lib/es/upload";
 import { IconPlus, IconSearch, IconRefresh } from "@douyinfe/semi-icons";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { api } from "../../api";
 import type { EffectiveSkill, HumanUser, Platform, SkillScope } from "../../api";
+import { ApiError } from "../../api";
 import { FeedbackBanner, ListToolbar } from "../ConsolePage";
 import { useMountedRef } from "../../hooks/useMountedRef";
+import { errorMessage, ErrorDetail } from "../../utils/error";
+import i18n from "../../i18n";
 import styles from "../HumanUsersPanel.module.css";
 
 type SkillStatusFilter = "" | "effective" | "conflict" | "disabled" | "missing_credential";
 
-const SKILL_STATUS_OPTIONS = [
-  { label: "全部状态", value: "" },
-  { label: "可执行", value: "effective" },
-  { label: "冲突", value: "conflict" },
-  { label: "缺凭证", value: "missing_credential" },
-  { label: "禁用", value: "disabled" },
-];
+function skillStatusOptions(t: (key: string) => string) {
+  return [
+    { label: t("user.statusAll"), value: "" },
+    { label: t("user.skillEffective"), value: "effective" },
+    { label: t("user.skillConflict"), value: "conflict" },
+    { label: t("user.skillMissingCredential"), value: "missing_credential" },
+    { label: t("user.skillDisabled"), value: "disabled" },
+  ];
+}
 const SKILL_TABLE_SCROLL_X = 1040;
 
 interface RefreshOptions {
@@ -41,6 +48,7 @@ export function HumanUserSkillsTab({
   user: HumanUser;
   onChanged: () => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const state = useHumanUserSkills(user.humanUserId);
   const [uploadOpen, setUploadOpen] = useState(false);
 
@@ -54,14 +62,14 @@ export function HumanUserSkillsTab({
         actions={
           <Space>
             <Button icon={<IconPlus />} onClick={() => setUploadOpen(true)}>
-              上传 Private Skill
+              {t("user.uploadPrivateSkill")}
             </Button>
             <Button
               icon={<IconRefresh />}
               loading={state.loading}
               onClick={() => void state.refresh()}
             >
-              刷新
+              {t("common.refresh")}
             </Button>
           </Space>
         }
@@ -71,10 +79,10 @@ export function HumanUserSkillsTab({
         <Table
           rowKey="name"
           dataSource={state.items}
-          columns={skillColumns(user.humanUserId, state) as never}
+          columns={skillColumns(t, user.humanUserId, state) as never}
           loading={false}
           pagination={false}
-          empty={state.loading ? "正在加载 Skill" : "暂无可见 Skill"}
+          empty={state.loading ? t("user.loadingSkills") : t("user.noVisibleSkills")}
           size="small"
           scroll={{ x: SKILL_TABLE_SCROLL_X }}
         />
@@ -115,7 +123,7 @@ function useHumanUserSkills(humanUserId: string) {
         setItems(normalizeEffectiveSkills(result.items));
       } catch (caught) {
         if (mountedRef.current && requestId === requestRef.current) {
-          setError(caught instanceof Error ? caught.message : "加载用户 Skill 失败");
+          setError(errorMessage(caught, "user.loadSkillsFailed"));
         }
       } finally {
         if (
@@ -140,27 +148,31 @@ function useHumanUserSkills(humanUserId: string) {
     try {
       await api.createSkillPolicy(humanUserId, { skillName, action, reason: "console" });
       if (!mountedRef.current) return;
-      setMessage(action === "disable" ? "已禁用 Skill" : "已允许 Private 覆盖");
+      setMessage(
+        action === "disable"
+          ? i18n.t("user.skillDisabledToast")
+          : i18n.t("user.privateOverrideAllowed"),
+      );
       await refresh();
     } catch (caught) {
-      if (mountedRef.current) setError(caught instanceof Error ? caught.message : "策略操作失败");
+      if (mountedRef.current) setError(errorMessage(caught, "user.policyOperationFailed"));
     }
   };
 
   const deletePrivate = async (skill: EffectiveSkill) => {
     if (!skill.privateSkillId) return;
     Modal.confirm({
-      title: "删除 Private Skill",
-      content: `删除 ${skill.name} 后，该用户将无法继续使用该 private 版本。`,
+      title: i18n.t("user.deletePrivateSkillTitle"),
+      content: i18n.t("user.deletePrivateSkillConfirm", { name: skill.name }),
       onOk: async () => {
         try {
           await api.deletePrivateSkill(humanUserId, skill.privateSkillId ?? "");
           if (!mountedRef.current) return;
-          Toast.success("Private Skill 已删除");
+          Toast.success(i18n.t("user.privateSkillDeleted"));
           await refresh();
         } catch (caught) {
           if (mountedRef.current) {
-            setError(caught instanceof Error ? caught.message : "删除 Private Skill 失败");
+            setError(errorMessage(caught, "user.deletePrivateSkillFailed"));
           }
           throw caught;
         }
@@ -196,6 +208,7 @@ function normalizeEffectiveSkills(items: EffectiveSkill[] | null | undefined): E
 }
 
 function SkillFilters({ state }: { state: HumanUserSkillsState }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const submit = () => state.setQuery(search.trim());
   return (
@@ -205,14 +218,14 @@ function SkillFilters({ state }: { state: HumanUserSkillsState }) {
         value={search}
         onChange={setSearch}
         onEnterPress={submit}
-        placeholder="Skill 名称"
+        placeholder={t("user.skillNamePlaceholder")}
         style={{ width: 180 }}
       />
-      <Button aria-label="查询用户 Skill" icon={<IconSearch />} onClick={submit} />
+      <Button aria-label={t("user.queryUserSkill")} icon={<IconSearch />} onClick={submit} />
       <Select
-        aria-label="Skill 状态过滤"
+        aria-label={t("user.skillStatusFilter")}
         value={state.status}
-        optionList={SKILL_STATUS_OPTIONS}
+        optionList={skillStatusOptions(t)}
         onChange={(value) => state.setStatus(String(value ?? "") as SkillStatusFilter)}
         style={{ width: 120 }}
       />
@@ -220,7 +233,7 @@ function SkillFilters({ state }: { state: HumanUserSkillsState }) {
   );
 }
 
-function skillColumns(humanUserId: string, state: HumanUserSkillsState) {
+function skillColumns(t: TFunction, humanUserId: string, state: HumanUserSkillsState) {
   return [
     {
       title: "Skill",
@@ -233,30 +246,30 @@ function skillColumns(humanUserId: string, state: HumanUserSkillsState) {
       ),
     },
     {
-      title: "范围",
+      title: t("user.columnScope"),
       key: "scope",
       width: 150,
       render: (_: unknown, skill: EffectiveSkill) => (
         <Space spacing={4}>
           <EffectiveScopeTag scope={skill.effectiveSource} />
-          {skill.source === "user" && <Tag color="green">用户上传</Tag>}
+          {skill.source === "user" && <Tag color="green">{t("user.userUploaded")}</Tag>}
         </Space>
       ),
     },
     {
-      title: "状态",
+      title: t("common.status"),
       key: "status",
       width: 160,
       render: (_: unknown, skill: EffectiveSkill) => <SkillState skill={skill} />,
     },
     {
-      title: "平台凭证",
+      title: t("user.platformCredentials"),
       key: "platforms",
       width: 190,
       render: (_: unknown, skill: EffectiveSkill) => <CredentialTags skill={skill} />,
     },
     {
-      title: "最近执行",
+      title: t("user.columnLastExecution"),
       key: "lastExecution",
       width: 150,
       render: (_: unknown, skill: EffectiveSkill) =>
@@ -270,7 +283,7 @@ function skillColumns(humanUserId: string, state: HumanUserSkillsState) {
         ),
     },
     {
-      title: "操作",
+      title: t("common.actions"),
       key: "actions",
       width: 220,
       render: (_: unknown, skill: EffectiveSkill) => (
@@ -280,12 +293,12 @@ function skillColumns(humanUserId: string, state: HumanUserSkillsState) {
               size="small"
               onClick={() => void state.createPolicy(skill.name, "allow_override")}
             >
-              允许覆盖
+              {t("user.allowOverride")}
             </Button>
           )}
           {skill.effective && (
             <Button size="small" onClick={() => void state.createPolicy(skill.name, "disable")}>
-              禁用
+              {t("user.skillDisabled")}
             </Button>
           )}
           {skill.privateSkillId && (
@@ -293,9 +306,12 @@ function skillColumns(humanUserId: string, state: HumanUserSkillsState) {
               size="small"
               type="danger"
               onClick={() => void state.deletePrivate(skill)}
-              aria-label={`删除 Private Skill ${skill.name} ${humanUserId}`}
+              aria-label={t("user.deletePrivateSkillAria", {
+                name: skill.name,
+                userId: humanUserId,
+              })}
             >
-              删除 Private
+              {t("user.deletePrivate")}
             </Button>
           )}
         </Space>
@@ -310,11 +326,12 @@ function EffectiveScopeTag({ scope }: { scope: SkillScope }) {
 }
 
 function SkillState({ skill }: { skill: EffectiveSkill }) {
+  const { t } = useTranslation();
   if (skill.conflict) {
     return (
       <Space spacing={4}>
-        <Tag color="orange">冲突</Tag>
-        <span>{skill.conflictReason || "需要确认覆盖策略"}</span>
+        <Tag color="orange">{t("user.skillConflict")}</Tag>
+        <span>{skill.conflictReason || t("user.conflictNeedsPolicy")}</span>
       </Space>
     );
   }
@@ -322,26 +339,26 @@ function SkillState({ skill }: { skill: EffectiveSkill }) {
   if (skill.status === "missing_credential") {
     tags.push(
       <Tag key="credential" color="red">
-        缺少平台凭证
+        {t("user.missingPlatformCredential")}
       </Tag>,
     );
   } else if (skill.status === "disabled") {
     tags.push(
       <Tag key="disabled" color="grey">
-        已禁用
+        {t("user.skillDisabledState")}
       </Tag>,
     );
   } else {
     tags.push(
       <Tag key="effective" color="green">
-        可执行
+        {t("user.skillEffective")}
       </Tag>,
     );
   }
   if (skill.runtimePending) {
     tags.push(
       <Tag key="pending" color="orange">
-        待应用
+        {t("status.pendingApply")}
       </Tag>,
     );
   }
@@ -368,13 +385,13 @@ function CredentialTags({ skill }: { skill: EffectiveSkill }) {
 function credentialLabel(status: string) {
   switch (status) {
     case "configured":
-      return "已配置";
+      return i18n.t("user.configured");
     case "platform_disabled":
-      return "平台禁用";
+      return i18n.t("user.platformDisabled");
     case "platform_missing":
-      return "平台缺失";
+      return i18n.t("user.platformMissing");
     default:
-      return "缺凭证";
+      return i18n.t("user.skillMissingCredential");
   }
 }
 
@@ -389,6 +406,7 @@ function PrivateSkillUploadDialog({
   onClose: () => void;
   onUploaded: () => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [fileList, setFileList] = useState<FileItem[]>([]);
   const [platforms, setPlatforms] = useState<string[]>([]);
@@ -398,6 +416,7 @@ function PrivateSkillUploadDialog({
   const [platformLoading, setPlatformLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [detail, setDetail] = useState<string | undefined>(undefined);
   useEffect(() => {
     if (!visible) return;
     let active = true;
@@ -408,7 +427,10 @@ function PrivateSkillUploadDialog({
         if (active) setPlatformOptions(result.items);
       })
       .catch((caught) => {
-        if (active) setError(caught instanceof Error ? caught.message : "加载平台失败");
+        if (active) {
+          setError(errorMessage(caught, "user.loadPlatformsFailed"));
+          setDetail(caught instanceof ApiError ? caught.detail : undefined);
+        }
       })
       .finally(() => {
         if (active) setPlatformLoading(false);
@@ -424,6 +446,7 @@ function PrivateSkillUploadDialog({
     setAllowOverride(false);
     setOverrideSkillName("");
     setError("");
+    setDetail(undefined);
   };
   const close = () => {
     reset();
@@ -431,16 +454,19 @@ function PrivateSkillUploadDialog({
   };
   const submit = async () => {
     if (!file) {
-      setError("请选择 .tar.gz 或 .zip Skill 包");
+      setError(t("user.selectSkillBundle"));
+      setDetail(undefined);
       return;
     }
     const expectedName = allowOverride ? overrideSkillName.trim() : "";
     if (allowOverride && expectedName === "") {
-      setError("请填写要覆盖的 Public Skill 名称");
+      setError(t("user.fillPublicSkillName"));
+      setDetail(undefined);
       return;
     }
     setBusy(true);
     setError("");
+    setDetail(undefined);
     try {
       await api.uploadPrivateSkill(user.humanUserId, {
         bundle: file,
@@ -449,18 +475,19 @@ function PrivateSkillUploadDialog({
         platforms,
         allowOverride,
       });
-      Toast.success("Private Skill 上传成功");
+      Toast.success(t("user.privateSkillUploaded"));
       close();
       await onUploaded();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "上传失败");
+      setError(errorMessage(caught, "user.uploadFailed"));
+      setDetail(caught instanceof ApiError ? caught.detail : undefined);
     } finally {
       setBusy(false);
     }
   };
   return (
     <Modal
-      title="上传 Private Skill"
+      title={t("user.uploadPrivateSkill")}
       visible={visible}
       onCancel={close}
       confirmLoading={busy}
@@ -468,8 +495,9 @@ function PrivateSkillUploadDialog({
     >
       <Space vertical align="start">
         {error && <span className={styles.errorText}>{error}</span>}
+        <ErrorDetail detail={detail} />
         <Upload
-          aria-label="Private Skill 包"
+          aria-label={t("user.privateSkillBundleAria")}
           accept=".tar.gz,.zip"
           action=""
           uploadTrigger="custom"
@@ -493,26 +521,27 @@ function PrivateSkillUploadDialog({
                 : [],
             );
             setError("");
+            setDetail(undefined);
           }}
           onRemove={() => {
             setFile(null);
             setFileList([]);
           }}
         >
-          <span className={styles.uploadTrigger}>选择 .tar.gz / .zip 包</span>
+          <span className={styles.uploadTrigger}>{t("user.selectBundleTrigger")}</span>
         </Upload>
         {file && <span className="mono">{file.name}</span>}
         <Checkbox
           checked={allowOverride}
           onChange={(event) => setAllowOverride(Boolean(event.target.checked))}
         >
-          允许覆盖同名 Public Skill
+          {t("user.allowOverridePublic")}
         </Checkbox>
         {allowOverride && (
           <div className={styles.field}>
-            <label>Public Skill 名称</label>
+            <label>{t("user.publicSkillName")}</label>
             <Input
-              aria-label="覆盖的 Public Skill 名称"
+              aria-label={t("user.overrideSkillNameAria")}
               placeholder="skill-name"
               value={overrideSkillName}
               onChange={setOverrideSkillName}
@@ -522,7 +551,7 @@ function PrivateSkillUploadDialog({
         )}
         <Select
           multiple
-          placeholder="业务平台依赖（可选）"
+          placeholder={t("user.platformDependencies")}
           value={platforms}
           loading={platformLoading}
           optionList={platformOptions.map(platformOption)}
@@ -537,6 +566,8 @@ function PrivateSkillUploadDialog({
 function platformOption(platform: Platform) {
   return {
     value: platform.platform,
-    label: `${platform.displayName} (${platform.platform})${platform.enabled ? "" : " 停用"}`,
+    label: platform.enabled
+      ? `${platform.displayName} (${platform.platform})`
+      : `${platform.displayName} (${platform.platform}) ${i18n.t("user.platformDisabledSuffix")}`,
   };
 }

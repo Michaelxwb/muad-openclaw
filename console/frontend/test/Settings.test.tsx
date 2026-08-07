@@ -55,8 +55,18 @@ beforeEach(() => {
   for (const mock of Object.values(apiMocks)) mock.mockReset();
   apiMocks.getResources.mockResolvedValue(resources);
   apiMocks.setResources.mockResolvedValue({ configured: true, affectedPodIds: ["pod-a"] });
-  apiMocks.getAgentGuidance.mockResolvedValue({ userSkill: "", memory: "", main: "", updatedAt: "" });
-  apiMocks.setAgentGuidance.mockResolvedValue({ userSkill: "", memory: "", main: "", updatedAt: "" });
+  apiMocks.getAgentGuidance.mockResolvedValue({
+    userSkill: "",
+    memory: "",
+    main: "",
+    updatedAt: "",
+  });
+  apiMocks.setAgentGuidance.mockResolvedValue({
+    userSkill: "",
+    memory: "",
+    main: "",
+    updatedAt: "",
+  });
   apiMocks.listPlatforms.mockResolvedValue({ items: [], total: 0 });
 });
 

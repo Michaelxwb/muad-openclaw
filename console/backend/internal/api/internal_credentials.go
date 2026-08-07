@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -42,13 +43,13 @@ type credentialResolveResponse struct {
 func (s *Server) handleResolveSessionCredential(w http.ResponseWriter, r *http.Request) {
 	pod, ok := podFromContext(r.Context())
 	if !ok {
-		writeErr(w, http.StatusUnauthorized, codePodUnauthorized, "invalid Pod service token")
+		writeErr(w, r, errcode.UnauthorizedPodToken)
 		return
 	}
 	var request credentialResolveRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
 		s.recordResolveFailure(r, pod, request, "invalid_request", "")
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	request.AgentID = strings.TrimSpace(request.AgentID)
@@ -57,7 +58,7 @@ func (s *Server) handleResolveSessionCredential(w http.ResponseWriter, r *http.R
 	request.Purpose = strings.TrimSpace(request.Purpose)
 	if !validCredentialRequest(request) {
 		s.recordResolveFailure(r, pod, request, "invalid_request", "")
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	response, err := s.resolveSessionCredential(pod, request)
@@ -244,7 +245,7 @@ func (s *Server) writeResolveError(
 		errorCode = "agent_or_skill_not_active"
 	}
 	s.recordResolveFailure(r, pod, request, errorCode, humanUserID)
-	writeRepoError(w, err)
+	writeRepoError(w, r, err)
 }
 
 func (s *Server) recordResolveFailure(

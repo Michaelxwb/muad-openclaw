@@ -3,6 +3,7 @@ import type { HumanUser, HumanUserActivation, HumanUserBootstrapResult, Pod } fr
 import { api } from "../../api";
 import { DEFAULT_PAGE_SIZE } from "../Pagination";
 import { useMountedRef } from "../../hooks/useMountedRef";
+import { errorMessage } from "../../utils/error";
 import styles from "../HumanUsersPanel.module.css";
 import { ActivationCodeDialog } from "./ActivationCodeDialog";
 import { CreateHumanUserDialog } from "./CreateHumanUserDialog";
@@ -62,7 +63,7 @@ function useHumanUsers(podId: string): HumanUsersState {
         setTotal(result.total);
       } catch (caught) {
         if (!mountedRef.current || requestId !== requestRef.current) return;
-        setError(caught instanceof Error ? caught.message : "加载 Human User 失败");
+        setError(errorMessage(caught, "user.loadHumanUsersFailed"));
       } finally {
         if (mountedRef.current && requestId === requestRef.current && !background)
           setLoading(false);

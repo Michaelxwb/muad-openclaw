@@ -11,6 +11,7 @@ import (
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -33,14 +34,14 @@ func (s *Server) handleRotatePodServiceToken(w http.ResponseWriter, r *http.Requ
 		return rotateErr
 	})
 	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")
+		writeErr(w, r, errcode.UnavailableRuntimeCoordinator)
 		return
 	}
 	if err != nil {
 		if errors.Is(err, repo.ErrNotFound) {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 		} else {
-			writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "Pod service token rotation failed")
+			writeRuntimeFailure(w, r, err, errcode.RuntimeTokenRotation)
 		}
 		return
 	}

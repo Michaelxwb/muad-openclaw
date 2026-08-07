@@ -1,0 +1,23 @@
+.detail {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.detail summary {
+  cursor: pointer;
+  color: var(--semi-color-text-2);
+  user-select: none;
+}
+
+.detail pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  max-height: 160px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--semi-color-fill-0);
+  color: var(--semi-color-text-1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

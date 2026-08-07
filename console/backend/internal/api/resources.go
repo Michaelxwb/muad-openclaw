@@ -10,6 +10,7 @@ import (
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -96,10 +97,10 @@ func validateConcurrency(request podResourceRequest) error {
 	return nil
 }
 
-func (s *Server) handleGetResources(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleGetResources(w http.ResponseWriter, r *http.Request) {
 	global, configured, err := s.readGlobalResources()
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "read resource config")
+		writeErr(w, r, errcode.InternalReadResourceConfig)
 		return
 	}
 	effective := driver.ResolveResourceSpec(driver.ResourceSpec{}, global, s.resourceFallback())
@@ -115,24 +116,24 @@ func (s *Server) handleGetResources(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
 	current, _, err := s.readGlobalResources()
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "read resource config")
+		writeErr(w, r, errcode.InternalReadResourceConfig)
 		return
 	}
 	var request resourceFieldsRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid resource limits")
+		writeErr(w, r, errcode.InvalidResourceLimits)
 		return
 	}
 	request.MemLimit = normalizeMemLimitPtr(request.MemLimit)
 	if validateResourceRequest(request) != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid resource limits")
+		writeErr(w, r, errcode.InvalidResourceLimits)
 		return
 	}
 	next := applyGlobalRequest(current, request)
 	if err := s.store.SetResourceGlobal(repo.ResourceConfig{
 		MemLimit: next.MemLimit, CPULimit: next.CPULimit, RestartPolicy: next.RestartPolicy,
 	}); err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "save resource config")
+		writeErr(w, r, errcode.InternalSaveResourceConfig)
 		return
 	}
 	podIDs, err := s.store.MarkPodsInheritingResourcesPending(
@@ -140,7 +141,7 @@ func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
 		current.RestartPolicy != next.RestartPolicy,
 	)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "mark inheriting Pods pending")
+		writeErr(w, r, errcode.InternalMarkPodsPending)
 		return
 	}
 	for _, podID := range podIDs {
@@ -152,12 +153,12 @@ func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetPodResources(w http.ResponseWriter, r *http.Request) {
 	pod, err := s.store.GetPod(r.PathValue("podId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	view, err := s.podResourceView(pod)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "resolve Pod resources")
+		writeErr(w, r, errcode.InternalResolvePodResources)
 		return
 	}
 	writeJSON(w, http.StatusOK, view)
@@ -166,17 +167,17 @@ func (s *Server) handleGetPodResources(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSetPodResources(w http.ResponseWriter, r *http.Request) {
 	pod, err := s.store.GetPod(r.PathValue("podId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request podResourceRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid resource limits")
+		writeErr(w, r, errcode.InvalidResourceLimits)
 		return
 	}
 	request.MemLimit = normalizeMemLimitPtr(request.MemLimit)
 	if validateResourceRequest(request.resourceFieldsRequest) != nil || validateConcurrency(request) != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid resource limits")
+		writeErr(w, r, errcode.InvalidResourceLimits)
 		return
 	}
 	next := applyPodResourceRequest(pod, request)
@@ -188,7 +189,7 @@ func (s *Server) handleSetPodResources(w http.ResponseWriter, r *http.Request) {
 	}
 	generation, err := s.store.UpdatePodResources(pod.PodID, next)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	// mem/cpu/restart only take effect on container Create. Always enqueue reconcile for
@@ -198,12 +199,12 @@ func (s *Server) handleSetPodResources(w http.ResponseWriter, r *http.Request) {
 	s.auditResourceUpdate(r, pod.PodID, generation)
 	updated, err := s.store.GetPod(pod.PodID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	view, err := s.podResourceView(updated)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "resolve Pod resources")
+		writeErr(w, r, errcode.InternalResolvePodResources)
 		return
 	}
 	view["requiresPodRestart"] = resourceChanged

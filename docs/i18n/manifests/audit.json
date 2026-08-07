@@ -1,0 +1,153 @@
+{
+  "model.pageDescription": {
+    "zh": "批量维护可分配模型，创建用户时必须绑定一个未占用模型",
+    "en": "Manage assignable models; creating a user requires binding an unused model."
+  },
+  "model.pool": { "zh": "模型池", "en": "Model pool" },
+  "model.boundAll": { "zh": "全部状态", "en": "All statuses" },
+  "model.boundBound": { "zh": "已绑定", "en": "Bound" },
+  "model.boundAvailable": { "zh": "可分配", "en": "Available" },
+  "model.loadFailed": { "zh": "加载模型配置失败", "en": "Failed to load model configs." },
+  "model.createdMessage": { "zh": "已录入 {{count}} 个模型", "en": "{{count}} models created." },
+  "model.batchCreateFailed": { "zh": "批量录入失败", "en": "Batch create failed." },
+  "model.selectAtLeastOne": { "zh": "请至少选择一个模型", "en": "Select at least one model." },
+  "model.testCompleted": {
+    "zh": "连通性测试完成：{{passed}}/{{total}} 通过",
+    "en": "Connectivity test completed: {{passed}}/{{total}} passed."
+  },
+  "model.batchTestFailed": { "zh": "批量测试失败", "en": "Batch test failed." },
+  "model.deletedMessage": { "zh": "模型已删除", "en": "Model deleted." },
+  "model.deleteFailed": { "zh": "删除模型失败", "en": "Failed to delete model." },
+  "model.createModel": { "zh": "创建模型", "en": "Create model" },
+  "model.testConnectivity": { "zh": "批量测试连通性", "en": "Batch test connectivity" },
+  "model.searchConfig": { "zh": "搜索模型配置", "en": "Search model configs" },
+  "model.searchPlaceholder": {
+    "zh": "显示名、模型或 Key",
+    "en": "Display name, model or key"
+  },
+  "model.searchSubmit": { "zh": "查询模型配置", "en": "Search model configs" },
+  "model.boundStatusLabel": { "zh": "模型绑定状态", "en": "Model binding status" },
+  "model.displayName": { "zh": "显示名", "en": "Display name" },
+  "model.model": { "zh": "模型", "en": "Model" },
+  "model.boundStatus": { "zh": "绑定状态", "en": "Binding status" },
+  "model.notConfigured": { "zh": "未配置", "en": "Not configured" },
+  "model.testResult": { "zh": "测试结果", "en": "Test result" },
+  "model.notTested": { "zh": "未测试", "en": "Not tested" },
+  "model.testPassed": { "zh": "通过", "en": "Passed" },
+  "model.selectModel": { "zh": "选择模型 {{name}}", "en": "Select model {{name}}" },
+  "model.empty": { "zh": "暂无模型配置", "en": "No model configs" },
+  "model.deleteModelTitle": { "zh": "删除模型 {{name}}", "en": "Delete model {{name}}" },
+  "model.cannotDeleteBound": {
+    "zh": "已绑定用户，不能删除",
+    "en": "Bound to a user and cannot be deleted"
+  },
+  "model.deleteModel": { "zh": "删除模型", "en": "Delete model" },
+  "model.deleteHint": {
+    "zh": "删除后将无法再给新用户分配该模型，已绑定用户不受影响（已绑定模型不可删除）。",
+    "en": "After deletion, the model can no longer be assigned to new users; bound users are unaffected (bound models cannot be deleted)."
+  },
+  "model.createDialogTitle": { "zh": "批量创建模型配置", "en": "Batch create model configs" },
+  "model.displayNameLabel": { "zh": "显示名称", "en": "Display name" },
+  "model.createDialogDisplayNamePlaceholder": { "zh": "例如 DeepSeek Key", "en": "e.g. DeepSeek Key" },
+  "model.functionCalls": { "zh": "函数调用", "en": "Function calls" },
+  "model.supportFunctionCalls": {
+    "zh": "支持函数调用（工具）",
+    "en": "Support function calls (tools)"
+  },
+  "model.supportFunctionCallsAria": { "zh": "支持函数调用", "en": "Support function calls" },
+  "model.apiKeyList": { "zh": "API Key 列表", "en": "API Key list" },
+  "model.apiKeyPlaceholder": { "zh": "每行一个 API key", "en": "One API key per line" },
+  "model.validationDisplayNameRequired": {
+    "zh": "显示名称必填",
+    "en": "Display name is required."
+  },
+  "model.validationProviderInvalid": { "zh": "Provider 格式无效", "en": "Invalid Provider format." },
+  "model.validationModelRequired": { "zh": "Model 必填", "en": "Model is required." },
+  "model.validationBaseUrlRequired": { "zh": "Base URL 必填", "en": "Base URL is required." },
+  "model.validationApiKeyRequired": {
+    "zh": "请至少输入一个 API key",
+    "en": "Enter at least one API key."
+  },
+  "model.validationApiKeyLimit": {
+    "zh": "单次最多创建 100 个 API key",
+    "en": "Up to 100 API keys per batch."
+  },
+
+  "audit.pageDescription": {
+    "zh": "分别查询平台操作记录和 Skill 执行生命周期",
+    "en": "Query platform operation records and Skill execution lifecycle."
+  },
+  "audit.operationsTab": { "zh": "操作审计", "en": "Operation audit" },
+  "audit.skillExecutionsTab": { "zh": "Skill 执行日志", "en": "Skill execution logs" },
+  "audit.loadFailed": { "zh": "加载操作审计失败", "en": "Failed to load operation audit." },
+  "audit.filterActorAria": { "zh": "按操作人过滤", "en": "Filter by actor" },
+  "audit.filterActorPlaceholder": { "zh": "操作人", "en": "Actor" },
+  "audit.filterActionAria": { "zh": "按动作过滤", "en": "Filter by action" },
+  "audit.filterActionPlaceholder": { "zh": "动作", "en": "Action" },
+  "audit.filterTargetAria": { "zh": "按目标过滤", "en": "Filter by target" },
+  "audit.filterTargetPlaceholder": { "zh": "目标 ID", "en": "Target ID" },
+  "audit.searchAria": { "zh": "查询审计日志", "en": "Search audit logs" },
+  "audit.time": { "zh": "时间", "en": "Time" },
+  "audit.action": { "zh": "动作", "en": "Action" },
+  "audit.target": { "zh": "目标", "en": "Target" },
+  "audit.context": { "zh": "上下文", "en": "Context" },
+  "audit.result": { "zh": "结果", "en": "Result" },
+  "audit.targetTypeGeneric": { "zh": "通用", "en": "Generic" },
+
+  "execution.detailTitle": { "zh": "Skill 执行详情", "en": "Skill execution detail" },
+  "execution.reloadDetail": {
+    "zh": "重新加载执行详情",
+    "en": "Reload execution detail"
+  },
+  "execution.reload": { "zh": "重新加载", "en": "Reload" },
+  "execution.id": { "zh": "执行 ID", "en": "Execution ID" },
+  "execution.userId": { "zh": "用户 ID", "en": "User ID" },
+  "execution.scope": { "zh": "范围", "en": "Scope" },
+  "execution.entryType": { "zh": "模式", "en": "Mode" },
+  "execution.activationMode": { "zh": "激活方式", "en": "Activation mode" },
+  "execution.startedAt": { "zh": "开始时间", "en": "Start time" },
+  "execution.endedAt": { "zh": "结束时间", "en": "End time" },
+  "execution.duration": { "zh": "耗时", "en": "Duration" },
+  "execution.progressTitle": { "zh": "执行进度", "en": "Execution progress" },
+  "execution.noProgress": { "zh": "暂无进度明细", "en": "No progress details" },
+  "execution.resultTitle": { "zh": "执行结果", "en": "Execution result" },
+  "execution.inputSummary": { "zh": "输入摘要", "en": "Input summary" },
+  "execution.outputSummary": { "zh": "输出摘要", "en": "Output summary" },
+  "execution.errorCode": { "zh": "错误码", "en": "Error code" },
+  "execution.errorMessage": { "zh": "错误信息", "en": "Error message" },
+  "execution.terminalReason": { "zh": "终态原因", "en": "Terminal reason" },
+  "execution.statusCancelled": { "zh": "已取消", "en": "Cancelled" },
+  "execution.statusRejected": { "zh": "已拒绝", "en": "Rejected" },
+  "execution.entryTypeScript": { "zh": "传统脚本", "en": "Traditional script" },
+  "execution.entryTypePrompt": { "zh": "传统工具", "en": "Traditional tool" },
+  "execution.activationTool": { "zh": "Tool 激活", "en": "Tool activation" },
+  "execution.activationPath": { "zh": "路径识别", "en": "Path detected" },
+  "execution.loadDetailFailed": {
+    "zh": "加载 Skill 执行详情失败",
+    "en": "Failed to load Skill execution detail."
+  },
+  "execution.loadFailed": {
+    "zh": "加载 Skill 执行日志失败",
+    "en": "Failed to load Skill execution logs."
+  },
+  "execution.reloadList": { "zh": "重新查询", "en": "Reload list" },
+  "execution.empty": { "zh": "暂无 Skill 执行记录", "en": "No Skill execution records" },
+  "execution.userAgent": { "zh": "用户 / Agent", "en": "User / Agent" },
+  "execution.lastTool": { "zh": "最近工具", "en": "Last tool" },
+  "execution.viewDetail": { "zh": "查看执行 {{id}} 详情", "en": "View execution {{id}} detail" },
+  "execution.resultFailed": { "zh": "执行失败", "en": "Execution failed" },
+  "execution.statusAll": { "zh": "全部状态", "en": "All statuses" },
+  "execution.scopeAll": { "zh": "全部范围", "en": "All scopes" },
+  "execution.scopeSystem": { "zh": "系统", "en": "System" },
+  "execution.entryAll": { "zh": "全部模式", "en": "All modes" },
+  "execution.searchLogs": { "zh": "模糊搜索执行日志", "en": "Fuzzy search execution logs" },
+  "execution.searchPlaceholder": {
+    "zh": "Skill、Pod、用户或 Agent",
+    "en": "Skill, Pod, user or Agent"
+  },
+  "execution.statusFilter": { "zh": "执行状态", "en": "Execution status" },
+  "execution.scopeFilter": { "zh": "Skill 范围", "en": "Skill scope" },
+  "execution.entryTypeFilter": { "zh": "执行模式", "en": "Execution mode" },
+  "execution.searchAria": { "zh": "查询执行日志", "en": "Search execution logs" },
+  "execution.resetAria": { "zh": "重置执行日志筛选", "en": "Reset execution log filters" }
+}

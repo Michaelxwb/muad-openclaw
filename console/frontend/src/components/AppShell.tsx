@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@douyinfe/semi-ui";
 import {
   IconChevronLeft,
@@ -20,6 +21,8 @@ import { PodDetail } from "../pages/PodDetail";
 import { Settings } from "../pages/Settings";
 import { Skills } from "../pages/Skills";
 import { Users } from "../pages/Users";
+import { errorMessage } from "../utils/error";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeButton } from "./ThemeButton";
 import type { ThemeMode } from "./ThemeButton";
@@ -30,15 +33,6 @@ type Page = "pods" | "users" | "skills" | "llm" | "settings" | "audit";
 const PAGE_KEY = "muad_console_page";
 const DETAIL_POD_KEY = "muad_console_pod_id";
 
-const NAV_ITEMS: { key: Page; label: string; icon: ReactNode }[] = [
-  { key: "pods", label: "Pod 管理", icon: <IconServerStroked size="large" /> },
-  { key: "users", label: "用户管理", icon: <IconUserGroup size="large" /> },
-  { key: "skills", label: "Skill 管理", icon: <IconPuzzle size="large" /> },
-  { key: "llm", label: "模型配置", icon: <IconComponentStroked size="large" /> },
-  { key: "settings", label: "系统配置", icon: <IconSettingStroked size="large" /> },
-  { key: "audit", label: "审计日志", icon: <IconSearchStroked size="large" /> },
-];
-
 interface Props {
   theme: ThemeMode;
   onTheme: () => void;
@@ -46,10 +40,26 @@ interface Props {
 }
 
 export function AppShell({ theme, onTheme, onLogout }: Props) {
+  const { t } = useTranslation();
   const [page, setPage] = useState<Page>(readInitialPage);
   const [detailPodId, setDetailPodId] = useState<string | null>(readInitialDetailPodId);
   const [collapsed, setCollapsed] = useResponsiveSidebar();
   const user = useCurrentUser();
+  const navItems = useMemo(
+    () => [
+      { key: "pods" as Page, label: t("nav.pods"), icon: <IconServerStroked size="large" /> },
+      { key: "users" as Page, label: t("nav.users"), icon: <IconUserGroup size="large" /> },
+      { key: "skills" as Page, label: t("nav.skills"), icon: <IconPuzzle size="large" /> },
+      { key: "llm" as Page, label: t("nav.llm"), icon: <IconComponentStroked size="large" /> },
+      {
+        key: "settings" as Page,
+        label: t("nav.settings"),
+        icon: <IconSettingStroked size="large" />,
+      },
+      { key: "audit" as Page, label: t("nav.audit"), icon: <IconSearchStroked size="large" /> },
+    ],
+    [t],
+  );
   const changePage = (next: Page) => {
     setDetailPodId(null);
     writeDetailPodId(null);
@@ -72,6 +82,7 @@ export function AppShell({ theme, onTheme, onLogout }: Props) {
         page={page}
         user={user}
         collapsed={collapsed}
+        navItems={navItems}
         onPage={changePage}
         onCollapsed={setCollapsed}
         onLogout={onLogout}
@@ -79,6 +90,7 @@ export function AppShell({ theme, onTheme, onLogout }: Props) {
       <main className={styles.content}>
         <div className={styles.topbar}>
           <ThemeButton mode={theme} onClick={onTheme} />
+          <LanguageSwitcher />
           <NotificationBell />
         </div>
         <PageContent
@@ -164,7 +176,7 @@ function useCurrentUser() {
         if (mounted) setUser(result.actor);
       })
       .catch((caught: unknown) => {
-        if (mounted) setUser(caught instanceof Error ? "加载失败" : "未知用户");
+        if (mounted) setUser(errorMessage(caught, "nav.loadFailed"));
       });
     return () => {
       mounted = false;
@@ -177,17 +189,19 @@ interface SidebarProps {
   page: Page;
   user: string;
   collapsed: boolean;
+  navItems: { key: Page; label: string; icon: ReactNode }[];
   onPage: (page: Page) => void;
   onCollapsed: (collapsed: boolean) => void;
   onLogout: () => void;
 }
 
 function AppSidebar(props: SidebarProps) {
+  const { t } = useTranslation();
   return (
     <aside className={styles.sider} data-collapsed={props.collapsed}>
       <SidebarBrand collapsed={props.collapsed} onCollapsed={props.onCollapsed} />
-      <nav className={styles.nav} aria-label="主导航">
-        {NAV_ITEMS.map((item) => (
+      <nav className={styles.nav} aria-label={t("nav.mainNav")}>
+        {props.navItems.map((item) => (
           <button
             key={item.key}
             className={styles.navItem}
@@ -214,12 +228,13 @@ function SidebarBrand({
   collapsed: boolean;
   onCollapsed: (value: boolean) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.brand} data-collapsed={collapsed}>
       {!collapsed && (
         <div className={styles.brandText}>
           <span className={styles.brandMark}>muad</span>
-          <span className={styles.brandTitle}>控制台</span>
+          <span className={styles.brandTitle}>{t("nav.console")}</span>
         </div>
       )}
       <CollapseButton collapsed={collapsed} onChange={onCollapsed} />
@@ -234,10 +249,11 @@ function CollapseButton({
   collapsed: boolean;
   onChange: (value: boolean) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Button
       className={styles.collapse}
-      aria-label={collapsed ? "展开导航" : "收起导航"}
+      aria-label={collapsed ? t("nav.expandNav") : t("nav.collapseNav")}
       icon={collapsed ? <IconChevronRight /> : <IconChevronLeft />}
       theme="borderless"
       size="small"
@@ -247,6 +263,7 @@ function CollapseButton({
 }
 
 function UserFooter(props: { user: string; collapsed: boolean; onLogout: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.user} data-collapsed={props.collapsed}>
       <span className={styles.avatar} aria-hidden="true">
@@ -254,7 +271,7 @@ function UserFooter(props: { user: string; collapsed: boolean; onLogout: () => v
       </span>
       {!props.collapsed && <span className={styles.userName}>{props.user}</span>}
       <Button
-        aria-label="退出登录"
+        aria-label={t("nav.logout")}
         size="small"
         type="tertiary"
         theme="borderless"

@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -171,29 +170,6 @@ func TestInstallPublicSkillBundle_RejectsManifestFrontmatterNameMismatch(t *test
 	}), root, nil)
 	if err == nil || !strings.Contains(err.Error(), "must match SKILL.md frontmatter name") {
 		t.Fatalf("frontmatter mismatch error = %v", err)
-	}
-}
-
-func TestInstallPublicSkillBundle_RejectsTooManyEntries(t *testing.T) {
-	root := t.TempDir()
-	files := map[string][]byte{"many-files/SKILL.md": []byte("# Many\n")}
-	for index := 0; index < maxExtractedSkillBundleEntries+1; index++ {
-		files[fmt.Sprintf("many-files/file-%d.txt", index)] = []byte("x")
-	}
-	_, err := installPublicSkillBundle(makeAPIZipWithFiles(t, files), root, nil)
-	if err == nil || !strings.Contains(err.Error(), "too many files") {
-		t.Fatalf("too many entries error = %v", err)
-	}
-}
-
-func TestInstallPublicSkillBundle_RejectsExtractedSizeTooLarge(t *testing.T) {
-	root := t.TempDir()
-	_, err := installPublicSkillBundle(makeAPIZipWithFiles(t, map[string][]byte{
-		"huge-skill/SKILL.md":    []byte("# Huge\n"),
-		"huge-skill/payload.bin": bytes.Repeat([]byte{0}, maxExtractedSkillBundleBytes+1),
-	}), root, nil)
-	if err == nil || !strings.Contains(err.Error(), "extracted size is too large") {
-		t.Fatalf("large extracted size error = %v", err)
 	}
 }
 

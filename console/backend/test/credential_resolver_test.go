@@ -52,21 +52,21 @@ func TestCredentialResolver_ScopesActiveUserAndReturnsMinimalCredential(t *testi
 		t.Fatalf("missing fingerprints: %+v", response.Data)
 	}
 
-	assertResolveError(t, env, tokenB, resolveBody, http.StatusNotFound, 40401)
+	assertResolveError(t, env, tokenB, resolveBody, http.StatusNotFound, 40901)
 	assertResolveError(t, env, tokenA,
 		`{"agentId":"disabled","skillName":"xdr-query","purpose":"session_get_state"}`,
-		http.StatusNotFound, 40401)
+		http.StatusNotFound, 40901)
 	assertResolveError(t, env, tokenA,
 		`{"agentId":"charlie","skillName":"xdr-query","purpose":"session_get_state"}`,
-		http.StatusNotFound, 40402)
+		http.StatusNotFound, 40606)
 	assertResolveError(t, env, tokenA,
 		`{"agentId":"alice","skillName":"xdr-query","purpose":"session_get_state","platform":"mssw"}`,
-		http.StatusBadRequest, 40005)
+		http.StatusBadRequest, 40514)
 
 	if err := env.store.UpdatePlatformConfig("xdr", "XDR", false); err != nil {
 		t.Fatalf("disable platform: %v", err)
 	}
-	assertResolveError(t, env, tokenA, resolveBody, http.StatusConflict, 40905)
+	assertResolveError(t, env, tokenA, resolveBody, http.StatusConflict, 40605)
 	assertResolveAuditIsRedacted(t, env, "xdr-secret-key", tokenA)
 }
 
@@ -90,10 +90,10 @@ func TestCredentialResolver_MultiPlatformSkillRequiresExplicitBoundPlatform(t *t
 	}
 	assertResolveError(t, env, token,
 		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state"}`,
-		http.StatusBadRequest, 40004)
+		http.StatusBadRequest, 40513)
 	assertResolveError(t, env, token,
 		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state","platform":"soar"}`,
-		http.StatusBadRequest, 40005)
+		http.StatusBadRequest, 40514)
 
 	response := doInternalResolve(env, token,
 		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state","platform":"mssw"}`)
@@ -123,7 +123,7 @@ func TestCredentialResolver_PlatformlessSkillHasNoSessionCredential(t *testing.T
 	})
 	assertResolveError(t, env, token,
 		`{"agentId":"alice","skillName":"web-tools-guide","purpose":"session_get_state"}`,
-		http.StatusBadRequest, 40005)
+		http.StatusBadRequest, 40514)
 }
 
 func TestServiceTokenRotation_InvalidatesOldTokenAndAuditsFingerprint(t *testing.T) {
@@ -142,8 +142,8 @@ func TestServiceTokenRotation_InvalidatesOldTokenAndAuditsFingerprint(t *testing
 	if newToken == "" || newToken == oldToken || strings.Contains(response.Body.String(), newToken) {
 		t.Fatalf("rotation response or secret is invalid: %s", response.Body.String())
 	}
-	assertResolveError(t, env, oldToken, resolveBody, http.StatusUnauthorized, 40102)
-	assertResolveError(t, env, newToken, resolveBody, http.StatusNotFound, 40401)
+	assertResolveError(t, env, oldToken, resolveBody, http.StatusUnauthorized, 40103)
+	assertResolveError(t, env, newToken, resolveBody, http.StatusNotFound, 40901)
 	if env.drv.stopCalls != 1 || env.drv.startCalls != 1 {
 		t.Fatalf("maintenance stop/start = %d/%d, want 1/1", env.drv.stopCalls, env.drv.startCalls)
 	}
@@ -169,7 +169,7 @@ func TestServiceTokenRotation_StartFailureRestoresOldTokenAndSecret(t *testing.T
 	if got := env.drv.serviceTokens["pod-a"].Value; got != oldToken {
 		t.Fatalf("Driver token = %q, want restored old token", got)
 	}
-	assertResolveError(t, env, oldToken, resolveBody, http.StatusNotFound, 40401)
+	assertResolveError(t, env, oldToken, resolveBody, http.StatusNotFound, 40901)
 	if env.drv.startCalls != 2 || env.drv.stopCalls != 2 {
 		t.Fatalf("rollback stop/start = %d/%d, want 2/2", env.drv.stopCalls, env.drv.startCalls)
 	}

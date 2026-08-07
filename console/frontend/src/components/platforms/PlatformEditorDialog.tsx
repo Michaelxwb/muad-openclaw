@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Input, Modal, Switch, Toast } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import type { Platform } from "../../api";
 import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
 import { Field } from "../human-users/shared";
+import { errorMessage } from "../../utils/error";
 import styles from "./PlatformSettings.module.css";
 
 interface Props {
@@ -28,15 +30,20 @@ function initialForm(platform: Platform | null): Form {
 }
 
 export function PlatformEditorDialog(props: Props) {
+  const { t } = useTranslation();
   const editor = usePlatformEditor(props);
   return (
     <Modal
       className="standard-modal"
-      title={props.platform ? `编辑 ${props.platform.displayName}` : "增加业务平台"}
+      title={
+        props.platform
+          ? t("platform.editTitle", { name: props.platform.displayName })
+          : t("platform.createTitle")
+      }
       visible={props.visible}
       onCancel={props.onClose}
       onOk={() => void editor.submit()}
-      okText="保存"
+      okText={t("common.save")}
       confirmLoading={editor.busy}
       width={620}
     >
@@ -51,6 +58,7 @@ export function PlatformEditorDialog(props: Props) {
 }
 
 function usePlatformEditor(props: Props) {
+  const { t } = useTranslation();
   const [form, setForm] = useState<Form>(() => initialForm(props.platform));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -62,7 +70,7 @@ function usePlatformEditor(props: Props) {
 
   const submit = async () => {
     if (!form.platform || !form.displayName.trim()) {
-      return setRepeatableError(setError, "平台和显示名称必填");
+      return setRepeatableError(setError, t("platform.nameRequired"));
     }
     setBusy(true);
     setError("");
@@ -79,10 +87,10 @@ function usePlatformEditor(props: Props) {
           enabled: form.enabled,
         });
       }
-      Toast.success(props.platform ? "平台配置已保存" : "平台已增加");
+      Toast.success(props.platform ? t("platform.saved") : t("platform.created"));
       await props.onSaved();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存平台失败");
+      setError(errorMessage(caught, "platform.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -100,27 +108,28 @@ function PlatformFields({
   editing: boolean;
   setForm: (form: Form) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.formGrid}>
-      <Field label="平台">
+      <Field label={t("platform.platformLabel")}>
         <Input
-          aria-label="业务平台"
+          aria-label={t("platform.platformAria")}
           value={form.platform}
           disabled={editing}
-          placeholder="例如 mssw"
+          placeholder={t("platform.platformPlaceholder")}
           onChange={(platform) => setForm({ ...form, platform })}
         />
       </Field>
-      <Field label="显示名称">
+      <Field label={t("platform.displayName")}>
         <Input
-          aria-label="平台显示名称"
+          aria-label={t("platform.displayNameAria")}
           value={form.displayName}
           onChange={(displayName) => setForm({ ...form, displayName })}
         />
       </Field>
-      <Field label="启用">
+      <Field label={t("platform.enabled")}>
         <Switch
-          aria-label="平台启用状态"
+          aria-label={t("platform.enabledAria")}
           checked={form.enabled}
           onChange={(enabled) => setForm({ ...form, enabled })}
         />

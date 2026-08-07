@@ -8,6 +8,7 @@ import (
 	"time"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -35,10 +36,10 @@ type deletePlatformResponse struct {
 	AffectedPodIDs []string `json:"affectedPodIds"`
 }
 
-func (s *Server) handleListPlatforms(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleListPlatforms(w http.ResponseWriter, r *http.Request) {
 	configs, err := s.store.ListPlatformConfigs()
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list platforms")
+		writeErr(w, r, errcode.InternalListPlatforms)
 		return
 	}
 	views := make([]platformView, 0, len(configs))
@@ -51,12 +52,12 @@ func (s *Server) handleListPlatforms(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleCreatePlatform(w http.ResponseWriter, r *http.Request) {
 	var request createPlatformRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	request.Platform, request.DisplayName = strings.TrimSpace(request.Platform), strings.TrimSpace(request.DisplayName)
 	if request.DisplayName == "" || len(request.DisplayName) > 128 {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid platform display name")
+		writeErr(w, r, errcode.InvalidPlatformDisplayName)
 		return
 	}
 	enabled := true
@@ -68,13 +69,13 @@ func (s *Server) handleCreatePlatform(w http.ResponseWriter, r *http.Request) {
 		Enabled: enabled,
 	})
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.enqueuePodIDs(podIDs)
 	config, err := s.store.GetPlatformConfig(request.Platform)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.auditPlatform(r, auditlog.ActionPlatformConfigCreate, config, "created")
@@ -84,17 +85,17 @@ func (s *Server) handleCreatePlatform(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePatchPlatform(w http.ResponseWriter, r *http.Request) {
 	current, err := s.store.GetPlatformConfig(r.PathValue("platform"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request patchPlatformRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	next, changed, err := s.applyPlatformPatch(current, request)
 	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid platform configuration")
+		writeErr(w, r, errcode.InvalidPlatformConfig)
 		return
 	}
 	if changed {
@@ -102,13 +103,13 @@ func (s *Server) handlePatchPlatform(w http.ResponseWriter, r *http.Request) {
 			next.Platform, next.DisplayName, next.Enabled,
 		)
 		if err != nil {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		s.enqueuePodIDs(podIDs)
 		next, err = s.store.GetPlatformConfig(next.Platform)
 		if err != nil {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		action := auditlog.ActionPlatformConfigUpdate
@@ -124,12 +125,12 @@ func (s *Server) handleDeletePlatform(w http.ResponseWriter, r *http.Request) {
 	platform := strings.TrimSpace(r.PathValue("platform"))
 	current, err := s.store.GetPlatformConfig(platform)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	podIDs, err := s.store.DeletePlatformConfigAndMarkPods(platform)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.enqueuePodIDs(podIDs)
@@ -159,7 +160,7 @@ func (s *Server) applyPlatformPatch(
 func makePlatformView(config repo.PlatformConfig) platformView {
 	return platformView{
 		Platform: config.Platform, DisplayName: config.DisplayName,
-		Enabled: config.Enabled,
+		Enabled:   config.Enabled,
 		UpdatedAt: config.UpdatedAt,
 	}
 }

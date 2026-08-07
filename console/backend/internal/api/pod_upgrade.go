@@ -11,6 +11,7 @@ import (
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
@@ -28,17 +29,17 @@ type upgradeRequest struct {
 func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 	pod, err := s.store.GetPod(r.PathValue("podId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request upgradeRequest
 	if err := decodeJSONBody(w, r, &request); err != nil || !validImageTag(request.ImageTag) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "valid imageTag is required")
+		writeErr(w, r, errcode.InvalidImageTag)
 		return
 	}
 	request.ImageTag = strings.TrimSpace(request.ImageTag)
 	if pod.State != repo.PodStateRunning && pod.State != repo.PodStateUnhealthy {
-		writeErr(w, http.StatusConflict, codePodStateConflict, "Pod must be running to upgrade")
+		writeErr(w, r, errcode.ConflictPodRunningUpgrade)
 		return
 	}
 	if request.ImageTag == pod.ImageTag {
@@ -54,12 +55,12 @@ func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 		return upgradeErr
 	})
 	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")
+		writeErr(w, r, errcode.UnavailableRuntimeCoordinator)
 		return
 	}
 	if err != nil {
 		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_rolled_back")
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "Pod upgrade failed and was rolled back")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeUpgradeRolledBack)
 		return
 	}
 	s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade")

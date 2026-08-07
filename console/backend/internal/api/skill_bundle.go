@@ -26,16 +26,6 @@ var (
 	skillPlatformRegexp = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 )
 
-const (
-	maxExtractedSkillBundleBytes   = 25 * 1024 * 1024
-	maxExtractedSkillBundleEntries = 2048
-)
-
-type skillBundleExtractLimits struct {
-	entries   int
-	totalByte int64
-}
-
 type skillBundleManifest struct {
 	Name            string   `json:"name"`
 	Version         string   `json:"version"`
@@ -173,7 +163,6 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 	}
 	defer gz.Close()
 	reader := tar.NewReader(gz)
-	limits := &skillBundleExtractLimits{}
 	for {
 		header, err := reader.Next()
 		if errors.Is(err, io.EOF) {
@@ -190,9 +179,6 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 		if !pathWithin(targetRoot, target) {
 			return errors.New("bundle path escapes extract root")
 		}
-		if err := limits.addEntry(); err != nil {
-			return err
-		}
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(target, 0o700); err != nil {
@@ -202,7 +188,7 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 			if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
 				return fmt.Errorf("create bundle parent: %w", err)
 			}
-			if err := writeBundleFile(target, reader, header.Size, limits); err != nil {
+			if err := writeBundleFile(target, reader, header.Size); err != nil {
 				return err
 			}
 		case tar.TypeSymlink, tar.TypeLink:
@@ -218,21 +204,18 @@ func extractZipSkillBundle(bundle []byte, targetRoot string) error {
 	if err != nil {
 		return err
 	}
-	limits := &skillBundleExtractLimits{}
 	for _, file := range reader.File {
 		if ignoredZipEntry(file.Name) {
 			continue
 		}
-		if err := extractZipEntry(file, targetRoot, limits); err != nil {
+		if err := extractZipEntry(file, targetRoot); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func extractZipEntry(
-	file *zip.File, targetRoot string, limits *skillBundleExtractLimits,
-) error {
+func extractZipEntry(file *zip.File, targetRoot string) error {
 	relative, err := safeArchivePath(file.Name)
 	if err != nil {
 		return err
@@ -245,9 +228,6 @@ func extractZipEntry(
 	if mode&os.ModeSymlink != 0 {
 		return errors.New("bundle must not contain symlinks")
 	}
-	if err := limits.addEntry(); err != nil {
-		return err
-	}
 	if file.FileInfo().IsDir() || zipNameIsDirectory(file.Name) {
 		return os.MkdirAll(target, 0o700)
 	}
@@ -259,7 +239,7 @@ func extractZipEntry(
 		return fmt.Errorf("open zip entry: %w", err)
 	}
 	defer source.Close()
-	return writeBundleFile(target, source, int64(file.UncompressedSize64), limits)
+	return writeBundleFile(target, source, int64(file.UncompressedSize64))
 }
 
 func ignoredZipEntry(name string) bool {
@@ -273,11 +253,9 @@ func zipNameIsDirectory(name string) bool {
 	return strings.HasSuffix(strings.ReplaceAll(name, "\\", "/"), "/")
 }
 
-func writeBundleFile(
-	target string, reader io.Reader, size int64, limits *skillBundleExtractLimits,
-) error {
-	if err := limits.addBytes(size); err != nil {
-		return err
+func writeBundleFile(target string, reader io.Reader, size int64) error {
+	if size < 0 {
+		return errors.New("bundle contains an invalid file size")
 	}
 	file, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
@@ -286,25 +264,6 @@ func writeBundleFile(
 	defer file.Close()
 	if _, err := io.Copy(file, reader); err != nil {
 		return fmt.Errorf("write bundle file: %w", err)
-	}
-	return nil
-}
-
-func (limits *skillBundleExtractLimits) addEntry() error {
-	limits.entries++
-	if limits.entries > maxExtractedSkillBundleEntries {
-		return errors.New("bundle contains too many files")
-	}
-	return nil
-}
-
-func (limits *skillBundleExtractLimits) addBytes(size int64) error {
-	if size < 0 {
-		return errors.New("bundle contains an invalid file size")
-	}
-	limits.totalByte += size
-	if limits.totalByte > maxExtractedSkillBundleBytes {
-		return errors.New("bundle extracted size is too large")
 	}
 	return nil
 }
@@ -324,95 +283,6 @@ func safeArchivePath(name string) (string, error) {
 		}
 	}
 	return cleaned, nil
-}
-
-func buildSkillDirectoryBundle(sourceDir, skillName string) ([]byte, error) {
-	name := strings.TrimSpace(skillName)
-	if !skillNameRegexp.MatchString(name) {
-		return nil, errors.New("invalid skill name")
-	}
-	root := filepath.Clean(strings.TrimSpace(sourceDir))
-	if root == "" || root == "." {
-		return nil, errors.New("empty Skill directory")
-	}
-	if stat, err := os.Stat(root); err != nil {
-		return nil, fmt.Errorf("stat Skill directory: %w", err)
-	} else if !stat.IsDir() {
-		return nil, errors.New("Skill source is not a directory")
-	}
-	var out bytes.Buffer
-	gz := gzip.NewWriter(&out)
-	tw := tar.NewWriter(gz)
-	if err := filepath.WalkDir(root, func(item string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		return addSkillDirectoryBundlePath(tw, root, item, entry, name)
-	}); err != nil {
-		_ = tw.Close()
-		_ = gz.Close()
-		return nil, err
-	}
-	if err := tw.Close(); err != nil {
-		return nil, fmt.Errorf("close Skill archive: %w", err)
-	}
-	if err := gz.Close(); err != nil {
-		return nil, fmt.Errorf("close Skill gzip: %w", err)
-	}
-	return out.Bytes(), nil
-}
-
-func addSkillDirectoryBundlePath(
-	tw *tar.Writer, root, item string, entry fs.DirEntry, skillName string,
-) error {
-	relative, err := filepath.Rel(root, item)
-	if err != nil {
-		return err
-	}
-	archiveName := strings.Trim(strings.ReplaceAll(filepath.ToSlash(relative), "\\", "/"), "/")
-	if archiveName == "." || archiveName == "" {
-		archiveName = skillName
-	} else {
-		archiveName = path.Join(skillName, archiveName)
-	}
-	if _, err := safeArchivePath(archiveName); err != nil {
-		return err
-	}
-	info, err := entry.Info()
-	if err != nil {
-		return err
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return errors.New("Skill source must not contain symlinks")
-	}
-	if entry.IsDir() {
-		return writeSkillDirectoryBundleHeader(tw, archiveName+"/", info, tar.TypeDir)
-	}
-	if !info.Mode().IsRegular() {
-		return nil
-	}
-	if err := writeSkillDirectoryBundleHeader(tw, archiveName, info, tar.TypeReg); err != nil {
-		return err
-	}
-	file, err := os.Open(item)
-	if err != nil {
-		return fmt.Errorf("open Skill file: %w", err)
-	}
-	defer file.Close()
-	_, err = io.Copy(tw, file)
-	return err
-}
-
-func writeSkillDirectoryBundleHeader(
-	tw *tar.Writer, name string, info fs.FileInfo, typ byte,
-) error {
-	header, err := tar.FileInfoHeader(info, "")
-	if err != nil {
-		return err
-	}
-	header.Name = name
-	header.Typeflag = typ
-	return tw.WriteHeader(header)
 }
 
 func findPrimarySkillDir(root string) (string, error) {

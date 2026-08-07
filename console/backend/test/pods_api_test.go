@@ -80,7 +80,7 @@ func TestPodAPI_RejectsCapacityReduction(t *testing.T) {
 	createTestHumanUser(t, e.store, "pod-a", "bob", repo.HumanUserStatusPending)
 
 	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"maxUsers":1}`)
-	if rr.Code != http.StatusConflict || !strings.Contains(rr.Body.String(), `"code":40902`) {
+	if rr.Code != http.StatusConflict || !strings.Contains(rr.Body.String(), `"code":40706`) {
 		t.Fatalf("capacity response = %d", rr.Code)
 	}
 	rr = e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"displayName":"Pod Updated","maxUsers":2}`)
@@ -168,7 +168,7 @@ func TestPodAPI_DeleteRequiresStatePolicyAndReportsRetainedConflict(t *testing.T
 	}
 	e.drv.createErr = driver.ErrRetainedState
 	rr := e.do(http.MethodPost, "/api/v1/containers", testPodBody)
-	if rr.Code != http.StatusConflict || !strings.Contains(rr.Body.String(), `"code":40906`) {
+	if rr.Code != http.StatusConflict || !strings.Contains(rr.Body.String(), `"code":40707`) {
 		t.Fatalf("retained create response = %d", rr.Code)
 	}
 	if _, err := e.store.GetPod("pod-a"); !errors.Is(err, repo.ErrNotFound) {
@@ -237,9 +237,7 @@ func TestPodAPI_PatchImageTagFailureRollsBack(t *testing.T) {
 	if pod.ImageTag != "img:test" || e.drv.created["pod-a"].ImageTag != "img:test" {
 		t.Fatalf("image patch did not roll back: pod=%+v runtime=%+v", pod, e.drv.created["pod-a"])
 	}
-	if strings.Contains(rr.Body.String(), "simulated create failure") {
-		t.Fatal("image patch response exposed a runtime error")
-	}
+	assertErrorHidesDiagnostic(t, rr.Body.String(), "simulated create failure")
 }
 
 func TestPodAPI_PatchImageTagRejectsCapacityBeforeUpgrade(t *testing.T) {
@@ -249,7 +247,7 @@ func TestPodAPI_PatchImageTagRejectsCapacityBeforeUpgrade(t *testing.T) {
 	createTestHumanUser(t, e.store, "pod-a", "bob", repo.HumanUserStatusPending)
 
 	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"imageTag":"img:v2","maxUsers":1}`)
-	if rr.Code != http.StatusConflict || !strings.Contains(rr.Body.String(), `"code":40902`) {
+	if rr.Code != http.StatusConflict || !strings.Contains(rr.Body.String(), `"code":40706`) {
 		t.Fatalf("capacity image patch response = %d body=%s", rr.Code, rr.Body.String())
 	}
 	pod, err := e.store.GetPod("pod-a")

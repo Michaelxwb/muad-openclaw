@@ -182,7 +182,7 @@ describe("Containers create Pod flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "创建" }));
 
-    expect(await screen.findByText("Pod already exists")).toBeInTheDocument();
+    expect(await screen.findByText("创建 Pod 失败")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("muad-pod-01")).toBeInTheDocument();
   });
 

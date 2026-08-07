@@ -1,6 +1,7 @@
 // Typed client for the Console backend. All paths are relative so the
 // embedded production build and local development use the same API contract.
 
+import i18n from "./i18n";
 import type {
   ActivationInput,
   AgentGuidance,
@@ -85,6 +86,8 @@ export class ApiError extends Error {
     message: string,
     readonly status: number,
     readonly code?: number,
+    readonly detail?: string,
+    readonly requestId?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -104,7 +107,7 @@ function parseResponseBody(raw: string, status: number): unknown {
     return JSON.parse(raw) as unknown;
   } catch (error) {
     throw new ApiError(
-      `服务端返回了无效 JSON: ${error instanceof Error ? error.message : "解析失败"}`,
+      `${i18n.t("errors.invalidJson")}: ${error instanceof Error ? error.message : i18n.t("common.unknown")}`,
       status,
     );
   }
@@ -114,12 +117,14 @@ function errorFromResponse(payload: unknown, status: number): ApiError {
   if (!isRecord(payload)) return new ApiError(`HTTP ${status}`, status);
   const message = typeof payload.message === "string" ? payload.message : `HTTP ${status}`;
   const code = typeof payload.code === "number" ? payload.code : undefined;
-  return new ApiError(message, status, code);
+  const detail = typeof payload.detail === "string" ? payload.detail : undefined;
+  const requestId = typeof payload.requestId === "string" ? payload.requestId : undefined;
+  return new ApiError(message, status, code, detail, requestId);
 }
 
 function unwrapResponse<T>(payload: unknown, status: number): T {
   if (!isRecord(payload) || payload.code !== 0 || !("data" in payload)) {
-    throw new ApiError("服务端响应格式无效", status);
+    throw new ApiError(i18n.t("errors.invalidResponse"), status);
   }
   return payload.data as T;
 }
@@ -127,15 +132,16 @@ function unwrapResponse<T>(payload: unknown, status: number): T {
 function handleUnauthorized(path: string, hadBearer: boolean): never {
   // Login failures are also HTTP 401; do not treat them as session expiry.
   if (path === "/auth/login" || !hadBearer) {
-    throw new ApiError("用户名或密码错误", 401, 40101);
+    throw new ApiError(i18n.t("errors.badCredentials"), 401, 40101);
   }
   token.clear();
   window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
-  throw new ApiError("登录已失效，请重新登录", 401, 40101);
+  throw new ApiError(i18n.t("errors.unauthorized"), 401, 40101);
 }
 
 async function request<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
+  headers["Accept-Language"] = i18n.language;
   const currentToken = token.get();
   if (currentToken) headers.Authorization = `Bearer ${currentToken}`;
   const response = await fetch(BASE + path, {
@@ -153,7 +159,7 @@ async function request<T>(method: HttpMethod, path: string, body?: unknown): Pro
 }
 
 async function requestForm<T>(path: string, form: FormData): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { "Accept-Language": i18n.language };
   const currentToken = token.get();
   if (currentToken) headers.Authorization = `Bearer ${currentToken}`;
   const response = await fetch(BASE + path, { method: "POST", headers, body: form });

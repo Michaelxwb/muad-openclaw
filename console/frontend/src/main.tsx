@@ -1,8 +1,9 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { ConfigProvider } from "@douyinfe/semi-ui";
-import zh_CN from "@douyinfe/semi-ui/lib/es/locale/source/zh_CN";
 import { App } from "./App";
+import { LanguageProvider, useLanguage } from "./i18n/LanguageProvider";
+import { semiLocale } from "./i18n/semi";
 import "./styles.css";
 
 // 屏蔽 Semi v2.x 内部的 findDOMNode deprecation 警告。
@@ -22,10 +23,20 @@ const filter =
 console.error = filter(origError);
 console.warn = filter(origWarn);
 
-createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <ConfigProvider locale={zh_CN}>
+// 语言状态在 LanguageProvider，Semi 的 locale 随 useLanguage 切换。
+function SemiShell() {
+  const { lang } = useLanguage();
+  return (
+    <ConfigProvider locale={semiLocale(lang)}>
       <App />
     </ConfigProvider>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <LanguageProvider>
+      <SemiShell />
+    </LanguageProvider>
   </React.StrictMode>,
 );

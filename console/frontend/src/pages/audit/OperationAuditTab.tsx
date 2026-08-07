@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Button, Input, Skeleton, Space, Table, Tag } from "@douyinfe/semi-ui";
 import { IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../../api";
@@ -10,6 +12,8 @@ import {
   tablePagination,
 } from "../../components/Pagination";
 import { useMountedRef } from "../../hooks/useMountedRef";
+import i18n from "../../i18n";
+import { errorMessage } from "../../utils/error";
 
 interface AuditFilters {
   actor: string;
@@ -60,7 +64,7 @@ function useOperationAuditRecords(active: boolean) {
       setTotal(result.total);
     } catch (caught) {
       if (mountedRef.current && requestId === requestRef.current)
-        setError(caught instanceof Error ? caught.message : "加载操作审计失败");
+        setError(errorMessage(caught, "audit.loadFailed"));
     } finally {
       if (mountedRef.current && requestId === requestRef.current) setLoading(false);
     }
@@ -80,13 +84,15 @@ function operationAuditQuery(filters: AuditFilters, page: number, pageSize: numb
 type OperationAuditState = ReturnType<typeof useOperationAuditRecords>;
 
 function OperationAuditTable({ state }: { state: OperationAuditState }) {
+  const { t } = useTranslation();
+  const columns = useMemo(() => auditColumns(t), [t]);
   return (
     <Skeleton
       placeholder={state.loading ? <Skeleton.Paragraph rows={5} /> : undefined}
       loading={state.loading}
     >
       <Table
-        columns={auditColumns as never}
+        columns={columns as never}
         dataSource={state.rows}
         pagination={tablePagination({
           page: state.page,
@@ -111,6 +117,7 @@ function OperationAuditToolbar(props: {
   onChange: (filters: AuditFilters) => void;
   onSearch: () => void;
 }) {
+  const { t } = useTranslation();
   const field = (key: keyof AuditFilters, input: string) =>
     props.onChange({ ...props.value, [key]: input });
   return (
@@ -118,34 +125,34 @@ function OperationAuditToolbar(props: {
       filters={
         <Space>
           <Input
-            aria-label="按操作人过滤"
-            placeholder="操作人"
+            aria-label={t("audit.filterActorAria")}
+            placeholder={t("audit.filterActorPlaceholder")}
             value={props.value.actor}
             onChange={(input) => field("actor", input)}
             style={{ width: 160 }}
           />
           <Input
-            aria-label="按动作过滤"
-            placeholder="动作"
+            aria-label={t("audit.filterActionAria")}
+            placeholder={t("audit.filterActionPlaceholder")}
             value={props.value.action}
             onChange={(input) => field("action", input)}
             style={{ width: 180 }}
           />
           <Input
-            aria-label="按目标过滤"
-            placeholder="目标 ID"
+            aria-label={t("audit.filterTargetAria")}
+            placeholder={t("audit.filterTargetPlaceholder")}
             value={props.value.target}
             onChange={(input) => field("target", input)}
             onEnterPress={props.onSearch}
             style={{ width: 160 }}
           />
           <Button
-            aria-label="查询审计日志"
+            aria-label={t("audit.searchAria")}
             icon={<IconSearch />}
             theme="solid"
             onClick={props.onSearch}
           >
-            查询
+            {t("common.search")}
           </Button>
         </Space>
       }
@@ -153,40 +160,42 @@ function OperationAuditToolbar(props: {
   );
 }
 
-const auditColumns = [
-  {
-    title: "时间",
-    key: "ts",
-    width: 170,
-    render: (_: unknown, entry: AuditEntry) => new Date(entry.ts).toLocaleString(),
-  },
-  { title: "Actor", dataIndex: "actor", key: "actor", width: 150 },
-  { title: "动作", dataIndex: "action", key: "action", width: 210 },
-  {
-    title: "目标",
-    key: "target",
-    width: 210,
-    render: (_: unknown, entry: AuditEntry) => (
-      <div>
-        <span className="mono">{entry.target || "-"}</span>
+function auditColumns(t: TFunction) {
+  return [
+    {
+      title: t("audit.time"),
+      key: "ts",
+      width: 170,
+      render: (_: unknown, entry: AuditEntry) => new Date(entry.ts).toLocaleString(),
+    },
+    { title: "Actor", dataIndex: "actor", key: "actor", width: 150 },
+    { title: t("audit.action"), dataIndex: "action", key: "action", width: 210 },
+    {
+      title: t("audit.target"),
+      key: "target",
+      width: 210,
+      render: (_: unknown, entry: AuditEntry) => (
         <div>
-          <Tag size="small">{targetTypeLabel(entry.targetType)}</Tag>
+          <span className="mono">{entry.target || "-"}</span>
+          <div>
+            <Tag size="small">{targetTypeLabel(entry.targetType)}</Tag>
+          </div>
         </div>
-      </div>
-    ),
-  },
-  {
-    title: "上下文",
-    key: "metadata",
-    render: (_: unknown, entry: AuditEntry) => auditContext(entry),
-  },
-  {
-    title: "结果",
-    key: "result",
-    width: 100,
-    render: (_: unknown, entry: AuditEntry) => entry.metadata.status || entry.payload,
-  },
-];
+      ),
+    },
+    {
+      title: t("audit.context"),
+      key: "metadata",
+      render: (_: unknown, entry: AuditEntry) => auditContext(entry),
+    },
+    {
+      title: t("audit.result"),
+      key: "result",
+      width: 100,
+      render: (_: unknown, entry: AuditEntry) => entry.metadata.status || entry.payload,
+    },
+  ];
+}
 
 function targetTypeLabel(type: AuditEntry["targetType"]): string {
   const labels: Record<AuditEntry["targetType"], string> = {
@@ -196,7 +205,7 @@ function targetTypeLabel(type: AuditEntry["targetType"]): string {
     binding_code: "Binding Code",
     platform: "Platform",
     skill: "Skill",
-    generic: "通用",
+    generic: i18n.t("audit.targetTypeGeneric"),
   };
   return labels[type];
 }

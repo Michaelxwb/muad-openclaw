@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Input, Modal, RadioGroup } from "@douyinfe/semi-ui";
 import QRCode from "qrcode";
 import { api } from "../../api";
 import type { Pod } from "../../api";
 import { FeedbackBanner } from "../../components/ConsolePage";
 import { useMountedRef } from "../../hooks/useMountedRef";
+import { errorMessage } from "../../utils/error";
 import styles from "../PodDetail.module.css";
 
 type ActionDialog = "upgrade" | "delete" | "logs" | "qr" | null;
@@ -61,18 +63,19 @@ function UpgradeDialog({
   useEffect(() => {
     if (visible) setImageTag(pod.imageTag);
   }, [pod.imageTag, visible]);
+  const { t } = useTranslation();
   const confirm = async () => {
     if (imageTag.trim() && (await onUpgrade(imageTag.trim()))) onClose();
   };
   return (
     <Modal
-      title={`升级 ${pod.podId}`}
+      title={t("pod.upgradeSingle", { podId: pod.podId })}
       visible={visible}
       onCancel={onClose}
       onOk={() => void confirm()}
-      okText="升级"
+      okText={t("pod.actionUpgrade")}
     >
-      <Input aria-label="升级镜像 tag" value={imageTag} onChange={setImageTag} />
+      <Input aria-label={t("pod.upgradeImageTagAria")} value={imageTag} onChange={setImageTag} />
     </Modal>
   );
 }
@@ -88,30 +91,28 @@ function DeleteDialog({
   onClose: () => void;
   onDelete: (deleteState: boolean) => Promise<boolean>;
 }) {
+  const { t } = useTranslation();
   const [deleteState, setDeleteState] = useState(false);
   const confirm = async () => {
     if (await onDelete(deleteState)) onClose();
   };
   return (
     <Modal
-      title={`删除 ${pod.podId}`}
+      title={t("pod.deleteTitle", { podId: pod.podId })}
       visible={visible}
       onCancel={onClose}
       onOk={() => void confirm()}
-      okText="确认删除"
+      okText={t("common.confirmDelete")}
       okButtonProps={{ type: "danger" as const }}
     >
-      <div>
-        删除后 Pod 与运行环境将被移除；Pod 内的 Human User 及其 IM Identity / private Skill
-        保留为未绑定状态（agent_id 不变），可在重建 Pod 时一键恢复或绑定到其他 Pod。
-      </div>
+      <div>{t("pod.deleteHint")}</div>
       <RadioGroup
         className={styles.dangerChoice}
         value={deleteState ? "delete" : "retain"}
         direction="vertical"
         options={[
-          { value: "retain", label: "保留 PVC，记忆/workspace 可供重建同名 Pod 时接管" },
-          { value: "delete", label: "删除 PVC，workspace、记忆、会话和 private Skill 将永久丢失" },
+          { value: "retain", label: t("pod.deleteRetainPvc") },
+          { value: "delete", label: t("pod.deleteRemovePvc") },
         ]}
         onChange={(event) => setDeleteState(event.target.value === "delete")}
       />
@@ -128,6 +129,7 @@ export function PodLogDialog({
   visible: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const state = usePodLogs(podId);
   useEffect(() => {
     if (visible) void state.load();
@@ -135,14 +137,14 @@ export function PodLogDialog({
   return (
     <Modal
       className="log-modal"
-      title={`${podId} 日志`}
+      title={t("pod.logTitle", { podId })}
       visible={visible}
       width="82vw"
       onCancel={onClose}
       footer={
         <>
-          <Button onClick={() => void state.load()}>刷新</Button>
-          <Button onClick={onClose}>关闭</Button>
+          <Button onClick={() => void state.load()}>{t("common.refresh")}</Button>
+          <Button onClick={onClose}>{t("common.close")}</Button>
         </>
       }
     >
@@ -165,7 +167,7 @@ function usePodLogs(podId: string) {
       if (mountedRef.current && requestId === requestRef.current) setLogs(result.logs);
     } catch (caught) {
       if (mountedRef.current && requestId === requestRef.current) {
-        setError(caught instanceof Error ? caught.message : "加载日志失败");
+        setError(errorMessage(caught, "pod.logLoadFailed"));
       }
     }
   }, [mountedRef, podId]);
@@ -181,28 +183,29 @@ export function PodQrDialog({
   visible: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const state = useQrCode(podId);
   useEffect(() => {
     if (visible) void state.load();
   }, [state.load, visible]);
   return (
     <Modal
-      title={`${podId} 微信登录`}
+      title={t("pod.qrTitle", { podId })}
       visible={visible}
       onCancel={onClose}
       footer={
         <>
-          <Button onClick={() => void state.load()}>刷新</Button>
-          <Button onClick={() => void state.load(true)}>重新扫码</Button>
-          <Button onClick={onClose}>关闭</Button>
+          <Button onClick={() => void state.load()}>{t("common.refresh")}</Button>
+          <Button onClick={() => void state.load(true)}>{t("pod.qrRescan")}</Button>
+          <Button onClick={onClose}>{t("common.close")}</Button>
         </>
       }
     >
       <div style={{ textAlign: "center" }}>
         {state.dataUrl ? (
-          <img className="qr-img" src={state.dataUrl} alt="微信登录二维码" />
+          <img className="qr-img" src={state.dataUrl} alt={t("pod.qrAlt")} />
         ) : (
-          <p>{state.message || "加载中..."}</p>
+          <p>{state.message || t("common.loading")}</p>
         )}
       </div>
     </Modal>
@@ -210,6 +213,7 @@ export function PodQrDialog({
 }
 
 function useQrCode(podId: string) {
+  const { t } = useTranslation();
   const [dataUrl, setDataUrl] = useState("");
   const [message, setMessage] = useState("");
   const mountedRef = useMountedRef();
@@ -222,18 +226,18 @@ function useQrCode(podId: string) {
       try {
         const result = await api.qrcode(podId, force);
         if (!mountedRef.current || requestId !== requestRef.current) return;
-        if (result.connected) setMessage("微信已登录");
+        if (result.connected) setMessage(t("pod.qrConnected"));
         else if (result.loginUrl) {
           const generated = await QRCode.toDataURL(result.loginUrl, { margin: 1, width: 220 });
           if (mountedRef.current && requestId === requestRef.current) setDataUrl(generated);
-        } else setMessage("未获取到二维码");
+        } else setMessage(t("pod.qrNotAvailable"));
       } catch (caught) {
         if (mountedRef.current && requestId === requestRef.current) {
-          setMessage(caught instanceof Error ? caught.message : "获取二维码失败");
+          setMessage(errorMessage(caught, "pod.qrFailed"));
         }
       }
     },
-    [mountedRef, podId],
+    [mountedRef, podId, t],
   );
   return { dataUrl, message, load };
 }

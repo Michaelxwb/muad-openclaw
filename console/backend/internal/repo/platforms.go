@@ -10,15 +10,17 @@ import (
 	"time"
 
 	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 const maxPlatformCredentialBytes = 16 * 1024
 
 var (
-	ErrPlatformExists          = errors.New("repo: platform already exists")
-	ErrPlatformDisabled        = errors.New("repo: platform is disabled")
-	ErrCredentialNotConfigured = errors.New("repo: platform credential not configured")
-	ErrInvalidPlatform         = errors.New("repo: invalid platform")
+	ErrPlatformExists          = &Error{Code: errcode.ConflictPlatformExists, Msg: "repo: platform already exists"}
+	ErrPlatformDisabled        = &Error{Code: errcode.ConflictPlatformDisabled, Msg: "repo: platform is disabled"}
+	ErrCredentialNotConfigured = &Error{Code: errcode.NotFoundPlatformCredential, Msg: "repo: platform credential not configured"}
+	ErrInvalidPlatform         = &Error{Code: errcode.InvalidPlatform, Msg: "repo: invalid platform"}
 
 	platformPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 )

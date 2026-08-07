@@ -9,9 +9,9 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createGunzip } from "node:zlib";
 
-const MAX_BUNDLE_BYTES = 25 * 1024 * 1024;
-const MAX_EXTRACTED_BYTES = 25 * 1024 * 1024;
-const MAX_EXTRACTED_ENTRIES = 2048;
+// Bundle size is enforced at the console ingest endpoint (maxSkillUploadBundleSize);
+// the installer only keeps a loose memory guard on archive buffers.
+const MAX_BUNDLE_MEMORY_BYTES = 512 * 1024 * 1024;
 const SKILL_NAME_RE = /^[a-z][a-z0-9_-]{0,63}$/u;
 const AGENT_ID_RE = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/u;
 const DEFAULT_STATE_DIR = "/home/node/.openclaw";
@@ -34,7 +34,6 @@ export async function installPrivateSkill({ bundle, agentId, stateDir, expectedN
     await fs.mkdir(extractRoot, { mode: 0o700 });
     await extractBundle(bundlePath, extractRoot, format);
     await assertNoLinks(extractRoot);
-    await assertExtractedLimits(extractRoot);
     const skillDir = await findPrimarySkillDir(extractRoot);
     const metadata = await readSkillMetadata(skillDir, expectedName);
     const targetDir = path.join(skillsRoot, metadata.name);
@@ -91,7 +90,7 @@ export async function exportPrivateSkill({ agentId, stateDir, skillName }) {
   const sourceDir = stagingOk ? stagingDir : realDir;
   await assertNoLinks(sourceDir);
   const parentDir = path.dirname(sourceDir);
-  const bundle = runTarRaw(["-czf", "-", "-C", parentDir, skillName], MAX_EXTRACTED_BYTES);
+  const bundle = runTarRaw(["-czf", "-", "-C", parentDir, skillName], MAX_BUNDLE_MEMORY_BYTES);
   return { ok: true, action: "export", name: skillName, bundle, bundleHash: hashBytes(bundle) };
 }
 
@@ -112,9 +111,7 @@ async function validateTarBundle(bundlePath) {
 async function validateZipBundle(bundlePath) {
   const names = runUnzip(["-Z1", bundlePath]).stdout.split(/\r?\n/u).filter(Boolean);
   if (names.length === 0) throw new Error("bundle is empty");
-  validateArchiveEntryCount(names.length);
   for (const name of names) assertSafeArchivePath(name);
-  let totalBytes = 0;
   const verbose = runUnzip(["-Z", bundlePath]).stdout.split(/\r?\n/u).filter(Boolean);
   for (const line of verbose) {
     const entry = parseZipListingLine(line);
@@ -122,8 +119,6 @@ async function validateZipBundle(bundlePath) {
     if (entry.attrs.startsWith("l")) {
       throw new Error("bundle must not contain links");
     }
-    totalBytes += entry.size;
-    validateArchiveTotalBytes(totalBytes);
   }
 }
 
@@ -142,7 +137,7 @@ async function validateTarGzipMetadata(bundlePath) {
 
 function newTarValidationState() {
   return {
-    done: false, entries: 0, totalBytes: 0, skipRemaining: 0,
+    done: false, entries: 0, skipRemaining: 0,
     pendingBody: null, nextPath: "", nextLinkPath: "",
   };
 }
@@ -213,12 +208,7 @@ function validateTarPayloadEntry(entry, state) {
   assertSafeArchivePath(name);
   if (linkPath) assertSafeArchivePath(linkPath);
   state.entries++;
-  validateArchiveEntryCount(state.entries);
   if (entry.type === "1" || entry.type === "2") throw new Error("bundle must not contain links");
-  if (entry.type === "0" || entry.type === "\0" || entry.type === "7") {
-    state.totalBytes += entry.size;
-    validateArchiveTotalBytes(state.totalBytes);
-  }
 }
 
 function consumePendingTarBody(buffer, state) {
@@ -316,14 +306,6 @@ function parseZipListingLine(line) {
   const size = Number.parseInt(fields[3], 10);
   if (!Number.isFinite(size) || size < 0) throw new Error("bundle contains an invalid file size");
   return { attrs: fields[0], size };
-}
-
-function validateArchiveEntryCount(entries) {
-  if (entries > MAX_EXTRACTED_ENTRIES) throw new Error("bundle contains too many files");
-}
-
-function validateArchiveTotalBytes(totalBytes) {
-  if (totalBytes > MAX_EXTRACTED_BYTES) throw new Error("bundle extracted size is too large");
 }
 
 async function readSkillMetadata(skillDir, expectedName) {
@@ -446,17 +428,6 @@ async function findPrimarySkillDir(root) {
 async function assertNoLinks(root) {
   await walk(root, async (_entryPath, stat) => {
     if (stat.isSymbolicLink()) throw new Error("bundle must not contain symlinks");
-  }, { lstat: true });
-}
-
-async function assertExtractedLimits(root) {
-  let entries = 0;
-  let totalBytes = 0;
-  await walk(root, async (_entryPath, stat) => {
-    entries++;
-    if (entries > MAX_EXTRACTED_ENTRIES) throw new Error("bundle contains too many files");
-    if (stat.isFile()) totalBytes += stat.size;
-    if (totalBytes > MAX_EXTRACTED_BYTES) throw new Error("bundle extracted size is too large");
   }, { lstat: true });
 }
 
@@ -588,7 +559,7 @@ function hashBytes(value) {
 }
 
 function runUnzip(args) {
-  const result = spawnSync("unzip", args, { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
+  const result = spawnSync("unzip", args, { encoding: "utf8", maxBuffer: MAX_BUNDLE_MEMORY_BYTES });
   if (result.status !== 0) {
     throw new Error((result.stderr || result.stdout || "unzip failed").trim());
   }
@@ -606,7 +577,7 @@ async function readStdinLimited() {
   let total = 0;
   for await (const chunk of process.stdin) {
     total += chunk.length;
-    if (total > MAX_BUNDLE_BYTES) throw new Error("bundle exceeds 25 MiB");
+    if (total > MAX_BUNDLE_MEMORY_BYTES) throw new Error("bundle exceeds the memory guard");
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);

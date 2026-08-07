@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 var (
 	// ErrPodExists is returned for a duplicate Pod ID or service-token fingerprint.
-	ErrPodExists = errors.New("repo: pod already exists")
+	ErrPodExists = &Error{Code: errcode.ConflictExists, Msg: "repo: pod already exists"}
 	// ErrGenerationConflict means an apply result targets a stale generation.
-	ErrGenerationConflict = errors.New("repo: pod config generation conflict")
+	ErrGenerationConflict = &Error{Code: errcode.ConflictGeneration, Msg: "repo: pod config generation conflict"}
 )
 
 const podColumns = `pod_id, display_name, image_tag, state, max_users, channels,

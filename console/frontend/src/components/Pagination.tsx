@@ -1,7 +1,9 @@
 import { useId } from "react";
 import { Select, Space, Typography } from "@douyinfe/semi-ui";
 import { Pagination as SemiPagination } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import type { TablePaginationProps } from "@douyinfe/semi-ui/lib/es/table/interface";
+import i18n from "../i18n";
 import styles from "./Pagination.module.css";
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
@@ -33,7 +35,7 @@ export function tablePagination({
     size: "small",
     position: "bottom",
     formatPageText: ({ currentStart = 0, currentEnd = 0, total: currentTotal = 0 } = {}) =>
-      `显示第 ${currentStart} 条-第 ${currentEnd} 条，共 ${currentTotal} 条`,
+      i18n.t("common.pageRange", { start: currentStart, end: currentEnd, total: currentTotal }),
     preventPageChangeOnPageSizeChange: true,
     onPageChange,
     onPageSizeChange,
@@ -68,7 +70,7 @@ export function renderTablePagination(pagination: TablePaginationProps) {
 function formatRange(page: number, pageSize: number, total: number) {
   const currentStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const currentEnd = Math.min(page * pageSize, total);
-  return `显示第 ${currentStart} 条-第 ${currentEnd} 条，共 ${total} 条`;
+  return i18n.t("common.pageRange", { start: currentStart, end: currentEnd, total });
 }
 
 interface PageSizeSelectProps {
@@ -77,14 +79,15 @@ interface PageSizeSelectProps {
 }
 
 export function PageSizeSelect({ pageSize, onPageSizeChange }: PageSizeSelectProps) {
+  const { t } = useTranslation();
   const labelId = useId();
   const options = PAGE_SIZE_OPTIONS.map((value) => ({ label: String(value), value }));
   return (
     <Space className={styles.pageSize} spacing={6}>
       <span id={labelId} className={styles.visuallyHidden}>
-        每页数量
+        {t("common.pageSize")}
       </span>
-      <Typography.Text className={styles.label}>每页</Typography.Text>
+      <Typography.Text className={styles.label}>{t("common.pageSizePer")}</Typography.Text>
       <Select
         aria-labelledby={labelId}
         className={styles.select}
@@ -97,7 +100,7 @@ export function PageSizeSelect({ pageSize, onPageSizeChange }: PageSizeSelectPro
             onPageSizeChange(next);
         }}
       />
-      <Typography.Text className={styles.label}>条</Typography.Text>
+      <Typography.Text className={styles.label}>{t("common.pageSizeItems")}</Typography.Text>
     </Space>
   );
 }

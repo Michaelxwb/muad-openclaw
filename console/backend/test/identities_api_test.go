@@ -72,7 +72,7 @@ func TestIdentityAPI_ScopedConflictRollsBack(t *testing.T) {
 	body = `{"channel":"wecom","externalId":"alice-external","externalIdType":"corp_userid"}`
 	rr = e.do(http.MethodPost, "/api/v1/human-users/"+bob.HumanUserID+"/identities", body)
 	assertStatus(t, rr, http.StatusConflict)
-	if !strings.Contains(rr.Body.String(), `"code":40903`) {
+	if !strings.Contains(rr.Body.String(), `"code":40302`) {
 		t.Fatalf("identity conflict response = %s", rr.Body.String())
 	}
 	storedBob, _ := e.store.GetHumanUser(bob.HumanUserID)

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"net/http"
 )
 
@@ -89,6 +90,6 @@ func (s *Server) registerInternalRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /internal/v1/skills/private/ingest", s.handleIngestPrivateSkill)
 }
 
-func (s *Server) handleNotImplemented(w http.ResponseWriter, _ *http.Request) {
-	writeErr(w, http.StatusNotImplemented, codeDependencyUnavailable, "endpoint not implemented")
+func (s *Server) handleNotImplemented(w http.ResponseWriter, r *http.Request) {
+	writeErr(w, r, errcode.UnavailableEndpointNotImplemented)
 }

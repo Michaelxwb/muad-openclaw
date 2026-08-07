@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Modal, Space, Table, Tag, TextArea, Toast } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import type { HumanUser, Platform, PlatformCredential } from "../../api";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import { FeedbackBanner } from "../ConsolePage";
+import { errorMessage } from "../../utils/error";
+import i18n from "../../i18n";
 import { Field } from "./shared";
 
 interface Props {
@@ -17,6 +20,7 @@ interface CredentialRow {
 }
 
 export function PlatformCredentialManager({ user }: Props) {
+  const { t } = useTranslation();
   const state = useCredentialRows(user.humanUserId);
   const [editing, setEditing] = useState<CredentialRow | null>(null);
   const [deleting, setDeleting] = useState<CredentialRow | null>(null);
@@ -24,7 +28,7 @@ export function PlatformCredentialManager({ user }: Props) {
     <div>
       <FeedbackBanner error={state.error} />
       <Table
-        columns={credentialColumns(setEditing, setDeleting) as never}
+        columns={credentialColumns(t, setEditing, setDeleting) as never}
         dataSource={state.rows}
         rowKey="rowId"
         loading={state.loading}
@@ -74,7 +78,7 @@ function useCredentialRows(humanUserId: string) {
       );
     } catch (caught) {
       if (!mountedRef.current || requestId !== requestRef.current) return;
-      setError(caught instanceof Error ? caught.message : "加载平台凭证失败");
+      setError(errorMessage(caught, "user.loadCredentialsFailed"));
     } finally {
       if (mountedRef.current && requestId === requestRef.current) setLoading(false);
     }
@@ -86,12 +90,13 @@ function useCredentialRows(humanUserId: string) {
 }
 
 function credentialColumns(
+  t: (key: string) => string,
   onEdit: (row: CredentialRow) => void,
   onDelete: (row: CredentialRow) => void,
 ) {
   return [
     {
-      title: "平台",
+      title: t("user.columnPlatform"),
       key: "platform",
       render: (_: unknown, row: CredentialRow) => (
         <div>
@@ -101,37 +106,37 @@ function credentialColumns(
       ),
     },
     {
-      title: "平台状态",
+      title: t("user.columnPlatformStatus"),
       key: "platformStatus",
       render: (_: unknown, row: CredentialRow) => (
         <Tag color={row.platform.enabled ? "green" : "grey"}>
-          {row.platform.enabled ? "已启用" : "已停用"}
+          {row.platform.enabled ? t("status.active") : t("status.disabled")}
         </Tag>
       ),
     },
     {
-      title: "认证指纹",
+      title: t("user.columnCredentialFingerprint"),
       key: "credential",
       render: (_: unknown, row: CredentialRow) =>
         row.credential ? (
           <span className="mono">{row.credential.credentialFingerprint}</span>
         ) : (
-          "未配置"
+          t("user.notConfigured")
         ),
     },
     {
-      title: "更新时间",
+      title: t("common.updatedAt"),
       key: "updatedAt",
       render: (_: unknown, row: CredentialRow) =>
         row.credential ? new Date(row.credential.updatedAt).toLocaleString() : "-",
     },
     {
-      title: "操作",
+      title: t("common.actions"),
       key: "actions",
       render: (_: unknown, row: CredentialRow) => (
         <Space>
           <Button size="small" onClick={() => onEdit(row)}>
-            {row.credential ? "覆盖" : "配置"}
+            {row.credential ? t("user.overwrite") : t("user.configure")}
           </Button>
           <Button
             size="small"
@@ -139,7 +144,7 @@ function credentialColumns(
             disabled={!row.credential}
             onClick={() => onDelete(row)}
           >
-            删除
+            {t("common.delete")}
           </Button>
         </Space>
       ),
@@ -155,6 +160,7 @@ interface CredentialDialogProps {
 }
 
 function CredentialEditorDialog(props: CredentialDialogProps) {
+  const { t } = useTranslation();
   const [credentialsJSON, setCredentialsJSON] = useState("{}");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -179,10 +185,10 @@ function CredentialEditorDialog(props: CredentialDialogProps) {
         credentials,
       );
       props.onClose();
-      Toast.success("平台凭证已保存");
+      Toast.success(t("user.credentialSaved"));
       await props.onSaved();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存平台凭证失败");
+      setError(errorMessage(caught, "user.saveCredentialFailed"));
     } finally {
       setCredentialsJSON("{}");
       setBusy(false);
@@ -191,17 +197,20 @@ function CredentialEditorDialog(props: CredentialDialogProps) {
   return (
     <Modal
       className="standard-modal"
-      title={`${props.row?.credential ? "覆盖" : "配置"} ${props.row?.platform.displayName ?? ""} 认证信息`}
+      title={t("user.credentialEditorTitle", {
+        action: props.row?.credential ? t("user.overwrite") : t("user.configure"),
+        name: props.row?.platform.displayName ?? "",
+      })}
       visible={props.row !== null}
       onCancel={props.onClose}
       onOk={() => void submit()}
-      okText="保存"
+      okText={t("common.save")}
       confirmLoading={busy}
     >
       <FeedbackBanner error={error} />
-      <Field label="认证 JSON">
+      <Field label={t("user.credentialJson")}>
         <TextArea
-          aria-label="业务平台认证 JSON"
+          aria-label={t("user.credentialJsonAria")}
           value={credentialsJSON}
           onChange={setCredentialsJSON}
           rows={8}
@@ -215,15 +224,18 @@ function parseCredentials(raw: string): Record<string, unknown> | string {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      return "认证信息必须是 JSON 对象";
+      return i18n.t("user.credentialMustBeObject");
     }
     return parsed as Record<string, unknown>;
   } catch (caught) {
-    return caught instanceof Error ? `认证 JSON 无效：${caught.message}` : "认证 JSON 无效";
+    return caught instanceof Error
+      ? i18n.t("user.credentialJsonInvalidWithDetail", { message: caught.message })
+      : i18n.t("user.credentialJsonInvalid");
   }
 }
 
 function DeleteCredentialDialog(props: CredentialDialogProps) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const remove = async () => {
@@ -233,10 +245,10 @@ function DeleteCredentialDialog(props: CredentialDialogProps) {
     try {
       await api.deletePlatformCredential(props.user.humanUserId, props.row.platform.platform);
       props.onClose();
-      Toast.success("平台凭证已删除");
+      Toast.success(t("user.credentialDeleted"));
       await props.onSaved();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "删除平台凭证失败");
+      setError(errorMessage(caught, "user.deleteCredentialFailed"));
     } finally {
       setBusy(false);
     }
@@ -244,16 +256,16 @@ function DeleteCredentialDialog(props: CredentialDialogProps) {
   return (
     <Modal
       className="standard-modal"
-      title={`删除 ${props.row?.platform.displayName ?? ""} API Key`}
+      title={t("user.deleteCredentialTitle", { name: props.row?.platform.displayName ?? "" })}
       visible={props.row !== null}
       onCancel={props.onClose}
       onOk={() => void remove()}
-      okText="确认删除"
+      okText={t("common.confirmDelete")}
       confirmLoading={busy}
       okButtonProps={{ type: "danger" as const }}
     >
       <FeedbackBanner error={error} />
-      删除后，该用户调用对应平台 Skill 时将无法解析认证信息。
+      {t("user.deleteCredentialConfirm")}
     </Modal>
   );
 }

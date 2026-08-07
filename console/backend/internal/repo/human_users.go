@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 const (
@@ -17,14 +19,14 @@ const (
 )
 
 var (
-	ErrHumanUserExists        = errors.New("repo: Human User already exists")
-	ErrPodCapacity            = errors.New("repo: Pod Human User capacity exceeded")
-	ErrInvalidCapacity        = errors.New("repo: invalid Pod Human User capacity")
-	ErrInvalidHumanUser       = errors.New("repo: invalid Human User")
-	ErrInvalidStateTransition = errors.New("repo: invalid Human User state transition")
+	ErrHumanUserExists        = &Error{Code: errcode.ConflictExists, Msg: "repo: Human User already exists"}
+	ErrPodCapacity            = &Error{Code: errcode.ConflictPodCapacity, Msg: "repo: Pod Human User capacity exceeded"}
+	ErrInvalidCapacity        = &Error{Code: errcode.InvalidPodCapacity, Msg: "repo: invalid Pod Human User capacity"}
+	ErrInvalidHumanUser       = &Error{Code: errcode.InvalidHumanUser, Msg: "repo: invalid Human User"}
+	ErrInvalidStateTransition = &Error{Code: errcode.ConflictStateOperation, Msg: "repo: invalid Human User state transition"}
 	ErrBrowserPortsExhausted  = errors.New("repo: Browser CDP port range exhausted")
-	ErrLLMModelAlreadyBound   = errors.New("repo: LLM model already bound")
-	ErrInvalidLLMModel        = errors.New("repo: invalid LLM model")
+	ErrLLMModelAlreadyBound   = &Error{Code: errcode.ConflictLLMModelBound, Msg: "repo: LLM model already bound"}
+	ErrInvalidLLMModel        = &Error{Code: errcode.InvalidLLMModel, Msg: "repo: invalid LLM model"}
 
 	runtimeIDPattern = regexp.MustCompile(`^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$`)
 )

@@ -18,6 +18,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/api"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
@@ -304,6 +305,35 @@ func TestSkillAPI_PrivateIngestRejectsInvalidBundle(t *testing.T) {
 	}
 }
 
+func TestSkillAPI_PrivateIngestRespectsConfiguredMaxSize(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	// 把 bundle 上限压到 1 字节，重建 handler 使配置生效。
+	// ingest 走 skill-upload 的咽喉路径，必须与 multipart 上传一致 respect
+	// maxSkillUploadBundleSize，超限返回 40504 而非创建资产。
+	e.cfg.SkillMaxUploadBundleBytes = 1
+	e.h = api.NewServer(e.cfg, e.store, e.cipher, e.drv, e.cache, e.syncer, e.reconcile).Handler()
+
+	bundle := makeSkillBundle(t, "oversize-skill", map[string]any{"name": "oversize-skill"})
+	body := fmt.Sprintf(`{"agentId":%q,"bundleFormat":"tar.gz","bundle":%q}`,
+		alice.AgentID, base64.StdEncoding.EncodeToString(bundle))
+	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
+	rr := httptest.NewRecorder()
+	e.h.ServeHTTP(rr, req)
+	assertStatus(t, rr, http.StatusBadRequest)
+	if !strings.Contains(rr.Body.String(), `"code":40504`) {
+		t.Fatalf("oversize ingest body = %s, want code 40504", rr.Body.String())
+	}
+	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
+		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
+	})
+	if err != nil || len(assets) != 0 {
+		t.Fatalf("oversize ingest should not create an asset: %+v, %v", assets, err)
+	}
+}
+
 func TestSkillAPI_PrivateUploadAcceptsZipBundle(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
@@ -455,6 +485,20 @@ func TestSkillAPI_PublicUploadCreatesAssetAndMarksPods(t *testing.T) {
 	}
 	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
 		t.Fatalf("public upload should auto-enqueue reconcile for affected Pods: %v", e.reconcile.podIDs)
+	}
+}
+
+func TestSkillAPI_PublicUploadRespectsConfiguredMaxSize(t *testing.T) {
+	e := newTestEnv(t)
+	// 把上传压缩包上限压到 1 字节，重建 handler 使配置生效。
+	// 任何非空 bundle 都必然超限；若代码未 respect 配置（仍写死 5MB），此测试会因上传成功而失败。
+	e.cfg.SkillMaxUploadBundleBytes = 1
+	e.h = api.NewServer(e.cfg, e.store, e.cipher, e.drv, e.cache, e.syncer, e.reconcile).Handler()
+
+	rr := e.publicSkillUpload("tiny.tar.gz", makeSkillBundle(t, "tiny", map[string]any{"name": "tiny"}))
+	assertStatus(t, rr, http.StatusBadRequest)
+	if !strings.Contains(rr.Body.String(), `"code":40504`) {
+		t.Fatalf("oversize upload body = %s, want code 40504", rr.Body.String())
 	}
 }
 

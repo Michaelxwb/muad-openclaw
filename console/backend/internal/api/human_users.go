@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -20,17 +21,17 @@ type patchHumanUserRequest struct {
 func (s *Server) handleCreateHumanUser(w http.ResponseWriter, r *http.Request) {
 	pod, err := s.store.GetPod(r.PathValue("podId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request createHumanUserRequest
 	if err := decodeJSONBody(w, r, &request); err != nil || !validHumanUserCreateRequest(request) {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid Human User request")
+		writeErr(w, r, errcode.InvalidHumanUserRequest)
 		return
 	}
 	agentID, err := resolveAgentID(request.AgentID, request.DisplayName)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "generate agent ID")
+		writeErr(w, r, errcode.InternalGenerateAgentID)
 		return
 	}
 	user := repo.HumanUser{
@@ -40,12 +41,12 @@ func (s *Server) handleCreateHumanUser(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := s.bootstrapHumanUser(pod, user, request)
 	if err != nil {
-		s.writeHumanUserCreateError(w, err)
+		s.writeHumanUserCreateError(w, r, err)
 		return
 	}
 	s.enqueueReconcile(pod.PodID)
 	s.auditHumanUser(r, auditlog.ActionHumanUserCreate, result.HumanUser, "created")
-	s.writeHumanUserBootstrap(w, result)
+	s.writeHumanUserBootstrap(w, r, result)
 }
 
 func validHumanUserCreateRequest(request createHumanUserRequest) bool {
@@ -76,25 +77,25 @@ func (s *Server) bootstrapHumanUser(
 	return s.store.CreateHumanUserWithBindingCode(s.bindingCodec, user, binding, start, end)
 }
 
-func (s *Server) writeHumanUserCreateError(w http.ResponseWriter, err error) {
+func (s *Server) writeHumanUserCreateError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, repo.ErrNotFound):
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 	case errors.Is(err, repo.ErrPodCapacity), errors.Is(err, repo.ErrHumanUserExists),
 		errors.Is(err, repo.ErrIdentityExists), errors.Is(err, repo.ErrLLMModelAlreadyBound):
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 	case errors.Is(err, repo.ErrInvalidHumanUser), errors.Is(err, repo.ErrInvalidBindingCode),
 		errors.Is(err, repo.ErrInvalidLLMModel):
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Human User configuration")
+		writeErr(w, r, errcode.InvalidHumanUserConfig)
 	default:
-		writeErr(w, http.StatusInternalServerError, codeInternal, "create Human User")
+		writeErr(w, r, errcode.InternalCreateHumanUser)
 	}
 }
 
-func (s *Server) writeHumanUserBootstrap(w http.ResponseWriter, result repo.HumanUserBootstrapResult) {
+func (s *Server) writeHumanUserBootstrap(w http.ResponseWriter, r *http.Request, result repo.HumanUserBootstrapResult) {
 	view, err := s.makeHumanUserView(result.HumanUser, boolToInt(result.Identity != nil))
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "render Human User")
+		writeErr(w, r, errcode.InternalRenderHumanUser)
 		return
 	}
 	data := map[string]any{"humanUser": view}
@@ -113,7 +114,7 @@ func (s *Server) writeHumanUserBootstrap(w http.ResponseWriter, result repo.Huma
 func (s *Server) handleListHumanUsers(w http.ResponseWriter, r *http.Request) {
 	podID := r.PathValue("podId")
 	if _, err := s.store.GetPod(podID); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	filter, page, pageSize, ok := humanUserListFilterFromRequest(w, r)
@@ -122,15 +123,15 @@ func (s *Server) handleListHumanUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	users, total, err := s.store.ListHumanUsersByPod(podID, filter)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list Human Users")
+		writeErr(w, r, errcode.InternalListHumanUsers)
 		return
 	}
 	counts, err := s.store.CountIdentitiesByHumanUser(podID)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "count Human User identities")
+		writeErr(w, r, errcode.InternalCountHumanUserIdentities)
 		return
 	}
-	s.writeHumanUserPage(w, users, counts, total, page, pageSize)
+	s.writeHumanUserPage(w, r, users, counts, total, page, pageSize)
 }
 
 func (s *Server) handleListAllHumanUsers(w http.ResponseWriter, r *http.Request) {
@@ -140,15 +141,15 @@ func (s *Server) handleListAllHumanUsers(w http.ResponseWriter, r *http.Request)
 	}
 	users, total, err := s.store.ListHumanUsers(filter)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list Human Users")
+		writeErr(w, r, errcode.InternalListHumanUsers)
 		return
 	}
 	counts, err := s.store.CountIdentitiesByHumanUser("")
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "count Human User identities")
+		writeErr(w, r, errcode.InternalCountHumanUserIdentities)
 		return
 	}
-	s.writeHumanUserPage(w, users, counts, total, page, pageSize)
+	s.writeHumanUserPage(w, r, users, counts, total, page, pageSize)
 }
 
 func humanUserListFilterFromRequest(
@@ -157,22 +158,22 @@ func humanUserListFilterFromRequest(
 	page, pageSize := parsePodPagination(r)
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 	if status != "" && !validHumanUserStatus(status) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Human User status")
+		writeErr(w, r, errcode.InvalidHumanUserStatus)
 		return repo.HumanUserListFilter{}, 0, 0, false
 	}
 	return repo.HumanUserListFilter{
 		Offset: (page - 1) * pageSize, Limit: pageSize, Status: status,
-		Query: strings.TrimSpace(r.URL.Query().Get("q")),
+		Query:   strings.TrimSpace(r.URL.Query().Get("q")),
 		Unbound: r.URL.Query().Get("unbound") == "true",
 	}, page, pageSize, true
 }
 
 func (s *Server) writeHumanUserPage(
-	w http.ResponseWriter, users []repo.HumanUser, counts map[string]int, total, page, pageSize int,
+	w http.ResponseWriter, r *http.Request, users []repo.HumanUser, counts map[string]int, total, page, pageSize int,
 ) {
 	views, err := s.makeHumanUserViews(users, counts)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "render Human Users")
+		writeErr(w, r, errcode.InternalRenderHumanUsers)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -181,23 +182,23 @@ func (s *Server) writeHumanUserPage(
 }
 
 func (s *Server) handleGetHumanUser(w http.ResponseWriter, r *http.Request) {
-	s.writeHumanUserDetail(w, r.PathValue("humanUserId"), http.StatusOK)
+	s.writeHumanUserDetail(w, r, r.PathValue("humanUserId"), http.StatusOK)
 }
 
-func (s *Server) writeHumanUserDetail(w http.ResponseWriter, humanUserID string, status int) {
+func (s *Server) writeHumanUserDetail(w http.ResponseWriter, r *http.Request, humanUserID string, status int) {
 	user, err := s.store.GetHumanUser(humanUserID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	identities, err := s.store.ListIdentitiesByHumanUser(humanUserID)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list Human User identities")
+		writeErr(w, r, errcode.InternalListHumanUserIdentities)
 		return
 	}
 	view, err := s.makeHumanUserView(user, len(identities))
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "render Human User")
+		writeErr(w, r, errcode.InternalRenderHumanUser)
 		return
 	}
 	identityViews := make([]identityView, 0, len(identities))
@@ -210,22 +211,22 @@ func (s *Server) writeHumanUserDetail(w http.ResponseWriter, humanUserID string,
 func (s *Server) handlePatchHumanUser(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(r.PathValue("humanUserId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request patchHumanUserRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	update, changed, stateChanged, err := s.humanUserPatch(user, request)
 	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Human User update")
+		writeErr(w, r, errcode.InvalidHumanUserUpdate)
 		return
 	}
 	if changed {
 		if err := s.store.UpdateHumanUser(user.HumanUserID, update); err != nil {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		if stateChanged {
@@ -233,7 +234,7 @@ func (s *Server) handlePatchHumanUser(w http.ResponseWriter, r *http.Request) {
 		}
 		s.auditHumanUser(r, auditlog.ActionHumanUserUpdate, user, update.Status)
 	}
-	s.writeHumanUserDetail(w, user.HumanUserID, http.StatusOK)
+	s.writeHumanUserDetail(w, r, user.HumanUserID, http.StatusOK)
 }
 
 func (s *Server) humanUserPatch(
@@ -292,14 +293,14 @@ func (s *Server) validateHumanUserStatus(user repo.HumanUser, next string) error
 func (s *Server) handleDeleteHumanUser(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(r.PathValue("humanUserId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	// An unbound user (its Pod was deleted) has no runtime to exec cleanup
 	// into; delete the row and its user-owned assets synchronously.
 	if user.PodID == "" {
 		if err := s.store.DeleteUnboundHumanUser(user.HumanUserID); err != nil {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		s.auditHumanUser(r, auditlog.ActionHumanUserDelete, user, "deleted_unbound")
@@ -309,12 +310,12 @@ func (s *Server) handleDeleteHumanUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.reconcile == nil {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime reconciler unavailable")
+		writeErr(w, r, errcode.UnavailableRuntimeReconciler)
 		return
 	}
 	if user.Status != repo.HumanUserStatusDeleting {
 		if err := s.store.MarkHumanUserDeleting(user.HumanUserID); err != nil {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		s.auditHumanUser(r, auditlog.ActionHumanUserDelete, user, "deleting")

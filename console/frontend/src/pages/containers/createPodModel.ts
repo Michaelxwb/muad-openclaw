@@ -1,4 +1,5 @@
 import type { ChannelCredential, CreatePodInput } from "../../api";
+import i18n from "../../i18n";
 
 export interface CreateFormState {
   podId: string;
@@ -29,20 +30,20 @@ export const EMPTY_CREATE_FORM: CreateFormState = {
 };
 
 export function validateCreateForm(form: CreateFormState): string {
-  if (!form.podId.trim()) return "Pod ID 必填";
+  if (!form.podId.trim()) return i18n.t("pod.podIdRequired");
   if (!/^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/.test(form.podId.trim())) {
-    return "Pod ID 仅支持小写字母、数字和中划线，长度不超过 63";
+    return i18n.t("pod.podIdInvalid");
   }
-  if (form.displayName.trim().length > 128) return "显示名称不能超过 128 个字符";
-  if (form.maxUsers < 1 || form.maxUsers > 10) return "用户上限必须在 1 到 10 之间";
-  if (/\s/.test(form.imageTag)) return "镜像地址不能包含空格";
+  if (form.displayName.trim().length > 128) return i18n.t("pod.displayNameTooLong");
+  if (form.maxUsers < 1 || form.maxUsers > 10) return i18n.t("pod.maxUsersRange");
+  if (/\s/.test(form.imageTag)) return i18n.t("pod.imageNoSpace");
   const memLimit = form.memLimit.trim();
   if (memLimit && !/^[0-9]+(?:\.[0-9]+)?([bkmg])?$/i.test(memLimit)) {
-    return "内存上限请填写数字（单位 GiB），例如 16";
+    return i18n.t("pod.memLimitInvalid");
   }
   const cpuLimit = form.cpuLimit.trim();
   if (cpuLimit && (!/^[0-9]+(?:\.[0-9]+)?$/.test(cpuLimit) || Number(cpuLimit) <= 0)) {
-    return "CPU 上限必须是大于 0 的数字";
+    return i18n.t("pod.cpuLimitInvalid");
   }
   return "";
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -16,12 +17,12 @@ func (s *Server) internalAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, ok := parseBearerToken(r.Header.Get("Authorization"))
 		if !ok {
-			writeErr(w, http.StatusUnauthorized, codePodUnauthorized, "invalid Pod service token")
+			writeErr(w, r, errcode.UnauthorizedPodToken)
 			return
 		}
 		pod, err := s.authenticatePodToken(token)
 		if err != nil {
-			writeErr(w, http.StatusUnauthorized, codePodUnauthorized, "invalid Pod service token")
+			writeErr(w, r, errcode.UnauthorizedPodToken)
 			return
 		}
 		ctx := context.WithValue(r.Context(), podContextKey{}, pod)

@@ -1,29 +1,31 @@
+import i18n from "./i18n";
 import { Channel } from "./api";
 
 // --- Channel definition registry ---
 // Add new channels by appending to CHANNEL_DEFS — no code changes needed elsewhere.
+// label / placeholder / help / hint 存 i18n key（或英文原文），展示处经 i18n.t() 解析。
 
 export interface CredentialField {
   key: string;
-  label: string;
+  label: string; // i18n key（如 channel.field.botToken）或英文原文
   type: "text" | "password" | "checkbox";
   required: boolean;
-  placeholder: string;
-  help?: string;
+  placeholder: string; // i18n key 或英文原文
+  help?: string; // i18n key
 }
 
 export interface ChannelDef {
   id: Channel;
-  label: string;
+  label: string; // i18n key（channel.wecom / channel.wechat）或英文原文（Mattermost）
   icon: string;
   credentialFields: CredentialField[];
-  hint?: string; // shown for credential-less channels (e.g. WeChat QR login)
+  hint?: string; // i18n key，展示在无凭证通道（如微信扫码登录）
 }
 
 export const CHANNEL_DEFS: ChannelDef[] = [
   {
     id: "wecom",
-    label: "企业微信",
+    label: "channel.wecom",
     icon: "🏢",
     credentialFields: [
       { key: "botId", label: "Bot ID", type: "text", required: true, placeholder: "aib…" },
@@ -32,16 +34,16 @@ export const CHANNEL_DEFS: ChannelDef[] = [
         label: "Secret",
         type: "password",
         required: true,
-        placeholder: "企业微信 secret",
+        placeholder: "channel.placeholder.secret",
       },
     ],
   },
   {
     id: "wechat",
-    label: "微信",
+    label: "channel.wechat",
     icon: "💬",
     credentialFields: [],
-    hint: "无需凭证，创建后在列表点击「扫码」授权登录",
+    hint: "channel.hint.wechat",
   },
   {
     id: "mattermost",
@@ -53,22 +55,22 @@ export const CHANNEL_DEFS: ChannelDef[] = [
         label: "Mattermost URL",
         type: "text",
         required: true,
-        placeholder: "https://mattermost.example.com",
+        placeholder: "channel.placeholder.mattermostUrl",
       },
       {
         key: "botToken",
-        label: "机器人令牌",
+        label: "channel.field.botToken",
         type: "password",
         required: true,
-        placeholder: "创建令牌时显示的完整 token",
+        placeholder: "channel.placeholder.botToken",
       },
       {
         key: "allowPrivateNetwork",
-        label: "允许访问内网地址",
+        label: "channel.field.allowPrivateNetwork",
         type: "checkbox",
         required: false,
         placeholder: "",
-        help: "Mattermost 部署在内网地址时启用",
+        help: "channel.help.allowPrivateNetwork",
       },
     ],
   },
@@ -81,15 +83,13 @@ export const CHANNELS: { value: Channel; label: string; icon: string }[] = CHANN
   (d) => ({ value: d.id, label: d.label, icon: d.icon }),
 );
 
-/** Lookup display metadata by channel id. */
+/** Lookup display metadata by channel id（label 已解析为展示字符串）。 */
 export function channelMeta(channel: string) {
-  return (
-    CHANNELS.find((c) => c.value === channel) ?? {
-      value: channel as Channel,
-      label: channel || "未知通道",
-      icon: "?",
-    }
-  );
+  const found = CHANNELS.find((c) => c.value === channel);
+  if (found) {
+    return { value: found.value, label: i18n.t(found.label), icon: found.icon };
+  }
+  return { value: channel as Channel, label: channel || i18n.t("channel.unknown"), icon: "?" };
 }
 
 /** Lookup full channel definition by channel id. */

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Button, Modal, Toast } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import type { HumanUser } from "../../api";
 import { FeedbackBanner } from "../ConsolePage";
+import { errorMessage } from "../../utils/error";
 import styles from "../HumanUsersPanel.module.css";
 
 interface Props {
@@ -12,6 +14,7 @@ interface Props {
 }
 
 export function DeleteHumanUser({ user, onDeleted, compact = false }: Props) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -20,11 +23,11 @@ export function DeleteHumanUser({ user, onDeleted, compact = false }: Props) {
     setError("");
     try {
       await api.deleteHumanUser(user.humanUserId);
-      Toast.success("用户已进入删除流程");
+      Toast.success(t("user.deleteStarted"));
       setVisible(false);
       onDeleted();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "删除用户失败");
+      setError(errorMessage(caught, "user.deleteUserFailed"));
     } finally {
       setBusy(false);
     }
@@ -32,30 +35,30 @@ export function DeleteHumanUser({ user, onDeleted, compact = false }: Props) {
   return (
     <>
       <Button
-        aria-label={`删除用户 ${user.displayName}`}
+        aria-label={t("user.deleteUserAria", { name: user.displayName })}
         size={compact ? "small" : "default"}
         type="danger"
         onClick={() => setVisible(true)}
       >
-        删除
+        {t("common.delete")}
       </Button>
       <Modal
         className="standard-modal"
-        title={`删除 ${user.displayName}`}
+        title={t("user.deleteUserTitle", { name: user.displayName })}
         visible={visible}
         onCancel={() => setVisible(false)}
         onOk={() => void remove()}
-        okText="确认删除"
+        okText={t("common.confirmDelete")}
         confirmLoading={busy}
         okButtonProps={{ type: "danger" as const }}
       >
         <FeedbackBanner error={error} />
-        <div>删除调和完成后将清理：</div>
+        <div>{t("user.deleteCleansUp")}</div>
         <ul className={styles.dangerList}>
-          <li>用户 workspace 与 private Skill</li>
-          <li>浏览器配置与浏览器状态</li>
-          <li>会话、记忆和 session-manager 凭证缓存</li>
-          <li>该用户全部 IM Identity 和平台凭证</li>
+          <li>{t("user.deleteItemWorkspace")}</li>
+          <li>{t("user.deleteItemBrowser")}</li>
+          <li>{t("user.deleteItemSession")}</li>
+          <li>{t("user.deleteItemIdentity")}</li>
         </ul>
       </Modal>
     </>

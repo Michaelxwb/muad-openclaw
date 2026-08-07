@@ -8,6 +8,8 @@ import (
 	"time"
 
 	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 const (
@@ -17,11 +19,11 @@ const (
 )
 
 var (
-	ErrInvalidBindingCode = errors.New("repo: invalid binding code")
-	ErrBindingCodeExpired = errors.New("repo: binding code expired")
-	ErrBindingCodeUsed    = errors.New("repo: binding code already used")
-	ErrBindingCodeRevoked = errors.New("repo: binding code revoked")
-	ErrBindingCodeScope   = errors.New("repo: binding code context mismatch")
+	ErrInvalidBindingCode = &Error{Code: errcode.InvalidBindingCode, Msg: "repo: invalid binding code"}
+	ErrBindingCodeExpired = &Error{Code: errcode.ConflictBindingCodeExpired, Msg: "repo: binding code expired"}
+	ErrBindingCodeUsed    = &Error{Code: errcode.ConflictBindingCodeUsed, Msg: "repo: binding code already used"}
+	ErrBindingCodeRevoked = &Error{Code: errcode.ConflictBindingCodeRevoked, Msg: "repo: binding code revoked"}
+	ErrBindingCodeScope   = &Error{Code: errcode.InvalidBindingOrContext, Msg: "repo: binding code context mismatch"}
 )
 
 const bindingCodeColumns = `binding_code_id, code_hash, code_hint,

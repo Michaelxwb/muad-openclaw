@@ -2,33 +2,47 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
-// writeRuntimeFailure 必须透传脱敏后的具体错误，页面才能直接看到失败原因
-// （如 "install private Skill failed: bundle must contain SKILL.md"）。
-func TestWriteRuntimeFailureIncludesConcreteError(t *testing.T) {
+func newErrorRequest() *http.Request {
+	return httptest.NewRequest(http.MethodGet, "/", nil)
+}
+
+// writeRuntimeFailure 把脱敏后的具体错误放进 detail，message 只保留目录里的
+// 本地化友好文案（默认 zh）。
+func TestWriteRuntimeFailureIncludesConcreteErrorInDetail(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeRuntimeFailure(rec, errors.New("bundle must contain SKILL.md"), "install private Skill failed")
+	writeRuntimeFailure(rec, newErrorRequest(), errors.New("bundle must contain SKILL.md"), errcode.RuntimeCreatePod)
 
 	if rec.Code != http.StatusBadGateway {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadGateway)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{`"code":50201`, "install private Skill failed", "bundle must contain SKILL.md"} {
-		if !strings.Contains(body, want) {
-			t.Fatalf("response %q missing %q", body, want)
-		}
+	if !strings.Contains(body, fmt.Sprintf(`"code":%d`, errcode.RuntimeCreatePod)) {
+		t.Fatalf("response %q missing code %d", body, errcode.RuntimeCreatePod)
+	}
+	if !strings.Contains(body, "创建 Pod 运行时失败") {
+		t.Fatalf("response %q missing localized message", body)
+	}
+	if !strings.Contains(body, "bundle must contain SKILL.md") {
+		t.Fatalf("response %q missing concrete detail", body)
+	}
+	if strings.Contains(body, "bundle must contain SKILL.md") && !strings.Contains(body, `"detail"`) {
+		t.Fatalf("response %q puts concrete error outside detail", body)
 	}
 }
 
-// writeRuntimeFailure 脱敏 sk- 密钥与 secret= 赋值，避免泄露到页面。
+// writeRuntimeFailure 脱敏 sk- 密钥与 token= 赋值，避免泄露到页面（含 detail）。
 func TestWriteRuntimeFailureRedactsSecrets(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeRuntimeFailure(rec, errors.New("probe failed: sk-abc123 token=secret-value"), "check model")
+	writeRuntimeFailure(rec, newErrorRequest(), errors.New("probe failed: sk-abc123 token=secret-value"), errcode.RuntimeWechatLogin)
 
 	body := rec.Body.String()
 	for _, leaked := range []string{"sk-abc123", "secret-value"} {
@@ -38,16 +52,16 @@ func TestWriteRuntimeFailureRedactsSecrets(t *testing.T) {
 	}
 }
 
-// err 为 nil 时只返回稳定前缀，不追加无意义的分隔后缀。
-func TestWriteRuntimeFailureNilErrorKeepsPrefixOnly(t *testing.T) {
+// err 为 nil 时只返回稳定 message，不输出 detail 字段。
+func TestWriteRuntimeFailureNilErrorOmitsDetail(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeRuntimeFailure(rec, nil, "create Pod runtime failed")
+	writeRuntimeFailure(rec, newErrorRequest(), nil, errcode.RuntimeCreatePod)
 
 	body := rec.Body.String()
-	if !strings.Contains(body, "create Pod runtime failed") {
-		t.Fatalf("response missing action prefix: %s", body)
+	if !strings.Contains(body, "创建 Pod 运行时失败") {
+		t.Fatalf("response missing localized message: %s", body)
 	}
-	if strings.Contains(body, ": ") {
-		t.Fatalf("nil error should not append separator: %s", body)
+	if strings.Contains(body, `"detail"`) {
+		t.Fatalf("nil error should not include detail: %s", body)
 	}
 }

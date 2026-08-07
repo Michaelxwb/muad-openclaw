@@ -16,10 +16,9 @@ import (
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
-
-const maxPrivateSkillBundleBytes = 5 * 1024 * 1024
 
 type patchSkillRequest struct {
 	Status *string `json:"status"`
@@ -135,7 +134,7 @@ type skillPolicyView struct {
 func (s *Server) handleGetPublicSkillStorage(w http.ResponseWriter, r *http.Request) {
 	status, err := s.drv.PublicSkillsStorageStatus(r.Context())
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "inspect public Skill storage failed")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeInspectPublicSkillStorage)
 		return
 	}
 	writeJSON(w, http.StatusOK, publicSkillStorageToView(status))
@@ -145,10 +144,10 @@ func (s *Server) handleEnsurePublicSkillStorage(w http.ResponseWriter, r *http.R
 	status, err := s.drv.EnsurePublicSkillsStorage(r.Context())
 	if err != nil {
 		if errors.Is(err, driver.ErrInvalidPodSpec) {
-			writeErr(w, http.StatusBadRequest, codeInvalidField, "public Skill storage is not configured")
+			writeErr(w, r, errcode.InvalidPublicSkillStorageNotConfigured)
 			return
 		}
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "create public Skill storage failed")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeCreatePublicSkillStorage)
 		return
 	}
 	writeJSON(w, http.StatusOK, publicSkillStorageToView(status))
@@ -161,7 +160,7 @@ func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
 	}
 	assets, total, err := s.store.ListSkillAssets(filter)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list Skills")
+		writeErr(w, r, errcode.InternalListSkills)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -172,7 +171,7 @@ func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetSkill(w http.ResponseWriter, r *http.Request) {
 	asset, err := s.store.GetSkillAsset(r.PathValue("skillId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, skillAssetToView(asset))
@@ -181,7 +180,7 @@ func (s *Server) handleGetSkill(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleScanSkills(w http.ResponseWriter, r *http.Request) {
 	assets, total, err := s.store.ListSkillAssets(repo.SkillAssetListFilter{})
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "scan Skills")
+		writeErr(w, r, errcode.InternalScanSkills)
 		return
 	}
 	s.auditSkill(r, auditlog.ActionSkillAssetScan, repo.SkillAsset{}, "scanned", total)
@@ -192,7 +191,7 @@ func (s *Server) handleUploadPublicSkill(w http.ResponseWriter, r *http.Request)
 	if !s.publicSkillStorageReady(w, r) {
 		return
 	}
-	upload, ok := readPublicSkillUpload(w, r)
+	upload, ok := s.readPublicSkillUpload(w, r)
 	if !ok {
 		return
 	}
@@ -201,22 +200,22 @@ func (s *Server) handleUploadPublicSkill(w http.ResponseWriter, r *http.Request)
 	result, err := installPublicSkillBundle(upload.Body, s.cfg.SkillsDir, s.rejectPublicSkillConflict)
 	if err != nil {
 		if errors.Is(err, repo.ErrSkillExists) || errors.Is(err, repo.ErrInvalidSkill) {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		log.Printf("public_skill_upload_invalid error=%v", err)
-		writeErr(w, http.StatusBadRequest, codeInvalidField, publicSkillBundleClientMessage(err))
+		writeErr(w, r, publicSkillBundleKey(err))
 		return
 	}
 	result, err = applySkillPlatformOverride(result, upload)
 	if err != nil {
 		s.removePublicSkillAfterDelete(result.Name)
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖非法")
+		writeErr(w, r, errcode.InvalidSkillPlatformDependency)
 		return
 	}
 	if err := s.requireExistingSkillPlatforms(result.Platforms); err != nil {
 		s.removePublicSkillAfterDelete(result.Name)
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖必须是已存在的业务平台")
+		writeErr(w, r, errcode.InvalidSkillPlatformDependencyExists)
 		return
 	}
 	asset, podIDs, err := upsertPublicSkillAssetWithCleanup(
@@ -232,7 +231,7 @@ func (s *Server) handleUploadPublicSkill(w http.ResponseWriter, r *http.Request)
 		},
 	)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.auditSkill(r, auditlog.ActionSkillAssetInstall, asset, "installed", len(podIDs))
@@ -270,26 +269,26 @@ func upsertPublicSkillAssetWithCleanup(
 func (s *Server) publicSkillStorageReady(w http.ResponseWriter, r *http.Request) bool {
 	status, err := s.drv.PublicSkillsStorageStatus(r.Context())
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "inspect public Skill storage failed")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeInspectPublicSkillStorage)
 		return false
 	}
 	if status.Ready {
 		return true
 	}
-	writeErr(w, http.StatusConflict, codeConflict, "public Skill storage is not ready")
+	writeErr(w, r, errcode.ConflictPublicSkillStorageNotReady)
 	return false
 }
 
 func (s *Server) handlePatchSkill(w http.ResponseWriter, r *http.Request) {
 	var request patchSkillRequest
 	if err := decodeJSONBody(w, r, &request); err != nil || request.Status == nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	status := strings.TrimSpace(*request.Status)
 	var publicDeleteName string
 	if status == repo.SkillStatusDeleted {
-		asset, ok := s.publicSkillDeleteTarget(w, r.PathValue("skillId"))
+		asset, ok := s.publicSkillDeleteTarget(w, r, r.PathValue("skillId"))
 		if !ok {
 			return
 		}
@@ -299,7 +298,7 @@ func (s *Server) handlePatchSkill(w http.ResponseWriter, r *http.Request) {
 		r.PathValue("skillId"), status,
 	)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if publicDeleteName != "" {
@@ -313,15 +312,15 @@ func (s *Server) handlePatchSkill(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) publicSkillDeleteTarget(
-	w http.ResponseWriter, skillID string,
+	w http.ResponseWriter, r *http.Request, skillID string,
 ) (repo.SkillAsset, bool) {
 	asset, err := s.store.GetSkillAsset(skillID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return repo.SkillAsset{}, false
 	}
 	if asset.Scope != repo.SkillScopePublic {
-		writeRepoError(w, repo.ErrInvalidSkill)
+		writeRepoError(w, r, repo.ErrInvalidSkill)
 		return repo.SkillAsset{}, false
 	}
 	return asset, true
@@ -362,7 +361,7 @@ func (s *Server) handleListHumanUserSkills(w http.ResponseWriter, r *http.Reques
 	}
 	skills, total, err := s.store.ResolveEffectiveSkills(r.PathValue("humanUserId"), filter)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": effectiveSkillViews(skills), "total": total})
@@ -371,12 +370,12 @@ func (s *Server) handleListHumanUserSkills(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleCreateSkillPolicy(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(r.PathValue("humanUserId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request createSkillPolicyRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	policy := repo.SkillPolicy{
@@ -389,7 +388,7 @@ func (s *Server) handleCreateSkillPolicy(w http.ResponseWriter, r *http.Request)
 	}
 	created, podID, err := s.store.CreateSkillPolicyAndMarkPod(policy)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.auditSkillPolicy(r, auditlog.ActionSkillPolicyCreate, created, podID, "created")
@@ -414,28 +413,32 @@ type ingestPrivateSkillRequest struct {
 // the installed files up).
 func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request) {
 	var request ingestPrivateSkillRequest
-	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+	if err := decodeJSONBodyLimit(w, r, &request, ingestJSONBodyLimit(s.cfg.SkillMaxUploadBundleBytes)); err != nil {
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	request.AgentID = strings.TrimSpace(request.AgentID)
 	request.BundleFormat = strings.TrimSpace(request.BundleFormat)
 	if request.AgentID == "" || request.BundleBase64 == "" {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "agentId and bundle are required")
+		writeErr(w, r, errcode.InvalidAgentBundleRequired)
 		return
 	}
 	if request.BundleFormat != "tar.gz" && request.BundleFormat != "zip" {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid bundle format")
+		writeErr(w, r, errcode.InvalidBundleFormat)
 		return
 	}
 	bundle, err := base64.StdEncoding.DecodeString(request.BundleBase64)
 	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid bundle encoding")
+		writeErr(w, r, errcode.InvalidBundleEncoding)
+		return
+	}
+	if int64(len(bundle)) > s.cfg.SkillMaxUploadBundleBytes {
+		writeErr(w, r, errcode.InvalidSkillBundle)
 		return
 	}
 	user, err := s.store.GetHumanUserByAgentID(request.AgentID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.skillUploadMu.Lock()
@@ -446,12 +449,12 @@ func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request
 	)
 	if err != nil {
 		if errors.Is(err, repo.ErrSkillExists) || errors.Is(err, repo.ErrInvalidSkill) {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		log.Printf("private_skill_ingest_invalid user=%s error=%s",
 			user.HumanUserID, auditlog.RedactDiagnostic(err.Error()))
-		writeErr(w, http.StatusBadRequest, codeInvalidField, publicSkillBundleClientMessage(err))
+		writeErr(w, r, publicSkillBundleKey(err))
 		return
 	}
 	asset, err := s.store.CreateSkillAsset(repo.SkillAsset{
@@ -465,7 +468,7 @@ func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request
 	})
 	if err != nil {
 		s.removePrivateSkillAfterDelete(user.HumanUserID, result.Name)
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	// Direct sync without a config generation bump: the skill is installed to the
@@ -483,17 +486,27 @@ func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]any{"skill": skillAssetToView(asset)})
 }
 
+// ingestJSONBodyLimit is the JSON body cap for the private-skill ingest
+// endpoint: enough to hold the base64 encoding of the largest allowed bundle
+// plus a 1 MiB slack for the surrounding JSON fields. Bundles that are merely
+// a little over the limit therefore decode successfully and are then rejected
+// by the explicit size check with a clear error, rather than surfacing as a
+// generic "request body too large".
+func ingestJSONBodyLimit(maxBundleBytes int64) int64 {
+	return (maxBundleBytes+2)/3*4 + 1<<20
+}
+
 func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request) {
-	user, pod, ok := s.privateSkillTarget(w, r.PathValue("humanUserId"))
+	user, pod, ok := s.privateSkillTarget(w, r, r.PathValue("humanUserId"))
 	if !ok {
 		return
 	}
-	upload, ok := readPrivateSkillUpload(w, r)
+	upload, ok := s.readPrivateSkillUpload(w, r)
 	if !ok {
 		return
 	}
 	if upload.AllowOverride && strings.TrimSpace(upload.ExpectedName) == "" {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "覆盖 Public Skill 时必须指定 Skill 名称")
+		writeErr(w, r, errcode.InvalidPublicSkillOverrideName)
 		return
 	}
 	s.skillUploadMu.Lock()
@@ -503,22 +516,22 @@ func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request
 	)
 	if err != nil {
 		if errors.Is(err, repo.ErrSkillExists) || errors.Is(err, repo.ErrInvalidSkill) {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 		log.Printf("private_skill_upload_invalid user=%s error=%v", user.HumanUserID, err)
-		writeErr(w, http.StatusBadRequest, codeInvalidField, publicSkillBundleClientMessage(err))
+		writeErr(w, r, publicSkillBundleKey(err))
 		return
 	}
 	result, err = applySkillPlatformOverride(result, upload)
 	if err != nil {
 		s.removePrivateSkillAfterDelete(user.HumanUserID, result.Name)
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖非法")
+		writeErr(w, r, errcode.InvalidSkillPlatformDependency)
 		return
 	}
 	if err := s.requireExistingSkillPlatforms(result.Platforms); err != nil {
 		s.removePrivateSkillAfterDelete(user.HumanUserID, result.Name)
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "Skill 平台依赖必须是已存在的业务平台")
+		writeErr(w, r, errcode.InvalidSkillPlatformDependencyExists)
 		return
 	}
 	policy := privateUploadPolicy(upload, user.HumanUserID, result.Name, actorFrom(r.Context()))
@@ -532,7 +545,7 @@ func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request
 	}, policy)
 	if err != nil {
 		s.removePrivateSkillAfterDelete(user.HumanUserID, result.Name)
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.auditSkill(r, auditlog.ActionSkillAssetInstall, asset, "installed", 1)
@@ -558,22 +571,22 @@ func privateUploadPolicy(
 }
 
 func (s *Server) handleDeletePrivateSkill(w http.ResponseWriter, r *http.Request) {
-	user, pod, ok := s.privateSkillTarget(w, r.PathValue("humanUserId"))
+	user, pod, ok := s.privateSkillTarget(w, r, r.PathValue("humanUserId"))
 	if !ok {
 		return
 	}
 	asset, err := s.store.GetSkillAsset(r.PathValue("skillId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if asset.Scope != repo.SkillScopePrivate || asset.HumanUserID != user.HumanUserID {
-		writeRepoError(w, repo.ErrNotFound)
+		writeRepoError(w, r, repo.ErrNotFound)
 		return
 	}
 	deleted, err := s.store.DeletePrivateSkillAssetAndMarkPod(asset.SkillID, user.HumanUserID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.removePrivateSkillAfterDelete(user.HumanUserID, asset.Name)
@@ -586,14 +599,14 @@ func (s *Server) handleDeletePrivateSkill(w http.ResponseWriter, r *http.Request
 
 func (s *Server) handleDeleteSkillPolicy(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.store.GetHumanUser(r.PathValue("humanUserId")); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	podID, err := s.store.DeleteSkillPolicyForHumanUserAndMarkPod(
 		r.PathValue("policyId"), r.PathValue("humanUserId"),
 	)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.auditSkillPolicy(r, auditlog.ActionSkillPolicyDelete, repo.SkillPolicy{
@@ -604,50 +617,52 @@ func (s *Server) handleDeleteSkillPolicy(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) privateSkillTarget(
-	w http.ResponseWriter, humanUserID string,
+	w http.ResponseWriter, r *http.Request, humanUserID string,
 ) (repo.HumanUser, repo.Pod, bool) {
 	user, err := s.store.GetHumanUser(humanUserID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return repo.HumanUser{}, repo.Pod{}, false
 	}
 	pod, err := s.store.GetPod(user.PodID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return repo.HumanUser{}, repo.Pod{}, false
 	}
 	return user, pod, true
 }
 
-func readPrivateSkillUpload(w http.ResponseWriter, r *http.Request) (skillBundleUpload, bool) {
-	return readSkillBundleUpload(w, r, ".tar.gz", ".zip")
+func (s *Server) readPrivateSkillUpload(w http.ResponseWriter, r *http.Request) (skillBundleUpload, bool) {
+	return readSkillBundleUpload(w, r, s.cfg.SkillMaxUploadBundleBytes, ".tar.gz", ".zip")
 }
 
-func readPublicSkillUpload(w http.ResponseWriter, r *http.Request) (skillBundleUpload, bool) {
-	return readSkillBundleUpload(w, r, ".tar.gz", ".zip")
+func (s *Server) readPublicSkillUpload(w http.ResponseWriter, r *http.Request) (skillBundleUpload, bool) {
+	return readSkillBundleUpload(w, r, s.cfg.SkillMaxUploadBundleBytes, ".tar.gz", ".zip")
 }
 
-func readSkillBundleUpload(w http.ResponseWriter, r *http.Request, allowedExts ...string) (skillBundleUpload, bool) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxPrivateSkillBundleBytes+1024*1024)
-	if err := r.ParseMultipartForm(maxPrivateSkillBundleBytes); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+func readSkillBundleUpload(
+	w http.ResponseWriter, r *http.Request, maxBytes int64, allowedExts ...string,
+) (skillBundleUpload, bool) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes+1024*1024)
+	if err := r.ParseMultipartForm(maxBytes); err != nil {
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return skillBundleUpload{}, false
 	}
 	file, header, err := r.FormFile("bundle")
 	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid skill bundle")
+		writeErr(w, r, errcode.InvalidSkillBundle)
 		return skillBundleUpload{}, false
 	}
 	defer file.Close()
 	format, ok := skillBundleFormat(header.Filename, allowedExts)
-	if header.Size > maxPrivateSkillBundleBytes || !ok {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid skill bundle")
+	if header.Size > maxBytes || !ok {
+		writeErr(w, r, errcode.InvalidSkillBundle)
 		return skillBundleUpload{}, false
 	}
 	var buffer bytes.Buffer
 	if _, err := buffer.ReadFrom(file); err != nil || buffer.Len() == 0 ||
-		buffer.Len() > maxPrivateSkillBundleBytes {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid skill bundle")
+		int64(buffer.Len()) > maxBytes {
+		writeErr(w, r, errcode.InvalidSkillBundle)
 		return skillBundleUpload{}, false
 	}
 	platforms, platformsSet, ok := readSkillUploadPlatforms(w, r)
@@ -675,34 +690,37 @@ func skillBundleFormat(filename string, allowedExts []string) (string, bool) {
 	return "", false
 }
 
-func publicSkillBundleClientMessage(err error) string {
+// publicSkillBundleKey maps a bundle validation error to a stable error-code
+// whose localized message is user-friendly. Unknown errors fall back to the
+// generic invalid-skill-bundle code.
+func publicSkillBundleKey(err error) int {
 	message := err.Error()
 	switch {
 	case strings.Contains(message, "OpenClaw frontmatter name and description"):
-		return "Public Skill 的 SKILL.md 必须包含 OpenClaw YAML frontmatter：name 和 description"
+		return errcode.SkillBundleFrontmatter
 	case strings.Contains(message, "must match SKILL.md frontmatter name"):
-		return "muad.skill.json.name 必须与 SKILL.md frontmatter name 一致"
+		return errcode.SkillBundleNameMismatch
 	case strings.Contains(message, "must contain a SKILL.md") ||
 		strings.Contains(message, "must contain SKILL.md"):
-		return "Skill 包必须包含一个明确的主 SKILL.md"
+		return errcode.SkillBundleNoSkillMd
 	case strings.Contains(message, "multiple top-level Skill roots"):
-		return "Skill 包包含多个同层 Skill 根目录，请拆分后分别上传"
+		return errcode.SkillBundleMultiRoot
 	case strings.Contains(message, "invalid skill name"):
-		return "Skill 名称非法，请在 muad.skill.json.name 中使用小写字母、数字、- 或 _"
+		return errcode.SkillBundleInvalidName
 	case strings.Contains(message, "invalid platform dependency"):
-		return "Skill 平台依赖非法"
+		return errcode.SkillBundleInvalidPlatform
 	case strings.Contains(message, "decode Skill manifest") ||
 		strings.Contains(message, "invalid Skill manifest"):
-		return "muad.skill.json 格式非法"
+		return errcode.SkillBundleInvalidManifest
 	case strings.Contains(message, "parent path") ||
 		strings.Contains(message, "absolute path") ||
 		strings.Contains(message, "invalid path") ||
 		strings.Contains(message, "escapes"):
-		return "Skill 包包含不安全路径"
+		return errcode.SkillBundleUnsafePath
 	case strings.Contains(message, "link"):
-		return "Skill 包不能包含软链接或硬链接"
+		return errcode.SkillBundleLink
 	default:
-		return "invalid skill bundle"
+		return errcode.InvalidSkillBundle
 	}
 }
 
@@ -768,12 +786,12 @@ func readSkillUploadPlatforms(
 	}
 	var values []string
 	if err := json.Unmarshal([]byte(raw), &values); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill platforms")
+		writeErr(w, r, errcode.InvalidSkillPlatforms)
 		return nil, false, false
 	}
 	platforms, err := normalizeUploadPlatforms(values)
 	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill platforms")
+		writeErr(w, r, errcode.InvalidSkillPlatforms)
 		return nil, false, false
 	}
 	return platforms, true, true
@@ -786,7 +804,7 @@ func readSkillUploadAllowOverride(w http.ResponseWriter, r *http.Request) (bool,
 	}
 	value, err := strconv.ParseBool(raw)
 	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid allowOverride")
+		writeErr(w, r, errcode.InvalidAllowOverride)
 		return false, false
 	}
 	return value, true
@@ -868,11 +886,11 @@ func skillAssetFilterFromRequest(
 	scope := strings.TrimSpace(r.URL.Query().Get("scope"))
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 	if scope != "" && !validSkillScope(scope) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill scope")
+		writeErr(w, r, errcode.InvalidSkillScope)
 		return repo.SkillAssetListFilter{}, 0, 0, false
 	}
 	if status != "" && !validSkillStatus(status) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill status")
+		writeErr(w, r, errcode.InvalidSkillStatus)
 		return repo.SkillAssetListFilter{}, 0, 0, false
 	}
 	return repo.SkillAssetListFilter{
@@ -989,7 +1007,7 @@ func (s *Server) auditSkill(
 		Actor: actor, Action: action, Target: target,
 		Metadata: auditlog.Metadata{
 			HumanUserID: asset.HumanUserID,
-			SkillID: asset.SkillID, SkillName: asset.Name, Status: status, Count: count,
+			SkillID:     asset.SkillID, SkillName: asset.Name, Status: status, Count: count,
 		},
 	})
 	if err != nil {

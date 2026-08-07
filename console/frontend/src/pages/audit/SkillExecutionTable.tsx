@@ -1,6 +1,9 @@
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Button, Empty, Table, Tag, Tooltip, Typography } from "@douyinfe/semi-ui";
 import type { SkillExecution, SkillExecutionStatus } from "../../api";
 import { renderTablePagination, tablePagination } from "../../components/Pagination";
+import i18n from "../../i18n";
 import type { SkillExecutionRecordsState } from "./skillExecutionTypes";
 import styles from "./SkillExecutions.module.css";
 
@@ -11,12 +14,13 @@ interface Props {
 }
 
 export function SkillExecutionTable({ state, onOpenPod, onView }: Props) {
-  const columns = executionColumns(onOpenPod, onView);
+  const { t } = useTranslation();
+  const columns = executionColumns(t, onOpenPod, onView);
   return (
     <Table
       columns={columns as never}
       dataSource={state.rows}
-      empty={<Empty title="暂无 Skill 执行记录" />}
+      empty={<Empty title={t("execution.empty")} />}
       loading={state.loading}
       pagination={tablePagination({
         page: state.page,
@@ -37,31 +41,34 @@ export function SkillExecutionTable({ state, onOpenPod, onView }: Props) {
 }
 
 function executionColumns(
+  t: TFunction,
   onOpenPod?: (podId: string) => void,
   onView?: (executionId: string) => void,
 ) {
   return [
-    ...identityColumns,
+    ...identityColumns(t),
     ...resourceColumns(onOpenPod),
-    ...lifecycleColumns,
-    ...outcomeColumns(onView),
+    ...lifecycleColumns(t),
+    ...outcomeColumns(t, onView),
   ];
 }
 
-const identityColumns = [
-  {
-    title: "时间",
-    width: 170,
-    render: (_: unknown, row: SkillExecution) => new Date(row.startedAt).toLocaleString(),
-  },
-  {
-    title: "用户 / Agent",
-    width: 190,
-    render: (_: unknown, row: SkillExecution) => (
-      <TwoLine primary={row.humanUserId} secondary={row.agentId} />
-    ),
-  },
-];
+function identityColumns(t: TFunction) {
+  return [
+    {
+      title: t("audit.time"),
+      width: 170,
+      render: (_: unknown, row: SkillExecution) => new Date(row.startedAt).toLocaleString(),
+    },
+    {
+      title: t("execution.userAgent"),
+      width: 190,
+      render: (_: unknown, row: SkillExecution) => (
+        <TwoLine primary={row.humanUserId} secondary={row.agentId} />
+      ),
+    },
+  ];
+}
 
 function resourceColumns(onOpenPod?: (podId: string) => void) {
   return [
@@ -90,47 +97,49 @@ function resourceColumns(onOpenPod?: (podId: string) => void) {
   ];
 }
 
-const lifecycleColumns = [
-  {
-    title: "模式",
-    width: 120,
-    render: (_: unknown, row: SkillExecution) => entryTypeLabel(row.entryType),
-  },
-  {
-    title: "状态",
-    width: 100,
-    render: (_: unknown, row: SkillExecution) => <ExecutionStatusTag status={row.status} />,
-  },
-  {
-    title: "耗时",
-    width: 90,
-    render: (_: unknown, row: SkillExecution) => formatDuration(row.durationMs),
-  },
-  {
-    title: "最近工具",
-    width: 150,
-    render: (_: unknown, row: SkillExecution) => row.lastToolName || "-",
-  },
-];
-
-function outcomeColumns(onView?: (executionId: string) => void) {
+function lifecycleColumns(t: TFunction) {
   return [
     {
-      title: "结果",
+      title: t("execution.entryType"),
+      width: 120,
+      render: (_: unknown, row: SkillExecution) => entryTypeLabel(row.entryType),
+    },
+    {
+      title: t("common.status"),
+      width: 100,
+      render: (_: unknown, row: SkillExecution) => <ExecutionStatusTag status={row.status} />,
+    },
+    {
+      title: t("execution.duration"),
+      width: 90,
+      render: (_: unknown, row: SkillExecution) => formatDuration(row.durationMs),
+    },
+    {
+      title: t("execution.lastTool"),
+      width: 150,
+      render: (_: unknown, row: SkillExecution) => row.lastToolName || "-",
+    },
+  ];
+}
+
+function outcomeColumns(t: TFunction, onView?: (executionId: string) => void) {
+  return [
+    {
+      title: t("audit.result"),
       width: 220,
       render: (_: unknown, row: SkillExecution) => <EllipsisText value={executionResult(row)} />,
     },
     {
-      title: "操作",
+      title: t("common.actions"),
       width: 90,
       fixed: "right",
       render: (_: unknown, row: SkillExecution) => (
         <Button
-          aria-label={`查看执行 ${row.executionId} 详情`}
+          aria-label={t("execution.viewDetail", { id: row.executionId })}
           disabled={!onView}
           onClick={() => onView?.(row.executionId)}
         >
-          详情
+          {t("common.viewDetail")}
         </Button>
       ),
     },
@@ -158,12 +167,13 @@ function EllipsisText({ value }: { value: string }) {
 }
 
 function ExecutionStatusTag({ status }: { status: SkillExecutionStatus }) {
+  const { t } = useTranslation();
   const values = {
-    running: { label: "运行中", color: "blue" },
-    succeeded: { label: "成功", color: "green" },
-    failed: { label: "失败", color: "red" },
-    cancelled: { label: "已取消", color: "grey" },
-    rejected: { label: "已拒绝", color: "orange" },
+    running: { label: t("status.running"), color: "blue" },
+    succeeded: { label: t("status.succeeded"), color: "green" },
+    failed: { label: t("status.failed"), color: "red" },
+    cancelled: { label: t("execution.statusCancelled"), color: "grey" },
+    rejected: { label: t("execution.statusRejected"), color: "orange" },
   } as const satisfies Record<SkillExecutionStatus, { label: string; color: string }>;
   return <Tag color={values[status].color}>{values[status].label}</Tag>;
 }
@@ -171,8 +181,8 @@ function ExecutionStatusTag({ status }: { status: SkillExecutionStatus }) {
 function entryTypeLabel(value: SkillExecution["entryType"]): string {
   const labels = {
     managed: "Managed",
-    "traditional-script": "传统脚本",
-    "traditional-prompt": "传统工具",
+    "traditional-script": i18n.t("execution.entryTypeScript"),
+    "traditional-prompt": i18n.t("execution.entryTypePrompt"),
   };
   return labels[value];
 }
@@ -185,6 +195,12 @@ function formatDuration(durationMs: number): string {
 
 function executionResult(row: SkillExecution): string {
   if (row.status === "failed" || row.status === "rejected")
-    return row.errorMessage || row.terminalReason || row.errorCode || "执行失败";
-  return row.outputSummary || row.terminalReason || (row.status === "running" ? "执行中" : "-");
+    return (
+      row.errorMessage || row.terminalReason || row.errorCode || i18n.t("execution.resultFailed")
+    );
+  return (
+    row.outputSummary ||
+    row.terminalReason ||
+    (row.status === "running" ? i18n.t("status.inProgress") : "-")
+  );
 }

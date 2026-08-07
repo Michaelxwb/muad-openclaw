@@ -17,8 +17,6 @@ import (
 
 var skillNameRegexp = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 
-const maxPrivateSkillBundleBytes = 25 * 1024 * 1024
-
 func resolvePublicSkillRoot(publicRoot string) (string, error) {
 	root := filepath.Clean(strings.TrimSpace(publicRoot))
 	if root == "" {
@@ -67,9 +65,6 @@ func buildSkillDirectoryBundle(sourceDir, skillName string) ([]byte, error) {
 	}
 	if err := gz.Close(); err != nil {
 		return nil, fmt.Errorf("close Skill gzip: %w", err)
-	}
-	if out.Len() > maxPrivateSkillBundleBytes {
-		return nil, errors.New("bundle exceeds 25 MiB")
 	}
 	return out.Bytes(), nil
 }

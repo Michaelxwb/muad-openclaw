@@ -12,6 +12,7 @@ import (
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -55,20 +56,20 @@ type patchPodRequest struct {
 func (s *Server) handleCreatePod(w http.ResponseWriter, r *http.Request) {
 	var request createPodRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	pod, token, err := s.newPodRecord(request)
 	if err != nil {
 		if errors.Is(err, errInvalidPodRequest) {
-			writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Pod configuration")
+			writeErr(w, r, errcode.InvalidPodConfig)
 		} else {
-			writeErr(w, http.StatusInternalServerError, codeInternal, "prepare Pod configuration")
+			writeErr(w, r, errcode.InternalPreparePodConfig)
 		}
 		return
 	}
 	if err := s.store.CreatePod(pod); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	// Restore the users detached by a previous deletion of the same Pod before
@@ -77,12 +78,12 @@ func (s *Server) handleCreatePod(w http.ResponseWriter, r *http.Request) {
 	if request.RestoreUsers == nil || *request.RestoreUsers {
 		if err := s.restorePodUsers(pod.PodID); err != nil {
 			_ = s.store.DeletePod(pod.PodID)
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
 	}
 	if err := s.provisionPod(r, pod, token, request.AdoptState); err != nil {
-		s.writeProvisionError(w, err)
+		s.writeProvisionError(w, r, err)
 		return
 	}
 	s.enqueueReconcile(pod.PodID)
@@ -176,19 +177,19 @@ func (s *Server) provisionPod(
 	return nil
 }
 
-func (s *Server) writeProvisionError(w http.ResponseWriter, err error) {
+func (s *Server) writeProvisionError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, driver.ErrRetainedState) {
-		writeErr(w, http.StatusConflict, codeRetainedState, "retained Pod state requires explicit adoption")
+		writeErr(w, r, errcode.ConflictRetainedState)
 		return
 	}
-	writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "create Pod runtime failed")
+	writeRuntimeFailure(w, r, err, errcode.RuntimeCreatePod)
 }
 
 func (s *Server) handleListPods(w http.ResponseWriter, r *http.Request) {
 	page, pageSize := parsePodPagination(r)
 	state := strings.TrimSpace(r.URL.Query().Get("state"))
 	if state != "" && !validPodState(state) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Pod state")
+		writeErr(w, r, errcode.InvalidPodState)
 		return
 	}
 	items, total, err := s.store.ListPods(repo.PodListFilter{
@@ -196,19 +197,19 @@ func (s *Server) handleListPods(w http.ResponseWriter, r *http.Request) {
 		Query: strings.TrimSpace(r.URL.Query().Get("q")),
 	})
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list Pods")
+		writeErr(w, r, errcode.InternalListPods)
 		return
 	}
 	states, err := listDriverStates(r.Context(), s.drv)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "list Pod runtimes")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeListPods)
 		return
 	}
 	views := make([]podView, 0, len(items))
 	for _, item := range items {
 		view, err := s.makePodView(item, states, false)
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, codeInternal, "decode Pod configuration")
+			writeErr(w, r, errcode.InternalDecodePodConfig)
 			return
 		}
 		views = append(views, view)
@@ -225,17 +226,17 @@ func (s *Server) handleGetPod(w http.ResponseWriter, r *http.Request) {
 func (s *Server) writePodDetail(w http.ResponseWriter, r *http.Request, podID string, status int) {
 	summary, err := s.store.GetPodSummary(podID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	states, err := listDriverStates(r.Context(), s.drv)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "inspect Pod runtime")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeInspectPod)
 		return
 	}
 	view, err := s.makePodView(summary, states, true)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "decode Pod configuration")
+		writeErr(w, r, errcode.InternalDecodePodConfig)
 		return
 	}
 	writeJSON(w, status, view)
@@ -244,13 +245,13 @@ func (s *Server) writePodDetail(w http.ResponseWriter, r *http.Request, podID st
 func (s *Server) handlePatchPod(w http.ResponseWriter, r *http.Request) {
 	summary, err := s.store.GetPodSummary(r.PathValue("podId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	pod := summary.Pod
 	var request patchPodRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	update, changed, imageChanged := applyPodPatch(pod, request)
@@ -259,11 +260,11 @@ func (s *Server) handlePatchPod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if update.MaxUsers < 1 || update.MaxUsers > maxUsersPerPod || update.DisplayName == "" || update.ImageTag == "" {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Pod configuration")
+		writeErr(w, r, errcode.InvalidPodConfig)
 		return
 	}
 	if update.MaxUsers < summary.UserCount {
-		writeRepoError(w, repo.ErrPodCapacity)
+		writeRepoError(w, r, repo.ErrPodCapacity)
 		return
 	}
 	// Image changes must recreate the workload (same as /upgrade), not only bump generation.
@@ -272,7 +273,7 @@ func (s *Server) handlePatchPod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.UpdatePod(pod.PodID, update); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.enqueueReconcile(pod.PodID)
@@ -285,22 +286,22 @@ func (s *Server) handlePatchPodImageChange(
 	w http.ResponseWriter, r *http.Request, pod repo.Pod, update repo.PodUpdate,
 ) {
 	if !validImageTag(update.ImageTag) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "valid imageTag is required")
+		writeErr(w, r, errcode.InvalidImageTag)
 		return
 	}
 	err := s.updatePodImageViaPatch(r.Context(), pod, update)
 	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")
+		writeErr(w, r, errcode.UnavailableRuntimeCoordinator)
 		return
 	}
 	if errors.Is(err, errPodPatchMetadata) {
 		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_metadata_failed")
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if err != nil {
 		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_rolled_back")
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "Pod image change failed and was rolled back")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeImageChangeRolledBack)
 		return
 	}
 	s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade")
@@ -363,12 +364,12 @@ func podUpdateFrom(pod repo.Pod) repo.PodUpdate {
 func (s *Server) handleDeletePod(w http.ResponseWriter, r *http.Request) {
 	deleteState, ok := explicitDeleteState(r.URL.Query().Get("deleteState"))
 	if !ok {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "deleteState=true|false is required")
+		writeErr(w, r, errcode.InvalidDeleteState)
 		return
 	}
 	pod, err := s.store.GetPod(r.PathValue("podId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	// Count retained users BEFORE the delete; DeletePod detaches them to
@@ -387,15 +388,15 @@ func (s *Server) handleDeletePod(w http.ResponseWriter, r *http.Request) {
 		return s.store.DeletePod(pod.PodID)
 	})
 	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")
+		writeErr(w, r, errcode.UnavailableRuntimeCoordinator)
 		return
 	}
 	if err != nil {
 		if errors.Is(err, repo.ErrNotFound) {
-			writeRepoError(w, err)
+			writeRepoError(w, r, err)
 			return
 		}
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "delete Pod runtime failed")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeDeletePod)
 		return
 	}
 	status := fmt.Sprintf("state_retained users_retained=%d", retainedUsers)

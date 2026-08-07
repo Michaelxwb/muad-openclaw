@@ -326,7 +326,7 @@ func tableExists(db *sql.DB, name string) (bool, error) {
 }
 
 func columnExists(db *sql.DB, table, column string) (bool, error) {
-	rows, err := db.Query(`PRAGMA table_info(`+table+`)`)
+	rows, err := db.Query(`PRAGMA table_info(` + table + `)`)
 	if err != nil {
 		return false, err
 	}

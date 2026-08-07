@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, Space, Modal, RadioGroup, Toast } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../api";
+import { errorMessage } from "../utils/error";
 
 interface Props {
   selectedIds: string[];
@@ -9,13 +11,14 @@ interface Props {
 }
 
 export function BatchToolbar({ selectedIds, onBatchUpgrade, onBatchDelete }: Props) {
+  const { t } = useTranslation();
   const someSelected = selectedIds.length > 0;
 
   function handleUpgrade() {
     if (!someSelected) return;
     Modal.confirm({
-      title: "确认批量升级",
-      content: `将对 ${selectedIds.length} 个已勾选 Pod 执行批量升级。`,
+      title: t("common.batchUpgradeTitle"),
+      content: t("common.batchUpgradeContent", { count: selectedIds.length }),
       onOk: onBatchUpgrade,
     });
   }
@@ -24,10 +27,10 @@ export function BatchToolbar({ selectedIds, onBatchUpgrade, onBatchDelete }: Pro
     if (selectedIds.length === 0) return;
     let deleteState = false;
     Modal.warning({
-      title: "确认批量删除",
+      title: t("common.batchDeleteTitle"),
       content: (
         <Space vertical align="start">
-          <div>确定删除 {selectedIds.length} 个已勾选 Pod？</div>
+          <div>{t("common.batchDeleteContent", { count: selectedIds.length })}</div>
           <DeleteStateChoice onChange={(next) => (deleteState = next)} />
         </Space>
       ),
@@ -38,15 +41,18 @@ export function BatchToolbar({ selectedIds, onBatchUpgrade, onBatchDelete }: Pro
           );
           const failed = results.filter((r) => r.status === "rejected");
           if (failed.length === 0) {
-            Toast.success(`已删除 ${selectedIds.length} 个 Pod`);
+            Toast.success(t("common.batchDeleteSuccess", { count: selectedIds.length }));
           } else {
             Toast.warning(
-              `删除完成：${selectedIds.length - failed.length} 成功，${failed.length} 失败`,
+              t("common.batchDeletePartial", {
+                success: selectedIds.length - failed.length,
+                failed: failed.length,
+              }),
             );
           }
           onBatchDelete(selectedIds);
         } catch (caught) {
-          Toast.error(caught instanceof Error ? caught.message : "批量删除 Pod 失败");
+          Toast.error(errorMessage(caught, "common.batchDeleteFailed"));
         }
       },
     });
@@ -55,25 +61,30 @@ export function BatchToolbar({ selectedIds, onBatchUpgrade, onBatchDelete }: Pro
   return (
     <Space spacing={4}>
       <Button onClick={handleUpgrade} disabled={!someSelected}>
-        批量升级
+        {t("common.batchUpgrade")}
       </Button>
       <Button type="danger" onClick={handleDelete} disabled={!someSelected}>
-        批量删除
+        {t("common.batchDelete")}
       </Button>
     </Space>
   );
 }
 
 function DeleteStateChoice({ onChange }: { onChange: (deleteState: boolean) => void }) {
+  const { t } = useTranslation();
   const [value, setValue] = useState("retain");
+  const options = useMemo(
+    () => [
+      { value: "retain", label: t("common.deleteStateRetain") },
+      { value: "delete", label: t("common.deleteStateDelete") },
+    ],
+    [t],
+  );
   return (
     <RadioGroup
       value={value}
       direction="vertical"
-      options={[
-        { value: "retain", label: "保留 PVC，后续可在创建同名 Pod 时显式接管" },
-        { value: "delete", label: "删除 PVC，workspace、记忆、会话和 private Skill 将永久丢失" },
-      ]}
+      options={options}
       onChange={(event) => {
         const next = String(event.target.value);
         setValue(next);

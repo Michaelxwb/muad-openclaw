@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, InputNumber, Modal, RadioGroup, Select, TextArea } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import type {
   CreateHumanUserInput,
@@ -9,6 +10,8 @@ import type {
 } from "../../api";
 import { channelMeta } from "../../channels";
 import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
+import { errorMessage } from "../../utils/error";
+import i18n from "../../i18n";
 import styles from "../HumanUsersPanel.module.css";
 import { Field } from "./shared";
 
@@ -51,14 +54,14 @@ function initialForm(pod: Pod): CreateUserForm {
 }
 
 function validate(form: CreateUserForm): string {
-  if (form.displayName.trim() === "") return "显示名称必填";
-  if (form.modelConfigId.trim() === "") return "模型配置必选";
-  if (form.channel === "") return "消息通道必填";
-  if (form.mode === "identity" && form.externalId === "") return "external ID 必填";
+  if (form.displayName.trim() === "") return i18n.t("user.displayNameRequired");
+  if (form.modelConfigId.trim() === "") return i18n.t("user.modelConfigRequired");
+  if (form.channel === "") return i18n.t("user.channelRequired");
+  if (form.mode === "identity" && form.externalId === "") return i18n.t("user.externalIdRequired");
   if (form.mode === "identity" && !/^[a-z][a-z0-9_]{0,63}$/.test(form.externalIdType))
-    return "external ID 类型格式无效";
+    return i18n.t("user.externalIdTypeInvalid");
   if (form.expiresInMinutes < 1 || form.expiresInMinutes > 1440)
-    return "绑定码有效期必须在 1 到 1440 分钟之间";
+    return i18n.t("user.validityRange");
   return "";
 }
 
@@ -92,6 +95,7 @@ function createInput(form: CreateUserForm): CreateHumanUserInput {
 }
 
 export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCreated }: Props) {
+  const { t } = useTranslation();
   const [selectedPodId, setSelectedPodId] = useState(pod.podId);
   const [form, setForm] = useState<CreateUserForm>(() => initialForm(pod));
   const [models, setModels] = useState<LLMModelConfig[]>([]);
@@ -127,13 +131,13 @@ export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCre
     } catch (caught) {
       if (requestId !== modelsRequestRef.current || !visible) return;
       setModels([]);
-      setError(caught instanceof Error ? caught.message : "加载可用模型失败");
+      setError(errorMessage(caught, "user.loadModelsFailed"));
     }
   };
 
   const submit = async () => {
     if (canSwitchPod && selectedPod.availableSlots <= 0) {
-      return setRepeatableError(setError, "请选择有剩余容量的 Pod");
+      return setRepeatableError(setError, t("user.selectAvailablePod"));
     }
     const validation = validate(form);
     if (validation) return setRepeatableError(setError, validation);
@@ -142,7 +146,7 @@ export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCre
     try {
       await onCreated(await api.createHumanUser(selectedPod.podId, createInput(form)));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "创建 Human User 失败");
+      setError(errorMessage(caught, "user.createUserFailed"));
     } finally {
       setBusy(false);
     }
@@ -151,16 +155,16 @@ export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCre
   return (
     <Modal
       className="standard-modal"
-      title="创建 Human User"
+      title={t("user.createUserTitle")}
       visible={visible}
       onCancel={onClose}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
-            取消
+            {t("common.cancel")}
           </Button>
           <Button theme="solid" loading={busy} onClick={() => void submit()}>
-            创建
+            {t("common.create")}
           </Button>
         </>
       }
@@ -209,17 +213,18 @@ function CreateForm({
   setForm,
   onPodChange,
 }: FormProps) {
+  const { t } = useTranslation();
   const set = (key: keyof CreateUserForm, value: string | number) =>
     setForm((previous) => ({ ...previous, [key]: value }));
   return (
     <>
       <RadioGroup
-        aria-label="用户激活方式"
+        aria-label={t("user.activationMode")}
         type="button"
         value={form.mode}
         options={[
-          { value: "identity", label: "已知 external ID" },
-          { value: "activation", label: "绑定码激活" },
+          { value: "identity", label: t("user.modeKnownExternalId") },
+          { value: "activation", label: t("user.modeBindingCode") },
         ]}
         onChange={(event) =>
           set("mode", event.target.value === "activation" ? "activation" : "identity")
@@ -234,9 +239,9 @@ function CreateForm({
           <ActivationFields form={form} set={set} />
         )}
         <div className={styles.full}>
-          <Field label="备注">
+          <Field label={t("user.notes")}>
             <TextArea
-              aria-label="备注"
+              aria-label={t("user.notes")}
               value={form.notes}
               onChange={(value) => set("notes", value)}
               maxCount={4000}
@@ -293,11 +298,12 @@ function CommonFields({
   form: CreateUserForm;
   set: SetField;
 }) {
+  const { t } = useTranslation();
   return (
     <>
-      <Field label="显示名称">
+      <Field label={t("user.displayName")}>
         <Input
-          aria-label="显示名称"
+          aria-label={t("user.displayName")}
           value={form.displayName}
           onChange={(value) => set("displayName", value)}
         />
@@ -307,14 +313,14 @@ function CommonFields({
           aria-label="Agent ID"
           value={form.agentId}
           onChange={(value) => set("agentId", value)}
-          placeholder="留空自动生成"
+          placeholder={t("user.agentIdAuto")}
         />
       </Field>
-      <Field label="模型配置">
+      <Field label={t("user.modelConfig")}>
         <Select
-          aria-label="模型配置"
+          aria-label={t("user.modelConfig")}
           value={form.modelConfigId}
-          placeholder={models.length === 0 ? "暂无可用模型" : "选择未绑定模型"}
+          placeholder={models.length === 0 ? t("user.noModels") : t("user.selectUnboundModel")}
           optionList={models.map((model) => ({
             value: model.modelConfigId,
             label: `${model.displayName} (${model.provider}/${model.model})`,
@@ -323,9 +329,9 @@ function CommonFields({
           style={{ width: "100%" }}
         />
       </Field>
-      <Field label="消息通道">
+      <Field label={t("user.messageChannel")}>
         <Select
-          aria-label="消息通道"
+          aria-label={t("user.messageChannel")}
           value={form.channel}
           optionList={pod.channels.map((channel) => ({
             value: channel,
@@ -347,6 +353,7 @@ function CommonFields({
 }
 
 function IdentityFields({ form, set }: { form: CreateUserForm; set: SetField }) {
+  const { t } = useTranslation();
   return (
     <>
       <Field label="External ID">
@@ -356,9 +363,9 @@ function IdentityFields({ form, set }: { form: CreateUserForm; set: SetField }) 
           onChange={(value) => set("externalId", value)}
         />
       </Field>
-      <Field label="External ID 类型">
+      <Field label={t("user.externalIdType")}>
         <Input
-          aria-label="External ID 类型"
+          aria-label={t("user.externalIdType")}
           value={form.externalIdType}
           onChange={(value) => set("externalIdType", value)}
         />
@@ -368,10 +375,11 @@ function IdentityFields({ form, set }: { form: CreateUserForm; set: SetField }) 
 }
 
 function ActivationFields({ form, set }: { form: CreateUserForm; set: SetField }) {
+  const { t } = useTranslation();
   return (
-    <Field label="绑定码有效期（分钟）">
+    <Field label={t("user.bindingValidityMinutes")}>
       <InputNumber
-        aria-label="绑定码有效期"
+        aria-label={t("user.bindingValidity")}
         min={1}
         max={1440}
         value={form.expiresInMinutes}

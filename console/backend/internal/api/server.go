@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/config"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
@@ -124,7 +123,17 @@ func (s *Server) Handler() http.Handler {
 	if h, ok := web.Handler(); ok {
 		mux.Handle("/", h)
 	}
-	return requestErrorLogMiddleware(mux)
+	return withLanguage(requestErrorLogMiddleware(mux))
+}
+
+// withLanguage resolves the request language from Accept-Language and injects it
+// into the context so error responses can be localized (default zh). Mounted
+// outermost so it also covers unauthenticated routes such as login.
+func withLanguage(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), langKey, parseLang(r.Header.Get("Accept-Language")))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -139,24 +148,6 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	if err := json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": data}); err != nil {
 		log.Printf("api_response_encode_failed status=%d error=%v", status, err)
 	}
-}
-
-func writeErr(w http.ResponseWriter, status, code int, msg string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(map[string]any{"code": code, "message": msg}); err != nil {
-		log.Printf("api_error_encode_failed status=%d code=%d error=%v", status, code, err)
-	}
-}
-
-// writeRuntimeFailure 输出 502 运行时失败，保留稳定场景前缀并透传脱敏后的具体原因，
-// 让页面能直接看到（如 "install private Skill failed: bundle must contain SKILL.md"）。
-func writeRuntimeFailure(w http.ResponseWriter, err error, action string) {
-	message := action
-	if err != nil {
-		message = action + ": " + auditlog.RedactDiagnostic(err.Error())
-	}
-	writeErr(w, http.StatusBadGateway, codeRuntimeFailure, message)
 }
 
 type errorLogRecorder struct {

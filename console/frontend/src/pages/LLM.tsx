@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Input, Modal, Select, Space, Table, Tag, Typography } from "@douyinfe/semi-ui";
 import { IconPlus, IconPulse, IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../api";
@@ -10,29 +11,22 @@ import {
   tablePagination,
 } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
+import { errorMessage } from "../utils/error";
 import styles from "./LLM.module.css";
 import { LLMCreateDialog } from "./llm/LLMCreateDialog";
 
 const { Text } = Typography;
 type ModelBoundFilter = "" | "bound" | "available";
 
-const MODEL_BOUND_OPTIONS = [
-  { label: "全部状态", value: "" },
-  { label: "已绑定", value: "bound" },
-  { label: "可分配", value: "available" },
-];
-
 export function LLM() {
+  const { t } = useTranslation();
   const state = useLLMModels();
   const [createOpen, setCreateOpen] = useState(false);
   return (
     <div>
-      <PageHeader
-        title="模型配置"
-        description="批量维护可分配模型，创建用户时必须绑定一个未占用模型"
-      />
+      <PageHeader title={t("nav.llm")} description={t("model.pageDescription")} />
       <FeedbackBanner error={state.error} message={state.message} />
-      <PageSection title="模型池">
+      <PageSection title={t("model.pool")}>
         <ListToolbar
           actions={<ModelActions state={state} onCreate={() => setCreateOpen(true)} />}
           filters={<ModelFilters state={state} />}
@@ -53,6 +47,7 @@ export function LLM() {
 type BusyState = "load" | "create" | "test" | "delete" | null;
 
 function useLLMModels() {
+  const { t } = useTranslation();
   const [models, setModels] = useState<LLMModelConfig[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
@@ -77,7 +72,7 @@ function useLLMModels() {
       setSelected((previous) => keepExistingSelection(previous, result.items));
     } catch (caught) {
       if (mountedRef.current && requestId === requestRef.current) {
-        setError(caught instanceof Error ? caught.message : "加载模型配置失败");
+        setError(errorMessage(caught, "model.loadFailed"));
       }
     } finally {
       if (mountedRef.current) setBusy((current) => (current === "load" ? null : current));
@@ -104,11 +99,11 @@ function useLLMModels() {
     try {
       const result = await api.createLLMModels(input);
       if (!mountedRef.current) return false;
-      setMessage(`已录入 ${result.total} 个模型`);
+      setMessage(t("model.createdMessage", { count: result.total }));
       await load();
       return true;
     } catch (caught) {
-      if (mountedRef.current) setError(caught instanceof Error ? caught.message : "批量录入失败");
+      if (mountedRef.current) setError(errorMessage(caught, "model.batchCreateFailed"));
       return false;
     } finally {
       if (mountedRef.current) setBusy(null);
@@ -117,7 +112,7 @@ function useLLMModels() {
 
   const testSelected = async () => {
     const ids = selectedModelIds(selected, models);
-    if (ids.length === 0) return setError("请至少选择一个模型");
+    if (ids.length === 0) return setError(t("model.selectAtLeastOne"));
     setBusy("test");
     setError("");
     setMessage("");
@@ -125,10 +120,10 @@ function useLLMModels() {
       const result = await api.testLLMModels(ids);
       if (!mountedRef.current) return;
       const okCount = result.results.filter((item) => item.ok).length;
-      setMessage(`连通性测试完成：${okCount}/${result.results.length} 通过`);
+      setMessage(t("model.testCompleted", { passed: okCount, total: result.results.length }));
       await load();
     } catch (caught) {
-      if (mountedRef.current) setError(caught instanceof Error ? caught.message : "批量测试失败");
+      if (mountedRef.current) setError(errorMessage(caught, "model.batchTestFailed"));
     } finally {
       if (mountedRef.current) setBusy(null);
     }
@@ -141,10 +136,10 @@ function useLLMModels() {
     try {
       await api.deleteLLMModel(modelConfigId);
       if (!mountedRef.current) return;
-      setMessage("模型已删除");
+      setMessage(t("model.deletedMessage"));
       await load();
     } catch (caught) {
-      if (mountedRef.current) setError(caught instanceof Error ? caught.message : "删除模型失败");
+      if (mountedRef.current) setError(errorMessage(caught, "model.deleteFailed"));
     } finally {
       if (mountedRef.current) setBusy(null);
     }
@@ -177,26 +172,41 @@ function useLLMModels() {
 type LLMModelsState = ReturnType<typeof useLLMModels>;
 
 function ModelActions({ state, onCreate }: { state: LLMModelsState; onCreate: () => void }) {
+  const { t } = useTranslation();
   return (
     <Space>
-      <Button aria-label="创建模型" icon={<IconPlus />} theme="solid" onClick={onCreate}>
-        创建模型
+      <Button
+        aria-label={t("model.createModel")}
+        icon={<IconPlus />}
+        theme="solid"
+        onClick={onCreate}
+      >
+        {t("model.createModel")}
       </Button>
       <Button
-        aria-label="批量测试连通性"
+        aria-label={t("model.testConnectivity")}
         icon={<IconPulse />}
         loading={state.busy === "test"}
         disabled={state.busy !== null || state.models.length === 0}
         onClick={() => void state.testSelected()}
       >
-        批量测试连通性
+        {t("model.testConnectivity")}
       </Button>
     </Space>
   );
 }
 
 function ModelFilters({ state }: { state: LLMModelsState }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState(state.query);
+  const boundOptions = useMemo(
+    () => [
+      { label: t("model.boundAll"), value: "" },
+      { label: t("model.boundBound"), value: "bound" },
+      { label: t("model.boundAvailable"), value: "available" },
+    ],
+    [t],
+  );
   const submit = () => {
     state.setPage(1);
     state.setQuery(search.trim());
@@ -204,19 +214,19 @@ function ModelFilters({ state }: { state: LLMModelsState }) {
   return (
     <Space>
       <Input
-        aria-label="搜索模型配置"
+        aria-label={t("model.searchConfig")}
         prefix={<IconSearch />}
         value={search}
         onChange={setSearch}
         onEnterPress={submit}
-        placeholder="显示名、模型或 Key"
+        placeholder={t("model.searchPlaceholder")}
         style={{ width: 240 }}
       />
-      <Button aria-label="查询模型配置" icon={<IconSearch />} onClick={submit} />
+      <Button aria-label={t("model.searchSubmit")} icon={<IconSearch />} onClick={submit} />
       <Select
-        aria-label="模型绑定状态"
+        aria-label={t("model.boundStatusLabel")}
         value={state.boundFilter}
-        optionList={MODEL_BOUND_OPTIONS}
+        optionList={boundOptions}
         onChange={(value) => {
           state.setPage(1);
           state.setBoundFilter(String(value ?? "") as ModelBoundFilter);
@@ -228,9 +238,10 @@ function ModelFilters({ state }: { state: LLMModelsState }) {
 }
 
 function ModelTable({ state }: { state: LLMModelsState }) {
+  const { t } = useTranslation();
   const columns = [
     {
-      title: "显示名",
+      title: t("model.displayName"),
       dataIndex: "displayName",
       width: 300,
       render: (_: unknown, model: LLMModelConfig) => (
@@ -243,7 +254,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       ),
     },
     {
-      title: "模型",
+      title: t("model.model"),
       dataIndex: "model",
       width: 160,
       render: (_: unknown, model: LLMModelConfig) => (
@@ -269,39 +280,39 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       width: 360,
       render: (_: unknown, model: LLMModelConfig) => (
         <Text type="tertiary" size="small" className="mono">
-          <span className={styles.tableCellLine}>{model.apiKey || "未配置"}</span>
+          <span className={styles.tableCellLine}>{model.apiKey || t("model.notConfigured")}</span>
         </Text>
       ),
     },
     {
-      title: "绑定状态",
+      title: t("model.boundStatus"),
       dataIndex: "boundHumanUserId",
       width: 180,
       render: (_: unknown, model: LLMModelConfig) =>
         model.boundHumanUserId ? (
           <Space className={styles.boundStatus}>
-            <Tag color="orange">已绑定</Tag>
+            <Tag color="orange">{t("model.boundBound")}</Tag>
             <span className={styles.boundUserName}>{model.boundHumanUserName || "-"}</span>
           </Space>
         ) : (
-          <Tag color="green">可分配</Tag>
+          <Tag color="green">{t("model.boundAvailable")}</Tag>
         ),
     },
     {
-      title: "测试结果",
+      title: t("model.testResult"),
       dataIndex: "test",
       width: 110,
       render: (_: unknown, model: LLMModelConfig) => {
-        if (!model.lastTestAt) return <Text type="tertiary">未测试</Text>;
+        if (!model.lastTestAt) return <Text type="tertiary">{t("model.notTested")}</Text>;
         return model.lastTestOK ? (
-          <Tag color="green">通过</Tag>
+          <Tag color="green">{t("model.testPassed")}</Tag>
         ) : (
-          <Tag color="red">{model.lastTestError || "失败"}</Tag>
+          <Tag color="red">{model.lastTestError || t("status.failed")}</Tag>
         );
       },
     },
     {
-      title: "操作",
+      title: t("common.actions"),
       key: "actions",
       width: 90,
       render: (_: unknown, model: LLMModelConfig) => (
@@ -321,7 +332,9 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       dataSource={state.pageModels}
       rowSelection={{
         selectedRowKeys: selectedModelIds(state.selected, state.models),
-        getCheckboxProps: (model) => ({ "aria-label": `选择模型 ${model.displayName}` }),
+        getCheckboxProps: (model) => ({
+          "aria-label": t("model.selectModel", { name: model.displayName }),
+        }),
         onChange: (keys: (string | number)[] | undefined) => {
           // Preserve selection on other pages; only update keys for current page.
           const pageIds = new Set(state.pageModels.map((model) => model.modelConfigId));
@@ -342,7 +355,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
         },
       })}
       renderPagination={renderTablePagination}
-      empty="暂无模型配置"
+      empty={t("model.empty")}
       size="small"
       scroll={{ x: 1520 }}
     />
@@ -358,6 +371,7 @@ function DeleteModelButton({
   onDelete: (modelConfigId: string) => Promise<void>;
   busy: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const bound = Boolean(model.boundHumanUserId);
@@ -367,34 +381,32 @@ function DeleteModelButton({
       await onDelete(model.modelConfigId);
       setOpen(false);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "删除失败");
+      setError(errorMessage(caught, "model.deleteFailed"));
     }
   };
   return (
     <>
       <Button
-        aria-label={`删除模型 ${model.displayName}`}
+        aria-label={t("model.deleteModelTitle", { name: model.displayName })}
         size="small"
         type="danger"
         theme="borderless"
         disabled={bound || busy}
-        title={bound ? "已绑定用户，不能删除" : "删除模型"}
+        title={bound ? t("model.cannotDeleteBound") : t("model.deleteModel")}
         onClick={() => setOpen(true)}
       >
-        删除
+        {t("common.delete")}
       </Button>
       <Modal
-        title={`删除模型 ${model.displayName}`}
+        title={t("model.deleteModelTitle", { name: model.displayName })}
         visible={open}
         onCancel={() => setOpen(false)}
         onOk={() => void confirm()}
-        okText="确认删除"
+        okText={t("common.confirmDelete")}
         okButtonProps={{ type: "danger" as const }}
       >
         <FeedbackBanner error={error} />
-        <p className="hint">
-          删除后将无法再给新用户分配该模型，已绑定用户不受影响（已绑定模型不可删除）。
-        </p>
+        <p className="hint">{t("model.deleteHint")}</p>
       </Modal>
     </>
   );
