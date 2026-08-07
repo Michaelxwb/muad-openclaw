@@ -41,6 +41,17 @@
 - runtime DTO 先 `validateRuntimeConfig` 再原子落盘（`0o600`）；apply 走 generation + stage + health/rollback
 - Skill：system 优先且 protected；public/private 冲突默认不静默覆盖（需 allow_override）
 
+### 镜像构建（GitHub tag 触发）
+- `build-image` workflow（`.github/workflows/build-image.yml`）：推送 `v*` tag 触发，构建 **APP 镜像**（根 `Dockerfile`，base 缺失时自动构建），推 `ghcr.io/<owner>/muad-openclaw:<version>`
+- `build-console` workflow（`.github/workflows/build-console.yml`）：推送 `console-v*` tag 触发，构建 **console 镜像**（`console/Dockerfile`），推 `ghcr.io/<owner>/muad-console:<version>`
+- 裸版本号 tag（如 `0.6.2`）不匹配任何触发模式，需带前缀；镜像 tag 自动去前缀（`v0.6.2` → `0.6.2`）：
+  ```bash
+  git tag v0.6.2 && git tag console-v0.6.2
+  git push origin v0.6.2 console-v0.6.2
+  ```
+- 本地无 `gh` CLI：Actions 运行状态需到仓库 Actions 页查看（`github.com/<owner>/muad-openclaw/actions`）
+- 内网千流流水线（git.sangfor.com / docker.sangfor.com）与 GitHub 构建相互独立；千流 task 脚本（`build/docker-build/task*.sh`）已 gitignore（内网有备份），以备份为准，勿 `git add -f` 强制提交
+
 <!-- code-flow:spec-loading schema=1 start -->
 ## Spec Workflow (schema 1)
 
