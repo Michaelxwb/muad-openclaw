@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Banner, Button, Empty, List, Popover } from "@douyinfe/semi-ui";
 import { IconBell, IconRefresh } from "@douyinfe/semi-icons";
-import { api } from "../api";
+import { useTranslation } from "react-i18next";
+import { api, ApiError } from "../api";
 import type { Alert } from "../api";
+import { errorMessage, ErrorDetail } from "../utils/error";
 import { useMountedRef } from "../hooks/useMountedRef";
 import styles from "./NotificationBell.module.css";
 
@@ -22,6 +24,7 @@ export function requestAlertsRefresh() {
 }
 
 export function NotificationBell({ loadAlerts = api.alerts }: Props) {
+  const { t } = useTranslation();
   const state = useAlerts(loadAlerts);
   const [open, setOpen] = useState(false);
   return (
@@ -33,11 +36,11 @@ export function NotificationBell({ loadAlerts = api.alerts }: Props) {
       closeOnEsc
       contentClassName={styles.popover}
       content={
-        <div className={styles.panel} role="dialog" aria-label="告警列表">
+        <div className={styles.panel} role="dialog" aria-label={t("common.alertsListAria")}>
           <div className={styles.panelHeader}>
-            <span>告警</span>
+            <span>{t("common.alerts")}</span>
             <Button
-              aria-label="刷新告警"
+              aria-label={t("common.refreshAlerts")}
               icon={<IconRefresh />}
               theme="borderless"
               size="small"
@@ -45,14 +48,17 @@ export function NotificationBell({ loadAlerts = api.alerts }: Props) {
             />
           </div>
           {state.error && (
-            <Banner type="danger" description={state.error} fullMode={false} bordered />
+            <>
+              <Banner type="danger" description={state.error} fullMode={false} bordered />
+              <ErrorDetail detail={state.errorDetail} />
+            </>
           )}
           <AlertList alerts={state.alerts} />
         </div>
       }
     >
       <Button
-        aria-label="告警"
+        aria-label={t("common.alerts")}
         aria-expanded={open}
         icon={<BellIcon count={state.alerts.length} />}
         theme="borderless"
@@ -65,6 +71,7 @@ export function NotificationBell({ loadAlerts = api.alerts }: Props) {
 function useAlerts(loadAlerts: () => Promise<Alert[]>) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [error, setError] = useState("");
+  const [errorDetail, setErrorDetail] = useState<string | undefined>();
   const mountedRef = useMountedRef();
   const refresh = useCallback(() => {
     void loadAlerts().then(
@@ -72,11 +79,13 @@ function useAlerts(loadAlerts: () => Promise<Alert[]>) {
         if (mountedRef.current) {
           setAlerts(result);
           setError("");
+          setErrorDetail(undefined);
         }
       },
       (caught: unknown) => {
         if (mountedRef.current) {
-          setError(caught instanceof Error ? caught.message : "加载告警失败");
+          setError(errorMessage(caught, "common.alertsLoadFailed"));
+          setErrorDetail(caught instanceof ApiError ? caught.detail : undefined);
         }
       },
     );
@@ -90,7 +99,7 @@ function useAlerts(loadAlerts: () => Promise<Alert[]>) {
       window.removeEventListener(ALERTS_REFRESH_EVENT, refresh);
     };
   }, [refresh]);
-  return { alerts, error, refresh };
+  return { alerts, error, errorDetail, refresh };
 }
 
 function BellIcon({ count }: { count: number }) {
@@ -108,7 +117,8 @@ function BellIcon({ count }: { count: number }) {
 }
 
 function AlertList({ alerts }: { alerts: Alert[] }) {
-  if (alerts.length === 0) return <Empty description="暂无告警" />;
+  const { t } = useTranslation();
+  if (alerts.length === 0) return <Empty description={t("common.noAlerts")} />;
   return (
     <List
       dataSource={alerts}
@@ -129,15 +139,16 @@ function AlertList({ alerts }: { alerts: Alert[] }) {
 }
 
 function AlertDetails({ alert }: { alert: Alert }) {
+  const { t } = useTranslation();
   if (!alert.details) return null;
   const details = [
-    detail(alert, "generation", "期望"),
-    detail(alert, "appliedGeneration", "已应用"),
-    detail(alert, "active", "运行中"),
-    detail(alert, "queued", "排队"),
-    detail(alert, "limit", "上限"),
-    detail(alert, "count", "次数"),
-    detail(alert, "error", "错误"),
+    detail(alert, "generation", t("common.alertExpected")),
+    detail(alert, "appliedGeneration", t("common.alertApplied")),
+    detail(alert, "active", t("status.running")),
+    detail(alert, "queued", t("common.alertQueued")),
+    detail(alert, "limit", t("common.alertLimit")),
+    detail(alert, "count", t("common.alertCount")),
+    detail(alert, "error", t("status.error")),
   ].filter((value): value is string => Boolean(value));
   return details.length > 0 ? <span className={styles.details}>{details.join(" · ")}</span> : null;
 }

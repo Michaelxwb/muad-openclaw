@@ -142,7 +142,7 @@ func TestHumanUserAPI_CreateEnforcesPodCapacity(t *testing.T) {
 		`"activation":{"channel":"wecom"}}`
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users", body)
 	assertStatus(t, rr, http.StatusConflict)
-	if !strings.Contains(rr.Body.String(), `"code":40902`) {
+	if !strings.Contains(rr.Body.String(), `"code":40706`) {
 		t.Fatalf("capacity error = %s", rr.Body.String())
 	}
 }

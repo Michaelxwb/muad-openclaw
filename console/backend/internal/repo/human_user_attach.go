@@ -2,7 +2,6 @@ package repo
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,8 +17,10 @@ var (
 // AttachUsers binds previously unbound Human Users to a Pod. Users must be
 // unbound (their previous Pod was deleted). Each user keeps its agent_id and
 // browser_profile so memory on a recreated Pod links back, receives a fresh
-// browser CDP port, and its status is reconciled against active identities on
-// channels the target Pod enables. Returns the attached users.
+// browser CDP port, and its status is reconciled against the user's active
+// identities (any active identity marks the user active — identities are
+// user-owned and survive Pod deletion, so the Pod's channel set is not a
+// factor). Returns the attached users.
 func (s *Store) AttachUsers(humanUserIDs []string, podID string, portStart, portEnd int) ([]HumanUser, error) {
 	portStart, portEnd, err := normalizePortRange(portStart, portEnd)
 	if err != nil {
@@ -34,12 +35,7 @@ func (s *Store) AttachUsers(humanUserIDs []string, podID string, portStart, port
 		return nil, fmt.Errorf("begin attach Human Users: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	pod, err := getPodTx(tx, podID)
-	if err != nil {
-		return nil, err
-	}
-	channels, err := podChannelList(pod.Channels)
-	if err != nil {
+	if _, err := getPodTx(tx, podID); err != nil {
 		return nil, err
 	}
 	users := make([]HumanUser, 0, len(humanUserIDs))
@@ -70,7 +66,7 @@ func (s *Store) AttachUsers(humanUserIDs []string, podID string, portStart, port
 		// Reconcile lifecycle status from identities, but keep an intentionally
 		// disabled user disabled (attach is not an explicit re-enable).
 		if users[i].Status != HumanUserStatusDisabled {
-			status, err := attachUserStatusTx(tx, users[i].HumanUserID, channels)
+			status, err := attachUserStatusTx(tx, users[i].HumanUserID)
 			if err != nil {
 				return nil, err
 			}
@@ -96,7 +92,7 @@ func (s *Store) AttachUsers(humanUserIDs []string, podID string, portStart, port
 // which are the only ones eligible to be attached to another Pod. Users mid
 // deletion are excluded.
 func (s *Store) ListUnboundHumanUsers() ([]HumanUser, error) {
-	rows, err := s.db.Query(`SELECT `+humanUserColumns+`
+	rows, err := s.db.Query(`SELECT ` + humanUserColumns + `
 		FROM human_users WHERE pod_id IS NULL AND status != 'deleting'
 		ORDER BY last_pod_id, agent_id`)
 	if err != nil {
@@ -157,14 +153,6 @@ func getPodTx(tx *sql.Tx, podID string) (Pod, error) {
 	return scanPod(row)
 }
 
-func podChannelList(channelsJSON string) ([]string, error) {
-	var channels []string
-	if err := json.Unmarshal([]byte(channelsJSON), &channels); err != nil {
-		return nil, fmt.Errorf("decode Pod channels: %w", err)
-	}
-	return channels, nil
-}
-
 func ensureAgentFreeInPodTx(tx *sql.Tx, podID, agentID, browserProfile string) error {
 	var count int
 	if err := tx.QueryRow(`SELECT COUNT(*) FROM human_users
@@ -178,23 +166,15 @@ func ensureAgentFreeInPodTx(tx *sql.Tx, podID, agentID, browserProfile string) e
 	return nil
 }
 
-// attachUserStatusTx reconciles a freshly attached user: active only when it has
-// at least one active identity on a channel the target Pod enables.
-func attachUserStatusTx(tx *sql.Tx, humanUserID string, channels []string) (string, error) {
-	if len(channels) == 0 {
-		return HumanUserStatusPending, nil
-	}
-	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(channels)), ",")
-	args := make([]any, 0, len(channels)+1)
-	args = append(args, humanUserID)
-	for _, channel := range channels {
-		args = append(args, channel)
-	}
+// attachUserStatusTx reconciles a freshly attached user: active when it has at
+// least one active identity. Identities are user-owned and survive Pod
+// deletion, so the target Pod's channel set does not gate lifecycle status;
+// this mirrors reconcileHumanUserIdentityStatus.
+func attachUserStatusTx(tx *sql.Tx, humanUserID string) (string, error) {
 	var count int
 	if err := tx.QueryRow(`SELECT COUNT(*) FROM user_identities
-		WHERE human_user_id = ? AND status = 'active' AND channel IN (`+placeholders+`)`,
-		args...).Scan(&count); err != nil {
-		return "", fmt.Errorf("count matching active identities: %w", err)
+		WHERE human_user_id = ? AND status = 'active'`, humanUserID).Scan(&count); err != nil {
+		return "", fmt.Errorf("count active identities: %w", err)
 	}
 	if count > 0 {
 		return HumanUserStatusActive, nil

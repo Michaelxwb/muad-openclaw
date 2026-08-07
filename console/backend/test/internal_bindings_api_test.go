@@ -40,7 +40,7 @@ func TestInternalBindingAPI_ReportsRuntimeApplyFailure(t *testing.T) {
 	e.reconcile.err = errors.New("runtime apply failed")
 	rr := doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct"))
 	assertStatus(t, rr, http.StatusBadGateway)
-	if !strings.Contains(rr.Body.String(), `"code":50202`) {
+	if !strings.Contains(rr.Body.String(), `"code":50214`) {
 		t.Fatalf("unexpected bind apply failure response: %s", rr.Body.String())
 	}
 	stored, _ := e.store.GetHumanUser(user.HumanUserID)
@@ -59,7 +59,7 @@ func TestInternalBindingAPI_RequiresSynchronousRuntimeApply(t *testing.T) {
 
 	rr := doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct"))
 	assertStatus(t, rr, http.StatusBadGateway)
-	if !strings.Contains(rr.Body.String(), `"code":50202`) {
+	if !strings.Contains(rr.Body.String(), `"code":50214`) {
 		t.Fatalf("unexpected bind apply failure response: %s", rr.Body.String())
 	}
 	if len(queue.podIDs) != 0 {
@@ -130,7 +130,7 @@ func TestInternalBindingAPI_RateLimitsSenderWindow(t *testing.T) {
 	}
 	rr := doInternalBind(e, token, body)
 	assertStatus(t, rr, http.StatusTooManyRequests)
-	if rr.Header().Get("Retry-After") == "" || !strings.Contains(rr.Body.String(), `"code":42901`) {
+	if rr.Header().Get("Retry-After") == "" || !strings.Contains(rr.Body.String(), `"code":42902`) {
 		t.Fatalf("rate-limit response = %s headers=%v", rr.Body.String(), rr.Header())
 	}
 	other := bindingBody("MUAD-01234567", "default", "other-sender", "direct")

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestBuildSkillDirectoryBundleAllowsBundlesUpToInstallerLimit(t *testing.T) {
+func TestBuildSkillDirectoryBundleAllowsLargeBundles(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "large-skill")
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatalf("create Skill dir: %v", err)
@@ -28,9 +28,6 @@ func TestBuildSkillDirectoryBundleAllowsBundlesUpToInstallerLimit(t *testing.T) 
 		t.Fatalf("build Skill bundle: %v", err)
 	}
 	if len(bundle) <= 5*1024*1024 {
-		t.Fatalf("test bundle size = %d, want above old 5 MiB limit", len(bundle))
-	}
-	if len(bundle) > maxPrivateSkillBundleBytes {
-		t.Fatalf("test bundle size = %d, want within configured limit", len(bundle))
+		t.Fatalf("test bundle size = %d, want above 5 MiB", len(bundle))
 	}
 }

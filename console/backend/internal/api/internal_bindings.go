@@ -12,6 +12,7 @@ import (
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -28,21 +29,21 @@ type bindingActivateRequest struct {
 func (s *Server) handleActivateBinding(w http.ResponseWriter, r *http.Request) {
 	pod, ok := podFromContext(r.Context())
 	if !ok {
-		writeErr(w, http.StatusUnauthorized, codePodUnauthorized, "invalid Pod service token")
+		writeErr(w, r, errcode.UnauthorizedPodToken)
 		return
 	}
 	var request bindingActivateRequest
 	if err := decodeJSONBody(w, r, &request); err != nil || !validBindingContext(pod, request) {
 		s.auditBindingReject(r, pod, "invalid_context")
-		writeErr(w, http.StatusBadRequest, codeInvalidBinding, "invalid binding context")
+		writeErr(w, r, errcode.InvalidBindingContext)
 		return
 	}
 	if s.bindingCodec == nil {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "binding code service unavailable")
+		writeErr(w, r, errcode.UnavailableBindingCodeService)
 		return
 	}
 	if s.reconcile == nil {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime reconciler unavailable")
+		writeErr(w, r, errcode.UnavailableRuntimeReconciler)
 		return
 	}
 	limitKey := bindingLimitKey(pod.PodID, request)
@@ -51,20 +52,20 @@ func (s *Server) handleActivateBinding(w http.ResponseWriter, r *http.Request) {
 		seconds := int((retry + time.Second - 1) / time.Second)
 		w.Header().Set("Retry-After", strconv.Itoa(max(1, seconds)))
 		s.auditBindingReject(r, pod, "rate_limited")
-		writeErr(w, http.StatusTooManyRequests, codeRateLimited, "binding attempts are rate limited")
+		writeErr(w, r, errcode.RateLimitedBinding)
 		return
 	}
 	normalizeBindingRequest(&request)
 	result, err := s.activateBindingCode(pod, request)
 	if err != nil {
 		s.auditBindingFailure(r, pod, bindingErrorStatus(err))
-		s.writeBindingActivationError(w, err)
+		s.writeBindingActivationError(w, r, err)
 		return
 	}
 	s.bindingLimiter.Reset(limitKey)
 	if err := s.applyBindingRuntime(r.Context(), pod.PodID); err != nil {
 		s.auditBindingApplyFailure(r, result, bindingApplyFailureStatus(err))
-		writeErr(w, http.StatusBadGateway, codeRuntimeApplyFailed, "binding saved but runtime config apply failed")
+		writeErr(w, r, errcode.RuntimeApplyFailed)
 		return
 	}
 	s.auditBindingSuccess(r, result)
@@ -121,19 +122,24 @@ func bindingLimitKey(podID string, request bindingActivateRequest) string {
 	}, "\x00"))
 }
 
-func (s *Server) writeBindingActivationError(w http.ResponseWriter, err error) {
+func (s *Server) writeBindingActivationError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
-	case errors.Is(err, repo.ErrInvalidBindingCode), errors.Is(err, repo.ErrBindingCodeScope):
-		writeErr(w, http.StatusBadRequest, codeInvalidBinding, "binding code or context is invalid")
-	case errors.Is(err, repo.ErrBindingCodeExpired), errors.Is(err, repo.ErrBindingCodeUsed),
-		errors.Is(err, repo.ErrBindingCodeRevoked):
-		writeErr(w, http.StatusConflict, codeInvalidBinding, "binding code is not usable")
+	case errors.Is(err, repo.ErrInvalidBindingCode):
+		writeErr(w, r, errcode.InvalidBindingCode)
+	case errors.Is(err, repo.ErrBindingCodeScope):
+		writeErr(w, r, errcode.InvalidBindingOrContext)
+	case errors.Is(err, repo.ErrBindingCodeExpired):
+		writeErr(w, r, errcode.ConflictBindingCodeExpired)
+	case errors.Is(err, repo.ErrBindingCodeUsed):
+		writeErr(w, r, errcode.ConflictBindingCodeUsed)
+	case errors.Is(err, repo.ErrBindingCodeRevoked):
+		writeErr(w, r, errcode.ConflictBindingCodeRevoked)
 	case errors.Is(err, repo.ErrIdentityExists):
-		writeErr(w, http.StatusConflict, codeIdentityConflict, "sender is already bound")
+		writeErr(w, r, errcode.ConflictSenderBound)
 	case errors.Is(err, repo.ErrInvalidStateTransition):
-		writeErr(w, http.StatusConflict, codeInvalidBinding, "binding code is not usable")
+		writeErr(w, r, errcode.ConflictStateOperation)
 	default:
-		writeErr(w, http.StatusInternalServerError, codeInternal, "activate binding code")
+		writeErr(w, r, errcode.InternalActivateBindingCode)
 	}
 }
 

@@ -79,6 +79,9 @@ func TestLoad_DefaultsAndValid(t *testing.T) {
 		c.RuntimePublicSkillsDir != "/opt/openclaw-skills" {
 		t.Errorf("runtime paths = %q/%q/%q", c.RuntimeTimezone, c.RuntimeStateDir, c.RuntimePublicSkillsDir)
 	}
+	if c.SkillMaxUploadBundleBytes != 5<<20 {
+		t.Errorf("SkillMaxUploadBundleBytes = %d, want 5m default", c.SkillMaxUploadBundleBytes)
+	}
 }
 
 func TestLoad_YAMLPicksUpDefaults(t *testing.T) {
@@ -110,6 +113,7 @@ k8s:
   namespace: test-ns
   skillsPVC: muad-skills
   publicSkillsMountPath: /public
+maxSkillUploadBundleSize: 10m
 `), 0o644)
 
 	c, err := config.Load()
@@ -150,6 +154,9 @@ k8s:
 	}
 	if c.SkillsDir != "/public/.muad-skill-assets" {
 		t.Errorf("K8s SkillsDir = %q, want /public/.muad-skill-assets", c.SkillsDir)
+	}
+	if c.SkillMaxUploadBundleBytes != 10<<20 {
+		t.Errorf("SkillMaxUploadBundleBytes = %d, want 10m from yaml", c.SkillMaxUploadBundleBytes)
 	}
 	// defaults still apply for fields not in yaml
 	if c.DefaultImage != "ghcr.io/michaelxwb/muad-openclaw:latest" {
@@ -381,6 +388,7 @@ func TestLoad_RuntimeDefaultsEnvOverridesYAML(t *testing.T) {
 	t.Setenv("CONSOLE_RESOURCE_MEM_LIMIT", "6g")
 	t.Setenv("CONSOLE_RESOURCE_CPU_LIMIT", "6")
 	t.Setenv("CONSOLE_RESOURCE_RESTART_POLICY", "always")
+	t.Setenv("CONSOLE_MAX_SKILL_UPLOAD_BUNDLE_SIZE", "2g")
 
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(`
 resources:
@@ -392,6 +400,7 @@ resources:
 browser:
   cdpPortStart: 19000
   cdpPortEnd: 19100
+maxSkillUploadBundleSize: 5m
 `), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
@@ -410,6 +419,9 @@ browser:
 	if c.RuntimeDefaults.BrowserCDPPortStart != 20000 || c.RuntimeDefaults.BrowserCDPPortEnd != 20100 {
 		t.Errorf("Browser CDP range = %d-%d, want 20000-20100", c.RuntimeDefaults.BrowserCDPPortStart, c.RuntimeDefaults.BrowserCDPPortEnd)
 	}
+	if c.SkillMaxUploadBundleBytes != 2<<30 {
+		t.Errorf("SkillMaxUploadBundleBytes = %d, want 2g (env > yaml 5m)", c.SkillMaxUploadBundleBytes)
+	}
 }
 
 func TestLoad_RejectsInvalidRuntimeDefaults(t *testing.T) {
@@ -426,6 +438,8 @@ func TestLoad_RejectsInvalidRuntimeDefaults(t *testing.T) {
 		{name: "invalid mem limit", key: "CONSOLE_RESOURCE_MEM_LIMIT", value: "2gb"},
 		{name: "invalid cpu limit", key: "CONSOLE_RESOURCE_CPU_LIMIT", value: "zero"},
 		{name: "invalid restart policy", key: "CONSOLE_RESOURCE_RESTART_POLICY", value: "sometimes"},
+		{name: "invalid upload bundle size", key: "CONSOLE_MAX_SKILL_UPLOAD_BUNDLE_SIZE", value: "5gb"},
+		{name: "zero upload bundle size", key: "CONSOLE_MAX_SKILL_UPLOAD_BUNDLE_SIZE", value: "0m"},
 	}
 
 	for _, tt := range tests {

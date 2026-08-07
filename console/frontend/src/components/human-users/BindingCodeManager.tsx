@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Input, InputNumber, Modal, Select, Table, Tag, Toast } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import type {
   ActivationInput,
@@ -12,6 +13,8 @@ import type {
 import { channelMeta } from "../../channels";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
+import i18n from "../../i18n";
+import { errorMessage } from "../../utils/error";
 import styles from "../HumanUsersPanel.module.css";
 import { ActivationCodeDialog } from "./ActivationCodeDialog";
 import { Field } from "./shared";
@@ -29,6 +32,7 @@ export function BindingCodeManager({
   identities,
   channelDefaultAccountIds = {},
 }: Props) {
+  const { t } = useTranslation();
   const state = useBindingCodes(user.humanUserId);
   const [createOpen, setCreateOpen] = useState(false);
   const [activation, setActivation] = useState<HumanUserActivation | null>(null);
@@ -38,13 +42,13 @@ export function BindingCodeManager({
     <div>
       <FeedbackBanner error={state.error} />
       <div className={styles.toolbar}>
-        <span>绑定码用于为当前用户增加新的 IM Identity。</span>
+        <span>{t("user.bindingCodeHint")}</span>
         <Button theme="solid" onClick={() => setCreateOpen(true)}>
-          生成绑定码
+          {t("user.generateBindingCode")}
         </Button>
       </div>
       <Table
-        columns={bindingCodeColumns(actions.revokeId, actions.revoke) as never}
+        columns={bindingCodeColumns(t, actions.revokeId, actions.revoke) as never}
         dataSource={state.items}
         rowKey="bindingCodeId"
         loading={state.loading}
@@ -78,10 +82,10 @@ function useBindingCodeActions(humanUserId: string, state: BindingCodeState) {
     state.setError("");
     try {
       await api.revokeBindingCode(humanUserId, bindingCodeId);
-      Toast.success("绑定码已吊销");
+      Toast.success(i18n.t("user.revokeBindingCodeSuccess"));
       await state.refresh();
     } catch (caught) {
-      state.setError(caught instanceof Error ? caught.message : "吊销绑定码失败");
+      state.setError(errorMessage(caught, "user.revokeBindingCodeFailed"));
     } finally {
       setRevokeId("");
     }
@@ -106,7 +110,7 @@ function useBindingCodes(humanUserId: string) {
       if (mountedRef.current && requestId === requestRef.current) setItems(result.items);
     } catch (caught) {
       if (!mountedRef.current || requestId !== requestRef.current) return;
-      setError(caught instanceof Error ? caught.message : "加载绑定码失败");
+      setError(errorMessage(caught, "user.loadBindingCodesFailed"));
     } finally {
       if (mountedRef.current && requestId === requestRef.current) setLoading(false);
     }
@@ -117,10 +121,14 @@ function useBindingCodes(humanUserId: string) {
   return { items, loading, error, setError, refresh };
 }
 
-function bindingCodeColumns(busyId: string, onRevoke: (id: string) => Promise<void>) {
+function bindingCodeColumns(
+  t: (key: string) => string,
+  busyId: string,
+  onRevoke: (id: string) => Promise<void>,
+) {
   return [
     {
-      title: "通道 / Account",
+      title: t("user.columnChannelAccount"),
       key: "scope",
       render: (_: unknown, code: BindingCode) => (
         <div>
@@ -131,23 +139,25 @@ function bindingCodeColumns(busyId: string, onRevoke: (id: string) => Promise<vo
     },
     { title: "Hint", dataIndex: "codeHint", key: "codeHint", className: "mono" },
     {
-      title: "用途",
+      title: t("user.columnPurpose"),
       key: "purpose",
       render: (_: unknown, code: BindingCode) =>
-        code.purpose === "add_identity_to_existing_user" ? "新增 IM" : "首次激活",
+        code.purpose === "add_identity_to_existing_user"
+          ? t("user.purposeAddIdentity")
+          : t("user.purposeFirstActivation"),
     },
     {
-      title: "状态",
+      title: t("common.status"),
       key: "status",
       render: (_: unknown, code: BindingCode) => <BindingStatus status={code.status} />,
     },
     {
-      title: "过期时间",
+      title: t("user.columnExpiresAt"),
       key: "expiresAt",
       render: (_: unknown, code: BindingCode) => new Date(code.expiresAt).toLocaleString(),
     },
     {
-      title: "操作",
+      title: t("common.actions"),
       key: "actions",
       render: (_: unknown, code: BindingCode) => (
         <Button
@@ -157,7 +167,7 @@ function bindingCodeColumns(busyId: string, onRevoke: (id: string) => Promise<vo
           loading={busyId === code.bindingCodeId}
           onClick={() => void onRevoke(code.bindingCodeId)}
         >
-          吊销
+          {t("user.revoke")}
         </Button>
       ),
     },
@@ -165,14 +175,15 @@ function bindingCodeColumns(busyId: string, onRevoke: (id: string) => Promise<vo
 }
 
 function BindingStatus({ status }: { status: BindingCodeStatus }) {
+  const { t } = useTranslation();
   const values: Record<
     BindingCodeStatus,
     { color: "orange" | "green" | "grey" | "red"; label: string }
   > = {
-    pending: { color: "orange", label: "待使用" },
-    used: { color: "green", label: "已使用" },
-    expired: { color: "grey", label: "已过期" },
-    revoked: { color: "red", label: "已吊销" },
+    pending: { color: "orange", label: t("user.bindingPending") },
+    used: { color: "green", label: t("status.used") },
+    expired: { color: "grey", label: t("status.expired") },
+    revoked: { color: "red", label: t("status.revoked") },
   };
   return <Tag color={values[status].color}>{values[status].label}</Tag>;
 }
@@ -188,6 +199,7 @@ interface CreateDialogProps {
 }
 
 function CreateBindingCodeDialog(props: CreateDialogProps) {
+  const { t } = useTranslation();
   const [form, setForm] = useState<Required<ActivationInput>>(() =>
     initialForm(props.channels, props.identities, props.channelDefaultAccountIds),
   );
@@ -200,7 +212,7 @@ function CreateBindingCodeDialog(props: CreateDialogProps) {
   }, [props.channelDefaultAccountIds, props.channels, props.identities, props.visible]);
 
   const submit = async () => {
-    if (!form.channel) return setRepeatableError(setError, "消息通道必填");
+    if (!form.channel) return setRepeatableError(setError, t("user.channelRequired"));
     setBusy(true);
     setError("");
     try {
@@ -211,7 +223,7 @@ function CreateBindingCodeDialog(props: CreateDialogProps) {
         expiresAt: result.bindingCode.expiresAt,
       });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "生成绑定码失败");
+      setError(errorMessage(caught, "user.generateBindingCodeFailed"));
     } finally {
       setBusy(false);
     }
@@ -220,11 +232,11 @@ function CreateBindingCodeDialog(props: CreateDialogProps) {
   return (
     <Modal
       className="standard-modal"
-      title="生成新增 IM 绑定码"
+      title={t("user.generateBindingCodeTitle")}
       visible={props.visible}
       onCancel={props.onClose}
       onOk={() => void submit()}
-      okText="生成"
+      okText={t("user.generate")}
       confirmLoading={busy}
     >
       <FeedbackBanner error={error} />
@@ -281,11 +293,12 @@ function BindingCodeFields({
   form: Required<ActivationInput>;
   setForm: (form: Required<ActivationInput>) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.formGrid}>
-      <Field label="消息通道">
+      <Field label={t("user.messageChannel")}>
         <Select
-          aria-label="绑定码通道"
+          aria-label={t("user.bindingCodeChannel")}
           value={form.channel}
           optionList={channels.map((channel) => ({
             value: channel,
@@ -304,14 +317,14 @@ function BindingCodeFields({
       </Field>
       <Field label="Account ID">
         <Input
-          aria-label="绑定码 Account ID"
+          aria-label={t("user.bindingCodeAccountId")}
           value={form.accountId}
           onChange={(accountId) => setForm({ ...form, accountId })}
         />
       </Field>
-      <Field label="有效期（分钟）">
+      <Field label={t("user.validityMinutes")}>
         <InputNumber
-          aria-label="新增 IM 绑定码有效期"
+          aria-label={t("user.bindingCodeValidity")}
           min={1}
           max={1440}
           value={form.expiresInMinutes}

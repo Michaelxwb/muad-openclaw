@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "../../api";
+import { api, ApiError } from "../../api";
 import type { SkillExecution, SkillExecutionQuery } from "../../api";
 import { DEFAULT_PAGE_SIZE } from "../../components/Pagination";
 import { useMountedRef } from "../../hooks/useMountedRef";
+import { errorMessage } from "../../utils/error";
 import {
   EMPTY_SKILL_EXECUTION_FILTERS,
   type SkillExecutionFilters,
@@ -11,7 +12,9 @@ import {
 
 const RUNNING_REFRESH_MS = 5000;
 
-export function useSkillExecutionRecords(active: boolean): SkillExecutionRecordsState {
+export function useSkillExecutionRecords(
+  active: boolean,
+): SkillExecutionRecordsState & { errorDetail?: string } {
   const result = useExecutionResultState();
   const filters = useExecutionFilterState();
   const loader = useExecutionLoader(
@@ -27,6 +30,7 @@ export function useSkillExecutionRecords(active: boolean): SkillExecutionRecords
     total: result.total,
     loading: result.loading,
     error: result.error,
+    errorDetail: result.errorDetail,
     page: filters.page,
     pageSize: filters.pageSize,
     draftFilters: filters.draftFilters,
@@ -44,7 +48,19 @@ function useExecutionResultState() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  return { rows, setRows, total, setTotal, loading, setLoading, error, setError };
+  const [errorDetail, setErrorDetail] = useState<string | undefined>(undefined);
+  return {
+    rows,
+    setRows,
+    total,
+    setTotal,
+    loading,
+    setLoading,
+    error,
+    setError,
+    errorDetail,
+    setErrorDetail,
+  };
 }
 
 function useExecutionFilterState() {
@@ -85,13 +101,14 @@ function useExecutionLoader(
 ) {
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
-  const { setError, setLoading, setRows, setTotal } = result;
+  const { setError, setErrorDetail, setLoading, setRows, setTotal } = result;
   const refresh = useCallback(
     async (background = false) => {
       if (!active) return;
       const requestId = ++requestRef.current;
       if (!background) setLoading(true);
       setError("");
+      setErrorDetail(undefined);
       try {
         const response = await api.listSkillExecutions(
           buildExecutionQuery(filters, page, pageSize),
@@ -100,14 +117,27 @@ function useExecutionLoader(
         setRows(Array.isArray(response.items) ? response.items : []);
         setTotal(Number.isFinite(response.total) ? response.total : 0);
       } catch (caught) {
-        if (mountedRef.current && requestId === requestRef.current)
-          setError(caught instanceof Error ? caught.message : "加载 Skill 执行日志失败");
+        if (mountedRef.current && requestId === requestRef.current) {
+          setError(errorMessage(caught, "execution.loadFailed"));
+          setErrorDetail(caught instanceof ApiError ? caught.detail : undefined);
+        }
       } finally {
         if (!background && mountedRef.current && requestId === requestRef.current)
           setLoading(false);
       }
     },
-    [active, filters, mountedRef, page, pageSize, setError, setLoading, setRows, setTotal],
+    [
+      active,
+      filters,
+      mountedRef,
+      page,
+      pageSize,
+      setError,
+      setErrorDetail,
+      setLoading,
+      setRows,
+      setTotal,
+    ],
   );
   return { refresh, requestRef };
 }

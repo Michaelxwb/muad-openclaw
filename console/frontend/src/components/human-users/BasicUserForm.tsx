@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Input, Select, TextArea, Toast } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import type { HumanUser, HumanUserStatus, LLMModelConfig, LLMModelView } from "../../api";
 import { FeedbackBanner } from "../ConsolePage";
+import i18n from "../../i18n";
+import { errorMessage } from "../../utils/error";
 import styles from "../HumanUsersPanel.module.css";
-import { Field, normalizeStatus, USER_STATUS_OPTIONS } from "./shared";
+import { Field, normalizeStatus, userStatusOptions } from "./shared";
 
 interface Props {
   user: HumanUser;
@@ -88,10 +91,10 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
     setError("");
     try {
       await api.patchHumanUser(user.humanUserId, { displayName, notes, status, modelConfigId });
-      Toast.success("用户信息已保存");
+      Toast.success(i18n.t("user.infoSaved"));
       await onSaved();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存用户失败");
+      setError(errorMessage(caught, "user.saveUserFailed"));
     } finally {
       setBusy(false);
     }
@@ -130,6 +133,7 @@ interface FieldsProps {
 }
 
 function BasicUserFields(props: FieldsProps) {
+  const { t } = useTranslation();
   const modelOptions = props.models.map((model) => ({
     value: model.modelConfigId,
     label: `${model.displayName} (${model.provider}/${model.model})`,
@@ -142,7 +146,10 @@ function BasicUserFields(props: FieldsProps) {
   ) {
     modelOptions.unshift({
       value: props.currentBoundId,
-      label: `${props.currentModel.provider}/${props.currentModel.model}（当前）`,
+      label: t("user.currentModelLabel", {
+        provider: props.currentModel.provider,
+        model: props.currentModel.model,
+      }),
     });
   }
   const selectedKey =
@@ -150,36 +157,40 @@ function BasicUserFields(props: FieldsProps) {
     props.currentModel.apiKey;
   return (
     <div className={styles.formGrid}>
-      <Field label="显示名称">
-        <Input aria-label="编辑显示名称" value={props.displayName} onChange={props.onDisplayName} />
+      <Field label={t("user.displayName")}>
+        <Input
+          aria-label={t("user.editDisplayName")}
+          value={props.displayName}
+          onChange={props.onDisplayName}
+        />
       </Field>
-      <Field label="状态">
+      <Field label={t("common.status")}>
         <Select
-          aria-label="用户状态"
+          aria-label={t("user.statusAria")}
           value={props.status}
-          optionList={USER_STATUS_OPTIONS.slice(1)}
+          optionList={userStatusOptions(t).slice(1)}
           onChange={(value) => props.onStatus(normalizeStatus(String(value)) || "pending")}
           style={{ width: "100%" }}
         />
       </Field>
-      <Field label="模型配置">
+      <Field label={t("user.modelConfig")}>
         <Select
-          aria-label="模型配置"
+          aria-label={t("user.modelConfig")}
           value={props.modelConfigId}
           loading={props.modelLoading}
-          placeholder="选择未绑定模型"
+          placeholder={t("user.selectUnboundModel")}
           optionList={modelOptions}
           onChange={(value) => props.onModelConfigId(String(value ?? ""))}
           style={{ width: "100%" }}
         />
       </Field>
-      <Field label="模型 Key">
-        <div className="mono">{selectedKey || "已配置"}</div>
+      <Field label={t("user.modelKey")}>
+        <div className="mono">{selectedKey || t("user.configured")}</div>
       </Field>
       <div className={styles.full}>
-        <Field label="备注">
+        <Field label={t("user.notes")}>
           <TextArea
-            aria-label="编辑备注"
+            aria-label={t("user.editNotes")}
             value={props.notes}
             onChange={props.onNotes}
             maxCount={4000}

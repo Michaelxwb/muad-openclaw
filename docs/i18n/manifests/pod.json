@@ -1,0 +1,152 @@
+{
+  "pod.actionCompleted": { "zh": "Pod {{action}} 已完成", "en": "Pod {{action}} completed" },
+  "pod.actionFailed": { "zh": "Pod 操作失败", "en": "Pod operation failed" },
+  "pod.actionLogs": { "zh": "日志", "en": "Logs" },
+  "pod.actionQr": { "zh": "二维码", "en": "QR code" },
+  "pod.actionRestart": { "zh": "重启", "en": "Restart" },
+  "pod.actionStart": { "zh": "启动", "en": "Start" },
+  "pod.actionStop": { "zh": "停止", "en": "Stop" },
+  "pod.actionUpgrade": { "zh": "升级", "en": "Upgrade" },
+  "pod.adoptState": { "zh": "接管同名保留状态卷", "en": "Adopt the same-named retained state volume" },
+  "pod.adoptStateHint": {
+    "zh": "仅当删除 Pod 时选择了保留 PVC 后使用；会复用原 workspace、记忆、会话和 private Skill。",
+    "en": "Only used when the Pod was deleted with PVC retained; reuses the original workspace, memory, conversations and private Skills."
+  },
+  "pod.appliedGeneration": { "zh": "已应用 generation", "en": "Applied generation" },
+  "pod.applyConfig": { "zh": "应用配置", "en": "Apply config" },
+  "pod.applyError": { "zh": "应用错误", "en": "Apply error" },
+  "pod.applyQueued": { "zh": "配置已进入应用队列", "en": "Config has been queued for application" },
+  "pod.applyRetry": { "zh": "重试应用", "en": "Retry apply" },
+  "pod.applyStatus": { "zh": "应用状态", "en": "Apply status" },
+  "pod.applyStatusApplying": { "zh": "应用中", "en": "Applying" },
+  "pod.backToListAria": { "zh": "返回 Pod 列表", "en": "Back to Pod list" },
+  "pod.capacityColumn": { "zh": "用户容量", "en": "User capacity" },
+  "pod.channelConfigured": { "zh": "已配置", "en": "Configured" },
+  "pod.channelOffline": { "zh": "离线", "en": "Offline" },
+  "pod.channelOnline": { "zh": "在线", "en": "Online" },
+  "pod.channelPending": { "zh": "待配置", "en": "Pending configuration" },
+  "pod.channelsColumn": { "zh": "消息通道", "en": "Message channels" },
+  "pod.converged": { "zh": "已收敛", "en": "Converged" },
+  "pod.convergenceStatus": { "zh": "收敛状态", "en": "Convergence status" },
+  "pod.cpuCores": { "zh": "{{value}} 核", "en": "{{value}} cores" },
+  "pod.cpuLimit": { "zh": "CPU 上限", "en": "CPU limit" },
+  "pod.cpuLimitInvalid": {
+    "zh": "CPU 上限必须是大于 0 的数字",
+    "en": "CPU limit must be a number greater than 0"
+  },
+  "pod.cpuLimitPlaceholder": { "zh": "留空继承，如 2", "en": "Leave empty to inherit, e.g. 2" },
+  "pod.created": { "zh": "Pod {{podId}} 创建成功", "en": "Pod {{podId}} created successfully" },
+  "pod.createFailed": { "zh": "创建 Pod 失败", "en": "Failed to create Pod" },
+  "pod.createTitle": { "zh": "创建 Pod", "en": "Create Pod" },
+  "pod.deleted": { "zh": "Pod 已删除", "en": "Pod deleted" },
+  "pod.deleteHint": {
+    "zh": "删除后 Pod 与运行环境将被移除；Pod 内的 Human User 及其 IM Identity / private Skill 保留为未绑定状态（agent_id 不变），可在重建 Pod 时一键恢复或绑定到其他 Pod。",
+    "en": "After deletion the Pod and its runtime will be removed; Human Users inside the Pod and their IM Identity / private Skills remain unbound (agent_id unchanged) and can be restored with one click or bound to another Pod when recreating."
+  },
+  "pod.deleteRemovePvc": {
+    "zh": "删除 PVC，workspace、记忆、会话和 private Skill 将永久丢失",
+    "en": "Delete PVC; workspace, memory, conversations and private Skills will be permanently lost"
+  },
+  "pod.deleteRetainPvc": {
+    "zh": "保留 PVC，记忆/workspace 可供重建同名 Pod 时接管",
+    "en": "Keep PVC; memory/workspace can be adopted when recreating a Pod with the same name"
+  },
+  "pod.deleteTitle": { "zh": "删除 {{podId}}", "en": "Delete {{podId}}" },
+  "pod.detailLoadFailed": { "zh": "加载 Pod 详情失败", "en": "Failed to load Pod details" },
+  "pod.displayName": { "zh": "显示名称", "en": "Display name" },
+  "pod.displayNameTooLong": {
+    "zh": "显示名称不能超过 128 个字符",
+    "en": "Display name cannot exceed 128 characters"
+  },
+  "pod.effectiveCpuLimit": { "zh": "有效 CPU 上限", "en": "Effective CPU limit" },
+  "pod.effectiveMemLimit": { "zh": "有效内存上限", "en": "Effective memory limit" },
+  "pod.expectedGeneration": { "zh": "期望 generation", "en": "Expected generation" },
+  "pod.fieldOverrideAria": { "zh": "Pod {{label}}覆盖", "en": "Pod {{label}} override" },
+  "pod.generationColumn": { "zh": "配置状态", "en": "Config status" },
+  "pod.imageColumn": { "zh": "镜像", "en": "Image" },
+  "pod.imageLabel": { "zh": "镜像", "en": "Image" },
+  "pod.imageNoSpace": { "zh": "镜像地址不能包含空格", "en": "Image address cannot contain spaces" },
+  "pod.imagePlaceholder": {
+    "zh": "留空使用系统默认镜像",
+    "en": "Leave empty to use the system default image"
+  },
+  "pod.imageTag": { "zh": "镜像 tag", "en": "Image tag" },
+  "pod.inherit": { "zh": "继承", "en": "Inherit" },
+  "pod.listLoadFailed": { "zh": "加载 Pod 失败", "en": "Failed to load Pods" },
+  "pod.logLoadFailed": { "zh": "加载日志失败", "en": "Failed to load logs" },
+  "pod.logTitle": { "zh": "{{podId}} 日志", "en": "{{podId}} logs" },
+  "pod.managementDescription": {
+    "zh": "管理运行实例、用户容量、消息通道和运行状态",
+    "en": "Manage running instances, user capacity, message channels and runtime status"
+  },
+  "pod.maxBrowserConcurrency": { "zh": "Browser 并发", "en": "Browser concurrency" },
+  "pod.maxSkillConcurrency": { "zh": "Skill 并发", "en": "Skill concurrency" },
+  "pod.maxUsers": { "zh": "用户上限", "en": "Max users" },
+  "pod.maxUsersRange": { "zh": "用户上限必须在 1 到 10 之间", "en": "Max users must be between 1 and 10" },
+  "pod.memAlertThreshold": { "zh": "内存告警阈值", "en": "Memory alert threshold" },
+  "pod.memLimit": { "zh": "内存上限 (GiB)", "en": "Memory limit (GiB)" },
+  "pod.memLimitInvalid": {
+    "zh": "内存上限请填写数字（单位 GiB），例如 16",
+    "en": "Memory limit must be a number (in GiB), e.g. 16"
+  },
+  "pod.memLimitPlaceholder": { "zh": "留空继承，如 16", "en": "Leave empty to inherit, e.g. 16" },
+  "pod.memoryColumn": { "zh": "内存", "en": "Memory" },
+  "pod.noChannels": { "zh": "未配置消息通道", "en": "No message channels configured" },
+  "pod.notConverged": { "zh": "未收敛（lag {{lag}}）", "en": "Not converged (lag {{lag}})" },
+  "pod.notFound": { "zh": "Pod 不存在", "en": "Pod not found" },
+  "pod.overrideValue": {
+    "zh": "{{effective}}（覆盖 {{override}}）",
+    "en": "{{effective}} (override {{override}})"
+  },
+  "pod.podCpuOverride": { "zh": "Pod CPU 覆盖", "en": "Pod CPU override" },
+  "pod.podIdInvalid": {
+    "zh": "Pod ID 仅支持小写字母、数字和中划线，长度不超过 63",
+    "en": "Pod ID may only contain lowercase letters, digits and hyphens, up to 63 characters"
+  },
+  "pod.podIdRequired": { "zh": "Pod ID 必填", "en": "Pod ID is required" },
+  "pod.podMemOverride": { "zh": "Pod 内存覆盖", "en": "Pod memory override" },
+  "pod.qrAlt": { "zh": "微信登录二维码", "en": "WeChat login QR code" },
+  "pod.qrConnected": { "zh": "微信已登录", "en": "WeChat logged in" },
+  "pod.qrFailed": { "zh": "获取二维码失败", "en": "Failed to get QR code" },
+  "pod.qrNotAvailable": { "zh": "未获取到二维码", "en": "No QR code available" },
+  "pod.qrRescan": { "zh": "重新扫码", "en": "Rescan" },
+  "pod.qrTitle": { "zh": "{{podId}} 微信登录", "en": "{{podId}} WeChat login" },
+  "pod.refreshAria": { "zh": "刷新 Pod", "en": "Refresh Pods" },
+  "pod.refreshDetailAria": { "zh": "刷新 Pod 详情", "en": "Refresh Pod details" },
+  "pod.resourceLoadFailed": { "zh": "加载 Pod 资源失败", "en": "Failed to load Pod resources" },
+  "pod.resourceOverrideTitle": { "zh": "资源覆盖 {{podId}}", "en": "Resource overrides {{podId}}" },
+  "pod.resourceSaved": { "zh": "已保存资源覆盖", "en": "Resource overrides saved" },
+  "pod.resourceSaveFailed": { "zh": "保存 Pod 资源失败", "en": "Failed to save Pod resources" },
+  "pod.restartDefault": { "zh": "继承系统默认", "en": "Inherit system default" },
+  "pod.restartInheritGlobal": { "zh": "继承全局", "en": "Inherit global" },
+  "pod.restartPolicy": { "zh": "重启策略", "en": "Restart policy" },
+  "pod.restartPolicyAria": { "zh": "Pod 重启策略覆盖", "en": "Pod restart policy override" },
+  "pod.restoreUsers": {
+    "zh": "恢复原 Pod 用户（agent_id 与记忆）",
+    "en": "Restore original Pod users (agent_id and memory)"
+  },
+  "pod.restoreUsersHint": {
+    "zh": "需先勾选「接管同名保留状态卷」；自动把删除该 Pod 时保留的未绑定用户重新绑定回来， IM 身份按新 Pod 通道集路由，未启用的通道身份保留但不路由。",
+    "en": "Requires 'Adopt the same-named retained state volume'; automatically rebinds the unbound users retained when this Pod was deleted, routes IM identities per the new Pod's channel set, and keeps identities of disabled channels without routing."
+  },
+  "pod.runtimeGuardHealthy": { "zh": "健康", "en": "Healthy" },
+  "pod.searchAria": { "zh": "查询 Pod", "en": "Search Pods" },
+  "pod.searchPlaceholder": { "zh": "Pod ID 或名称", "en": "Pod ID or name" },
+  "pod.slotsRemaining": { "zh": "剩余 {{count}}", "en": "{{count}} remaining" },
+  "pod.stateDeleted": { "zh": "已删除", "en": "Deleted" },
+  "pod.statusAll": { "zh": "全部状态", "en": "All statuses" },
+  "pod.tabChannels": { "zh": "通道", "en": "Channels" },
+  "pod.tabConfig": { "zh": "配置", "en": "Config" },
+  "pod.tabResources": { "zh": "资源与并发", "en": "Resources & Concurrency" },
+  "pod.tabUsers": { "zh": "用户", "en": "Users" },
+  "pod.upgradeBatch": { "zh": "批量升级 {{count}} 个 Pod", "en": "Batch upgrade {{count}} Pod(s)" },
+  "pod.upgradeCompleted": { "zh": "Pod 升级完成", "en": "Pod upgrade completed" },
+  "pod.upgradeConfirm": { "zh": "确认升级", "en": "Confirm upgrade" },
+  "pod.upgraded": { "zh": "已升级 {{count}} 个 Pod", "en": "Upgraded {{count}} Pod(s)" },
+  "pod.upgradeImageTagAria": { "zh": "升级镜像 tag", "en": "Upgrade image tag" },
+  "pod.upgradePartial": {
+    "zh": "升级完成：{{succeeded}} 成功，{{failed}} 失败",
+    "en": "Upgrade complete: {{succeeded}} succeeded, {{failed}} failed"
+  },
+  "pod.upgradeSingle": { "zh": "升级 Pod {{podId}}", "en": "Upgrade Pod {{podId}}" }
+}

@@ -1,14 +1,15 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Toast } from "@douyinfe/semi-ui";
 import { api } from "../api";
 import type { Pod, PodAction } from "../api";
 import { FeedbackBanner, PageHeader, PageSection } from "../components/ConsolePage";
-import { EditChannelModal } from "../components/EditChannelModal";
+import { errorMessage } from "../utils/error";
 import { tablePagination } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
 import { ContainersToolbar } from "./containers/ContainersToolbar";
 import { CreatePodDialog } from "./containers/CreatePodDialog";
-import { PodResourceDialog } from "./containers/PodResourceDialog";
+import { PodEditDialog } from "./containers/PodEditDialog";
 import { PodTable } from "./containers/PodTable";
 import { PodUpgradeDialog } from "./containers/PodUpgradeDialog";
 import { usePodList } from "./containers/usePodList";
@@ -20,6 +21,7 @@ export function Containers({ onOpenPod }: { onOpenPod: (podId: string) => void }
 }
 
 function useContainersController() {
+  const { t } = useTranslation();
   const dialogs = useListDialogs();
   const list = usePodList();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -28,16 +30,15 @@ function useContainersController() {
     try {
       await api.action(podId, action);
       if (!mountedRef.current) return;
-      Toast.success(`Pod ${action} 已完成`);
+      Toast.success(t("pod.actionCompleted", { action }));
       await list.refresh();
     } catch (caught) {
-      if (mountedRef.current)
-        Toast.error(caught instanceof Error ? caught.message : "Pod 操作失败");
+      if (mountedRef.current) Toast.error(errorMessage(caught, "pod.actionFailed"));
     }
   };
   const created = async (pod: Pod) => {
     dialogs.setCreateOpen(false);
-    Toast.success(`Pod ${pod.podId} 创建成功`);
+    Toast.success(t("pod.created", { podId: pod.podId }));
     if (list.page === 1) await list.refresh();
     else list.setPage(1);
   };
@@ -60,10 +61,11 @@ function PodListView({
   state: ContainersState;
   onOpenPod: (podId: string) => void;
 }) {
+  const { t } = useTranslation();
   const { list, dialogs } = state;
   return (
     <div>
-      <PageHeader title="Pod 管理" description="管理运行实例、用户容量、消息通道和运行状态" />
+      <PageHeader title={t("nav.pods")} description={t("pod.managementDescription")} />
       <FeedbackBanner error={list.error} />
       <PageSection>
         <ContainersToolbar
@@ -85,8 +87,7 @@ function PodListView({
           onDetail={onOpenPod}
           onLogs={dialogs.setLogPodId}
           onQr={dialogs.setQrPodId}
-          onChannels={dialogs.setEditPodId}
-          onResources={dialogs.setResourcePod}
+          onEdit={dialogs.setEditPodId}
           onAction={(podId, action) => void state.runAction(podId, action)}
         />
       </PageSection>
@@ -118,20 +119,17 @@ function useListDialogs() {
   const [logPodId, setLogPodId] = useState<string | null>(null);
   const [qrPodId, setQrPodId] = useState<string | null>(null);
   const [editPodId, setEditPodId] = useState<string | null>(null);
-  const [resourcePod, setResourcePod] = useState<Pod | null>(null);
   const [upgradeIds, setUpgradeIds] = useState<string[]>([]);
   return {
     createOpen,
     logPodId,
     qrPodId,
     editPodId,
-    resourcePod,
     upgradeIds,
     setCreateOpen,
     setLogPodId,
     setQrPodId,
     setEditPodId,
-    setResourcePod,
     setUpgradeIds,
   };
 }
@@ -169,18 +167,13 @@ function ListDialogs({
         visible={state.qrPodId !== null}
         onClose={() => state.setQrPodId(null)}
       />
-      <EditChannelModal
+      <PodEditDialog
         podId={state.editPodId}
         onClose={() => state.setEditPodId(null)}
         onSaved={() => {
           state.setEditPodId(null);
           void onRefresh();
         }}
-      />
-      <PodResourceDialog
-        pod={state.resourcePod}
-        onClose={() => state.setResourcePod(null)}
-        onSaved={onRefresh}
       />
     </>
   );

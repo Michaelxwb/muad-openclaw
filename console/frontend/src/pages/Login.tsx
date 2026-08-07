@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Button, Form, Typography } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api, token } from "../api";
+import { errorMessage } from "../utils/error";
 import { FeedbackBanner } from "../components/ConsolePage";
 import styles from "./Login.module.css";
 
@@ -10,6 +12,7 @@ interface LoginValues {
 }
 
 export function Login({ onLogin }: { onLogin: () => void }) {
+  const { t } = useTranslation();
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -21,7 +24,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
       token.set(res.token);
       onLogin();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(errorMessage(e, "errors.badCredentials"));
     } finally {
       setBusy(false);
     }
@@ -31,28 +34,28 @@ export function Login({ onLogin }: { onLogin: () => void }) {
     <div className={styles.page}>
       <main className={styles.panel}>
         <div className={styles.heading}>
-          <Typography.Title heading={3}>muad 控制台</Typography.Title>
-          <Typography.Text type="tertiary">管理员登录</Typography.Text>
+          <Typography.Title heading={3}>{t("login.consoleTitle")}</Typography.Title>
+          <Typography.Text type="tertiary">{t("login.adminLogin")}</Typography.Text>
         </div>
         <FeedbackBanner error={err} />
         <Form<LoginValues> onSubmit={(values) => void submit(values)}>
           <Form.Input
             field="username"
-            label="管理员账号"
-            placeholder="请输入管理员账号"
+            label={t("login.username")}
+            placeholder={t("login.usernamePlaceholder")}
             size="large"
-            rules={[{ required: true, message: "请输入管理员账号" }]}
+            rules={[{ required: true, message: t("login.usernamePlaceholder") }]}
           />
           <Form.Input
             field="password"
-            label="密码"
+            label={t("login.password")}
             type="password"
-            placeholder="请输入密码"
+            placeholder={t("login.passwordPlaceholder")}
             size="large"
-            rules={[{ required: true, message: "请输入密码" }]}
+            rules={[{ required: true, message: t("login.passwordPlaceholder") }]}
           />
           <Button theme="solid" htmlType="submit" loading={busy} size="large" block>
-            登录
+            {t("login.submit")}
           </Button>
         </Form>
       </main>

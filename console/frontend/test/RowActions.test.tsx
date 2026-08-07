@@ -37,8 +37,7 @@ function renderActions(pod: Pod) {
       actions={[]}
       onViewLogs={vi.fn()}
       onOpenQr={vi.fn()}
-      onEditChannels={vi.fn()}
-      onOpenResources={vi.fn()}
+      onEdit={vi.fn()}
       onAction={vi.fn()}
     />,
   );

@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Banner, Button } from "@douyinfe/semi-ui";
 import { PageSection } from "../../components/ConsolePage";
+import { ErrorDetail } from "../../utils/error";
 import { SkillExecutionDetailModal } from "./SkillExecutionDetailModal";
 import { SkillExecutionTable } from "./SkillExecutionTable";
 import { SkillExecutionToolbar } from "./SkillExecutionToolbar";
@@ -13,6 +15,7 @@ interface Props {
 }
 
 export function SkillExecutionLogTab({ active, onOpenPod }: Props) {
+  const { t } = useTranslation();
   const state = useSkillExecutionRecords(active);
   const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
   return (
@@ -34,8 +37,9 @@ export function SkillExecutionLogTab({ active, onOpenPod }: Props) {
               bordered
               closeIcon={null}
             />
-            <Button aria-label="重新查询" onClick={() => void state.refresh()}>
-              重新查询
+            <ErrorDetail detail={state.errorDetail} />
+            <Button aria-label={t("execution.reloadList")} onClick={() => void state.refresh()}>
+              {t("execution.reloadList")}
             </Button>
           </div>
         )}

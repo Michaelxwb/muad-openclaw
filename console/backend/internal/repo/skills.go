@@ -8,13 +8,15 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 var (
-	ErrSkillExists           = errors.New("repo: Skill already exists")
-	ErrInvalidSkill          = errors.New("repo: invalid Skill")
-	ErrSkillPlatformRequired = errors.New("repo: Skill platform required")
-	ErrSkillPlatformNotBound = errors.New("repo: Skill platform not bound")
+	ErrSkillExists           = &Error{Code: errcode.ConflictSkillExists, Msg: "repo: Skill already exists"}
+	ErrInvalidSkill          = &Error{Code: errcode.InvalidSkill, Msg: "repo: invalid Skill"}
+	ErrSkillPlatformRequired = &Error{Code: errcode.InvalidSkillPlatformRequired, Msg: "repo: Skill platform required"}
+	ErrSkillPlatformNotBound = &Error{Code: errcode.InvalidSkillPlatformNotBound, Msg: "repo: Skill platform not bound"}
 
 	skillNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 )

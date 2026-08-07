@@ -11,6 +11,7 @@ import (
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	secretcrypto "github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -31,17 +32,17 @@ type platformCredentialView struct {
 func (s *Server) handleListPlatformCredentials(w http.ResponseWriter, r *http.Request) {
 	humanUserID := r.PathValue("humanUserId")
 	if _, err := s.store.GetHumanUser(humanUserID); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	summaries, err := s.store.ListUserPlatformCredentials(humanUserID)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list platform credentials")
+		writeErr(w, r, errcode.InternalListPlatformCredentials)
 		return
 	}
 	platforms, err := s.store.ListPlatformConfigs()
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list platforms")
+		writeErr(w, r, errcode.InternalListPlatforms)
 		return
 	}
 	enabled := make(map[string]bool, len(platforms))
@@ -58,38 +59,38 @@ func (s *Server) handleListPlatformCredentials(w http.ResponseWriter, r *http.Re
 func (s *Server) handlePutPlatformCredential(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(r.PathValue("humanUserId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if user.Status == repo.HumanUserStatusDeleting {
-		writeRepoError(w, repo.ErrInvalidStateTransition)
+		writeRepoError(w, r, repo.ErrInvalidStateTransition)
 		return
 	}
 	platform := r.PathValue("platform")
 	if _, err := s.store.GetPlatformConfig(platform); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "platform not found")
+		writeErr(w, r, errcode.InvalidPlatformNotFound)
 		return
 	}
 	var request putPlatformCredentialRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	credentials, err := decodeCredentialPayload(request.Credentials)
 	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "credentials must be a JSON object")
+		writeErr(w, r, errcode.InvalidCredentialsJson)
 		return
 	}
 	existed, err := s.hasPlatformCredential(user.HumanUserID, platform)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "inspect platform credential")
+		writeErr(w, r, errcode.InternalInspectPlatformCredential)
 		return
 	}
 	summary, podID, err := s.store.UpsertUserPlatformCredentialAndMarkPod(
 		user.HumanUserID, platform, credentials,
 	)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.enqueueReconcile(podID)
@@ -107,27 +108,27 @@ func (s *Server) handlePutPlatformCredential(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleDeletePlatformCredential(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(r.PathValue("humanUserId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	platform := r.PathValue("platform")
 	if _, err := s.store.GetPlatformConfig(platform); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "platform not found")
+		writeErr(w, r, errcode.InvalidPlatformNotFound)
 		return
 	}
 	summaries, err := s.store.ListUserPlatformCredentials(user.HumanUserID)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "inspect platform credential")
+		writeErr(w, r, errcode.InternalInspectPlatformCredential)
 		return
 	}
 	summary, found := findCredentialSummary(summaries, platform)
 	if !found {
-		writeRepoError(w, repo.ErrCredentialNotConfigured)
+		writeRepoError(w, r, repo.ErrCredentialNotConfigured)
 		return
 	}
 	podID, err := s.store.DeleteUserPlatformCredentialAndMarkPod(user.HumanUserID, platform)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.enqueueReconcile(podID)

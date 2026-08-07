@@ -1,23 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, Modal, Select, Space, Table, Tag, Toast } from "@douyinfe/semi-ui";
 import { IconPlus, IconSearch } from "@douyinfe/semi-icons";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { api } from "../../api";
 import type { Platform } from "../../api";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import { DEFAULT_PAGE_SIZE, renderTablePagination, tablePagination } from "../Pagination";
 import { FeedbackBanner, ListToolbar, PageSection } from "../ConsolePage";
+import { errorMessage } from "../../utils/error";
 import { PlatformEditorDialog } from "./PlatformEditorDialog";
 import styles from "./PlatformSettings.module.css";
 
 type PlatformStatusFilter = "" | "enabled" | "disabled";
 
-const PLATFORM_STATUS_OPTIONS = [
-  { value: "", label: "全部状态" },
-  { value: "enabled", label: "已启用" },
-  { value: "disabled", label: "已停用" },
-];
-
 export function PlatformSettings() {
+  const { t } = useTranslation();
   const state = usePlatforms();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Platform | null>(null);
@@ -30,20 +28,25 @@ export function PlatformSettings() {
     setEditorOpen(true);
   };
   return (
-    <PageSection title="业务平台">
+    <PageSection title={t("platform.title")}>
       <FeedbackBanner error={state.error} />
       <ListToolbar
         actions={
           <Space>
-            <Button aria-label="增加平台" icon={<IconPlus />} theme="solid" onClick={openCreate}>
-              增加平台
+            <Button
+              aria-label={t("platform.create")}
+              icon={<IconPlus />}
+              theme="solid"
+              onClick={openCreate}
+            >
+              {t("platform.create")}
             </Button>
           </Space>
         }
         filters={<PlatformFilters state={state} />}
       />
       <Table
-        columns={platformColumns(openEdit, state.refresh) as never}
+        columns={platformColumns(t, openEdit, state.refresh) as never}
         dataSource={state.pageItems}
         rowKey="platform"
         loading={state.loading}
@@ -58,7 +61,7 @@ export function PlatformSettings() {
           },
         })}
         renderPagination={renderTablePagination}
-        empty="暂无业务平台"
+        empty={t("platform.empty")}
         size="small"
       />
       <PlatformEditorDialog
@@ -95,7 +98,7 @@ function usePlatforms() {
       if (mountedRef.current && requestId === requestRef.current) setItems(result.items);
     } catch (caught) {
       if (!mountedRef.current || requestId !== requestRef.current) return;
-      setError(caught instanceof Error ? caught.message : "加载业务平台失败");
+      setError(errorMessage(caught, "platform.loadFailed"));
     } finally {
       if (mountedRef.current && requestId === requestRef.current) setLoading(false);
     }
@@ -126,7 +129,16 @@ function usePlatforms() {
 type PlatformState = ReturnType<typeof usePlatforms>;
 
 function PlatformFilters({ state }: { state: PlatformState }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState(state.query);
+  const statusOptions = useMemo(
+    () => [
+      { value: "", label: t("platform.statusFilterAll") },
+      { value: "enabled", label: t("platform.statusEnabled") },
+      { value: "disabled", label: t("platform.statusDisabled") },
+    ],
+    [t],
+  );
   const submit = () => {
     state.setPage(1);
     state.setQuery(search.trim());
@@ -134,19 +146,19 @@ function PlatformFilters({ state }: { state: PlatformState }) {
   return (
     <Space>
       <Input
-        aria-label="搜索业务平台"
+        aria-label={t("platform.search")}
         prefix={<IconSearch />}
         value={search}
         onChange={setSearch}
         onEnterPress={submit}
-        placeholder="平台名称或 ID"
+        placeholder={t("platform.searchPlaceholder")}
         style={{ width: 220 }}
       />
-      <Button aria-label="查询业务平台" icon={<IconSearch />} onClick={submit} />
+      <Button aria-label={t("platform.searchSubmit")} icon={<IconSearch />} onClick={submit} />
       <Select
-        aria-label="业务平台状态"
+        aria-label={t("platform.statusAria")}
         value={state.status}
-        optionList={PLATFORM_STATUS_OPTIONS}
+        optionList={statusOptions}
         onChange={(value) => {
           state.setPage(1);
           state.setStatus(String(value ?? "") as PlatformStatusFilter);
@@ -173,10 +185,14 @@ function filterPlatforms(
   });
 }
 
-function platformColumns(onEdit: (platform: Platform) => void, onDeleted: () => Promise<void>) {
+function platformColumns(
+  t: TFunction,
+  onEdit: (platform: Platform) => void,
+  onDeleted: () => Promise<void>,
+) {
   return [
     {
-      title: "平台",
+      title: t("platform.platformLabel"),
       key: "platform",
       width: "42%",
       render: (_: unknown, platform: Platform) => (
@@ -187,17 +203,17 @@ function platformColumns(onEdit: (platform: Platform) => void, onDeleted: () => 
       ),
     },
     {
-      title: "状态",
+      title: t("common.status"),
       key: "status",
       width: "14%",
       render: (_: unknown, platform: Platform) => (
         <Tag color={platform.enabled ? "green" : "grey"}>
-          {platform.enabled ? "已启用" : "已停用"}
+          {platform.enabled ? t("platform.statusEnabled") : t("platform.statusDisabled")}
         </Tag>
       ),
     },
     {
-      title: "更新时间",
+      title: t("common.updatedAt"),
       key: "updatedAt",
       width: "24%",
       render: (_: unknown, platform: Platform) => (
@@ -207,13 +223,13 @@ function platformColumns(onEdit: (platform: Platform) => void, onDeleted: () => 
       ),
     },
     {
-      title: "操作",
+      title: t("common.actions"),
       key: "actions",
       width: "20%",
       render: (_: unknown, platform: Platform) => (
         <Space className={styles.actionGroup} spacing={4}>
           <Button size="small" onClick={() => onEdit(platform)}>
-            编辑
+            {t("common.edit")}
           </Button>
           <DeletePlatformButton platform={platform} onDeleted={onDeleted} />
         </Space>
@@ -229,6 +245,7 @@ function DeletePlatformButton({
   platform: Platform;
   onDeleted: () => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -237,11 +254,11 @@ function DeletePlatformButton({
     setError("");
     try {
       await api.deletePlatform(platform.platform);
-      Toast.success("平台已删除");
+      Toast.success(t("platform.deleted"));
       setVisible(false);
       await onDeleted();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "删除平台失败");
+      setError(errorMessage(caught, "platform.deleteFailed"));
     } finally {
       setBusy(false);
     }
@@ -249,20 +266,20 @@ function DeletePlatformButton({
   return (
     <>
       <Button size="small" type="danger" onClick={() => setVisible(true)}>
-        删除
+        {t("common.delete")}
       </Button>
       <Modal
         className="standard-modal"
-        title={`删除 ${platform.displayName}`}
+        title={t("platform.deleteTitle", { name: platform.displayName })}
         visible={visible}
         onCancel={() => setVisible(false)}
         onOk={() => void remove()}
-        okText="删除"
+        okText={t("common.delete")}
         confirmLoading={busy}
         okButtonProps={{ type: "danger" as const }}
       >
         <FeedbackBanner error={error} />
-        <p className="hint">删除后会移除该平台，并清理所有用户绑定的该平台认证信息。</p>
+        <p className="hint">{t("platform.deleteHint")}</p>
       </Modal>
     </>
   );

@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { Banner, Button, Checkbox, Input, Space, Typography } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { CHANNEL_DEFS, ChannelDef, channelDef } from "../channels";
 import { ChannelCredential } from "../api";
+import { ErrorDetail } from "../utils/error";
 import styles from "./ChannelForm.module.css";
 
 const { Text } = Typography;
@@ -23,16 +26,32 @@ interface Props {
   } | null;
   busy: boolean;
   error: string;
+  errorDetail?: string;
   onSubmit: (v: { channels: string[]; channelConfigs: Record<string, ChannelCredential> }) => void;
   onCancel: () => void;
 }
+
+export type ChannelInitial = NonNullable<Props["initial"]>;
 
 /** Toggle a channel in the selected set. */
 function toggle(arr: string[], id: string, on: boolean): string[] {
   return on ? [...arr, id] : arr.filter((c) => c !== id);
 }
 
-export function ChannelForm({ mode, initial, busy, error, onSubmit, onCancel }: Props) {
+/**
+ * 通道表单状态与校验逻辑，供 <ChannelForm>（创建/独立编辑弹窗）与
+ * <PodEditForm>（Pod 合并编辑弹窗）复用。
+ */
+export function useChannelForm({
+  mode,
+  initial,
+  onSubmit,
+}: {
+  mode: "create" | "edit";
+  initial?: ChannelInitial | null;
+  onSubmit: Props["onSubmit"];
+}) {
+  const { t } = useTranslation();
   const editMode = mode === "edit";
   const [selected, setSelected] = useState<string[]>(initial?.channels ?? []);
   const [creds, setCreds] = useState<Record<string, Record<string, string>>>({});
@@ -65,7 +84,7 @@ export function ChannelForm({ mode, initial, busy, error, onSubmit, onCancel }: 
   }
 
   function validate(): string {
-    if (selected.length === 0) return "至少选择一个通道";
+    if (selected.length === 0) return t("channel.selectAtLeastOne");
     for (const ch of selected) {
       const def = CHANNEL_DEFS.find((d) => d.id === ch);
       if (!def) continue;
@@ -73,14 +92,14 @@ export function ChannelForm({ mode, initial, busy, error, onSubmit, onCancel }: 
         const hasExistingSecret =
           editMode && f.type === "password" && initial?.channelConfigs?.[ch]?.secretConfigured;
         if (f.required && !hasExistingSecret && !(creds[ch]?.[f.key] ?? "").trim()) {
-          return `${def.label}: ${f.label} 必填`;
+          return t("channel.fieldRequired", { label: `${t(def.label)}: ${t(f.label)}` });
         }
       }
     }
     return "";
   }
 
-  function handleSubmit() {
+  function submit() {
     const msg = validate();
     if (msg) {
       setLocalErr(msg);
@@ -100,50 +119,84 @@ export function ChannelForm({ mode, initial, busy, error, onSubmit, onCancel }: 
     onSubmit({ channels: selected, channelConfigs });
   }
 
-  const displayErr = error || localErr;
+  return { selected, creds, localErr, handleToggle, handleCredChange, submit };
+}
+
+export type ChannelFormState = ReturnType<typeof useChannelForm>;
+
+/** 通道勾选与凭据输入区，纯展示（状态与校验在 useChannelForm）。 */
+export function ChannelFields({
+  form,
+  initial,
+  editMode,
+  t,
+}: {
+  form: ChannelFormState;
+  initial?: ChannelInitial | null;
+  editMode: boolean;
+  t: TFunction;
+}) {
+  return (
+    <div>
+      <Text className={styles.label} type="tertiary" size="small">
+        {t("channel.messageChannels")}
+      </Text>
+      {CHANNEL_DEFS.map((def) => {
+        const isSelected = form.selected.includes(def.id);
+        const existing = initial?.channelConfigs?.[def.id];
+        return (
+          <div className={styles.channelItem} key={def.id}>
+            <Checkbox
+              checked={isSelected}
+              onChange={(e) => form.handleToggle(def.id, (e.target as HTMLInputElement).checked)}
+            >
+              {def.icon} {t(def.label)}
+              {editMode && existing?.secretConfigured !== undefined && (
+                <span className={styles.channelMeta}>
+                  {existing.secretConfigured ? `· ${t("channel.configured")}` : ""}
+                </span>
+              )}
+            </Checkbox>
+            {isSelected && (
+              <ChannelCredentialFields
+                channelDef={def}
+                values={form.creds[def.id] ?? {}}
+                existingConfig={existing}
+                editMode={editMode}
+                onChange={(key, val) => form.handleCredChange(def.id, key, val)}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ChannelForm({
+  mode,
+  initial,
+  busy,
+  error,
+  errorDetail,
+  onSubmit,
+  onCancel,
+}: Props) {
+  const { t } = useTranslation();
+  const form = useChannelForm({ mode, initial, onSubmit });
+  const displayErr = error || form.localErr;
 
   return (
     <div className={styles.form}>
       {displayErr && <Banner type="danger" description={displayErr} fullMode={false} bordered />}
-      <div>
-        <Text className={styles.label} type="tertiary" size="small">
-          消息通道
-        </Text>
-        {CHANNEL_DEFS.map((def) => {
-          const isSelected = selected.includes(def.id);
-          const existing = initial?.channelConfigs?.[def.id];
-          return (
-            <div className={styles.channelItem} key={def.id}>
-              <Checkbox
-                checked={isSelected}
-                onChange={(e) => handleToggle(def.id, (e.target as HTMLInputElement).checked)}
-              >
-                {def.icon} {def.label}
-                {editMode && existing?.secretConfigured !== undefined && (
-                  <span className={styles.channelMeta}>
-                    {existing.secretConfigured ? "· 已配置" : ""}
-                  </span>
-                )}
-              </Checkbox>
-              {isSelected && (
-                <ChannelCredentialFields
-                  channelDef={def}
-                  values={creds[def.id] ?? {}}
-                  existingConfig={existing}
-                  editMode={editMode}
-                  onChange={(key, val) => handleCredChange(def.id, key, val)}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <ErrorDetail detail={errorDetail} />
+      <ChannelFields form={form} initial={initial} editMode={mode === "edit"} t={t} />
       <Space className={styles.actions}>
         <Button onClick={onCancel} disabled={busy}>
-          取消
+          {t("common.cancel")}
         </Button>
-        <Button theme="solid" loading={busy} disabled={busy} onClick={handleSubmit}>
-          {mode === "create" ? "创建" : "保存"}
+        <Button theme="solid" loading={busy} disabled={busy} onClick={form.submit}>
+          {mode === "create" ? t("common.create") : t("common.save")}
         </Button>
       </Space>
     </div>
@@ -169,8 +222,9 @@ function ChannelCredentialFields({
   editMode: boolean;
   onChange: (key: string, val: string) => void;
 }) {
+  const { t } = useTranslation();
   if (channelDef.credentialFields.length === 0) {
-    return <p className={styles.hint}>{channelDef.hint}</p>;
+    return <p className={styles.hint}>{channelDef.hint ? t(channelDef.hint) : ""}</p>;
   }
   return (
     <div className={styles.credentials}>
@@ -189,22 +243,22 @@ function ChannelCredentialFields({
                   onChange(f.key, (e.target as HTMLInputElement).checked ? "true" : "false")
                 }
               >
-                {f.label}
+                {t(f.label)}
               </Checkbox>
-              {f.help && <p className={styles.hint}>{f.help}</p>}
+              {f.help && <p className={styles.hint}>{t(f.help)}</p>}
             </div>
           );
         }
         return (
           <div key={f.key}>
             <label className={styles.credentialLabel}>
-              {f.label}
+              {t(f.label)}
               {hasExisting && !isSecretConfigured && (
-                <span className={styles.configured}>已配置</span>
+                <span className={styles.configured}>{t("channel.configured")}</span>
               )}
               {isSecretConfigured && (
                 <span className={styles.secretMeta}>
-                  · 上次更新:{" "}
+                  · {t("channel.lastUpdated")}:{" "}
                   {existingConfig?.lastUpdated
                     ? new Date(existingConfig.lastUpdated).toLocaleDateString()
                     : "—"}
@@ -215,9 +269,11 @@ function ChannelCredentialFields({
               type={isSecret ? "password" : "text"}
               value={values[f.key] ?? ""}
               onChange={(v) => onChange(f.key, v)}
-              placeholder={isSecretConfigured ? "留空则保持当前 secret" : f.placeholder}
+              placeholder={
+                isSecretConfigured ? t("channel.placeholder.keepSecret") : t(f.placeholder)
+              }
             />
-            {f.help && <p className={styles.hint}>{f.help}</p>}
+            {f.help && <p className={styles.hint}>{t(f.help)}</p>}
           </div>
         );
       })}

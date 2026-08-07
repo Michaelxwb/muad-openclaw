@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { useId, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Input, Select, Space } from "@douyinfe/semi-ui";
 import { IconRefresh, IconSearch } from "@douyinfe/semi-icons";
 import { ListToolbar } from "../../components/ConsolePage";
@@ -16,29 +17,6 @@ interface Props {
 
 type FilterProps = Pick<Props, "value" | "onChange">;
 
-const STATUS_OPTIONS = [
-  { label: "全部状态", value: "" },
-  { label: "运行中", value: "running" },
-  { label: "成功", value: "succeeded" },
-  { label: "失败", value: "failed" },
-  { label: "已取消", value: "cancelled" },
-  { label: "已拒绝", value: "rejected" },
-];
-
-const SCOPE_OPTIONS = [
-  { label: "全部范围", value: "" },
-  { label: "系统", value: "system" },
-  { label: "公共", value: "public" },
-  { label: "私有", value: "private" },
-];
-
-const ENTRY_OPTIONS = [
-  { label: "全部模式", value: "" },
-  { label: "Managed", value: "managed" },
-  { label: "传统脚本", value: "traditional-script" },
-  { label: "传统工具", value: "traditional-prompt" },
-];
-
 export function SkillExecutionToolbar(props: Props) {
   return (
     <ListToolbar
@@ -55,38 +33,69 @@ export function SkillExecutionToolbar(props: Props) {
 }
 
 function ExecutionIdentityFilters(props: FilterProps) {
+  const { t } = useTranslation();
   return (
     <FilterInput
       {...props}
       className={styles.queryInput}
       field="q"
-      label="模糊搜索执行日志"
-      placeholder="Skill、Pod、用户或 Agent"
+      label={t("execution.searchLogs")}
+      placeholder={t("execution.searchPlaceholder")}
     />
   );
 }
 
 function ExecutionClassFilters(props: FilterProps) {
+  const { t } = useTranslation();
+  const statusOptions = useMemo(
+    () => [
+      { label: t("execution.statusAll"), value: "" },
+      { label: t("status.running"), value: "running" },
+      { label: t("status.succeeded"), value: "succeeded" },
+      { label: t("status.failed"), value: "failed" },
+      { label: t("execution.statusCancelled"), value: "cancelled" },
+      { label: t("execution.statusRejected"), value: "rejected" },
+    ],
+    [t],
+  );
+  const scopeOptions = useMemo(
+    () => [
+      { label: t("execution.scopeAll"), value: "" },
+      { label: t("execution.scopeSystem"), value: "system" },
+      { label: t("status.public"), value: "public" },
+      { label: t("status.private"), value: "private" },
+    ],
+    [t],
+  );
+  const entryOptions = useMemo(
+    () => [
+      { label: t("execution.entryAll"), value: "" },
+      { label: "Managed", value: "managed" },
+      { label: t("execution.entryTypeScript"), value: "traditional-script" },
+      { label: t("execution.entryTypePrompt"), value: "traditional-prompt" },
+    ],
+    [t],
+  );
   const field = (key: keyof SkillExecutionFilters, input: string) =>
     props.onChange({ ...props.value, [key]: input });
   return (
     <>
       <ExecutionSelect
-        label="执行状态"
+        label={t("execution.statusFilter")}
         value={props.value.status}
-        options={STATUS_OPTIONS}
+        options={statusOptions}
         onChange={(value) => field("status", value as SkillExecutionStatus | "")}
       />
       <ExecutionSelect
-        label="Skill 范围"
+        label={t("execution.scopeFilter")}
         value={props.value.scope}
-        options={SCOPE_OPTIONS}
+        options={scopeOptions}
         onChange={(value) => field("scope", value as SkillScope | "")}
       />
       <ExecutionSelect
-        label="执行模式"
+        label={t("execution.entryTypeFilter")}
         value={props.value.entryType}
-        options={ENTRY_OPTIONS}
+        options={entryOptions}
         onChange={(value) => field("entryType", value as SkillEntryType | "")}
       />
     </>
@@ -94,20 +103,21 @@ function ExecutionClassFilters(props: FilterProps) {
 }
 
 function ExecutionTimeFilters(props: FilterProps) {
+  const { t } = useTranslation();
   return (
     <>
       <FilterInput
         {...props}
         field="startedFrom"
-        label="开始时间"
-        placeholder="开始时间"
+        label={t("execution.startedAt")}
+        placeholder={t("execution.startedAt")}
         type="datetime-local"
       />
       <FilterInput
         {...props}
         field="startedTo"
-        label="结束时间"
-        placeholder="结束时间"
+        label={t("execution.endedAt")}
+        placeholder={t("execution.endedAt")}
         type="datetime-local"
       />
     </>
@@ -115,18 +125,23 @@ function ExecutionTimeFilters(props: FilterProps) {
 }
 
 function ExecutionToolbarActions(props: Props) {
+  const { t } = useTranslation();
   return (
     <>
       <Button
-        aria-label="查询执行日志"
+        aria-label={t("execution.searchAria")}
         icon={<IconSearch />}
         loading={props.busy}
         theme="solid"
         onClick={props.onSearch}
       >
-        查询
+        {t("common.search")}
       </Button>
-      <Button aria-label="重置执行日志筛选" icon={<IconRefresh />} onClick={props.onReset} />
+      <Button
+        aria-label={t("execution.resetAria")}
+        icon={<IconRefresh />}
+        onClick={props.onReset}
+      />
     </>
   );
 }

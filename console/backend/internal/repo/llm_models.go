@@ -129,7 +129,7 @@ func prepareLLMModelConfig(input LLMModelConfigCreate) (LLMModelConfig, error) {
 		ModelConfigID: id, DisplayName: strings.TrimSpace(input.DisplayName),
 		Provider: strings.TrimSpace(input.Provider), BaseURL: strings.TrimSpace(input.BaseURL),
 		APIKey: strings.TrimSpace(input.APIKey),
-		Model: strings.TrimSpace(input.Model), SupportsTools: input.SupportsTools,
+		Model:  strings.TrimSpace(input.Model), SupportsTools: input.SupportsTools,
 		CreatedAt: now, UpdatedAt: now,
 	}, nil
 }

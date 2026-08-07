@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { TabPane, Tabs } from "@douyinfe/semi-ui";
 import { PageHeader } from "../components/ConsolePage";
 import { OperationAuditTab } from "./audit/OperationAuditTab";
@@ -8,6 +9,7 @@ import styles from "./Audit.module.css";
 type AuditTab = "operations" | "skill-executions";
 
 export function Audit({ onOpenPod }: { onOpenPod?: (podId: string) => void }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<AuditTab>(readAuditTab);
   useEffect(() => {
     writeAuditTab(activeTab);
@@ -19,7 +21,7 @@ export function Audit({ onOpenPod }: { onOpenPod?: (podId: string) => void }) {
   }, []);
   return (
     <div>
-      <PageHeader title="审计日志" description="分别查询平台操作记录和 Skill 执行生命周期" />
+      <PageHeader title={t("nav.audit")} description={t("audit.pageDescription")} />
       <Tabs
         className={styles.tabs}
         activeKey={activeTab}
@@ -28,10 +30,10 @@ export function Audit({ onOpenPod }: { onOpenPod?: (podId: string) => void }) {
         type="line"
         onChange={(key) => setActiveTab(normalizeAuditTab(key))}
       >
-        <TabPane itemKey="operations" tab="操作审计">
+        <TabPane itemKey="operations" tab={t("audit.operationsTab")}>
           <OperationAuditTab active={activeTab === "operations"} />
         </TabPane>
-        <TabPane itemKey="skill-executions" tab="Skill 执行日志">
+        <TabPane itemKey="skill-executions" tab={t("audit.skillExecutionsTab")}>
           <SkillExecutionLogTab active={activeTab === "skill-executions"} onOpenPod={onOpenPod} />
         </TabPane>
       </Tabs>

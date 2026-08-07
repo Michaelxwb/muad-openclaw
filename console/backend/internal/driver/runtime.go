@@ -148,9 +148,11 @@ type RuntimeProvider struct {
 	BaseURL  string `json:"baseUrl"`
 	APIKey   string `json:"apiKey"`
 	Model    string `json:"model"`
-	// SupportsTools 标记该模型是否支持函数调用。false 时 renderer 会写成
-	// OpenClaw 的 compat.supportsTools:false，模型不再收到 tools/tool_choice。
-	SupportsTools bool `json:"supportsTools"`
+	// SupportsTools 标记该模型是否支持函数调用，缺省 nil = 支持（默认开启）。
+	// 仅当 false 时输出 supportsTools:false，renderer 会写成 OpenClaw 的
+	// compat.supportsTools:false，模型不再收到 tools/tool_choice。省略字段
+	// 保证旧 worker 镜像（schema 不认识 supportsTools）在默认场景下仍可 apply。
+	SupportsTools *bool `json:"supportsTools,omitempty"`
 }
 
 type RuntimePlatform struct {

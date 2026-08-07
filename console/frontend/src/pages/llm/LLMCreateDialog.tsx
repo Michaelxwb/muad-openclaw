@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Checkbox, Input, Modal, TextArea } from "@douyinfe/semi-ui";
 import type { LLMModelInput } from "../../api";
+import i18n from "../../i18n";
 import styles from "../LLM.module.css";
 
 interface ModelDraft {
@@ -31,6 +33,7 @@ const initialDraft: ModelDraft = {
 };
 
 export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: Props) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<ModelDraft>(initialDraft);
 
   useEffect(() => {
@@ -54,28 +57,28 @@ export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: P
   return (
     <Modal
       className="standard-modal"
-      title="批量创建模型配置"
+      title={t("model.createDialogTitle")}
       visible={visible}
       onCancel={onClose}
       footer={
         <>
           <Button disabled={busy} onClick={onClose}>
-            取消
+            {t("common.cancel")}
           </Button>
           <Button theme="solid" loading={busy} onClick={() => void submit()}>
-            创建
+            {t("common.create")}
           </Button>
         </>
       }
       width={720}
     >
       <div className={styles.formGrid}>
-        <Field label="显示名称">
+        <Field label={t("model.displayNameLabel")}>
           <Input
-            aria-label="显示名称"
+            aria-label={t("model.displayNameLabel")}
             value={draft.displayName}
             onChange={(value) => set("displayName", value)}
-            placeholder="例如 DeepSeek Key"
+            placeholder={t("model.createDialogDisplayNamePlaceholder")}
           />
         </Field>
         <Field label="Provider">
@@ -95,25 +98,25 @@ export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: P
             onChange={(value) => set("baseUrl", value)}
           />
         </Field>
-        <Field label="函数调用">
+        <Field label={t("model.functionCalls")}>
           <Checkbox
-            aria-label="支持函数调用"
+            aria-label={t("model.supportFunctionCallsAria")}
             checked={draft.supportsTools}
             onChange={(checked) =>
               setDraft((previous) => ({ ...previous, supportsTools: Boolean(checked) }))
             }
           >
-            支持函数调用（工具）
+            {t("model.supportFunctionCalls")}
           </Checkbox>
         </Field>
         <div className={styles.full}>
-          <Field label="API Key 列表">
+          <Field label={t("model.apiKeyList")}>
             <TextArea
-              aria-label="API Key 列表"
+              aria-label={t("model.apiKeyList")}
               value={draft.apiKeys}
               onChange={(value) => set("apiKeys", value)}
               rows={6}
-              placeholder="每行一个 API key"
+              placeholder={t("model.apiKeyPlaceholder")}
             />
           </Field>
         </div>
@@ -140,12 +143,12 @@ function modelInputsFromDraft(draft: ModelDraft): LLMModelInput[] | string {
     .split(/\r?\n/u)
     .map((line) => line.trim())
     .filter(Boolean);
-  if (displayName === "") return "显示名称必填";
-  if (!/^[a-z][a-z0-9_-]{0,63}$/u.test(provider)) return "Provider 格式无效";
-  if (model === "") return "Model 必填";
-  if (baseUrl === "") return "Base URL 必填";
-  if (apiKeys.length === 0) return "请至少输入一个 API key";
-  if (apiKeys.length > 100) return "单次最多创建 100 个 API key";
+  if (displayName === "") return i18n.t("model.validationDisplayNameRequired");
+  if (!/^[a-z][a-z0-9_-]{0,63}$/u.test(provider)) return i18n.t("model.validationProviderInvalid");
+  if (model === "") return i18n.t("model.validationModelRequired");
+  if (baseUrl === "") return i18n.t("model.validationBaseUrlRequired");
+  if (apiKeys.length === 0) return i18n.t("model.validationApiKeyRequired");
+  if (apiKeys.length > 100) return i18n.t("model.validationApiKeyLimit");
   return apiKeys.map((apiKey, index) => ({
     displayName: `${displayName} ${index + 1}`,
     provider,

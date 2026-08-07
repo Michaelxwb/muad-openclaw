@@ -12,10 +12,12 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 // ErrNotFound is returned when a row is absent.
-var ErrNotFound = errors.New("repo: not found")
+var ErrNotFound = &Error{Code: errcode.NotFound, Msg: "repo: not found"}
 
 // ErrLegacySchema requires the development database to be reset before the
 // multi-user schema can be used.

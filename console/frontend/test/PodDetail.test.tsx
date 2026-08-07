@@ -151,7 +151,7 @@ describe("PodDetail", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "重启" }));
 
-    expect(await screen.findByText("restart failed")).toBeInTheDocument();
+    expect(await screen.findByText("Pod 操作失败")).toBeInTheDocument();
     expect(screen.getByText("Pod A")).toBeInTheDocument();
   });
 

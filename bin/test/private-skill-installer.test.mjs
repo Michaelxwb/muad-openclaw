@@ -183,19 +183,17 @@ test("accepts zip bundles with link-like text in regular file names", async () =
   );
 });
 
-test("rejects zip bundles whose extracted size exceeds the limit", async () => {
+test("accepts zip bundles whose extracted size exceeds the old limit", async () => {
   const root = mkdtempSync(join(tmpdir(), "muad-skill-huge-zip-"));
   const source = join(root, "huge-src", "huge-skill");
   mkdirSync(source, { recursive: true });
   writeFileSync(join(source, "SKILL.md"), "# Huge\n");
   writeFileSync(join(source, "payload.bin"), Buffer.alloc(26 * 1024 * 1024));
 
-  await assert.rejects(
-    () => installPrivateSkill({
-      bundle: zip(root, "huge-src"), agentId: "alice", stateDir: root, bundleFormat: "zip",
-    }),
-    /extracted size is too large/u,
-  );
+  const result = await installPrivateSkill({
+    bundle: zip(root, "huge-src"), agentId: "alice", stateDir: root, bundleFormat: "zip",
+  });
+  assert.equal(result.name, "huge-skill");
 });
 
 test("rejects bundles containing multiple Skill roots", async () => {
@@ -303,7 +301,7 @@ test("rejects tar bundles containing global pax metadata entries", async () => {
   );
 });
 
-test("rejects bundles with too many extracted entries", async () => {
+test("accepts bundles with more files than the old entry limit", async () => {
   const root = mkdtempSync(join(tmpdir(), "muad-skill-many-files-"));
   const source = join(root, "src", "huge-skill");
   mkdirSync(source, { recursive: true });
@@ -312,10 +310,8 @@ test("rejects bundles with too many extracted entries", async () => {
     writeFileSync(join(source, `file-${index}.txt`), "x");
   }
 
-  await assert.rejects(
-    () => installPrivateSkill({ bundle: tar(root, "src"), agentId: "alice", stateDir: root }),
-    /too many files/u,
-  );
+  const result = await installPrivateSkill({ bundle: tar(root, "src"), agentId: "alice", stateDir: root });
+  assert.equal(result.name, "huge-skill");
 });
 
 test("delete removes only the selected private skill directory", async () => {

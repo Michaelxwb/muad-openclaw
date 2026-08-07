@@ -9,6 +9,7 @@ import (
 	"time"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
@@ -32,7 +33,7 @@ func (s *Server) handleAuditQuery(w http.ResponseWriter, r *http.Request) {
 		Offset: offset, Limit: limit,
 	})
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, 50001, "query audit")
+		writeErr(w, r, errcode.InternalQueryAudit)
 		return
 	}
 	items := make([]auditItem, 0, len(entries))
@@ -141,7 +142,7 @@ const (
 func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 	pods, _, err := s.store.ListPods(repo.PodListFilter{})
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list Pods")
+		writeErr(w, r, errcode.InternalListPods)
 		return
 	}
 	counts, err := s.store.CountAuditActionsSince([]string{
@@ -149,13 +150,13 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 		string(auditlog.ActionRuntimeGuardReject),
 	}, time.Now().Add(-auditFailureWindow))
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "query runtime failure alerts")
+		writeErr(w, r, errcode.InternalQueryAlerts)
 		return
 	}
 	failures := indexAuditActionCounts(counts)
 	staleSkillAlerts, err := s.staleSkillExecutionAlerts(time.Now().UTC())
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "query stale Skill executions")
+		writeErr(w, r, errcode.InternalQueryStaleExecutions)
 		return
 	}
 	alerts := make([]alert, 0, len(pods))

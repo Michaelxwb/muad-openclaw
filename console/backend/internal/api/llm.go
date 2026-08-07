@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/llm"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
@@ -41,7 +42,7 @@ func (s *Server) handleListLLMModels(w http.ResponseWriter, r *http.Request) {
 		AvailableOnly: r.URL.Query().Get("available") == "true",
 	})
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list LLM models")
+		writeErr(w, r, errcode.InternalListLLMModels)
 		return
 	}
 	views := make([]map[string]any, 0, len(models))
@@ -54,21 +55,21 @@ func (s *Server) handleListLLMModels(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateLLMModels(w http.ResponseWriter, r *http.Request) {
 	var request llmModelBatchRequest
 	if err := decodeJSONBody(w, r, &request); err != nil || len(request.Models) == 0 || len(request.Models) > 100 {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	createItems := make([]repo.LLMModelConfigCreate, 0, len(request.Models))
 	for _, input := range request.Models {
 		create, err := s.prepareLLMModelCreate(input)
 		if err != nil {
-			writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid LLM model")
+			writeErr(w, r, errcode.InvalidLLMModel)
 			return
 		}
 		createItems = append(createItems, create)
 	}
 	models, err := s.store.CreateLLMModelConfigs(createItems)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	views := make([]map[string]any, 0, len(models))
@@ -81,12 +82,12 @@ func (s *Server) handleCreateLLMModels(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleBatchTestLLMModels(w http.ResponseWriter, r *http.Request) {
 	var request llmModelBatchTestRequest
 	if err := decodeJSONBody(w, r, &request); err != nil || len(request.ModelConfigIDs)+len(request.Models) == 0 {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	targets, err := s.llmModelTestTargets(request)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	results := runLLMModelTests(r, targets)
@@ -104,7 +105,7 @@ func (s *Server) handleBatchTestLLMModels(w http.ResponseWriter, r *http.Request
 func (s *Server) handleDeleteLLMModel(w http.ResponseWriter, r *http.Request) {
 	modelConfigID := strings.TrimSpace(r.PathValue("modelConfigId"))
 	if err := s.store.DeleteLLMModelConfig(modelConfigID); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": true, "modelConfigId": modelConfigID})

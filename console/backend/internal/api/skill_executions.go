@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -84,22 +85,22 @@ type skillExecutionDetailView struct {
 func (s *Server) handleUpsertSkillExecution(w http.ResponseWriter, r *http.Request) {
 	pod, ok := podFromContext(r.Context())
 	if !ok {
-		writeErr(w, http.StatusUnauthorized, codePodUnauthorized, "invalid Pod service token")
+		writeErr(w, r, errcode.UnauthorizedPodToken)
 		return
 	}
 	var request skillExecutionUpsertRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	record, err := s.skillExecutionRecordFromRequest(pod, request)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	stored, err := s.store.UpsertSkillExecutionRecord(record)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, skillExecutionDetail(stored))
@@ -138,7 +139,7 @@ func (s *Server) skillExecutionRecordFromRequest(
 func (s *Server) handleGetSkillExecution(w http.ResponseWriter, r *http.Request) {
 	record, err := s.store.GetSkillExecutionRecord(strings.TrimSpace(r.PathValue("executionId")))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, skillExecutionDetail(record))
@@ -151,7 +152,7 @@ func (s *Server) handleListSkillExecutions(w http.ResponseWriter, r *http.Reques
 	}
 	records, total, err := s.store.ListSkillExecutionRecords(filter)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list Skill executions")
+		writeErr(w, r, errcode.InternalListSkillExecutions)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -168,7 +169,7 @@ func skillExecutionFilterFromRequest(
 	}
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 	if status != "" && !validSkillExecutionStatus(status) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill execution status")
+		writeErr(w, r, errcode.InvalidSkillExecutionStatus)
 		return repo.SkillExecutionListFilter{}, 0, 0, false
 	}
 	from, to, ok := skillExecutionTimeRange(w, r)
@@ -178,7 +179,7 @@ func skillExecutionFilterFromRequest(
 	scope := strings.TrimSpace(r.URL.Query().Get("scope"))
 	entryType := strings.TrimSpace(r.URL.Query().Get("entryType"))
 	if !validOptionalSkillExecutionClass(scope, entryType) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Skill execution filter")
+		writeErr(w, r, errcode.InvalidSkillExecutionFilter)
 		return repo.SkillExecutionListFilter{}, 0, 0, false
 	}
 	return repo.SkillExecutionListFilter{
@@ -200,7 +201,7 @@ func skillExecutionPagination(w http.ResponseWriter, r *http.Request) (int, int,
 	}
 	parsed, err := strconv.Atoi(raw)
 	if err != nil || !validSkillExecutionPageSize(parsed) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid page size")
+		writeErr(w, r, errcode.InvalidPageSize)
 		return 0, 0, false
 	}
 	return page, pageSize, true
@@ -213,12 +214,12 @@ func validSkillExecutionPageSize(size int) bool {
 func skillExecutionTimeRange(w http.ResponseWriter, r *http.Request) (time.Time, time.Time, bool) {
 	from, err := parseOptionalExecutionTime(r.URL.Query().Get("startedFrom"))
 	if err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid start time")
+		writeErr(w, r, errcode.InvalidStartTime)
 		return time.Time{}, time.Time{}, false
 	}
 	to, err := parseOptionalExecutionTime(r.URL.Query().Get("startedTo"))
 	if err != nil || (!from.IsZero() && !to.IsZero() && from.After(to)) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid end time")
+		writeErr(w, r, errcode.InvalidEndTime)
 		return time.Time{}, time.Time{}, false
 	}
 	return from, to, true

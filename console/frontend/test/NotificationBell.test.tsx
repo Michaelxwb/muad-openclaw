@@ -63,6 +63,6 @@ describe("NotificationBell", () => {
     fireEvent.click(screen.getByRole("button", { name: "告警" }));
     fireEvent.click(screen.getByRole("button", { name: "刷新告警" }));
 
-    expect(await screen.findByText("alerts unavailable")).toBeInTheDocument();
+    expect(await screen.findByText("加载告警失败")).toBeInTheDocument();
   });
 });

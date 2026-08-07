@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, TextArea } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { api } from "../../api";
 import { FeedbackBanner } from "../ConsolePage";
 import { useMountedRef } from "../../hooks/useMountedRef";
+import { errorMessage } from "../../utils/error";
 import styles from "../../pages/Settings.module.css";
 
 interface GuidanceForm {
@@ -18,6 +20,7 @@ const EMPTY: GuidanceForm = { userSkill: "", memory: "", main: "" };
 // the runtime renderer's built-in defaults; saving re-applies every Pod without
 // an image rebuild.
 export function AgentGuidanceSettings() {
+  const { t } = useTranslation();
   const [form, setForm] = useState<GuidanceForm>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -38,7 +41,7 @@ export function AgentGuidanceSettings() {
       });
     } catch (caught) {
       if (mountedRef.current && requestId === requestRef.current)
-        setError(caught instanceof Error ? caught.message : "加载 Agent 工作区指导失败");
+        setError(errorMessage(caught, "settings.agentGuidanceLoadFailed"));
     } finally {
       if (mountedRef.current && requestId === requestRef.current) setLoading(false);
     }
@@ -54,11 +57,9 @@ export function AgentGuidanceSettings() {
     setMessage("");
     try {
       await api.setAgentGuidance(form);
-      if (mountedRef.current)
-        setMessage("已保存；正在重新下发到 Pod，AGENTS.md / BOOTSTRAP.md 将在 apply 后更新");
+      if (mountedRef.current) setMessage(t("settings.agentGuidanceSaved"));
     } catch (caught) {
-      if (mountedRef.current)
-        setError(caught instanceof Error ? caught.message : "保存 Agent 工作区指导失败");
+      if (mountedRef.current) setError(errorMessage(caught, "settings.agentGuidanceSaveFailed"));
     } finally {
       if (mountedRef.current) setBusy(false);
     }
@@ -68,25 +69,25 @@ export function AgentGuidanceSettings() {
     <div>
       <FeedbackBanner error={error} message={message} />
       <GuidanceField
-        label="用户自建 Skill 规则"
+        label={t("settings.guidanceUserSkill")}
         value={form.userSkill}
         disabled={loading}
         onChange={(value) => setForm({ ...form, userSkill: value })}
       />
       <GuidanceField
-        label="记忆持久化规则"
+        label={t("settings.guidanceMemory")}
         value={form.memory}
         disabled={loading}
         onChange={(value) => setForm({ ...form, memory: value })}
       />
       <GuidanceField
-        label="主 Agent（未绑定回退）指导"
+        label={t("settings.guidanceMain")}
         value={form.main}
         disabled={loading}
         onChange={(value) => setForm({ ...form, main: value })}
       />
       <Button theme="solid" loading={busy} disabled={loading} onClick={() => void save()}>
-        保存 Agent 工作区指导
+        {t("settings.saveAgentGuidance")}
       </Button>
     </div>
   );
@@ -103,6 +104,7 @@ function GuidanceField({
   disabled?: boolean;
   onChange: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.guidanceField}>
       <label>{label}</label>
@@ -112,7 +114,7 @@ function GuidanceField({
         disabled={disabled}
         onChange={onChange}
         autosize={{ minRows: 4, maxRows: 14 }}
-        placeholder="留空使用内置默认"
+        placeholder={t("settings.guidancePlaceholder")}
       />
     </div>
   );

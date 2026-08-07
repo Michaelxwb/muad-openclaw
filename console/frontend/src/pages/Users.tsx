@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, Select, Space, Table, Tag } from "@douyinfe/semi-ui";
 import { IconPlus, IconSearch } from "@douyinfe/semi-icons";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { api } from "../api";
 import type { HumanUser, HumanUserActivation, HumanUserBootstrapResult, Pod } from "../api";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
@@ -11,7 +13,7 @@ import { HumanUserDetailDialog } from "../components/human-users/HumanUserDetail
 import { DeleteHumanUser } from "../components/human-users/DeleteHumanUser";
 import {
   normalizeStatus,
-  USER_STATUS_OPTIONS,
+  userStatusOptions,
   UserStatusTag,
   type UserStatusFilter,
 } from "../components/human-users/shared";
@@ -21,6 +23,7 @@ import {
   tablePagination,
 } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
+import { errorMessage } from "../utils/error";
 import styles from "./Users.module.css";
 
 interface SelectedUser {
@@ -33,6 +36,7 @@ interface UsersProps {
 }
 
 export function Users({ onOpenPod }: UsersProps) {
+  const { t } = useTranslation();
   const users = useGlobalHumanUsers();
   const pods = useGlobalUserPods();
   const [selectedUser, setSelectedUser] = useState<SelectedUser | null>(null);
@@ -59,7 +63,7 @@ export function Users({ onOpenPod }: UsersProps) {
 
   return (
     <div>
-      <PageHeader title="用户管理" description="跨 Pod 查看和管理 Human User、绑定模型与身份状态" />
+      <PageHeader title={t("nav.users")} description={t("user.pageDescription")} />
       <FeedbackBanner error={users.error || pods.error || selectedPod.error} />
       <PageSection>
         <GlobalUserToolbar
@@ -157,7 +161,7 @@ function useGlobalHumanUsers(): GlobalUsersState {
         setTotal(result.total);
       } catch (caught) {
         if (!mountedRef.current || requestId !== requestRef.current) return;
-        setError(caught instanceof Error ? caught.message : "加载用户失败");
+        setError(errorMessage(caught, "user.loadUsersFailed"));
       } finally {
         if (mountedRef.current && requestId === requestRef.current && !background)
           setLoading(false);
@@ -207,7 +211,7 @@ function useGlobalUserPods() {
       setItems(result);
     } catch (caught) {
       if (!mountedRef.current) return;
-      setError(caught instanceof Error ? caught.message : "加载 Pod 失败");
+      setError(errorMessage(caught, "user.loadPodsFailed"));
     } finally {
       if (mountedRef.current) setLoading(false);
     }
@@ -256,7 +260,7 @@ function useSelectedPod(podId: string, pods: Map<string, Pod>) {
       })
       .catch((caught: unknown) => {
         if (mountedRef.current && requestId === requestRef.current)
-          setError(caught instanceof Error ? caught.message : "加载 Pod 失败");
+          setError(errorMessage(caught, "user.loadPodsFailed"));
       });
   }, [mountedRef, podId, pods]);
   return { pod, error };
@@ -271,6 +275,7 @@ function GlobalUserToolbar({
   createDisabled: boolean;
   onCreate: () => void;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const submitSearch = () => {
     users.setPage(1);
@@ -288,13 +293,13 @@ function GlobalUserToolbar({
     <ListToolbar
       actions={
         <Button
-          aria-label="创建用户"
+          aria-label={t("user.create")}
           theme="solid"
           icon={<IconPlus />}
           disabled={createDisabled}
           onClick={onCreate}
         >
-          创建用户
+          {t("user.create")}
         </Button>
       }
       filters={
@@ -304,21 +309,21 @@ function GlobalUserToolbar({
             value={search}
             onChange={setSearch}
             onEnterPress={submitSearch}
-            placeholder="名称、ID、agent 或 Pod"
+            placeholder={t("user.searchPlaceholder")}
             style={{ width: 240 }}
           />
-          <Button aria-label="查询用户" icon={<IconSearch />} onClick={submitSearch} />
+          <Button aria-label={t("user.query")} icon={<IconSearch />} onClick={submitSearch} />
           <Select
             value={users.status}
-            optionList={USER_STATUS_OPTIONS}
+            optionList={userStatusOptions(t)}
             onChange={(value) => filterStatus(normalizeStatus(String(value ?? "")))}
             style={{ width: 120 }}
           />
           <Select
             value={users.unboundOnly ? "unbound" : "all"}
             optionList={[
-              { value: "all", label: "全部绑定状态" },
-              { value: "unbound", label: "只看未绑定" },
+              { value: "all", label: t("user.bindingAll") },
+              { value: "unbound", label: t("user.bindingUnbound") },
             ]}
             onChange={(value) => filterBinding(value === "unbound" ? "unbound" : "all")}
             style={{ width: 140 }}
@@ -344,9 +349,10 @@ function GlobalUserTable({
   onOpenPod: (podId: string) => void;
   onDeleted: () => Promise<void>;
 }) {
+  const { t } = useTranslation();
   return (
     <Table
-      columns={globalUserColumns(pods, onOpen, onAttach, onOpenPod, onDeleted) as never}
+      columns={globalUserColumns(t, pods, onOpen, onAttach, onOpenPod, onDeleted) as never}
       dataSource={users.items}
       rowKey="humanUserId"
       loading={users.loading}
@@ -367,6 +373,7 @@ function GlobalUserTable({
 }
 
 function globalUserColumns(
+  t: TFunction,
   pods: Map<string, Pod>,
   onOpen: (user: HumanUser) => void,
   onAttach: (humanUserIds: string[]) => void,
@@ -375,7 +382,7 @@ function globalUserColumns(
 ) {
   return [
     {
-      title: "用户",
+      title: t("user.columnUser"),
       key: "user",
       width: 220,
       render: (_: unknown, user: HumanUser) => (
@@ -393,8 +400,10 @@ function globalUserColumns(
         if (user.podId === "") {
           return (
             <div>
-              <Tag color="orange">未绑定</Tag>
-              <div className={styles.mutedText}>原 Pod: {user.lastPodId || "-"}</div>
+              <Tag color="orange">{t("user.unbound")}</Tag>
+              <div className={styles.mutedText}>
+                {t("user.originalPod", { podId: user.lastPodId || "-" })}
+              </div>
             </div>
           );
         }
@@ -415,13 +424,13 @@ function globalUserColumns(
       },
     },
     {
-      title: "状态",
+      title: t("common.status"),
       key: "status",
       width: 90,
       render: (_: unknown, user: HumanUser) => <UserStatusTag status={user.status} />,
     },
     {
-      title: "LLM 配置",
+      title: t("user.columnModel"),
       key: "model",
       width: 230,
       render: (_: unknown, user: HumanUser) => (
@@ -429,19 +438,25 @@ function globalUserColumns(
           <div className={styles.primaryText}>
             {user.modelConfig.provider}/{user.modelConfig.model}
           </div>
-          <div className="mono">{user.modelConfig.apiKey || "已配置"}</div>
+          <div className="mono">{user.modelConfig.apiKey || t("user.configured")}</div>
         </div>
       ),
     },
-    { title: "运行 Agent", dataIndex: "agentId", key: "agentId", width: 150, className: "mono" },
     {
-      title: "身份标识",
+      title: t("user.runningAgent"),
+      dataIndex: "agentId",
+      key: "agentId",
+      width: 150,
+      className: "mono",
+    },
+    {
+      title: t("user.identity"),
       key: "identityCount",
       width: 90,
       render: (_: unknown, user: HumanUser) => <Tag>{user.identityCount}</Tag>,
     },
     {
-      title: "浏览器",
+      title: t("user.columnBrowser"),
       key: "browser",
       width: 170,
       render: (_: unknown, user: HumanUser) => (
@@ -452,18 +467,18 @@ function globalUserColumns(
       ),
     },
     {
-      title: "操作",
+      title: t("common.actions"),
       key: "actions",
       width: 150,
       render: (_: unknown, user: HumanUser) => (
         <Space spacing={4}>
           {user.podId === "" ? (
             <Button size="small" onClick={() => onAttach([user.humanUserId])}>
-              绑定
+              {t("user.bind")}
             </Button>
           ) : (
             <Button size="small" onClick={() => onOpen(user)}>
-              详情
+              {t("common.viewDetail")}
             </Button>
           )}
           <DeleteHumanUser user={user} compact onDeleted={() => void onDeleted()} />

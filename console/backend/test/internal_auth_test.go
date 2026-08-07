@@ -15,8 +15,8 @@ func TestInternalAuth_RequiresValidPodServiceToken(t *testing.T) {
 	env := newTestEnv(t)
 	token := createPodWithToken(t, env, "pod-a")
 
-	assertInternalStatus(t, env, "", http.StatusUnauthorized, 40102)
-	assertInternalStatus(t, env, "wrong-token", http.StatusUnauthorized, 40102)
+	assertInternalStatus(t, env, "", http.StatusUnauthorized, 40103)
+	assertInternalStatus(t, env, "wrong-token", http.StatusUnauthorized, 40103)
 	assertInternalStatus(t, env, token, http.StatusBadRequest, 40001)
 }
 
@@ -37,7 +37,7 @@ func TestInternalAuth_RotationImmediatelyInvalidatesOldToken(t *testing.T) {
 		t.Fatalf("RotatePodServiceToken: %v", err)
 	}
 
-	assertInternalStatus(t, env, oldToken, http.StatusUnauthorized, 40102)
+	assertInternalStatus(t, env, oldToken, http.StatusUnauthorized, 40103)
 	assertInternalStatus(t, env, newToken, http.StatusBadRequest, 40001)
 }
 

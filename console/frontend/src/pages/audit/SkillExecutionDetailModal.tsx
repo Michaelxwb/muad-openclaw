@@ -9,7 +9,10 @@ import {
   Timeline,
   Typography,
 } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import type { SkillExecutionDetail, SkillExecutionStatus } from "../../api";
+import i18n from "../../i18n";
+import { ErrorDetail } from "../../utils/error";
 import { parseSkillProgress, type SkillProgressItem } from "./skillProgress";
 import { useSkillExecutionDetail } from "./useSkillExecutionDetail";
 import styles from "./SkillExecutions.module.css";
@@ -20,11 +23,12 @@ interface Props {
 }
 
 export function SkillExecutionDetailModal({ executionId, onClose }: Props) {
+  const { t } = useTranslation();
   const state = useSkillExecutionDetail(executionId);
   return (
     <Modal
       className={`standard-modal ${styles.detailModal}`}
-      title="Skill 执行详情"
+      title={t("execution.detailTitle")}
       visible={executionId !== null}
       onCancel={onClose}
       footer={null}
@@ -39,15 +43,18 @@ function DetailBody({
   detail,
   loading,
   error,
+  errorDetail,
   refresh,
 }: ReturnType<typeof useSkillExecutionDetail>) {
+  const { t } = useTranslation();
   if (loading && !detail) return <Spin wrapperClassName={styles.detailLoading} />;
   if (error && !detail) {
     return (
       <div className={styles.detailError}>
         <Banner type="danger" description={error} fullMode={false} bordered closeIcon={null} />
-        <Button aria-label="重新加载执行详情" onClick={() => void refresh()}>
-          重新加载
+        <ErrorDetail detail={errorDetail} />
+        <Button aria-label={t("execution.reloadDetail")} onClick={() => void refresh()}>
+          {t("execution.reload")}
         </Button>
       </div>
     );
@@ -66,30 +73,32 @@ function DetailContent({ detail }: { detail: SkillExecutionDetail }) {
 }
 
 function ExecutionOverview({ detail }: { detail: SkillExecutionDetail }) {
+  const { t } = useTranslation();
   const data = [
-    { key: "执行 ID", value: detail.executionId },
-    { key: "状态", value: <StatusTag status={detail.status} /> },
-    { key: "用户 ID", value: detail.humanUserId || "-" },
+    { key: t("execution.id"), value: detail.executionId },
+    { key: t("common.status"), value: <StatusTag status={detail.status} /> },
+    { key: t("execution.userId"), value: detail.humanUserId || "-" },
     { key: "Agent", value: detail.agentId || "-" },
     { key: "Pod", value: detail.podId || "-" },
     { key: "Skill", value: detail.skillName || "-" },
-    { key: "范围", value: detail.skillScope || "-" },
-    { key: "模式", value: entryTypeLabel(detail.entryType) },
-    { key: "激活方式", value: activationModeLabel(detail.activationMode) },
-    { key: "开始时间", value: formatTime(detail.startedAt) },
-    { key: "结束时间", value: formatTime(detail.endedAt) },
-    { key: "耗时", value: formatDuration(detail.durationMs) },
+    { key: t("execution.scope"), value: detail.skillScope || "-" },
+    { key: t("execution.entryType"), value: entryTypeLabel(detail.entryType) },
+    { key: t("execution.activationMode"), value: activationModeLabel(detail.activationMode) },
+    { key: t("execution.startedAt"), value: formatTime(detail.startedAt) },
+    { key: t("execution.endedAt"), value: formatTime(detail.endedAt) },
+    { key: t("execution.duration"), value: formatDuration(detail.durationMs) },
   ];
   return <Descriptions data={data} row size="small" column={2} />;
 }
 
 function ExecutionProgress({ detail }: { detail: SkillExecutionDetail }) {
+  const { t } = useTranslation();
   const progress = parseSkillProgress(detail.progressJson);
   return (
-    <section className={styles.detailSection} aria-label="执行进度">
-      <Typography.Title heading={6}>执行进度</Typography.Title>
+    <section className={styles.detailSection} aria-label={t("execution.progressTitle")}>
+      <Typography.Title heading={6}>{t("execution.progressTitle")}</Typography.Title>
       {progress.length === 0 ? (
-        <Empty className={styles.progressEmpty} title="暂无进度明细" />
+        <Empty className={styles.progressEmpty} title={t("execution.noProgress")} />
       ) : (
         <Timeline>
           {progress.map((item) => (
@@ -102,7 +111,8 @@ function ExecutionProgress({ detail }: { detail: SkillExecutionDetail }) {
 }
 
 function ProgressItem({ item }: { item: SkillProgressItem }) {
-  const title = [item.stage, item.type].filter(Boolean).join(" · ") || "执行进度";
+  const { t } = useTranslation();
+  const title = [item.stage, item.type].filter(Boolean).join(" · ") || t("execution.progressTitle");
   return (
     <Timeline.Item time={formatTime(item.ts)}>
       <div className={styles.progressTitle}>{title}</div>
@@ -112,16 +122,17 @@ function ProgressItem({ item }: { item: SkillProgressItem }) {
 }
 
 function ExecutionResult({ detail }: { detail: SkillExecutionDetail }) {
+  const { t } = useTranslation();
   const fields = [
-    ["输入摘要", detail.inputSummary],
-    ["输出摘要", detail.outputSummary],
-    ["错误码", detail.errorCode],
-    ["错误信息", detail.errorMessage],
-    ["终态原因", detail.terminalReason],
+    [t("execution.inputSummary"), detail.inputSummary],
+    [t("execution.outputSummary"), detail.outputSummary],
+    [t("execution.errorCode"), detail.errorCode],
+    [t("execution.errorMessage"), detail.errorMessage],
+    [t("execution.terminalReason"), detail.terminalReason],
   ] as const;
   return (
-    <section className={styles.detailSection} aria-label="执行结果">
-      <Typography.Title heading={6}>执行结果</Typography.Title>
+    <section className={styles.detailSection} aria-label={t("execution.resultTitle")}>
+      <Typography.Title heading={6}>{t("execution.resultTitle")}</Typography.Title>
       <div className={styles.resultGrid}>
         {fields.map(([label, value]) => (
           <ResultField key={label} label={label} value={value} />
@@ -141,24 +152,31 @@ function ResultField({ label, value }: { label: string; value?: string }) {
 }
 
 function StatusTag({ status }: { status: SkillExecutionStatus }) {
+  const { t } = useTranslation();
   const values = {
-    running: ["运行中", "blue"],
-    succeeded: ["成功", "green"],
-    failed: ["失败", "red"],
-    cancelled: ["已取消", "grey"],
-    rejected: ["已拒绝", "orange"],
+    running: [t("status.running"), "blue"],
+    succeeded: [t("status.succeeded"), "green"],
+    failed: [t("status.failed"), "red"],
+    cancelled: [t("execution.statusCancelled"), "grey"],
+    rejected: [t("execution.statusRejected"), "orange"],
   } as const satisfies Record<SkillExecutionStatus, readonly [string, string]>;
   return <Tag color={values[status][1]}>{values[status][0]}</Tag>;
 }
 
 function entryTypeLabel(value: SkillExecutionDetail["entryType"]): string {
-  return { managed: "Managed", "traditional-script": "传统脚本", "traditional-prompt": "传统工具" }[
-    value
-  ];
+  return {
+    managed: "Managed",
+    "traditional-script": i18n.t("execution.entryTypeScript"),
+    "traditional-prompt": i18n.t("execution.entryTypePrompt"),
+  }[value];
 }
 
 function activationModeLabel(value: SkillExecutionDetail["activationMode"]): string {
-  return { tool: "Tool 激活", "path-detected": "路径识别", runner: "Runner" }[value];
+  return {
+    tool: i18n.t("execution.activationTool"),
+    "path-detected": i18n.t("execution.activationPath"),
+    runner: "Runner",
+  }[value];
 }
 
 function formatDuration(durationMs: number): string {

@@ -39,7 +39,7 @@ func TestQRCodeRejectsWeComOnlyPod(t *testing.T) {
 	e := newTestEnv(t)
 	createWeComPod(t, e, "pod-wecom-only")
 	rr := e.do(http.MethodGet, "/api/v1/containers/pod-wecom-only/qrcode", "")
-	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "qrcode only applies") {
+	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "二维码登录仅适用于微信通道") {
 		t.Fatalf("wecom-only QR response = %d: %s", rr.Code, rr.Body.String())
 	}
 }

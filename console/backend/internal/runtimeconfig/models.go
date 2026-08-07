@@ -71,7 +71,13 @@ func runtimeProvider(scope, owner string, model modelConfig) (driver.RuntimeProv
 	id := stableProviderID(scope + "-" + owner + "-" + model.Provider)
 	provider := driver.RuntimeProvider{
 		ID: id, Provider: model.Provider, BaseURL: model.BaseURL,
-		APIKey: model.APIKey, Model: model.Model, SupportsTools: model.SupportsTools,
+		APIKey: model.APIKey, Model: model.Model,
+	}
+	// SupportsTools 缺省 nil = 支持函数调用（默认开启），此时字段不出现在 DTO，
+	// 兼容 schema 不认 supportsTools 的旧 worker 镜像；仅显式关闭时才输出 false。
+	if !model.SupportsTools {
+		disabled := false
+		provider.SupportsTools = &disabled
 	}
 	return provider, id + "/" + model.Model, nil
 }

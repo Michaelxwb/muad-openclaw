@@ -506,7 +506,7 @@ describe("HumanUsersPanel", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
-    expect(await screen.findByText("Identity scope conflict")).toBeInTheDocument();
+    expect(await screen.findByText("新增 Identity 失败")).toBeInTheDocument();
   });
 
   it("shows binding status, revokes pending codes, and marks expired codes", async () => {
@@ -732,7 +732,7 @@ describe("HumanUsersPanel", () => {
     fireEvent.change(fileInput, { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
-    expect(await screen.findByText("invalid skill bundle")).toBeInTheDocument();
+    expect(await screen.findByText("上传失败")).toBeInTheDocument();
   });
 
   it("deletes a private Skill through confirmation", async () => {

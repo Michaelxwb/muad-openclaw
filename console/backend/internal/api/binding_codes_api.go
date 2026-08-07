@@ -6,6 +6,7 @@ import (
 	"time"
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -28,33 +29,33 @@ type bindingCodeView struct {
 func (s *Server) handleCreateBindingCode(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(r.PathValue("humanUserId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	pod, err := s.store.GetPod(user.PodID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	var request activationInput
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	bindingRequest, err := normalizeActivationInput(pod, request)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if s.bindingCodec == nil {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "binding code service unavailable")
+		writeErr(w, r, errcode.UnavailableBindingCodeService)
 		return
 	}
 	bindingRequest.HumanUserID, bindingRequest.PodID = user.HumanUserID, user.PodID
 	bindingRequest.Purpose = bindingCodePurposeForUser(user)
 	record, plain, err := s.store.CreateBindingCode(s.bindingCodec, bindingRequest)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	s.auditBindingCode(r, auditlog.ActionBindingCodeCreate, record, "created")
@@ -73,16 +74,16 @@ func bindingCodePurposeForUser(user repo.HumanUser) string {
 func (s *Server) handleListBindingCodes(w http.ResponseWriter, r *http.Request) {
 	humanUserID := r.PathValue("humanUserId")
 	if _, err := s.store.GetHumanUser(humanUserID); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if _, err := s.store.ExpireBindingCodes(time.Now().UTC()); err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "expire binding codes")
+		writeErr(w, r, errcode.InternalExpireBindingCodes)
 		return
 	}
 	records, err := s.store.ListBindingCodesByHumanUser(humanUserID)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "list binding codes")
+		writeErr(w, r, errcode.InternalListBindingCodes)
 		return
 	}
 	views := make([]bindingCodeView, 0, len(records))
@@ -98,7 +99,7 @@ func (s *Server) handleRevokeBindingCode(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err := s.store.RevokeBindingCode(record.BindingCodeID); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	record.Status = repo.BindingCodeStatusRevoked
@@ -109,11 +110,11 @@ func (s *Server) handleRevokeBindingCode(w http.ResponseWriter, r *http.Request)
 func (s *Server) bindingCodeForPath(w http.ResponseWriter, r *http.Request) (repo.BindingCode, bool) {
 	record, err := s.store.GetBindingCode(r.PathValue("bindingCodeId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return repo.BindingCode{}, false
 	}
 	if record.HumanUserID != r.PathValue("humanUserId") {
-		writeErr(w, http.StatusNotFound, codeNotFound, "resource not found")
+		writeErr(w, r, errcode.NotFound)
 		return repo.BindingCode{}, false
 	}
 	return record, true

@@ -245,7 +245,10 @@ describe("Skill API", () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/human-users/user-a/skills/private");
     expect(init.method).toBe("POST");
-    expect(init.headers).toEqual({ Authorization: "Bearer console-token" });
+    expect(init.headers).toEqual({
+      Authorization: "Bearer console-token",
+      "Accept-Language": "zh",
+    });
     expect(init.body).toBeInstanceOf(FormData);
     expect((init.body as FormData).get("allowOverride")).toBe("true");
   });
@@ -279,7 +282,10 @@ describe("Skill API", () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/skills/public");
     expect(init.method).toBe("POST");
-    expect(init.headers).toEqual({ Authorization: "Bearer console-token" });
+    expect(init.headers).toEqual({
+      Authorization: "Bearer console-token",
+      "Accept-Language": "zh",
+    });
     expect(init.body).toBeInstanceOf(FormData);
   });
 
@@ -438,6 +444,6 @@ describe("request contract", () => {
 
     await expect(api.me()).resolves.toEqual({ actor: "admin" });
     await expect(api.me()).rejects.toThrow("服务端响应格式无效");
-    await expect(api.me()).rejects.toThrow("服务端返回了无效 JSON");
+    await expect(api.me()).rejects.toThrow("服务端返回了无效数据");
   });
 });

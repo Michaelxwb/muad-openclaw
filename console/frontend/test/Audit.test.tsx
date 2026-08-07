@@ -247,7 +247,7 @@ describe("Audit", () => {
       .mockResolvedValueOnce({ items: [execution], total: 1, page: 1, pageSize: 10 });
     render(<Audit />);
 
-    expect(await screen.findByText("执行日志暂时不可用")).toBeInTheDocument();
+    expect(await screen.findByText("加载 Skill 执行日志失败")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("模糊搜索执行日志"), {
       target: { value: "report" },
     });
@@ -335,7 +335,7 @@ describe("Audit", () => {
     render(<Audit />);
     fireEvent.click(await screen.findByRole("button", { name: "查看执行 run-a 详情" }));
 
-    expect(await screen.findByText("执行详情暂时不可用")).toBeInTheDocument();
+    expect(await screen.findByText("加载 Skill 执行详情失败")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "重新加载执行详情" }));
     expect(await screen.findByText("暂无进度明细")).toBeInTheDocument();
     expect(getSkillExecutionMock).toHaveBeenCalledTimes(2);

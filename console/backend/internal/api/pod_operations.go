@@ -9,6 +9,7 @@ import (
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -22,32 +23,32 @@ const (
 func (s *Server) handleAction(w http.ResponseWriter, r *http.Request) {
 	pod, err := s.store.GetPod(r.PathValue("podId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	action := r.PathValue("action")
 	if !validPodAction(action) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "unsupported Pod action")
+		writeErr(w, r, errcode.InvalidPodAction)
 		return
 	}
 	newState, valid := podActionTarget(action, pod.State)
 	if !valid {
-		writeErr(w, http.StatusConflict, codePodStateConflict, "Pod state does not allow this action")
+		writeErr(w, r, errcode.ConflictPodStateAction)
 		return
 	}
 	err = s.runPodExclusive(r.Context(), pod.PodID, func(ctx context.Context) error {
 		return s.executePodAction(ctx, pod.PodID, action)
 	})
 	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime coordinator unavailable")
+		writeErr(w, r, errcode.UnavailableRuntimeCoordinator)
 		return
 	}
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "Pod action failed")
+		writeRuntimeFailure(w, r, err, errcode.RuntimePodAction)
 		return
 	}
 	if err := s.store.UpdatePodState(pod.PodID, newState); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if action != "stop" {
@@ -113,15 +114,15 @@ func (s *Server) rebuildPodRuntime(ctx context.Context, podID string) error {
 func (s *Server) handleApplyPodConfig(w http.ResponseWriter, r *http.Request) {
 	pod, err := s.store.GetPod(r.PathValue("podId"))
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	if pod.State != repo.PodStateRunning && pod.State != repo.PodStateUnhealthy {
-		writeErr(w, http.StatusConflict, codePodStateConflict, "Pod must be running to apply configuration")
+		writeErr(w, r, errcode.ConflictPodRunningApply)
 		return
 	}
 	if s.reconcile == nil {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime reconciler unavailable")
+		writeErr(w, r, errcode.UnavailableRuntimeReconciler)
 		return
 	}
 	s.enqueueReconcile(pod.PodID)
@@ -165,12 +166,12 @@ type skillReloadResponse struct {
 
 func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
 	if s.reconcile == nil {
-		writeErr(w, http.StatusServiceUnavailable, codeDependencyUnavailable, "runtime reconciler unavailable")
+		writeErr(w, r, errcode.UnavailableRuntimeReconciler)
 		return
 	}
 	var request applyRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	podIDs := request.PodIDs
@@ -178,21 +179,21 @@ func (s *Server) handleSkillsReload(w http.ResponseWriter, r *http.Request) {
 		var err error
 		podIDs, err = s.allPodIDs()
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, codeInternal, "list Pods failed")
+			writeErr(w, r, errcode.InternalListPods)
 			return
 		}
 	} else {
 		var ok bool
 		podIDs, ok = validPodIDs(request.PodIDs)
 		if !ok {
-			writeErr(w, http.StatusBadRequest, codeInvalidField, "podIds must contain valid unique Pod IDs")
+			writeErr(w, r, errcode.InvalidPodIds)
 			return
 		}
 	}
 	results, warnings, err := s.enqueueSkillConfigApply(r.Context(), podIDs)
 	if err != nil {
 		log.Printf("skill_reload_enqueue_failed error=%s", auditlog.RedactDiagnostic(err.Error()))
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "reload Skills failed")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeReloadSkills)
 		return
 	}
 	writeJSON(w, http.StatusOK, skillReloadResponse{Results: results, Warnings: warnings})

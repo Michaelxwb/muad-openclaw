@@ -1,18 +1,14 @@
 import { useState } from "react";
 import { Button, Input, Select, Space, Table } from "@douyinfe/semi-ui";
 import { IconSearch } from "@douyinfe/semi-icons";
+import { useTranslation } from "react-i18next";
 import type { HumanUser, Pod } from "../../api";
 import { FeedbackBanner, ListToolbar, MetricDescriptions } from "../ConsolePage";
 import { renderTablePagination, tablePagination } from "../Pagination";
 import styles from "../HumanUsersPanel.module.css";
 import type { HumanUsersState } from "./HumanUsersPanel";
 import { DeleteHumanUser } from "./DeleteHumanUser";
-import {
-  normalizeStatus,
-  USER_STATUS_OPTIONS,
-  UserStatusTag,
-  type UserStatusFilter,
-} from "./shared";
+import { normalizeStatus, userStatusOptions, UserStatusTag, type UserStatusFilter } from "./shared";
 
 interface Props {
   pod: Pod;
@@ -50,12 +46,13 @@ export function HumanUserList({ pod, users, onCreate, onOpen, onDeleted }: Props
 }
 
 function CapacityMetrics({ pod }: { pod: Pod }) {
+  const { t } = useTranslation();
   return (
     <MetricDescriptions
       items={[
-        { label: "已分配用户", value: pod.userCount },
-        { label: "用户上限", value: pod.maxUsers },
-        { label: "剩余容量", value: pod.availableSlots },
+        { label: t("user.allocatedUsers"), value: pod.userCount },
+        { label: t("user.userLimit"), value: pod.maxUsers },
+        { label: t("user.availableCapacity"), value: pod.availableSlots },
       ]}
     />
   );
@@ -71,11 +68,12 @@ interface ToolbarProps {
 }
 
 function UserToolbar(props: ToolbarProps) {
+  const { t } = useTranslation();
   return (
     <ListToolbar
       actions={
         <Button theme="solid" onClick={props.onCreate}>
-          创建用户
+          {t("user.create")}
         </Button>
       }
       filters={
@@ -85,13 +83,17 @@ function UserToolbar(props: ToolbarProps) {
             value={props.search}
             onChange={props.onSearchChange}
             onEnterPress={props.onSearch}
-            placeholder="名称、ID 或 agent"
+            placeholder={t("user.searchPlaceholderPod")}
             style={{ width: 200 }}
           />
-          <Button aria-label="查询 Human User" icon={<IconSearch />} onClick={props.onSearch} />
+          <Button
+            aria-label={t("user.queryHumanUser")}
+            icon={<IconSearch />}
+            onClick={props.onSearch}
+          />
           <Select
             value={props.status}
-            optionList={USER_STATUS_OPTIONS}
+            optionList={userStatusOptions(t)}
             onChange={(value) => props.onStatus(normalizeStatus(String(value ?? "")))}
             style={{ width: 120 }}
           />
@@ -110,9 +112,10 @@ function UserTable({
   onOpen: (id: string) => void;
   onDeleted: () => Promise<void>;
 }) {
+  const { t } = useTranslation();
   return (
     <Table
-      columns={humanUserColumns(onOpen, onDeleted) as never}
+      columns={humanUserColumns(t, onOpen, onDeleted) as never}
       dataSource={users.items}
       rowKey="humanUserId"
       loading={users.loading}
@@ -132,10 +135,14 @@ function UserTable({
   );
 }
 
-function humanUserColumns(onOpen: (id: string) => void, onDeleted: () => Promise<void>) {
+function humanUserColumns(
+  t: (key: string) => string,
+  onOpen: (id: string) => void,
+  onDeleted: () => Promise<void>,
+) {
   return [
     {
-      title: "用户",
+      title: t("user.columnUser"),
       key: "user",
       width: 210,
       render: (_: unknown, user: HumanUser) => (
@@ -146,15 +153,21 @@ function humanUserColumns(onOpen: (id: string) => void, onDeleted: () => Promise
       ),
     },
     {
-      title: "状态",
+      title: t("common.status"),
       key: "status",
       width: 90,
       render: (_: unknown, user: HumanUser) => <UserStatusTag status={user.status} />,
     },
-    { title: "运行 Agent", dataIndex: "agentId", key: "agentId", width: 150, className: "mono" },
-    { title: "身份标识", dataIndex: "identityCount", key: "identityCount", width: 80 },
     {
-      title: "浏览器",
+      title: t("user.runningAgent"),
+      dataIndex: "agentId",
+      key: "agentId",
+      width: 150,
+      className: "mono",
+    },
+    { title: t("user.identity"), dataIndex: "identityCount", key: "identityCount", width: 110 },
+    {
+      title: t("user.columnBrowser"),
       key: "browser",
       width: 190,
       render: (_: unknown, user: HumanUser) => (
@@ -165,13 +178,13 @@ function humanUserColumns(onOpen: (id: string) => void, onDeleted: () => Promise
       ),
     },
     {
-      title: "操作",
+      title: t("common.actions"),
       key: "actions",
       width: 140,
       render: (_: unknown, user: HumanUser) => (
         <Space spacing={4}>
           <Button size="small" onClick={() => onOpen(user.humanUserId)}>
-            详情
+            {t("common.viewDetail")}
           </Button>
           <DeleteHumanUser user={user} compact onDeleted={() => void onDeleted()} />
         </Space>

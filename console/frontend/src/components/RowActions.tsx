@@ -1,4 +1,5 @@
 import { Button, Dropdown, Space } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import type { Pod, PodAction } from "../api";
 
 type Action = { key: PodAction; label: string };
@@ -8,39 +9,29 @@ type Props = {
   actions: Action[];
   onViewLogs: (id: string) => void;
   onOpenQr: (id: string) => void;
-  onEditChannels: (id: string) => void;
-  onOpenResources: (pod: Pod) => void;
+  onEdit: (id: string) => void;
   onAction: (id: string, key: PodAction) => void;
 };
 
-// 行内精简按钮：[日志] [扫码(仅微信)] [编辑通道] [资源] [更多▾]
+// 行内精简按钮：[日志] [扫码(仅微信)] [编辑] [更多▾]
 // 下钻 Pod 详情直接点击列表中的 Pod 名称，这里不重复放入口。
+// [编辑] 打开合并弹窗，同时编辑消息通道与资源。
 // 拆分出来便于测试与复用；表格列 render 直接调用 <RowActions />。
-export function RowActions({
-  pod,
-  actions,
-  onViewLogs,
-  onOpenQr,
-  onEditChannels,
-  onOpenResources,
-  onAction,
-}: Props) {
+export function RowActions({ pod, actions, onViewLogs, onOpenQr, onEdit, onAction }: Props) {
+  const { t } = useTranslation();
   const showQr = pod.channels.includes("wechat");
   return (
     <Space>
       <Button size="small" onClick={() => onViewLogs(pod.podId)}>
-        日志
+        {t("common.logs")}
       </Button>
       {showQr && (
         <Button size="small" onClick={() => onOpenQr(pod.podId)}>
-          扫码
+          {t("common.scanQr")}
         </Button>
       )}
-      <Button size="small" onClick={() => onEditChannels(pod.podId)}>
-        编辑通道
-      </Button>
-      <Button size="small" onClick={() => onOpenResources(pod)}>
-        资源
+      <Button size="small" onClick={() => onEdit(pod.podId)}>
+        {t("common.edit")}
       </Button>
       <Dropdown
         menu={actions.map((a) => ({
@@ -49,7 +40,7 @@ export function RowActions({
           onClick: () => onAction(pod.podId, a.key),
         }))}
       >
-        <Button size="small">更多▾</Button>
+        <Button size="small">{t("common.more")}▾</Button>
       </Dropdown>
     </Space>
   );

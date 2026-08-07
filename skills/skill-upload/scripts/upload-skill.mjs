@@ -99,8 +99,10 @@ async function main() {
     return;
   }
   // 1) Package via the installer export command (binary tar.gz on stdout).
+  // Bundle size is validated by the console ingest endpoint (maxSkillUploadBundleSize);
+  // the buffer cap here is only a loose memory guard.
   const exported = spawnSync("node", [INSTALLER, "export", "--agent-id", agentId, "--skill-name", skillName], {
-    encoding: null, maxBuffer: 25 * 1024 * 1024,
+    encoding: null, maxBuffer: 512 * 1024 * 1024,
   });
   if (exported.status !== 0) {
     fail(`export failed: ${(exported.stderr || exported.stdout || "export error").toString().trim()}`);

@@ -23,6 +23,8 @@
 | `console/frontend/src/App.tsx` | 根布局、页面切换、鉴权壳 |
 | `console/frontend/src/api.ts` | 全部后端 HTTP 客户端（相对路径） |
 | `console/frontend/src/types/api.ts` | 与后端契约对齐的 TS 类型 |
+| `console/frontend/src/i18n/` | i18next 实例、zh/en 资源、LanguageProvider、Semi locale |
+| `console/frontend/src/utils/error.tsx` | 统一错误文案 `errorMessage` / `ErrorDetail` |
 | `console/frontend/src/channels.ts` | IM 通道枚举与展示 |
 | `console/frontend/src/components/` | 通用 UI / 人用户 / 平台设置组件 |
 | `console/frontend/src/pages/` | 页面：Containers、Users、Skills、LLM、Audit… |
@@ -35,6 +37,8 @@
 console/frontend/
 ├── src/
 │   ├── main.tsx / App.tsx / api.ts / types/
+│   ├── i18n/                # i18next 实例、zh/en 资源、LanguageProvider
+│   ├── utils/               # errorMessage / ErrorDetail
 │   ├── components/          # 通用 + human-users + platforms
 │   ├── pages/               # 业务页面与子目录 hooks/model
 │   ├── hooks/

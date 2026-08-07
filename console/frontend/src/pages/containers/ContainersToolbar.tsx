@@ -1,9 +1,11 @@
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Input, Select, Space, Tooltip } from "@douyinfe/semi-ui";
 import { IconRefresh, IconSearch } from "@douyinfe/semi-icons";
 import type { BasicSelectValue } from "@douyinfe/semi-ui/lib/es/select";
 import { BatchToolbar } from "../../components/BatchToolbar";
 import { ListToolbar } from "../../components/ConsolePage";
-import { isPodStateFilter, STATUS_OPTIONS } from "./model";
+import { isPodStateFilter, statusOptions } from "./model";
 import type { PodListState } from "./usePodList";
 import styles from "../Containers.module.css";
 
@@ -16,6 +18,8 @@ interface Props {
 }
 
 export function ContainersToolbar(props: Props) {
+  const { t } = useTranslation();
+  const options = useMemo(() => statusOptions(t), [t]);
   const applySearch = () => {
     props.state.setSearch(props.state.searchDraft.trim());
     props.state.setPage(1);
@@ -31,7 +35,7 @@ export function ContainersToolbar(props: Props) {
       actions={
         <Space className={styles.actionGroup} spacing={8}>
           <Button theme="solid" onClick={props.onCreate}>
-            创建 Pod
+            {t("pod.createTitle")}
           </Button>
           <span aria-hidden="true" className={styles.divider} />
           <BatchToolbar
@@ -46,23 +50,23 @@ export function ContainersToolbar(props: Props) {
           <Input
             className={styles.searchInput}
             prefix={<IconSearch />}
-            placeholder="Pod ID 或名称"
+            placeholder={t("pod.searchPlaceholder")}
             value={props.state.searchDraft}
             onChange={props.state.setSearchDraft}
             onEnterPress={applySearch}
           />
-          <Tooltip content="查询">
-            <Button aria-label="查询 Pod" icon={<IconSearch />} onClick={applySearch} />
+          <Tooltip content={t("common.search")}>
+            <Button aria-label={t("pod.searchAria")} icon={<IconSearch />} onClick={applySearch} />
           </Tooltip>
           <Select
             className={styles.statusSelect}
             value={props.state.status}
-            optionList={STATUS_OPTIONS}
+            optionList={options}
             onChange={filterStatus}
           />
-          <Tooltip content="刷新">
+          <Tooltip content={t("common.refresh")}>
             <Button
-              aria-label="刷新 Pod"
+              aria-label={t("pod.refreshAria")}
               icon={<IconRefresh />}
               loading={props.state.loading}
               onClick={() => void props.state.refresh()}

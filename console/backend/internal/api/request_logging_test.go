@@ -2,11 +2,14 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 func TestRequestErrorLogMiddlewareRecordsSafeErrorContext(t *testing.T) {
@@ -15,8 +18,8 @@ func TestRequestErrorLogMiddlewareRecordsSafeErrorContext(t *testing.T) {
 	log.SetOutput(&output)
 	t.Cleanup(func() { log.SetOutput(previous) })
 
-	handler := requestErrorLogMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "invalid Pod configuration")
+	handler := requestErrorLogMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeErr(w, r, errcode.InvalidPodConfig)
 	}))
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/containers", strings.NewReader("secret-body"))
 	request.Header.Set("X-Request-ID", "request-test-1")
@@ -29,8 +32,8 @@ func TestRequestErrorLogMiddlewareRecordsSafeErrorContext(t *testing.T) {
 	logged := output.String()
 	for _, expected := range []string{
 		"level=WARN", "request_id=request-test-1", "method=POST",
-		`route="/api/v1/containers"`, "status=400", "code=40002",
-		`message="invalid Pod configuration"`,
+		`route="/api/v1/containers"`, "status=400", fmt.Sprintf("code=%d", errcode.InvalidPodConfig),
+		`message="Pod 配置不合法"`,
 	} {
 		if !strings.Contains(logged, expected) {
 			t.Fatalf("log %q does not contain %q", logged, expected)

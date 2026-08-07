@@ -46,6 +46,11 @@ runtime:
   stateDir: /home/node/.openclaw
   publicSkillsDir: /opt/openclaw-skills
 
+# Skill 上传限制（顶层配置，env: CONSOLE_MAX_SKILL_UPLOAD_BUNDLE_SIZE）
+# 上传 skill 压缩包（.tar.gz/.zip）的大小上限，单位支持 b/k/m/g（如 512k / 5m / 1g）。
+# 只限制上传的压缩包本身；解压后的内容不做大小限制。
+maxSkillUploadBundleSize: 5m
+
 # Docker driver（仅 runtime.driver=docker 时生效）
 docker:
   # 共享 docker 网络名（控制台与 worker 容器互通）

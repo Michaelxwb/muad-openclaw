@@ -8,6 +8,7 @@ import (
 
 	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 )
 
@@ -19,7 +20,7 @@ const (
 func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	podID := r.PathValue("podId")
 	if _, err := s.store.GetPod(podID); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	tail, _ := strconv.Atoi(r.URL.Query().Get("tail"))
@@ -33,7 +34,7 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	if err != nil || strings.TrimSpace(out) == "" {
 		out, err = s.drv.Logs(r.Context(), podID, tail)
 		if err != nil {
-			writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "read Pod logs failed")
+			writeRuntimeFailure(w, r, err, errcode.RuntimeReadPodLogs)
 			return
 		}
 	}
@@ -58,16 +59,16 @@ func (s *Server) handleQRCode(w http.ResponseWriter, r *http.Request) {
 	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 	pod, err := s.store.GetPod(podID)
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	channels, _, err := s.decodeChannelSettings(pod)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "decode channel configuration")
+		writeErr(w, r, errcode.InternalDecodeChannelConfig)
 		return
 	}
 	if !containsChannel(channels, driver.ChannelWeChat) {
-		writeErr(w, http.StatusBadRequest, codeInvalidField, "qrcode only applies to the wechat channel")
+		writeErr(w, r, errcode.InvalidQrcodeWechatOnly)
 		return
 	}
 	if !force && s.wechatConnected(r, podID) {
@@ -107,7 +108,7 @@ func (s *Server) writeWechatLogin(w http.ResponseWriter, r *http.Request, podID 
 	}
 	out, err := s.drv.Exec(r.Context(), podID, "sh", "-c", script)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, codeRuntimeFailure, "trigger wechat login failed")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeWechatLogin)
 		return
 	}
 	matches := qrLoginURLPattern.FindAllString(out, -1)

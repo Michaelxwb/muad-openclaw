@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -477,9 +478,7 @@ func TestPodOperationsAPI_UpgradeFailureRestoresOldImage(t *testing.T) {
 	if e.drv.created["pod-a"].ImageTag != "img:test" {
 		t.Fatalf("runtime image = %q", e.drv.created["pod-a"].ImageTag)
 	}
-	if strings.Contains(rr.Body.String(), "simulated create failure") {
-		t.Fatal("upgrade response exposed a runtime error")
-	}
+	assertErrorHidesDiagnostic(t, rr.Body.String(), "simulated create failure")
 }
 
 func TestPodOperationsAPI_RestartRebuildsMissingWorkload(t *testing.T) {
@@ -510,6 +509,25 @@ func assertStatus(t *testing.T, response *httptest.ResponseRecorder, want int) {
 	t.Helper()
 	if response.Code != want {
 		t.Fatalf("status = %d, want %d", response.Code, want)
+	}
+}
+
+// assertErrorHidesDiagnostic 断言错误响应把原始运行时错误放在 detail（用户可折叠
+// 查看）而非 user-facing message，避免技术串直接展示。
+func assertErrorHidesDiagnostic(t *testing.T, body, diagnostic string) {
+	t.Helper()
+	var envelope struct {
+		Message string `json:"message"`
+		Detail  string `json:"detail"`
+	}
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+		t.Fatalf("invalid error envelope %q: %v", body, err)
+	}
+	if strings.Contains(envelope.Message, diagnostic) {
+		t.Fatalf("runtime error %q leaked into message %q", diagnostic, envelope.Message)
+	}
+	if !strings.Contains(envelope.Detail, diagnostic) {
+		t.Fatalf("runtime error %q missing from detail %q", diagnostic, envelope.Detail)
 	}
 }
 

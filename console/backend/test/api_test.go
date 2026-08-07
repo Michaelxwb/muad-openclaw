@@ -431,7 +431,8 @@ func newTestEnv(t *testing.T) *testEnv {
 	cfg := &config.Config{
 		MasterKey: "mk", JWTSecret: "test-secret", DefaultImage: "img:test",
 		ConsoleInternalURL: "http://console.internal:8080", SkillsDir: skillsDir,
-		RuntimeStateDir: "/home/node/.openclaw", RuntimePublicSkillsDir: "/opt/openclaw-skills",
+		SkillMaxUploadBundleBytes: 5 << 20,
+		RuntimeStateDir:           "/home/node/.openclaw", RuntimePublicSkillsDir: "/opt/openclaw-skills",
 		RuntimeDefaults: config.RuntimeDefaults{
 			MemLimit: "3g", CPULimit: "2", RestartPolicy: "unless-stopped",
 			MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1,

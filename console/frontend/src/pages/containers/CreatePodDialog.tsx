@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Checkbox, Input, InputNumber, Modal, Select } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import type { ChannelCredential, Pod } from "../../api";
 import { ChannelForm } from "../../components/ChannelForm";
 import { FeedbackBanner, setRepeatableError } from "../../components/ConsolePage";
+import { errorMessage } from "../../utils/error";
 import styles from "../Containers.module.css";
 import {
   createPodInput,
@@ -19,6 +21,7 @@ interface Props {
 }
 
 export function CreatePodDialog(props: Props) {
+  const { t } = useTranslation();
   const [form, setForm] = useState<CreateFormState>(EMPTY_CREATE_FORM);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -35,7 +38,7 @@ export function CreatePodDialog(props: Props) {
     try {
       await props.onCreated(await api.createPod(createPodInput(form, channels, channelConfigs)));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "创建 Pod 失败");
+      setError(errorMessage(caught, "pod.createFailed"));
     } finally {
       setBusy(false);
     }
@@ -43,7 +46,7 @@ export function CreatePodDialog(props: Props) {
   return (
     <Modal
       className="standard-modal"
-      title="创建 Pod"
+      title={t("pod.createTitle")}
       visible={props.visible}
       onCancel={props.onClose}
       footer={null}
@@ -69,6 +72,7 @@ function CreatePodFields({
   form: CreateFormState;
   setForm: (form: CreateFormState) => void;
 }) {
+  const { t } = useTranslation();
   const set = (key: keyof CreateFormState, value: string | number) =>
     setForm({ ...form, [key]: value });
   return (
@@ -80,20 +84,20 @@ function CreatePodFields({
         placeholder="muad-pod-01"
       />
       <TextField
-        label="显示名称"
+        label={t("pod.displayName")}
         value={form.displayName}
         onChange={(value) => set("displayName", value)}
       />
       <div className={styles.full}>
         <TextField
-          label="镜像"
+          label={t("pod.imageLabel")}
           value={form.imageTag}
           onChange={(value) => set("imageTag", value)}
-          placeholder="留空使用系统默认镜像"
+          placeholder={t("pod.imagePlaceholder")}
         />
       </div>
       <NumberField
-        label="用户上限"
+        label={t("pod.maxUsers")}
         value={form.maxUsers}
         min={1}
         max={10}
@@ -101,26 +105,26 @@ function CreatePodFields({
       />
       <RestartField value={form.restartPolicy} onChange={(value) => set("restartPolicy", value)} />
       <TextField
-        label="内存上限 (GiB)"
+        label={t("pod.memLimit")}
         value={form.memLimit}
         onChange={(value) => set("memLimit", value)}
-        placeholder="留空继承，如 16"
+        placeholder={t("pod.memLimitPlaceholder")}
       />
       <TextField
-        label="CPU 上限"
+        label={t("pod.cpuLimit")}
         value={form.cpuLimit}
         onChange={(value) => set("cpuLimit", value)}
-        placeholder="留空继承，如 2"
+        placeholder={t("pod.cpuLimitPlaceholder")}
       />
       <NumberField
-        label="Skill 并发"
+        label={t("pod.maxSkillConcurrency")}
         value={form.maxSkillConcurrency}
         min={0}
         max={1000}
         onChange={(value) => set("maxSkillConcurrency", value)}
       />
       <NumberField
-        label="Browser 并发"
+        label={t("pod.maxBrowserConcurrency")}
         value={form.maxBrowserConcurrency}
         min={0}
         max={1000}
@@ -140,11 +144,9 @@ function CreatePodFields({
             })
           }
         >
-          接管同名保留状态卷
+          {t("pod.adoptState")}
         </Checkbox>
-        <span>
-          仅当删除 Pod 时选择了保留 PVC 后使用；会复用原 workspace、记忆、会话和 private Skill。
-        </span>
+        <span>{t("pod.adoptStateHint")}</span>
       </div>
       <div className={`${styles.field} ${styles.full}`}>
         <Checkbox
@@ -152,12 +154,9 @@ function CreatePodFields({
           disabled={!form.adoptState}
           onChange={(event) => setForm({ ...form, restoreUsers: Boolean(event.target.checked) })}
         >
-          恢复原 Pod 用户（agent_id 与记忆）
+          {t("pod.restoreUsers")}
         </Checkbox>
-        <span>
-          需先勾选「接管同名保留状态卷」；自动把删除该 Pod 时保留的未绑定用户重新绑定回来， IM
-          身份按新 Pod 通道集路由，未启用的通道身份保留但不路由。
-        </span>
+        <span>{t("pod.restoreUsersHint")}</span>
       </div>
     </div>
   );
@@ -205,14 +204,15 @@ function NumberField(props: {
 }
 
 function RestartField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const { t } = useTranslation();
   return (
     <label className={styles.field}>
-      <span>重启策略</span>
+      <span>{t("pod.restartPolicy")}</span>
       <Select
-        aria-label="重启策略"
+        aria-label={t("pod.restartPolicy")}
         value={value}
         optionList={[
-          { value: "", label: "继承系统默认" },
+          { value: "", label: t("pod.restartDefault") },
           { value: "unless-stopped", label: "unless-stopped" },
           { value: "always", label: "always" },
           { value: "on-failure", label: "on-failure" },

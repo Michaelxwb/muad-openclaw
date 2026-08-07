@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -25,7 +26,7 @@ type agentGuidanceInput struct {
 func (s *Server) handleGetAgentGuidance(w http.ResponseWriter, r *http.Request) {
 	guidance, err := s.store.GetAgentGuidance()
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, codeInternal, "read Agent guidance")
+		writeErr(w, r, errcode.InternalReadAgentGuidance)
 		return
 	}
 	writeJSON(w, http.StatusOK, agentGuidanceView{
@@ -39,18 +40,18 @@ func (s *Server) handleGetAgentGuidance(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleSetAgentGuidance(w http.ResponseWriter, r *http.Request) {
 	var input agentGuidanceInput
 	if err := decodeJSONBody(w, r, &input); err != nil {
-		writeErr(w, http.StatusBadRequest, codeInvalidRequest, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	if err := s.store.SetAgentGuidance(repo.AgentGuidance{
 		UserSkill: input.UserSkill, Memory: input.Memory, Main: input.Main,
 	}); err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	podIDs, err := s.store.MarkAllPodsConfigPending()
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	for _, podID := range podIDs {
@@ -58,7 +59,7 @@ func (s *Server) handleSetAgentGuidance(w http.ResponseWriter, r *http.Request) 
 	}
 	guidance, err := s.store.GetAgentGuidance()
 	if err != nil {
-		writeRepoError(w, err)
+		writeRepoError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, agentGuidanceView{

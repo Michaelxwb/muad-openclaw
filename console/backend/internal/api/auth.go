@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/auth"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -30,17 +31,17 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	// Cap body size (unauthenticated); reuse decodeJSONBody MaxBytesReader semantics.
 	if err := decodeJSONBody(w, r, &req); err != nil {
-		writeErr(w, http.StatusBadRequest, 40001, "invalid request body")
+		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
 	req.Username = strings.TrimSpace(req.Username)
 	if req.Username == "" || req.Password == "" {
-		writeErr(w, http.StatusUnauthorized, 40101, "invalid credentials")
+		writeErr(w, r, errcode.InvalidCredentials)
 		return
 	}
 	limitKey := loginRateLimitKey(r, req.Username)
 	if ok, _ := s.loginLimiter.Allow(limitKey, time.Now().UTC()); !ok {
-		writeErr(w, http.StatusTooManyRequests, codeRateLimited, "login attempts are rate limited")
+		writeErr(w, r, errcode.RateLimitedLogin)
 		return
 	}
 	// Always bcrypt-compare (dummy hash on miss) to reduce username enumeration timing.
@@ -52,7 +53,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		hash = loginDummyPasswordHash
 	}
 	if !auth.CheckPassword(hash, req.Password) || err != nil {
-		writeErr(w, http.StatusUnauthorized, 40101, "invalid credentials")
+		writeErr(w, r, errcode.InvalidCredentials)
 		return
 	}
 	s.loginLimiter.Reset(limitKey)
@@ -74,7 +75,7 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		subject, err := auth.Verify(s.cfg.JWTSecret, strings.TrimSpace(token))
 		if err != nil {
-			writeErr(w, http.StatusUnauthorized, 40101, "unauthorized")
+			writeErr(w, r, errcode.Unauthorized)
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), actorKey, subject)))

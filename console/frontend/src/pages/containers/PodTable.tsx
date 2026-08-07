@@ -1,10 +1,11 @@
+import { useTranslation } from "react-i18next";
 import { Button, Table, Tag, Tooltip } from "@douyinfe/semi-ui";
 import type { TablePaginationProps } from "@douyinfe/semi-ui/lib/es/table/interface";
 import type { Pod, PodAction } from "../../api";
 import { ChannelTags } from "../../components/ChannelTags";
 import { renderTablePagination } from "../../components/Pagination";
 import { RowActions } from "../../components/RowActions";
-import { APPLY_STATUS_TAGS, POD_ACTIONS, STATUS_TAGS } from "./model";
+import { applyStatusTags, podActions, statusTags } from "./model";
 import styles from "./PodTable.module.css";
 
 interface Props {
@@ -16,15 +17,15 @@ interface Props {
   onDetail: (id: string) => void;
   onLogs: (id: string) => void;
   onQr: (id: string) => void;
-  onChannels: (id: string) => void;
-  onResources: (pod: Pod) => void;
+  onEdit: (id: string) => void;
   onAction: (id: string, action: PodAction) => void;
 }
 
 export function PodTable(props: Props) {
+  const { t } = useTranslation();
   return (
     <Table
-      columns={podColumns(props) as never}
+      columns={podColumns(props, t) as never}
       dataSource={props.items}
       loading={props.loading}
       pagination={props.pagination}
@@ -64,21 +65,20 @@ function formatMiB(mib: number): string {
   return `${mib} MiB`;
 }
 
-function podColumns(actions: Props) {
+function podColumns(actions: Props, t: (key: string, options?: Record<string, unknown>) => string) {
   return [
-    ...podDataColumns(actions.onDetail),
+    ...podDataColumns(actions.onDetail, t),
     {
-      title: "操作",
+      title: t("common.actions"),
       key: "ops",
       width: 220,
       render: (_: unknown, pod: Pod) => (
         <RowActions
           pod={pod}
-          actions={POD_ACTIONS}
+          actions={podActions(t)}
           onViewLogs={actions.onLogs}
           onOpenQr={actions.onQr}
-          onEditChannels={actions.onChannels}
-          onOpenResources={actions.onResources}
+          onEdit={actions.onEdit}
           onAction={actions.onAction}
         />
       ),
@@ -86,7 +86,10 @@ function podColumns(actions: Props) {
   ];
 }
 
-function podDataColumns(onDetail: (id: string) => void) {
+function podDataColumns(
+  onDetail: (id: string) => void,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   return [
     {
       title: "Pod",
@@ -107,30 +110,36 @@ function podDataColumns(onDetail: (id: string) => void) {
       ),
     },
     {
-      title: "消息通道",
+      title: t("pod.channelsColumn"),
       key: "channels",
       width: 140,
       render: (_: unknown, pod: Pod) => <ChannelTags pod={pod} />,
     },
     {
-      title: "用户容量",
+      title: t("pod.capacityColumn"),
       key: "capacity",
       width: 95,
       render: (_: unknown, pod: Pod) => <CapacityCell pod={pod} onOpen={onDetail} />,
     },
     {
-      title: "配置状态",
+      title: t("pod.generationColumn"),
       key: "generation",
       width: 105,
       render: (_: unknown, pod: Pod) => <GenerationCell pod={pod} />,
     },
     {
-      title: "状态",
+      title: t("common.status"),
       key: "state",
       width: 85,
       render: (_: unknown, pod: Pod) => <PodStatus pod={pod} />,
     },
-    { title: "镜像", dataIndex: "imageTag", key: "imageTag", width: 180, className: "mono" },
+    {
+      title: t("pod.imageColumn"),
+      dataIndex: "imageTag",
+      key: "imageTag",
+      width: 180,
+      className: "mono",
+    },
     {
       title: "CPU",
       key: "cpu",
@@ -138,12 +147,12 @@ function podDataColumns(onDetail: (id: string) => void) {
       render: (_: unknown, pod: Pod) =>
         renderResourceCell(
           pod.cpuMills > 0 ? `${pod.cpuMills}m` : "",
-          pod.cpuLimitCores ? `${pod.cpuLimitCores}核` : "",
+          pod.cpuLimitCores ? t("pod.cpuCores", { value: pod.cpuLimitCores }) : "",
           pod.cpuPercent,
         ),
     },
     {
-      title: "内存",
+      title: t("pod.memoryColumn"),
       key: "mem",
       width: 160,
       render: (_: unknown, pod: Pod) =>
@@ -157,6 +166,7 @@ function podDataColumns(onDetail: (id: string) => void) {
 }
 
 function CapacityCell({ pod, onOpen }: { pod: Pod; onOpen: (id: string) => void }) {
+  const { t } = useTranslation();
   return (
     <Button
       className={styles.capacityButton}
@@ -168,14 +178,17 @@ function CapacityCell({ pod, onOpen }: { pod: Pod; onOpen: (id: string) => void 
         <span className="mono">
           {pod.userCount}/{pod.maxUsers}
         </span>
-        <div className={styles.mutedText}>剩余 {pod.availableSlots}</div>
+        <div className={styles.mutedText}>
+          {t("pod.slotsRemaining", { count: pod.availableSlots })}
+        </div>
       </div>
     </Button>
   );
 }
 
 function GenerationCell({ pod }: { pod: Pod }) {
-  const status = APPLY_STATUS_TAGS[pod.lastApplyStatus] ?? {
+  const { t } = useTranslation();
+  const status = applyStatusTags(t)[pod.lastApplyStatus] ?? {
     label: pod.lastApplyStatus,
     color: "grey" as const,
   };
@@ -193,7 +206,8 @@ function GenerationCell({ pod }: { pod: Pod }) {
 }
 
 function PodStatus({ pod }: { pod: Pod }) {
-  const status = STATUS_TAGS[pod.state] ?? {
+  const { t } = useTranslation();
+  const status = statusTags(t)[pod.state] ?? {
     label: pod.state,
     color: "grey" as const,
     dot: "#8899aa",

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { token, UNAUTHORIZED_EVENT } from "./api";
 import { AppShell } from "./components/AppShell";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ThemeButton } from "./components/ThemeButton";
 import type { ThemeMode } from "./components/ThemeButton";
 import { Login } from "./pages/Login";
@@ -32,6 +33,7 @@ export function App() {
       <Login onLogin={() => setAuthed(true)} />
       <div style={{ position: "fixed", top: 16, right: 16, zIndex: 999 }}>
         <ThemeButton mode={theme.mode} onClick={theme.toggle} />
+        <LanguageSwitcher />
       </div>
     </>
   );
