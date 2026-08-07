@@ -184,7 +184,10 @@ function validateProviders(value) {
   value.forEach((provider, index) => {
     const label = `runtime.providers[${index}]`;
     assertRecord(provider, label);
-    assertExactKeys(provider, ["id", "provider", "baseUrl", "apiKey", "model"], label);
+    assertExactKeys(
+      provider, ["id", "provider", "baseUrl", "apiKey", "model", "supportsTools"], label,
+      ["id", "provider", "baseUrl", "apiKey", "model"], // supportsTools 可选（默认支持工具）
+    );
     ["id", "provider", "baseUrl", "model"].forEach((key) => assertString(provider[key], `${label}.${key}`));
     if (typeof provider.apiKey !== "string") throw new Error(`${label}.apiKey must be a string`);
     assertURL(provider.baseUrl, `${label}.baseUrl`);

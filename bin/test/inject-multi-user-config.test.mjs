@@ -197,3 +197,19 @@ Keep this custom rule.
   assert.equal((firstGuidance.match(/muad:skill-activation:start/gu) ?? []).length, 1);
   assert.equal((firstGuidance.match(/Before using any Skill instructions/gu) ?? []).length, 0);
 });
+
+test("renderer maps supportsTools:false to OpenClaw compat.supportsTools", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  const target = runtime.providers.find((p) => p.id === "user-alice-deepseek");
+  target.supportsTools = false;
+  const output = renderOpenClawConfig(runtime, {});
+  const provider = output.models.providers["user-alice-deepseek"];
+  assert.equal(provider.models[0].compat.supportsTools, false);
+});
+
+test("renderer omits compat when supportsTools is true or absent", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  const output = renderOpenClawConfig(runtime, {});
+  const provider = output.models.providers["user-alice-deepseek"];
+  assert.equal(provider.models[0].compat, undefined);
+});

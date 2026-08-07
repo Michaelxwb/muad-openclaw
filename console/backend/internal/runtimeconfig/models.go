@@ -12,10 +12,11 @@ import (
 )
 
 type modelConfig struct {
-	Provider string `json:"provider"`
-	BaseURL  string `json:"baseUrl"`
-	APIKey   string `json:"apiKey"`
-	Model    string `json:"model"`
+	Provider      string `json:"provider"`
+	BaseURL       string `json:"baseUrl"`
+	APIKey        string `json:"apiKey"`
+	Model         string `json:"model"`
+	SupportsTools bool   `json:"supportsTools"`
 }
 
 func (builder *Builder) buildModels(
@@ -58,7 +59,8 @@ func (builder *Builder) modelFromConfig(stored repo.LLMModelConfig) (modelConfig
 		return modelConfig{}, wrapInvalid("resolve assigned model", repo.ErrNotFound)
 	}
 	return modelConfig{
-		Provider: stored.Provider, BaseURL: stored.BaseURL, APIKey: stored.APIKey, Model: stored.Model,
+		Provider: stored.Provider, BaseURL: stored.BaseURL, APIKey: stored.APIKey,
+		Model: stored.Model, SupportsTools: stored.SupportsTools,
 	}, nil
 }
 
@@ -69,7 +71,7 @@ func runtimeProvider(scope, owner string, model modelConfig) (driver.RuntimeProv
 	id := stableProviderID(scope + "-" + owner + "-" + model.Provider)
 	provider := driver.RuntimeProvider{
 		ID: id, Provider: model.Provider, BaseURL: model.BaseURL,
-		APIKey: model.APIKey, Model: model.Model,
+		APIKey: model.APIKey, Model: model.Model, SupportsTools: model.SupportsTools,
 	}
 	return provider, id + "/" + model.Model, nil
 }

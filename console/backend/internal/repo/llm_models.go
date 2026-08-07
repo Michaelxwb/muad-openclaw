@@ -9,11 +9,12 @@ import (
 )
 
 type LLMModelConfigCreate struct {
-	DisplayName string
-	Provider    string
-	BaseURL     string
-	APIKey      string
-	Model       string
+	DisplayName   string
+	Provider      string
+	BaseURL       string
+	APIKey        string
+	Model         string
+	SupportsTools bool
 }
 
 type LLMModelConfigListFilter struct {
@@ -21,7 +22,7 @@ type LLMModelConfigListFilter struct {
 }
 
 const llmModelColumns = `m.model_config_id, m.display_name, m.provider, m.base_url,
-	m.api_key, m.model, m.last_test_at, m.last_test_ok, m.last_test_error,
+	m.api_key, m.model, m.last_test_at, m.last_test_ok, m.last_test_error, m.supports_tools,
 	COALESCE(u.human_user_id, ''), COALESCE(u.display_name, ''),
 	m.created_at, m.updated_at`
 
@@ -128,16 +129,17 @@ func prepareLLMModelConfig(input LLMModelConfigCreate) (LLMModelConfig, error) {
 		ModelConfigID: id, DisplayName: strings.TrimSpace(input.DisplayName),
 		Provider: strings.TrimSpace(input.Provider), BaseURL: strings.TrimSpace(input.BaseURL),
 		APIKey: strings.TrimSpace(input.APIKey),
-		Model:  strings.TrimSpace(input.Model), CreatedAt: now, UpdatedAt: now,
+		Model: strings.TrimSpace(input.Model), SupportsTools: input.SupportsTools,
+		CreatedAt: now, UpdatedAt: now,
 	}, nil
 }
 
 func insertLLMModelConfig(tx *sql.Tx, model LLMModelConfig) error {
 	_, err := tx.Exec(`INSERT INTO llm_model_configs (
-		model_config_id, display_name, provider, base_url, api_key, model,
+		model_config_id, display_name, provider, base_url, api_key, model, supports_tools,
 		created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, model.ModelConfigID, model.DisplayName,
-		model.Provider, model.BaseURL, model.APIKey, model.Model,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, model.ModelConfigID, model.DisplayName,
+		model.Provider, model.BaseURL, model.APIKey, model.Model, boolToInt(model.SupportsTools),
 		formatTime(model.CreatedAt), formatTime(model.UpdatedAt))
 	if err != nil {
 		return fmt.Errorf("insert LLM model: %w", err)
@@ -191,10 +193,10 @@ func collectLLMModelConfigs(rows *sql.Rows) ([]LLMModelConfig, error) {
 func scanLLMModelConfig(sc scanner) (LLMModelConfig, error) {
 	var model LLMModelConfig
 	var createdAt, updatedAt, lastTestAt string
-	var lastTestOK int
+	var lastTestOK, supportsTools int
 	err := sc.Scan(&model.ModelConfigID, &model.DisplayName, &model.Provider, &model.BaseURL,
 		&model.APIKey, &model.Model, &lastTestAt, &lastTestOK, &model.LastTestError,
-		&model.BoundHumanUserID, &model.BoundHumanUserName, &createdAt, &updatedAt)
+		&supportsTools, &model.BoundHumanUserID, &model.BoundHumanUserName, &createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return LLMModelConfig{}, ErrNotFound
 	}
@@ -206,6 +208,7 @@ func scanLLMModelConfig(sc scanner) (LLMModelConfig, error) {
 		return LLMModelConfig{}, err
 	}
 	model.LastTestOK = lastTestOK != 0
+	model.SupportsTools = supportsTools != 0
 	model.CreatedAt, err = parseRequiredTime(createdAt, "llm_model_configs.created_at")
 	if err != nil {
 		return LLMModelConfig{}, err

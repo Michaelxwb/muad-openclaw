@@ -336,6 +336,7 @@ export interface LLMModelConfig {
   baseUrl: string;
   model: string;
   apiKey: string;
+  supportsTools: boolean;
   lastTestAt: string;
   lastTestOK: boolean;
   lastTestError: string;
@@ -351,6 +352,7 @@ export interface LLMModelInput {
   baseUrl: string;
   apiKey: string;
   model: string;
+  supportsTools?: boolean;
 }
 
 export interface LLMModelTestResult {
