@@ -589,7 +589,13 @@ func (d *K8sDriver) WorkloadBlocked(ctx context.Context, podID string) (bool, er
 		return false, err
 	}
 	for i := range pods.Items {
-		for _, cs := range pods.Items[i].Status.ContainerStatuses {
+		pod := &pods.Items[i]
+		// 升级回滚时被 Remove 的旧 Pod 仍在终止中（ImagePullBackOff 状态残留），
+		// 不计为阻塞，避免误伤回滚的健康等待。
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
+		for _, cs := range pod.Status.ContainerStatuses {
 			if cs.State.Waiting == nil {
 				continue
 			}

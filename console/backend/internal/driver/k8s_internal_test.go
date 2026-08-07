@@ -661,3 +661,49 @@ func TestToK8sMem(t *testing.T) {
 		}
 	}
 }
+
+func TestK8s_WorkloadBlockedImagePullBackOff(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	if err := createTestWorkerPod(ctx, d, "pod-a", "ImagePullBackOff", nil); err != nil {
+		t.Fatalf("create pod: %v", err)
+	}
+	blocked, err := d.WorkloadBlocked(ctx, "pod-a")
+	if err != nil || !blocked {
+		t.Fatalf("WorkloadBlocked = %v, %v; want true (live ImagePullBackOff pod)", blocked, err)
+	}
+}
+
+func TestK8s_WorkloadBlockedSkipsTerminatingPod(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	now := metav1.Now()
+	if err := createTestWorkerPod(ctx, d, "pod-a", "ImagePullBackOff", &now); err != nil {
+		t.Fatalf("create pod: %v", err)
+	}
+	blocked, err := d.WorkloadBlocked(ctx, "pod-a")
+	if err != nil || blocked {
+		t.Fatalf("WorkloadBlocked = %v, %v; want false (terminating pod ignored)", blocked, err)
+	}
+}
+
+func createTestWorkerPod(
+	ctx context.Context, d *K8sDriver, name, waitingReason string, deletionTimestamp *metav1.Time,
+) error {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name, Namespace: d.namespace,
+			Labels: map[string]string{"muad-pod": name},
+		},
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{{
+				State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: waitingReason}},
+			}},
+		},
+	}
+	if deletionTimestamp != nil {
+		pod.DeletionTimestamp = deletionTimestamp
+	}
+	_, err := d.client.CoreV1().Pods(d.namespace).Create(ctx, pod, metav1.CreateOptions{})
+	return err
+}
