@@ -86,6 +86,7 @@ describe("LLM", () => {
           model: "deepseek-chat",
           baseUrl: "https://api.deepseek.com",
           apiKey: "sk-one",
+          supportsTools: true,
         },
         {
           displayName: "Batch Model 2",
@@ -93,6 +94,7 @@ describe("LLM", () => {
           model: "deepseek-chat",
           baseUrl: "https://api.deepseek.com",
           apiKey: "sk-two",
+          supportsTools: true,
         },
       ]),
     );

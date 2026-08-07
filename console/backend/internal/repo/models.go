@@ -168,6 +168,7 @@ type LLMModelConfig struct {
 	LastTestAt         time.Time
 	LastTestOK         bool
 	LastTestError      string
+	SupportsTools      bool
 	BoundHumanUserID   string
 	BoundHumanUserName string
 	CreatedAt          time.Time

@@ -12,11 +12,12 @@ import (
 )
 
 type llmModelInput struct {
-	DisplayName string `json:"displayName"`
-	Provider    string `json:"provider"`
-	BaseURL     string `json:"baseUrl"`
-	APIKey      string `json:"apiKey"`
-	Model       string `json:"model"`
+	DisplayName   string `json:"displayName"`
+	Provider      string `json:"provider"`
+	BaseURL       string `json:"baseUrl"`
+	APIKey        string `json:"apiKey"`
+	Model         string `json:"model"`
+	SupportsTools *bool  `json:"supportsTools"` // 缺省 = 支持工具调用（默认开启）
 }
 
 type llmModelBatchRequest struct {
@@ -127,9 +128,14 @@ func (s *Server) prepareLLMModelCreate(input llmModelInput) (repo.LLMModelConfig
 	if displayName == "" {
 		displayName = input.Provider + "/" + input.Model
 	}
+	// 支持函数调用默认开启；仅当显式传 supportsTools:false 才关闭。
+	supportsTools := true
+	if input.SupportsTools != nil {
+		supportsTools = *input.SupportsTools
+	}
 	return repo.LLMModelConfigCreate{
 		DisplayName: displayName, Provider: model.Provider, BaseURL: model.BaseURL,
-		APIKey: model.APIKey, Model: model.Model,
+		APIKey: model.APIKey, Model: model.Model, SupportsTools: supportsTools,
 	}, nil
 }
 
@@ -201,6 +207,7 @@ func llmModelView(model repo.LLMModelConfig) map[string]any {
 		"modelConfigId": model.ModelConfigID, "displayName": model.DisplayName,
 		"provider": model.Provider, "baseUrl": model.BaseURL, "model": model.Model,
 		"apiKey":             model.APIKey,
+		"supportsTools":      model.SupportsTools,
 		"lastTestAt":         lastTestAt,
 		"lastTestOK":         model.LastTestOK,
 		"lastTestError":      model.LastTestError,

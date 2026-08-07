@@ -3,6 +3,8 @@ package runtimeconfig
 import (
 	"reflect"
 	"testing"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
 // copyStrings 必须保证返回非 nil 切片：validateRuntimeAgents 要求
@@ -35,5 +37,27 @@ func TestCopyStringsCopiesNotAliases(t *testing.T) {
 	source[0] = "mutated"
 	if got[0] != "skill-a" {
 		t.Fatalf("copyStrings aliased the source slice: got[0] = %q", got[0])
+	}
+}
+
+func TestBuildModelsCarriesSupportsTools(t *testing.T) {
+	builder := &Builder{}
+	data := sourceData{
+		models: []repo.LLMModelConfig{{
+			ModelConfigID: "m1", DisplayName: "omni", Provider: "vllm",
+			BaseURL: "http://10.0.0.1:8000", APIKey: "k", Model: "omni-model",
+			SupportsTools: false,
+		}},
+	}
+	users := []repo.HumanUser{{AgentID: "alice", ModelConfigID: "m1"}}
+	providers, models, err := builder.buildModels(data, users)
+	if err != nil {
+		t.Fatalf("buildModels: %v", err)
+	}
+	if len(providers) != 1 || providers[0].SupportsTools {
+		t.Fatalf("provider supportsTools = %v, want false: %+v", providers[0].SupportsTools, providers)
+	}
+	if models["alice"] == "" {
+		t.Fatalf("agent model ref missing: %v", models)
 	}
 }

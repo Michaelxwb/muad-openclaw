@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Button, Input, Modal, TextArea } from "@douyinfe/semi-ui";
+import { Button, Checkbox, Input, Modal, TextArea } from "@douyinfe/semi-ui";
 import type { LLMModelInput } from "../../api";
 import styles from "../LLM.module.css";
 
@@ -10,6 +10,7 @@ interface ModelDraft {
   baseUrl: string;
   model: string;
   apiKeys: string;
+  supportsTools: boolean;
 }
 
 interface Props {
@@ -26,6 +27,7 @@ const initialDraft: ModelDraft = {
   baseUrl: "https://api.deepseek.com",
   model: "deepseek-chat",
   apiKeys: "",
+  supportsTools: true,
 };
 
 export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: Props) {
@@ -93,6 +95,17 @@ export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: P
             onChange={(value) => set("baseUrl", value)}
           />
         </Field>
+        <Field label="函数调用">
+          <Checkbox
+            aria-label="支持函数调用"
+            checked={draft.supportsTools}
+            onChange={(checked) =>
+              setDraft((previous) => ({ ...previous, supportsTools: Boolean(checked) }))
+            }
+          >
+            支持函数调用（工具）
+          </Checkbox>
+        </Field>
         <div className={styles.full}>
           <Field label="API Key 列表">
             <TextArea
@@ -139,5 +152,6 @@ function modelInputsFromDraft(draft: ModelDraft): LLMModelInput[] | string {
     baseUrl,
     model,
     apiKey,
+    supportsTools: draft.supportsTools,
   }));
 }

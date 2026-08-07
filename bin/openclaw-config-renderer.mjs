@@ -222,11 +222,17 @@ function renderBrowser(output, runtime) {
 function renderProviders(output, runtime) {
   const providers = {};
   for (const provider of runtime.providers) {
+    const model = { id: provider.model, name: provider.model };
+    if (provider.supportsTools === false) {
+      // OpenClaw: compat.supportsTools:false → 该模型不发 tools/tool_choice，
+      // 适配不支持函数调用的内网模型（如 vLLM 未开 --enable-auto-tool-choice）。
+      model.compat = { supportsTools: false };
+    }
     providers[provider.id] = compact({
       api: "openai-completions",
       baseUrl: provider.baseUrl,
       apiKey: provider.apiKey || undefined,
-      models: [{ id: provider.model, name: provider.model }],
+      models: [model],
     });
   }
   output.models = { ...(isRecord(output.models) ? output.models : {}), providers };
