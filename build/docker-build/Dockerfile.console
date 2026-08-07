@@ -23,9 +23,20 @@
 #     之前用 yum install 是误写（platos-kylin 不是 yum 系），导致 docker build 失败。
 
 FROM docker.sangfor.com/mss-base/platos-kylin:1.3
-COPY muad-console /usr/local/bin/muad-console
-# 静态链接的 sqlite3 CLI（musl，零 glibc 依赖），供 kubectl exec 进 Pod 操作业务库排障
+
+# sqlite3 CLI（排障用，kubectl exec 进 Pod 操作业务库）。
+# 为什么走 COPY 二进制而不是包管理器装：
+#   - platos-kylin:1.3 镜像把 dnf/yum 二进制全裁了，只剩 rpm 工具链，无法 RUN dnf install。
+#   - 构建机无外网，不能 RUN curl 下载。
+#   - 所以由构建前置步骤把 sqlite3 二进制放进 build context，这里只 COPY。
+# 版本：musl 静态编译（sqlite amalgamation），statically linked、零 glibc 依赖，
+#   任意 Linux 可跑（PlatOS/xaasos 均兼容），编译时已 strip（约 1.4MB）。
+#   勿换回 sqlite.org 官方 8.6MB 动态版——它需要 GLIBC_2.34，PlatOS(2.28) 会报
+#   GLIBC_2.29/2.33/2.34 not found。
 COPY sqlite3 /usr/local/bin/sqlite3
+RUN chmod 0755 /usr/local/bin/sqlite3 && strip /usr/local/bin/sqlite3 || true
+
+COPY muad-console /usr/local/bin/muad-console
 ENV TZ=Asia/Shanghai
 VOLUME /var/lib/muad-console
 EXPOSE 8080
