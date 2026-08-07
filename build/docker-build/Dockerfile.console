@@ -24,6 +24,8 @@
 
 FROM docker.sangfor.com/mss-base/platos-kylin:1.3
 COPY muad-console /usr/local/bin/muad-console
+# 静态链接的 sqlite3 CLI（musl，零 glibc 依赖），供 kubectl exec 进 Pod 操作业务库排障
+COPY sqlite3 /usr/local/bin/sqlite3
 ENV TZ=Asia/Shanghai
 VOLUME /var/lib/muad-console
 EXPOSE 8080
