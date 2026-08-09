@@ -599,7 +599,8 @@ function skillColumns(
         <Space spacing={4}>
           {skill.progressSupported && <Tag>{t("skill.featureProgress")}</Tag>}
           {skill.browserRequired && <Tag>{t("skill.featureBrowser")}</Tag>}
-          {!skill.progressSupported && !skill.browserRequired && (
+          {skill.longTask && <Tag>{t("skill.featureLongTask")}</Tag>}
+          {!skill.progressSupported && !skill.browserRequired && !skill.longTask && (
             <span className={styles.subtle}>-</span>
           )}
         </Space>
@@ -758,6 +759,10 @@ function SkillDetailDrawer({ skill, onClose }: { skill: SkillAsset | null; onClo
         { label: t("common.status"), value: <StatusTag status={skill.status} /> },
         { label: t("skill.version"), value: skill.version || "-" },
         { label: t("skill.entryType"), value: skill.entryType || "-" },
+        {
+          label: t("skill.featureLongTask"),
+          value: skill.longTask ? t("common.yes") : t("common.no"),
+        },
         { label: "Manifest", value: skill.manifestHash || "-", wide: true, mono: true },
         { label: "Human User", value: skill.humanUserId || "-", mono: Boolean(skill.humanUserId) },
         { label: "Pod", value: skill.podId || "-", mono: Boolean(skill.podId) },

@@ -146,6 +146,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.InvalidSkillExecutionStatus: {http.StatusBadRequest, "Skill 执行状态不合法", "Invalid Skill execution status"},
 	// invalid.skill_execution_filter
 	errcode.InvalidSkillExecutionFilter: {http.StatusBadRequest, "Skill 执行过滤条件不合法", "Invalid Skill execution filter"},
+	// invalid.long_task_status
+	errcode.InvalidLongTaskStatus: {http.StatusBadRequest, "Long Task 状态不合法", "Invalid Long Task status"},
 	// invalid.public_skill_storage_not_configured
 	errcode.InvalidPublicSkillStorageNotConfigured: {http.StatusBadRequest, "Public Skill 存储未配置", "Public Skill storage is not configured"},
 	// invalid.skill_platform_dependency
@@ -296,6 +298,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.InternalListSkills: {http.StatusInternalServerError, "查询 Skill 列表失败", "Failed to list Skills"},
 	// internal.scan_skills
 	errcode.InternalScanSkills: {http.StatusInternalServerError, "扫描 Skill 失败", "Failed to scan Skills"},
+	// internal.list_long_tasks
+	errcode.InternalListLongTasks: {http.StatusInternalServerError, "查询 Long Task 列表失败", "Failed to list Long Tasks"},
 	// runtime.read_pod_logs
 	errcode.RuntimeReadPodLogs: {http.StatusBadGateway, "读取 Pod 日志失败", "Failed to read Pod logs"},
 	// runtime.wechat_login

@@ -36,6 +36,7 @@ type skillBundleManifest struct {
 	Platforms       []string `json:"platforms"`
 	Progress        any      `json:"progress"`
 	BrowserRequired bool     `json:"browserRequired"`
+	LongTask        bool     `json:"longTask"`
 	Capabilities    []string `json:"capabilities"`
 	Entrypoint      string   `json:"entrypoint"`
 	Scripts         []string `json:"scripts"`
@@ -350,12 +351,16 @@ func readSkillBundleMetadata(skillDir, defaultVisibility string) (privateSkillIn
 	// execution layer owns it end to end.
 	progressSupported := false
 	browserRequired := manifest.BrowserRequired || stringSliceContains(manifest.Capabilities, "browser")
+	longTask := manifest.LongTask
+	if err := ensureLongTaskSubmitStub(skillDir, name, longTask); err != nil {
+		return privateSkillInstallResult{}, err
+	}
 	metadata := map[string]any{
 		"name": name, "version": strings.TrimSpace(manifest.Version),
 		"runtime": manifest.Runtime, "mode": manifest.Mode,
 		"visibility": valueOrDefault(manifest.Visibility, skillDefaultVisibility(defaultVisibility)),
 		"platforms":  platforms, "progressSupported": progressSupported,
-		"browserRequired": browserRequired, "entryType": entryType,
+		"browserRequired": browserRequired, "entryType": entryType, "longTask": longTask,
 	}
 	if managed {
 		managedScripts := make([]string, 0)
@@ -388,9 +393,33 @@ func readSkillBundleMetadata(skillDir, defaultVisibility string) (privateSkillIn
 	return privateSkillInstallResult{
 		OK: true, Name: name, Version: strings.TrimSpace(manifest.Version),
 		Platforms: platforms, ProgressSupported: progressSupported,
-		BrowserRequired: browserRequired, EntryType: entryType,
+		BrowserRequired: browserRequired, LongTask: longTask, EntryType: entryType,
 		ManifestHash: manifestHash, ManifestJSON: string(manifestJSON),
 	}, nil
+}
+
+func ensureLongTaskSubmitStub(skillDir, name string, longTask bool) error {
+	if !longTask {
+		return nil
+	}
+	stubPath := filepath.Join(skillDir, "_longtask_submit.md")
+	if err := os.WriteFile(stubPath, []byte(longTaskSubmitStub(name)), 0o600); err != nil {
+		return fmt.Errorf("write long task submit stub: %w", err)
+	}
+	return nil
+}
+
+func longTaskSubmitStub(name string) string {
+	return `# Long Task Submit
+
+This Skill runs as a background task. Do not execute the real task in the current conversation.
+
+Reply with exactly one first line in this format:
+
+MUAD_TASK|` + name + `|<short task objective copied from the user's request>
+
+Keep any following text brief; the runtime will replace the reply after enqueueing.
+`
 }
 
 func skillDefaultVisibility(value string) string {

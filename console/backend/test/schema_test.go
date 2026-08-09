@@ -24,7 +24,7 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 	expected := []string{
 		"pods", "human_users", "user_identities", "binding_codes", "platform_configs",
 		"admins", "audit_log", "llm_model_configs", "resource_global",
-		"skill_assets", "skill_policies", "skill_execution_records",
+		"skill_assets", "skill_policies", "skill_execution_records", "long_task_tasks",
 	}
 	for _, table := range expected {
 		if !schemaObjectExists(t, db, "table", table) {
@@ -45,7 +45,8 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 		"idx_skill_policies_human_user", "idx_skill_policies_skill_name",
 		"idx_skill_executions_human_user_started", "idx_skill_executions_pod_started",
 		"idx_skill_executions_skill_started", "idx_skill_executions_status_started",
-		"idx_skill_executions_started",
+		"idx_skill_executions_started", "idx_long_task_pod_updated",
+		"idx_long_task_user_status", "idx_long_task_pool_status",
 	}
 	for _, index := range indexes {
 		if !schemaObjectExists(t, db, "index", index) {
@@ -54,6 +55,26 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 	}
 	if !tableColumnExists(t, db, "pods", "skills_pending") {
 		t.Error("pods.skills_pending column was not created")
+	}
+	if !tableColumnExists(t, db, "pods", "max_long_task_concurrency") {
+		t.Error("pods.max_long_task_concurrency column was not created")
+	}
+	if !tableColumnExists(t, db, "resource_global", "max_long_task_concurrency") {
+		t.Error("resource_global.max_long_task_concurrency column was not created")
+	}
+	for _, column := range []string{"pool_queued", "pool_running", "pool_limit"} {
+		if !tableColumnExists(t, db, "long_task_tasks", column) {
+			t.Errorf("long_task_tasks.%s column was not created", column)
+		}
+	}
+	if _, err := db.Exec(`INSERT INTO long_task_tasks (
+		task_id, pod_id, pool_key, agent_id, peer_id, skill_name, status,
+		submitted_at, updated_at, last_seen_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"task-invalid", "pod-a", "agent:alice:wecom:direct:wx-1", "alice", "wx-1",
+		"xdr-query", "blocked", "2026-08-09T10:00:00Z",
+		"2026-08-09T10:00:00Z", "2026-08-09T10:00:00Z"); err == nil {
+		t.Fatal("long_task_tasks.status CHECK accepted an invalid value")
 	}
 	// Pod-agnostic user schema: user assets survive Pod deletion, pod membership
 	// is derived from human_users.pod_id only.
@@ -132,6 +153,66 @@ func TestOpen_MigratesPodSkillsPendingColumn(t *testing.T) {
 	}
 	if pod.SkillsPending {
 		t.Fatalf("new Pod should default skills_pending=false: %+v", pod)
+	}
+}
+
+func TestOpen_MigratesLongTaskPoolCounterColumns(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-long-tasks.db")
+	db := openSchemaDB(t, path)
+	if _, err := db.Exec(legacyLongTaskTasksWithoutPoolLimitSchema); err != nil {
+		t.Fatalf("create legacy Long Tasks table: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open migrated database: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close migrated database: %v", err)
+	}
+	db = openSchemaDB(t, path)
+	for _, column := range []string{"pool_queued", "pool_running", "pool_limit"} {
+		if !tableColumnExists(t, db, "long_task_tasks", column) {
+			t.Fatalf("long_task_tasks.%s column was not migrated", column)
+		}
+	}
+}
+
+func TestOpen_MigratesResourceGlobalConcurrencyColumns(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-resource-global.db")
+	db := openSchemaDB(t, path)
+	if _, err := db.Exec(`CREATE TABLE resource_global (
+		id INTEGER PRIMARY KEY CHECK (id = 1),
+		mem_limit TEXT NOT NULL DEFAULT '',
+		cpu_limit TEXT NOT NULL DEFAULT '',
+		restart_policy TEXT NOT NULL DEFAULT '',
+		updated_at TEXT NOT NULL
+	)`); err != nil {
+		t.Fatalf("create legacy resource_global table: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO resource_global (
+		id, mem_limit, cpu_limit, restart_policy, updated_at
+	) VALUES (1, '3g', '2', 'always', '2026-08-09T10:00:00Z')`); err != nil {
+		t.Fatalf("insert legacy resource_global: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open migrated database: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+	global, err := store.GetResourceGlobal()
+	if err != nil {
+		t.Fatalf("GetResourceGlobal after migration: %v", err)
+	}
+	if global.MemLimit != "3g" || global.MaxLongTaskConcurrency != 0 {
+		t.Fatalf("migrated resource_global = %+v", global)
 	}
 }
 
@@ -449,4 +530,23 @@ const legacyPodsWithoutSkillsPendingSchema = `CREATE TABLE pods (
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL,
 	CHECK (applied_generation <= config_generation)
+);`
+
+const legacyLongTaskTasksWithoutPoolLimitSchema = `CREATE TABLE long_task_tasks (
+	task_id TEXT PRIMARY KEY,
+	pod_id TEXT NOT NULL,
+	human_user_id TEXT NOT NULL DEFAULT '',
+	pool_key TEXT NOT NULL,
+	agent_id TEXT NOT NULL,
+	peer_id TEXT NOT NULL,
+	skill_name TEXT NOT NULL,
+	skill_root TEXT NOT NULL DEFAULT '',
+	status TEXT NOT NULL CHECK (status IN ('queued','running','succeeded','failed')),
+	submitted_at TEXT NOT NULL,
+	started_at TEXT NOT NULL DEFAULT '',
+	ended_at TEXT NOT NULL DEFAULT '',
+	terminal_reason TEXT NOT NULL DEFAULT '',
+	error_code TEXT NOT NULL DEFAULT '',
+	updated_at TEXT NOT NULL,
+	last_seen_at TEXT NOT NULL
 );`

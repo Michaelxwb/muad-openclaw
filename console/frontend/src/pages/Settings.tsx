@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Input, Select, Tag } from "@douyinfe/semi-ui";
+import { Button, Input, InputNumber, Select, Tag } from "@douyinfe/semi-ui";
 import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import type { GlobalResourceConfig, ResourceConfig } from "../api";
@@ -23,7 +23,14 @@ const RESTART_OPTIONS = [
   { value: "no", label: "no" },
 ];
 
-const EMPTY: ResourceConfig = { memLimit: "", cpuLimit: "", restartPolicy: "unless-stopped" };
+const EMPTY: ResourceConfig = {
+  memLimit: "",
+  cpuLimit: "",
+  restartPolicy: "unless-stopped",
+  maxSkillConcurrency: 0,
+  maxBrowserConcurrency: 0,
+  maxLongTaskConcurrency: 0,
+};
 
 export function Settings() {
   const { t } = useTranslation();
@@ -55,7 +62,7 @@ type ResourceState = ReturnType<typeof useGlobalResources>;
 
 function ResourceForm({ state }: { state: ResourceState }) {
   const { t } = useTranslation();
-  const set = (key: keyof ResourceConfig, value: string) =>
+  const set = (key: keyof ResourceConfig, value: string | number) =>
     state.setForm((previous) => ({ ...previous, [key]: value }));
   return (
     <div className={styles.formGrid}>
@@ -84,6 +91,21 @@ function ResourceForm({ state }: { state: ResourceState }) {
         onChange={(value) => set("restartPolicy", String(value ?? ""))}
         style={{ width: "100%" }}
       />
+      <NumberField
+        label={t("settings.skillConcurrency")}
+        value={state.form.maxSkillConcurrency ?? 0}
+        onChange={(value) => set("maxSkillConcurrency", value)}
+      />
+      <NumberField
+        label={t("settings.browserConcurrency")}
+        value={state.form.maxBrowserConcurrency ?? 0}
+        onChange={(value) => set("maxBrowserConcurrency", value)}
+      />
+      <NumberField
+        label={t("settings.longTaskConcurrency")}
+        value={state.form.maxLongTaskConcurrency ?? 0}
+        onChange={(value) => set("maxLongTaskConcurrency", value)}
+      />
       <div />
       <Button theme="solid" loading={state.busy} onClick={() => void state.save()}>
         {t("settings.saveResourceDefaults")}
@@ -96,15 +118,35 @@ function EffectiveResources({ config }: { config: GlobalResourceConfig }) {
   const { t } = useTranslation();
   return (
     <MetricDescriptions
-      columns={5}
+      columns={6}
       items={[
         { label: t("settings.effectiveMem"), value: config.effective.memLimit },
         { label: t("settings.effectiveCpu"), value: config.effective.cpuLimit },
         { label: t("settings.restartPolicy"), value: config.effective.restartPolicy },
         { label: t("settings.skillConcurrency"), value: config.effective.maxSkillConcurrency },
         { label: t("settings.browserConcurrency"), value: config.effective.maxBrowserConcurrency },
+        {
+          label: t("settings.longTaskConcurrency"),
+          value: config.effective.maxLongTaskConcurrency,
+        },
       ]}
     />
+  );
+}
+
+function NumberField(props: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <>
+      <label>{props.label}</label>
+      <InputNumber
+        aria-label={props.label}
+        value={props.value}
+        min={0}
+        max={1000}
+        onChange={(value: number | string) => props.onChange(Number(value ?? 0))}
+        style={{ width: "100%" }}
+      />
+    </>
   );
 }
 
@@ -127,6 +169,9 @@ function useGlobalResources() {
         memLimit: memLimitToGB(result.memLimit),
         cpuLimit: result.cpuLimit,
         restartPolicy: result.restartPolicy,
+        maxSkillConcurrency: result.effective.maxSkillConcurrency,
+        maxBrowserConcurrency: result.effective.maxBrowserConcurrency,
+        maxLongTaskConcurrency: result.effective.maxLongTaskConcurrency,
       });
     } catch (caught) {
       if (!mountedRef.current || requestId !== requestRef.current) return;

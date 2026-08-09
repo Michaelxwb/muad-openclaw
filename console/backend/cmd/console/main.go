@@ -132,11 +132,12 @@ func startBackground(
 	coordinator *runtimeapply.Coordinator, cleaner *usercleanup.Cleaner,
 ) {
 	monitorDefaults := driver.ResourceSpec{
-		MemLimit:              deps.cfg.RuntimeDefaults.MemLimit,
-		CPULimit:              deps.cfg.RuntimeDefaults.CPULimit,
-		RestartPolicy:         deps.cfg.RuntimeDefaults.RestartPolicy,
-		MaxSkillConcurrency:   deps.cfg.RuntimeDefaults.MaxSkillConcurrency,
-		MaxBrowserConcurrency: deps.cfg.RuntimeDefaults.MaxBrowserConcurrency,
+		MemLimit:               deps.cfg.RuntimeDefaults.MemLimit,
+		CPULimit:               deps.cfg.RuntimeDefaults.CPULimit,
+		RestartPolicy:          deps.cfg.RuntimeDefaults.RestartPolicy,
+		MaxSkillConcurrency:    deps.cfg.RuntimeDefaults.MaxSkillConcurrency,
+		MaxBrowserConcurrency:  deps.cfg.RuntimeDefaults.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: deps.cfg.RuntimeDefaults.MaxLongTaskConcurrency,
 	}
 	go collector.New(deps.driver, deps.store, cache, monitorDefaults,
 		time.Duration(deps.cfg.CollectIntervalSec)*time.Second).Run(ctx)
@@ -187,9 +188,10 @@ func newRuntimeCoordinator(
 		return nil, errors.New("Skill syncer unavailable")
 	}
 	builder, err := runtimeconfig.New(store, cipher, runtimeconfig.Options{
-		ConsoleInternalURL:    cfg.ConsoleInternalURL,
-		MaxSkillConcurrency:   cfg.RuntimeDefaults.MaxSkillConcurrency,
-		MaxBrowserConcurrency: cfg.RuntimeDefaults.MaxBrowserConcurrency,
+		ConsoleInternalURL:     cfg.ConsoleInternalURL,
+		MaxSkillConcurrency:    cfg.RuntimeDefaults.MaxSkillConcurrency,
+		MaxBrowserConcurrency:  cfg.RuntimeDefaults.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: cfg.RuntimeDefaults.MaxLongTaskConcurrency,
 	})
 	if err != nil {
 		return nil, err

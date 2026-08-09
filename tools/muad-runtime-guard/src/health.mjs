@@ -9,14 +9,17 @@ export function runtimeHealth(config, globals = globalThis) {
   const sessionManager = globals[Symbol.for("muad.session-manager.health")];
   const browserQueue = globals[Symbol.for("muad.browser.lease")];
   const skillQueue = globals[Symbol.for("muad.skill.lease")];
+  const longTaskQueue = globals[Symbol.for("muad.longtask.manager")];
   const sessionManagerLoaded = sessionManager?.loaded === true;
   const browser = queueSnapshot(browserQueue, config.maxBrowserConcurrency);
   const skill = queueSnapshot(skillQueue, config.maxSkillConcurrency);
+  const longTask = queueSnapshot(longTaskQueue, config.maxLongTaskConcurrency);
   const browserGuardLoaded = browserQueue && typeof browserQueue.snapshot === "function";
   const skillGuardLoaded = skillQueue && typeof skillQueue.snapshot === "function";
+  const longTaskGuardLoaded = longTaskQueue && typeof longTaskQueue.snapshot === "function";
   return {
     ok: config.valid && sessionManagerLoaded && Boolean(browserGuardLoaded) &&
-      Boolean(skillGuardLoaded),
+      Boolean(skillGuardLoaded) && Boolean(longTaskGuardLoaded),
     version: RUNTIME_GUARD_VERSION,
     generation: config.generation,
     mappings: config.agentProfiles.length,
@@ -26,6 +29,7 @@ export function runtimeHealth(config, globals = globalThis) {
     },
     browser,
     skill,
+    longTask,
   };
 }
 

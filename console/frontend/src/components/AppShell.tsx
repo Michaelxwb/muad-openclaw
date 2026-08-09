@@ -5,6 +5,7 @@ import { Button } from "@douyinfe/semi-ui";
 import {
   IconChevronLeft,
   IconChevronRight,
+  IconClockStroked,
   IconComponentStroked,
   IconExit,
   IconPuzzle,
@@ -17,6 +18,7 @@ import { api } from "../api";
 import { Audit } from "../pages/Audit";
 import { Containers } from "../pages/Containers";
 import { LLM } from "../pages/LLM";
+import { LongTasks } from "../pages/LongTasks";
 import { PodDetail } from "../pages/PodDetail";
 import { Settings } from "../pages/Settings";
 import { Skills } from "../pages/Skills";
@@ -28,7 +30,7 @@ import { ThemeButton } from "./ThemeButton";
 import type { ThemeMode } from "./ThemeButton";
 import styles from "./AppShell.module.css";
 
-type Page = "pods" | "users" | "skills" | "llm" | "settings" | "audit";
+type Page = "pods" | "users" | "skills" | "longTasks" | "llm" | "settings" | "audit";
 
 const PAGE_KEY = "muad_console_page";
 const DETAIL_POD_KEY = "muad_console_pod_id";
@@ -50,6 +52,11 @@ export function AppShell({ theme, onTheme, onLogout }: Props) {
       { key: "pods" as Page, label: t("nav.pods"), icon: <IconServerStroked size="large" /> },
       { key: "users" as Page, label: t("nav.users"), icon: <IconUserGroup size="large" /> },
       { key: "skills" as Page, label: t("nav.skills"), icon: <IconPuzzle size="large" /> },
+      {
+        key: "longTasks" as Page,
+        label: t("nav.longTasks"),
+        icon: <IconClockStroked size="large" />,
+      },
       { key: "llm" as Page, label: t("nav.llm"), icon: <IconComponentStroked size="large" /> },
       {
         key: "settings" as Page,
@@ -145,6 +152,7 @@ function normalizePage(value: string | null): Page | null {
     case "pods":
     case "users":
     case "skills":
+    case "longTasks":
     case "llm":
     case "settings":
     case "audit":
@@ -298,6 +306,7 @@ function PageContent({
   }
   if (page === "users") return <Users onOpenPod={onOpenPod} />;
   if (page === "skills") return <Skills />;
+  if (page === "longTasks") return <LongTasks onOpenPod={onOpenPod} />;
   if (page === "llm") return <LLM />;
   if (page === "settings") return <Settings />;
   if (page === "audit") return <Audit onOpenPod={onOpenPod} />;

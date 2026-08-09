@@ -33,11 +33,12 @@ type Source interface {
 }
 
 type Options struct {
-	ConsoleInternalURL    string
-	StateDirectory        string
-	PublicSkillsDirectory string
-	MaxSkillConcurrency   int
-	MaxBrowserConcurrency int
+	ConsoleInternalURL     string
+	StateDirectory         string
+	PublicSkillsDirectory  string
+	MaxSkillConcurrency    int
+	MaxBrowserConcurrency  int
+	MaxLongTaskConcurrency int
 }
 
 type Result struct {
@@ -78,7 +79,8 @@ func New(source Source, cipher *secretcrypto.Cipher, options Options) (*Builder,
 	}
 	options.StateDirectory = valueOrDefault(options.StateDirectory, DefaultStateDirectory)
 	options.PublicSkillsDirectory = valueOrDefault(options.PublicSkillsDirectory, DefaultPublicSkillsDirectory)
-	if options.MaxSkillConcurrency <= 0 || options.MaxBrowserConcurrency <= 0 {
+	if options.MaxSkillConcurrency <= 0 || options.MaxBrowserConcurrency <= 0 ||
+		options.MaxLongTaskConcurrency <= 0 {
 		return nil, ErrInvalidRuntimeSource
 	}
 	return &Builder{source: source, cipher: cipher, options: options}, nil
@@ -169,13 +171,20 @@ func (builder *Builder) assemble(
 	browser, sessions, guard := buildUserMappings(builder.options.StateDirectory, users)
 	maxSkills := positiveOrDefault(pod.MaxSkillConcurrency, builder.options.MaxSkillConcurrency)
 	maxBrowser := positiveOrDefault(pod.MaxBrowserConcurrency, builder.options.MaxBrowserConcurrency)
+	maxLongTasks := positiveOrDefault(
+		pod.MaxLongTaskConcurrency, builder.options.MaxLongTaskConcurrency,
+	)
 	return driver.RuntimeConfigV1{
 		Version: driver.RuntimeConfigVersion, PodID: pod.PodID, Generation: pod.ConfigGeneration,
 		ConsoleInternalURL: strings.TrimRight(builder.options.ConsoleInternalURL, "/"),
 		ServiceTokenFile:   driver.PodServiceTokenPath,
-		Concurrency:        driver.RuntimeConcurrency{MaxSkills: maxSkills, MaxBrowser: maxBrowser},
-		Channels:           channels,
-		Agents:             agents, Routes: routes, IdentityLinks: links, Browser: browser,
+		Concurrency: driver.RuntimeConcurrency{
+			MaxSkills:                maxSkills,
+			MaxBrowser:               maxBrowser,
+			MaxLongTasksPerUserAgent: maxLongTasks,
+		},
+		Channels: channels,
+		Agents:   agents, Routes: routes, IdentityLinks: links, Browser: browser,
 		Providers: providers, Platforms: platforms,
 		Skills: driver.RuntimeSkills{
 			PublicDirectory: builder.options.PublicSkillsDirectory,
@@ -232,6 +241,7 @@ func runtimeSkillGrants(
 			Name: skill.Name, Source: skill.EffectiveSource, SkillID: effectiveSkillID(skill),
 			Version: skill.Version, EntryType: skill.EntryType,
 			RootPath: runtimeSkillRoot(stateRoot, publicRoot, agentID, skill),
+			LongTask: skill.LongTask,
 			ScriptFiles: append(
 				make([]string, 0, len(skill.ScriptFiles)), skill.ScriptFiles...,
 			),

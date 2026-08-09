@@ -54,10 +54,10 @@ const pod: Pod = {
 
 const resources: PodResourceConfig = {
   podId: "pod-a",
-  overrides: { memLimit: "4g", cpuLimit: "2", restartPolicy: "", maxSkillConcurrency: 0, maxBrowserConcurrency: 0 },
-  globalDefaults: { memLimit: "2g", cpuLimit: "1", restartPolicy: "unless-stopped", maxSkillConcurrency: 1, maxBrowserConcurrency: 1 },
-  runtimeDefaults: { memLimit: "1g", cpuLimit: "1", restartPolicy: "unless-stopped", maxSkillConcurrency: 1, maxBrowserConcurrency: 1 },
-  effective: { memLimit: "4g", cpuLimit: "2", restartPolicy: "", maxSkillConcurrency: 1, maxBrowserConcurrency: 1 },
+  overrides: { memLimit: "4g", cpuLimit: "2", restartPolicy: "", maxSkillConcurrency: 0, maxBrowserConcurrency: 0, maxLongTaskConcurrency: 0 },
+  globalDefaults: { memLimit: "2g", cpuLimit: "1", restartPolicy: "unless-stopped", maxSkillConcurrency: 1, maxBrowserConcurrency: 1, maxLongTaskConcurrency: 2 },
+  runtimeDefaults: { memLimit: "1g", cpuLimit: "1", restartPolicy: "unless-stopped", maxSkillConcurrency: 1, maxBrowserConcurrency: 1, maxLongTaskConcurrency: 2 },
+  effective: { memLimit: "4g", cpuLimit: "2", restartPolicy: "", maxSkillConcurrency: 1, maxBrowserConcurrency: 1, maxLongTaskConcurrency: 2 },
   memoryAlertThresholdMiB: 0,
   configGeneration: 1,
   appliedGeneration: 1,
@@ -99,6 +99,9 @@ describe("PodEditDialog", () => {
       memLimit: "4",
       cpuLimit: "2",
       restartPolicy: "",
+      maxSkillConcurrency: 0,
+      maxBrowserConcurrency: 0,
+      maxLongTaskConcurrency: 0,
     });
     expect(apiMocks.updatePodChannels.mock.invocationCallOrder[0]).toBeLessThan(
       apiMocks.setPodResources.mock.invocationCallOrder[0],

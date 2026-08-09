@@ -16,7 +16,7 @@ test("installs one private skill into the target agent workspace", async () => {
     manifest: {
       name: "xdr-query", runtime: "script", mode: "entrypoint", version: "1.2.0",
       visibility: "private", platforms: ["xdr"], progress: { source: "manual" },
-      capabilities: ["browser"],
+      capabilities: ["browser"], longTask: true,
     },
   });
   const result = await installPrivateSkill({
@@ -27,8 +27,10 @@ test("installs one private skill into the target agent workspace", async () => {
   assert.deepEqual(result.platforms, ["xdr"]);
   assert.equal(result.progressSupported, false);
   assert.equal(result.browserRequired, true);
+  assert.equal(result.longTask, true);
   assert.equal(result.entryType, "managed");
   assert.match(result.manifestHash, /^sha256:/u);
+  assert.match(readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "_longtask_submit.md"), "utf8"), /MUAD_TASK\|xdr-query\|/u);
   assert.equal(readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "SKILL.md"), "utf8"), "# XDR\n");
 });
 

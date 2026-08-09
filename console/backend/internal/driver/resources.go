@@ -10,11 +10,12 @@ import (
 // ResolveResourceSpec applies Pod override > global > built-in/default limits.
 func ResolveResourceSpec(pod, global, fallback ResourceSpec) ResourceSpec {
 	return ResourceSpec{
-		MemLimit:              firstNonEmpty(pod.MemLimit, global.MemLimit, fallback.MemLimit),
-		CPULimit:              firstNonEmpty(pod.CPULimit, global.CPULimit, fallback.CPULimit),
-		RestartPolicy:         firstNonEmpty(pod.RestartPolicy, global.RestartPolicy, fallback.RestartPolicy),
-		MaxSkillConcurrency:   firstPositive(pod.MaxSkillConcurrency, global.MaxSkillConcurrency, fallback.MaxSkillConcurrency),
-		MaxBrowserConcurrency: firstPositive(pod.MaxBrowserConcurrency, global.MaxBrowserConcurrency, fallback.MaxBrowserConcurrency),
+		MemLimit:               firstNonEmpty(pod.MemLimit, global.MemLimit, fallback.MemLimit),
+		CPULimit:               firstNonEmpty(pod.CPULimit, global.CPULimit, fallback.CPULimit),
+		RestartPolicy:          firstNonEmpty(pod.RestartPolicy, global.RestartPolicy, fallback.RestartPolicy),
+		MaxSkillConcurrency:    firstPositive(pod.MaxSkillConcurrency, global.MaxSkillConcurrency, fallback.MaxSkillConcurrency),
+		MaxBrowserConcurrency:  firstPositive(pod.MaxBrowserConcurrency, global.MaxBrowserConcurrency, fallback.MaxBrowserConcurrency),
+		MaxLongTaskConcurrency: firstPositive(pod.MaxLongTaskConcurrency, global.MaxLongTaskConcurrency, fallback.MaxLongTaskConcurrency),
 	}
 }
 

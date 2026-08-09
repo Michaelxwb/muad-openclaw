@@ -43,11 +43,12 @@ type PodSpec struct {
 
 // ResourceSpec contains already-resolved Pod resource and concurrency limits.
 type ResourceSpec struct {
-	MemLimit              string
-	CPULimit              string
-	RestartPolicy         string
-	MaxSkillConcurrency   int
-	MaxBrowserConcurrency int
+	MemLimit               string
+	CPULimit               string
+	RestartPolicy          string
+	MaxSkillConcurrency    int
+	MaxBrowserConcurrency  int
+	MaxLongTaskConcurrency int
 }
 
 // SecretFileSpec describes one runtime secret mount. Value is never serialized.
@@ -91,8 +92,9 @@ type RuntimeGuidance struct {
 }
 
 type RuntimeConcurrency struct {
-	MaxSkills  int `json:"maxSkills"`
-	MaxBrowser int `json:"maxBrowser"`
+	MaxSkills                int `json:"maxSkills"`
+	MaxBrowser               int `json:"maxBrowser"`
+	MaxLongTasksPerUserAgent int `json:"maxLongTasksPerUserAgent"`
 }
 
 type RuntimeChannels struct {
@@ -179,6 +181,7 @@ type RuntimeSkillGrant struct {
 	Version     string   `json:"version"`
 	EntryType   string   `json:"entryType"`
 	RootPath    string   `json:"rootPath"`
+	LongTask    bool     `json:"longTask"`
 	ScriptFiles []string `json:"scriptFiles"`
 }
 
@@ -211,7 +214,8 @@ func (config RuntimeConfigV1) Validate() error {
 	if strings.TrimSpace(config.ConsoleInternalURL) == "" || config.ServiceTokenFile != PodServiceTokenPath {
 		return ErrInvalidRuntimeConfig
 	}
-	if config.Concurrency.MaxSkills <= 0 || config.Concurrency.MaxBrowser <= 0 {
+	if config.Concurrency.MaxSkills <= 0 || config.Concurrency.MaxBrowser <= 0 ||
+		config.Concurrency.MaxLongTasksPerUserAgent <= 0 {
 		return ErrInvalidRuntimeConfig
 	}
 	if err := validateRuntimeChannels(config.Channels); err != nil {
@@ -262,6 +266,7 @@ func (spec PodSpec) Validate() error {
 		return ErrInvalidPodSpec
 	}
 	if spec.Resource.MaxSkillConcurrency <= 0 || spec.Resource.MaxBrowserConcurrency <= 0 ||
+		spec.Resource.MaxLongTaskConcurrency <= 0 ||
 		!IsValidRestartPolicy(spec.Resource.RestartPolicy) {
 		return ErrInvalidPodSpec
 	}

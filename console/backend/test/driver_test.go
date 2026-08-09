@@ -86,10 +86,11 @@ func TestMapDockerState(t *testing.T) {
 func TestResolveResourceSpecAndMemoryLimit(t *testing.T) {
 	got := driver.ResolveResourceSpec(
 		driver.ResourceSpec{MemLimit: "2.5g", MaxSkillConcurrency: 4},
-		driver.ResourceSpec{CPULimit: "2", RestartPolicy: "always"},
-		driver.ResourceSpec{MemLimit: "1g", CPULimit: "1", RestartPolicy: "no", MaxSkillConcurrency: 1, MaxBrowserConcurrency: 2},
+		driver.ResourceSpec{CPULimit: "2", RestartPolicy: "always", MaxLongTaskConcurrency: 6},
+		driver.ResourceSpec{MemLimit: "1g", CPULimit: "1", RestartPolicy: "no", MaxSkillConcurrency: 1, MaxBrowserConcurrency: 2, MaxLongTaskConcurrency: 2},
 	)
-	if got.MemLimit != "2.5g" || got.CPULimit != "2" || got.MaxSkillConcurrency != 4 || got.MaxBrowserConcurrency != 2 {
+	if got.MemLimit != "2.5g" || got.CPULimit != "2" || got.MaxSkillConcurrency != 4 ||
+		got.MaxBrowserConcurrency != 2 || got.MaxLongTaskConcurrency != 6 {
 		t.Errorf("unexpected effective resources: %+v", got)
 	}
 	if memory, err := driver.MemoryLimitMiB(got.MemLimit); err != nil || memory != 2560 {

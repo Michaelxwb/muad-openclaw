@@ -362,6 +362,9 @@ function SkillState({ skill }: { skill: EffectiveSkill }) {
       </Tag>,
     );
   }
+  if (skill.longTask) {
+    tags.push(<Tag key="long-task">{t("skill.featureLongTask")}</Tag>);
+  }
   return <Space spacing={4}>{tags}</Space>;
 }
 

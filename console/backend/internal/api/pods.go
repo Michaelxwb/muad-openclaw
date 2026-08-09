@@ -30,18 +30,19 @@ var (
 )
 
 type createPodRequest struct {
-	PodID                 string                        `json:"podId"`
-	DisplayName           string                        `json:"displayName"`
-	ImageTag              string                        `json:"imageTag"`
-	MaxUsers              int                           `json:"maxUsers"`
-	Channels              []string                      `json:"channels"`
-	ChannelConfigs        map[string]channelConfigInput `json:"channelConfigs"`
-	MemLimit              string                        `json:"memLimit"`
-	CPULimit              string                        `json:"cpuLimit"`
-	RestartPolicy         string                        `json:"restartPolicy"`
-	MaxSkillConcurrency   int                           `json:"maxSkillConcurrency"`
-	MaxBrowserConcurrency int                           `json:"maxBrowserConcurrency"`
-	AdoptState            bool                          `json:"adoptState"`
+	PodID                  string                        `json:"podId"`
+	DisplayName            string                        `json:"displayName"`
+	ImageTag               string                        `json:"imageTag"`
+	MaxUsers               int                           `json:"maxUsers"`
+	Channels               []string                      `json:"channels"`
+	ChannelConfigs         map[string]channelConfigInput `json:"channelConfigs"`
+	MemLimit               string                        `json:"memLimit"`
+	CPULimit               string                        `json:"cpuLimit"`
+	RestartPolicy          string                        `json:"restartPolicy"`
+	MaxSkillConcurrency    int                           `json:"maxSkillConcurrency"`
+	MaxBrowserConcurrency  int                           `json:"maxBrowserConcurrency"`
+	MaxLongTaskConcurrency int                           `json:"maxLongTaskConcurrency"`
+	AdoptState             bool                          `json:"adoptState"`
 	// RestoreUsers re-attaches the unbound users whose last Pod was this pod
 	// (default true) so agent_id and memory link back on recreate.
 	RestoreUsers *bool `json:"restoreUsers"`
@@ -129,7 +130,8 @@ func (s *Server) newPodRecord(request createPodRequest) (repo.Pod, serviceTokenM
 		Channels: channelsJSON, ChannelConfigsEnc: configsEnc,
 		MemLimit: request.MemLimit, CPULimit: request.CPULimit, RestartPolicy: request.RestartPolicy,
 		MaxSkillConcurrency: request.MaxSkillConcurrency, MaxBrowserConcurrency: request.MaxBrowserConcurrency,
-		ServiceTokenEnc: token.encrypted, ServiceTokenFingerprint: token.fingerprint,
+		MaxLongTaskConcurrency: request.MaxLongTaskConcurrency,
+		ServiceTokenEnc:        token.encrypted, ServiceTokenFingerprint: token.fingerprint,
 		ServiceTokenRotatedAt: token.rotatedAt, SkillsPending: true,
 	}, token, nil
 }
@@ -145,8 +147,9 @@ func validPodRequest(request createPodRequest) bool {
 		MemLimit: &request.MemLimit, CPULimit: &request.CPULimit, RestartPolicy: &request.RestartPolicy,
 	}
 	concurrency := podResourceRequest{
-		MaxSkillConcurrency:   &request.MaxSkillConcurrency,
-		MaxBrowserConcurrency: &request.MaxBrowserConcurrency,
+		MaxSkillConcurrency:    &request.MaxSkillConcurrency,
+		MaxBrowserConcurrency:  &request.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: &request.MaxLongTaskConcurrency,
 	}
 	return validateResourceRequest(resources) == nil && validateConcurrency(concurrency) == nil
 }
@@ -357,7 +360,8 @@ func podUpdateFrom(pod repo.Pod) repo.PodUpdate {
 		Channels: pod.Channels, ChannelConfigsEnc: pod.ChannelConfigsEnc,
 		MemLimit: pod.MemLimit, CPULimit: pod.CPULimit,
 		RestartPolicy: pod.RestartPolicy, MaxSkillConcurrency: pod.MaxSkillConcurrency,
-		MaxBrowserConcurrency: pod.MaxBrowserConcurrency,
+		MaxBrowserConcurrency:  pod.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: pod.MaxLongTaskConcurrency,
 	}
 }
 

@@ -122,8 +122,12 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.equal(output.skills.entries?.["__muad-runtime-skill-state"], undefined);
   assert.equal(output.plugins.bundledDiscovery, "allowlist");
   assert.equal(output.plugins.entries["muad-runtime-guard"].config.generation, 7);
+  assert.equal(output.plugins.entries["muad-runtime-guard"].config.maxLongTaskConcurrency, 2);
   assert.deepEqual(output.plugins.entries["muad-runtime-guard"].config.skillReadRoots, [
     { agentId: "alice", roots: ["/opt/openclaw-skills"] },
+  ]);
+  assert.deepEqual(output.plugins.entries["muad-runtime-guard"].config.longTaskSkillGrants, [
+    { agentId: "alice", name: "xdr-query", rootPath: "/opt/openclaw-skills/xdr-query" },
   ]);
   assert.deepEqual(output.plugins.entries["muad-runtime-guard"].hooks, {
     allowConversationAccess: true,

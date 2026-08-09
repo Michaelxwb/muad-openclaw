@@ -11,16 +11,20 @@ export function parseGuardConfig(value) {
   const serviceTokenFile = String(input.serviceTokenFile ?? "").trim();
   const agentProfiles = parseAgentProfiles(input.agentProfiles);
   const skillReadRoots = parseSkillReadRoots(input.skillReadRoots);
+  const longTaskSkillGrants = parseLongTaskSkillGrants(input.longTaskSkillGrants);
   const sessionAgentIds = parseAgentIds(input.sessionAgentIds);
   const maxBrowserConcurrency = input.maxBrowserConcurrency;
   const maxSkillConcurrency = input.maxSkillConcurrency;
+  const maxLongTaskConcurrency = input.maxLongTaskConcurrency;
   const valid = Number.isInteger(generation) && generation > 0 && mainAgentId === "main" &&
     ID_PATTERN.test(quarantineProfile) && validURL(consoleInternalURL) &&
     serviceTokenFile === POD_SERVICE_TOKEN_FILE && agentProfiles !== null && sessionAgentIds !== null &&
     skillReadRoots !== null && sameAgentSet(agentProfiles, sessionAgentIds) &&
+    longTaskSkillGrants !== null && longTaskGrantsUseMappedAgents(agentProfiles, longTaskSkillGrants) &&
     sameSkillRootAgentSet(agentProfiles, skillReadRoots) &&
     agentProfiles.every((mapping) => mapping.profile !== quarantineProfile) &&
-    positiveInteger(maxBrowserConcurrency) && positiveInteger(maxSkillConcurrency);
+    positiveInteger(maxBrowserConcurrency) && positiveInteger(maxSkillConcurrency) &&
+    positiveInteger(maxLongTaskConcurrency);
   return {
     valid,
     generation: valid ? generation : 0,
@@ -30,10 +34,35 @@ export function parseGuardConfig(value) {
     serviceTokenFile,
     agentProfiles: agentProfiles ?? [],
     skillReadRoots: skillReadRoots ?? [],
+    longTaskSkillGrants: longTaskSkillGrants ?? [],
     sessionAgentIds: sessionAgentIds ?? [],
     maxBrowserConcurrency: positiveInteger(maxBrowserConcurrency) ? maxBrowserConcurrency : 1,
     maxSkillConcurrency: positiveInteger(maxSkillConcurrency) ? maxSkillConcurrency : 1,
+    maxLongTaskConcurrency: positiveInteger(maxLongTaskConcurrency) ? maxLongTaskConcurrency : 1,
   };
+}
+
+function parseLongTaskSkillGrants(value) {
+  if (!Array.isArray(value)) return null;
+  const seen = new Set();
+  const output = [];
+  for (const item of value) {
+    if (!isRecord(item)) return null;
+    const agentId = String(item.agentId ?? "").trim();
+    const name = String(item.name ?? "").trim();
+    const rootPath = String(item.rootPath ?? "").trim();
+    const key = `${agentId}/${name}`;
+    if (!ID_PATTERN.test(agentId) || agentId === "main" || !SKILL_NAME_PATTERN.test(name) ||
+      !rootPath.startsWith("/") || rootPath.includes("\0") || seen.has(key)) return null;
+    seen.add(key);
+    output.push({ agentId, name, rootPath });
+  }
+  return output;
+}
+
+function longTaskGrantsUseMappedAgents(profiles, grants) {
+  const agents = new Set(profiles.map((profile) => profile.agentId));
+  return grants.every((grant) => agents.has(grant.agentId));
 }
 
 function parseSkillReadRoots(value) {
@@ -106,6 +135,8 @@ function validURL(value) {
 function positiveInteger(value) {
   return Number.isInteger(value) && value > 0;
 }
+
+const SKILL_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);

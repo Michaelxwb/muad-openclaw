@@ -60,7 +60,7 @@ func TestPodSpec_ValidatesSecretAndOmitsValueFromJSON(t *testing.T) {
 		PodID: "pod-a", ImageTag: "image:test", MultiUser: config,
 		Resource: driver.ResourceSpec{
 			MemLimit: "4g", CPULimit: "2", RestartPolicy: "unless-stopped",
-			MaxSkillConcurrency: 2, MaxBrowserConcurrency: 1,
+			MaxSkillConcurrency: 2, MaxBrowserConcurrency: 1, MaxLongTaskConcurrency: 2,
 		},
 		ServiceToken: driver.SecretFileSpec{
 			Name: "pod-a-service-token", ContainerPath: driver.PodServiceTokenPath,
@@ -87,7 +87,7 @@ func validRuntimeConfig() driver.RuntimeConfigV1 {
 	return driver.RuntimeConfigV1{
 		Version: driver.RuntimeConfigVersion, PodID: "pod-a", Generation: 1,
 		ConsoleInternalURL: "http://console:8080", ServiceTokenFile: driver.PodServiceTokenPath,
-		Concurrency: driver.RuntimeConcurrency{MaxSkills: 2, MaxBrowser: 1},
+		Concurrency: driver.RuntimeConcurrency{MaxSkills: 2, MaxBrowser: 1, MaxLongTasksPerUserAgent: 2},
 		Channels: driver.RuntimeChannels{
 			Enabled: []string{"wecom"},
 			Configs: map[string]json.RawMessage{"wecom": json.RawMessage(`{"botId":"test","secret":"test"}`)},
@@ -118,7 +118,7 @@ func validRuntimeConfig() driver.RuntimeConfigV1 {
 				Allowed: []driver.RuntimeSkillGrant{{
 					Name: "xdr-query", Source: "public", SkillID: "skill-public-xdr",
 					Version: "1.0.0", EntryType: repo.SkillEntryManaged,
-					RootPath: "/opt/openclaw-skills/xdr-query", ScriptFiles: []string{},
+					RootPath: "/opt/openclaw-skills/xdr-query", LongTask: true, ScriptFiles: []string{},
 				}},
 			}},
 		},

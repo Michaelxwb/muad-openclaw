@@ -63,6 +63,15 @@ const (
 	SkillExecutionRejected  = "rejected"
 )
 
+// Long task queue lifecycle states. These intentionally do not extend
+// SkillExecution statuses; queued/running task state is operational, not audit.
+const (
+	LongTaskQueued    = "queued"
+	LongTaskRunning   = "running"
+	LongTaskSucceeded = "succeeded"
+	LongTaskFailed    = "failed"
+)
+
 // Skill entry types distinguish managed bundles from traditional OpenClaw Skills.
 const (
 	SkillEntryManaged           = "managed"
@@ -124,6 +133,7 @@ type Pod struct {
 	RestartPolicy           string
 	MaxSkillConcurrency     int
 	MaxBrowserConcurrency   int
+	MaxLongTaskConcurrency  int
 	ServiceTokenEnc         string
 	ServiceTokenFingerprint string
 	ServiceTokenRotatedAt   time.Time
@@ -282,6 +292,58 @@ type SkillExecutionRecord struct {
 	CreatedAt      time.Time
 }
 
+// LongTaskTask mirrors the runtime guard background-task queue for operator
+// visibility. The Console is the only database writer; Skill execution audit
+// remains in skill_execution_records.
+type LongTaskTask struct {
+	TaskID         string
+	PodID          string
+	HumanUserID    string
+	PoolKey        string
+	PoolQueued     int
+	PoolRunning    int
+	PoolLimit      int
+	AgentID        string
+	PeerID         string
+	SkillName      string
+	SkillRoot      string
+	Status         string
+	SubmittedAt    time.Time
+	StartedAt      time.Time
+	EndedAt        time.Time
+	TerminalReason string
+	ErrorCode      string
+	UpdatedAt      time.Time
+	LastSeenAt     time.Time
+}
+
+// LongTaskPool summarizes one user-agent runtime queue.
+type LongTaskPool struct {
+	PodID       string
+	HumanUserID string
+	PoolKey     string
+	PoolQueued  int
+	PoolRunning int
+	PoolLimit   int
+	AgentID     string
+	PeerID      string
+	UpdatedAt   time.Time
+	LastSeenAt  time.Time
+}
+
+// LongTaskListFilter controls long-task queue pagination and filtering.
+type LongTaskListFilter struct {
+	Offset      int
+	Limit       int
+	Query       string
+	PodID       string
+	HumanUserID string
+	AgentID     string
+	SkillName   string
+	PoolKey     string
+	Status      string
+}
+
 // EffectiveSkill is the final per-Human User Skill state after merging assets,
 // policies, platform credentials, and recent execution state.
 type EffectiveSkill struct {
@@ -302,6 +364,7 @@ type EffectiveSkill struct {
 	Platforms         []SkillPlatformStatus
 	ProgressSupported bool
 	BrowserRequired   bool
+	LongTask          bool
 	RuntimePending    bool
 	LastExecution     *SkillExecutionRecord
 }
@@ -315,10 +378,13 @@ type SkillPlatformStatus struct {
 
 // ResourceConfig holds global or Pod-level resource limits.
 type ResourceConfig struct {
-	MemLimit      string
-	CPULimit      string
-	RestartPolicy string
-	UpdatedAt     time.Time
+	MemLimit               string
+	CPULimit               string
+	RestartPolicy          string
+	MaxSkillConcurrency    int
+	MaxBrowserConcurrency  int
+	MaxLongTaskConcurrency int
+	UpdatedAt              time.Time
 }
 
 // AuditEntry is one audit record with an already-redacted payload.

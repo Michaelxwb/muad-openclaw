@@ -326,7 +326,7 @@ func dockerTestPodSpec(podID, token string) PodSpec {
 		PodID: podID, ImageTag: "image:test", GatewayToken: "gateway-token",
 		Resource: ResourceSpec{
 			MemLimit: "4g", CPULimit: "2", RestartPolicy: "unless-stopped",
-			MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1,
+			MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1, MaxLongTaskConcurrency: 2,
 		},
 		ServiceToken: SecretFileSpec{
 			ContainerPath: PodServiceTokenPath, Value: token, Mode: 0o400,

@@ -21,9 +21,11 @@
       "quarantineProfile",
       "agentProfiles",
       "skillReadRoots",
+      "longTaskSkillGrants",
       "sessionAgentIds",
       "maxBrowserConcurrency",
       "maxSkillConcurrency",
+      "maxLongTaskConcurrency",
       "consoleInternalURL",
       "serviceTokenFile"
     ],
@@ -58,12 +60,26 @@
           }
         }
       },
+      "longTaskSkillGrants": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agentId", "name", "rootPath"],
+          "properties": {
+            "agentId": { "type": "string" },
+            "name": { "type": "string" },
+            "rootPath": { "type": "string" }
+          }
+        }
+      },
       "sessionAgentIds": {
         "type": "array",
         "items": { "type": "string" }
       },
       "maxBrowserConcurrency": { "type": "integer", "minimum": 1 },
       "maxSkillConcurrency": { "type": "integer", "minimum": 1 },
+      "maxLongTaskConcurrency": { "type": "integer", "minimum": 1 },
       "consoleInternalURL": { "type": "string" },
       "serviceTokenFile": { "type": "string" }
     }

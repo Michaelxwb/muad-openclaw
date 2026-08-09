@@ -17,6 +17,7 @@ export type SkillSource = "user" | "platform";
 export type SkillExecutionStatus = "running" | "succeeded" | "failed" | "cancelled" | "rejected";
 export type SkillEntryType = "managed" | "traditional-script" | "traditional-prompt";
 export type SkillActivationMode = "tool" | "path-detected" | "runner";
+export type LongTaskStatus = "queued" | "running" | "succeeded" | "failed";
 
 export interface ApiSuccessResponse<T> {
   code: 0;
@@ -121,6 +122,7 @@ export interface CreatePodInput {
   restartPolicy?: string;
   maxSkillConcurrency?: number;
   maxBrowserConcurrency?: number;
+  maxLongTaskConcurrency?: number;
   adoptState?: boolean;
   restoreUsers?: boolean;
 }
@@ -377,6 +379,7 @@ export interface SkillAsset {
   entryType: string;
   platformsJson: string;
   browserRequired: boolean;
+  longTask: boolean;
   progressSupported: boolean;
   systemProtected: boolean;
   source: SkillSource;
@@ -424,6 +427,7 @@ export interface EffectiveSkill {
   platforms: SkillPlatformStatus[];
   progressSupported: boolean;
   browserRequired: boolean;
+  longTask: boolean;
   runtimePending: boolean;
   lastExecution?: SkillExecutionSummary;
 }
@@ -538,12 +542,16 @@ export interface ResourceValues {
   restartPolicy: string;
   maxSkillConcurrency: number;
   maxBrowserConcurrency: number;
+  maxLongTaskConcurrency: number;
 }
 
 export interface ResourceConfig {
   memLimit: string;
   cpuLimit: string;
   restartPolicy: string;
+  maxSkillConcurrency?: number;
+  maxBrowserConcurrency?: number;
+  maxLongTaskConcurrency?: number;
 }
 
 export interface AgentGuidance {
@@ -586,6 +594,55 @@ export interface PodResourceInput {
   restartPolicy?: string;
   maxSkillConcurrency?: number;
   maxBrowserConcurrency?: number;
+  maxLongTaskConcurrency?: number;
+}
+
+export interface LongTask {
+  taskId: string;
+  podId: string;
+  humanUserId: string;
+  poolKey: string;
+  poolQueued: number;
+  poolRunning: number;
+  poolLimit: number;
+  agentId: string;
+  peerId: string;
+  skillName: string;
+  skillRoot: string;
+  status: LongTaskStatus;
+  submittedAt: string;
+  startedAt?: string;
+  endedAt?: string;
+  terminalReason?: string;
+  errorCode?: string;
+  updatedAt: string;
+  lastSeenAt: string;
+}
+
+export interface LongTaskPool {
+  podId: string;
+  humanUserId: string;
+  poolKey: string;
+  poolQueued: number;
+  poolRunning: number;
+  poolLimit: number;
+  agentId: string;
+  peerId: string;
+  updatedAt: string;
+  lastSeenAt: string;
+}
+
+export interface LongTaskListResult extends PageResult<LongTask> {
+  pools: LongTaskPool[];
+}
+
+export interface LongTaskQuery extends PageQuery {
+  podId?: string;
+  humanUserId?: string;
+  agentId?: string;
+  skillName?: string;
+  poolKey?: string;
+  status?: LongTaskStatus;
 }
 
 export interface AuditMetadata {

@@ -1,0 +1,8 @@
+{
+  "name": "report-customer-weekly",
+  "version": "0.1.0",
+  "runtime": "script",
+  "longTask": true,
+  "entrypoint": "scripts/run.py",
+  "description": "Generate a weekly customer activity report. Long-running background task."
+}

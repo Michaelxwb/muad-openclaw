@@ -62,22 +62,32 @@ func (s *Store) Close() error { return s.db.Close() }
 func (s *Store) SetResourceGlobal(c ResourceConfig) error {
 	now := time.Now().UTC().Format(tsLayout)
 	_, err := s.db.Exec(
-		`INSERT INTO resource_global (id, mem_limit, cpu_limit, restart_policy, updated_at)
-		 VALUES (1, ?, ?, ?, ?)
+		`INSERT INTO resource_global (
+			id, mem_limit, cpu_limit, restart_policy, max_skill_concurrency,
+			max_browser_concurrency, max_long_task_concurrency, updated_at
+		) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		   mem_limit=excluded.mem_limit, cpu_limit=excluded.cpu_limit,
-		   restart_policy=excluded.restart_policy, updated_at=excluded.updated_at`,
-		c.MemLimit, c.CPULimit, c.RestartPolicy, now,
+		   restart_policy=excluded.restart_policy,
+		   max_skill_concurrency=excluded.max_skill_concurrency,
+		   max_browser_concurrency=excluded.max_browser_concurrency,
+		   max_long_task_concurrency=excluded.max_long_task_concurrency,
+		   updated_at=excluded.updated_at`,
+		c.MemLimit, c.CPULimit, c.RestartPolicy, c.MaxSkillConcurrency,
+		c.MaxBrowserConcurrency, c.MaxLongTaskConcurrency, now,
 	)
 	return err
 }
 
 // GetResourceGlobal returns the global resource config or ErrNotFound when unset.
 func (s *Store) GetResourceGlobal() (ResourceConfig, error) {
-	row := s.db.QueryRow(`SELECT mem_limit, cpu_limit, restart_policy, updated_at FROM resource_global WHERE id = 1`)
+	row := s.db.QueryRow(`SELECT mem_limit, cpu_limit, restart_policy,
+		max_skill_concurrency, max_browser_concurrency, max_long_task_concurrency,
+		updated_at FROM resource_global WHERE id = 1`)
 	var c ResourceConfig
 	var ts string
-	switch err := row.Scan(&c.MemLimit, &c.CPULimit, &c.RestartPolicy, &ts); err {
+	switch err := row.Scan(&c.MemLimit, &c.CPULimit, &c.RestartPolicy,
+		&c.MaxSkillConcurrency, &c.MaxBrowserConcurrency, &c.MaxLongTaskConcurrency, &ts); err {
 	case sql.ErrNoRows:
 		return ResourceConfig{}, ErrNotFound
 	case nil:

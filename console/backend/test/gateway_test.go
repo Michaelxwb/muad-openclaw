@@ -137,9 +137,29 @@ func TestVerifyRoutesCallsRuntimeGuardVerifier(t *testing.T) {
 	}
 }
 
+func TestLongTasksFlattensRuntimeGuardSnapshot(t *testing.T) {
+	execer := &probeExecer{
+		longTasks: `{"pools":[{"poolKey":"alice|wx-1","agentId":"alice","peerId":"wx-1",` +
+			`"queued":4,"active":2,"limit":2,"tasks":[` +
+			`{"id":"task-1","skill":"xdr-query","rootPath":"/skills/xdr","status":"queued","submittedAt":"2026-08-09T10:00:00Z"}` +
+			`]}]}`,
+	}
+	tasks, err := gateway.LongTasks(context.Background(), execer, "pod-a")
+	if err != nil {
+		t.Fatalf("LongTasks: %v", err)
+	}
+	if len(tasks) != 1 || tasks[0].TaskID != "task-1" ||
+		tasks[0].PoolKey != "alice|wx-1" || tasks[0].SkillName != "xdr-query" ||
+		tasks[0].SkillRoot != "/skills/xdr" || tasks[0].PoolQueued != 4 ||
+		tasks[0].PoolRunning != 2 || tasks[0].PoolLimit != 2 {
+		t.Fatalf("flattened Long Tasks = %+v", tasks)
+	}
+}
+
 type probeExecer struct {
 	configGet   string
 	routeVerify string
+	longTasks   string
 	lastParams  string
 }
 
@@ -151,6 +171,8 @@ func (execer *probeExecer) Exec(_ context.Context, _ string, cmd ...string) (str
 	case strings.Contains(joined, "muad.runtime.verify-routes"):
 		execer.lastParams = commandParam(cmd, "--params")
 		return execer.routeVerify, nil
+	case strings.Contains(joined, "muad.runtime.long-tasks"):
+		return execer.longTasks, nil
 	case strings.Contains(joined, "config.get"):
 		return execer.configGet, nil
 	default:

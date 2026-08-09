@@ -100,6 +100,13 @@ export function ResourceTab({ resources }: { resources: PodResourceConfig | null
         override: resources.overrides.maxBrowserConcurrency || t("pod.inherit"),
       }),
     },
+    {
+      label: t("pod.maxLongTaskConcurrency"),
+      value: t("pod.overrideValue", {
+        effective: resources.effective.maxLongTaskConcurrency,
+        override: resources.overrides.maxLongTaskConcurrency || t("pod.inherit"),
+      }),
+    },
     { label: t("pod.memAlertThreshold"), value: `${resources.memoryAlertThresholdMiB} MiB` },
   ];
   return <DefinitionList rows={rows} />;

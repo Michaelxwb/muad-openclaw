@@ -70,7 +70,7 @@ func integrationK8sSpec(t *testing.T, podID, image string) (PodSpec, RuntimeConf
 		MultiUser: runtime, ServiceToken: integrationSecret("token-one"),
 		Resource: ResourceSpec{
 			MemLimit: "2g", CPULimit: "1", RestartPolicy: "always",
-			MaxSkillConcurrency: 2, MaxBrowserConcurrency: 1,
+			MaxSkillConcurrency: 2, MaxBrowserConcurrency: 1, MaxLongTaskConcurrency: 2,
 		},
 	}
 	if err := spec.Validate(); err != nil {

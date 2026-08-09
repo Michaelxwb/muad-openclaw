@@ -38,6 +38,7 @@ type privateSkillInstallResult struct {
 	Platforms         []string `json:"platforms"`
 	ProgressSupported bool     `json:"progressSupported"`
 	BrowserRequired   bool     `json:"browserRequired"`
+	LongTask          bool     `json:"longTask"`
 	EntryType         string   `json:"entryType"`
 	ManifestHash      string   `json:"manifestHash"`
 	ManifestJSON      string   `json:"manifestJson"`
@@ -68,6 +69,7 @@ type skillAssetView struct {
 	PlatformsJSON     string    `json:"platformsJson"`
 	BrowserRequired   bool      `json:"browserRequired"`
 	ProgressSupported bool      `json:"progressSupported"`
+	LongTask          bool      `json:"longTask"`
 	SystemProtected   bool      `json:"systemProtected"`
 	Source            string    `json:"source"`
 	CreatedAt         time.Time `json:"createdAt"`
@@ -90,6 +92,7 @@ type effectiveSkillView struct {
 	Platforms         []skillPlatformView    `json:"platforms"`
 	ProgressSupported bool                   `json:"progressSupported"`
 	BrowserRequired   bool                   `json:"browserRequired"`
+	LongTask          bool                   `json:"longTask"`
 	RuntimePending    bool                   `json:"runtimePending"`
 	LastExecution     *skillExecutionSummary `json:"lastExecution,omitempty"`
 }
@@ -917,9 +920,20 @@ func skillAssetToView(asset repo.SkillAsset) skillAssetView {
 		ManifestHash: asset.ManifestHash, ManifestJSON: asset.ManifestJSON,
 		EntryType: asset.EntryType, PlatformsJSON: asset.PlatformsJSON,
 		BrowserRequired: asset.BrowserRequired, ProgressSupported: asset.ProgressSupported,
+		LongTask:        skillManifestLongTask(asset.ManifestJSON),
 		SystemProtected: asset.SystemProtected, Source: asset.Source,
 		CreatedAt: asset.CreatedAt, UpdatedAt: asset.UpdatedAt,
 	}
+}
+
+func skillManifestLongTask(raw string) bool {
+	var manifest struct {
+		LongTask bool `json:"longTask"`
+	}
+	if json.Unmarshal([]byte(raw), &manifest) != nil {
+		return false
+	}
+	return manifest.LongTask
 }
 
 func effectiveSkillViews(skills []repo.EffectiveSkill) []effectiveSkillView {
@@ -938,7 +952,8 @@ func effectiveSkillToView(skill repo.EffectiveSkill) effectiveSkillView {
 		SystemSkillID: skill.SystemSkillID, PublicSkillID: skill.PublicSkillID,
 		PrivateSkillID: skill.PrivateSkillID, Conflict: skill.Conflict,
 		ConflictReason: skill.ConflictReason, ProgressSupported: skill.ProgressSupported,
-		BrowserRequired: skill.BrowserRequired, RuntimePending: skill.RuntimePending,
+		BrowserRequired: skill.BrowserRequired, LongTask: skill.LongTask,
+		RuntimePending: skill.RuntimePending,
 	}
 	for _, platform := range skill.Platforms {
 		view.Platforms = append(view.Platforms, skillPlatformView{

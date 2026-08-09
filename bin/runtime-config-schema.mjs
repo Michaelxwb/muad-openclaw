@@ -86,9 +86,13 @@ function validateChannels(value) {
 
 function validateConcurrency(value) {
   assertRecord(value, "runtime.concurrency");
-  assertExactKeys(value, ["maxSkills", "maxBrowser"], "runtime.concurrency");
+  assertExactKeys(value, ["maxSkills", "maxBrowser", "maxLongTasksPerUserAgent"], "runtime.concurrency");
   assertPositiveInteger(value.maxSkills, "runtime.concurrency.maxSkills");
   assertPositiveInteger(value.maxBrowser, "runtime.concurrency.maxBrowser");
+  assertPositiveInteger(
+    value.maxLongTasksPerUserAgent,
+    "runtime.concurrency.maxLongTasksPerUserAgent",
+  );
 }
 
 function validateAgents(value) {
@@ -242,7 +246,10 @@ function validateSkills(value, agents) {
       assertRecord(skill, skillLabel);
       assertExactKeys(
         skill,
-        ["name", "source", "skillId", "version", "entryType", "rootPath", "scriptFiles"],
+        [
+          "name", "source", "skillId", "version", "entryType", "rootPath",
+          "scriptFiles", "longTask",
+        ],
         skillLabel,
       );
       assertString(skill.name, `${skillLabel}.name`);
@@ -250,6 +257,7 @@ function validateSkills(value, agents) {
       optionalString(skill.version, `${skillLabel}.version`);
       assertAbsolutePath(skill.rootPath, `${skillLabel}.rootPath`);
       assertStringArray(skill.scriptFiles, `${skillLabel}.scriptFiles`);
+      assertBoolean(skill.longTask, `${skillLabel}.longTask`);
       if (!["managed", "traditional-script", "traditional-prompt"].includes(skill.entryType)) {
         throw new Error(`${skillLabel}.entryType is invalid`);
       }

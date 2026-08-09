@@ -29,16 +29,18 @@ type resourceFieldsRequest struct {
 
 type podResourceRequest struct {
 	resourceFieldsRequest
-	MaxSkillConcurrency   *int `json:"maxSkillConcurrency"`
-	MaxBrowserConcurrency *int `json:"maxBrowserConcurrency"`
+	MaxSkillConcurrency    *int `json:"maxSkillConcurrency"`
+	MaxBrowserConcurrency  *int `json:"maxBrowserConcurrency"`
+	MaxLongTaskConcurrency *int `json:"maxLongTaskConcurrency"`
 }
 
 type resourceValues struct {
-	MemLimit              string `json:"memLimit"`
-	CPULimit              string `json:"cpuLimit"`
-	RestartPolicy         string `json:"restartPolicy"`
-	MaxSkillConcurrency   int    `json:"maxSkillConcurrency"`
-	MaxBrowserConcurrency int    `json:"maxBrowserConcurrency"`
+	MemLimit               string `json:"memLimit"`
+	CPULimit               string `json:"cpuLimit"`
+	RestartPolicy          string `json:"restartPolicy"`
+	MaxSkillConcurrency    int    `json:"maxSkillConcurrency"`
+	MaxBrowserConcurrency  int    `json:"maxBrowserConcurrency"`
+	MaxLongTaskConcurrency int    `json:"maxLongTaskConcurrency"`
 }
 
 func validateResourceRequest(request resourceFieldsRequest) error {
@@ -89,7 +91,9 @@ func normalizeMemLimitPtr(field *string) *string {
 }
 
 func validateConcurrency(request podResourceRequest) error {
-	for _, value := range []*int{request.MaxSkillConcurrency, request.MaxBrowserConcurrency} {
+	for _, value := range []*int{
+		request.MaxSkillConcurrency, request.MaxBrowserConcurrency, request.MaxLongTaskConcurrency,
+	} {
 		if value != nil && (*value < 0 || *value > maxRuntimeConcurrency) {
 			return errors.New("concurrency must be 0 (inherit) or between 1 and 1000")
 		}
@@ -119,19 +123,21 @@ func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, r, errcode.InternalReadResourceConfig)
 		return
 	}
-	var request resourceFieldsRequest
+	var request podResourceRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
 		writeErr(w, r, errcode.InvalidResourceLimits)
 		return
 	}
 	request.MemLimit = normalizeMemLimitPtr(request.MemLimit)
-	if validateResourceRequest(request) != nil {
+	if validateResourceRequest(request.resourceFieldsRequest) != nil || validateConcurrency(request) != nil {
 		writeErr(w, r, errcode.InvalidResourceLimits)
 		return
 	}
 	next := applyGlobalRequest(current, request)
 	if err := s.store.SetResourceGlobal(repo.ResourceConfig{
 		MemLimit: next.MemLimit, CPULimit: next.CPULimit, RestartPolicy: next.RestartPolicy,
+		MaxSkillConcurrency: next.MaxSkillConcurrency, MaxBrowserConcurrency: next.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: next.MaxLongTaskConcurrency,
 	}); err != nil {
 		writeErr(w, r, errcode.InternalSaveResourceConfig)
 		return
@@ -139,6 +145,9 @@ func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
 	podIDs, err := s.store.MarkPodsInheritingResourcesPending(
 		current.MemLimit != next.MemLimit, current.CPULimit != next.CPULimit,
 		current.RestartPolicy != next.RestartPolicy,
+		current.MaxSkillConcurrency != next.MaxSkillConcurrency,
+		current.MaxBrowserConcurrency != next.MaxBrowserConcurrency,
+		current.MaxLongTaskConcurrency != next.MaxLongTaskConcurrency,
 	)
 	if err != nil {
 		writeErr(w, r, errcode.InternalMarkPodsPending)
@@ -243,6 +252,8 @@ func (s *Server) readGlobalResources() (driver.ResourceSpec, bool, error) {
 	}
 	return driver.ResourceSpec{
 		MemLimit: global.MemLimit, CPULimit: global.CPULimit, RestartPolicy: global.RestartPolicy,
+		MaxSkillConcurrency: global.MaxSkillConcurrency, MaxBrowserConcurrency: global.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: global.MaxLongTaskConcurrency,
 	}, true, nil
 }
 
@@ -252,17 +263,21 @@ func (s *Server) resourceFallback() driver.ResourceSpec {
 	}
 	return driver.ResourceSpec{
 		MemLimit: s.cfg.RuntimeDefaults.MemLimit, CPULimit: s.cfg.RuntimeDefaults.CPULimit,
-		RestartPolicy:         s.cfg.RuntimeDefaults.RestartPolicy,
-		MaxSkillConcurrency:   s.cfg.RuntimeDefaults.MaxSkillConcurrency,
-		MaxBrowserConcurrency: s.cfg.RuntimeDefaults.MaxBrowserConcurrency,
+		RestartPolicy:          s.cfg.RuntimeDefaults.RestartPolicy,
+		MaxSkillConcurrency:    s.cfg.RuntimeDefaults.MaxSkillConcurrency,
+		MaxBrowserConcurrency:  s.cfg.RuntimeDefaults.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: s.cfg.RuntimeDefaults.MaxLongTaskConcurrency,
 	}
 }
 
-func applyGlobalRequest(current driver.ResourceSpec, request resourceFieldsRequest) driver.ResourceSpec {
+func applyGlobalRequest(current driver.ResourceSpec, request podResourceRequest) driver.ResourceSpec {
 	next := current
 	applyStringPointer(&next.MemLimit, request.MemLimit)
 	applyStringPointer(&next.CPULimit, request.CPULimit)
 	applyStringPointer(&next.RestartPolicy, request.RestartPolicy)
+	applyIntPointer(&next.MaxSkillConcurrency, request.MaxSkillConcurrency)
+	applyIntPointer(&next.MaxBrowserConcurrency, request.MaxBrowserConcurrency)
+	applyIntPointer(&next.MaxLongTaskConcurrency, request.MaxLongTaskConcurrency)
 	return next
 }
 
@@ -270,12 +285,14 @@ func applyPodResourceRequest(pod repo.Pod, request podResourceRequest) repo.PodR
 	next := repo.PodResourceUpdate{
 		MemLimit: pod.MemLimit, CPULimit: pod.CPULimit, RestartPolicy: pod.RestartPolicy,
 		MaxSkillConcurrency: pod.MaxSkillConcurrency, MaxBrowserConcurrency: pod.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: pod.MaxLongTaskConcurrency,
 	}
 	applyStringPointer(&next.MemLimit, request.MemLimit)
 	applyStringPointer(&next.CPULimit, request.CPULimit)
 	applyStringPointer(&next.RestartPolicy, request.RestartPolicy)
 	applyIntPointer(&next.MaxSkillConcurrency, request.MaxSkillConcurrency)
 	applyIntPointer(&next.MaxBrowserConcurrency, request.MaxBrowserConcurrency)
+	applyIntPointer(&next.MaxLongTaskConcurrency, request.MaxLongTaskConcurrency)
 	return next
 }
 
@@ -283,7 +300,8 @@ func resourceChanges(pod repo.Pod, next repo.PodResourceUpdate) (bool, bool) {
 	resourceChanged := pod.MemLimit != next.MemLimit || pod.CPULimit != next.CPULimit ||
 		pod.RestartPolicy != next.RestartPolicy
 	concurrencyChanged := pod.MaxSkillConcurrency != next.MaxSkillConcurrency ||
-		pod.MaxBrowserConcurrency != next.MaxBrowserConcurrency
+		pod.MaxBrowserConcurrency != next.MaxBrowserConcurrency ||
+		pod.MaxLongTaskConcurrency != next.MaxLongTaskConcurrency
 	return resourceChanged, concurrencyChanged
 }
 
@@ -303,14 +321,16 @@ func podResourceSpec(pod repo.Pod) driver.ResourceSpec {
 	return driver.ResourceSpec{
 		MemLimit: pod.MemLimit, CPULimit: pod.CPULimit, RestartPolicy: pod.RestartPolicy,
 		MaxSkillConcurrency: pod.MaxSkillConcurrency, MaxBrowserConcurrency: pod.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: pod.MaxLongTaskConcurrency,
 	}
 }
 
 func toResourceValues(spec driver.ResourceSpec) resourceValues {
 	return resourceValues{
 		MemLimit: spec.MemLimit, CPULimit: spec.CPULimit, RestartPolicy: spec.RestartPolicy,
-		MaxSkillConcurrency:   spec.MaxSkillConcurrency,
-		MaxBrowserConcurrency: spec.MaxBrowserConcurrency,
+		MaxSkillConcurrency:    spec.MaxSkillConcurrency,
+		MaxBrowserConcurrency:  spec.MaxBrowserConcurrency,
+		MaxLongTaskConcurrency: spec.MaxLongTaskConcurrency,
 	}
 }
 
