@@ -19,14 +19,14 @@ var (
 
 const podColumns = `pod_id, display_name, image_tag, state, max_users, channels,
 	channel_configs_enc, mem_limit, cpu_limit, restart_policy,
-	max_skill_concurrency, max_browser_concurrency, service_token_enc,
+	max_skill_concurrency, max_browser_concurrency, max_long_task_concurrency, service_token_enc,
 	service_token_fingerprint, service_token_rotated_at, config_generation,
 	applied_generation, skills_pending, last_config_hash, last_apply_status, last_apply_error,
 	last_applied_at, created_at, updated_at`
 
 const podColumnsWithAlias = `p.pod_id, p.display_name, p.image_tag, p.state, p.max_users, p.channels,
 	p.channel_configs_enc, p.mem_limit, p.cpu_limit, p.restart_policy,
-	p.max_skill_concurrency, p.max_browser_concurrency, p.service_token_enc,
+	p.max_skill_concurrency, p.max_browser_concurrency, p.max_long_task_concurrency, p.service_token_enc,
 	p.service_token_fingerprint, p.service_token_rotated_at, p.config_generation,
 	p.applied_generation, p.skills_pending, p.last_config_hash, p.last_apply_status, p.last_apply_error,
 	p.last_applied_at, p.created_at, p.updated_at`
@@ -48,25 +48,27 @@ type PodSummary struct {
 
 // PodUpdate contains fields mutable through the normal Pod update path.
 type PodUpdate struct {
-	DisplayName           string
-	ImageTag              string
-	MaxUsers              int
-	Channels              string
-	ChannelConfigsEnc     string
-	MemLimit              string
-	CPULimit              string
-	RestartPolicy         string
-	MaxSkillConcurrency   int
-	MaxBrowserConcurrency int
+	DisplayName            string
+	ImageTag               string
+	MaxUsers               int
+	Channels               string
+	ChannelConfigsEnc      string
+	MemLimit               string
+	CPULimit               string
+	RestartPolicy          string
+	MaxSkillConcurrency    int
+	MaxBrowserConcurrency  int
+	MaxLongTaskConcurrency int
 }
 
 // PodResourceUpdate contains only resource and runtime-concurrency overrides.
 type PodResourceUpdate struct {
-	MemLimit              string
-	CPULimit              string
-	RestartPolicy         string
-	MaxSkillConcurrency   int
-	MaxBrowserConcurrency int
+	MemLimit               string
+	CPULimit               string
+	RestartPolicy          string
+	MaxSkillConcurrency    int
+	MaxBrowserConcurrency  int
+	MaxLongTaskConcurrency int
 }
 
 // CreatePod inserts a Pod with an already encrypted service token.
@@ -76,14 +78,14 @@ func (s *Store) CreatePod(p Pod) error {
 	_, err := s.db.Exec(`INSERT INTO pods (
 		pod_id, display_name, image_tag, state, max_users, channels,
 		channel_configs_enc, mem_limit, cpu_limit, restart_policy,
-		max_skill_concurrency, max_browser_concurrency, service_token_enc,
+		max_skill_concurrency, max_browser_concurrency, max_long_task_concurrency, service_token_enc,
 		service_token_fingerprint, service_token_rotated_at, config_generation,
 		applied_generation, skills_pending, last_config_hash, last_apply_status, last_apply_error,
 		last_applied_at, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.PodID, p.DisplayName, p.ImageTag, p.State, p.MaxUsers, p.Channels,
 		p.ChannelConfigsEnc, p.MemLimit, p.CPULimit, p.RestartPolicy,
-		p.MaxSkillConcurrency, p.MaxBrowserConcurrency, p.ServiceTokenEnc,
+		p.MaxSkillConcurrency, p.MaxBrowserConcurrency, p.MaxLongTaskConcurrency, p.ServiceTokenEnc,
 		p.ServiceTokenFingerprint, formatTime(p.ServiceTokenRotatedAt), p.ConfigGeneration,
 		p.AppliedGeneration, boolToInt(p.SkillsPending), p.LastConfigHash, p.LastApplyStatus, p.LastApplyError,
 		formatOptionalTime(p.LastAppliedAt), formatTime(p.CreatedAt), formatTime(p.UpdatedAt),
@@ -166,11 +168,13 @@ func (s *Store) UpdatePod(podID string, update PodUpdate) error {
 		display_name = ?, image_tag = ?, max_users = ?, channels = ?,
 		channel_configs_enc = ?, mem_limit = ?, cpu_limit = ?,
 		restart_policy = ?, max_skill_concurrency = ?, max_browser_concurrency = ?,
+		max_long_task_concurrency = ?,
 		config_generation = config_generation + 1, last_apply_status = 'pending',
 		last_apply_error = '', updated_at = ? WHERE pod_id = ?`,
 		update.DisplayName, update.ImageTag, update.MaxUsers, update.Channels,
 		update.ChannelConfigsEnc, update.MemLimit, update.CPULimit,
 		update.RestartPolicy, update.MaxSkillConcurrency, update.MaxBrowserConcurrency,
+		update.MaxLongTaskConcurrency,
 		now, podID,
 	)
 	if err := affectedOrNotFound(res, err, "update Pod"); err != nil {
@@ -185,11 +189,12 @@ func (s *Store) UpdatePod(podID string, update PodUpdate) error {
 // UpdatePodResources updates only resource fields and returns the new generation.
 func (s *Store) UpdatePodResources(podID string, update PodResourceUpdate) (int64, error) {
 	row := s.db.QueryRow(`UPDATE pods SET mem_limit = ?, cpu_limit = ?, restart_policy = ?,
-		max_skill_concurrency = ?, max_browser_concurrency = ?,
+		max_skill_concurrency = ?, max_browser_concurrency = ?, max_long_task_concurrency = ?,
 		config_generation = config_generation + 1, last_apply_status = 'pending',
 		last_apply_error = '', updated_at = ? WHERE pod_id = ?
 		RETURNING config_generation`, update.MemLimit, update.CPULimit,
 		update.RestartPolicy, update.MaxSkillConcurrency, update.MaxBrowserConcurrency,
+		update.MaxLongTaskConcurrency,
 		formatTime(time.Now().UTC()), podID)
 	var generation int64
 	if err := row.Scan(&generation); errors.Is(err, sql.ErrNoRows) {
@@ -224,15 +229,21 @@ func (s *Store) MarkAllPodsConfigPending() ([]string, error) {
 
 // MarkPodsInheritingResourcesPending updates all Pods affected by global changes.
 func (s *Store) MarkPodsInheritingResourcesPending(
-	memChanged, cpuChanged, restartChanged bool,
+	memChanged, cpuChanged, restartChanged, skillChanged, browserChanged, longTaskChanged bool,
 ) ([]string, error) {
-	if !memChanged && !cpuChanged && !restartChanged {
+	if !memChanged && !cpuChanged && !restartChanged && !skillChanged && !browserChanged && !longTaskChanged {
 		return []string{}, nil
 	}
 	rows, err := s.db.Query(`UPDATE pods SET config_generation = config_generation + 1,
 		last_apply_status = 'pending', last_apply_error = '', updated_at = ?
-		WHERE (? AND mem_limit = '') OR (? AND cpu_limit = '') OR (? AND restart_policy = '')
-		RETURNING pod_id`, formatTime(time.Now().UTC()), memChanged, cpuChanged, restartChanged)
+		WHERE (? AND mem_limit = '')
+			OR (? AND cpu_limit = '')
+			OR (? AND restart_policy = '')
+			OR (? AND max_skill_concurrency = 0)
+			OR (? AND max_browser_concurrency = 0)
+			OR (? AND max_long_task_concurrency = 0)
+		RETURNING pod_id`, formatTime(time.Now().UTC()), memChanged, cpuChanged, restartChanged,
+		skillChanged, browserChanged, longTaskChanged)
 	if err != nil {
 		return nil, fmt.Errorf("mark inheriting Pods pending: %w", err)
 	}
@@ -449,7 +460,8 @@ func scanPodValues(sc scanner, trailing ...any) (Pod, error) {
 		&pod.PodID, &pod.DisplayName, &pod.ImageTag, &pod.State, &pod.MaxUsers,
 		&pod.Channels, &pod.ChannelConfigsEnc, &pod.MemLimit, &pod.CPULimit,
 		&pod.RestartPolicy, &pod.MaxSkillConcurrency,
-		&pod.MaxBrowserConcurrency, &pod.ServiceTokenEnc, &pod.ServiceTokenFingerprint,
+		&pod.MaxBrowserConcurrency, &pod.MaxLongTaskConcurrency,
+		&pod.ServiceTokenEnc, &pod.ServiceTokenFingerprint,
 		&rotatedAt, &pod.ConfigGeneration, &pod.AppliedGeneration, &skillsPending,
 		&pod.LastConfigHash, &pod.LastApplyStatus, &pod.LastApplyError,
 		&lastAppliedAt, &createdAt, &updatedAt,

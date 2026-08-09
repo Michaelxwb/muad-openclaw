@@ -24,6 +24,7 @@ type Snapshot struct {
 	EffectiveRestartPolicy   string
 	MaxSkillConcurrency      int
 	MaxBrowserConcurrency    int
+	MaxLongTaskConcurrency   int
 	SkillActive              int
 	SkillQueued              int
 	BrowserActive            int

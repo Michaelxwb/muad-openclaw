@@ -55,12 +55,13 @@ func TestPod_CRUDAndUniqueness(t *testing.T) {
 		Channels: `["wecom"]`, ChannelConfigsEnc: "channels-enc",
 		MemLimit: "4g", CPULimit: "2",
 		RestartPolicy: "unless-stopped", MaxSkillConcurrency: 2,
-		MaxBrowserConcurrency: 3,
+		MaxBrowserConcurrency: 3, MaxLongTaskConcurrency: 4,
 	}); err != nil {
 		t.Fatalf("UpdatePod: %v", err)
 	}
 	got, _ = s.GetPod("pod-a")
-	if got.DisplayName != "Pod A Updated" || got.ConfigGeneration != 2 || got.LastApplyStatus != repo.ApplyStatusPending {
+	if got.DisplayName != "Pod A Updated" || got.MaxLongTaskConcurrency != 4 ||
+		got.ConfigGeneration != 2 || got.LastApplyStatus != repo.ApplyStatusPending {
 		t.Errorf("unexpected updated Pod: %+v", got)
 	}
 
@@ -80,6 +81,24 @@ func TestPod_CRUDAndUniqueness(t *testing.T) {
 	}
 	if _, err := s.GetPod("pod-a"); err != repo.ErrNotFound {
 		t.Errorf("after delete = %v, want ErrNotFound", err)
+	}
+}
+
+func TestResourceGlobal_SetGetConcurrency(t *testing.T) {
+	s := newStore(t)
+	if err := s.SetResourceGlobal(repo.ResourceConfig{
+		MemLimit: "3g", CPULimit: "2", RestartPolicy: "always",
+		MaxSkillConcurrency: 4, MaxBrowserConcurrency: 3, MaxLongTaskConcurrency: 2,
+	}); err != nil {
+		t.Fatalf("SetResourceGlobal: %v", err)
+	}
+	got, err := s.GetResourceGlobal()
+	if err != nil {
+		t.Fatalf("GetResourceGlobal: %v", err)
+	}
+	if got.MemLimit != "3g" || got.MaxSkillConcurrency != 4 ||
+		got.MaxBrowserConcurrency != 3 || got.MaxLongTaskConcurrency != 2 {
+		t.Fatalf("ResourceGlobal = %+v", got)
 	}
 }
 

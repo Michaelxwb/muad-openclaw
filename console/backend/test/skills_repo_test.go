@@ -31,7 +31,7 @@ func TestSkillAsset_CRUDListAndConstraints(t *testing.T) {
 
 	private := createSkillAsset(t, store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID,
+		HumanUserID:   alice.HumanUserID,
 		SourcePath:    "/home/node/.openclaw/workspace-alice/skills/xdr-query",
 		ManifestHash:  "sha256:private",
 		PlatformsJSON: `["xdr"]`,
@@ -42,7 +42,7 @@ func TestSkillAsset_CRUDListAndConstraints(t *testing.T) {
 	if _, err := store.CreateSkillAsset(repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate,
 		HumanUserID: alice.HumanUserID,
-		SourcePath: "/duplicate", ManifestHash: "sha256:duplicate",
+		SourcePath:  "/duplicate", ManifestHash: "sha256:duplicate",
 		PlatformsJSON: `["xdr"]`,
 	}); !errors.Is(err, repo.ErrSkillExists) {
 		t.Fatalf("private duplicate = %v, want ErrSkillExists", err)
@@ -262,7 +262,7 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 	})
 	createSkillAsset(t, store, repo.SkillAsset{
 		Name: "session-manager", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID,
+		HumanUserID:   alice.HumanUserID,
 		SourcePath:    "/home/node/.openclaw/workspace-alice/skills/session-manager",
 		ManifestHash:  "sha256:private-system",
 		PlatformsJSON: `["xdr"]`,
@@ -270,11 +270,11 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 	publicXDR := createSkillAsset(t, store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePublic,
 		SourcePath: "/opt/openclaw-skills/xdr-query", ManifestHash: "sha256:public",
-		PlatformsJSON: `["xdr"]`, Version: "1.0.0",
+		PlatformsJSON: `["xdr"]`, Version: "1.0.0", ManifestJSON: `{"longTask":true}`,
 	})
 	privateXDR := createSkillAsset(t, store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID,
+		HumanUserID:  alice.HumanUserID,
 		SourcePath:   "/home/node/.openclaw/workspace-alice/skills/xdr-query",
 		ManifestHash: "sha256:private", Version: "2.0.0", PlatformsJSON: `["xdr"]`,
 	})
@@ -301,7 +301,7 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 	if got := byName["xdr-query"]; got.Status != repo.EffectiveSkillStatusConflict ||
 		!got.Conflict || got.EffectiveSource != repo.SkillScopePublic ||
 		got.PublicSkillID != publicXDR.SkillID || got.PrivateSkillID != privateXDR.SkillID ||
-		got.LastExecution == nil {
+		got.LastExecution == nil || !got.LongTask {
 		t.Fatalf("public/private conflict effective Skill = %+v", got)
 	}
 

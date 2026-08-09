@@ -47,7 +47,10 @@ func TestDockerIntegration_RetainedStateAndTokenLifecycle(t *testing.T) {
 func integrationPodSpec(podID, image, token string) PodSpec {
 	return PodSpec{
 		PodID: podID, ImageTag: image, ServiceToken: integrationSecret(token),
-		Resource: ResourceSpec{RestartPolicy: "no"},
+		Resource: ResourceSpec{
+			MemLimit: "1g", CPULimit: "1", RestartPolicy: "no",
+			MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1, MaxLongTaskConcurrency: 2,
+		},
 	}
 }
 

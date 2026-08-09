@@ -13,10 +13,10 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.equal(registration.command.acceptsArgs, true);
   assert.equal(registration.command.requireAuth, false);
   assert.deepEqual(registration.methods.map((entry) => entry.method), [
-    "muad.runtime.health", "muad.runtime.verify-routes",
+    "muad.runtime.health", "muad.runtime.verify-routes", "muad.runtime.long-tasks",
   ]);
   assert.deepEqual(registration.methods.map((entry) => entry.options), [
-    { scope: "operator.read" }, { scope: "operator.read" },
+    { scope: "operator.read" }, { scope: "operator.read" }, { scope: "operator.read" },
   ]);
   assert.deepEqual(registration.reloadPolicy, {
     noopPrefixes: ["plugins.entries.muad-runtime-guard.config.generation"],
@@ -26,12 +26,18 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   ]);
   assert.deepEqual(registration.hooks.map((hook) => hook.name), [
     "before_agent_reply", "before_dispatch", "before_tool_call", "after_tool_call",
-    "before_agent_run", "agent_end",
+    "before_agent_run", "agent_end", "before_dispatch", "before_agent_run",
+    "before_tool_call", "before_agent_finalize", "agent_end",
   ]);
   assert.deepEqual(registration.hooks[0].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[1].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[4].options, { priority: -1000, timeoutMs: 35_000 });
   assert.deepEqual(registration.hooks[5].options, { priority: 1000, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[6].options, { priority: -1100, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[7].options, { priority: -900, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[8].options, { priority: -900, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[9].options, { priority: -900, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[10].options, { priority: 900, timeoutMs: 1_000 });
   assert.equal(registration.hooks[0].handler({}, { agentId: "main" }).handled, true);
   assert.equal(registration.hooks[0].handler({}, { agentId: "alice" }), undefined);
   assert.equal(registration.hooks[1].handler({}, { agentId: "alice" }), undefined);
@@ -45,6 +51,7 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     sessionManager: { loaded: true, version: 1 },
     browser: { active: 0, queued: 0, limit: 2 },
     skill: { active: 0, queued: 0, limit: 4 },
+    longTask: { active: 0, queued: 0, limit: 2 },
   });
   assert.equal(JSON.stringify(health).includes("pod-service-token"), false);
 });
@@ -86,6 +93,11 @@ test("health fails closed for incomplete mappings, quarantine reuse, or missing 
   globalThis[Symbol.for("muad.skill.lease")] = {
     snapshot: () => ({ active: 0, queued: 0, limit: 4 }),
   };
+  delete globalThis[Symbol.for("muad.longtask.manager")];
+  assert.equal(runtimeHealth(parseGuardConfig(validConfig())).ok, false);
+  globalThis[Symbol.for("muad.longtask.manager")] = {
+    snapshot: () => ({ active: 0, queued: 0, limit: 2 }),
+  };
   delete globalThis[Symbol.for("muad.session-manager.health")];
   assert.equal(runtimeHealth(parseGuardConfig(validConfig())).ok, false);
 });
@@ -120,6 +132,8 @@ function registerPlugin(t, config) {
   t.after(() => {
     globalThis[Symbol.for("muad.browser.lease")]?.close?.();
     globalThis[Symbol.for("muad.skill.lease")]?.close?.();
+    globalThis[Symbol.for("muad.longtask.manager")]?.close?.();
+    delete globalThis[Symbol.for("muad.longtask.manager")];
   });
   return registration;
 }
@@ -167,6 +181,10 @@ function validConfig() {
     sessionAgentIds: ["alice", "bob"],
     maxBrowserConcurrency: 2,
     maxSkillConcurrency: 4,
+    maxLongTaskConcurrency: 2,
+    longTaskSkillGrants: [
+      { agentId: "alice", name: "xdr-query", rootPath: "/opt/openclaw-skills/xdr-query" },
+    ],
     consoleInternalURL: "http://console.internal:8080/internal/v1",
     serviceTokenFile: "/run/secrets/muad/pod-service-token",
   };
@@ -176,12 +194,15 @@ function installHealthMarkers(t) {
   const sessionSymbol = Symbol.for("muad.session-manager.health");
   const browserSymbol = Symbol.for("muad.browser.lease");
   const skillSymbol = Symbol.for("muad.skill.lease");
+  const longTaskSymbol = Symbol.for("muad.longtask.manager");
   globalThis[sessionSymbol] = { loaded: true, version: 1 };
   globalThis[browserSymbol] = { snapshot: () => ({ active: 0, queued: 0, limit: 2 }) };
   globalThis[skillSymbol] = { snapshot: () => ({ active: 0, queued: 0, limit: 4 }) };
+  globalThis[longTaskSymbol] = { snapshot: () => ({ active: 0, queued: 0, limit: 2 }) };
   t.after(() => {
     delete globalThis[sessionSymbol];
     delete globalThis[browserSymbol];
     delete globalThis[skillSymbol];
+    delete globalThis[longTaskSymbol];
   });
 }

@@ -324,19 +324,41 @@ async function readSkillMetadata(skillDir, expectedName) {
   const progressSupported = false;
   const browserRequired = rawManifest?.browserRequired === true ||
     (Array.isArray(rawManifest?.capabilities) && rawManifest.capabilities.includes("browser"));
+  const longTask = rawManifest?.longTask === true;
   const scriptFiles = rawManifest ? [] : await scanTraditionalScripts(skillDir);
   const entryType = rawManifest
     ? "managed"
     : scriptFiles.length > 0 ? "traditional-script" : "traditional-prompt";
+  await ensureLongTaskSubmitStub(skillDir, name, longTask);
   const manifestJSON = JSON.stringify({
     name, version, runtime: rawManifest?.runtime ?? "", mode: rawManifest?.mode ?? "",
     visibility: rawManifest?.visibility ?? "private", platforms, progressSupported,
-    browserRequired, entryType, ...(rawManifest ? {} : { scriptFiles }),
+    browserRequired, longTask, entryType, ...(rawManifest ? {} : { scriptFiles }),
   });
   return {
     name, version, platforms, progressSupported, browserRequired, entryType,
-    manifestHash: await hashSkillDirectory(skillDir), manifestJson: manifestJSON,
+    longTask, manifestHash: await hashSkillDirectory(skillDir), manifestJson: manifestJSON,
   };
+}
+
+async function ensureLongTaskSubmitStub(skillDir, name, longTask) {
+  if (!longTask) return;
+  await fs.writeFile(path.join(skillDir, "_longtask_submit.md"), longTaskSubmitStub(name), {
+    mode: 0o600,
+  });
+}
+
+function longTaskSubmitStub(name) {
+  return `# Long Task Submit
+
+This Skill runs as a background task. Do not execute the real task in the current conversation.
+
+Reply with exactly one first line in this format:
+
+MUAD_TASK|${name}|<short task objective copied from the user's request>
+
+Keep any following text brief; the runtime will replace the reply after enqueueing.
+`;
 }
 
 async function scanTraditionalScripts(skillDir) {

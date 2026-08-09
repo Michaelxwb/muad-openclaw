@@ -1,0 +1,125 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.queryInput {
+  width: min(280px, 100%);
+}
+
+.mono {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  font-size: 12px;
+}
+
+.taskCell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.primary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.subtle {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+}
+
+.poolList {
+  display: grid;
+  gap: 12px;
+}
+
+.poolPanel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  background: var(--semi-color-bg-0);
+}
+
+.poolHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.poolIdentity {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.poolTitle {
+  color: var(--semi-color-text-0);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.poolMeta {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.poolStats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.poolStat {
+  display: grid;
+  min-width: 72px;
+  padding: 6px 8px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 6px;
+  background: var(--semi-color-fill-0);
+}
+
+.statValue {
+  color: var(--semi-color-text-0);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.statLabel {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.queued {
+  border-color: var(--semi-color-warning-light-default);
+}
+
+.running {
+  border-color: var(--semi-color-info-light-default);
+}
+
+.limit {
+  border-color: var(--semi-color-border);
+}
+
+@media (max-width: 720px) {
+  .poolHeader {
+    display: grid;
+  }
+
+  .poolStats {
+    justify-content: flex-start;
+  }
+}

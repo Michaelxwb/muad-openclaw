@@ -60,13 +60,14 @@ type yamlFile struct {
 }
 
 type runtimeDefaultsYAML struct {
-	MemLimit              *string `yaml:"memLimit"`
-	CPULimit              *string `yaml:"cpuLimit"`
-	RestartPolicy         *string `yaml:"restartPolicy"`
-	MaxSkillConcurrency   *int    `yaml:"maxSkillConcurrency"`
-	MaxBrowserConcurrency *int    `yaml:"maxBrowserConcurrency"`
-	BrowserCDPPortStart   *int    `yaml:"browserCDPPortStart"`
-	BrowserCDPPortEnd     *int    `yaml:"browserCDPPortEnd"`
+	MemLimit               *string `yaml:"memLimit"`
+	CPULimit               *string `yaml:"cpuLimit"`
+	RestartPolicy          *string `yaml:"restartPolicy"`
+	MaxSkillConcurrency    *int    `yaml:"maxSkillConcurrency"`
+	MaxBrowserConcurrency  *int    `yaml:"maxBrowserConcurrency"`
+	MaxLongTaskConcurrency *int    `yaml:"maxLongTaskConcurrency"`
+	BrowserCDPPortStart    *int    `yaml:"browserCDPPortStart"`
+	BrowserCDPPortEnd      *int    `yaml:"browserCDPPortEnd"`
 }
 
 type securityYAML struct {
@@ -113,11 +114,12 @@ type k8sYAML struct {
 }
 
 type resourceDefaultsYAML struct {
-	MemLimit              *string `yaml:"memLimit"`
-	CPULimit              *string `yaml:"cpuLimit"`
-	RestartPolicy         *string `yaml:"restartPolicy"`
-	MaxSkillConcurrency   *int    `yaml:"maxSkillConcurrency"`
-	MaxBrowserConcurrency *int    `yaml:"maxBrowserConcurrency"`
+	MemLimit               *string `yaml:"memLimit"`
+	CPULimit               *string `yaml:"cpuLimit"`
+	RestartPolicy          *string `yaml:"restartPolicy"`
+	MaxSkillConcurrency    *int    `yaml:"maxSkillConcurrency"`
+	MaxBrowserConcurrency  *int    `yaml:"maxBrowserConcurrency"`
+	MaxLongTaskConcurrency *int    `yaml:"maxLongTaskConcurrency"`
 }
 
 type browserYAML struct {
@@ -128,13 +130,14 @@ type browserYAML struct {
 // RuntimeDefaults contains non-secret limits inherited by Pods that do not
 // define an explicit override.
 type RuntimeDefaults struct {
-	MemLimit              string
-	CPULimit              string
-	RestartPolicy         string
-	MaxSkillConcurrency   int
-	MaxBrowserConcurrency int
-	BrowserCDPPortStart   int
-	BrowserCDPPortEnd     int
+	MemLimit               string
+	CPULimit               string
+	RestartPolicy          string
+	MaxSkillConcurrency    int
+	MaxBrowserConcurrency  int
+	MaxLongTaskConcurrency int
+	BrowserCDPPortStart    int
+	BrowserCDPPortEnd      int
 }
 
 // Config holds the validated console configuration.
@@ -203,13 +206,14 @@ func defaults() *Config {
 		AdminUser:          "admin",
 		CollectIntervalSec: 30,
 		RuntimeDefaults: RuntimeDefaults{
-			MemLimit:              "3g",
-			CPULimit:              "2",
-			RestartPolicy:         "unless-stopped",
-			MaxSkillConcurrency:   2,
-			MaxBrowserConcurrency: 2,
-			BrowserCDPPortStart:   18802,
-			BrowserCDPPortEnd:     65535,
+			MemLimit:               "3g",
+			CPULimit:               "2",
+			RestartPolicy:          "unless-stopped",
+			MaxSkillConcurrency:    2,
+			MaxBrowserConcurrency:  2,
+			MaxLongTaskConcurrency: 2,
+			BrowserCDPPortStart:    18802,
+			BrowserCDPPortEnd:      65535,
 		},
 		SkillMaxUploadBundleSize: "5m",
 		RuntimeTimezone:          "Asia/Shanghai",
@@ -368,6 +372,7 @@ func applyRuntimeDefaultsYAML(dst *RuntimeDefaults, src *runtimeDefaultsYAML) {
 	applyString(&dst.RestartPolicy, src.RestartPolicy)
 	applyInt(&dst.MaxSkillConcurrency, src.MaxSkillConcurrency)
 	applyInt(&dst.MaxBrowserConcurrency, src.MaxBrowserConcurrency)
+	applyInt(&dst.MaxLongTaskConcurrency, src.MaxLongTaskConcurrency)
 	applyInt(&dst.BrowserCDPPortStart, src.BrowserCDPPortStart)
 	applyInt(&dst.BrowserCDPPortEnd, src.BrowserCDPPortEnd)
 }
@@ -381,6 +386,7 @@ func applyResourceDefaultsYAML(dst *RuntimeDefaults, src *resourceDefaultsYAML) 
 	applyString(&dst.RestartPolicy, src.RestartPolicy)
 	applyInt(&dst.MaxSkillConcurrency, src.MaxSkillConcurrency)
 	applyInt(&dst.MaxBrowserConcurrency, src.MaxBrowserConcurrency)
+	applyInt(&dst.MaxLongTaskConcurrency, src.MaxLongTaskConcurrency)
 }
 
 func applyBrowserYAML(dst *RuntimeDefaults, src *browserYAML) {
@@ -482,6 +488,7 @@ func (c *Config) overrideFromEnv() error {
 	}{
 		{&c.RuntimeDefaults.MaxSkillConcurrency, "CONSOLE_RUNTIME_MAX_SKILL_CONCURRENCY"},
 		{&c.RuntimeDefaults.MaxBrowserConcurrency, "CONSOLE_RUNTIME_MAX_BROWSER_CONCURRENCY"},
+		{&c.RuntimeDefaults.MaxLongTaskConcurrency, "CONSOLE_RUNTIME_MAX_LONG_TASK_CONCURRENCY"},
 		{&c.RuntimeDefaults.BrowserCDPPortStart, "CONSOLE_RUNTIME_BROWSER_CDP_PORT_START"},
 		{&c.RuntimeDefaults.BrowserCDPPortEnd, "CONSOLE_RUNTIME_BROWSER_CDP_PORT_END"},
 	} {
@@ -583,6 +590,9 @@ func (c RuntimeDefaults) validate() error {
 	}
 	if c.MaxBrowserConcurrency <= 0 {
 		return fmt.Errorf("resources.maxBrowserConcurrency must be greater than zero")
+	}
+	if c.MaxLongTaskConcurrency <= 0 {
+		return fmt.Errorf("resources.maxLongTaskConcurrency must be greater than zero")
 	}
 	if c.BrowserCDPPortStart < 1024 || c.BrowserCDPPortStart > 65535 {
 		return fmt.Errorf("browser.cdpPortStart must be between 1024 and 65535")

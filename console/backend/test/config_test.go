@@ -72,6 +72,9 @@ func TestLoad_DefaultsAndValid(t *testing.T) {
 	if c.RuntimeDefaults.MaxBrowserConcurrency != 2 {
 		t.Errorf("MaxBrowserConcurrency = %d, want 2", c.RuntimeDefaults.MaxBrowserConcurrency)
 	}
+	if c.RuntimeDefaults.MaxLongTaskConcurrency != 2 {
+		t.Errorf("MaxLongTaskConcurrency = %d, want 2", c.RuntimeDefaults.MaxLongTaskConcurrency)
+	}
 	if c.RuntimeDefaults.BrowserCDPPortStart != 18802 || c.RuntimeDefaults.BrowserCDPPortEnd != 65535 {
 		t.Errorf("Browser CDP range = %d-%d, want 18802-65535", c.RuntimeDefaults.BrowserCDPPortStart, c.RuntimeDefaults.BrowserCDPPortEnd)
 	}
@@ -106,6 +109,7 @@ resources:
   restartPolicy: always
   maxSkillConcurrency: 2
   maxBrowserConcurrency: 3
+  maxLongTaskConcurrency: 4
 browser:
   cdpPortStart: 19000
   cdpPortEnd: 19100
@@ -135,8 +139,9 @@ maxSkillUploadBundleSize: 10m
 	if c.CollectIntervalSec != 60 {
 		t.Errorf("CollectIntervalSec = %d, want 60 from yaml", c.CollectIntervalSec)
 	}
-	if c.RuntimeDefaults.MaxSkillConcurrency != 2 || c.RuntimeDefaults.MaxBrowserConcurrency != 3 {
-		t.Errorf("runtime concurrency = %d/%d, want 2/3", c.RuntimeDefaults.MaxSkillConcurrency, c.RuntimeDefaults.MaxBrowserConcurrency)
+	if c.RuntimeDefaults.MaxSkillConcurrency != 2 || c.RuntimeDefaults.MaxBrowserConcurrency != 3 ||
+		c.RuntimeDefaults.MaxLongTaskConcurrency != 4 {
+		t.Errorf("runtime concurrency = %+v, want 2/3/4", c.RuntimeDefaults)
 	}
 	if c.RuntimeDefaults.MemLimit != "4g" || c.RuntimeDefaults.CPULimit != "3" ||
 		c.RuntimeDefaults.RestartPolicy != "always" {
@@ -324,6 +329,7 @@ runtimeDefaults:
   restartPolicy: always
   maxSkillConcurrency: 6
   maxBrowserConcurrency: 7
+  maxLongTaskConcurrency: 8
   browserCDPPortStart: 20000
   browserCDPPortEnd: 20100
 `), 0o644); err != nil {
@@ -339,7 +345,7 @@ runtimeDefaults:
 		t.Fatalf("legacy fields not loaded: %+v", c)
 	}
 	if c.RuntimeDefaults.MemLimit != "5g" || c.RuntimeDefaults.MaxBrowserConcurrency != 7 ||
-		c.RuntimeDefaults.BrowserCDPPortEnd != 20100 {
+		c.RuntimeDefaults.MaxLongTaskConcurrency != 8 || c.RuntimeDefaults.BrowserCDPPortEnd != 20100 {
 		t.Fatalf("legacy runtimeDefaults not loaded: %+v", c.RuntimeDefaults)
 	}
 }
@@ -383,6 +389,7 @@ func TestLoad_RuntimeDefaultsEnvOverridesYAML(t *testing.T) {
 	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
 	t.Setenv("CONSOLE_RUNTIME_MAX_SKILL_CONCURRENCY", "4")
 	t.Setenv("CONSOLE_RUNTIME_MAX_BROWSER_CONCURRENCY", "5")
+	t.Setenv("CONSOLE_RUNTIME_MAX_LONG_TASK_CONCURRENCY", "6")
 	t.Setenv("CONSOLE_RUNTIME_BROWSER_CDP_PORT_START", "20000")
 	t.Setenv("CONSOLE_RUNTIME_BROWSER_CDP_PORT_END", "20100")
 	t.Setenv("CONSOLE_RESOURCE_MEM_LIMIT", "6g")
@@ -397,6 +404,7 @@ resources:
   restartPolicy: unless-stopped
   maxSkillConcurrency: 2
   maxBrowserConcurrency: 3
+  maxLongTaskConcurrency: 4
 browser:
   cdpPortStart: 19000
   cdpPortEnd: 19100
@@ -409,8 +417,9 @@ maxSkillUploadBundleSize: 5m
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if c.RuntimeDefaults.MaxSkillConcurrency != 4 || c.RuntimeDefaults.MaxBrowserConcurrency != 5 {
-		t.Errorf("runtime concurrency = %d/%d, want 4/5", c.RuntimeDefaults.MaxSkillConcurrency, c.RuntimeDefaults.MaxBrowserConcurrency)
+	if c.RuntimeDefaults.MaxSkillConcurrency != 4 || c.RuntimeDefaults.MaxBrowserConcurrency != 5 ||
+		c.RuntimeDefaults.MaxLongTaskConcurrency != 6 {
+		t.Errorf("runtime concurrency = %+v, want 4/5/6", c.RuntimeDefaults)
 	}
 	if c.RuntimeDefaults.MemLimit != "6g" || c.RuntimeDefaults.CPULimit != "6" ||
 		c.RuntimeDefaults.RestartPolicy != "always" {
@@ -433,6 +442,7 @@ func TestLoad_RejectsInvalidRuntimeDefaults(t *testing.T) {
 		{name: "non integer", key: "CONSOLE_RUNTIME_MAX_SKILL_CONCURRENCY", value: "many"},
 		{name: "zero skill concurrency", key: "CONSOLE_RUNTIME_MAX_SKILL_CONCURRENCY", value: "0"},
 		{name: "negative browser concurrency", key: "CONSOLE_RUNTIME_MAX_BROWSER_CONCURRENCY", value: "-1"},
+		{name: "zero long task concurrency", key: "CONSOLE_RUNTIME_MAX_LONG_TASK_CONCURRENCY", value: "0"},
 		{name: "port below minimum", key: "CONSOLE_RUNTIME_BROWSER_CDP_PORT_START", value: "1000"},
 		{name: "port above maximum", key: "CONSOLE_RUNTIME_BROWSER_CDP_PORT_END", value: "65536"},
 		{name: "invalid mem limit", key: "CONSOLE_RESOURCE_MEM_LIMIT", value: "2gb"},

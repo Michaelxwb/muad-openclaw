@@ -34,6 +34,7 @@ const resources = {
     restartPolicy: "unless-stopped",
     maxSkillConcurrency: 0,
     maxBrowserConcurrency: 0,
+    maxLongTaskConcurrency: 0,
   },
   runtimeDefaults: {
     memLimit: "2g",
@@ -41,6 +42,7 @@ const resources = {
     restartPolicy: "unless-stopped",
     maxSkillConcurrency: 2,
     maxBrowserConcurrency: 1,
+    maxLongTaskConcurrency: 2,
   },
   effective: {
     memLimit: "4g",
@@ -48,6 +50,7 @@ const resources = {
     restartPolicy: "unless-stopped",
     maxSkillConcurrency: 2,
     maxBrowserConcurrency: 1,
+    maxLongTaskConcurrency: 2,
   },
 };
 
@@ -75,8 +78,9 @@ describe("Settings", () => {
     render(<Settings />);
 
     expect(await screen.findByDisplayValue("4")).toBeInTheDocument();
-    expect(screen.getByText("Skill 并发默认值")).toBeInTheDocument();
-    expect(screen.getByText("Browser 并发默认值")).toBeInTheDocument();
+    // 标签同时出现在默认值表单与生效指标两块（各自含义不同，均为合法出现）
+    expect(screen.getAllByText("Skill 并发默认值").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Browser 并发默认值").length).toBeGreaterThan(0);
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
     expect(screen.getAllByText("1").length).toBeGreaterThan(0);
   });
@@ -92,6 +96,9 @@ describe("Settings", () => {
         memLimit: "6",
         cpuLimit: "2",
         restartPolicy: "unless-stopped",
+        maxSkillConcurrency: 2,
+        maxBrowserConcurrency: 1,
+        maxLongTaskConcurrency: 2,
       }),
     );
     expect(await screen.findByText(/1 个 Pod 等待应用/)).toBeInTheDocument();

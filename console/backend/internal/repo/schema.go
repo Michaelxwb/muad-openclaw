@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS pods (
 	restart_policy TEXT NOT NULL DEFAULT '',
 	max_skill_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_skill_concurrency >= 0),
 	max_browser_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_browser_concurrency >= 0),
+	max_long_task_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_long_task_concurrency >= 0),
 	service_token_enc TEXT NOT NULL,
 	service_token_fingerprint TEXT NOT NULL UNIQUE,
 	service_token_rotated_at TEXT NOT NULL,
@@ -203,6 +204,9 @@ CREATE TABLE IF NOT EXISTS resource_global (
 	mem_limit TEXT NOT NULL DEFAULT '',
 	cpu_limit TEXT NOT NULL DEFAULT '',
 	restart_policy TEXT NOT NULL DEFAULT '',
+	max_skill_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_skill_concurrency >= 0),
+	max_browser_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_browser_concurrency >= 0),
+	max_long_task_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_long_task_concurrency >= 0),
 	updated_at TEXT NOT NULL
 );
 
@@ -212,7 +216,32 @@ CREATE TABLE IF NOT EXISTS agent_guidance (
 	memory TEXT NOT NULL DEFAULT '',
 	main TEXT NOT NULL DEFAULT '',
 	updated_at TEXT NOT NULL
-);`
+);
+
+CREATE TABLE IF NOT EXISTS long_task_tasks (
+	task_id TEXT PRIMARY KEY,
+	pod_id TEXT NOT NULL,
+	human_user_id TEXT NOT NULL DEFAULT '',
+	pool_key TEXT NOT NULL,
+	agent_id TEXT NOT NULL,
+	peer_id TEXT NOT NULL,
+	skill_name TEXT NOT NULL,
+	skill_root TEXT NOT NULL DEFAULT '',
+	pool_queued INTEGER NOT NULL DEFAULT 0 CHECK (pool_queued >= 0),
+	pool_running INTEGER NOT NULL DEFAULT 0 CHECK (pool_running >= 0),
+	pool_limit INTEGER NOT NULL DEFAULT 0 CHECK (pool_limit >= 0),
+	status TEXT NOT NULL CHECK (status IN ('queued','running','succeeded','failed')),
+	submitted_at TEXT NOT NULL,
+	started_at TEXT NOT NULL DEFAULT '',
+	ended_at TEXT NOT NULL DEFAULT '',
+	terminal_reason TEXT NOT NULL DEFAULT '',
+	error_code TEXT NOT NULL DEFAULT '',
+	updated_at TEXT NOT NULL,
+	last_seen_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_long_task_pod_updated ON long_task_tasks(pod_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_long_task_user_status ON long_task_tasks(human_user_id, status, submitted_at);
+CREATE INDEX IF NOT EXISTS idx_long_task_pool_status ON long_task_tasks(pool_key, status, submitted_at);`
 
 func (s *Store) migrate() error {
 	legacy, err := tableExists(s.db, "users")
@@ -231,6 +260,12 @@ func (s *Store) migrate() error {
 	if err := s.migratePodSkillsPending(); err != nil {
 		return err
 	}
+	if err := s.migratePodLongTaskConcurrency(); err != nil {
+		return err
+	}
+	if err := s.migrateResourceGlobalConcurrency(); err != nil {
+		return err
+	}
 	if err := s.migrateSkillAssetEntryTypes(); err != nil {
 		return err
 	}
@@ -241,6 +276,9 @@ func (s *Store) migrate() error {
 		return err
 	}
 	if err := s.migrateSkillExecutionRecords(); err != nil {
+		return err
+	}
+	if err := s.migrateLongTaskTasks(); err != nil {
 		return err
 	}
 	return nil
@@ -274,6 +312,48 @@ func (s *Store) migratePodSkillsPending() error {
 		CHECK (skills_pending IN (0,1))`)
 	if err != nil {
 		return fmt.Errorf("add Pod skills_pending column: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) migratePodLongTaskConcurrency() error {
+	exists, err := columnExists(s.db, "pods", "max_long_task_concurrency")
+	if err != nil {
+		return fmt.Errorf("inspect Pod max_long_task_concurrency column: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	_, err = s.db.Exec(`ALTER TABLE pods ADD COLUMN max_long_task_concurrency INTEGER NOT NULL DEFAULT 0
+		CHECK (max_long_task_concurrency >= 0)`)
+	if err != nil {
+		return fmt.Errorf("add Pod max_long_task_concurrency column: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) migrateResourceGlobalConcurrency() error {
+	for _, column := range []string{
+		"max_skill_concurrency", "max_browser_concurrency", "max_long_task_concurrency",
+	} {
+		if err := s.addResourceGlobalConcurrencyColumn(column); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Store) addResourceGlobalConcurrencyColumn(column string) error {
+	exists, err := columnExists(s.db, "resource_global", column)
+	if err != nil {
+		return fmt.Errorf("inspect resource_global %s column: %w", column, err)
+	}
+	if exists {
+		return nil
+	}
+	if _, err := s.db.Exec(`ALTER TABLE resource_global ADD COLUMN ` + column + ` INTEGER NOT NULL DEFAULT 0
+		CHECK (` + column + ` >= 0)`); err != nil {
+		return fmt.Errorf("add resource_global %s column: %w", column, err)
 	}
 	return nil
 }

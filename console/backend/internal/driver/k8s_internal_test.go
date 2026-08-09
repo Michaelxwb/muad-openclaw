@@ -598,7 +598,7 @@ func testPodSpec(podID, image string) PodSpec {
 		PodID: podID, ImageTag: image, GatewayToken: "gateway-token",
 		Resource: ResourceSpec{
 			MemLimit: "2g", CPULimit: "1", RestartPolicy: "unless-stopped",
-			MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1,
+			MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1, MaxLongTaskConcurrency: 2,
 		},
 		ServiceToken: SecretFileSpec{
 			Name: podID + "-service-token", ContainerPath: PodServiceTokenPath,

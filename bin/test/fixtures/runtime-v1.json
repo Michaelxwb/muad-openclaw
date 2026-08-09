@@ -6,7 +6,8 @@
   "serviceTokenFile": "/run/secrets/muad/pod-service-token",
   "concurrency": {
     "maxSkills": 2,
-    "maxBrowser": 1
+    "maxBrowser": 1,
+    "maxLongTasksPerUserAgent": 2
   },
   "channels": {
     "enabled": ["wecom", "wechat"],
@@ -121,6 +122,7 @@
             "version": "1.0.0",
             "entryType": "managed",
             "rootPath": "/opt/openclaw-skills/xdr-query",
+            "longTask": true,
             "scriptFiles": []
           }
         ]

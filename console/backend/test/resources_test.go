@@ -13,14 +13,16 @@ func TestResources_GlobalDefaultsSetAndGet(t *testing.T) {
 	env := newTestEnv(t)
 	response := env.do(http.MethodGet, "/api/v1/settings/resources", "")
 	assertBodyContains(t, response.Code, response.Body.String(), http.StatusOK,
-		`"configured":false`, `"memLimit":"3g"`, `"cpuLimit":"2"`, `"maxSkillConcurrency":1`)
+		`"configured":false`, `"memLimit":"3g"`, `"cpuLimit":"2"`,
+		`"maxSkillConcurrency":1`, `"maxLongTaskConcurrency":2`)
 
 	response = env.do(http.MethodPut, "/api/v1/settings/resources",
-		`{"memLimit":"3g","cpuLimit":"2","restartPolicy":"always"}`)
+		`{"memLimit":"3g","cpuLimit":"2","restartPolicy":"always","maxLongTaskConcurrency":3}`)
 	assertBodyContains(t, response.Code, response.Body.String(), http.StatusOK, `"configured":true`)
 	response = env.do(http.MethodGet, "/api/v1/settings/resources", "")
 	assertBodyContains(t, response.Code, response.Body.String(), http.StatusOK,
-		`"memLimit":"3g"`, `"cpuLimit":"2"`, `"restartPolicy":"always"`)
+		`"memLimit":"3g"`, `"cpuLimit":"2"`, `"restartPolicy":"always"`,
+		`"maxLongTaskConcurrency":3`)
 }
 
 func TestResources_PodOverridesEffectiveValuesAndReconcileReason(t *testing.T) {
@@ -35,13 +37,13 @@ func TestResources_PodOverridesEffectiveValuesAndReconcileReason(t *testing.T) {
 	response := env.do(http.MethodGet, "/api/v1/containers/pod-a/resources", "")
 	assertBodyContains(t, response.Code, response.Body.String(), http.StatusOK,
 		`"globalDefaults":{"memLimit":"3g"`, `"effective":{"memLimit":"3g"`,
-		`"maxBrowserConcurrency":1`, `"memoryAlertThresholdMiB":2611`)
+		`"maxBrowserConcurrency":1`, `"maxLongTaskConcurrency":2`, `"memoryAlertThresholdMiB":2611`)
 
 	response = env.do(http.MethodPut, "/api/v1/containers/pod-a/resources",
-		`{"maxSkillConcurrency":4,"maxBrowserConcurrency":2}`)
+		`{"maxSkillConcurrency":4,"maxBrowserConcurrency":2,"maxLongTaskConcurrency":5}`)
 	assertBodyContains(t, response.Code, response.Body.String(), http.StatusOK,
 		`"requiresPodRestart":false`, `"runtimeConfigChanged":true`,
-		`"maxSkillConcurrency":4`, `"maxBrowserConcurrency":2`)
+		`"maxSkillConcurrency":4`, `"maxBrowserConcurrency":2`, `"maxLongTaskConcurrency":5`)
 	assertQueuedPods(t, env, "pod-a")
 
 	env.reconcile.podIDs = nil
@@ -51,7 +53,8 @@ func TestResources_PodOverridesEffectiveValuesAndReconcileReason(t *testing.T) {
 	assertQueuedPods(t, env, "pod-a")
 
 	stored, err := env.store.GetPod("pod-a")
-	if err != nil || stored.MemLimit != "4g" || stored.MaxSkillConcurrency != 4 || stored.LastApplyStatus != repo.ApplyStatusPending {
+	if err != nil || stored.MemLimit != "4g" || stored.MaxSkillConcurrency != 4 ||
+		stored.MaxLongTaskConcurrency != 5 || stored.LastApplyStatus != repo.ApplyStatusPending {
 		t.Fatalf("stored Pod resources = %+v, %v", stored, err)
 	}
 }
@@ -112,7 +115,7 @@ func TestResources_RejectsInvalidLimitsAndConcurrency(t *testing.T) {
 	badBodies := []string{
 		`{"memLimit":"2gb"}`, `{"memLimit":"0g"}`, `{"cpuLimit":"0"}`,
 		`{"restartPolicy":"sometimes"}`, `{"maxSkillConcurrency":-1}`,
-		`{"maxBrowserConcurrency":1001}`, `{"unknown":true}`,
+		`{"maxBrowserConcurrency":1001}`, `{"maxLongTaskConcurrency":1001}`, `{"unknown":true}`,
 	}
 	for _, body := range badBodies {
 		response := env.do(http.MethodPut, "/api/v1/containers/pod-a/resources", body)

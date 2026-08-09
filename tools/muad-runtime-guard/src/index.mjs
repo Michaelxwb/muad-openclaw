@@ -5,6 +5,8 @@ import { createBindCommand } from "./bind-command.mjs";
 import { BindingClient, BindingClientError } from "./binding-client.mjs";
 import { parseGuardConfig } from "./config.mjs";
 import { createHealthHandler } from "./health.mjs";
+import { createLongTaskHooks } from "./long-task-hooks.mjs";
+import { LongTaskManager } from "./long-task-manager.mjs";
 import { createMainBindingReply } from "./main-binding-reply.mjs";
 import { createModelConfigDispatch } from "./model-config-reply.mjs";
 import { createRouteVerifier } from "./route-verifier.mjs";
@@ -24,11 +26,13 @@ const plugin = {
     const config = parseGuardConfig(api.pluginConfig);
     const leaseManager = installBrowserLease(config.maxBrowserConcurrency);
     const skillLeaseManager = installSkillLease(config.maxSkillConcurrency);
+    const longTaskManager = installLongTaskManager(config.maxLongTaskConcurrency);
     registerMainBindingReply(api, config);
     registerModelConfigDispatch(api, config);
     registerToolPolicies(api, config);
     registerBrowserLeaseHooks(api, config, leaseManager);
     registerSkillLeaseHooks(api, config, skillLeaseManager);
+    registerLongTaskHooks(api, config, longTaskManager);
     registerReloadPolicy(api);
     const client = createBindingClient(config);
     api.registerCommand(createBindCommand({
@@ -42,6 +46,9 @@ const plugin = {
       scope: "operator.read",
     });
     api.registerGatewayMethod("muad.runtime.verify-routes", createRouteVerifier(api), {
+      scope: "operator.read",
+    });
+    api.registerGatewayMethod("muad.runtime.long-tasks", async () => longTaskManager.snapshot(), {
       scope: "operator.read",
     });
   },
@@ -99,12 +106,34 @@ function registerSkillLeaseHooks(api, config, leaseManager) {
   api.on("agent_end", hooks.end, { priority: 1000, timeoutMs: 1_000 });
 }
 
+function registerLongTaskHooks(api, config, manager) {
+  const hooks = createLongTaskHooks({ config, manager });
+  api.on("before_dispatch", hooks.beforeDispatch, { priority: -1100, timeoutMs: 1_000 });
+  api.on("before_agent_run", hooks.beforeAgentRun, { priority: -900, timeoutMs: 1_000 });
+  api.on("before_tool_call", hooks.beforeToolCall, { priority: -900, timeoutMs: 1_000 });
+  api.on("before_agent_finalize", hooks.beforeAgentFinalize, { priority: -900, timeoutMs: 1_000 });
+  api.on("agent_end", hooks.agentEnd, { priority: 900, timeoutMs: 1_000 });
+}
+
 export function installBrowserLease(limit, globals = globalThis) {
   const symbol = Symbol.for("muad.browser.lease");
   const existing = globals[symbol];
   if (existing?.shared === true && existing.closed !== true && existing.limit === limit) return existing;
   existing?.close?.();
   const manager = new SharedBrowserLeaseManager({ limit });
+  globals[symbol] = manager;
+  return manager;
+}
+
+export function installLongTaskManager(limit, globals = globalThis) {
+  const symbol = Symbol.for("muad.longtask.manager");
+  const existing = globals[symbol];
+  if (existing?.shared === true && existing.closed !== true) {
+    existing.updateLimit?.(limit);
+    return existing;
+  }
+  existing?.close?.();
+  const manager = new LongTaskManager({ limit });
   globals[symbol] = manager;
   return manager;
 }

@@ -32,6 +32,8 @@ import type {
   LLMModelConfig,
   LLMModelInput,
   LLMModelTestResult,
+  LongTaskListResult,
+  LongTaskQuery,
   PageResult,
   PatchHumanUserInput,
   PatchPlatformInput,
@@ -417,6 +419,21 @@ export const api = {
     ),
   getSkillExecution: (executionId: string) =>
     request<SkillExecutionDetail>("GET", `/skill-executions/${segment(executionId)}`),
+  listLongTasks: (query: LongTaskQuery = {}) =>
+    request<LongTaskListResult>(
+      "GET",
+      withQuery("/long-tasks", {
+        page: query.page,
+        pageSize: query.pageSize,
+        q: query.q,
+        podId: query.podId,
+        humanUserId: query.humanUserId,
+        agentId: query.agentId,
+        skillName: query.skillName,
+        poolKey: query.poolKey,
+        status: query.status,
+      }),
+    ),
   getResources: () => request<GlobalResourceConfig>("GET", "/settings/resources"),
   getAgentGuidance: () => request<AgentGuidance>("GET", "/settings/agent-guidance"),
   setAgentGuidance: (input: AgentGuidanceInput) =>

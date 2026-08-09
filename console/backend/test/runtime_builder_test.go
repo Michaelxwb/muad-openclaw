@@ -147,6 +147,7 @@ func TestRuntimeBuilderIncludesAllSkillGrantTypes(t *testing.T) {
 	source := runtimeBuilderFixture(t, cipher)
 	source.skills["u-alice"][0].EntryType = repo.SkillEntryManaged
 	source.skills["u-alice"][0].Version = "1.0.0"
+	source.skills["u-alice"][0].LongTask = true
 	source.skills["u-alice"][1].EntryType = repo.SkillEntryTraditionalPrompt
 	source.skills["u-alice"][1].Version = ""
 	source.skills["u-charlie"][0].EntryType = repo.SkillEntryTraditionalScript
@@ -157,6 +158,9 @@ func TestRuntimeBuilderIncludesAllSkillGrantTypes(t *testing.T) {
 	alice := indexRuntimeSkillGrants(config.Skills.Agents[0].Allowed)
 	charlie := indexRuntimeSkillGrants(config.Skills.Agents[1].Allowed)
 	assertRuntimeGrant(t, alice["xdr-query"], repo.SkillEntryManaged, "/opt/openclaw-skills/xdr-query")
+	if !alice["xdr-query"].LongTask {
+		t.Fatalf("xdr-query longTask grant not propagated: %+v", alice["xdr-query"])
+	}
 	assertRuntimeGrant(t, alice["web-tools-guide"], repo.SkillEntryTraditionalPrompt, "/opt/openclaw-skills/web-tools-guide")
 	assertRuntimeGrant(t, charlie["sdsp-report"], repo.SkillEntryTraditionalScript,
 		"/home/node/.openclaw/workspace-charlie/skills/sdsp-report")
@@ -203,8 +207,9 @@ func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBui
 	return runtimeBuilderSource{
 		pod: repo.Pod{
 			PodID: "pod-a", ConfigGeneration: 9, MaxSkillConcurrency: 4,
-			Channels:          `["wechat","wecom"]`,
-			ChannelConfigsEnc: encryptRuntimeJSON(t, cipher, `{"wecom":{"botId":"bot-a","secret":"channel-secret"},"wechat":{}}`),
+			MaxLongTaskConcurrency: 5,
+			Channels:               `["wechat","wecom"]`,
+			ChannelConfigsEnc:      encryptRuntimeJSON(t, cipher, `{"wecom":{"botId":"bot-a","secret":"channel-secret"},"wechat":{}}`),
 		},
 		users: users, identities: identities,
 		platforms: []repo.PlatformConfig{
@@ -257,7 +262,7 @@ func newRuntimeBuilder(t *testing.T, source runtimeBuilderSource, cipher *secret
 	t.Helper()
 	builder, err := runtimeconfig.New(source, cipher, runtimeconfig.Options{
 		ConsoleInternalURL:  "http://muad-console:8080/internal/v1",
-		MaxSkillConcurrency: 1, MaxBrowserConcurrency: 2,
+		MaxSkillConcurrency: 1, MaxBrowserConcurrency: 2, MaxLongTaskConcurrency: 2,
 	})
 	if err != nil {
 		t.Fatalf("runtimeconfig.New: %v", err)
@@ -290,7 +295,8 @@ func assertRuntimeUsers(t *testing.T, config driver.RuntimeConfigV1) {
 	if len(config.SessionManager.Agents) != 2 || len(config.Guard.AgentProfiles) != 2 {
 		t.Fatalf("runtime mappings missing: %+v / %+v", config.SessionManager, config.Guard)
 	}
-	if config.Concurrency.MaxSkills != 4 || config.Concurrency.MaxBrowser != 2 {
+	if config.Concurrency.MaxSkills != 4 || config.Concurrency.MaxBrowser != 2 ||
+		config.Concurrency.MaxLongTasksPerUserAgent != 5 {
 		t.Fatalf("effective concurrency = %+v", config.Concurrency)
 	}
 	if !slices.Contains(config.Agents[0].Tools.Deny, "read") ||

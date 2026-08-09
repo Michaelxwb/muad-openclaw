@@ -11,6 +11,7 @@ export interface CreateFormState {
   restartPolicy: string;
   maxSkillConcurrency: number;
   maxBrowserConcurrency: number;
+  maxLongTaskConcurrency: number;
   adoptState: boolean;
   restoreUsers: boolean;
 }
@@ -25,6 +26,7 @@ export const EMPTY_CREATE_FORM: CreateFormState = {
   restartPolicy: "",
   maxSkillConcurrency: 0,
   maxBrowserConcurrency: 0,
+  maxLongTaskConcurrency: 0,
   adoptState: false,
   restoreUsers: true,
 };
@@ -65,6 +67,7 @@ export function createPodInput(
     restartPolicy: form.restartPolicy,
     maxSkillConcurrency: form.maxSkillConcurrency,
     maxBrowserConcurrency: form.maxBrowserConcurrency,
+    maxLongTaskConcurrency: form.maxLongTaskConcurrency,
     adoptState: form.adoptState,
     // 恢复原 Pod 用户依赖接管同名保留状态卷：不接管就没有记忆可恢复，
     // 因此 adoptState 未勾选时强制视为 false。

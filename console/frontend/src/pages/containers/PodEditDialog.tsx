@@ -3,6 +3,7 @@ import {
   Banner,
   Button,
   Input,
+  InputNumber,
   Modal,
   Select,
   Space,
@@ -55,6 +56,9 @@ export function PodEditDialog({ podId, onClose, onSaved }: Props) {
             memLimit: memLimitToGB(resources.overrides.memLimit),
             cpuLimit: resources.overrides.cpuLimit,
             restartPolicy: resources.overrides.restartPolicy,
+            maxSkillConcurrency: resources.overrides.maxSkillConcurrency,
+            maxBrowserConcurrency: resources.overrides.maxBrowserConcurrency,
+            maxLongTaskConcurrency: resources.overrides.maxLongTaskConcurrency,
           },
         });
       })
@@ -197,6 +201,21 @@ function ResourceFields({
           style={{ width: "100%" }}
         />
       </label>
+      <ResourceNumber
+        label={t("pod.maxSkillConcurrency")}
+        value={form.maxSkillConcurrency ?? 0}
+        onChange={(maxSkillConcurrency) => setForm({ ...form, maxSkillConcurrency })}
+      />
+      <ResourceNumber
+        label={t("pod.maxBrowserConcurrency")}
+        value={form.maxBrowserConcurrency ?? 0}
+        onChange={(maxBrowserConcurrency) => setForm({ ...form, maxBrowserConcurrency })}
+      />
+      <ResourceNumber
+        label={t("pod.maxLongTaskConcurrency")}
+        value={form.maxLongTaskConcurrency ?? 0}
+        onChange={(maxLongTaskConcurrency) => setForm({ ...form, maxLongTaskConcurrency })}
+      />
     </div>
   );
 }
@@ -210,6 +229,27 @@ function ResourceInput(props: { label: string; value: string; onChange: (value: 
         aria-label={t("pod.fieldOverrideAria", { label: props.label })}
         value={props.value}
         onChange={props.onChange}
+      />
+    </label>
+  );
+}
+
+function ResourceNumber(props: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <label className={containerStyles.field}>
+      <span>{props.label}</span>
+      <InputNumber
+        aria-label={t("pod.fieldOverrideAria", { label: props.label })}
+        value={props.value}
+        min={0}
+        max={1000}
+        onChange={(value) => props.onChange(Number(value ?? 0))}
+        style={{ width: "100%" }}
       />
     </label>
   );

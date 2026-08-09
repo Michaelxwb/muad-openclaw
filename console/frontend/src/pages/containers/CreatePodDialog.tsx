@@ -130,6 +130,13 @@ function CreatePodFields({
         max={1000}
         onChange={(value) => set("maxBrowserConcurrency", value)}
       />
+      <NumberField
+        label={t("pod.maxLongTaskConcurrency")}
+        value={form.maxLongTaskConcurrency}
+        min={0}
+        max={1000}
+        onChange={(value) => set("maxLongTaskConcurrency", value)}
+      />
       {/* 不能用 <label> 包裹 Semi Checkbox：label 激活会对控制元素再派发一次合成 click，
           导致 onChange 触发两次、勾选被立刻抵消（Chrome 实测）。用 div 保持同样布局。 */}
       <div className={`${styles.field} ${styles.full}`}>
