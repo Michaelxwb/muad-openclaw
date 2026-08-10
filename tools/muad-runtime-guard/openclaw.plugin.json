@@ -81,7 +81,8 @@
       "maxSkillConcurrency": { "type": "integer", "minimum": 1 },
       "maxLongTaskConcurrency": { "type": "integer", "minimum": 1 },
       "consoleInternalURL": { "type": "string" },
-      "serviceTokenFile": { "type": "string" }
+      "serviceTokenFile": { "type": "string" },
+      "locale": { "type": "string", "enum": ["zh", "en"] }
     }
   }
 }

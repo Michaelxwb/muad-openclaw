@@ -3,7 +3,7 @@ const SERVICE_TOKEN_FILE = "/run/secrets/muad/pod-service-token";
 const ID_PATTERN = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/;
 
 const TOP_LEVEL_KEYS = [
-  "version", "podId", "generation", "consoleInternalUrl", "serviceTokenFile",
+  "version", "podId", "generation", "consoleInternalUrl", "serviceTokenFile", "locale",
   "concurrency", "channels", "agents", "routes", "identityLinks", "browser", "providers",
   "platforms", "skills", "sessionManager", "guard", "guidance",
 ];
@@ -31,12 +31,13 @@ export function readRuntimeConfig({ env = process.env, stdinText = "" } = {}) {
 export function validateRuntimeConfig(value) {
   assertRecord(value, "runtime");
   assertExactKeys(value, TOP_LEVEL_KEYS, "runtime",
-    TOP_LEVEL_KEYS.filter((key) => key !== "guidance"));
+    TOP_LEVEL_KEYS.filter((key) => key !== "guidance" && key !== "locale"));
   if (value.version !== RUNTIME_VERSION) throw new Error(`unsupported runtime version: ${value.version}`);
   assertID(value.podId, "runtime.podId");
   assertPositiveInteger(value.generation, "runtime.generation");
   assertURL(value.consoleInternalUrl, "runtime.consoleInternalUrl");
   if (value.serviceTokenFile !== SERVICE_TOKEN_FILE) throw new Error("invalid serviceTokenFile");
+  validateLocale(value.locale);
   validateConcurrency(value.concurrency);
   validateChannels(value.channels);
   const agents = validateAgents(value.agents);
@@ -82,6 +83,11 @@ function validateChannels(value) {
       throw new Error(`runtime.channels.configs.${channel} values must be strings`);
     }
   }
+}
+
+function validateLocale(value) {
+  if (value === undefined || value === "") return;
+  if (value !== "zh" && value !== "en") throw new Error("runtime.locale must be zh or en");
 }
 
 function validateConcurrency(value) {

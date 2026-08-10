@@ -64,6 +64,11 @@ resources:
   maxSkillConcurrency: 2
   maxBrowserConcurrency: 2
 
+# Worker 运行时非资源类默认值
+runtimeDefaults:
+  # 运行时文案语言（zh / en），缺省 zh；env 覆盖: CONSOLE_RUNTIME_LOCALE
+  locale: zh
+
 # 浏览器端口分配范围
 browser:
   cdpPortStart: 18802

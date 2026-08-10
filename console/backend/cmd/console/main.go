@@ -192,6 +192,7 @@ func newRuntimeCoordinator(
 		MaxSkillConcurrency:    cfg.RuntimeDefaults.MaxSkillConcurrency,
 		MaxBrowserConcurrency:  cfg.RuntimeDefaults.MaxBrowserConcurrency,
 		MaxLongTaskConcurrency: cfg.RuntimeDefaults.MaxLongTaskConcurrency,
+		Locale:                 cfg.RuntimeDefaults.Locale,
 	})
 	if err != nil {
 		return nil, err

@@ -39,6 +39,7 @@ type Options struct {
 	MaxSkillConcurrency    int
 	MaxBrowserConcurrency  int
 	MaxLongTaskConcurrency int
+	Locale                 string
 }
 
 type Result struct {
@@ -81,6 +82,13 @@ func New(source Source, cipher *secretcrypto.Cipher, options Options) (*Builder,
 	options.PublicSkillsDirectory = valueOrDefault(options.PublicSkillsDirectory, DefaultPublicSkillsDirectory)
 	if options.MaxSkillConcurrency <= 0 || options.MaxBrowserConcurrency <= 0 ||
 		options.MaxLongTaskConcurrency <= 0 {
+		return nil, ErrInvalidRuntimeSource
+	}
+	options.Locale = strings.TrimSpace(options.Locale)
+	if options.Locale == "" {
+		options.Locale = "zh"
+	}
+	if options.Locale != "zh" && options.Locale != "en" {
 		return nil, ErrInvalidRuntimeSource
 	}
 	return &Builder{source: source, cipher: cipher, options: options}, nil
@@ -178,6 +186,7 @@ func (builder *Builder) assemble(
 		Version: driver.RuntimeConfigVersion, PodID: pod.PodID, Generation: pod.ConfigGeneration,
 		ConsoleInternalURL: strings.TrimRight(builder.options.ConsoleInternalURL, "/"),
 		ServiceTokenFile:   driver.PodServiceTokenPath,
+		Locale:             builder.options.Locale,
 		Concurrency: driver.RuntimeConcurrency{
 			MaxSkills:                maxSkills,
 			MaxBrowser:               maxBrowser,

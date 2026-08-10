@@ -169,6 +169,47 @@ func TestRuntimeBuilderIncludesAllSkillGrantTypes(t *testing.T) {
 	}
 }
 
+func TestRuntimeBuilderLocale(t *testing.T) {
+	cipher := mustRuntimeCipher(t)
+	source := runtimeBuilderFixture(t, cipher)
+
+	// 空 locale 归一化为 zh（默认）。
+	if config := buildRuntimeWithLocale(t, source, cipher, "").Config; config.Locale != "zh" {
+		t.Fatalf("empty locale = %q, want zh", config.Locale)
+	}
+	// en 透传到渲染出的 Runtime DTO。
+	if config := buildRuntimeWithLocale(t, source, cipher, "en").Config; config.Locale != "en" {
+		t.Fatalf("en locale = %q, want en", config.Locale)
+	}
+	// 不支持的 locale 在构造期直接拒绝，避免错误配置进渲染链路。
+	if _, err := runtimeconfig.New(source, cipher, runtimeconfig.Options{
+		ConsoleInternalURL:  "http://muad-console:8080/internal/v1",
+		MaxSkillConcurrency: 1, MaxBrowserConcurrency: 2, MaxLongTaskConcurrency: 2,
+		Locale: "fr",
+	}); !errors.Is(err, runtimeconfig.ErrInvalidRuntimeSource) {
+		t.Fatalf("invalid locale New() error = %v, want ErrInvalidRuntimeSource", err)
+	}
+}
+
+func buildRuntimeWithLocale(
+	t *testing.T, source runtimeBuilderSource, cipher *secretcrypto.Cipher, locale string,
+) runtimeconfig.Result {
+	t.Helper()
+	builder, err := runtimeconfig.New(source, cipher, runtimeconfig.Options{
+		ConsoleInternalURL:  "http://muad-console:8080/internal/v1",
+		MaxSkillConcurrency: 1, MaxBrowserConcurrency: 2, MaxLongTaskConcurrency: 2,
+		Locale: locale,
+	})
+	if err != nil {
+		t.Fatalf("runtimeconfig.New: %v", err)
+	}
+	result, err := builder.Build("pod-a")
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	return result
+}
+
 func identityLinksByAgent(links []driver.RuntimeIdentityLink) map[string][]string {
 	result := make(map[string][]string, len(links))
 	for _, link := range links {

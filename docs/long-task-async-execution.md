@@ -37,8 +37,8 @@
 ────────────────────────────────────────────────────────────────────────────────────────────
 /skill:name        → before_dispatch     → 瞬时回执(排队N)   │ per-user-agent 池           │
 自然语言            → 模型读 SKILL.md → before_tool_call    │ (每池上限 maxLongTaskConcurrency)
-                    → 改写 read→提交桩   → 模型提交标记       │ 出队 → spawn 任务会话        │
-                    → before_agent_reply → 回执(排队N)      │ agent:<id>:longtask:<uuid>  │ --deliver
+                    → 读即入队 → 改写 read→提交桩(含排队数) │ 出队 → spawn 任务会话        │
+                    → 模型照抄确认 → 回执(排队N)             │ agent:<id>:longtask:<uuid>  │ --deliver
                                                             │ 独立 lane 并行               │ 结果回推企微
                                                             ↓ long_task_tasks 队列表（console 落账）
                                                       Console Long Tasks 视图(monitor 轮询)
@@ -48,9 +48,10 @@
 
 | 概念 | 说明 |
 |---|---|
-| 长任务标记 | `muad.skill.json` 顶层布尔 `longTask`；installer / bundle ingest 解析并入 manifestJSON，同时为这类 skill 生成提交桩 |
-| 提交桩 | skill 目录内 `_longtask_submit.md`；正常会话读它=提交协议，任务会话读真实 `SKILL.md`=执行 |
-| 提交标记 | 模型回复首行的 `MUAD_TASK|<skill>|<任务目标>`；只有当前 run 已登记 pending long task 时才接受 |
+| 长任务标记 | `muad.skill.json` 顶层布尔 `longTask`；installer / bundle ingest 解析并入 manifestJSON |
+| 提交桩 | 长任务 skill 的 `SKILL.md` 被读到时，guard 动态生成 `<workspace>/.openclaw/tmp/_longtask_submit_<taskId>.md`（内容 = 桩格式常量 + 按 locale 渲染的确认文案，含任务ID），重写 `read` 指向它；模型照抄确认文案 → 所有 IM（含绕过 outbound hook 的直投型）都收到含 taskId 的确认；`agent_end` / TTL 清理。桩落 `<workspace>/.openclaw/tmp/`（OpenClaw 原生 `read` 工具的 sandbox roots=`[workspace, ...skillDirs]`，workspace 内**原生放行**；Skill 挂载只读不可写，`skill-outputs` 在 workspace 外会被原生沙箱拒绝——这是双执行根因，故桩必须落 workspace 内）。任务会话读真实 `SKILL.md`=执行 |
+| 桩格式常量 + i18n | 桩文件格式为命名常量 `LONG_TASK_SUBMIT_STUB_FORMAT`；确认文案进 guard 侧 zh/en catalog（`CONFIRMATION_TEMPLATES`），按 `runtime.locale`（默认 zh，部署时可改）渲染；`/skill:` 与自然语言、提交桩与 `reply_payload_sending` 共用同一套文案 |
+| 读即入队 | 模型在正常会话中 `read` 长任务 `SKILL.md` 即视为提交信号：`before_tool_call` 立即 `manager.submit()` 入队并生成含排队数的提交桩；turn 异常中断也已提交，不依赖模型回复标记（`MUAD_TASK|...` 协议已废弃） |
 | 任务会话 | `agent:<agentId>:longtask:<taskId>`，独立 lane；复用同一 agentId（同 workspace/模型/私有 skill/记忆） |
 | 池 | key = 业务会话 key `agent:<id>:<channelId>:direct:<peerId>`；每池并发上限可配 |
 | 派生索引 | guard 配置中的 `longTaskSkillGrants`，由 effective skills 自动派生，非人工维护的全局配置 |
@@ -69,17 +70,14 @@
 - 钩子 `before_agent_run`（非 task 会话）：
   1. 用 `ctx.runId/sessionKey/agentId` 关联本 turn；`prompt/accountId/channelId/senderId` 从 event 取，`channel` 可从 ctx 取。记录这些字段作为自然语言长任务的原始目标与投递上下文。
   2. 只记录短期内存态，turn 结束或超时清理；不把用户原话写入 guard 日志。
-- 钩子 `before_tool_call`（tool=`read`，非 task 会话）：
+- 钩子 `before_tool_call`（tool=`read`，非 task 会话）：**读即入队**——模型读长任务 `SKILL.md` 即视为提交信号。
   1. `params.path` 指向某 skill 的 `SKILL.md`（basename 为 `SKILL.md`）。
   2. 路径必须落在当前 agent 允许读取的 skill root 内；读取同目录 `muad.skill.json`，`longTask === true` → 命中（识别层读**磁盘 manifest**）。
-  3. 登记 `pendingLongTask[runId] = {skillName, skillRoot, originalPrompt, sessionKey, agentId, peerId}`。
-  4. 改写 `params.path` → `<skillDir>/_longtask_submit.md`。模型读到提交桩 → 依协议回复标记 + "任务已提交"。
-  5. 同一 run 已有 pending long task 后，首版不强行 block 后续工具调用；稳定边界由“真实 `SKILL.md` 已被提交桩替换”保证。若联调确认模型在读桩后仍会继续调工具，再单独打开 block 策略并补回归测试。
-- 钩子 `before_agent_reply`（非 task 会话）：
-  1. 仅当 `pendingLongTask[runId]` 存在时解析回复首行 `MUAD_TASK|<skill>|<任务目标>`。
-  2. skill 名必须与 pending 记录一致；命中 → 入队 + 建记录 + 替换回复为确认消息。
-  3. pending 存在但标记缺失/格式错误/skill 不一致 → 不入队，替换为受控失败文案（例如“未能提交长任务，请稍后重试或使用 /skill:<name>”），并清理 pending；禁止向用户暴露 `MUAD_TASK|...` 原文。
-- 兜底：若模型未走 `read` 工具（如用 `cat`）或未遵守桩 → 串行执行（功能不坏，只是阻塞），见 §11。
+  3. 立即 `manager.submit()` 入队：`taskId = uuid`，objective/originalPrompt 取 `before_agent_run` 记录的原始 prompt，sessionKey/agentId/peerId/replyChannel 从上下文解析；提交失败则退化为串行执行。turn 异常中断也已提交（read-to-enqueue 的韧性）。
+  4. 经统一提交入口 `submitLongTask`（`/skill:` 与自然语言共用：支持 `taskId` / `stripSkillPrefix` / turn 上下文优先）入队后，动态生成 `<workspace>/.openclaw/tmp/_longtask_submit_<taskId>.md`——桩内容 = 命名常量 `LONG_TASK_SUBMIT_STUB_FORMAT` + 按 `runtime.locale`（默认 zh，en 可部署时切换）渲染的**完整确认文案（含排队数）**，改写 `params.path` 指向它。**桩必须落 workspace 内**：OpenClaw 原生 `read` 工具（`fs.workspaceOnly: true`）只放行 `[workspace, ...skillDirs]`，`skill-outputs` 在 workspace 外会被原生沙箱以 `Path escapes sandbox root` 拒绝——此前桩落 `skill-outputs` 导致模型读不到"后台任务"确认、前台照常执行，双执行；`<workspace>/.openclaw/tmp/` 是 OpenClaw 认可的 scratch 位置（workspace 内原生可读），guard 文件策略 `isWithin(workspace)` 也已放行。模型照抄 → 所有 IM（含绕过 outbound hook 的直投型）都收到含 taskId + 排队数的同一确认；`agent_end` / TTL 清理桩文件。
+  5. 同一 run 再次 read → 复用同一桩路径，不重复提交。首版不强行 block 后续工具调用；稳定边界由“真实 `SKILL.md` 已被提交桩替换”保证。若联调确认模型在读桩后仍会继续调工具，再单独打开 block 策略并补回归测试。
+- `before_agent_reply` 标记解析机制已废弃：提交不依赖模型回复标记，无 `MUAD_TASK|...` 协议。
+- 兜底：若模型未走 `read` 工具（如用 `cat`）→ 不提交、串行执行（功能不坏，只是阻塞），见 §11。
 
 ### 5.3 拦截时序
 
@@ -89,10 +87,9 @@
   └─ agent turn 开始
       └─ before_agent_run: 记录本 turn 原始 prompt 与投递上下文
       └─ 模型决定用 report-customer → 读 /opt/openclaw-skills/report-customer/SKILL.md
-          └─ before_tool_call: path 命中长任务 → 记录 pending → 改写为 _longtask_submit.md
-      └─ 模型读桩 → 回复首行 MUAD_TASK|report-customer|导出客户周报…
-      └─ before_agent_reply: 解析标记 → 入池 + 替换回复
-  └─ turn 结束（数秒）→ lane 释放
+          └─ before_tool_call: path 命中长任务 → 读即入队 → 在 workspace/.openclaw/tmp 生成 _longtask_submit_<taskId>.md(含排队数) → 改写 read 指向它
+      └─ 模型照抄桩内确认文案（含任务ID + 排队数）→ 回执
+  └─ turn 结束（数秒）→ lane 释放；桩在 agent_end 清理
   └─ 池出队 → spawn task 会话 → 读真实 SKILL.md → 执行 → --deliver 回推
 ```
 
@@ -100,9 +97,14 @@
 
 ```
 任务已提交：report-customer
+任务ID：<taskId>
 当前排队：2 ｜ 执行中：1
 完成后结果会自动推送给你，可继续发消息。
 ```
+
+文案由 guard `queuedReply(submit, skillName, locale)` 生成（taskId + 排队数在 read 提交时确定），写入提交桩供模型照抄；hook 型 IM 另由 `reply_payload_sending` 在投递前精确覆盖为同一文案。
+
+**国际化**：文案从 guard 侧 zh/en catalog（`CONFIRMATION_TEMPLATES`）渲染，`locale` 取自 guard config。配置链路：console `config.yaml` `runtimeDefaults.locale`（默认 zh）+ env `CONSOLE_RUNTIME_LOCALE` → `runtimeconfig.Options.Locale` → Runtime DTO `runtime.locale` → renderer guard config `locale` → guard `config.mjs` 解析。默认 zh；部署时可改 en，确认文案（含任务ID 与排队数）随语言切换，所有 IM 一致。
 
 ## 6. 后台任务管理器（guard 新增 `long-task-manager.mjs`）
 
@@ -250,7 +252,7 @@ config: {
 | 层 | 文件 |
 |---|---|
 | guard | `tools/muad-runtime-guard/src/long-task-manager.mjs`（新）、`long-task-hooks.mjs`（新）、`index.mjs`、`config.mjs`、复用 `skill-hooks.mjs` |
-| installer / bundle ingest | `bin/private-skill-installer.mjs`、`console/backend/internal/api/skill_bundle.go`（解析 longTask + 生成提交桩） |
+| installer / bundle ingest | `bin/private-skill-installer.mjs`、`console/backend/internal/api/skill_bundle.go`（解析 longTask 并入 manifestJSON；提交桩由 guard 运行时动态生成，installer 不生成） |
 | 配置 | `bin/runtime-config-schema.mjs`、`bin/openclaw-config-renderer.mjs` |
 | console 后端 | `driver/runtime.go`、`runtimeconfig/builder.go`、`api/skill_bundle.go`、`api/skills.go`、`repo/schema.go`、`repo/long_tasks.go`（新）、`gateway/long_tasks.go`（新）、`collector/collector.go`、`api/long_tasks.go`（新） |
 | console 前端 | `types/api.ts`、`api.ts`、新 Long Tasks 页面/组件 |
@@ -259,7 +261,7 @@ config: {
 ## 10. 测试与验证
 
 - **单元测试**：
-  - guard：per-user-agent 分池、并发上限、状态转换、task 会话跳过、read 路径改写、`before_agent_run` 上下文记录、pending long task 成功/失败清理、`MUAD_TASK` 标记解析失败不泄露、pending 后不依赖 block、确认消息含排队计数、重启 reconcile、`--message-file`/`--reply-channel` argv spawn。
+  - guard：per-user-agent 分池、并发上限、状态转换、task 会话跳过、read 路径改写（读即入队）、同一 run 重读复用同一桩不重复提交、`before_agent_run` 上下文记录、提交桩含排队计数、`reply_payload_sending` 一次性改写、重启 reconcile、`--message-file`/`--reply-channel` argv spawn。
   - installer / bundle ingest：manifest 解析含 longTask、提交桩生成，system/public/private 路径一致。
   - console：`long_task_tasks` 迁移与快照落账（upsert）、状态单调、快照→DB 镜像一致性、renderer/schema。
 - **e2e（企微）**：
@@ -273,10 +275,10 @@ config: {
 
 | 项 | 说明 |
 |---|---|
-| 依赖模型走 `read` 工具 + 遵守提交桩 | 稳定边界是“只要模型读 longTask 的 SKILL.md，就不会在主会话执行”；未读 SKILL.md 则退化为串行执行；`read` 参数名需兼容 `path/file_path/filePath/file` |
+| 依赖模型走 `read` 工具 + 遵守提交桩 | 稳定边界是“只要模型读 longTask 的 SKILL.md，就不会在主会话执行”；未读 SKILL.md 则退化为串行执行；`read` 参数名需兼容 `path/file_path/filePath/file`。**桩必须可被原生 `read` 读到**：guard 的 trustedToolPolicy 只能改写路径/阻止，无法绕过原生 sandbox（roots=`[workspace, ...skillDirs]`），桩落 workspace 外（如 `skill-outputs`）会被 `Path escapes sandbox root` 拒绝，模型转而前台执行 → 双执行 |
 | 全局 `main` lane（默认 4） | 并发任务可能挤压普通回复 → 实施时验证配平（调大全局池或降默认值） |
 | 确认延迟 | `/skill:` 瞬时；自然语言约数秒（一次短模型 turn） |
 | pod 重启 | 热 reload 不中断；真实 gateway/pod 进程重启后遗留 `queued/running` reconcile 为 failed |
 | 每池资源 | 每 user-agent 池 × 可配上限；超过上限只在该池 FIFO 排队。总资源随活跃池数增长，MVP 不做跨池全局排队 |
-| 提交标记泄漏 | 只有 pending run 才解析 marker；解析失败也替换为受控失败文案并清理 pending，禁止暴露 `MUAD_TASK|...` |
+| 读即入队 | 模型读 `SKILL.md` 即提交，turn 异常中断也已入队；模型未走 `read` 则退化为串行。任务 ID 在 read 时生成并写入桩，所有 IM 投递的是同一文案（含排队数），直投型与 hook 型一致 |
 | 不 fork 上游 | 全部改动收敛在 guard 插件 + installer + console，OpenClaw 源码只读 |

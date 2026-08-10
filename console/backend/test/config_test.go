@@ -75,6 +75,9 @@ func TestLoad_DefaultsAndValid(t *testing.T) {
 	if c.RuntimeDefaults.MaxLongTaskConcurrency != 2 {
 		t.Errorf("MaxLongTaskConcurrency = %d, want 2", c.RuntimeDefaults.MaxLongTaskConcurrency)
 	}
+	if c.RuntimeDefaults.Locale != "zh" {
+		t.Errorf("Locale = %q, want default zh", c.RuntimeDefaults.Locale)
+	}
 	if c.RuntimeDefaults.BrowserCDPPortStart != 18802 || c.RuntimeDefaults.BrowserCDPPortEnd != 65535 {
 		t.Errorf("Browser CDP range = %d-%d, want 18802-65535", c.RuntimeDefaults.BrowserCDPPortStart, c.RuntimeDefaults.BrowserCDPPortEnd)
 	}
@@ -113,6 +116,8 @@ resources:
 browser:
   cdpPortStart: 19000
   cdpPortEnd: 19100
+runtimeDefaults:
+  locale: en
 k8s:
   namespace: test-ns
   skillsPVC: muad-skills
@@ -149,6 +154,9 @@ maxSkillUploadBundleSize: 10m
 	}
 	if c.RuntimeDefaults.BrowserCDPPortStart != 19000 || c.RuntimeDefaults.BrowserCDPPortEnd != 19100 {
 		t.Errorf("Browser CDP range = %d-%d, want 19000-19100", c.RuntimeDefaults.BrowserCDPPortStart, c.RuntimeDefaults.BrowserCDPPortEnd)
+	}
+	if c.RuntimeDefaults.Locale != "en" {
+		t.Errorf("Locale = %q, want en from runtimeDefaults yaml", c.RuntimeDefaults.Locale)
 	}
 	if c.RuntimeTimezone != "UTC" || c.RuntimeStateDir != "/state" || c.RuntimePublicSkillsDir != "/skills-public" {
 		t.Errorf("runtime env = %q/%q/%q", c.RuntimeTimezone, c.RuntimeStateDir, c.RuntimePublicSkillsDir)
@@ -392,6 +400,7 @@ func TestLoad_RuntimeDefaultsEnvOverridesYAML(t *testing.T) {
 	t.Setenv("CONSOLE_RUNTIME_MAX_LONG_TASK_CONCURRENCY", "6")
 	t.Setenv("CONSOLE_RUNTIME_BROWSER_CDP_PORT_START", "20000")
 	t.Setenv("CONSOLE_RUNTIME_BROWSER_CDP_PORT_END", "20100")
+	t.Setenv("CONSOLE_RUNTIME_LOCALE", "en")
 	t.Setenv("CONSOLE_RESOURCE_MEM_LIMIT", "6g")
 	t.Setenv("CONSOLE_RESOURCE_CPU_LIMIT", "6")
 	t.Setenv("CONSOLE_RESOURCE_RESTART_POLICY", "always")
@@ -425,6 +434,9 @@ maxSkillUploadBundleSize: 5m
 		c.RuntimeDefaults.RestartPolicy != "always" {
 		t.Errorf("resource env override = %+v, want 6g/6/always", c.RuntimeDefaults)
 	}
+	if c.RuntimeDefaults.Locale != "en" {
+		t.Errorf("Locale = %q, want en from CONSOLE_RUNTIME_LOCALE", c.RuntimeDefaults.Locale)
+	}
 	if c.RuntimeDefaults.BrowserCDPPortStart != 20000 || c.RuntimeDefaults.BrowserCDPPortEnd != 20100 {
 		t.Errorf("Browser CDP range = %d-%d, want 20000-20100", c.RuntimeDefaults.BrowserCDPPortStart, c.RuntimeDefaults.BrowserCDPPortEnd)
 	}
@@ -446,6 +458,7 @@ func TestLoad_RejectsInvalidRuntimeDefaults(t *testing.T) {
 		{name: "port below minimum", key: "CONSOLE_RUNTIME_BROWSER_CDP_PORT_START", value: "1000"},
 		{name: "port above maximum", key: "CONSOLE_RUNTIME_BROWSER_CDP_PORT_END", value: "65536"},
 		{name: "invalid mem limit", key: "CONSOLE_RESOURCE_MEM_LIMIT", value: "2gb"},
+		{name: "invalid locale", key: "CONSOLE_RUNTIME_LOCALE", value: "fr"},
 		{name: "invalid cpu limit", key: "CONSOLE_RESOURCE_CPU_LIMIT", value: "zero"},
 		{name: "invalid restart policy", key: "CONSOLE_RESOURCE_RESTART_POLICY", value: "sometimes"},
 		{name: "invalid upload bundle size", key: "CONSOLE_MAX_SKILL_UPLOAD_BUNDLE_SIZE", value: "5gb"},

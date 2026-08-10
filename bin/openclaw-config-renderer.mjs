@@ -302,6 +302,7 @@ function renderPlugins(output, runtime) {
           maxBrowserConcurrency: runtime.concurrency.maxBrowser,
           maxSkillConcurrency: runtime.concurrency.maxSkills,
           maxLongTaskConcurrency: runtime.concurrency.maxLongTasksPerUserAgent,
+          locale: runtime.locale || "zh",
           consoleInternalURL: runtime.consoleInternalUrl,
           serviceTokenFile: runtime.serviceTokenFile,
         },

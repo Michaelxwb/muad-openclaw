@@ -10,13 +10,13 @@ description: 生成客户周报。MANDATORY to use when the user asks to generat
 ## 执行方式
 
 1. 先读取本目录的 `muad.skill.json`，确认任务目标。
-2. 用 `bash` 工具执行脚本（不要用 `shell`）：
+2. 用 `bash` 工具执行脚本（不要用 `shell`），**只执行一次**，不要重复运行：
 
 ```bash
-bash scripts/run.py --customer "<客户名>" --period "<周期，如 2026-W31>"
+python3 scripts/run.py --customer "<客户名>" --period "<周期，如 2026-W31>"
 ```
 
-3. 脚本会模拟耗时并生成结果文件到 `output/` 目录。
+3. 脚本会把报告写入运行环境注入的 `$SKILL_OUTPUT_DIR` 目录（脚本自动创建）。**不要把结果写到本 skill 目录**（`/opt/openclaw-skills` 是只读挂载，写入会失败）。
 4. 执行结束后，用简洁中文总结脚本输出的 JSON 摘要，**不要**把脚本的原始 trace 或临时文件内容整段贴出。
 
 ## 参数

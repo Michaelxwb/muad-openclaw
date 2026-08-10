@@ -235,6 +235,28 @@ test("spawnOpenClawTask classifies non-zero exits and timeouts", async () => {
   );
 });
 
+test("LongTaskManager resolves the peer for a task session across running, queued, and terminal tasks", async () => {
+  const runs = [];
+  let now = new Date("2026-08-09T10:00:00.000Z");
+  const manager = new LongTaskManager({
+    limit: 1,
+    stateFile: join(mkdtempSync(join(tmpdir(), "muad-long-task-peer-")), "state.jsonl"),
+    now: () => now,
+    runTask: (task) => new Promise((resolve, reject) => runs.push({ task, resolve, reject })),
+  });
+
+  const running = manager.submit(taskInput("running"));
+  const queued = manager.submit({ ...taskInput("queued"), taskId: "task-queued" });
+  assert.equal(manager.resolvePeerForTaskId(running.task.taskId), "wx-1");
+  assert.equal(manager.resolvePeerForTaskId("task-queued"), "wx-1");
+
+  runs[0].resolve();
+  await tick();
+  assert.equal(manager.resolvePeerForTaskId(running.task.taskId), "wx-1");
+
+  assert.equal(manager.resolvePeerForTaskId("no-such-task"), "");
+});
+
 function failingSpawn(code, stderr) {
   return () => {
     const child = new EventEmitter();

@@ -27,7 +27,8 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.deepEqual(registration.hooks.map((hook) => hook.name), [
     "before_agent_reply", "before_dispatch", "before_tool_call", "after_tool_call",
     "before_agent_run", "agent_end", "before_dispatch", "before_agent_run",
-    "before_tool_call", "before_agent_finalize", "agent_end",
+    "before_tool_call", "before_agent_finalize", "reply_payload_sending", "agent_end",
+    "resolve_exec_env",
   ]);
   assert.deepEqual(registration.hooks[0].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[1].options, { priority: -1000, timeoutMs: 1_000 });
@@ -37,7 +38,9 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.deepEqual(registration.hooks[7].options, { priority: -900, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[8].options, { priority: -900, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[9].options, { priority: -900, timeoutMs: 1_000 });
-  assert.deepEqual(registration.hooks[10].options, { priority: 900, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[10].options, { priority: -900, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[11].options, { priority: 900, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[12].options, { priority: -800, timeoutMs: 1_000 });
   assert.equal(registration.hooks[0].handler({}, { agentId: "main" }).handled, true);
   assert.equal(registration.hooks[0].handler({}, { agentId: "alice" }), undefined);
   assert.equal(registration.hooks[1].handler({}, { agentId: "alice" }), undefined);
@@ -71,6 +74,15 @@ test("health handler observes the latest guard config without plugin reload", as
   const health = await handler();
   assert.equal(health.ok, true);
   assert.equal(health.generation, 8);
+});
+
+test("guard config parses locale with zh default and rejects unsupported values", () => {
+  const base = validConfig();
+  assert.equal(parseGuardConfig(base).locale, "zh");
+  assert.equal(parseGuardConfig({ ...base, locale: "" }).locale, "zh");
+  assert.equal(parseGuardConfig({ ...base, locale: "zh" }).locale, "zh");
+  assert.equal(parseGuardConfig({ ...base, locale: "en" }).locale, "en");
+  assert.equal(parseGuardConfig({ ...base, locale: "fr" }).valid, false);
 });
 
 test("health fails closed for incomplete mappings, quarantine reuse, or missing dependencies", (t) => {

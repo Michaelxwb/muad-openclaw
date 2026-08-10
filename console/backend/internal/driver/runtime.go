@@ -68,6 +68,7 @@ type RuntimeConfigV1 struct {
 	Generation         int64                 `json:"generation"`
 	ConsoleInternalURL string                `json:"consoleInternalUrl"`
 	ServiceTokenFile   string                `json:"serviceTokenFile"`
+	Locale             string                `json:"locale,omitempty"`
 	Concurrency        RuntimeConcurrency    `json:"concurrency"`
 	Channels           RuntimeChannels       `json:"channels"`
 	Agents             []RuntimeAgent        `json:"agents"`
@@ -95,6 +96,11 @@ type RuntimeConcurrency struct {
 	MaxSkills                int `json:"maxSkills"`
 	MaxBrowser               int `json:"maxBrowser"`
 	MaxLongTasksPerUserAgent int `json:"maxLongTasksPerUserAgent"`
+}
+
+// validLocale 允许缺省（""，渲染为 zh）或 zh/en；其他值视为配置错误。
+func validLocale(locale string) bool {
+	return locale == "" || locale == "zh" || locale == "en"
 }
 
 type RuntimeChannels struct {
@@ -216,6 +222,9 @@ func (config RuntimeConfigV1) Validate() error {
 	}
 	if config.Concurrency.MaxSkills <= 0 || config.Concurrency.MaxBrowser <= 0 ||
 		config.Concurrency.MaxLongTasksPerUserAgent <= 0 {
+		return ErrInvalidRuntimeConfig
+	}
+	if !validLocale(config.Locale) {
 		return ErrInvalidRuntimeConfig
 	}
 	if err := validateRuntimeChannels(config.Channels); err != nil {
