@@ -130,6 +130,12 @@ type RuntimeDriver interface {
 	// the running pod, but the k8s Secret / docker container env needs to be
 	// in sync with DB to survive restarts.
 	UpdateSpec(ctx context.Context, podID string, spec PodSpec) error
+	// ReplaceRuntime swaps a Pod workload onto a new image/runtime DTO without a
+	// remove-then-create window: k8s updates the Deployment in place (or creates
+	// it if missing), docker synchronously recreates keeping state. The workload
+	// never disappears (no "已删除" race), so a failed upgrade can still roll back.
+	// State is always adopted.
+	ReplaceRuntime(ctx context.Context, spec PodSpec) error
 	// UpdateServiceToken rotates only the fixed secret file/Secret resource.
 	UpdateServiceToken(ctx context.Context, podID string, secret SecretFileSpec) error
 	// SyncPublicSkillFiles publishes Console-managed public Skill files into

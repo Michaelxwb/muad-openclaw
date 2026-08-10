@@ -79,6 +79,18 @@ func (d *DockerDriver) Create(ctx context.Context, spec PodSpec) error {
 	return err
 }
 
+// ReplaceRuntime recreates the container onto the new image while keeping the
+// state volume. `docker rm` is synchronous, so unlike a k8s remove-then-create
+// race there is no window where the workload is absent; keepState=true lets the
+// subsequent Create adopt the existing state volume.
+func (d *DockerDriver) ReplaceRuntime(ctx context.Context, spec PodSpec) error {
+	if err := d.Remove(ctx, spec.PodID, true); err != nil {
+		return err
+	}
+	spec.AdoptState = true
+	return d.Create(ctx, spec)
+}
+
 func (d *DockerDriver) Start(ctx context.Context, userID string) error {
 	_, err := d.run(ctx, "start", ContainerName(userID))
 	return err

@@ -452,6 +452,9 @@ func (drv *syncTestDriver) Revive(context.Context, string) error {
 func (drv *syncTestDriver) UpdateSpec(context.Context, string, driver.PodSpec) error {
 	return nil
 }
+func (drv *syncTestDriver) ReplaceRuntime(context.Context, driver.PodSpec) error {
+	return nil
+}
 func (drv *syncTestDriver) UpdateServiceToken(context.Context, string, driver.SecretFileSpec) error {
 	return nil
 }

@@ -450,8 +450,9 @@ func TestPodOperationsAPI_UpgradeAppliesTargetGeneration(t *testing.T) {
 		pod.State != repo.PodStateRunning || pod.SkillsPending {
 		t.Fatalf("unexpected upgraded Pod: %+v", pod)
 	}
-	if e.drv.created["pod-a"].ImageTag != "img:v2" || !e.drv.keepState["pod-a"] {
-		t.Fatalf("unexpected upgraded runtime: %+v", e.drv.created["pod-a"])
+	if e.drv.created["pod-a"].ImageTag != "img:v2" || len(e.drv.replaced) == 0 || e.drv.removed["pod-a"] {
+		t.Fatalf("upgrade must replace runtime in place, not remove+create: created=%+v replaced=%d removed=%v",
+			e.drv.created["pod-a"], len(e.drv.replaced), e.drv.removed["pod-a"])
 	}
 	if len(e.drv.syncPublicSkillCalls) == 0 {
 		t.Fatal("upgrade should sync public Skills before applying runtime generation")
@@ -465,7 +466,7 @@ func TestPodOperationsAPI_UpgradeAppliesTargetGeneration(t *testing.T) {
 func TestPodOperationsAPI_UpgradeFailureRestoresOldImage(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
-	e.drv.createErrors = []error{errors.New("simulated create failure"), nil}
+	e.drv.replaceErrors = []error{errors.New("simulated replace failure"), nil}
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/upgrade", `{"imageTag":"img:bad"}`)
 	assertStatus(t, rr, http.StatusBadGateway)
 	pod, err := e.store.GetPod("pod-a")
@@ -478,7 +479,33 @@ func TestPodOperationsAPI_UpgradeFailureRestoresOldImage(t *testing.T) {
 	if e.drv.created["pod-a"].ImageTag != "img:test" {
 		t.Fatalf("runtime image = %q", e.drv.created["pod-a"].ImageTag)
 	}
-	assertErrorHidesDiagnostic(t, rr.Body.String(), "simulated create failure")
+	// 回滚必须走 ReplaceRuntime 原地重建（失败的升级已消耗一次调用，这里记录到
+	// 成功的那次），且 workload 绝不能经过 Remove（Remove→Create 竞态已废除）。
+	if len(e.drv.replaced) == 0 || e.drv.removed["pod-a"] {
+		t.Fatalf("rollback must replace runtime in place: replaced=%d removed=%v", len(e.drv.replaced), e.drv.removed["pod-a"])
+	}
+	assertErrorHidesDiagnostic(t, rr.Body.String(), "simulated replace failure")
+}
+
+func TestPodOperationsAPI_UpgradeRollbackFailureReports50215(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	// 升级失败后回滚也失败（两次 ReplaceRuntime 都失败）：不得谎报"已自动回滚"，
+	// 必须上报 50215 且 Pod 进入 Error 状态。
+	e.drv.replaceErrors = []error{errors.New("upgrade failed"), errors.New("rollback failed")}
+	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/upgrade", `{"imageTag":"img:bad"}`)
+	assertStatus(t, rr, http.StatusBadGateway)
+	if !strings.Contains(rr.Body.String(), `"code":50215`) {
+		t.Fatalf("rollback failure response = %s, want code 50215", rr.Body.String())
+	}
+	assertErrorHidesDiagnostic(t, rr.Body.String(), "rollback failed")
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.State != repo.PodStateError {
+		t.Fatalf("pod state = %s, want error after failed rollback", pod.State)
+	}
 }
 
 func TestPodOperationsAPI_RestartRebuildsMissingWorkload(t *testing.T) {

@@ -34,7 +34,11 @@ type fakeDriver struct {
 	restarted         map[string]int
 	createErr         error
 	createErrors      []error
-	listErr           error
+	// replaced records every ReplaceRuntime invocation (in-place upgrade);
+	// replaceErrors, when non-empty, is a queue of per-call errors.
+	replaced      []driver.PodSpec
+	replaceErrors []error
+	listErr       error
 	removeErr         error
 	restartErrors     map[string]error
 	channelLogsOutput string
@@ -123,6 +127,19 @@ func (f *fakeDriver) Create(_ context.Context, spec driver.PodSpec) error {
 	if f.createErr != nil {
 		return f.createErr
 	}
+	f.created[spec.PodID] = spec
+	delete(f.removed, spec.PodID)
+	return nil
+}
+func (f *fakeDriver) ReplaceRuntime(_ context.Context, spec driver.PodSpec) error {
+	if len(f.replaceErrors) > 0 {
+		err := f.replaceErrors[0]
+		f.replaceErrors = f.replaceErrors[1:]
+		if err != nil {
+			return err
+		}
+	}
+	f.replaced = append(f.replaced, spec)
 	f.created[spec.PodID] = spec
 	delete(f.removed, spec.PodID)
 	return nil

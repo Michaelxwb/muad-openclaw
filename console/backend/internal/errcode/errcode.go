@@ -157,6 +157,7 @@ const (
 	RuntimeCreatePublicSkillStorage  = 50212
 	RuntimeTokenRotation             = 50213
 	RuntimeApplyFailed               = 50214
+	RuntimeUpgradeRollbackFailed     = 50215
 	// 503xx — 依赖不可用
 	UnavailableBindingCodeService     = 50301
 	UnavailableRuntimeReconciler      = 50302
@@ -186,6 +187,6 @@ var AllCodes = []int{
 	50011, 50012, 50013, 50014, 50015, 50016, 50017, 50018, 50019, 50020,
 	50021, 50022, 50023, 50024, 50025, 50026, 50027, 50028, 50029, 50030, 50031, 50032,
 	50201, 50202, 50203, 50204, 50205, 50206, 50207, 50208, 50209, 50210,
-	50211, 50212, 50213, 50214,
+	50211, 50212, 50213, 50214, 50215,
 	50301, 50302, 50303, 50304,
 }

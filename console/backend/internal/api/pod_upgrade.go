@@ -22,6 +22,11 @@ const (
 	upgradePollInterval  = 500 * time.Millisecond
 )
 
+// errUpgradeRollbackFailed marks a failed upgrade whose rollback also failed.
+// The API reports it as RuntimeUpgradeRollbackFailed (50215) instead of
+// claiming a successful automatic rollback.
+var errUpgradeRollbackFailed = errors.New("pod upgrade rollback failed")
+
 type upgradeRequest struct {
 	ImageTag string `json:"imageTag"`
 }
@@ -59,6 +64,11 @@ func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
+		if errors.Is(err, errUpgradeRollbackFailed) {
+			s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_rollback_failed")
+			writeRuntimeFailure(w, r, err, errcode.RuntimeUpgradeRollbackFailed)
+			return
+		}
 		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_rolled_back")
 		writeRuntimeFailure(w, r, err, errcode.RuntimeUpgradeRolledBack)
 		return
@@ -95,13 +105,15 @@ func (s *Server) performPodUpgrade(ctx context.Context, current repo.Pod, imageT
 		_ = s.store.FailPodConfigApply(target.PodID, target.ConfigGeneration, auditlog.RedactDiagnostic(err.Error()))
 		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, false, err)
 	}
-	runtimeChanged, err := s.replacePodRuntime(ctx, desired, false)
+	err = s.replacePodRuntime(ctx, desired)
 	if err == nil {
 		err = s.completePodUpgrade(target, desired)
 	}
 	if err != nil {
 		_ = s.store.FailPodConfigApply(target.PodID, target.ConfigGeneration, auditlog.RedactDiagnostic(err.Error()))
-		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, runtimeChanged, err)
+		// 一旦进入 ReplaceRuntime 阶段，运行时就可能已切换；无论失败与否都按
+		// runtimeChanged=true 处理，回滚会原地重建到旧镜像以收敛到确定状态。
+		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, true, err)
 	}
 	return s.store.GetPod(target.PodID)
 }
@@ -115,22 +127,11 @@ func (s *Server) updatePodImage(current repo.Pod, imageTag string) (repo.Pod, er
 	return s.store.GetPod(current.PodID)
 }
 
-func (s *Server) replacePodRuntime(
-	ctx context.Context, desired desiredPodRuntime, alreadyRemoved bool,
-) (bool, error) {
-	if !alreadyRemoved {
-		if err := s.drv.Remove(ctx, desired.spec.PodID, true); err != nil {
-			return false, err
-		}
+func (s *Server) replacePodRuntime(ctx context.Context, desired desiredPodRuntime) error {
+	if err := s.drv.ReplaceRuntime(ctx, desired.spec); err != nil {
+		return err
 	}
-	desired.spec.AdoptState = true
-	if err := s.drv.Create(ctx, desired.spec); err != nil {
-		return true, err
-	}
-	if err := waitForPodHealth(ctx, s.drv, desired.spec.PodID, desired.runtime.Config.Generation); err != nil {
-		return true, err
-	}
-	return true, nil
+	return waitForPodHealth(ctx, s.drv, desired.spec.PodID, desired.runtime.Config.Generation)
 }
 
 func (s *Server) completePodUpgrade(target repo.Pod, desired desiredPodRuntime) error {
@@ -159,8 +160,11 @@ func (s *Server) recoverPodUpgrade(
 	if err != nil {
 		_ = s.store.UpdatePodState(original.PodID, repo.PodStateError)
 		log.Printf("pod_upgrade_rollback_failed pod=%s error=%s", original.PodID, auditlog.RedactDiagnostic(err.Error()))
+		// 回滚本身失败：结果不可信，标记 sentinel 让 handler 上报 50215，
+		// 而不是谎报"已自动回滚"（50205）。
+		return errors.Join(cause, err, errUpgradeRollbackFailed)
 	}
-	return errors.Join(cause, err)
+	return cause
 }
 
 func (s *Server) restorePodImage(original repo.Pod) (repo.Pod, error) {
@@ -183,7 +187,7 @@ func (s *Server) restorePodRuntime(ctx context.Context, restored repo.Pod) error
 		_ = s.store.FailPodConfigApply(restored.PodID, restored.ConfigGeneration, auditlog.RedactDiagnostic(err.Error()))
 		return err
 	}
-	if _, err := s.replacePodRuntime(ctx, desired, false); err != nil {
+	if err := s.replacePodRuntime(ctx, desired); err != nil {
 		return err
 	}
 	return s.completePodUpgrade(restored, desired)

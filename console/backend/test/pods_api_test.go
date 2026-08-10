@@ -216,15 +216,15 @@ func TestPodAPI_PatchImageTagPerformsUpgrade(t *testing.T) {
 	if pod.ImageTag != "img:v2" || pod.DisplayName != "Pod Upgraded" {
 		t.Fatalf("unexpected patched Pod: %+v", pod)
 	}
-	if e.drv.created["pod-a"].ImageTag != "img:v2" || !e.drv.keepState["pod-a"] {
-		t.Fatalf("runtime was not upgraded: %+v keep=%v", e.drv.created["pod-a"], e.drv.keepState["pod-a"])
+	if e.drv.created["pod-a"].ImageTag != "img:v2" || len(e.drv.replaced) == 0 {
+		t.Fatalf("runtime was not upgraded in place: %+v replaced=%d", e.drv.created["pod-a"], len(e.drv.replaced))
 	}
 }
 
 func TestPodAPI_PatchImageTagFailureRollsBack(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
-	e.drv.createErrors = []error{errors.New("simulated create failure"), nil}
+	e.drv.replaceErrors = []error{errors.New("simulated replace failure"), nil}
 
 	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"imageTag":"img:bad"}`)
 	if rr.Code != http.StatusBadGateway {
@@ -237,7 +237,7 @@ func TestPodAPI_PatchImageTagFailureRollsBack(t *testing.T) {
 	if pod.ImageTag != "img:test" || e.drv.created["pod-a"].ImageTag != "img:test" {
 		t.Fatalf("image patch did not roll back: pod=%+v runtime=%+v", pod, e.drv.created["pod-a"])
 	}
-	assertErrorHidesDiagnostic(t, rr.Body.String(), "simulated create failure")
+	assertErrorHidesDiagnostic(t, rr.Body.String(), "simulated replace failure")
 }
 
 func TestPodAPI_PatchImageTagRejectsCapacityBeforeUpgrade(t *testing.T) {
