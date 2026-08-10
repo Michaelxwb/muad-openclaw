@@ -8,6 +8,7 @@ import {
 } from "./image-plugin-paths.mjs";
 import { applyRuntimeConfig, defaultConfigPath, loadRuntimeInput } from "./inject-multi-user-config.mjs";
 import { canonicalHash, canonicalStringify } from "./openclaw-config-renderer.mjs";
+import { takeRuntimeWarnings } from "./runtime-config-schema.mjs";
 import { applyStartupContext, collectStartupContext } from "./startup-context.mjs";
 
 const REQUIRED_PROFILE_TOOLS = ["browser", "session_get_state"];
@@ -152,6 +153,11 @@ function main() {
     console.log(
       `[inject-env] pod=${result.runtime.podId} generation=${generation} source=${source} channels=[${result.channels.join(",")}] hash=${result.hash}`,
     );
+    // 前向兼容：DTO 由更新的 console 渲染、本镜像不认识某些顶层字段时 warn 并继续，
+    // 而不是 exit 1 把 Pod 打成 CrashLoopBackOff（老镜像 + 新控制面）。
+    for (const warning of takeRuntimeWarnings()) {
+      console.log(`[inject-env] warning: ${warning}`);
+    }
   } catch (error) {
     console.error(`[inject-env] ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;

@@ -8,6 +8,17 @@ const TOP_LEVEL_KEYS = [
   "platforms", "skills", "sessionManager", "guard", "guidance",
 ];
 
+// Forward-compatibility warnings collected while validating a Runtime DTO that
+// was rendered by a newer console. inject-env prints them and continues, so an
+// older image can boot against a newer DTO (unknown top-level fields are ignored)
+// instead of crash-looping on the first unrecognized key. takeRuntimeWarnings()
+// drains the buffer so callers see only the warnings from their own validation.
+const runtimeWarnings = [];
+
+export function takeRuntimeWarnings() {
+  return runtimeWarnings.splice(0);
+}
+
 export function parseRuntimeConfig(input) {
   let value = input;
   if (typeof input === "string") {
@@ -30,8 +41,12 @@ export function readRuntimeConfig({ env = process.env, stdinText = "" } = {}) {
 
 export function validateRuntimeConfig(value) {
   assertRecord(value, "runtime");
+  // 顶层未知字段（如旧镜像不认识的新键）warn+ignore：新 console 下发到旧镜像时
+  // 前向兼容，而不是 inject-env exit 1 导致 CrashLoopBackOff。required-missing
+  // 与值类型仍严格校验。
   assertExactKeys(value, TOP_LEVEL_KEYS, "runtime",
-    TOP_LEVEL_KEYS.filter((key) => key !== "guidance" && key !== "locale"));
+    TOP_LEVEL_KEYS.filter((key) => key !== "guidance" && key !== "locale"),
+    true);
   if (value.version !== RUNTIME_VERSION) throw new Error(`unsupported runtime version: ${value.version}`);
   assertID(value.podId, "runtime.podId");
   assertPositiveInteger(value.generation, "runtime.generation");
@@ -323,10 +338,16 @@ function validateGuard(value, agents, profiles) {
   if (mapped.size !== agents.size - 1) throw new Error("Runtime Guard must map every business agent");
 }
 
-function assertExactKeys(value, allowed, label, required = allowed) {
+function assertExactKeys(value, allowed, label, required = allowed, warnUnknown = false) {
   const allowedSet = new Set(allowed);
   const unknown = Object.keys(value).filter((key) => !allowedSet.has(key));
-  if (unknown.length > 0) throw new Error(`${label} contains unknown field: ${unknown[0]}`);
+  if (unknown.length > 0) {
+    if (warnUnknown) {
+      runtimeWarnings.push(`${label} contains unknown field: ${unknown[0]}`);
+    } else {
+      throw new Error(`${label} contains unknown field: ${unknown[0]}`);
+    }
+  }
   const missing = required.filter((key) => !(key in value));
   if (missing.length > 0) throw new Error(`${label} is missing field: ${missing[0]}`);
 }

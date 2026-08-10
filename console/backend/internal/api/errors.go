@@ -328,6 +328,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.RuntimeTokenRotation: {http.StatusBadGateway, "Pod 服务令牌轮换失败", "Pod service token rotation failed"},
 	// runtime.apply_failed
 	errcode.RuntimeApplyFailed: {http.StatusBadGateway, "绑定已保存，但运行时配置应用失败", "Binding saved but runtime config apply failed"},
+	// runtime.upgrade_rollback_failed
+	errcode.RuntimeUpgradeRollbackFailed: {http.StatusBadGateway, "Pod 升级失败，且自动回滚也未成功", "Pod upgrade failed and automatic rollback did not succeed"},
 	// unavailable.binding_code_service
 	errcode.UnavailableBindingCodeService: {http.StatusServiceUnavailable, "绑定码服务暂不可用", "Binding code service is temporarily unavailable"},
 	// unavailable.runtime_reconciler

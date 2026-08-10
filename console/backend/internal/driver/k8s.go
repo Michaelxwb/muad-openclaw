@@ -130,6 +130,25 @@ func (d *K8sDriver) Create(ctx context.Context, spec PodSpec) error {
 	return d.upsertDeployment(ctx, spec, name)
 }
 
+// ReplaceRuntime rolls a Pod workload onto a new image/runtime DTO without a
+// remove-then-create gap. The Deployment is created-if-missing or updated in
+// place, so an out-of-band failure can never leave the workload absent (the
+// "已删除" state) and a failed upgrade can always roll back to the old image.
+// The gateway token is preserved by UpdateSpec, keeping the connected wecom
+// bot / wechat session live across the rollout.
+func (d *K8sDriver) ReplaceRuntime(ctx context.Context, spec PodSpec) error {
+	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
+		return ErrInvalidPodSpec
+	}
+	if err := d.ensureStatePVC(ctx, spec.PodID, true); err != nil {
+		return err
+	}
+	if err := d.UpdateSpec(ctx, spec.PodID, spec); err != nil {
+		return err
+	}
+	return d.upsertDeployment(ctx, spec, ContainerName(spec.PodID))
+}
+
 func (d *K8sDriver) ensureStatePVC(ctx context.Context, podID string, adopt bool) error {
 	name := ContainerName(podID) + "-state"
 	api := d.client.CoreV1().PersistentVolumeClaims(d.namespace)

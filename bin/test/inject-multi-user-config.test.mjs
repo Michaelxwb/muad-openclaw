@@ -12,7 +12,11 @@ import {
   pluginRoots,
 } from "../image-plugin-paths.mjs";
 import { canonicalHash, renderOpenClawConfig } from "../openclaw-config-renderer.mjs";
-import { parseRuntimeConfig, readRuntimeConfig } from "../runtime-config-schema.mjs";
+import {
+  parseRuntimeConfig,
+  readRuntimeConfig,
+  takeRuntimeWarnings,
+} from "../runtime-config-schema.mjs";
 
 const fixturePath = fileURLToPath(new URL("./fixtures/runtime-v1.json", import.meta.url));
 const fixtureText = readFileSync(fixturePath, "utf8");
@@ -30,6 +34,28 @@ test("Runtime DTO env and stdin inputs are equivalent and strict", () => {
   unknown.routes[0].unexpected = true;
   assert.throws(() => parseRuntimeConfig(unknown), /unknown field/);
   assert.throws(() => parseRuntimeConfig({ ...fromEnv, version: 2 }), /unsupported runtime version/);
+});
+
+test("Runtime DTO tolerates unknown top-level fields for forward compatibility", () => {
+  takeRuntimeWarnings(); // drain any warnings left by earlier tests in this process
+  const fromEnv = parseRuntimeConfig(fixtureText);
+
+  // 更新的 console 可能下发本 schema 不认识的新顶层键：必须 warn+ignore 而非抛错，
+  // 否则旧镜像 + 新控制面会 inject-env exit 1 → CrashLoopBackOff。
+  const newer = { ...structuredClone(fromEnv), futureTopLevel: { anything: true } };
+  const parsed = parseRuntimeConfig(newer);
+  assert.equal(parsed.podId, fromEnv.podId, "unknown top-level field must not break parsing");
+  const warnings = takeRuntimeWarnings();
+  assert.equal(warnings.length, 1, `expected 1 forward-compat warning, got ${JSON.stringify(warnings)}`);
+  assert.match(warnings[0], /runtime contains unknown field: futureTopLevel/);
+
+  // required-missing 与值类型校验仍然严格（前向兼容只放行未知字段）。
+  assert.throws(() => parseRuntimeConfig({ ...fromEnv, version: 2 }), /unsupported runtime version/);
+  assert.throws(() => parseRuntimeConfig({ ...fromEnv, generation: undefined }), /runtime\.generation/);
+  // 嵌套对象里的未知字段仍视为契约违约（内层不做前向兼容）。
+  const nested = structuredClone(fromEnv);
+  nested.routes[0].unexpected = true;
+  assert.throws(() => parseRuntimeConfig(nested), /unknown field/);
 });
 
 test("Runtime DTO accepts older agent payloads without skill filters", () => {
