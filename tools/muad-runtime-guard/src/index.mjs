@@ -11,6 +11,7 @@ import { createMainBindingReply } from "./main-binding-reply.mjs";
 import { createModelConfigDispatch } from "./model-config-reply.mjs";
 import { createRouteVerifier } from "./route-verifier.mjs";
 import { createSkillLeaseHooks } from "./skill-hooks.mjs";
+import { createSkillOutputHooks } from "./skill-output-hooks.mjs";
 import { SharedSkillLeaseManager } from "./skill-lease.mjs";
 import {
   createAgentFilesPolicy,
@@ -33,6 +34,7 @@ const plugin = {
     registerBrowserLeaseHooks(api, config, leaseManager);
     registerSkillLeaseHooks(api, config, skillLeaseManager);
     registerLongTaskHooks(api, config, longTaskManager);
+    registerSkillOutputHooks(api, longTaskManager);
     registerReloadPolicy(api);
     const client = createBindingClient(config);
     api.registerCommand(createBindCommand({
@@ -107,12 +109,41 @@ function registerSkillLeaseHooks(api, config, leaseManager) {
 }
 
 function registerLongTaskHooks(api, config, manager) {
-  const hooks = createLongTaskHooks({ config, manager });
+  const hooks = createLongTaskHooks({
+    config,
+    manager,
+    resolveWorkspace: (agentId) => resolveWorkspace(api, agentId),
+    log: (message) => console.warn(`[muad-runtime-guard]${message}`),
+  });
   api.on("before_dispatch", hooks.beforeDispatch, { priority: -1100, timeoutMs: 1_000 });
   api.on("before_agent_run", hooks.beforeAgentRun, { priority: -900, timeoutMs: 1_000 });
   api.on("before_tool_call", hooks.beforeToolCall, { priority: -900, timeoutMs: 1_000 });
   api.on("before_agent_finalize", hooks.beforeAgentFinalize, { priority: -900, timeoutMs: 1_000 });
+  api.on("reply_payload_sending", hooks.replyPayloadSending, { priority: -900, timeoutMs: 1_000 });
   api.on("agent_end", hooks.agentEnd, { priority: 900, timeoutMs: 1_000 });
+}
+
+function registerSkillOutputHooks(api, manager) {
+  const hooks = createSkillOutputHooks({
+    manager,
+    resolveStateRoot: (agentId) => resolveStateRoot(api, agentId),
+  });
+  api.on("resolve_exec_env", hooks.resolveExecEnv, { priority: -800, timeoutMs: 1_000 });
+}
+
+function resolveWorkspace(api, agentId) {
+  try {
+    const workspace = api.runtime.agent.resolveAgentWorkspaceDir(api.config, agentId);
+    if (typeof workspace !== "string" || !path.isAbsolute(workspace)) return "";
+    return path.resolve(workspace);
+  } catch {
+    return "";
+  }
+}
+
+function resolveStateRoot(api, agentId) {
+  const workspace = resolveWorkspace(api, agentId);
+  return workspace ? path.dirname(workspace) : "";
 }
 
 export function installBrowserLease(limit, globals = globalThis) {
@@ -158,6 +189,7 @@ export function createAgentPathResolver(api) {
         workspace: path.resolve(workspace),
         agentDir: path.resolve(agentDir),
         sessionStore: path.resolve(path.dirname(agentDir), "session-store"),
+        outputs: path.resolve(path.dirname(workspace), "skill-outputs", agentId),
       };
     } catch {
       return null;

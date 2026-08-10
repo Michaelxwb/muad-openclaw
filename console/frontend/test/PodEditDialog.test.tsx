@@ -93,8 +93,12 @@ describe("PodEditDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
-    await waitFor(() => expect(apiMocks.updatePodChannels).toHaveBeenCalledTimes(1));
-    expect(apiMocks.setPodResources).toHaveBeenCalledTimes(1);
+    // 两个提交是串行 await（通道 → 资源），waitFor 内同时断言两个 mock，
+    // 避免通道调用出现后、资源调用的微任务续延尚未执行时的竞态。
+    await waitFor(() => {
+      expect(apiMocks.updatePodChannels).toHaveBeenCalledTimes(1);
+      expect(apiMocks.setPodResources).toHaveBeenCalledTimes(1);
+    });
     expect(apiMocks.setPodResources).toHaveBeenCalledWith("pod-a", {
       memLimit: "4",
       cpuLimit: "2",

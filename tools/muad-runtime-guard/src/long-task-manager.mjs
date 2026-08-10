@@ -69,6 +69,16 @@ export class LongTaskManager {
     for (const pool of this.#pools.values()) this.#drain(pool);
   }
 
+  resolvePeerForTaskId(taskId) {
+    for (const pool of this.#pools.values()) {
+      const task = pool.active.get(taskId) ??
+        pool.queue.find((task) => task.taskId === taskId) ??
+        pool.terminal.find((task) => task.taskId === taskId);
+      if (task) return task.peerId;
+    }
+    return "";
+  }
+
   snapshot() {
     const pools = [];
     let queued = 0;

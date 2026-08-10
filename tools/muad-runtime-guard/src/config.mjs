@@ -9,6 +9,7 @@ export function parseGuardConfig(value) {
   const quarantineProfile = String(input.quarantineProfile ?? "").trim();
   const consoleInternalURL = String(input.consoleInternalURL ?? "").trim();
   const serviceTokenFile = String(input.serviceTokenFile ?? "").trim();
+  const locale = String(input.locale ?? "").trim();
   const agentProfiles = parseAgentProfiles(input.agentProfiles);
   const skillReadRoots = parseSkillReadRoots(input.skillReadRoots);
   const longTaskSkillGrants = parseLongTaskSkillGrants(input.longTaskSkillGrants);
@@ -23,6 +24,7 @@ export function parseGuardConfig(value) {
     longTaskSkillGrants !== null && longTaskGrantsUseMappedAgents(agentProfiles, longTaskSkillGrants) &&
     sameSkillRootAgentSet(agentProfiles, skillReadRoots) &&
     agentProfiles.every((mapping) => mapping.profile !== quarantineProfile) &&
+    supportedLocale(locale) &&
     positiveInteger(maxBrowserConcurrency) && positiveInteger(maxSkillConcurrency) &&
     positiveInteger(maxLongTaskConcurrency);
   return {
@@ -32,6 +34,7 @@ export function parseGuardConfig(value) {
     quarantineProfile,
     consoleInternalURL,
     serviceTokenFile,
+    locale: valid ? locale || "zh" : "zh",
     agentProfiles: agentProfiles ?? [],
     skillReadRoots: skillReadRoots ?? [],
     longTaskSkillGrants: longTaskSkillGrants ?? [],
@@ -134,6 +137,10 @@ function validURL(value) {
 
 function positiveInteger(value) {
   return Number.isInteger(value) && value > 0;
+}
+
+function supportedLocale(value) {
+  return value === "" || value === "zh" || value === "en";
 }
 
 const SKILL_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;

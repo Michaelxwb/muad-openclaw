@@ -410,15 +410,15 @@ func ensureLongTaskSubmitStub(skillDir, name string, longTask bool) error {
 }
 
 func longTaskSubmitStub(name string) string {
-	return `# Long Task Submit
+	return `# Long Task
 
-This Skill runs as a background task. Do not execute the real task in the current conversation.
+This Skill runs as a background task. Do not execute the real task in the current conversation, and do not run any tools or scripts for it.
 
-Reply with exactly one first line in this format:
+Reply to the user with one short confirmation in the user's language (for Chinese users, reply in Chinese), for example:
 
-MUAD_TASK|` + name + `|<short task objective copied from the user's request>
+好的，正在后台为你执行「` + name + `」，完成后结果会自动推送给你，可继续发消息。
 
-Keep any following text brief; the runtime will replace the reply after enqueueing.
+Do not output any special marker or machine-readable first line.
 `
 }
 

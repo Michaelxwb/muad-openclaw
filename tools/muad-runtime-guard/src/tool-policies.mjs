@@ -76,8 +76,11 @@ function evaluateFileAccess(event, ctx, config, resolvePaths) {
     const target = resolveCandidate(roots.workspace, candidate);
     const skillRead = event.toolName === "read" &&
       skillRoots.some((root) => isWithin(root, target ?? ""));
+    const outputRead = event.toolName === "read" &&
+      typeof roots.outputs === "string" && path.isAbsolute(roots.outputs) &&
+      isWithin(roots.outputs, target ?? "");
     if (!target || isWithin(roots.agentDir, target) || isWithin(roots.sessionStore, target) ||
-      (!isWithin(roots.workspace, target) && !skillRead)) {
+      (!isWithin(roots.workspace, target) && !skillRead && !outputRead)) {
       return deny("file access is outside the agent workspace or authorized Skill roots");
     }
     // Private Skill lives under workspace/skills; agents may read it but never

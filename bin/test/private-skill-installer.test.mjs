@@ -30,7 +30,9 @@ test("installs one private skill into the target agent workspace", async () => {
   assert.equal(result.longTask, true);
   assert.equal(result.entryType, "managed");
   assert.match(result.manifestHash, /^sha256:/u);
-  assert.match(readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "_longtask_submit.md"), "utf8"), /MUAD_TASK\|xdr-query\|/u);
+  const stub = readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "_longtask_submit.md"), "utf8");
+  assert.match(stub, /background task/u);
+  assert.doesNotMatch(stub, /MUAD_TASK/u);
   assert.equal(readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "SKILL.md"), "utf8"), "# XDR\n");
 });
 

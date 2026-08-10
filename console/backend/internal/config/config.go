@@ -68,6 +68,7 @@ type runtimeDefaultsYAML struct {
 	MaxLongTaskConcurrency *int    `yaml:"maxLongTaskConcurrency"`
 	BrowserCDPPortStart    *int    `yaml:"browserCDPPortStart"`
 	BrowserCDPPortEnd      *int    `yaml:"browserCDPPortEnd"`
+	Locale                 *string `yaml:"locale"`
 }
 
 type securityYAML struct {
@@ -138,6 +139,7 @@ type RuntimeDefaults struct {
 	MaxLongTaskConcurrency int
 	BrowserCDPPortStart    int
 	BrowserCDPPortEnd      int
+	Locale                 string
 }
 
 // Config holds the validated console configuration.
@@ -214,6 +216,7 @@ func defaults() *Config {
 			MaxLongTaskConcurrency: 2,
 			BrowserCDPPortStart:    18802,
 			BrowserCDPPortEnd:      65535,
+			Locale:                 "zh",
 		},
 		SkillMaxUploadBundleSize: "5m",
 		RuntimeTimezone:          "Asia/Shanghai",
@@ -375,6 +378,7 @@ func applyRuntimeDefaultsYAML(dst *RuntimeDefaults, src *runtimeDefaultsYAML) {
 	applyInt(&dst.MaxLongTaskConcurrency, src.MaxLongTaskConcurrency)
 	applyInt(&dst.BrowserCDPPortStart, src.BrowserCDPPortStart)
 	applyInt(&dst.BrowserCDPPortEnd, src.BrowserCDPPortEnd)
+	applyString(&dst.Locale, src.Locale)
 }
 
 func applyResourceDefaultsYAML(dst *RuntimeDefaults, src *resourceDefaultsYAML) {
@@ -496,6 +500,7 @@ func (c *Config) overrideFromEnv() error {
 			return err
 		}
 	}
+	envOverride(&c.RuntimeDefaults.Locale, "CONSOLE_RUNTIME_LOCALE")
 	envOverride(&c.RuntimeDefaults.MemLimit, "CONSOLE_RESOURCE_MEM_LIMIT")
 	envOverride(&c.RuntimeDefaults.CPULimit, "CONSOLE_RESOURCE_CPU_LIMIT")
 	envOverride(&c.RuntimeDefaults.RestartPolicy, "CONSOLE_RESOURCE_RESTART_POLICY")
@@ -593,6 +598,9 @@ func (c RuntimeDefaults) validate() error {
 	}
 	if c.MaxLongTaskConcurrency <= 0 {
 		return fmt.Errorf("resources.maxLongTaskConcurrency must be greater than zero")
+	}
+	if c.Locale != "zh" && c.Locale != "en" {
+		return fmt.Errorf("runtimeDefaults.locale must be zh or en")
 	}
 	if c.BrowserCDPPortStart < 1024 || c.BrowserCDPPortStart > 65535 {
 		return fmt.Errorf("browser.cdpPortStart must be between 1024 and 65535")

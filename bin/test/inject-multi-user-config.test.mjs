@@ -16,6 +16,10 @@ import { parseRuntimeConfig, readRuntimeConfig } from "../runtime-config-schema.
 
 const fixturePath = fileURLToPath(new URL("./fixtures/runtime-v1.json", import.meta.url));
 const fixtureText = readFileSync(fixturePath, "utf8");
+const guardManifestPath = fileURLToPath(
+  new URL("../../tools/muad-runtime-guard/openclaw.plugin.json", import.meta.url),
+);
+const guardManifest = JSON.parse(readFileSync(guardManifestPath, "utf8"));
 
 test("Runtime DTO env and stdin inputs are equivalent and strict", () => {
   const fromEnv = readRuntimeConfig({ env: { MUAD_RUNTIME_CONFIG: fixtureText }, stdinText: "" });
@@ -200,6 +204,44 @@ Keep this custom rule.
   assert.equal(firstGuidance, secondGuidance);
   assert.equal((firstGuidance.match(/muad:skill-activation:start/gu) ?? []).length, 1);
   assert.equal((firstGuidance.match(/Before using any Skill instructions/gu) ?? []).length, 0);
+});
+
+test("Runtime DTO locale is optional, accepts zh/en, and rejects other values", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  assert.equal(runtime.locale, undefined, "fixture carries no locale (optional)");
+  assert.equal(parseRuntimeConfig({ ...runtime, locale: "zh" }).locale, "zh");
+  assert.equal(parseRuntimeConfig({ ...runtime, locale: "en" }).locale, "en");
+  assert.throws(() => parseRuntimeConfig({ ...runtime, locale: "fr" }), /locale/);
+});
+
+test("renderer passes runtime.locale through to the guard config", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  const zh = renderOpenClawConfig(runtime, {});
+  assert.equal(zh.plugins.entries["muad-runtime-guard"].config.locale, "zh");
+
+  const english = renderOpenClawConfig({ ...runtime, locale: "en" }, {});
+  assert.equal(english.plugins.entries["muad-runtime-guard"].config.locale, "en");
+});
+
+test("rendered guard config always satisfies the plugin manifest configSchema", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  for (const locale of ["zh", "en"]) {
+    const output = renderOpenClawConfig({ ...runtime, locale }, {});
+    const guardConfig = output.plugins.entries["muad-runtime-guard"].config;
+    const schema = guardManifest.configSchema;
+    const extra = Object.keys(guardConfig).filter((key) => !(key in schema.properties));
+    const missing = (schema.required ?? []).filter((key) => !(key in guardConfig));
+    assert.deepEqual(extra, [], `locale=${locale} guard config has keys absent from configSchema`);
+    assert.deepEqual(missing, [], `locale=${locale} guard config misses configSchema required keys`);
+    for (const [key, value] of Object.entries(guardConfig)) {
+      if (schema.properties[key]?.enum) {
+        assert.ok(
+          schema.properties[key].enum.includes(value),
+          `locale=${locale} guard config ${key}=${JSON.stringify(value)} not in enum`,
+        );
+      }
+    }
+  }
 });
 
 test("renderer maps supportsTools:false to OpenClaw compat.supportsTools", () => {

@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 import time
 import uuid
 from datetime import datetime, timezone
@@ -22,7 +23,27 @@ def parse_args():
     parser = argparse.ArgumentParser(description="generate customer weekly report")
     parser.add_argument("--customer", required=True, help="customer name")
     parser.add_argument("--period", required=True, help="report period, e.g. 2026-W31")
+    parser.add_argument(
+        "--output-dir",
+        help="report output directory (default: $SKILL_OUTPUT_DIR, then /tmp/muad-skill-outputs)",
+    )
     return parser.parse_args()
+
+
+def resolve_output_dir(args):
+    # Priority: explicit flag > framework-injected SKILL_OUTPUT_DIR > temp fallback.
+    # Never write into the skill directory: it is mounted read-only.
+    explicit = text(args.output_dir)
+    if explicit:
+        return explicit
+    from_env = text(os.environ.get("SKILL_OUTPUT_DIR", ""))
+    if from_env:
+        return from_env
+    return os.path.join(tempfile.gettempdir(), "muad-skill-outputs")
+
+
+def text(value):
+    return (value or "").strip()
 
 
 def simulate_work(customer, period):
@@ -41,17 +62,9 @@ def simulate_work(customer, period):
     return rows
 
 
-def skill_root():
-    # scripts/run.py -> <skill-dir>/ ; resolve the skill directory explicitly
-    # instead of walking N parent dirs, so the script keeps working regardless
-    # of where the bundle is extracted.
-    current = os.path.dirname(os.path.abspath(__file__))
-    return os.path.dirname(current)
-
-
 def main():
     args = parse_args()
-    output_dir = os.path.join(skill_root(), "output")
+    output_dir = resolve_output_dir(args)
     os.makedirs(output_dir, exist_ok=True)
 
     started = datetime.now(timezone.utc)
