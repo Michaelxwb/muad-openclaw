@@ -95,10 +95,14 @@ describe("PodEditDialog", () => {
 
     // 两个提交是串行 await（通道 → 资源），waitFor 内同时断言两个 mock，
     // 避免通道调用出现后、资源调用的微任务续延尚未执行时的竞态。
-    await waitFor(() => {
-      expect(apiMocks.updatePodChannels).toHaveBeenCalledTimes(1);
-      expect(apiMocks.setPodResources).toHaveBeenCalledTimes(1);
-    });
+    // 超时放宽到 5s：cf-stop / CI 并发跑多套测试时事件循环可能饥饿，默认 1s 会误报 flake。
+    await waitFor(
+      () => {
+        expect(apiMocks.updatePodChannels).toHaveBeenCalledTimes(1);
+        expect(apiMocks.setPodResources).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 5000 },
+    );
     expect(apiMocks.setPodResources).toHaveBeenCalledWith("pod-a", {
       memLimit: "4",
       cpuLimit: "2",
