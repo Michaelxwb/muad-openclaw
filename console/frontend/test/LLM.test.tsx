@@ -100,6 +100,33 @@ describe("LLM", () => {
     );
   });
 
+  it("allows unchecking supportsTools in the create dialog", async () => {
+    render(<LLM />);
+    await screen.findByText("Alice Model");
+    fireEvent.click(screen.getByRole("button", { name: "创建模型" }));
+    await screen.findByText("批量创建模型配置");
+
+    const supportsTools = screen.getByRole("checkbox", { name: /支持函数调用/ });
+    expect(supportsTools).toBeChecked();
+
+    fireEvent.click(supportsTools);
+    await waitFor(() => expect(supportsTools).not.toBeChecked());
+
+    fireEvent.change(screen.getByLabelText("显示名称"), {
+      target: { value: "Batch Model" },
+    });
+    fireEvent.change(screen.getByLabelText("API Key 列表"), {
+      target: { value: "sk-one" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+
+    await waitFor(() =>
+      expect(apiMocks.createLLMModels).toHaveBeenCalledWith([
+        expect.objectContaining({ displayName: "Batch Model 1", supportsTools: false }),
+      ]),
+    );
+  });
+
   it("tests selected model configs in batch", async () => {
     render(<LLM />);
     await screen.findByText("Alice Model");
@@ -121,5 +148,17 @@ describe("LLM", () => {
 
     expect(screen.getByText("Bob Model")).toBeInTheDocument();
     expect(screen.queryByText("Alice Model")).not.toBeInTheDocument();
+  });
+
+  it("supportsTools checkbox must not be label-wrapped (label activation double-fires onChange)", async () => {
+    render(<LLM />);
+    await screen.findByText("Alice Model");
+    fireEvent.click(screen.getByRole("button", { name: "创建模型" }));
+    await screen.findByText("批量创建模型配置");
+
+    const supportsTools = screen.getByRole("checkbox", { name: /支持函数调用/ });
+    // 回归：Field 用 <label> 包裹 checkbox 时，Chrome 中 label 激活会向 input 再转发
+    // 一次合成 click → handleChange 两次 → 勾选被立刻抵消。必须用非 label 容器。
+    expect(supportsTools.closest("label")).toBeNull();
   });
 });

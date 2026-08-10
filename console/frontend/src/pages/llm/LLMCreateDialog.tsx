@@ -98,12 +98,15 @@ export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: P
             onChange={(value) => set("baseUrl", value)}
           />
         </Field>
-        <Field label={t("model.functionCalls")}>
+        <Field as="div" label={t("model.functionCalls")}>
           <Checkbox
             aria-label={t("model.supportFunctionCallsAria")}
             checked={draft.supportsTools}
-            onChange={(checked) =>
-              setDraft((previous) => ({ ...previous, supportsTools: Boolean(checked) }))
+            onChange={(e) =>
+              setDraft((previous) => ({
+                ...previous,
+                supportsTools: (e.target as HTMLInputElement).checked,
+              }))
             }
           >
             {t("model.supportFunctionCalls")}
@@ -125,12 +128,23 @@ export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: P
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  children,
+  as = "label",
+}: {
+  label: string;
+  children: ReactNode;
+  // 不能用 <label> 包裹 Semi Checkbox：label 激活会对控制元素再派发一次合成 click，
+  // 导致 onChange 触发两次、勾选被立刻抵消（Chrome 实测）。checkbox 字段用 "div"。
+  as?: "label" | "div";
+}) {
+  const Wrapper = as;
   return (
-    <label className={styles.field}>
+    <Wrapper className={styles.field}>
       <span>{label}</span>
       {children}
-    </label>
+    </Wrapper>
   );
 }
 
