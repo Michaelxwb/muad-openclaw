@@ -132,10 +132,11 @@ describe("Human User and credential API", () => {
     );
   });
 
-  it("sends a credential only in the write payload and consumes a redacted response", async () => {
+  it("sends and receives plaintext platform credentials for administrator views", async () => {
     const credential = {
       humanUserId: "user-a",
       platform: "mssw",
+      credentials: { apiKey: "test-api-key" },
       credentialFingerprint: "sha256:abcd",
       platformEnabled: true,
       updatedAt: "2026-07-11T00:00:00Z",
@@ -154,7 +155,7 @@ describe("Human User and credential API", () => {
       }),
     );
     expect(result.credential).toEqual(credential);
-    expect(result.credential).not.toHaveProperty("apiKey");
+    expect(result.credential.credentials).toEqual({ apiKey: "test-api-key" });
   });
 });
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { Button, Empty, Input, Select, Skeleton, Space, Table, Tag } from "@douyinfe/semi-ui";
+import { Button, Empty, Input, Select, Space, Table, Tag, Tooltip } from "@douyinfe/semi-ui";
 import { IconRefresh, IconSearch } from "@douyinfe/semi-icons";
+import type { BasicSelectValue } from "@douyinfe/semi-ui/lib/es/select";
 import { api } from "../api";
 import type {
   LongTask,
@@ -31,22 +32,10 @@ interface Filters {
   status: LongTaskStatus | "";
 }
 
-interface LongTaskPoolView {
-  poolKey: string;
-  podId: string;
-  humanUserId: string;
-  agentId: string;
-  peerId: string;
-  queued: number;
-  running: number;
-  limit: number;
-  tasks: LongTask[];
-}
-
-interface MutableLongTaskPoolView extends LongTaskPoolView {
-  fromSummary: boolean;
-  rowQueued: number;
-  rowRunning: number;
+interface LongTaskRow extends LongTask {
+  effectivePoolQueued: number;
+  effectivePoolRunning: number;
+  effectivePoolLimit: number;
 }
 
 const EMPTY_FILTERS: Filters = { q: "", status: "" };
@@ -60,7 +49,7 @@ export function LongTasks({ onOpenPod }: Props) {
       <FeedbackBanner error={state.error} />
       <PageSection>
         <LongTaskToolbar state={state} />
-        <LongTaskPools state={state} onOpenPod={onOpenPod} />
+        <LongTaskTable state={state} onOpenPod={onOpenPod} />
       </PageSection>
     </div>
   );
@@ -114,7 +103,7 @@ function useLongTasks() {
   }, [hasActive, refresh]);
   const search = () => {
     setPage(1);
-    setFilters({ ...draftFilters });
+    setFilters({ ...draftFilters, q: draftFilters.q.trim() });
   };
   const reset = () => {
     setPage(1);
@@ -160,55 +149,53 @@ function LongTaskToolbar({ state }: { state: LongTaskState }) {
     ],
     [t],
   );
+  const filterStatus = (value: BasicSelectValue | undefined | BasicSelectValue[]) => {
+    const next = String(Array.isArray(value) ? (value[0] ?? "") : (value ?? ""));
+    state.setDraftFilters({
+      ...state.draftFilters,
+      status: next as LongTaskStatus | "",
+    });
+  };
   return (
     <ListToolbar
       filters={
-        <Space className={styles.filters} spacing={8} wrap>
+        <Space className={styles.filterGroup} spacing={8}>
           <Input
             className={styles.queryInput}
             aria-label={t("longTasks.query")}
+            prefix={<IconSearch />}
             placeholder={t("longTasks.searchPlaceholder")}
             value={state.draftFilters.q}
             onChange={(q) => state.setDraftFilters({ ...state.draftFilters, q })}
             onEnterPress={state.search}
           />
+          <Tooltip content={t("common.search")}>
+            <Button aria-label={t("common.search")} icon={<IconSearch />} onClick={state.search} />
+          </Tooltip>
           <Select
+            className={styles.statusSelect}
             aria-label={t("longTasks.statusFilter")}
             value={state.draftFilters.status}
             optionList={statusOptions}
-            onChange={(value) =>
-              state.setDraftFilters({
-                ...state.draftFilters,
-                status: String(value ?? "") as LongTaskStatus | "",
-              })
-            }
-            style={{ width: 160 }}
+            onChange={filterStatus}
           />
-          <Button
-            aria-label={t("common.search")}
-            icon={<IconSearch />}
-            theme="solid"
-            onClick={state.search}
-          >
-            {t("common.search")}
-          </Button>
           <Button onClick={state.reset}>{t("common.all")}</Button>
-          <Button
-            aria-label={t("common.refresh")}
-            disabled={state.loading}
-            icon={<IconRefresh />}
-            loading={state.loading}
-            onClick={() => void state.refresh()}
-          >
-            {t("common.refresh")}
-          </Button>
+          <Tooltip content={t("common.refresh")}>
+            <Button
+              aria-label={t("common.refresh")}
+              disabled={state.loading}
+              icon={<IconRefresh />}
+              loading={state.loading}
+              onClick={() => void state.refresh()}
+            />
+          </Tooltip>
         </Space>
       }
     />
   );
 }
 
-function LongTaskPools({
+function LongTaskTable({
   state,
   onOpenPod,
 }: {
@@ -216,81 +203,29 @@ function LongTaskPools({
   onOpenPod?: (podId: string) => void;
 }) {
   const { t } = useTranslation();
-  const pools = useMemo(() => groupLongTasks(state.pools, state.rows), [state.pools, state.rows]);
+  const rows = useMemo(() => mergePoolCounts(state.rows, state.pools), [state.pools, state.rows]);
   const columns = useMemo(() => longTaskColumns(t, onOpenPod), [onOpenPod, t]);
-  const pagination = tablePagination({
-    page: state.page,
-    pageSize: state.pageSize,
-    total: state.total,
-    onPageChange: state.setPage,
-    onPageSizeChange: (size) => {
-      state.setPageSize(size);
-      state.setPage(1);
-    },
-  });
   return (
-    <Skeleton
-      placeholder={state.loading ? <Skeleton.Paragraph rows={5} /> : undefined}
+    <Table
+      columns={columns as never}
+      dataSource={rows}
+      empty={<Empty title={t("longTasks.empty")} />}
       loading={state.loading}
-    >
-      {pools.length === 0 ? (
-        <Empty title={t("longTasks.empty")} />
-      ) : (
-        <div className={styles.poolList}>
-          {pools.map((pool) => (
-            <section className={styles.poolPanel} key={pool.poolKey}>
-              <PoolHeader pool={pool} />
-              <Table
-                columns={columns as never}
-                dataSource={pool.tasks}
-                pagination={false}
-                rowKey="taskId"
-                size="small"
-              />
-            </section>
-          ))}
-          {pagination && renderTablePagination(pagination)}
-        </div>
-      )}
-    </Skeleton>
-  );
-}
-
-function PoolHeader({ pool }: { pool: LongTaskPoolView }) {
-  const { t } = useTranslation();
-  return (
-    <div className={styles.poolHeader}>
-      <div className={styles.poolIdentity}>
-        <span className={`${styles.poolTitle} ${styles.mono}`}>
-          {t("longTasks.pool")} {pool.poolKey}
-        </span>
-        <span className={styles.poolMeta}>
-          {pool.agentId} / {pool.humanUserId || "-"} / {pool.peerId}
-        </span>
-      </div>
-      <div className={styles.poolStats}>
-        <PoolStat label={t("longTasks.queued")} value={pool.queued} tone="queued" />
-        <PoolStat label={t("longTasks.running")} value={pool.running} tone="running" />
-        <PoolStat label={t("longTasks.limit")} value={pool.limit || "-"} tone="limit" />
-      </div>
-    </div>
-  );
-}
-
-function PoolStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number | string;
-  tone: "queued" | "running" | "limit";
-}) {
-  return (
-    <div className={`${styles.poolStat} ${styles[tone]}`} aria-label={`${label}: ${value}`}>
-      <span className={styles.statValue}>{value}</span>
-      <span className={styles.statLabel}>{label}</span>
-    </div>
+      pagination={tablePagination({
+        page: state.page,
+        pageSize: state.pageSize,
+        total: state.total,
+        onPageChange: state.setPage,
+        onPageSizeChange: (size) => {
+          state.setPageSize(size);
+          state.setPage(1);
+        },
+      })}
+      renderPagination={renderTablePagination}
+      rowKey="taskId"
+      scroll={{ x: 1464 }}
+      size="small"
+    />
   );
 }
 
@@ -299,33 +234,48 @@ function longTaskColumns(t: TFunction, onOpenPod?: (podId: string) => void) {
     {
       title: t("longTasks.task"),
       key: "task",
-      width: 260,
-      render: (_: unknown, task: LongTask) => (
+      align: "left" as const,
+      width: 230,
+      render: (_: unknown, task: LongTaskRow) => (
         <div className={styles.taskCell}>
           <span className={`${styles.primary} ${styles.mono}`}>{task.taskId}</span>
-          <span className={styles.subtle}>{task.poolKey}</span>
+          <span className={styles.subtle}>{task.peerId || "-"}</span>
         </div>
       ),
     },
     {
-      title: "Pod",
-      key: "podId",
-      width: 150,
-      render: (_: unknown, task: LongTask) =>
-        onOpenPod ? (
-          <Button theme="borderless" size="small" onClick={() => onOpenPod(task.podId)}>
-            {task.podId}
-          </Button>
-        ) : (
-          <span className={styles.mono}>{task.podId}</span>
-        ),
+      title: t("longTasks.agentPool"),
+      key: "pool",
+      align: "left" as const,
+      width: 260,
+      render: (_: unknown, task: LongTaskRow) => (
+        <div className={styles.taskCell}>
+          <span className={`${styles.primary} ${styles.mono}`}>{task.poolKey}</span>
+          <span className={styles.subtle} aria-label={poolMetricsLabel(t, task)}>
+            {poolMetricsText(t, task)}
+          </span>
+        </div>
+      ),
     },
     {
-      title: t("longTasks.user"),
-      key: "user",
-      width: 220,
-      render: (_: unknown, task: LongTask) => (
+      title: t("longTasks.podUser"),
+      key: "podUser",
+      align: "left" as const,
+      width: 210,
+      render: (_: unknown, task: LongTaskRow) => (
         <div className={styles.taskCell}>
+          {onOpenPod ? (
+            <Button
+              className={styles.linkButton}
+              theme="borderless"
+              size="small"
+              onClick={() => onOpenPod(task.podId)}
+            >
+              {task.podId}
+            </Button>
+          ) : (
+            <span className={styles.mono}>{task.podId}</span>
+          )}
           <span className={styles.primary}>{task.agentId}</span>
           <span className={`${styles.subtle} ${styles.mono}`}>{task.humanUserId || "-"}</span>
         </div>
@@ -334,10 +284,11 @@ function longTaskColumns(t: TFunction, onOpenPod?: (podId: string) => void) {
     {
       title: t("longTasks.skill"),
       key: "skill",
-      width: 180,
-      render: (_: unknown, task: LongTask) => (
+      align: "left" as const,
+      width: 240,
+      render: (_: unknown, task: LongTaskRow) => (
         <div className={styles.taskCell}>
-          <span className={styles.primary}>{task.skillName}</span>
+          <span className={`${styles.primary} ${styles.skillName}`}>{task.skillName}</span>
           <span className={`${styles.subtle} ${styles.mono}`}>{task.skillRoot || "-"}</span>
         </div>
       ),
@@ -345,100 +296,68 @@ function longTaskColumns(t: TFunction, onOpenPod?: (podId: string) => void) {
     {
       title: t("common.status"),
       key: "status",
-      width: 120,
-      render: (_: unknown, task: LongTask) => <LongTaskStatusTag status={task.status} />,
+      align: "left" as const,
+      width: 70,
+      render: (_: unknown, task: LongTaskRow) => <LongTaskStatusTag status={task.status} />,
     },
     {
       title: t("longTasks.submittedAt"),
       key: "submittedAt",
-      width: 170,
-      render: (_: unknown, task: LongTask) => formatTime(task.submittedAt),
+      align: "left" as const,
+      width: 108,
+      render: (_: unknown, task: LongTaskRow) => <TimeCell value={task.submittedAt} />,
     },
     {
       title: t("longTasks.startedAt"),
       key: "startedAt",
-      width: 170,
-      render: (_: unknown, task: LongTask) => formatTime(task.startedAt),
+      align: "left" as const,
+      width: 108,
+      render: (_: unknown, task: LongTaskRow) => <TimeCell value={task.startedAt} />,
     },
     {
       title: t("longTasks.endedAt"),
       key: "endedAt",
-      width: 170,
-      render: (_: unknown, task: LongTask) => formatTime(task.endedAt),
+      align: "left" as const,
+      width: 108,
+      render: (_: unknown, task: LongTaskRow) => <TimeCell value={task.endedAt} />,
     },
     {
       title: t("longTasks.terminal"),
       key: "terminal",
-      render: (_: unknown, task: LongTask) => task.terminalReason || task.errorCode || "-",
+      align: "left" as const,
+      width: 130,
+      render: (_: unknown, task: LongTaskRow) => task.terminalReason || task.errorCode || "-",
     },
   ];
 }
 
-function groupLongTasks(poolRows: ApiLongTaskPool[], rows: LongTask[]): LongTaskPoolView[] {
-  const pools = new Map<string, MutableLongTaskPoolView>();
-  for (const poolRow of poolRows) {
-    pools.set(poolRow.poolKey, {
-      poolKey: poolRow.poolKey,
-      podId: poolRow.podId,
-      humanUserId: poolRow.humanUserId,
-      agentId: poolRow.agentId,
-      peerId: poolRow.peerId,
-      queued: poolRow.poolQueued,
-      running: poolRow.poolRunning,
-      limit: poolRow.poolLimit,
-      tasks: [],
-      fromSummary: true,
-      rowQueued: 0,
-      rowRunning: 0,
-    });
-  }
-  for (const row of rows) {
-    const poolKey = row.poolKey || `${row.agentId}:${row.peerId}`;
-    let pool = pools.get(poolKey);
-    if (!pool) {
-      pool = {
-        poolKey,
-        podId: row.podId,
-        humanUserId: row.humanUserId,
-        agentId: row.agentId,
-        peerId: row.peerId,
-        queued: row.poolQueued,
-        running: row.poolRunning,
-        limit: row.poolLimit,
-        tasks: [],
-        fromSummary: false,
-        rowQueued: 0,
-        rowRunning: 0,
-      };
-      pools.set(poolKey, pool);
-    }
-    pool.limit = Math.max(pool.limit, row.poolLimit);
-    if (!pool.humanUserId && row.humanUserId) pool.humanUserId = row.humanUserId;
-    if (row.status === "queued") pool.rowQueued += 1;
-    if (row.status === "running") pool.rowRunning += 1;
-    if (!pool.fromSummary) {
-      pool.queued = Math.max(pool.queued, row.poolQueued, pool.rowQueued);
-      pool.running = Math.max(pool.running, row.poolRunning, pool.rowRunning);
-    }
-    pool.tasks.push(row);
-  }
-  return [...pools.values()]
-    .map(toPoolView)
-    .sort((left, right) => left.poolKey.localeCompare(right.poolKey));
+function mergePoolCounts(rows: LongTask[], pools: ApiLongTaskPool[]): LongTaskRow[] {
+  const byPool = new Map(pools.map((pool) => [pool.poolKey, pool]));
+  return rows.map((row) => {
+    const pool = byPool.get(row.poolKey);
+    return {
+      ...row,
+      effectivePoolQueued: pool?.poolQueued ?? row.poolQueued,
+      effectivePoolRunning: pool?.poolRunning ?? row.poolRunning,
+      effectivePoolLimit: pool?.poolLimit ?? row.poolLimit,
+    };
+  });
 }
 
-function toPoolView(pool: MutableLongTaskPoolView): LongTaskPoolView {
-  return {
-    poolKey: pool.poolKey,
-    podId: pool.podId,
-    humanUserId: pool.humanUserId,
-    agentId: pool.agentId,
-    peerId: pool.peerId,
-    queued: pool.queued,
-    running: pool.running,
-    limit: pool.limit,
-    tasks: pool.tasks,
-  };
+function poolMetricsText(t: TFunction, task: LongTaskRow) {
+  return [
+    `${t("longTasks.queued")} ${task.effectivePoolQueued}`,
+    `${t("longTasks.running")} ${task.effectivePoolRunning}`,
+    `${t("longTasks.limit")} ${task.effectivePoolLimit || "-"}`,
+  ].join(" / ");
+}
+
+function poolMetricsLabel(t: TFunction, task: LongTaskRow) {
+  return [
+    `${t("longTasks.queued")}: ${task.effectivePoolQueued}`,
+    `${t("longTasks.running")}: ${task.effectivePoolRunning}`,
+    `${t("longTasks.limit")}: ${task.effectivePoolLimit || "-"}`,
+  ].join("; ");
 }
 
 function LongTaskStatusTag({ status }: { status: LongTaskStatus }) {
@@ -454,8 +373,25 @@ function LongTaskStatusTag({ status }: { status: LongTaskStatus }) {
   return <Tag color={color}>{t(`status.${status}`)}</Tag>;
 }
 
-function formatTime(value?: string) {
+function TimeCell({ value }: { value?: string }) {
+  const formatted = formatTime(value);
+  if (typeof formatted === "string") return <span>{formatted}</span>;
+  return (
+    <span className={styles.timeCell}>
+      <span className={styles.timeDate}>{formatted.date}</span>
+      <span className={styles.timeClock}>{formatted.time}</span>
+    </span>
+  );
+}
+
+function formatTime(value?: string): { date: string; time: string } | string {
   if (!value) return "-";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  if (Number.isNaN(date.getTime())) return value;
+  return {
+    date: `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`,
+    time: [date.getHours(), date.getMinutes(), date.getSeconds()]
+      .map((part) => String(part).padStart(2, "0"))
+      .join(":"),
+  };
 }

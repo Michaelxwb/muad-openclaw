@@ -13,7 +13,7 @@ import {
   Toast,
   Tooltip,
 } from "@douyinfe/semi-ui";
-import { IconInfoCircle, IconPlus, IconRefresh, IconSearch } from "@douyinfe/semi-icons";
+import { IconHelpCircleStroked, IconPlus, IconRefresh, IconSearch } from "@douyinfe/semi-icons";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { api } from "../api";
@@ -400,14 +400,13 @@ function SkillToolbar({
           >
             {t("skill.upload")}
           </Button>
-          <Button loading={applying} onClick={onApply}>
-            {t("skill.applyAllPods")}
-          </Button>
           <Tooltip content={t("skill.autoSyncTooltip")}>
-            <IconInfoCircle
-              aria-label={t("skill.autoSyncInfo")}
-              className={styles.toolbarInfoIcon}
-            />
+            <Button className={styles.applyAllButton} loading={applying} onClick={onApply}>
+              <span className={styles.applyAllButtonContent}>
+                <span>{t("skill.applyAllPods")}</span>
+                <IconHelpCircleStroked className={styles.applyAllInfoIcon} aria-hidden />
+              </span>
+            </Button>
           </Tooltip>
           <PublicStorageAction storage={storage} />
           <Button

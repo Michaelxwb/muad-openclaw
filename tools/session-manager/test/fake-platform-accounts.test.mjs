@@ -18,17 +18,31 @@ test("fake business platform accepts every configured account at once", async (t
 
   const demoLogin = await login(baseUrl, { username: "demo", password: "demo-pass" });
   assert.equal(demoLogin.status, 200);
+  assert.equal(demoLogin.body.code, 0);
   assert.equal(demoLogin.body.user, "demo");
 
   const michaelLogin = await login(baseUrl, { username: "michael", password: "michael-pass" });
   assert.equal(michaelLogin.status, 200);
+  assert.equal(michaelLogin.body.code, 0);
   assert.equal(michaelLogin.body.user, "michael");
 
+  // /login always answers 200; failures carry a business code in the body.
   const wrongPassword = await login(baseUrl, { username: "michael", password: "wrong" });
-  assert.equal(wrongPassword.status, 401);
+  assert.equal(wrongPassword.status, 200);
+  assert.equal(wrongPassword.body.code, 1002);
+  assert.equal(wrongPassword.setCookie, "");
 
   const unknownUser = await login(baseUrl, { username: "nobody", password: "demo-pass" });
-  assert.equal(unknownUser.status, 401);
+  assert.equal(unknownUser.status, 200);
+  assert.equal(unknownUser.body.code, 1002);
+
+  // Account-state prefixes answer their own business code even with a valid password.
+  const lockedLogin = await login(baseUrl, { username: "locked-alice", password: "demo-pass" });
+  assert.equal(lockedLogin.body.code, 1003);
+  const rateLimitedLogin = await login(baseUrl, { username: "ratelimited-bob", password: "demo-pass" });
+  assert.equal(rateLimitedLogin.body.code, 1004);
+  const serviceErrorLogin = await login(baseUrl, { username: "serviceerr-carol", password: "demo-pass" });
+  assert.equal(serviceErrorLogin.body.code, 1005);
 
   // /api/me returns the session's owner, so a leaked session reveals its account.
   const demoMe = await me(baseUrl, demoLogin.setCookie);

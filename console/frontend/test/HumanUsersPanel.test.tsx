@@ -138,6 +138,7 @@ const xdrPlatform: Platform = {
 const xdrCredential: PlatformCredential = {
   humanUserId: "user-a",
   platform: "xdr",
+  credentials: { apiKey: "user-xdr-key" },
   credentialFingerprint: "sha256:user-xdr-key",
   platformEnabled: false,
   updatedAt: "2026-07-11T00:00:00Z",
@@ -545,16 +546,16 @@ describe("HumanUsersPanel", () => {
     expect(screen.getByText("MUAD-****-2345")).toBeInTheDocument();
   });
 
-  it("shows a disabled platform and overwrites its credential without exposing the key", async () => {
+  it("shows a disabled platform and overwrites its plaintext credential", async () => {
     renderPanel();
     await openUserDetail();
     fireEvent.click(screen.getByRole("tab", { name: "平台凭证" }));
 
-    expect(await screen.findByText("sha256:user-xdr-key")).toBeInTheDocument();
+    expect(await screen.findByText(/"apiKey": "user-xdr-key"/)).toBeInTheDocument();
     expect(screen.getByText("已停用")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "覆盖" }));
     const credentialInput = screen.getByLabelText("业务平台认证 JSON");
-    expect(credentialInput).toHaveValue("{}");
+    expect(credentialInput).toHaveValue('{\n  "apiKey": "user-xdr-key"\n}');
     fireEvent.change(credentialInput, {
       target: { value: '{"apiKey":"sensitive-new-key"}' },
     });
@@ -566,7 +567,6 @@ describe("HumanUsersPanel", () => {
       }),
     );
     expect(screen.queryByDisplayValue("sensitive-new-key")).not.toBeInTheDocument();
-    expect(screen.queryByText("sensitive-new-key")).not.toBeInTheDocument();
   });
 
   it("adds a credential for an unconfigured platform", async () => {
@@ -593,7 +593,7 @@ describe("HumanUsersPanel", () => {
     renderPanel();
     await openUserDetail();
     fireEvent.click(screen.getByRole("tab", { name: "平台凭证" }));
-    await screen.findByText("sha256:user-xdr-key");
+    await screen.findByText(/"apiKey": "user-xdr-key"/);
     fireEvent.click(screen.getAllByRole("button", { name: "删除" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 

@@ -27,6 +27,25 @@ ACCOUNTS: dict[str, str] = {
     "michael": "michael-pass",
 }
 
+# Business error codes, modeled on MSSW: /login always answers HTTP 200 and the
+# outcome lives in the JSON body's "code" field. Session smoke tests use these
+# to exercise the session-manager error classification path end to end.
+CODE_SUCCESS = 0
+CODE_PARAMS_ERR = 1001
+CODE_AUTH_FAILED = 1002
+CODE_ACCOUNT_LOCKED = 1003
+CODE_RATE_LIMITED = 1004
+CODE_SERVICE_ERR = 1005
+
+# Username prefixes that trigger a non-auth account-state error even when the
+# password is correct, so tests can hit every classification branch. The rest
+# of the name is arbitrary (e.g. "locked-alice").
+ERROR_PREFIX_CODES: dict[str, int] = {
+    "locked-": CODE_ACCOUNT_LOCKED,
+    "ratelimited-": CODE_RATE_LIMITED,
+    "serviceerr-": CODE_SERVICE_ERR,
+}
+
 
 class FakeBusinessPlatform(ThreadingHTTPServer):
     def __init__(self, address: tuple[str, int], handler: type[BaseHTTPRequestHandler], args: argparse.Namespace):
@@ -47,19 +66,23 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "not_found"})
             return
         payload = self._read_json_body()
-        if payload is None:
-            self._send_json(400, {"error": "invalid_json"})
-            return
-        if not self._valid_credentials(payload):
-            self._send_json(401, {"error": "invalid_credentials"})
+        if payload is None or not payload.get("username") or not payload.get("password"):
+            self._send_business_error(CODE_PARAMS_ERR, "username and password are required")
             return
         username = str(payload.get("username"))
+        for prefix, code in ERROR_PREFIX_CODES.items():
+            if username.startswith(prefix):
+                self._send_business_error(code, f"account {prefix.rstrip('-')}")
+                return
+        if not self._valid_credentials(payload):
+            self._send_business_error(CODE_AUTH_FAILED, "invalid credentials")
+            return
         token = secrets.token_urlsafe(24)
         expires_at = time.time() + self.server.session_ttl
         self.server.sessions[token] = (expires_at, username)
         self._send_json(
             200,
-            {"authenticated": True, "user": username, "expiresAt": iso_time(expires_at)},
+            {"code": CODE_SUCCESS, "authenticated": True, "user": username, "expiresAt": iso_time(expires_at)},
             {"Set-Cookie": self._session_cookie(token)},
         )
 
@@ -92,6 +115,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(401, {"authenticated": False})
             return
         self._send_json(200, payload)
+
+    def _send_business_error(self, code: int, msg: str) -> None:
+        self._send_json(200, {"code": code, "msg": msg, "authenticated": False})
 
     def _read_json_body(self) -> dict[str, Any] | None:
         try:

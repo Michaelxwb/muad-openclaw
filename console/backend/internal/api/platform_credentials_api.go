@@ -22,11 +22,12 @@ type putPlatformCredentialRequest struct {
 }
 
 type platformCredentialView struct {
-	HumanUserID           string    `json:"humanUserId"`
-	Platform              string    `json:"platform"`
-	CredentialFingerprint string    `json:"credentialFingerprint"`
-	PlatformEnabled       bool      `json:"platformEnabled"`
-	UpdatedAt             time.Time `json:"updatedAt"`
+	HumanUserID           string         `json:"humanUserId"`
+	Platform              string         `json:"platform"`
+	Credentials           map[string]any `json:"credentials"`
+	CredentialFingerprint string         `json:"credentialFingerprint"`
+	PlatformEnabled       bool           `json:"platformEnabled"`
+	UpdatedAt             time.Time      `json:"updatedAt"`
 }
 
 func (s *Server) handleListPlatformCredentials(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +52,12 @@ func (s *Server) handleListPlatformCredentials(w http.ResponseWriter, r *http.Re
 	}
 	views := make([]platformCredentialView, 0, len(summaries))
 	for _, summary := range summaries {
-		views = append(views, credentialToView(humanUserID, summary, enabled[summary.Platform]))
+		view, err := credentialToView(humanUserID, summary, enabled[summary.Platform])
+		if err != nil {
+			writeErr(w, r, errcode.InternalListPlatformCredentials)
+			return
+		}
+		views = append(views, view)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": views, "total": len(views)})
 }
@@ -99,8 +105,13 @@ func (s *Server) handlePutPlatformCredential(w http.ResponseWriter, r *http.Requ
 		action = auditlog.ActionPlatformCredentialUpdate
 	}
 	s.auditPlatformCredential(r, action, user, summary)
+	view, err := credentialToView(user.HumanUserID, summary, true)
+	if err != nil {
+		writeErr(w, r, errcode.InternalInspectPlatformCredential)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"credential":        credentialToView(user.HumanUserID, summary, true),
+		"credential":        view,
 		"cacheInvalidation": "on_next_resolve",
 	})
 }
@@ -161,12 +172,17 @@ func findCredentialSummary(
 
 func credentialToView(
 	humanUserID string, summary repo.PlatformCredentialSummary, enabled bool,
-) platformCredentialView {
+) (platformCredentialView, error) {
+	credentials, err := decodeResolvedCredentialJSON(summary.CredentialsJSON)
+	if err != nil {
+		return platformCredentialView{}, err
+	}
 	return platformCredentialView{
 		HumanUserID: humanUserID, Platform: summary.Platform,
+		Credentials:           credentials,
 		CredentialFingerprint: secretcrypto.DisplayFingerprint(summary.CredentialFingerprint),
 		PlatformEnabled:       enabled, UpdatedAt: summary.UpdatedAt,
-	}
+	}, nil
 }
 
 func decodeCredentialPayload(raw json.RawMessage) (map[string]any, error) {

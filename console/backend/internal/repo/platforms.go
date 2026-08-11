@@ -27,9 +27,10 @@ var (
 
 const platformColumns = `platform, display_name, enabled, updated_at`
 
-// PlatformCredentialSummary is safe for administrator-facing responses.
+// PlatformCredentialSummary carries administrator-visible platform credential data.
 type PlatformCredentialSummary struct {
 	Platform              string
+	CredentialsJSON       string
 	CredentialFingerprint string
 	UpdatedAt             time.Time
 }
@@ -157,16 +158,17 @@ func (s *Store) upsertUserPlatformCredential(
 		return PlatformCredentialSummary{}, "", fmt.Errorf("commit platform credential: %w", err)
 	}
 	return PlatformCredentialSummary{
-		Platform: platform, CredentialFingerprint: fingerprint, UpdatedAt: now,
+		Platform: platform, CredentialsJSON: canonical,
+		CredentialFingerprint: fingerprint, UpdatedAt: now,
 	}, user.PodID, nil
 }
 
-// ListUserPlatformCredentials returns redacted credential summaries.
+// ListUserPlatformCredentials returns administrator-visible credential summaries.
 func (s *Store) ListUserPlatformCredentials(humanUserID string) ([]PlatformCredentialSummary, error) {
 	if _, err := s.GetHumanUser(humanUserID); err != nil {
 		return nil, err
 	}
-	rows, err := s.db.Query(`SELECT platform, credential_fingerprint, updated_at
+	rows, err := s.db.Query(`SELECT platform, credentials_json, credential_fingerprint, updated_at
 		FROM user_platform_credentials WHERE human_user_id = ? ORDER BY platform`, humanUserID)
 	if err != nil {
 		return nil, fmt.Errorf("list platform credentials: %w", err)
@@ -176,7 +178,10 @@ func (s *Store) ListUserPlatformCredentials(humanUserID string) ([]PlatformCrede
 	for rows.Next() {
 		var summary PlatformCredentialSummary
 		var updatedAt string
-		if err := rows.Scan(&summary.Platform, &summary.CredentialFingerprint, &updatedAt); err != nil {
+		if err := rows.Scan(
+			&summary.Platform, &summary.CredentialsJSON,
+			&summary.CredentialFingerprint, &updatedAt,
+		); err != nil {
 			return nil, fmt.Errorf("scan platform credential: %w", err)
 		}
 		parsed, err := parseRequiredTime(updatedAt, "user_platform_credentials.updated_at")

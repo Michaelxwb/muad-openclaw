@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -9,9 +10,10 @@ import (
 )
 
 type platformCredentialAPIView struct {
-	HumanUserID           string `json:"humanUserId"`
-	Platform              string `json:"platform"`
-	CredentialFingerprint string `json:"credentialFingerprint"`
+	HumanUserID           string         `json:"humanUserId"`
+	Platform              string         `json:"platform"`
+	Credentials           map[string]any `json:"credentials"`
+	CredentialFingerprint string         `json:"credentialFingerprint"`
 }
 
 func TestPlatformCredentialAPI_ReplaceAndDeleteQueuesRuntimeApply(t *testing.T) {
@@ -27,8 +29,8 @@ func TestPlatformCredentialAPI_ReplaceAndDeleteQueuesRuntimeApply(t *testing.T) 
 	path := "/api/v1/human-users/" + user.HumanUserID + "/platform-credentials"
 	rr := e.do(http.MethodGet, path, "")
 	assertStatus(t, rr, http.StatusOK)
-	if strings.Contains(rr.Body.String(), "xdr-key-two") {
-		t.Fatal("credential list exposed API key")
+	if !strings.Contains(rr.Body.String(), "xdr-key-two") {
+		t.Fatal("credential list did not expose plaintext API key")
 	}
 	resolved, err := e.store.ResolveUserPlatformCredential(user.HumanUserID, "xdr")
 	if err != nil || !strings.Contains(resolved.CredentialsJSON, "xdr-key-two") {
@@ -82,13 +84,26 @@ func putCredential(
 	if rr.Code != http.StatusOK {
 		t.Fatalf("put credential status = %d", rr.Code)
 	}
-	if strings.Contains(rr.Body.String(), apiKey) {
-		t.Fatal("credential response exposed API key")
+	if !strings.Contains(rr.Body.String(), apiKey) {
+		t.Fatal("credential response did not expose plaintext API key")
 	}
 	data := decodeAPIData[struct {
 		Credential platformCredentialAPIView `json:"credential"`
 	}](t, rr.Body.Bytes())
+	if got := stringValue(data.Credential.Credentials["apiKey"]); got != apiKey {
+		t.Fatalf("credential apiKey = %q, want %q", got, apiKey)
+	}
 	return data.Credential
+}
+
+func stringValue(value any) string {
+	if text, ok := value.(string); ok {
+		return text
+	}
+	if number, ok := value.(json.Number); ok {
+		return number.String()
+	}
+	return ""
 }
 
 func assertCredentialQueuedRuntimeApply(t *testing.T, e *testEnv, generation int64, queued int) {

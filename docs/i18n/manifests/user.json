@@ -166,7 +166,7 @@
   "user.loadCredentialsFailed": { "zh": "加载平台凭证失败", "en": "Failed to load platform credentials" },
   "user.columnPlatform": { "zh": "平台", "en": "Platform" },
   "user.columnPlatformStatus": { "zh": "平台状态", "en": "Platform status" },
-  "user.columnCredentialFingerprint": { "zh": "认证指纹", "en": "Credential fingerprint" },
+  "user.columnCredential": { "zh": "认证信息", "en": "Credential JSON" },
   "user.notConfigured": { "zh": "未配置", "en": "Not configured" },
   "user.overwrite": { "zh": "覆盖", "en": "Overwrite" },
   "user.configure": { "zh": "配置", "en": "Configure" },

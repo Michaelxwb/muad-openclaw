@@ -61,7 +61,7 @@ json.NewEncoder(w).Encode(map[string]any{"error": "bad"})
 - **Skill 删除走显式 remove-index**：仅 disabled/deleted 的 skill 进删除列表；同步失败的 active skill 保留磁盘 last-good，不删除
 - **ManifestHash = 主 Skill 目录内容 hash**：Go 与 JS 算法须逐字节一致（同文件集、忽略 `.`/node_modules/__pycache__、拒 symlink、`path+\0+content+\0`、`sha256:` 前缀）；脚本变而 SKILL.md 不变必须触发重装，两端算法漂移会破坏重装检测
 - **Skill 同步 partial 失败降级**：单个 skill 同步失败 → 跳过并记 warning（reload 响应带 `warnings` 透传前端），不阻断整批 apply 与 private 同步；仅驱动层失败才返回 error
-- **凭证**：通道/LLM/service token 运行时注入，禁止写入镜像或入库明文可逆存储而不经 crypto；业务平台用户凭证按产品决策存入 `user_platform_credentials.credentials_json` 明文 JSON 便于排障，但禁止进入镜像、审计/日志明文、普通列表响应或暴露给 LLM
+- **凭证**：通道/LLM/service token 运行时注入，禁止写入镜像或入库明文可逆存储而不经 crypto；业务平台用户凭证按产品决策存入 `user_platform_credentials.credentials_json` 明文 JSON 便于排障，管理员的人用户平台凭证列表/详情 API 可返回明文用于查看和覆盖，但禁止进入镜像、审计/日志明文或暴露给 LLM
 - **Runtime apply**：经 `runtimeconfig` + `runtimeapply`，带 generation、分 stage、失败可回滚；不要在 handler 里半套 apply
 - 错误码统一经 `internal/errcode` 定义（一场景一码、按业务块分段），`api/errors.go` 的 `errorCatalog` 提供 zh/en 文案与 HTTP status；用户 message 稳定、可本地化理解
 - 健康检查与业务鉴权分离
