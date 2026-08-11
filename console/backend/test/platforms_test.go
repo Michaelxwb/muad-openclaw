@@ -85,6 +85,9 @@ func TestPlatformCredential_PlainJSONUpsertListResolveAndDelete(t *testing.T) {
 	if err != nil || len(summaries) != 1 || summaries[0].CredentialFingerprint == first.CredentialFingerprint {
 		t.Fatalf("credential summaries = %+v, %v", summaries, err)
 	}
+	if !strings.Contains(summaries[0].CredentialsJSON, "xdr-key-two") {
+		t.Fatalf("credential summary did not include plaintext JSON: %+v", summaries[0])
+	}
 	resolved, err := store.ResolveUserPlatformCredential(alice.HumanUserID, "xdr")
 	if err != nil || !strings.Contains(resolved.CredentialsJSON, "xdr-key-two") {
 		t.Fatalf("ResolveUserPlatformCredential = %+v, %v", resolved, err)

@@ -18,8 +18,20 @@
   margin: 8px 0 12px;
 }
 
-.toolbarInfoIcon {
+.applyAllButton {
+  padding-right: 10px;
+}
+
+.applyAllButtonContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.applyAllInfoIcon {
   color: var(--semi-color-text-2);
+  font-size: 14px;
+  opacity: 0.9;
 }
 
 .statusActionBody {

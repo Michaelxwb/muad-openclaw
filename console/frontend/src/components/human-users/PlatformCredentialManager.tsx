@@ -8,6 +8,7 @@ import { FeedbackBanner } from "../ConsolePage";
 import { errorMessage } from "../../utils/error";
 import i18n from "../../i18n";
 import { Field } from "./shared";
+import styles from "./PlatformCredentialManager.module.css";
 
 interface Props {
   user: HumanUser;
@@ -115,11 +116,13 @@ function credentialColumns(
       ),
     },
     {
-      title: t("user.columnCredentialFingerprint"),
+      title: t("user.columnCredential"),
       key: "credential",
       render: (_: unknown, row: CredentialRow) =>
         row.credential ? (
-          <span className="mono">{row.credential.credentialFingerprint}</span>
+          <pre className={styles.credentialJson}>
+            {formatCredentials(row.credential.credentials)}
+          </pre>
         ) : (
           t("user.notConfigured")
         ),
@@ -166,7 +169,9 @@ function CredentialEditorDialog(props: CredentialDialogProps) {
   const [error, setError] = useState("");
   useEffect(() => {
     if (!props.row) return;
-    setCredentialsJSON("{}");
+    setCredentialsJSON(
+      props.row.credential ? formatCredentials(props.row.credential.credentials) : "{}",
+    );
     setError("");
   }, [props.row]);
   const submit = async () => {
@@ -232,6 +237,10 @@ function parseCredentials(raw: string): Record<string, unknown> | string {
       ? i18n.t("user.credentialJsonInvalidWithDetail", { message: caught.message })
       : i18n.t("user.credentialJsonInvalid");
   }
+}
+
+function formatCredentials(credentials: Record<string, unknown>): string {
+  return JSON.stringify(credentials, null, 2);
 }
 
 function DeleteCredentialDialog(props: CredentialDialogProps) {

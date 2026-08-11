@@ -314,6 +314,7 @@ export interface DeletePlatformResult {
 export interface PlatformCredential {
   humanUserId: string;
   platform: string;
+  credentials: Record<string, unknown>;
   credentialFingerprint: string;
   platformEnabled: boolean;
   updatedAt: string;

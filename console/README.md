@@ -17,7 +17,7 @@
 - **身份绑定**：支持已知 External ID 预绑定，以及 main Agent 中使用一次性绑定码激活新 IM；未绑定发送者不自动开户。
 - **模型池**：批量导入 OpenAI 兼容模型配置并测试连通性；创建用户时绑定一个未占用模型。
 - **Skill 管理**：Public/Private 上传、启禁用、删除、用户策略、冲突解析和最终生效视图；业务 Skill（预防流、报告等）为后续扩展，不改变控制面架构。
-- **平台凭证**：管理员自建业务平台；每用户、每平台维护明文 JSON 认证信息，管理 API 只返回指纹，内部 resolver 按 `agentId + skillName` 解析。
+- **平台凭证**：管理员自建业务平台；每用户、每平台维护明文 JSON 认证信息，管理员 API 可查看明文，内部 resolver 按 `agentId + skillName` 解析。
 - **监控告警**：Pod 状态、通道、generation、Runtime Guard、资源和 Skill/browser 并发队列。
 - **双审计**：管理员操作进入“操作审计”，Agent Skill 生命周期进入“Skill 执行日志”。
 

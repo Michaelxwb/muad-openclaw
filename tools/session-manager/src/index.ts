@@ -10,5 +10,6 @@ export * from "./browser-applier.js";
 export * from "./adapters/types.js";
 export * from "./adapters/http-session.js";
 export * from "./adapters/mssw.js";
+export * from "./adapters/smoke-platform.js";
 export * from "./adapters/registry.js";
 export * from "./openclaw-tool.js";

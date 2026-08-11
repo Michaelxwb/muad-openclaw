@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { Modal, Toast } from "@douyinfe/semi-ui";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import i18n from "../src/i18n";
 import { Skills } from "../src/pages/Skills";
 
 const apiMocks = vi.hoisted(() => ({
@@ -92,8 +93,9 @@ describe("Skills", () => {
 
     expect(await screen.findByText("XDR Query")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "应用到全部 Pod" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Skill 自动同步说明" })).toBeInTheDocument();
-    expect(screen.queryByText(/需要点击「应用 Skill」/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Skill 自动同步说明" })).not.toBeInTheDocument();
+    expect(i18n.t("skill.autoSyncTooltip", { lng: "zh" })).not.toContain("应用 Skill");
+    expect(i18n.t("skill.autoSyncTooltip", { lng: "en" })).not.toContain("Apply Skills");
     expect(screen.getByText("Public Skill 资产库")).toBeInTheDocument();
     expect(screen.queryByText(skill.sourcePath)).not.toBeInTheDocument();
     expect(screen.getByText("public")).toBeInTheDocument();

@@ -19,12 +19,12 @@ test("installed adapter registry exchanges API key without returning it", async 
     }), { status: 200 });
   });
 
-  assert.deepEqual(registry.installed(), ["mssw"]);
+  assert.deepEqual(registry.installed(), ["mssw", "smoke_platform"]);
   const state = await registry.get("custom_platform").refresh({
     credential: credential("custom_platform"),
     signal: new AbortController().signal,
   });
-  assert.deepEqual(registry.installed(), ["custom_platform", "mssw"]);
+  assert.deepEqual(registry.installed(), ["custom_platform", "mssw", "smoke_platform"]);
   assert.equal(requests[0].url, "https://custom-platform.internal/custom/session");
   assert.equal(requests[0].authorization, "Bearer api-key-memory-only");
   assert.equal(String(requests[0].body).includes("api-key-memory-only"), false);

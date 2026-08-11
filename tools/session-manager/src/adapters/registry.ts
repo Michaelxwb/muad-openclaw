@@ -1,5 +1,6 @@
 import { HTTPSessionAdapter, type FetchLike } from "./http-session.js";
 import { MSSWSessionAdapter } from "./mssw.js";
+import { SmokePlatformSessionAdapter } from "./smoke-platform.js";
 import { PlatformAdapterError, type PlatformAdapter } from "./types.js";
 import { PLATFORM_PATTERN } from "../constants/runtime.js";
 
@@ -39,7 +40,7 @@ export class AdapterRegistry {
 
 export function createInstalledAdapterRegistry(fetchLike: FetchLike = fetch): AdapterRegistry {
   return new AdapterRegistry(
-    [new MSSWSessionAdapter(fetchLike)],
+    [new MSSWSessionAdapter(fetchLike), new SmokePlatformSessionAdapter(fetchLike)],
     (platform) => new HTTPSessionAdapter(platform, fetchLike),
   );
 }

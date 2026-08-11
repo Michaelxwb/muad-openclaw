@@ -9,6 +9,18 @@ session-manager dependency and only models a normal business system:
 - `GET /health/session` requires the cookie and is used by cache validation.
 - `GET /` renders `logged-in` or `logged-out` for browser profile checks.
 
+`/login` always answers HTTP 200 (MSSW style): the outcome is carried in the
+JSON body's `code` field, so session-manager's business-code classification can
+be exercised end to end. `code: 0` means success; any other code is an error:
+
+| code | meaning | triggered by |
+| --- | --- | --- |
+| `1001` | `params_error` | request body missing username/password |
+| `1002` | `auth_failed` | wrong password or unknown user |
+| `1003` | `account_locked` | username prefixed `locked-` (correct password) |
+| `1004` | `rate_limited` | username prefixed `ratelimited-` (correct password) |
+| `1005` | `service_error` | username prefixed `serviceerr-` (correct password) |
+
 Run locally:
 
 ```bash

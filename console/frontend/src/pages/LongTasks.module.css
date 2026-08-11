@@ -1,11 +1,13 @@
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.queryInput {
+  width: 220px;
 }
 
-.queryInput {
-  width: min(280px, 100%);
+.filterGroup {
+  max-width: 100%;
+}
+
+.statusSelect {
+  width: 140px;
 }
 
 .mono {
@@ -17,8 +19,10 @@
 
 .taskCell {
   display: grid;
+  justify-items: start;
   gap: 2px;
   min-width: 0;
+  text-align: left;
 }
 
 .primary {
@@ -26,100 +30,52 @@
   overflow-wrap: anywhere;
 }
 
+.skillName {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
 .subtle {
   color: var(--semi-color-text-2);
   font-size: 12px;
 }
 
-.poolList {
+.linkButton {
+  justify-content: flex-start;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.timeCell {
   display: grid;
-  gap: 12px;
-}
-
-.poolPanel {
-  display: grid;
-  gap: 10px;
+  justify-items: start;
+  gap: 2px;
   min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--semi-color-border);
-  border-radius: 8px;
-  background: var(--semi-color-bg-0);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
 }
 
-.poolHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
-}
-
-.poolIdentity {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.poolTitle {
+.timeDate {
   color: var(--semi-color-text-0);
-  font-weight: 600;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
-.poolMeta {
+.timeClock {
   color: var(--semi-color-text-2);
-  font-size: 12px;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
-.poolStats {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-.poolStat {
-  display: grid;
-  min-width: 72px;
-  padding: 6px 8px;
-  border: 1px solid var(--semi-color-border);
-  border-radius: 6px;
-  background: var(--semi-color-fill-0);
-}
-
-.statValue {
-  color: var(--semi-color-text-0);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 20px;
-}
-
-.statLabel {
-  color: var(--semi-color-text-2);
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.queued {
-  border-color: var(--semi-color-warning-light-default);
-}
-
-.running {
-  border-color: var(--semi-color-info-light-default);
-}
-
-.limit {
-  border-color: var(--semi-color-border);
-}
-
-@media (max-width: 720px) {
-  .poolHeader {
+@media (max-width: 680px) {
+  .filterGroup {
     display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
   }
 
-  .poolStats {
-    justify-content: flex-start;
+  .queryInput,
+  .statusSelect {
+    width: 100%;
   }
 }

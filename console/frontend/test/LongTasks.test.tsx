@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LongTask, LongTaskListResult, LongTaskPool } from "../src/api";
@@ -66,29 +66,28 @@ beforeEach(() => {
 });
 
 describe("LongTasks", () => {
-  it("groups tasks by agent-user pool and shows consumption metrics", async () => {
+  it("renders a flat task table with agent pool as a row field", async () => {
     const onOpenPod = vi.fn();
     render(<LongTasks onOpenPod={onOpenPod} />);
 
     expect(screen.getByRole("heading", { name: "长任务" })).toBeInTheDocument();
-    const poolTitle = await screen.findByText("池 agent:alice:wecom:direct:wx-1");
-    const pool = poolTitle.closest("section");
-    if (!pool) throw new Error("pool section not found");
+    expect(await screen.findByText("Agent 池")).toBeInTheDocument();
+    expect(screen.getByText("Pod / 用户")).toBeInTheDocument();
+    expect(screen.getByText("task-running")).toBeInTheDocument();
+    expect(screen.getByText("task-queued")).toBeInTheDocument();
+    expect(screen.getAllByText("alice")).toHaveLength(2);
+    expect(screen.getAllByText("agent:alice:wecom:direct:wx-1")).toHaveLength(2);
+    expect(screen.getAllByLabelText("待消费: 1; 执行中: 1; 上限: 2")).toHaveLength(2);
+    expect(screen.getAllByText(formatDate(runningTask.startedAt)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(formatClock(runningTask.startedAt)).length).toBeGreaterThan(0);
 
-    expect(within(pool).getByLabelText("待消费: 1")).toBeInTheDocument();
-    expect(within(pool).getByLabelText("执行中: 1")).toBeInTheDocument();
-    expect(within(pool).getByLabelText("上限: 2")).toBeInTheDocument();
-    expect(within(pool).getByText("task-running")).toBeInTheDocument();
-    expect(within(pool).getByText("task-queued")).toBeInTheDocument();
-    expect(within(pool).getByText(formatTime(runningTask.startedAt))).toBeInTheDocument();
-
-    fireEvent.click(within(pool).getAllByRole("button", { name: "pod-a" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "pod-a" })[0]);
     expect(onOpenPod).toHaveBeenCalledWith("pod-a");
   });
 
   it("submits typed filters through the API client", async () => {
     render(<LongTasks />);
-    await screen.findByText("池 agent:alice:wecom:direct:wx-1");
+    await screen.findByText("task-running");
 
     fireEvent.change(screen.getByLabelText("查询长任务"), { target: { value: "report" } });
     fireEvent.click(screen.getByRole("button", { name: "搜索" }));
@@ -121,12 +120,8 @@ describe("LongTasks", () => {
 
     render(<LongTasks />);
 
-    const poolTitle = await screen.findByText("池 agent:alice:wecom:direct:wx-1");
-    const pool = poolTitle.closest("section");
-    if (!pool) throw new Error("pool section not found");
-
-    expect(within(pool).getByLabelText("待消费: 4")).toBeInTheDocument();
-    expect(within(pool).getByLabelText("执行中: 2")).toBeInTheDocument();
+    await screen.findByText("task-running");
+    expect(screen.getByLabelText("待消费: 4; 执行中: 2; 上限: 2")).toBeInTheDocument();
   });
 
   it("does not leave foreground refresh loading after a background poll wins the data race", async () => {
@@ -142,26 +137,31 @@ describe("LongTasks", () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(0);
       });
-      expect(screen.getByText("池 agent:alice:wecom:direct:wx-1")).toBeInTheDocument();
+      expect(screen.getByText("task-running")).toBeInTheDocument();
       const refresh = screen.getByRole("button", { name: "刷新" });
 
       await act(async () => {
         fireEvent.click(refresh);
+        await Promise.resolve();
       });
-      expect(refresh).toBeDisabled();
+      expect(apiMocks.listLongTasks).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("button", { name: "刷新" })).toHaveAttribute("aria-disabled", "true");
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
         background.resolve(pageResult({ items: [runningTask], pools: [poolSummary], total: 1 }));
         await Promise.resolve();
       });
       expect(apiMocks.listLongTasks).toHaveBeenCalledTimes(3);
-      expect(refresh).toBeDisabled();
+      expect(screen.getByRole("button", { name: "刷新" })).toHaveAttribute("aria-disabled", "true");
 
       await act(async () => {
         foreground.resolve(pageResult({ items: [runningTask], pools: [poolSummary], total: 1 }));
         await Promise.resolve();
       });
-      expect(refresh).not.toBeDisabled();
+      expect(screen.getByRole("button", { name: "刷新" })).toHaveAttribute(
+        "aria-disabled",
+        "false",
+      );
     } finally {
       vi.useRealTimers();
     }
@@ -187,8 +187,21 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function formatTime(value?: string) {
-  if (!value) return "-";
+function formatDate(value?: string) {
+  const date = parsedDate(value);
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function formatClock(value?: string) {
+  const date = parsedDate(value);
+  return [date.getHours(), date.getMinutes(), date.getSeconds()]
+    .map((part) => String(part).padStart(2, "0"))
+    .join(":");
+}
+
+function parsedDate(value?: string) {
+  if (!value) throw new Error("missing test date");
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  if (Number.isNaN(date.getTime())) throw new Error(`invalid test date: ${value}`);
+  return date;
 }
