@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { createSkillOutputHooks } from "../src/skill-output-hooks.mjs";
 
-test("resolve_exec_env injects SKILL_OUTPUT_DIR for a long task session from the manager's peerId", async () => {
+test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for a long task session from the manager's peerId", async () => {
   const { hooks, mkdirs } = setupHooks({ manager: { resolvePeerForTaskId: (id) => id === "task-9" ? "user:wx-9" : "" } });
 
   const env = await hooks.resolveExecEnv(
@@ -11,11 +11,11 @@ test("resolve_exec_env injects SKILL_OUTPUT_DIR for a long task session from the
     context(),
   );
 
-  assert.deepEqual(env, { SKILL_OUTPUT_DIR: "/state/skill-outputs/alice/wx-9" });
+  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:longtask:task-9", SKILL_OUTPUT_DIR: "/state/skill-outputs/alice/wx-9" });
   assert.deepEqual(mkdirs, [{ dir: "/state/skill-outputs/alice/wx-9", opts: { recursive: true, mode: 0o700 } }]);
 });
 
-test("resolve_exec_env injects SKILL_OUTPUT_DIR for a normal business session from the session key", async () => {
+test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for a normal business session from the session key", async () => {
   const { hooks, mkdirs } = setupHooks();
 
   const env = await hooks.resolveExecEnv(
@@ -23,19 +23,35 @@ test("resolve_exec_env injects SKILL_OUTPUT_DIR for a normal business session fr
     context(),
   );
 
-  assert.deepEqual(env, { SKILL_OUTPUT_DIR: "/state/skill-outputs/alice/wx-1" });
+  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:wecom:direct:wx-1", SKILL_OUTPUT_DIR: "/state/skill-outputs/alice/wx-1" });
   assert.deepEqual(mkdirs, [{ dir: "/state/skill-outputs/alice/wx-1", opts: { recursive: true, mode: 0o700 } }]);
 });
 
-test("resolve_exec_env injects SKILL_OUTPUT_DIR for the main session", async () => {
+test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for the main session", async () => {
   const { hooks } = setupHooks();
 
   const env = await hooks.resolveExecEnv(
     { toolName: "exec", sessionKey: "agent:main:main" },
-    context(),
+    context({ agentId: "main", sessionKey: "agent:main:main" }),
   );
 
-  assert.deepEqual(env, { SKILL_OUTPUT_DIR: "/state/skill-outputs/main/main" });
+  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:main:main", SKILL_OUTPUT_DIR: "/state/skill-outputs/main/main" });
+});
+
+test("resolve_exec_env fails closed when the session key agent mismatches the trusted agent context", async () => {
+  const { hooks } = setupHooks();
+
+  const fromEvent = await hooks.resolveExecEnv(
+    { toolName: "exec", sessionKey: "agent:bob:wecom:direct:wx-1" },
+    context(),
+  );
+  const fromCtx = await hooks.resolveExecEnv(
+    { toolName: "exec" },
+    context({ sessionKey: "agent:bob:wecom:direct:wx-1" }),
+  );
+
+  assert.equal(fromEvent, undefined);
+  assert.equal(fromCtx, undefined);
 });
 
 test("resolve_exec_env skips non-exec tools", async () => {
@@ -49,7 +65,7 @@ test("resolve_exec_env skips non-exec tools", async () => {
   assert.equal(env, undefined);
 });
 
-test("resolve_exec_env skips long task sessions with no matching task", async () => {
+test("resolve_exec_env still injects MUAD_SESSION_KEY when no output dir is derivable", async () => {
   const { hooks } = setupHooks({ manager: { resolvePeerForTaskId: () => "" } });
 
   const env = await hooks.resolveExecEnv(
@@ -57,10 +73,10 @@ test("resolve_exec_env skips long task sessions with no matching task", async ()
     context(),
   );
 
-  assert.equal(env, undefined);
+  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:longtask:missing-task" });
 });
 
-test("resolve_exec_env skips when the state root cannot be resolved", async () => {
+test("resolve_exec_env still injects MUAD_SESSION_KEY when the state root cannot be resolved", async () => {
   const { hooks } = setupHooks({ resolveStateRoot: () => "" });
 
   const env = await hooks.resolveExecEnv(
@@ -68,10 +84,10 @@ test("resolve_exec_env skips when the state root cannot be resolved", async () =
     context(),
   );
 
-  assert.equal(env, undefined);
+  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:wecom:direct:wx-1" });
 });
 
-test("resolve_exec_env skips when the output directory cannot be created", async () => {
+test("resolve_exec_env still injects MUAD_SESSION_KEY when the output directory cannot be created", async () => {
   const { hooks } = setupHooks({
     mkdir: () => { throw new Error("read-only"); },
   });
@@ -81,7 +97,7 @@ test("resolve_exec_env skips when the output directory cannot be created", async
     context(),
   );
 
-  assert.equal(env, undefined);
+  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:wecom:direct:wx-1" });
 });
 
 test("resolve_exec_env ignores empty or non-agent session keys", async () => {

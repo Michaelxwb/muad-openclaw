@@ -18,7 +18,11 @@ RUN npm ci --include=dev
 COPY tools/session-manager/src ./src
 COPY tools/session-manager/test ./test
 COPY tools/session-manager/fixtures ./fixtures
+COPY tools/session-manager/scripts ./scripts
 COPY tools/session-manager/openclaw-plugin.mjs tools/session-manager/openclaw.plugin.json ./
+# 仅供 builder stage 里的 smoke 测试使用，不 COPY 到最终镜像。
+COPY tools/fake-business-platform /build/fake-business-platform
+COPY skills /skills
 RUN npm test
 
 # ── 最终镜像 ──

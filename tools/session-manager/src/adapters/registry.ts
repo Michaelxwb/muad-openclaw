@@ -1,4 +1,5 @@
 import { HTTPSessionAdapter, type FetchLike } from "./http-session.js";
+import { MSSWSessionAdapter } from "./mssw.js";
 import { PlatformAdapterError, type PlatformAdapter } from "./types.js";
 import { PLATFORM_PATTERN } from "../constants/runtime.js";
 
@@ -37,5 +38,8 @@ export class AdapterRegistry {
 }
 
 export function createInstalledAdapterRegistry(fetchLike: FetchLike = fetch): AdapterRegistry {
-  return new AdapterRegistry([], (platform) => new HTTPSessionAdapter(platform, fetchLike));
+  return new AdapterRegistry(
+    [new MSSWSessionAdapter(fetchLike)],
+    (platform) => new HTTPSessionAdapter(platform, fetchLike),
+  );
 }

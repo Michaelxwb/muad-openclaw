@@ -1,4 +1,4 @@
-import type { ResolvedCredential } from "../types.js";
+import type { ScopedCredential } from "../types.js";
 
 export type SameSite = "Strict" | "Lax" | "None";
 
@@ -30,7 +30,7 @@ export type AdapterSessionState = {
 };
 
 export type AdapterRefreshInput = {
-  credential: ResolvedCredential;
+  credential: ScopedCredential;
   signal: AbortSignal;
 };
 
@@ -44,14 +44,33 @@ export type PlatformAdapter = {
   validate?(input: AdapterValidateInput): Promise<boolean>;
 };
 
+export type LoginFailReason =
+  | "auth_failed"
+  | "params_error"
+  | "service_error"
+  | "account_locked"
+  | "rate_limited"
+  | "missing_credential"
+  | "network"
+  | "unknown";
+
 export class PlatformAdapterError extends Error {
   readonly authenticationFailed: boolean;
   readonly retryable: boolean;
-
-  constructor(authenticationFailed = false, retryable = false) {
-    super("platform session adapter failed");
+  readonly reason: LoginFailReason;
+  readonly businessCode: number | undefined;
+  constructor(
+    authenticationFailed = false,
+    retryable = false,
+    reason: LoginFailReason = "unknown",
+    message?: string,
+    businessCode?: number,
+  ) {
+    super(message ?? "platform session adapter failed");
     this.name = "PlatformAdapterError";
     this.authenticationFailed = authenticationFailed;
     this.retryable = retryable;
+    this.reason = reason;
+    this.businessCode = businessCode;
   }
 }

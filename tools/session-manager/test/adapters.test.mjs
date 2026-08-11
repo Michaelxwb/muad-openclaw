@@ -19,12 +19,12 @@ test("installed adapter registry exchanges API key without returning it", async 
     }), { status: 200 });
   });
 
-  assert.deepEqual(registry.installed(), []);
+  assert.deepEqual(registry.installed(), ["mssw"]);
   const state = await registry.get("custom_platform").refresh({
     credential: credential("custom_platform"),
     signal: new AbortController().signal,
   });
-  assert.deepEqual(registry.installed(), ["custom_platform"]);
+  assert.deepEqual(registry.installed(), ["custom_platform", "mssw"]);
   assert.equal(requests[0].url, "https://custom-platform.internal/custom/session");
   assert.equal(requests[0].authorization, "Bearer api-key-memory-only");
   assert.equal(String(requests[0].body).includes("api-key-memory-only"), false);
@@ -57,26 +57,27 @@ test("HTTP adapter supports AK/SK login responses that set cookies in headers", 
       headers: { "set-cookie": "sid=session-cookie; Path=/; HttpOnly; SameSite=Lax" },
     });
   });
-  const current = credential("mssw");
+  const current = credential("aksk");
   current.credentials = {
-    baseUrl: "https://mssw.internal",
+    baseUrl: "https://aksk.internal",
     sessionEndpoint: "/login",
     sessionTtlSeconds: 120,
     ak: "ak-memory-only",
     sk: "sk-memory-only",
   };
 
-  const state = await registry.get("mssw").refresh({
+  const state = await registry.get("aksk").refresh({
     credential: current,
     signal: new AbortController().signal,
   });
 
-  assert.equal(requests[0].url, "https://mssw.internal/login");
+  assert.equal(requests[0].url, "https://aksk.internal/login");
   assert.equal(requests[0].accessKey, "ak-memory-only");
   assert.equal(requests[0].secretKey, "sk-memory-only");
-  assert.equal(requests[0].body.includes("ak-memory-only"), true);
-  assert.equal(requests[0].body.includes("sk-memory-only"), true);
-  assert.equal(state.cookies[0].domain, "mssw.internal");
+  // Secrets travel only in headers; the login request body never carries them.
+  assert.equal(requests[0].body.includes("ak-memory-only"), false);
+  assert.equal(requests[0].body.includes("sk-memory-only"), false);
+  assert.equal(state.cookies[0].domain, "aksk.internal");
   assert.equal(state.cookies[0].httpOnly, true);
   assert.equal(state.cookies[0].sameSite, "Lax");
   assert.equal(JSON.stringify(state).includes("ak-memory-only"), false);

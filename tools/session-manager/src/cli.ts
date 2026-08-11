@@ -3,7 +3,7 @@ import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { loadCLIConfig } from "./config.js";
-import { PLATFORM_PATTERN, SESSION_MANAGER_VERSION, SKILL_PATTERN } from "./constants/runtime.js";
+import { SESSION_MANAGER_VERSION, SKILL_PATTERN } from "./constants/runtime.js";
 import { SessionManagerError, normalizeSessionError } from "./errors.js";
 import { ResolverClient } from "./resolver-client.js";
 import { SessionService, type SessionServiceOptions } from "./service.js";
@@ -24,7 +24,7 @@ export async function runCLI(
     if (args.length === 1 && args[0] === "--help") {
       return success({
         version: SESSION_MANAGER_VERSION,
-        usage: "session-manager get-state --skill-name <name> [--platform <platform>]",
+        usage: "session-manager get-state --skill-name <name>",
       });
     }
     const parsed = parseGetStateArgs(args);
@@ -32,7 +32,7 @@ export async function runCLI(
     const service = new SessionService(
       resolver ?? new ResolverClient({ baseURL: config.consoleInternalURL }), serviceOptions,
     );
-    return success(await service.getState(config.trustedContext, parsed.skillName, parsed.platform));
+    return success(await service.getState(config.trustedContext, parsed.skillName));
   } catch (error) {
     return failure(normalizeSessionError(error));
   }
@@ -40,7 +40,6 @@ export async function runCLI(
 
 type GetStateArgs = {
   skillName: string;
-  platform?: string;
 };
 
 function parseGetStateArgs(args: readonly string[]): GetStateArgs {
@@ -49,10 +48,8 @@ function parseGetStateArgs(args: readonly string[]): GetStateArgs {
   }
   const values = parseOptionPairs(args.slice(1));
   const skillName = String(values.get("skill-name") ?? "").trim();
-  const platform = String(values.get("platform") ?? "").trim();
   if (!SKILL_PATTERN.test(skillName)) throw new SessionManagerError("invalid_arguments");
-  if (platform && !PLATFORM_PATTERN.test(platform)) throw new SessionManagerError("invalid_arguments");
-  return { skillName, ...(platform ? { platform } : {}) };
+  return { skillName };
 }
 
 function parseOptionPairs(args: readonly string[]): Map<string, string> {
@@ -63,7 +60,7 @@ function parseOptionPairs(args: readonly string[]): Map<string, string> {
     if (!key.startsWith("--") || value === "" || values.has(key.slice(2))) {
       throw new SessionManagerError("invalid_arguments");
     }
-    if (key !== "--skill-name" && key !== "--platform") throw new SessionManagerError("invalid_arguments");
+    if (key !== "--skill-name") throw new SessionManagerError("invalid_arguments");
     values.set(key.slice(2), value);
   }
   return values;
@@ -76,7 +73,14 @@ function success(data: unknown): CLIResult {
 function failure(error: SessionManagerError): CLIResult {
   const body = {
     version: SESSION_MANAGER_VERSION,
-    error: { code: error.code, message: error.message, retryable: error.retryable },
+    error: {
+      code: error.code,
+      message: error.message,
+      retryable: error.retryable,
+      reason: error.reason,
+      ...(error.platform !== undefined ? { platform: error.platform } : {}),
+      ...(error.businessCode !== undefined ? { businessCode: error.businessCode } : {}),
+    },
   };
   return { exitCode: error.exitCode, stdout: "", stderr: `${JSON.stringify(body)}\n` };
 }

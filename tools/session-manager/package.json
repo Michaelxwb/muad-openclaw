@@ -15,6 +15,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "smoke": "npm run build && node scripts/smoke-session-flow.mjs",
     "test": "npm run build && node --test test/*.test.mjs"
   },
   "devDependencies": {

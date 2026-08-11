@@ -29,14 +29,15 @@ test("OpenClaw manifest owns the registered session_get_state tool", (t) => {
   assert.equal(tool.name, "session_get_state");
   assert.deepEqual(tool.parameters.required, ["skillName"]);
   assert.equal(tool.parameters.properties.agentId, undefined);
+  assert.equal(tool.parameters.properties.platform, undefined);
 });
 
 test("OpenClaw Tool uses only trusted context and rejects forged agent parameters", async () => {
   const calls = [];
   const output = sessionResult();
   const service = {
-    getState: async (context, skillName, platform) => {
-      calls.push({ context, skillName, platform });
+    getState: async (context, skillName) => {
+      calls.push({ context, skillName });
       return output;
     },
   };
@@ -45,20 +46,18 @@ test("OpenClaw Tool uses only trusted context and rejects forged agent parameter
     service,
   });
   const result = await tool.execute("call-1", { skillName: "xdr-query" });
-  assert.deepEqual(result.details, output);
+  const { sessionStateFile, ...expected } = output;
+  assert.deepEqual(result.details, expected);
+  assert.equal("sessionStateFile" in result.details, false);
   assert.deepEqual(calls, [{
     context: { agentId: "alice", sessionKey: "trusted-session-key" },
     skillName: "xdr-query",
-    platform: undefined,
   }]);
 
-  await tool.execute("call-platform", { skillName: "xdr-query", platform: "mssw" });
-  assert.deepEqual(calls[1], {
-    context: { agentId: "alice", sessionKey: "trusted-session-key" },
-    skillName: "xdr-query",
-    platform: "mssw",
-  });
-
+  await assert.rejects(
+    () => tool.execute("call-platform", { skillName: "xdr-query", platform: "mssw" }),
+    (error) => error instanceof SessionManagerError && error.code === "invalid_arguments",
+  );
   await assert.rejects(
     () => tool.execute("call-2", { skillName: "xdr-query", agentId: "bob" }),
     (error) => error instanceof SessionManagerError && error.code === "invalid_arguments",
@@ -70,15 +69,47 @@ test("OpenClaw Tool uses only trusted context and rejects forged agent parameter
   );
 });
 
+test("OpenClaw Tool preserves platform attribution from service errors", async () => {
+  const service = {
+    getState: async () => {
+      throw new SessionManagerError(
+        "adapter_failed",
+        true,
+        "network",
+        "network unavailable",
+        undefined,
+        "mssw",
+      );
+    },
+  };
+  const tool = createPluginTool({
+    toolContext: { agentId: "alice", sessionKey: "agent:alice:wecom:direct:user-a" },
+    service,
+  });
+
+  await assert.rejects(
+    () => tool.execute("call-1", { skillName: "multi-report" }),
+    (error) => error instanceof SessionManagerError &&
+      error.code === "adapter_failed" &&
+      error.platform === "mssw",
+  );
+});
+
 function sessionResult() {
   return {
     version: 1,
     status: "ready",
     source: "cache",
-    platform: "xdr",
-    cookiesPath: "/state/alice/xdr/cookies.json",
-    storageStatePath: "/state/alice/xdr/storageState.json",
-    expiresAt: "2026-07-12T00:00:00.000Z",
-    credentialFingerprint: "sha256:credential",
+    sessionStateFile: "/state/alice/session-store/xdr-query.session.json",
+    humanUserId: "user-a",
+    podId: "pod-a",
+    agentId: "alice",
+    skillName: "xdr-query",
+    platforms: [{
+      platform: "xdr",
+      source: "cache",
+      expiresAt: "2026-07-12T00:00:00.000Z",
+      credentialFingerprint: "sha256:credential",
+    }],
   };
 }

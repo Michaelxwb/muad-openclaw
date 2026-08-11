@@ -28,7 +28,7 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     "before_agent_reply", "before_dispatch", "before_tool_call", "after_tool_call",
     "before_agent_run", "agent_end", "before_dispatch", "before_agent_run",
     "before_tool_call", "before_agent_finalize", "reply_payload_sending", "agent_end",
-    "resolve_exec_env",
+    "resolve_exec_env", "before_tool_call", "reply_payload_sending",
   ]);
   assert.deepEqual(registration.hooks[0].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[1].options, { priority: -1000, timeoutMs: 1_000 });
@@ -41,6 +41,8 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.deepEqual(registration.hooks[10].options, { priority: -900, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[11].options, { priority: 900, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[12].options, { priority: -800, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[13].options, { priority: -950, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[14].options, { priority: -850, timeoutMs: 1_000 });
   assert.equal(registration.hooks[0].handler({}, { agentId: "main" }).handled, true);
   assert.equal(registration.hooks[0].handler({}, { agentId: "alice" }), undefined);
   assert.equal(registration.hooks[1].handler({}, { agentId: "alice" }), undefined);

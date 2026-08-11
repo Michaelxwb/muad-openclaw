@@ -29,7 +29,7 @@ from cf_core import (
     resolve_session_id,
 )
 
-TOTAL_BUDGET_SECONDS = 30.0
+TOTAL_BUDGET_SECONDS = 180.0
 _BRACE_RE = re.compile(r"\{([^{}]+)\}")
 _TASK_SECTION_RE = re.compile(
     r"(?ms)^## (TASK-\d+):.*?(?=^## TASK-\d+:|\Z)"
@@ -230,7 +230,7 @@ def _reason_text(failures: list, truncated: bool) -> str:
         if item["detail"]:
             lines.append(f"  输出片段: {item['detail'][:200]}")
     if truncated:
-        lines.append("（总预算 30s 已用尽，以上为已完成部分）")
+        lines.append(f"（总预算 {TOTAL_BUDGET_SECONDS:.0f}s 已用尽，以上为已完成部分）")
     lines.append("请修复后再结束。")
     return "\n".join(lines)
 
