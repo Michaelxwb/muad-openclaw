@@ -148,6 +148,10 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.equal(output.plugins.entries["session-manager"].enabled, true);
   assert.equal(output.plugins.installs, undefined);
   assert.equal(output.plugins.entries["session-manager"].config.consoleInternalURL, runtime.consoleInternalUrl);
+  assert.deepEqual(
+    output.plugins.entries["session-manager"].config.agentProfiles,
+    runtime.guard.agentProfiles,
+  );
   assert.equal(output.plugins.entries["muad-run-skill"], undefined);
   assert.equal(output.skills.entries?.["__muad-runtime-skill-state"], undefined);
   assert.equal(output.plugins.bundledDiscovery, "allowlist");

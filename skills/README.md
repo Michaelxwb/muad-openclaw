@@ -70,7 +70,15 @@ Skill 激活按用户消息轮次隔离：
 }
 ```
 
-上传时 Console 会校验非空平台依赖均已存在。无平台依赖的 Skill 可直接作为通用 Skill 使用；单平台依赖可通过 `session-manager get-state --skill-name <skill>` 自动解析；多平台依赖调用时需显式传 `--platform <platform>`。
+上传时 Console 会校验非空平台依赖均已存在。无平台依赖的 Skill 可直接作为通用 Skill 使用；声明平台依赖的 Skill 通过 `session-manager get-state --skill-name <skill>` 解析，一次返回该 Skill 声明的全部平台凭证；任一平台未配置时调用失败（不做部分降级）。
+
+脚本类 Skill 采用**脚本自助**模式获取会话状态：`scripts/` 里的脚本直接调用
+`session-manager get-state --skill-name <skill>`，无需 env 注入——agent 身份由 Runtime Guard
+注入的 `MUAD_SESSION_KEY` 决定，脚本不自报身份。CLI 保证状态新鲜（缓存过期/缺失时自动登录并落盘），
+返回按 Skill 裁剪的 `sessionStateFile`；脚本再读该文件当前 Skill 的 `<platform>` section 取
+cookies 使用（文件只含当前 Skill 声明的平台）。cookie 不进入 CLI stdout、不进入模型上下文。
+需要浏览器能力（`capabilities: ["browser"]`）的 Skill 仍走
+`session_get_state` 模型工具，因为只有插件工具能调用 `browser.request`。
 
 ## 长任务反馈
 

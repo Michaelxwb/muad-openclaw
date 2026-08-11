@@ -13,6 +13,7 @@ import { SessionManagerError, normalizeSessionError } from "./errors.js";
 import {
   type ResolveRequest,
   type ResolvedCredential,
+  type ResolvedPlatformCredential,
   type Resolver,
 } from "./types.js";
 
@@ -124,26 +125,43 @@ function parseEnvelope(text: string): ResolverEnvelope {
 }
 
 function resolverHTTPError(status: number, code: number): SessionManagerError {
-  if (code === 40004) return new SessionManagerError("platform_required");
-  if (code === 40005) return new SessionManagerError("platform_not_bound");
-  if (code === 40402) return new SessionManagerError("not_configured");
-  if (code === 40905) return new SessionManagerError("platform_disabled");
-  if (code === 40401) return new SessionManagerError("agent_not_active");
+  if (code === 40001) return new SessionManagerError("invalid_context");
+  if (code === 40514) return new SessionManagerError("platform_not_bound");
+  if (code === 40527) return new SessionManagerError("invalid_skill");
+  if (code === 40606) return new SessionManagerError("not_configured");
+  if (code === 40605) return new SessionManagerError("platform_disabled");
+  if (code === 40901) return new SessionManagerError("agent_not_active");
   if (status === 400) return new SessionManagerError("invalid_context");
   return new SessionManagerError("credential_service_unavailable", status >= 500 || status === 401 || status === 429);
 }
 
 function parseCredential(value: unknown, request: ResolveRequest): ResolvedCredential {
-  if (!isRecord(value) || !isRecord(value.credentials)) throw unavailable();
-  const credential = {
-    humanUserId: requiredString(value.humanUserId), podId: requiredString(value.podId),
-    agentId: requiredString(value.agentId), skillName: requiredString(value.skillName),
-    platform: requiredString(value.platform), credentialFingerprint: requiredString(value.credentialFingerprint),
-    credentials: value.credentials,
-  } satisfies ResolvedCredential;
+  if (!isRecord(value)) throw unavailable();
+  const credential: ResolvedCredential = {
+    humanUserId: requiredString(value.humanUserId),
+    podId: requiredString(value.podId),
+    agentId: requiredString(value.agentId),
+    skillName: requiredString(value.skillName),
+    platforms: parsePlatforms(value.platforms),
+  };
   if (credential.agentId !== request.agentId || credential.skillName !== request.skillName) throw unavailable();
-  if (request.platform && credential.platform !== request.platform) throw unavailable();
   return credential;
+}
+
+function parsePlatforms(value: unknown): ResolvedPlatformCredential[] {
+  if (!Array.isArray(value) || value.length === 0) throw unavailable();
+  const seen = new Set<string>();
+  const platforms: ResolvedPlatformCredential[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) throw unavailable();
+    const platform = requiredString(entry.platform);
+    const credentialFingerprint = requiredString(entry.credentialFingerprint);
+    if (!isRecord(entry.credentials)) throw unavailable();
+    if (seen.has(platform)) throw unavailable();
+    seen.add(platform);
+    platforms.push({ platform, credentialFingerprint, credentials: entry.credentials });
+  }
+  return platforms;
 }
 
 function resolverURL(baseURL: string): URL {
@@ -182,12 +200,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-export function makeResolveRequest(agentId: string, skillName: string, platform = ""): ResolveRequest {
-  const normalized = platform.trim();
+export function makeResolveRequest(agentId: string, skillName: string): ResolveRequest {
   return {
     agentId,
     skillName,
-    ...(normalized ? { platform: normalized } : {}),
     purpose: RESOLVER_PURPOSE,
   };
 }

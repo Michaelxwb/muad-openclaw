@@ -35,6 +35,9 @@ test("worker image builds session-manager and installs all runtime plugins and C
     "AS session-manager-builder",
     "npm ci --include=dev",
     "COPY tools/session-manager/fixtures ./fixtures",
+    "COPY tools/session-manager/scripts ./scripts",
+    "COPY tools/fake-business-platform /build/fake-business-platform",
+    "COPY skills /skills",
     "RUN npm test",
     "/opt/muad/session-manager",
     "/opt/muad/muad-runtime-guard",
@@ -55,6 +58,8 @@ test("worker image builds session-manager and installs all runtime plugins and C
     read("entrypoint.sh"),
     /node \/opt\/muad\/runtime-image-self-check\.mjs/u,
   );
+  assert.doesNotMatch(app, /COPY --from=session-manager-builder[\s\S]*\/build\/fake-business-platform/u);
+  assert.doesNotMatch(app, /COPY --from=session-manager-builder[\s\S]*\/skills/u);
 });
 
 test("base image contains OpenClaw, Chromium/Playwright, channel plugins, and seed", () => {

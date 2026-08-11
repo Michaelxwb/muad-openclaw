@@ -284,6 +284,7 @@ function renderPlugins(output, runtime) {
         enabled: true,
         config: {
           consoleInternalURL: runtime.consoleInternalUrl,
+          agentProfiles: runtime.guard.agentProfiles,
         },
       },
       "muad-runtime-guard": {

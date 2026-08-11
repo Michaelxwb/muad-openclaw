@@ -4,6 +4,7 @@ import { SharedBrowserLeaseManager } from "./browser-lease.mjs";
 import { createBindCommand } from "./bind-command.mjs";
 import { BindingClient, BindingClientError } from "./binding-client.mjs";
 import { parseGuardConfig } from "./config.mjs";
+import { createCrossUserGuard } from "./cross-user-guard.mjs";
 import { createHealthHandler } from "./health.mjs";
 import { createLongTaskHooks } from "./long-task-hooks.mjs";
 import { LongTaskManager } from "./long-task-manager.mjs";
@@ -35,6 +36,7 @@ const plugin = {
     registerSkillLeaseHooks(api, config, skillLeaseManager);
     registerLongTaskHooks(api, config, longTaskManager);
     registerSkillOutputHooks(api, longTaskManager);
+    registerCrossUserGuard(api, config);
     registerReloadPolicy(api);
     const client = createBindingClient(config);
     api.registerCommand(createBindCommand({
@@ -129,6 +131,15 @@ function registerSkillOutputHooks(api, manager) {
     resolveStateRoot: (agentId) => resolveStateRoot(api, agentId),
   });
   api.on("resolve_exec_env", hooks.resolveExecEnv, { priority: -800, timeoutMs: 1_000 });
+}
+
+function registerCrossUserGuard(api, config) {
+  const hooks = createCrossUserGuard({
+    config,
+    log: (message) => console.warn(`[muad-runtime-guard]${message}`),
+  });
+  api.on("before_tool_call", hooks.beforeToolCall, { priority: -950, timeoutMs: 1_000 });
+  api.on("reply_payload_sending", hooks.replyPayloadSending, { priority: -850, timeoutMs: 1_000 });
 }
 
 function resolveWorkspace(api, agentId) {

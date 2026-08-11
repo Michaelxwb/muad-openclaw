@@ -406,7 +406,7 @@ Human User 是平台用户；IM external id 是 Identity。未绑定不自动开
 ### B.4 路径
 
 - workspace：`/home/node/.openclaw/workspace-<agent>`  
-- session-store：`.../agents/<agent>/session-store/<platform>/`  
+- session-store：`.../agents/<agent>/session-store/bundle.json` 是 session-manager 私有缓存（平台名作为 key 分区）；`get-state` 按 Skill 裁剪返回 `<skill>.session.json`（见 session-manager README）  
 - Public Skills：`/opt/openclaw-skills`  
 
 ### B.5 源码

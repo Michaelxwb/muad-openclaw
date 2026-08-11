@@ -1,8 +1,10 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-// Generic skill output capability: every exec gets a per-agent/per-user output
-// directory injected as SKILL_OUTPUT_DIR. Long tasks are just one consumer.
+// Generic skill output capability: every exec in a trusted agent session gets
+// the trusted MUAD_SESSION_KEY injected as identity (overriding anything the
+// model or script env self-reports), plus a per-agent/per-user output directory
+// as SKILL_OUTPUT_DIR. Long tasks are just one consumer of the output dir.
 const LONG_TASK_PREFIX = "longtask:";
 const DIR_SEGMENT_PATTERN = /[^\p{L}\p{N}_.-]/gu;
 const LEADING_TRAILING_DASH = /^-+|-+$/gu;
@@ -14,18 +16,23 @@ export function createSkillOutputHooks({ resolveStateRoot, manager, mkdir = mkdi
       if (textValue(event?.toolName) !== "exec") return undefined;
       const sessionKey = textValue(event?.sessionKey) || textValue(ctx?.sessionKey);
       const { agentId, rest } = parseAgentSessionKey(sessionKey);
-      if (!agentId) return undefined;
+      // Fail closed: the session key's agent must match the trusted agent
+      // context. Never trust a session key whose agent differs from ctx.agentId,
+      // even if it parses to a well-formed identity.
+      if (!agentId || agentId !== textValue(ctx?.agentId)) return undefined;
+      const env = { MUAD_SESSION_KEY: sessionKey };
       const peerId = resolvePeerId(rest, manager);
-      if (!peerId) return undefined;
       const stateRoot = resolveStateRoot(agentId);
-      if (!stateRoot) return undefined;
-      const outputDir = path.join(stateRoot, "skill-outputs", agentId, peerId);
-      try {
-        mkdir(outputDir, { recursive: true, mode: 0o700 });
-      } catch {
-        return undefined;
+      if (peerId && stateRoot) {
+        const outputDir = path.join(stateRoot, "skill-outputs", agentId, peerId);
+        try {
+          mkdir(outputDir, { recursive: true, mode: 0o700 });
+          env.SKILL_OUTPUT_DIR = outputDir;
+        } catch {
+          // identity injection still applies even when the output dir fails
+        }
       }
-      return { SKILL_OUTPUT_DIR: outputDir };
+      return env;
     },
   };
 }

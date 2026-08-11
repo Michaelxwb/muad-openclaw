@@ -8,13 +8,13 @@ import { fileURLToPath } from "node:url";
 
 import {
   AdapterRegistry,
+  PlatformAdapterError,
   SessionManagerError,
   SessionStore,
 } from "../dist/index.js";
 import { runCLI } from "../dist/cli.js";
 
 const env = {
-  MUAD_AGENT_ID: "alice",
   MUAD_SESSION_KEY: "agent:alice:wecom:direct:user-a",
   MUAD_CONSOLE_INTERNAL_URL: "http://console:8080",
 };
@@ -38,44 +38,43 @@ test("get-state uses trusted env context and never writes API keys", async () =>
   const output = JSON.parse(result.stdout);
   assert.deepEqual({
     ...output,
-    cookiesPath: "<cookies>",
-    storageStatePath: "<storageState>",
-    expiresAt: "<expiresAt>",
+    sessionStateFile: "<sessionStateFile>",
+    platforms: output.platforms.map((p) => ({ ...p, expiresAt: "<expiresAt>" })),
   }, {
     version: 1,
     status: "ready",
     source: "refresh",
-    platform: "xdr",
-    cookiesPath: "<cookies>",
-    storageStatePath: "<storageState>",
-    expiresAt: "<expiresAt>",
-    credentialFingerprint: "sha256:credential",
+    sessionStateFile: "<sessionStateFile>",
+    humanUserId: "user-a",
+    podId: "pod-a",
+    agentId: "alice",
+    skillName: "xdr-query",
+    platforms: [{
+      platform: "xdr",
+      source: "refresh",
+      expiresAt: "<expiresAt>",
+      credentialFingerprint: "sha256:credential",
+    }],
   });
-  assert.match(output.cookiesPath, /alice\/session-store\/xdr\/default\/cookies\.json$/);
+  assert.match(output.sessionStateFile, /alice\/session-store\/xdr-query\.session\.json$/);
   assert.equal(requests[0].agentId, "alice");
   assert.equal(requests[0].skillName, "xdr-query");
   assert.equal(requests[0].platform, undefined);
   assert.equal("sessionKey" in requests[0], false);
+  assert.equal(requests[0].purpose, "session_get_state");
 });
 
-test("get-state forwards an optional platform selector to the Resolver", async () => {
-  const requests = [];
-  const resolver = {
-    resolve: async (request) => {
-      requests.push(request);
-      return resolvedCredential("api-key", request.platform ?? "xdr");
-    },
-  };
+test("get-state fails closed when MUAD_SESSION_KEY is missing", async () => {
   const root = temporaryRoot();
   const result = await runCLI(
-    ["get-state", "--skill-name", "xdr-query", "--platform", "mssw"],
-    env,
-    resolver,
+    ["get-state", "--skill-name", "xdr-query"],
+    { MUAD_AGENT_ID: "alice", MUAD_CONSOLE_INTERNAL_URL: "http://console:8080" },
+    { resolve: async () => resolvedCredential("secret") },
     sessionOptions(root),
   );
   rmSync(root, { recursive: true, force: true });
-  assert.equal(result.exitCode, 0);
-  assert.equal(requests[0].platform, "mssw");
+  assert.equal(result.exitCode, 3);
+  assert.equal(JSON.parse(result.stderr).error.code, "invalid_context");
 });
 
 test("cross-agent and unknown arguments are rejected before Resolver access", async () => {
@@ -86,10 +85,49 @@ test("cross-agent and unknown arguments are rejected before Resolver access", as
   assert.equal(JSON.parse(result.stderr).error.code, "invalid_arguments");
   assert.equal(calls, 0);
 
-  const badPlatform = await runCLI(["get-state", "--skill-name", "xdr-query", "--platform", "bad-name"], env, resolver);
-  assert.equal(badPlatform.exitCode, 2);
-  assert.equal(JSON.parse(badPlatform.stderr).error.code, "invalid_arguments");
+  const legacyPlatform = await runCLI(["get-state", "--skill-name", "xdr-query", "--platform", "mssw"], env, resolver);
+  assert.equal(legacyPlatform.exitCode, 2);
+  assert.equal(JSON.parse(legacyPlatform.stderr).error.code, "invalid_arguments");
   assert.equal(calls, 0);
+});
+
+test("forged MUAD_AGENT_ID is ignored; identity derives only from MUAD_SESSION_KEY", async () => {
+  const requests = [];
+  const resolver = {
+    resolve: async (request) => {
+      requests.push(request);
+      return resolvedCredential("secret");
+    },
+  };
+  const root = temporaryRoot();
+  const result = await runCLI(
+    ["get-state", "--skill-name", "xdr-query"],
+    { ...env, MUAD_AGENT_ID: "bob" },
+    resolver,
+    sessionOptions(root),
+  );
+  rmSync(root, { recursive: true, force: true });
+  assert.equal(result.exitCode, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).agentId, "alice");
+  assert.equal(requests[0].agentId, "alice");
+});
+
+test("cross-agent session key cannot read another agent's state", async () => {
+  const requests = [];
+  const resolver = {
+    resolve: async (request) => {
+      requests.push(request);
+      return resolvedCredential("secret");
+    },
+  };
+  const result = await runCLI(
+    ["get-state", "--skill-name", "xdr-query"],
+    { ...env, MUAD_SESSION_KEY: "agent:bob:wecom:direct:user-b" },
+    resolver,
+  );
+  assert.equal(result.exitCode, 12);
+  assert.equal(JSON.parse(result.stderr).error.code, "credential_service_unavailable");
+  assert.equal(requests.length, 1);
 });
 
 test("missing trusted context and Resolver failures use stable redacted stderr", async () => {
@@ -105,7 +143,78 @@ test("missing trusted context and Resolver failures use stable redacted stderr",
     code: "not_configured",
     message: "platform credential is not configured",
     retryable: false,
+    reason: "unknown",
   });
+});
+
+test("adapter failures include platform attribution in stable stderr", async () => {
+  const root = temporaryRoot();
+  const result = await runCLI(
+    ["get-state", "--skill-name", "xdr-query"],
+    env,
+    { resolve: async () => resolvedCredential("secret") },
+    {
+      store: new SessionStore({ rootDir: root }),
+      adapters: new AdapterRegistry([{
+        platform: "xdr",
+        refresh: async () => {
+          throw new PlatformAdapterError(false, true, "network", "network unavailable");
+        },
+      }]),
+    },
+  );
+  rmSync(root, { recursive: true, force: true });
+
+  assert.equal(result.exitCode, 13);
+  assert.deepEqual(JSON.parse(result.stderr).error, {
+    code: "adapter_failed",
+    message: "network unavailable",
+    retryable: true,
+    reason: "network",
+    platform: "xdr",
+  });
+});
+
+test("retryable browser apply failures do not block CLI cookie state", async () => {
+  const root = temporaryRoot();
+  const result = await runCLI(
+    ["get-state", "--skill-name", "xdr-query"],
+    env,
+    { resolve: async () => resolvedCredential("secret") },
+    {
+      ...sessionOptions(root),
+      browserApplier: {
+        apply: async () => {
+          throw new SessionManagerError("browser_apply_failed", true);
+        },
+      },
+    },
+  );
+  rmSync(root, { recursive: true, force: true });
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(JSON.parse(result.stdout).platforms[0].browser, undefined);
+});
+
+test("non-retryable browser apply failures include platform attribution in stable stderr", async () => {
+  const root = temporaryRoot();
+  const result = await runCLI(
+    ["get-state", "--skill-name", "xdr-query"],
+    env,
+    { resolve: async () => resolvedCredential("secret") },
+    {
+      ...sessionOptions(root),
+      browserApplier: {
+        apply: async () => {
+          throw new SessionManagerError("browser_apply_failed", false);
+        },
+      },
+    },
+  );
+  rmSync(root, { recursive: true, force: true });
+
+  assert.equal(result.exitCode, 18);
+  assert.equal(JSON.parse(result.stderr).error.platform, "xdr");
 });
 
 test("npm-style symlink executes the CLI main module", () => {
@@ -118,15 +227,17 @@ test("npm-style symlink executes the CLI main module", () => {
   assert.deepEqual(JSON.parse(result.stdout), { version: 1 });
 });
 
-function resolvedCredential(apiKey, platform = "xdr") {
+function resolvedCredential(apiKey) {
   return {
     humanUserId: "user-a",
     podId: "pod-a",
     agentId: "alice",
     skillName: "xdr-query",
-    platform,
-    credentialFingerprint: "sha256:credential",
-    credentials: { apiKey, baseUrl: "https://xdr.internal" },
+    platforms: [{
+      platform: "xdr",
+      credentialFingerprint: "sha256:credential",
+      credentials: { apiKey, baseUrl: "https://xdr.internal" },
+    }],
   };
 }
 
@@ -135,9 +246,6 @@ function sessionOptions(rootDir) {
     store: new SessionStore({ rootDir }),
     adapters: new AdapterRegistry([{
       platform: "xdr",
-      refresh: async () => sessionState(),
-    }, {
-      platform: "mssw",
       refresh: async () => sessionState(),
     }]),
   };

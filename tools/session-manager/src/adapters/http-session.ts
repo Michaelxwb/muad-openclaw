@@ -16,6 +16,9 @@ const CONTROL_CREDENTIAL_KEYS = new Set([
   "baseUrl", "sessionEndpoint", "healthEndpoint", "sessionMode",
   "sessionTtlSeconds", "sessionRequestBody",
 ]);
+// Secrets travel only in headers (Authorization / X-Access-Key / X-Secret-Key),
+// never in the login request body.
+const SESSION_BODY_SECRET_KEYS = new Set(["apiKey", "ak", "sk", "accessKey", "secretKey"]);
 
 export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -181,7 +184,7 @@ function sessionRequestBody(credentials: Record<string, unknown>): string {
   if (isRecord(credentials.sessionRequestBody)) return JSON.stringify(credentials.sessionRequestBody);
   const body: Record<string, unknown> = { sessionMode: sessionMode(credentials) };
   for (const [key, value] of Object.entries(credentials)) {
-    if (CONTROL_CREDENTIAL_KEYS.has(key) || key === "apiKey") continue;
+    if (CONTROL_CREDENTIAL_KEYS.has(key) || SESSION_BODY_SECRET_KEYS.has(key)) continue;
     body[key] = value;
   }
   return JSON.stringify(body);

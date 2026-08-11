@@ -30,13 +30,11 @@ func TestCredentialResolver_ScopesActiveUserAndReturnsMinimalCredential(t *testi
 	}
 	var response struct {
 		Data struct {
-			HumanUserID           string         `json:"humanUserId"`
-			PodID                 string         `json:"podId"`
-			AgentID               string         `json:"agentId"`
-			SkillName             string         `json:"skillName"`
-			Platform              string         `json:"platform"`
-			CredentialFingerprint string         `json:"credentialFingerprint"`
-			Credentials           map[string]any `json:"credentials"`
+			HumanUserID string                              `json:"humanUserId"`
+			PodID       string                              `json:"podId"`
+			AgentID     string                              `json:"agentId"`
+			SkillName   string                              `json:"skillName"`
+			Platforms   []resolvedPlatformCredentialFixture `json:"platforms"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(success.Body.Bytes(), &response); err != nil {
@@ -44,12 +42,16 @@ func TestCredentialResolver_ScopesActiveUserAndReturnsMinimalCredential(t *testi
 	}
 	if response.Data.HumanUserID != alice.HumanUserID || response.Data.PodID != "pod-a" ||
 		response.Data.AgentID != "alice" || response.Data.SkillName != "xdr-query" ||
-		response.Data.Platform != "xdr" || response.Data.Credentials["apiKey"] != "xdr-secret-key" ||
-		response.Data.Credentials["baseUrl"] != "https://xdr.internal" {
+		len(response.Data.Platforms) != 1 {
 		t.Fatalf("unexpected resolve response: %+v", response.Data)
 	}
-	if !strings.HasPrefix(response.Data.CredentialFingerprint, "sha256:") {
-		t.Fatalf("missing fingerprints: %+v", response.Data)
+	platform := response.Data.Platforms[0]
+	if platform.Platform != "xdr" || platform.Credentials["apiKey"] != "xdr-secret-key" ||
+		platform.Credentials["baseUrl"] != "https://xdr.internal" {
+		t.Fatalf("unexpected platform credential: %+v", platform)
+	}
+	if !strings.HasPrefix(platform.CredentialFingerprint, "sha256:") {
+		t.Fatalf("missing fingerprint: %+v", platform)
 	}
 
 	assertResolveError(t, env, tokenB, resolveBody, http.StatusNotFound, 40901)
@@ -59,9 +61,6 @@ func TestCredentialResolver_ScopesActiveUserAndReturnsMinimalCredential(t *testi
 	assertResolveError(t, env, tokenA,
 		`{"agentId":"charlie","skillName":"xdr-query","purpose":"session_get_state"}`,
 		http.StatusNotFound, 40606)
-	assertResolveError(t, env, tokenA,
-		`{"agentId":"alice","skillName":"xdr-query","purpose":"session_get_state","platform":"mssw"}`,
-		http.StatusBadRequest, 40514)
 
 	if err := env.store.UpdatePlatformConfig("xdr", "XDR", false); err != nil {
 		t.Fatalf("disable platform: %v", err)
@@ -70,7 +69,7 @@ func TestCredentialResolver_ScopesActiveUserAndReturnsMinimalCredential(t *testi
 	assertResolveAuditIsRedacted(t, env, "xdr-secret-key", tokenA)
 }
 
-func TestCredentialResolver_MultiPlatformSkillRequiresExplicitBoundPlatform(t *testing.T) {
+func TestCredentialResolver_MultiPlatformSkillReturnsAllConfiguredCredentials(t *testing.T) {
 	env := newTestEnv(t)
 	token := createPodWithToken(t, env, "pod-a")
 	alice := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
@@ -88,28 +87,66 @@ func TestCredentialResolver_MultiPlatformSkillRequiresExplicitBoundPlatform(t *t
 			t.Fatalf("configure credential %s: %v", platform, err)
 		}
 	}
-	assertResolveError(t, env, token,
-		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state"}`,
-		http.StatusBadRequest, 40513)
-	assertResolveError(t, env, token,
-		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state","platform":"soar"}`,
-		http.StatusBadRequest, 40514)
 
 	response := doInternalResolve(env, token,
-		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state","platform":"mssw"}`)
+		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state"}`)
 	assertStatus(t, response, http.StatusOK)
 	var payload struct {
 		Data struct {
-			Platform    string         `json:"platform"`
-			Credentials map[string]any `json:"credentials"`
+			Platforms []resolvedPlatformCredentialFixture `json:"platforms"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if payload.Data.Platform != "mssw" || payload.Data.Credentials["apiKey"] != "mssw-key" {
-		t.Fatalf("unexpected multi-platform response: %+v", payload.Data)
+	if len(payload.Data.Platforms) != 2 {
+		t.Fatalf("expected 2 platforms, got %d: %+v", len(payload.Data.Platforms), payload.Data.Platforms)
 	}
+	byKey := map[string]string{}
+	for _, p := range payload.Data.Platforms {
+		byKey[p.Platform] = p.Credentials["apiKey"].(string)
+	}
+	if byKey["xdr"] != "xdr-key" || byKey["mssw"] != "mssw-key" {
+		t.Fatalf("unexpected multi-platform credentials: %+v", byKey)
+	}
+}
+
+func TestCredentialResolver_MultiPlatformSkillFailsWhenAnyPlatformMissingCredential(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+	alice := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createTestPlatform(t, env.store, "xdr", "XDR")
+	createTestPlatform(t, env.store, "mssw", "MSSW")
+	createSkillAsset(t, env.store, repo.SkillAsset{
+		Name: "multi-report", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/multi-report", ManifestHash: "sha256:multi",
+		PlatformsJSON: `["xdr","mssw"]`,
+	})
+	if _, err := env.store.UpsertUserPlatformCredential(alice.HumanUserID, "xdr", map[string]any{
+		"apiKey": "xdr-key", "baseUrl": "https://xdr.internal",
+	}); err != nil {
+		t.Fatalf("configure xdr credential: %v", err)
+	}
+	// mssw 凭证未配置，整个请求应该失败（Option A）
+	assertResolveError(t, env, token,
+		`{"agentId":"alice","skillName":"multi-report","purpose":"session_get_state"}`,
+		http.StatusNotFound, 40606)
+	assertResolveAuditPlatform(t, env, "mssw")
+}
+
+func TestCredentialResolver_DisabledSkillFailsWithInvalidSkill(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+	createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	skill := createSkillAsset(t, env.store, repo.SkillAsset{
+		Name: "xdr-query", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/xdr-query", ManifestHash: "sha256:xdr-query",
+		PlatformsJSON: `["xdr"]`,
+	})
+	if err := env.store.UpdateSkillAssetStatus(skill.SkillID, repo.SkillStatusDisabled); err != nil {
+		t.Fatalf("disable skill: %v", err)
+	}
+	assertResolveError(t, env, token, resolveBody, http.StatusBadRequest, 40527)
 }
 
 func TestCredentialResolver_PlatformlessSkillHasNoSessionCredential(t *testing.T) {
@@ -175,6 +212,12 @@ func TestServiceTokenRotation_StartFailureRestoresOldTokenAndSecret(t *testing.T
 	}
 }
 
+type resolvedPlatformCredentialFixture struct {
+	Platform              string         `json:"platform"`
+	CredentialFingerprint string         `json:"credentialFingerprint"`
+	Credentials           map[string]any `json:"credentials"`
+}
+
 func configureResolverPlatform(t *testing.T, env *testEnv, humanUserID, apiKey string) {
 	t.Helper()
 	createTestPlatform(t, env.store, "xdr", "XDR")
@@ -212,6 +255,29 @@ func assertResolveError(
 	if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil || envelope.Code != code {
 		t.Fatalf("resolve code = %d, %v; want %d", envelope.Code, err, code)
 	}
+}
+
+func assertResolveAuditPlatform(t *testing.T, env *testEnv, platform string) {
+	t.Helper()
+	entries, _, err := env.store.QueryAudit("pod:pod-a", timeZero(), timeZero(), 0, 0)
+	if err != nil {
+		t.Fatalf("resolve audit query = %v", err)
+	}
+	for _, entry := range entries {
+		if entry.Action != "session_credential.resolve_fail" {
+			continue
+		}
+		var payload struct {
+			Platform string `json:"platform"`
+		}
+		if err := json.Unmarshal([]byte(entry.Payload), &payload); err != nil {
+			t.Fatalf("resolve audit payload = %v", err)
+		}
+		if payload.Platform == platform {
+			return
+		}
+	}
+	t.Fatalf("resolve_fail audit did not record platform %q in %+v", platform, entries)
 }
 
 func assertResolveAuditIsRedacted(t *testing.T, env *testEnv, secrets ...string) {

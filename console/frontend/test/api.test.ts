@@ -253,7 +253,7 @@ describe("Skill API", () => {
     expect((init.body as FormData).get("allowOverride")).toBe("true");
   });
 
-  it("preserves an explicit empty platform dependency override for private Skill uploads", async () => {
+  it("omits the platforms field when the private Skill upload platform selector is empty", async () => {
     const fetchMock = stubResponse({ skill: { skillId: "skill-a", name: "generic-skill" } });
 
     await api.uploadPrivateSkill("user-a", {
@@ -264,7 +264,22 @@ describe("Skill API", () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.body).toBeInstanceOf(FormData);
-    expect((init.body as FormData).get("platforms")).toBe("[]");
+    // 空数组（选择器留空）不写 platforms 字段，后端视为未设置，保留 manifest 平台依赖。
+    expect((init.body as FormData).get("platforms")).toBeNull();
+  });
+
+  it("sends the platforms field when the private Skill upload selector has values", async () => {
+    const fetchMock = stubResponse({ skill: { skillId: "skill-a", name: "mssw-skill" } });
+
+    await api.uploadPrivateSkill("user-a", {
+      bundle: new Blob(["bundle"]),
+      filename: "mssw-skill.zip",
+      platforms: ["mssw"],
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("platforms")).toBe('["mssw"]');
   });
 
   it("uploads public Skill bundles through the global endpoint", async () => {
@@ -289,7 +304,7 @@ describe("Skill API", () => {
     expect(init.body).toBeInstanceOf(FormData);
   });
 
-  it("preserves an explicit empty platform dependency override for public Skill uploads", async () => {
+  it("omits the platforms field when the public Skill upload platform selector is empty", async () => {
     const fetchMock = stubResponse({
       skill: { skillId: "skill-a", name: "generic-public" },
       affectedPodIds: [],
@@ -303,7 +318,24 @@ describe("Skill API", () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.body).toBeInstanceOf(FormData);
-    expect((init.body as FormData).get("platforms")).toBe("[]");
+    expect((init.body as FormData).get("platforms")).toBeNull();
+  });
+
+  it("sends the platforms field when the public Skill upload selector has values", async () => {
+    const fetchMock = stubResponse({
+      skill: { skillId: "skill-a", name: "mssw-public" },
+      affectedPodIds: [],
+    });
+
+    await api.uploadPublicSkill({
+      bundle: new Blob(["bundle"]),
+      filename: "mssw-public.zip",
+      platforms: ["mssw"],
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("platforms")).toBe('["mssw"]');
   });
 
   it("posts Skill status and user policies through the typed client", async () => {

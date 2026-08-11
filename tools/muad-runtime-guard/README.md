@@ -35,7 +35,8 @@
 - 当前 Runtime Config 授权的 system/public/private Skill 根只读开放。
 - main、跨用户目录、未授权 Skill 根、运行时内部状态和写入操作保持拒绝。
 - `apply_patch` 校验所有目标路径，不信任模型提供的派生路径。
-- 业务 Agent 的 shell/code-exec 类工具保持拒绝，避免模型绕过文件策略读取运行时凭证。
+- 业务 Agent 的 shell/code-exec 类工具在 WorkspaceOnly 下允许；`session-store` 目录仍被文件策略封锁，`resolve_exec_env` 钩子会向 exec 环境注入受信任的 `MUAD_SESSION_KEY`（身份只由它解析，脚本不得自报 agent 身份）与 `SKILL_OUTPUT_DIR`。
+- 跨用户凭据护栏：shell/exec 命令与 write/edit/apply_patch 内容若引用 `session-store`、`bundle.json`、`<skill>.session.json`、Pod service token，或内联覆盖 `MUAD_SESSION_KEY`，一律在 `before_tool_call` fail closed；模型回复若包含会话文件结构（`storageState`/`credentialFingerprint`/`httpOnly`/`sameSite` JSON 键）会在 `reply_payload_sending` 被替换为拒绝文案。会话凭据只允许通过受信 Skill 与 session-manager CLI 读取。
 
 Skill 激活走 OpenClaw 原生 Skill 机制；Runtime Guard 只负责可信边界、显式 Skill/浏览器并发和健康检查。
 

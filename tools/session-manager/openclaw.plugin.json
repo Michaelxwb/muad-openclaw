@@ -16,6 +16,18 @@
     "properties": {
       "consoleInternalURL": {
         "type": "string"
+      },
+      "agentProfiles": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agentId", "profile"],
+          "properties": {
+            "agentId": { "type": "string" },
+            "profile": { "type": "string" }
+          }
+        }
       }
     }
   }

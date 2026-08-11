@@ -18,7 +18,8 @@ test("Resolver client reads the fixed token file and retries one transient failu
       calls += 1;
       assert.equal(String(url), "http://console:8080/internal/v1/session-credentials/resolve");
       assert.equal(options.headers.Authorization, "Bearer service-token");
-      assert.equal(JSON.parse(options.body).platform, "mssw");
+      assert.equal(JSON.parse(options.body).platform, undefined);
+      assert.equal(JSON.parse(options.body).purpose, "session_get_state");
       if (calls === 1) throw new TypeError("network unavailable");
       return successResponse("internal-api-key", "mssw");
     },
@@ -32,15 +33,17 @@ test("Resolver client reads the fixed token file and retries one transient failu
     retryJitterMs: 20,
   });
 
-  const result = await client.resolve(makeResolveRequest("alice", "xdr-query", "mssw"));
-  assert.equal(result.credentials.apiKey, "internal-api-key");
+  const result = await client.resolve(makeResolveRequest("alice", "xdr-query"));
+  assert.equal(result.platforms.length, 1);
+  assert.equal(result.platforms[0].platform, "mssw");
+  assert.equal(result.platforms[0].credentials.apiKey, "internal-api-key");
   assert.equal(calls, 2);
   assert.deepEqual(delays, [20]);
   assert.deepEqual(tokenPaths, [SERVICE_TOKEN_FILE]);
 });
 
 test("Resolver maps multi-platform selection errors to stable session errors", async () => {
-  for (const [code, expected] of [[40004, "platform_required"], [40005, "platform_not_bound"]]) {
+  for (const [code, expected] of [[40514, "platform_not_bound"], [40527, "invalid_skill"], [40606, "not_configured"], [40605, "platform_disabled"], [40901, "agent_not_active"]]) {
     const client = new ResolverClient({
       baseURL: "http://console:8080",
       readToken: async () => "service-token",
@@ -85,7 +88,7 @@ test("Resolver domain errors are stable and are not retried", async () => {
     readToken: async () => "service-token",
     fetch: async () => {
       calls += 1;
-      return new Response(JSON.stringify({ code: 40905, message: "platform is disabled" }), { status: 409 });
+      return new Response(JSON.stringify({ code: 40605, message: "platform is disabled" }), { status: 409 });
     },
   });
 
@@ -96,6 +99,28 @@ test("Resolver domain errors are stable and are not retried", async () => {
   assert.equal(calls, 1);
 });
 
+test("Resolver rejects responses missing platforms or carrying mismatched agent", async () => {
+  const client = new ResolverClient({
+    baseURL: "http://console:8080",
+    readToken: async () => "service-token",
+    fetch: async (_url, _options) => new Response(JSON.stringify({
+      code: 0,
+      data: {
+        humanUserId: "user-a",
+        podId: "pod-a",
+        agentId: "bob",
+        skillName: "xdr-query",
+        platforms: [{ platform: "xdr", credentialFingerprint: "sha256:x", credentials: { apiKey: "k" } }],
+      },
+    }), { status: 200 }),
+  });
+
+  await assert.rejects(
+    () => client.resolve(makeResolveRequest("alice", "xdr-query")),
+    (error) => error instanceof SessionManagerError && error.code === "credential_service_unavailable",
+  );
+});
+
 function successResponse(apiKey, platform = "xdr") {
   return new Response(JSON.stringify({
     code: 0,
@@ -104,9 +129,11 @@ function successResponse(apiKey, platform = "xdr") {
       podId: "pod-a",
       agentId: "alice",
       skillName: "xdr-query",
-      platform,
-      credentialFingerprint: "sha256:credential",
-      credentials: { apiKey, baseUrl: "https://xdr.internal", sessionMode: "storage_state" },
+      platforms: [{
+        platform,
+        credentialFingerprint: "sha256:credential",
+        credentials: { apiKey, baseUrl: "https://xdr.internal", sessionMode: "storage_state" },
+      }],
     },
   }), { status: 200 });
 }

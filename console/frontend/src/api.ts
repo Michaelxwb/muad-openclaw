@@ -353,7 +353,7 @@ export const api = {
     const filename =
       input.filename ?? (input.bundle instanceof File ? input.bundle.name : "skill.tar.gz");
     form.set("bundle", input.bundle, filename);
-    if (input.platforms) {
+    if (input.platforms && input.platforms.length > 0) {
       form.set("platforms", JSON.stringify(input.platforms));
     }
     return requestForm<PublicSkillUploadResult>("/skills/public", form);
@@ -379,7 +379,7 @@ export const api = {
     form.set("bundle", input.bundle, filename);
     if (input.expectedName) form.set("expectedName", input.expectedName);
     if (input.allowOverride) form.set("allowOverride", "true");
-    if (input.platforms) {
+    if (input.platforms && input.platforms.length > 0) {
       form.set("platforms", JSON.stringify(input.platforms));
     }
     return requestForm<PrivateSkillUploadResult>(

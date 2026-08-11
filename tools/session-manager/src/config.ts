@@ -8,12 +8,18 @@ export type CLIConfig = {
 };
 
 export function loadCLIConfig(env: NodeJS.ProcessEnv): CLIConfig {
-  const agentId = String(env.MUAD_AGENT_ID ?? "").trim();
   const sessionKey = String(env.MUAD_SESSION_KEY ?? "").trim();
   const consoleInternalURL = String(env.MUAD_CONSOLE_INTERNAL_URL ?? "").trim();
-  if (!AGENT_PATTERN.test(agentId) || !sessionKey || sessionKey.length > MAX_SESSION_KEY_LENGTH) {
+  const agentId = sessionAgentId(sessionKey);
+  if (!agentId || sessionKey.length > MAX_SESSION_KEY_LENGTH || !consoleInternalURL) {
     throw new SessionManagerError("invalid_context");
   }
-  if (!consoleInternalURL) throw new SessionManagerError("invalid_context");
   return { consoleInternalURL, trustedContext: { agentId, sessionKey } };
+}
+
+function sessionAgentId(sessionKey: string): string {
+  const normalized = sessionKey.startsWith("session:") ? sessionKey.slice("session:".length) : sessionKey;
+  const [prefix, agentId] = normalized.split(":");
+  if (prefix !== "agent" || !agentId || !AGENT_PATTERN.test(agentId)) return "";
+  return agentId;
 }
