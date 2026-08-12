@@ -158,7 +158,13 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.equal(output.plugins.entries["muad-runtime-guard"].config.generation, 7);
   assert.equal(output.plugins.entries["muad-runtime-guard"].config.maxLongTaskConcurrency, 2);
   assert.deepEqual(output.plugins.entries["muad-runtime-guard"].config.skillReadRoots, [
-    { agentId: "alice", roots: ["/opt/openclaw-skills"] },
+    { agentId: "alice", roots: ["/opt/openclaw-skills", "/tmp/muad-runtime/workspace-alice/skills"] },
+  ]);
+  // Public/private 目录级 grant（dir:true）无条件发出 → Skill 增删不改字节；
+  // 只有 system Skill 保持 per-Skill。占位 name 经 sanitize 保持 schema-valid。
+  assert.deepEqual(output.plugins.entries["muad-runtime-guard"].config.skillAuditGrants, [
+    { agentId: "alice", name: "openclaw-skills", rootPath: "/opt/openclaw-skills", source: "public", dir: true },
+    { agentId: "alice", name: "skills", rootPath: "/tmp/muad-runtime/workspace-alice/skills", source: "private", dir: true },
   ]);
   assert.deepEqual(output.plugins.entries["muad-runtime-guard"].config.longTaskSkillGrants, [
     { agentId: "alice", name: "xdr-query", rootPath: "/opt/openclaw-skills/xdr-query" },
@@ -270,6 +276,15 @@ test("rendered guard config always satisfies the plugin manifest configSchema", 
           `locale=${locale} guard config ${key}=${JSON.stringify(value)} not in enum`,
         );
       }
+    }
+    // 嵌套 grant 字段同样要落在 additionalProperties:false 的 item schema 内，
+    // 否则 OpenClaw 加载插件配置时会整段拒绝（dir 是目录级 grant 的新增字段）。
+    for (const grant of guardConfig.skillAuditGrants) {
+      const grantSchema = schema.properties.skillAuditGrants.items;
+      const grantExtra = Object.keys(grant).filter((key) => !(key in grantSchema.properties));
+      const grantMissing = (grantSchema.required ?? []).filter((key) => !(key in grant));
+      assert.deepEqual(grantExtra, [], `locale=${locale} grant has keys absent from item schema`);
+      assert.deepEqual(grantMissing, [], `locale=${locale} grant misses item schema required keys`);
     }
   }
 });

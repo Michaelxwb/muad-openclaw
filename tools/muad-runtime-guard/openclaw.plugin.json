@@ -71,7 +71,8 @@
             "agentId": { "type": "string" },
             "name": { "type": "string" },
             "rootPath": { "type": "string" },
-            "source": { "type": "string", "enum": ["system", "public", "private"] }
+            "source": { "type": "string", "enum": ["system", "public", "private"] },
+            "dir": { "type": "boolean" }
           }
         }
       },

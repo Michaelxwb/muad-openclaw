@@ -58,12 +58,20 @@ function parseSkillAuditGrants(value) {
     const name = String(item.name ?? "").trim();
     const rootPath = String(item.rootPath ?? "").trim();
     const source = String(item.source ?? "").trim();
+    const dir = item.dir === true;
     const key = `${agentId}\0${rootPath}`;
-    if (!ID_PATTERN.test(agentId) || agentId === "main" || !SKILL_NAME_PATTERN.test(name) ||
+    // Directory grants (public/private hot-change scopes) carry a placeholder
+    // name; only per-Skill grants are matched by name, so the placeholder does
+    // not have to be a valid Skill name. Older guards drop the `dir` marker and
+    // enforce the Skill-name pattern on every grant, so the renderer keeps the
+    // placeholder schema-valid anyway.
+    const nameValid = dir ? name.length > 0 : SKILL_NAME_PATTERN.test(name);
+    const dirScopeValid = !dir || source === "public" || source === "private";
+    if (!ID_PATTERN.test(agentId) || agentId === "main" || !nameValid || !dirScopeValid ||
       !validSkillScope(source) || !rootPath.startsWith("/") || rootPath.includes("\0") ||
       seenRoots.has(key)) return null;
     seenRoots.add(key);
-    output.push({ agentId, name, rootPath, source });
+    output.push({ agentId, name, rootPath, source, dir });
   }
   return output;
 }

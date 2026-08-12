@@ -28,11 +28,11 @@ export function createSkillAuditHooks({
       const skillName = explicitSkillName(promptText(event));
       if (!skillName || isLongTaskSession(event, ctx)) return undefined;
       const agentId = resolveAgentId(event, ctx);
-      const grant = findAuditGrantByName(config, agentId, skillName);
-      if (!grant) return undefined;
+      const match = findDispatchGrant(config, agentId, skillName);
+      if (!match) return undefined;
       const runId = resolveRunId(event, ctx);
       if (runId && alreadyReported(reported, runId, skillName)) return undefined;
-      reportOnce(client, grant, agentId, now(), diag);
+      reportOnce(client, match.grant, agentId, match.skillName, now(), diag);
       if (runId) rememberReported(reported, runId, skillName, now());
       return undefined;
     },
@@ -54,32 +54,32 @@ export function createSkillAuditHooks({
       const read = auditRead(config, event, ctx);
       if (!read) return undefined;
       const runId = resolveRunId(event, ctx);
-      if (runId && alreadyReported(reported, runId, read.grant.name)) return undefined;
-      reportOnce(client, read.grant, read.agentId, now(), diag);
-      if (runId) rememberReported(reported, runId, read.grant.name, now());
+      if (runId && alreadyReported(reported, runId, read.skillName)) return undefined;
+      reportOnce(client, read.grant, read.agentId, read.skillName, now(), diag);
+      if (runId) rememberReported(reported, runId, read.skillName, now());
       return undefined;
     },
   };
 }
 
 // 上报是 fire-and-forget：失败只记日志，不阻塞 turn（审计不能影响执行）。
-function reportOnce(client, grant, agentId, now, diag) {
+function reportOnce(client, grant, agentId, skillName, now, diag) {
   if (!client || typeof client.report !== "function") return;
   const startedAt = new Date(now).toISOString();
   const request = {
     executionId: randomUUID(),
     agentId,
-    skillName: grant.name,
+    skillName,
     skillScope: grant.source,
     startedAt,
   };
   Promise.resolve()
     .then(() => client.report(request))
-    .then(() => diag(`reported executionId=${request.executionId} agent=${agentId} skill=${grant.name}`))
+    .then(() => diag(`reported executionId=${request.executionId} agent=${agentId} skill=${skillName}`))
     .catch((error) => {
       const code = error?.code ?? "unknown";
       const retryable = error?.retryable === true;
-      diag(`report failed agent=${agentId} skill=${grant.name} code=${code} retryable=${retryable}`);
+      diag(`report failed agent=${agentId} skill=${skillName} code=${code} retryable=${retryable}`);
     });
 }
 
@@ -91,18 +91,53 @@ function auditRead(config, event, ctx) {
   const agentId = resolveAgentId(event, ctx);
   const grant = findGrantBySkillPath(config, agentId, target);
   if (!grant) return null;
-  return { agentId, grant, candidate };
+  const skillName = grant.dir === true
+    ? skillNameFromDirGrant(grant, path.dirname(target))
+    : grant.name;
+  if (!skillName) return null;
+  return { agentId, grant, skillName, candidate };
 }
 
-function findAuditGrantByName(config, agentId, skillName) {
-  return (config?.skillAuditGrants ?? []).find((grant) =>
-    grant.agentId === agentId && grant.name === skillName);
+// 显式调用：先精确匹配 per-Skill grant（system 保持精确），再回退到目录 grant。
+// 目录回退用真实文件存在性判定，既解析 public/private scope，也过滤掉从未
+// 安装过的 skill 名（phantom 上报）。
+function findDispatchGrant(config, agentId, skillName) {
+  const grants = config?.skillAuditGrants ?? [];
+  const perSkill = grants.find((grant) =>
+    grant.agentId === agentId && grant.dir !== true && grant.name === skillName);
+  if (perSkill) return { grant: perSkill, skillName };
+  for (const grant of grants) {
+    if (grant.agentId !== agentId || grant.dir !== true) continue;
+    if (fs.existsSync(path.join(grant.rootPath, skillName, "SKILL.md"))) {
+      return { grant, skillName };
+    }
+  }
+  return null;
 }
 
+// 路径匹配优先 per-Skill grant：system Skill 的 rootPath 位于 public 目录之下，
+// 若先命中 public 目录 grant 会把 scope 记成 public，因此必须优先精确的 per-Skill。
 function findGrantBySkillPath(config, agentId, skillMdPath) {
+  const grants = config?.skillAuditGrants ?? [];
   const dir = path.dirname(skillMdPath);
-  return (config?.skillAuditGrants ?? []).find((grant) =>
-    grant.agentId === agentId && isWithin(grant.rootPath, dir));
+  const perSkill = grants.find((grant) =>
+    grant.agentId === agentId && grant.dir !== true && isWithin(grant.rootPath, dir));
+  if (perSkill) return perSkill;
+  return grants.find((grant) =>
+    grant.agentId === agentId && grant.dir === true && isWithin(grant.rootPath, dir));
+}
+
+// 目录 grant 覆盖整个 root；真实 skill 名是 root 后的第一段路径
+// （resolver 布局 <root>/<skill>/SKILL.md），嵌套子目录的 SKILL.md 也取第一段。
+// root 与 SKILL.md 目录都可能带符号链接（macOS /var -> /private/var），
+// 统一 realpath 后再算相对路径，否则 relative 会落到 .. 被误判为逃逸。
+function skillNameFromDirGrant(grant, skillMdDir) {
+  const realRoot = resolveExistingPath(grant.rootPath);
+  if (!realRoot || !skillMdDir) return "";
+  const relative = path.relative(realRoot, skillMdDir);
+  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)) return "";
+  return relative.split(path.sep)[0];
 }
 
 function readPathCandidate(event) {
