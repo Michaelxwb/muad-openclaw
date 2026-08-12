@@ -12,12 +12,15 @@ import type {
   LongTaskStatus,
 } from "../api";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
+import { PodName } from "../components/PodName";
 import {
   DEFAULT_PAGE_SIZE,
   renderTablePagination,
   tablePagination,
 } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
+import { useHumanUserNames } from "../hooks/useHumanUserNames";
+import { usePodNames } from "../hooks/usePodNames";
 import { errorMessage } from "../utils/error";
 import styles from "./LongTasks.module.css";
 
@@ -43,13 +46,20 @@ const EMPTY_FILTERS: Filters = { q: "", status: "" };
 export function LongTasks({ onOpenPod }: Props) {
   const { t } = useTranslation();
   const state = useLongTasks();
+  const userNames = useHumanUserNames(true);
+  const podNames = usePodNames(true);
   return (
     <div>
       <PageHeader title={t("nav.longTasks")} description={t("longTasks.pageDescription")} />
       <FeedbackBanner error={state.error} />
       <PageSection>
         <LongTaskToolbar state={state} />
-        <LongTaskTable state={state} onOpenPod={onOpenPod} />
+        <LongTaskTable
+          state={state}
+          userNames={userNames}
+          podNames={podNames}
+          onOpenPod={onOpenPod}
+        />
       </PageSection>
     </div>
   );
@@ -197,14 +207,21 @@ function LongTaskToolbar({ state }: { state: LongTaskState }) {
 
 function LongTaskTable({
   state,
+  userNames,
+  podNames,
   onOpenPod,
 }: {
   state: LongTaskState;
+  userNames: ReadonlyMap<string, string>;
+  podNames: ReadonlyMap<string, string>;
   onOpenPod?: (podId: string) => void;
 }) {
   const { t } = useTranslation();
   const rows = useMemo(() => mergePoolCounts(state.rows, state.pools), [state.pools, state.rows]);
-  const columns = useMemo(() => longTaskColumns(t, onOpenPod), [onOpenPod, t]);
+  const columns = useMemo(
+    () => longTaskColumns(t, userNames, podNames, onOpenPod),
+    [onOpenPod, t, userNames, podNames],
+  );
   return (
     <Table
       columns={columns as never}
@@ -229,7 +246,12 @@ function LongTaskTable({
   );
 }
 
-function longTaskColumns(t: TFunction, onOpenPod?: (podId: string) => void) {
+function longTaskColumns(
+  t: TFunction,
+  userNames: ReadonlyMap<string, string>,
+  podNames: ReadonlyMap<string, string>,
+  onOpenPod?: (podId: string) => void,
+) {
   return [
     {
       title: t("longTasks.task"),
@@ -271,13 +293,15 @@ function longTaskColumns(t: TFunction, onOpenPod?: (podId: string) => void) {
               size="small"
               onClick={() => onOpenPod(task.podId)}
             >
-              {task.podId}
+              <PodName podId={task.podId} podNames={podNames} />
             </Button>
           ) : (
-            <span className={styles.mono}>{task.podId}</span>
+            <PodName podId={task.podId} podNames={podNames} />
           )}
           <span className={styles.primary}>{task.agentId}</span>
-          <span className={`${styles.subtle} ${styles.mono}`}>{task.humanUserId || "-"}</span>
+          <span className={styles.primary}>
+            {userNames.get(task.humanUserId) || task.humanUserId || "-"}
+          </span>
         </div>
       ),
     },

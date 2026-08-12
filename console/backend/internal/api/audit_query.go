@@ -130,11 +130,10 @@ const (
 )
 
 const (
-	auditFailureWindow        = 5 * time.Minute
-	resolverFailureThreshold  = 3
-	bindingFailureThreshold   = 5
-	guardRejectThreshold      = 3
-	skillExecutionStaleWindow = 6 * time.Hour
+	auditFailureWindow       = 5 * time.Minute
+	resolverFailureThreshold = 3
+	bindingFailureThreshold  = 5
+	guardRejectThreshold     = 3
 )
 
 // handleAlerts evaluates current alert conditions from the monitor cache
@@ -154,18 +153,10 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	failures := indexAuditActionCounts(counts)
-	staleSkillAlerts, err := s.staleSkillExecutionAlerts(time.Now().UTC())
-	if err != nil {
-		writeErr(w, r, errcode.InternalQueryStaleExecutions)
-		return
-	}
 	alerts := make([]alert, 0, len(pods))
 	for _, pod := range pods {
 		snapshot, ok := s.cache.Get(pod.PodID)
 		alerts = append(alerts, evaluatePodAlerts(pod.Pod, snapshot, ok, failures[pod.PodID])...)
-		if stale, found := staleSkillAlerts[pod.PodID]; found {
-			alerts = append(alerts, stale)
-		}
 	}
 	sort.Slice(alerts, func(i, j int) bool {
 		if alerts[i].PodID == alerts[j].PodID {
@@ -174,38 +165,6 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 		return alerts[i].PodID < alerts[j].PodID
 	})
 	writeJSON(w, http.StatusOK, alerts)
-}
-
-type staleSkillExecutionGroup struct {
-	Count  int
-	Oldest time.Time
-}
-
-func (s *Server) staleSkillExecutionAlerts(now time.Time) (map[string]alert, error) {
-	records, _, err := s.store.ListSkillExecutionRecords(repo.SkillExecutionListFilter{
-		Status: repo.SkillExecutionRunning, To: now.Add(-skillExecutionStaleWindow),
-	})
-	if err != nil {
-		return nil, err
-	}
-	groups := make(map[string]staleSkillExecutionGroup)
-	for _, record := range records {
-		group := groups[record.PodID]
-		group.Count++
-		if group.Oldest.IsZero() || record.StartedAt.Before(group.Oldest) {
-			group.Oldest = record.StartedAt
-		}
-		groups[record.PodID] = group
-	}
-	alerts := make(map[string]alert, len(groups))
-	for podID, group := range groups {
-		alerts[podID] = alert{
-			PodID: podID, Level: "P2", Kind: "skill_execution_running_stale",
-			Message: "Skill executions have remained running beyond their timeout",
-			Details: map[string]any{"count": group.Count, "oldestStartedAt": group.Oldest.Format(time.RFC3339)},
-		}
-	}
-	return alerts, nil
 }
 
 func evaluatePodAlerts(

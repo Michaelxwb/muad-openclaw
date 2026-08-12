@@ -3,61 +3,68 @@ import { useTranslation } from "react-i18next";
 import { Button, Input, Select, Space } from "@douyinfe/semi-ui";
 import { IconRefresh, IconSearch } from "@douyinfe/semi-icons";
 import { ListToolbar } from "../../components/ConsolePage";
-import type { SkillEntryType, SkillExecutionStatus, SkillScope } from "../../api";
+import type { SkillScope } from "../../api";
 import type { SkillExecutionFilters } from "./skillExecutionTypes";
 import styles from "./SkillExecutions.module.css";
 
 interface Props {
   value: SkillExecutionFilters;
-  busy: boolean;
   onChange: (filters: SkillExecutionFilters) => void;
   onSearch: () => void;
+  onApply: (patch: Partial<SkillExecutionFilters>) => void;
   onReset: () => void;
 }
 
-type FilterProps = Pick<Props, "value" | "onChange">;
-
 export function SkillExecutionToolbar(props: Props) {
+  const { t } = useTranslation();
   return (
     <ListToolbar
       filters={
         <Space className={styles.filters} spacing={8} wrap>
-          <ExecutionIdentityFilters value={props.value} onChange={props.onChange} />
-          <ExecutionClassFilters value={props.value} onChange={props.onChange} />
-          <ExecutionTimeFilters value={props.value} onChange={props.onChange} />
-          <ExecutionToolbarActions {...props} />
+          <ExecutionSearchControl {...props} />
+          <ExecutionClassFilters value={props.value} onApply={props.onApply} />
+          <ExecutionTimeFilters value={props.value} onApply={props.onApply} />
+          <Button
+            aria-label={t("execution.resetAria")}
+            icon={<IconRefresh />}
+            onClick={props.onReset}
+          />
         </Space>
       }
     />
   );
 }
 
-function ExecutionIdentityFilters(props: FilterProps) {
+function ExecutionSearchControl(props: Props) {
   const { t } = useTranslation();
   return (
-    <FilterInput
-      {...props}
-      className={styles.queryInput}
-      field="q"
-      label={t("execution.searchLogs")}
-      placeholder={t("execution.searchPlaceholder")}
-    />
+    <>
+      <Input
+        aria-label={t("execution.searchLogs")}
+        className={styles.queryInput}
+        prefix={<IconSearch />}
+        placeholder={t("execution.searchPlaceholder")}
+        value={props.value.q}
+        onChange={(input) => props.onChange({ ...props.value, q: input })}
+        onEnterPress={props.onSearch}
+      />
+      <Button
+        aria-label={t("execution.searchAria")}
+        icon={<IconSearch />}
+        onClick={props.onSearch}
+      />
+    </>
   );
 }
 
-function ExecutionClassFilters(props: FilterProps) {
+function ExecutionClassFilters({
+  value,
+  onApply,
+}: {
+  value: SkillExecutionFilters;
+  onApply: (patch: Partial<SkillExecutionFilters>) => void;
+}) {
   const { t } = useTranslation();
-  const statusOptions = useMemo(
-    () => [
-      { label: t("execution.statusAll"), value: "" },
-      { label: t("status.running"), value: "running" },
-      { label: t("status.succeeded"), value: "succeeded" },
-      { label: t("status.failed"), value: "failed" },
-      { label: t("execution.statusCancelled"), value: "cancelled" },
-      { label: t("execution.statusRejected"), value: "rejected" },
-    ],
-    [t],
-  );
   const scopeOptions = useMemo(
     () => [
       { label: t("execution.scopeAll"), value: "" },
@@ -67,104 +74,63 @@ function ExecutionClassFilters(props: FilterProps) {
     ],
     [t],
   );
-  const entryOptions = useMemo(
-    () => [
-      { label: t("execution.entryAll"), value: "" },
-      { label: "Managed", value: "managed" },
-      { label: t("execution.entryTypeScript"), value: "traditional-script" },
-      { label: t("execution.entryTypePrompt"), value: "traditional-prompt" },
-    ],
-    [t],
-  );
-  const field = (key: keyof SkillExecutionFilters, input: string) =>
-    props.onChange({ ...props.value, [key]: input });
   return (
-    <>
-      <ExecutionSelect
-        label={t("execution.statusFilter")}
-        value={props.value.status}
-        options={statusOptions}
-        onChange={(value) => field("status", value as SkillExecutionStatus | "")}
-      />
-      <ExecutionSelect
-        label={t("execution.scopeFilter")}
-        value={props.value.scope}
-        options={scopeOptions}
-        onChange={(value) => field("scope", value as SkillScope | "")}
-      />
-      <ExecutionSelect
-        label={t("execution.entryTypeFilter")}
-        value={props.value.entryType}
-        options={entryOptions}
-        onChange={(value) => field("entryType", value as SkillEntryType | "")}
-      />
-    </>
+    <ExecutionSelect
+      label={t("execution.scopeFilter")}
+      value={value.scope}
+      options={scopeOptions}
+      onChange={(selected) => onApply({ scope: selected as SkillScope | "" })}
+    />
   );
 }
 
-function ExecutionTimeFilters(props: FilterProps) {
+function ExecutionTimeFilters({
+  value,
+  onApply,
+}: {
+  value: SkillExecutionFilters;
+  onApply: (patch: Partial<SkillExecutionFilters>) => void;
+}) {
   const { t } = useTranslation();
   return (
     <>
-      <FilterInput
-        {...props}
+      <TimeFilterInput
         field="startedFrom"
         label={t("execution.startedAt")}
-        placeholder={t("execution.startedAt")}
-        type="datetime-local"
+        value={value}
+        onApply={onApply}
       />
-      <FilterInput
-        {...props}
+      <TimeFilterInput
         field="startedTo"
         label={t("execution.endedAt")}
-        placeholder={t("execution.endedAt")}
-        type="datetime-local"
+        value={value}
+        onApply={onApply}
       />
     </>
   );
 }
 
-function ExecutionToolbarActions(props: Props) {
-  const { t } = useTranslation();
-  return (
-    <>
-      <Button
-        aria-label={t("execution.searchAria")}
-        icon={<IconSearch />}
-        loading={props.busy}
-        theme="solid"
-        onClick={props.onSearch}
-      >
-        {t("common.search")}
-      </Button>
-      <Button
-        aria-label={t("execution.resetAria")}
-        icon={<IconRefresh />}
-        onClick={props.onReset}
-      />
-    </>
-  );
-}
+type TimeField = "startedFrom" | "startedTo";
 
-function FilterInput(
-  props: FilterProps & {
-    field: keyof SkillExecutionFilters;
-    label: string;
-    placeholder: string;
-    type?: string;
-    className?: string;
-  },
-) {
+function TimeFilterInput({
+  field,
+  label,
+  value,
+  onApply,
+}: {
+  field: TimeField;
+  label: string;
+  value: SkillExecutionFilters;
+  onApply: (patch: Partial<SkillExecutionFilters>) => void;
+}) {
   return (
     <Input
-      aria-label={props.label}
-      className={
-        props.className ?? (props.type === "datetime-local" ? styles.timeInput : undefined)
-      }
-      placeholder={props.placeholder}
-      type={props.type}
-      value={props.value[props.field]}
-      onChange={(input) => props.onChange({ ...props.value, [props.field]: input })}
+      aria-label={label}
+      className={styles.timeInput}
+      placeholder={label}
+      type="datetime-local"
+      value={value[field]}
+      onChange={(input) => onApply({ [field]: input })}
     />
   );
 }

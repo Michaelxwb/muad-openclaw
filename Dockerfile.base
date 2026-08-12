@@ -6,6 +6,12 @@ ARG OPENCLAW_VERSION=2026.7.1
 FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 
 ARG OPENCLAW_VERSION
+# 本地构建可指定国内 apt 镜像源（如 https://mirrors.aliyun.com）避开 deb.debian.org CDN 超时；
+# 默认空 = 官方源，GitHub Actions 构建行为不变。
+ARG APT_MIRROR
+# 本地构建可指定 Playwright 浏览器下载镜像（如 https://npmmirror.com/mirrors/playwright）
+# 避开 playwright 官方 CDN 超时；默认空 = 官方源，GitHub Actions 构建行为不变。
+ARG PLAYWRIGHT_DOWNLOAD_HOST
 LABEL org.opencontainers.image.base.name="ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}" \
       io.muad.openclaw.version="${OPENCLAW_VERSION}" \
       io.muad.image.role="base"
@@ -27,9 +33,11 @@ COPY bin/seed-config.mjs  /opt/muad/seed-config.mjs
 # 安装系统依赖 + 浏览器 + 通道插件 + 生成基线种子
 # （python3-pip 是系统包，基础镜像很少变；业务 Python 依赖走 app 镜像的 requirements.txt）
 RUN set -eux; \
+    if [ -n "${APT_MIRROR}" ]; then sed -i "s|http://deb.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; fi; \
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends unzip xvfb python3-pip; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends unzip zip xvfb python3-pip; \
     mkdir -p "$PLAYWRIGHT_BROWSERS_PATH"; \
+    if [ -n "${PLAYWRIGHT_DOWNLOAD_HOST}" ]; then export PLAYWRIGHT_DOWNLOAD_HOST; fi; \
     node /app/node_modules/playwright-core/cli.js install --with-deps chromium; \
     rm -rf /var/lib/apt/lists/*; \
     # 生成基线配置（构建期网关未起，setup 会非零退出但 openclaw.json 已写好）

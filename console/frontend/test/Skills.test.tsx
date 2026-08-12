@@ -93,9 +93,12 @@ describe("Skills", () => {
 
     expect(await screen.findByText("XDR Query")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "应用到全部 Pod" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Skill 自动同步说明" })).not.toBeInTheDocument();
-    expect(i18n.t("skill.autoSyncTooltip", { lng: "zh" })).not.toContain("应用 Skill");
-    expect(i18n.t("skill.autoSyncTooltip", { lng: "en" })).not.toContain("Apply Skills");
+    expect(i18n.t("skill.autoSyncTooltip", { lng: "zh" })).toBe(
+      "变更会自动同步；点击可强制重同步到全部 Pod",
+    );
+    expect(i18n.t("skill.autoSyncTooltip", { lng: "en" })).toBe(
+      "Changes sync automatically; click to force a resync to all Pods",
+    );
     expect(screen.getByText("Public Skill 资产库")).toBeInTheDocument();
     expect(screen.queryByText(skill.sourcePath)).not.toBeInTheDocument();
     expect(screen.getByText("public")).toBeInTheDocument();

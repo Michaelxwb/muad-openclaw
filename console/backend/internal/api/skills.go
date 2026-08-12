@@ -105,9 +105,7 @@ type skillPlatformView struct {
 
 type skillExecutionSummary struct {
 	ExecutionID string    `json:"executionId"`
-	Status      string    `json:"status"`
 	StartedAt   time.Time `json:"startedAt"`
-	DurationMS  int64     `json:"durationMs"`
 }
 
 type publicSkillStorageView struct {
@@ -963,8 +961,7 @@ func effectiveSkillToView(skill repo.EffectiveSkill) effectiveSkillView {
 	}
 	if skill.LastExecution != nil {
 		view.LastExecution = &skillExecutionSummary{
-			ExecutionID: skill.LastExecution.ExecutionID, Status: skill.LastExecution.Status,
-			StartedAt: skill.LastExecution.StartedAt, DurationMS: skill.LastExecution.DurationMS,
+			ExecutionID: skill.LastExecution.ExecutionID, StartedAt: skill.LastExecution.StartedAt,
 		}
 	}
 	return view

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
@@ -44,8 +45,7 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 		"uidx_skill_public_name", "uidx_skill_private_user_name",
 		"idx_skill_policies_human_user", "idx_skill_policies_skill_name",
 		"idx_skill_executions_human_user_started", "idx_skill_executions_pod_started",
-		"idx_skill_executions_skill_started", "idx_skill_executions_status_started",
-		"idx_skill_executions_started", "idx_long_task_pod_updated",
+		"idx_skill_executions_skill_started", "idx_skill_executions_started", "idx_long_task_pod_updated",
 		"idx_long_task_user_status", "idx_long_task_pool_status",
 	}
 	for _, index := range indexes {
@@ -99,7 +99,7 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 	}
 }
 
-func TestSchemaSkillExecutionSupportsAuditStateMachine(t *testing.T) {
+func TestSchemaSkillExecutionUsesMinimalAuditColumns(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "skill-execution.db")
 	store, err := repo.Open(path)
 	if err != nil {
@@ -118,10 +118,19 @@ func TestSchemaSkillExecutionSupportsAuditStateMachine(t *testing.T) {
 
 	db := openSchemaDB(t, path)
 	for _, column := range []string{
-		"entry_type", "activation_mode", "event_seq", "last_tool_name", "terminal_reason",
+		"execution_id", "pod_id", "human_user_id", "agent_id",
+		"skill_name", "skill_scope", "started_at", "created_at",
 	} {
 		if !tableColumnExists(t, db, "skill_execution_records", column) {
 			t.Errorf("skill_execution_records column %q was not created", column)
+		}
+	}
+	for _, column := range []string{
+		"status", "entry_type", "activation_mode", "event_seq", "progress_json",
+		"ended_at", "duration_ms", "error_message", "output_summary",
+	} {
+		if tableColumnExists(t, db, "skill_execution_records", column) {
+			t.Errorf("skill_execution_records column %q must not exist", column)
 		}
 	}
 }
@@ -216,30 +225,12 @@ func TestOpen_MigratesResourceGlobalConcurrencyColumns(t *testing.T) {
 	}
 }
 
-func TestOpen_MigratesLegacySkillExecutionSchema(t *testing.T) {
+func TestOpen_RejectsLegacySkillExecutionSchema(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "legacy-skill-execution.db")
 	prepareLegacySkillExecutionDatabase(t, path)
-	store, err := repo.Open(path)
-	if err != nil {
-		t.Fatalf("Open migrated database: %v", err)
-	}
-	defer func() { _ = store.Close() }()
-
-	legacy, err := store.GetSkillExecutionRecord("execution-legacy")
-	if err != nil {
-		t.Fatalf("Get migrated Skill execution: %v", err)
-	}
-	if legacy.ActivationMode != repo.SkillActivationTool || legacy.EventSeq != 0 {
-		t.Fatalf("migrated defaults = mode %q seq %d", legacy.ActivationMode, legacy.EventSeq)
-	}
-	_, err = store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
-		ExecutionID: "execution-rejected", PodID: "pod-a", HumanUserID: "user-a",
-		AgentID: "agent-a", SkillName: "legacy-skill", SkillScope: repo.SkillScopePublic,
-		EntryType: repo.SkillEntryManaged, ActivationMode: repo.SkillActivationTool,
-		EventSeq: 1, Status: repo.SkillExecutionRejected,
-	})
-	if err != nil {
-		t.Fatalf("insert rejected Skill execution after migration: %v", err)
+	if _, err := repo.Open(path); err == nil ||
+		!strings.Contains(err.Error(), "docs/skill-execution-rebuild.sql") {
+		t.Fatalf("Open legacy Skill execution schema error = %v", err)
 	}
 }
 

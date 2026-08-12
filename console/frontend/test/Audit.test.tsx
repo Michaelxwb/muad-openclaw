@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuditEntry } from "../src/api";
@@ -6,7 +6,8 @@ import { Audit } from "../src/pages/Audit";
 
 const auditMock = vi.hoisted(() => vi.fn());
 const listSkillExecutionsMock = vi.hoisted(() => vi.fn());
-const getSkillExecutionMock = vi.hoisted(() => vi.fn());
+const listAllHumanUsersMock = vi.hoisted(() => vi.fn());
+const listPodsMock = vi.hoisted(() => vi.fn());
 
 function selectFollowingOption(combobox: HTMLElement, steps: number) {
   fireEvent.click(combobox);
@@ -24,7 +25,8 @@ vi.mock("../src/api", async (importOriginal) => {
       ...actual.api,
       audit: auditMock,
       listSkillExecutions: listSkillExecutionsMock,
-      getSkillExecution: getSkillExecutionMock,
+      listAllHumanUsers: listAllHumanUsersMock,
+      listPods: listPodsMock,
     },
   };
 });
@@ -52,20 +54,7 @@ const execution = {
   agentId: "agent-a",
   skillName: "mss-report-skill",
   skillScope: "private" as const,
-  skillVersion: "sha256:abc",
-  entryType: "traditional-script" as const,
-  activationMode: "runner" as const,
-  eventSeq: 3,
-  status: "failed" as const,
   startedAt: "2026-07-14T10:00:00Z",
-  endedAt: "2026-07-14T10:00:02Z",
-  durationMs: 2000,
-  lastToolName: "session_get_state",
-  terminalReason: "tool-error",
-  errorCode: "report_failed",
-  errorMessage: "生成报告失败",
-  inputSummary: "导出测试客户周报",
-  outputSummary: "",
   createdAt: "2026-07-14T10:00:00Z",
 };
 
@@ -75,11 +64,19 @@ beforeEach(() => {
   auditMock.mockResolvedValue({ items: [entry], total: 1 });
   listSkillExecutionsMock.mockReset();
   listSkillExecutionsMock.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 });
-  getSkillExecutionMock.mockReset();
-  getSkillExecutionMock.mockResolvedValue({
-    ...execution,
-    progressJson:
-      '[{"type":"tool","stage":"report","text":"正在生成周报","ts":"2026-07-14T10:00:01Z"}]',
+  listAllHumanUsersMock.mockReset();
+  listAllHumanUsersMock.mockResolvedValue({
+    items: [{ humanUserId: "user-a", displayName: "张三" }],
+    total: 1,
+    page: 1,
+    pageSize: 1000,
+  });
+  listPodsMock.mockReset();
+  listPodsMock.mockResolvedValue({
+    items: [{ podId: "pod-a", displayName: "主节点" }],
+    total: 1,
+    page: 1,
+    pageSize: 10,
   });
 });
 
@@ -163,7 +160,7 @@ describe("Audit", () => {
     expect(listSkillExecutionsMock).not.toHaveBeenCalled();
   });
 
-  it("fuzzy-searches Skill executions across identity fields and filters by status", async () => {
+  it("fuzzy-searches Skill executions across identity fields and filters by scope", async () => {
     window.history.replaceState(null, "", "/audit?tab=skill-executions");
     listSkillExecutionsMock.mockResolvedValue({
       items: [execution],
@@ -173,11 +170,14 @@ describe("Audit", () => {
     });
     render(<Audit />);
     expect(await screen.findByText("mss-report-skill")).toBeInTheDocument();
+    expect(await screen.findByText("张三")).toBeInTheDocument();
+    expect(screen.getByText("agent-a")).toBeInTheDocument();
+    expect(screen.getByText("主节点")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("模糊搜索执行日志"), {
       target: { value: "report" },
     });
-    selectFollowingOption(screen.getByRole("combobox", { name: "执行状态" }), 3);
+    selectFollowingOption(screen.getByRole("combobox", { name: "Skill 范围" }), 3);
     fireEvent.click(screen.getByRole("button", { name: "查询执行日志" }));
 
     await waitFor(() =>
@@ -185,10 +185,10 @@ describe("Audit", () => {
         page: 1,
         pageSize: 10,
         q: "report",
-        status: "failed",
+        scope: "private",
       }),
     );
-    expect(screen.getByText("生成报告失败")).toBeInTheDocument();
+    expect(screen.getByText("mss-report-skill")).toBeInTheDocument();
   });
 
   it("filters Skill executions by fuzzy query and local start-time range", async () => {
@@ -217,6 +217,52 @@ describe("Audit", () => {
         startedFrom: new Date(startedFrom).toISOString(),
         startedTo: new Date(startedTo).toISOString(),
       }),
+    );
+  });
+
+  it("renders an icon-only search button beside the query input", async () => {
+    window.history.replaceState(null, "", "/audit?tab=skill-executions");
+    render(<Audit />);
+    await waitFor(() => expect(listSkillExecutionsMock).toHaveBeenCalledTimes(1));
+
+    const searchButton = screen.getByRole("button", { name: "查询执行日志" });
+    expect(searchButton).not.toHaveTextContent("搜索");
+  });
+
+  it("auto-applies the scope filter without pressing search", async () => {
+    window.history.replaceState(null, "", "/audit?tab=skill-executions");
+    render(<Audit />);
+    await waitFor(() => expect(listSkillExecutionsMock).toHaveBeenCalledTimes(1));
+
+    selectFollowingOption(screen.getByRole("combobox", { name: "Skill 范围" }), 3);
+
+    await waitFor(() =>
+      expect(listSkillExecutionsMock).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 10,
+        scope: "private",
+      }),
+    );
+  });
+
+  it("auto-applies the start-time filter without pressing search", async () => {
+    window.history.replaceState(null, "", "/audit?tab=skill-executions");
+    render(<Audit />);
+    await waitFor(() => expect(listSkillExecutionsMock).toHaveBeenCalledTimes(1));
+
+    const startedFrom = "2026-07-14T09:00";
+    fireEvent.change(screen.getByLabelText("开始时间"), {
+      target: { value: startedFrom },
+    });
+
+    await waitFor(() =>
+      expect(listSkillExecutionsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 10,
+          startedFrom: new Date(startedFrom).toISOString(),
+        }),
+      ),
     );
   });
 
@@ -255,112 +301,5 @@ describe("Audit", () => {
 
     expect(await screen.findByText("mss-report-skill")).toBeInTheDocument();
     expect(screen.getByLabelText("模糊搜索执行日志")).toHaveValue("report");
-  });
-
-  it("polls while a visible execution is running and stops after it finishes", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    window.history.replaceState(null, "", "/audit?tab=skill-executions");
-    listSkillExecutionsMock
-      .mockResolvedValueOnce({
-        items: [{ ...execution, status: "running", endedAt: undefined }],
-        total: 1,
-        page: 1,
-        pageSize: 10,
-      })
-      .mockResolvedValue({
-        items: [{ ...execution, status: "succeeded", errorMessage: "" }],
-        total: 1,
-        page: 1,
-        pageSize: 10,
-      });
-    render(<Audit />);
-    await waitFor(() => expect(listSkillExecutionsMock).toHaveBeenCalledTimes(1));
-
-    await act(async () => vi.advanceTimersByTimeAsync(5000));
-    await waitFor(() => expect(listSkillExecutionsMock).toHaveBeenCalledTimes(2));
-    await act(async () => vi.advanceTimersByTimeAsync(10000));
-
-    expect(listSkillExecutionsMock).toHaveBeenCalledTimes(2);
-    vi.useRealTimers();
-  });
-
-  it("opens an execution detail with lifecycle and redacted result fields", async () => {
-    window.history.replaceState(null, "", "/audit?tab=skill-executions");
-    listSkillExecutionsMock.mockResolvedValue({
-      items: [execution],
-      total: 1,
-      page: 1,
-      pageSize: 10,
-    });
-    render(<Audit />);
-    fireEvent.click(await screen.findByRole("button", { name: "查看执行 run-a 详情" }));
-
-    expect(await screen.findByRole("dialog", { name: "Skill 执行详情" })).toBeInTheDocument();
-    expect(getSkillExecutionMock).toHaveBeenCalledWith("run-a");
-    expect(screen.getByText("正在生成周报")).toBeInTheDocument();
-    expect(screen.getByText("report_failed")).toBeInTheDocument();
-    expect(screen.getByText("导出测试客户周报")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "关闭" })).not.toBeInTheDocument();
-  });
-
-  it.each([null, "{invalid-json"])(
-    "falls back for an unusable progress payload: %s",
-    async (progressJson) => {
-      window.history.replaceState(null, "", "/audit?tab=skill-executions");
-      listSkillExecutionsMock.mockResolvedValue({
-        items: [execution],
-        total: 1,
-        page: 1,
-        pageSize: 10,
-      });
-      getSkillExecutionMock.mockResolvedValue({ ...execution, progressJson });
-      render(<Audit />);
-      fireEvent.click(await screen.findByRole("button", { name: "查看执行 run-a 详情" }));
-
-      expect(await screen.findByText("暂无进度明细")).toBeInTheDocument();
-    },
-  );
-
-  it("retries a failed execution detail request inside the modal", async () => {
-    window.history.replaceState(null, "", "/audit?tab=skill-executions");
-    listSkillExecutionsMock.mockResolvedValue({
-      items: [execution],
-      total: 1,
-      page: 1,
-      pageSize: 10,
-    });
-    getSkillExecutionMock
-      .mockRejectedValueOnce(new Error("执行详情暂时不可用"))
-      .mockResolvedValueOnce({ ...execution, progressJson: "[]" });
-    render(<Audit />);
-    fireEvent.click(await screen.findByRole("button", { name: "查看执行 run-a 详情" }));
-
-    expect(await screen.findByText("加载 Skill 执行详情失败")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "重新加载执行详情" }));
-    expect(await screen.findByText("暂无进度明细")).toBeInTheDocument();
-    expect(getSkillExecutionMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("keeps long execution text inside the detail modal", async () => {
-    window.history.replaceState(null, "", "/audit?tab=skill-executions");
-    const longError = `报告生成失败：${"超长错误上下文".repeat(80)}`;
-    listSkillExecutionsMock.mockResolvedValue({
-      items: [{ ...execution, errorMessage: longError }],
-      total: 1,
-      page: 1,
-      pageSize: 10,
-    });
-    getSkillExecutionMock.mockResolvedValue({
-      ...execution,
-      errorMessage: longError,
-      progressJson: "[]",
-    });
-    render(<Audit />);
-    fireEvent.click(await screen.findByRole("button", { name: "查看执行 run-a 详情" }));
-
-    const dialog = await screen.findByRole("dialog", { name: "Skill 执行详情" });
-    const detailText = within(dialog).getByText(longError);
-    expect(detailText.className).toMatch(/resultText/);
-    expect(dialog).toBeInTheDocument();
   });
 });

@@ -63,7 +63,6 @@ import type {
   SkillAssetQuery,
   SkillAssetUpdateInput,
   SkillExecution,
-  SkillExecutionDetail,
   SkillExecutionQuery,
   SkillPolicy,
   SkillPolicyInput,
@@ -411,14 +410,10 @@ export const api = {
         agentId: query.agentId,
         skillName: query.skillName,
         scope: query.scope,
-        entryType: query.entryType,
-        status: query.status,
         startedFrom: query.startedFrom,
         startedTo: query.startedTo,
       }),
     ),
-  getSkillExecution: (executionId: string) =>
-    request<SkillExecutionDetail>("GET", `/skill-executions/${segment(executionId)}`),
   listLongTasks: (query: LongTaskQuery = {}) =>
     request<LongTaskListResult>(
       "GET",

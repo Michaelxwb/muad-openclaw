@@ -29,7 +29,11 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     "before_agent_run", "agent_end", "before_dispatch", "before_agent_run",
     "before_tool_call", "before_agent_finalize", "reply_payload_sending", "agent_end",
     "resolve_exec_env", "before_tool_call", "reply_payload_sending",
+    "before_dispatch", "before_agent_run", "before_tool_call",
   ]);
+  assert.deepEqual(registration.hooks[15].options, { priority: -100, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[16].options, { priority: -100, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[17].options, { priority: -100, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[0].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[1].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[4].options, { priority: -1000, timeoutMs: 35_000 });
@@ -191,6 +195,9 @@ function validConfig() {
     skillReadRoots: [
       { agentId: "alice", roots: ["/opt/openclaw-skills/web-tools-guide"] },
       { agentId: "bob", roots: [] },
+    ],
+    skillAuditGrants: [
+      { agentId: "alice", name: "web-tools-guide", rootPath: "/opt/openclaw-skills/web-tools-guide", source: "system" },
     ],
     sessionAgentIds: ["alice", "bob"],
     maxBrowserConcurrency: 2,
