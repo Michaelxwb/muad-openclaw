@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 )
 
 const skillExecutionTableDDL = `CREATE TABLE IF NOT EXISTS skill_execution_records (
@@ -14,22 +13,7 @@ const skillExecutionTableDDL = `CREATE TABLE IF NOT EXISTS skill_execution_recor
 	agent_id TEXT NOT NULL,
 	skill_name TEXT NOT NULL,
 	skill_scope TEXT NOT NULL CHECK (skill_scope IN ('system','public','private')),
-	skill_version TEXT NOT NULL DEFAULT '',
-	entry_type TEXT NOT NULL DEFAULT '',
-	activation_mode TEXT NOT NULL DEFAULT 'tool'
-		CHECK (activation_mode IN ('tool','path-detected','runner')),
-	event_seq INTEGER NOT NULL DEFAULT 0 CHECK (event_seq >= 0),
-	status TEXT NOT NULL CHECK (status IN ('running','succeeded','failed','cancelled','rejected')),
 	started_at TEXT NOT NULL,
-	ended_at TEXT NOT NULL DEFAULT '',
-	duration_ms INTEGER NOT NULL DEFAULT 0 CHECK (duration_ms >= 0),
-	progress_json TEXT NOT NULL DEFAULT '[]',
-	last_tool_name TEXT NOT NULL DEFAULT '',
-	terminal_reason TEXT NOT NULL DEFAULT '',
-	error_code TEXT NOT NULL DEFAULT '',
-	error_message TEXT NOT NULL DEFAULT '',
-	input_summary TEXT NOT NULL DEFAULT '',
-	output_summary TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL,
 	FOREIGN KEY (human_user_id, pod_id)
 		REFERENCES human_users(human_user_id, pod_id) ON DELETE CASCADE
@@ -42,34 +26,12 @@ CREATE INDEX IF NOT EXISTS idx_skill_executions_pod_started
 	ON skill_execution_records(pod_id, started_at);
 CREATE INDEX IF NOT EXISTS idx_skill_executions_skill_started
 	ON skill_execution_records(skill_name, started_at);
-CREATE INDEX IF NOT EXISTS idx_skill_executions_status_started
-	ON skill_execution_records(status, started_at);
 CREATE INDEX IF NOT EXISTS idx_skill_executions_started
 	ON skill_execution_records(started_at DESC);`
 
-const legacySkillExecutionCopySQL = `INSERT INTO skill_execution_records (
-	execution_id, pod_id, human_user_id, agent_id, skill_name, skill_scope,
-	skill_version, entry_type, activation_mode, event_seq, status, started_at,
-	ended_at, duration_ms, progress_json, last_tool_name, terminal_reason,
-	error_code, error_message, input_summary, output_summary, created_at
-) SELECT execution_id, pod_id, human_user_id, agent_id, skill_name, skill_scope,
-	skill_version, '', 'tool', 0, status, started_at, ended_at, duration_ms,
-	progress_json, '', '', error_code, error_message, input_summary,
-	output_summary, created_at FROM skill_execution_records_legacy`
-
-const currentSkillExecutionCopySQL = `INSERT INTO skill_execution_records (
-	execution_id, pod_id, human_user_id, agent_id, skill_name, skill_scope,
-	skill_version, entry_type, activation_mode, event_seq, status, started_at,
-	ended_at, duration_ms, progress_json, last_tool_name, terminal_reason,
-	error_code, error_message, input_summary, output_summary, created_at
-) SELECT execution_id, pod_id, human_user_id, agent_id, skill_name, skill_scope,
-	skill_version, entry_type, activation_mode, event_seq, status, started_at,
-	ended_at, duration_ms, progress_json, last_tool_name, terminal_reason,
-	error_code, error_message, input_summary, output_summary, created_at
-	FROM skill_execution_records_legacy`
-
-var skillExecutionAuditColumns = []string{
-	"entry_type", "activation_mode", "event_seq", "last_tool_name", "terminal_reason",
+var skillExecutionRequiredColumns = map[string]bool{
+	"execution_id": true, "pod_id": true, "human_user_id": true, "agent_id": true,
+	"skill_name": true, "skill_scope": true, "started_at": true, "created_at": true,
 }
 
 func (s *Store) migrateSkillExecutionRecords() error {
@@ -84,39 +46,13 @@ func (s *Store) migrateSkillExecutionRecords() error {
 	if err != nil {
 		return fmt.Errorf("inspect Skill execution columns: %w", err)
 	}
-	hasAuditColumns := countSkillExecutionAuditColumns(columns)
-	if hasAuditColumns == len(skillExecutionAuditColumns) && strings.Contains(definition, "'rejected'") {
-		return execSkillExecutionIndexes(s.db)
+	if !skillExecutionColumnSetMatches(columns) {
+		return fmt.Errorf("skill_execution_records schema is not the minimal audit schema; run docs/skill-execution-rebuild.sql before starting this version")
 	}
-	if hasAuditColumns != 0 && hasAuditColumns != len(skillExecutionAuditColumns) {
-		return fmt.Errorf("migrate Skill execution schema: inconsistent audit columns")
+	if !skillExecutionDefinitionMatches(definition) {
+		return fmt.Errorf("skill_execution_records schema constraints do not match the minimal audit schema; run docs/skill-execution-rebuild.sql before starting this version")
 	}
-	copySQL := legacySkillExecutionCopySQL
-	if hasAuditColumns == len(skillExecutionAuditColumns) {
-		copySQL = currentSkillExecutionCopySQL
-	}
-	return s.rebuildSkillExecutionRecords(copySQL)
-}
-
-func (s *Store) rebuildSkillExecutionRecords(copySQL string) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return fmt.Errorf("begin Skill execution migration: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	for _, statement := range []string{
-		`ALTER TABLE skill_execution_records RENAME TO skill_execution_records_legacy`,
-		skillExecutionTableDDL, copySQL,
-		`DROP TABLE skill_execution_records_legacy`, skillExecutionIndexesDDL,
-	} {
-		if _, err := tx.Exec(statement); err != nil {
-			return fmt.Errorf("migrate Skill execution schema: %w", err)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit Skill execution migration: %w", err)
-	}
-	return nil
+	return execSkillExecutionIndexes(s.db)
 }
 
 func skillExecutionTableDefinition(db *sql.DB) (string, bool, error) {
@@ -151,14 +87,20 @@ func skillExecutionColumnsSet(db *sql.DB) (map[string]bool, error) {
 	return columns, rows.Err()
 }
 
-func countSkillExecutionAuditColumns(columns map[string]bool) int {
-	count := 0
-	for _, column := range skillExecutionAuditColumns {
-		if columns[column] {
-			count++
+func skillExecutionColumnSetMatches(columns map[string]bool) bool {
+	if len(columns) != len(skillExecutionRequiredColumns) {
+		return false
+	}
+	for column := range skillExecutionRequiredColumns {
+		if !columns[column] {
+			return false
 		}
 	}
-	return count
+	return true
+}
+
+func skillExecutionDefinitionMatches(definition string) bool {
+	return definition != ""
 }
 
 func execSkillExecutionSchema(db *sql.DB) error {

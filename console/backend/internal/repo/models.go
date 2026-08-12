@@ -54,15 +54,6 @@ const (
 	SkillPolicyAllowOverride = "allow_override"
 )
 
-// Skill execution lifecycle states.
-const (
-	SkillExecutionRunning   = "running"
-	SkillExecutionSucceeded = "succeeded"
-	SkillExecutionFailed    = "failed"
-	SkillExecutionCancelled = "cancelled"
-	SkillExecutionRejected  = "rejected"
-)
-
 // Long task queue lifecycle states. These intentionally do not extend
 // SkillExecution statuses; queued/running task state is operational, not audit.
 const (
@@ -266,30 +257,16 @@ type SkillPolicy struct {
 	CreatedAt   time.Time
 }
 
-// SkillExecutionRecord stores a redacted, queryable Skill execution summary.
+// SkillExecutionRecord stores the minimal who-when-what Skill audit row.
 type SkillExecutionRecord struct {
-	ExecutionID    string
-	PodID          string
-	HumanUserID    string
-	AgentID        string
-	SkillName      string
-	SkillScope     string
-	SkillVersion   string
-	EntryType      string
-	ActivationMode string
-	EventSeq       int64
-	Status         string
-	StartedAt      time.Time
-	EndedAt        time.Time
-	DurationMS     int64
-	ProgressJSON   string
-	LastToolName   string
-	TerminalReason string
-	ErrorCode      string
-	ErrorMessage   string
-	InputSummary   string
-	OutputSummary  string
-	CreatedAt      time.Time
+	ExecutionID string
+	PodID       string
+	HumanUserID string
+	AgentID     string
+	SkillName   string
+	SkillScope  string
+	StartedAt   time.Time
+	CreatedAt   time.Time
 }
 
 // LongTaskTask mirrors the runtime guard background-task queue for operator

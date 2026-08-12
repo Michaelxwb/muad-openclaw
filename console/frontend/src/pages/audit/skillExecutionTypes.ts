@@ -1,19 +1,15 @@
-import type { SkillEntryType, SkillExecution, SkillExecutionStatus, SkillScope } from "../../api";
+import type { SkillExecution, SkillScope } from "../../api";
 
 export interface SkillExecutionFilters {
   q: string;
-  status: SkillExecutionStatus | "";
   scope: SkillScope | "";
-  entryType: SkillEntryType | "";
   startedFrom: string;
   startedTo: string;
 }
 
 export const EMPTY_SKILL_EXECUTION_FILTERS: SkillExecutionFilters = {
   q: "",
-  status: "",
   scope: "",
-  entryType: "",
   startedFrom: "",
   startedTo: "",
 };
@@ -30,6 +26,7 @@ export interface SkillExecutionRecordsState {
   setPage: (page: number) => void;
   setPageSize: (pageSize: number) => void;
   search: () => void;
+  applyFilter: (patch: Partial<SkillExecutionFilters>) => void;
   reset: () => void;
   refresh: (background?: boolean) => Promise<void>;
 }

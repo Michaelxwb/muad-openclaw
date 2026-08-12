@@ -29,9 +29,7 @@ const skillPolicyColumns = `policy_id, human_user_id, skill_name, action, reason
 	created_by, expires_at, created_at`
 
 const skillExecutionColumns = `execution_id, pod_id, human_user_id, agent_id,
-	skill_name, skill_scope, skill_version, entry_type, activation_mode, event_seq,
-	status, started_at, ended_at, duration_ms, progress_json, last_tool_name,
-	terminal_reason, error_code, error_message, input_summary, output_summary, created_at`
+	skill_name, skill_scope, started_at, created_at`
 
 // SkillAssetListFilter controls Skill asset pagination.
 type SkillAssetListFilter struct {
@@ -54,8 +52,6 @@ type SkillExecutionListFilter struct {
 	AgentID     string
 	SkillName   string
 	SkillScope  string
-	EntryType   string
-	Status      string
 	From        time.Time
 	To          time.Time
 }
@@ -417,38 +413,21 @@ func (s *Store) DeleteSkillPolicyForHumanUserAndMarkPod(policyID, humanUserID st
 	return user.PodID, nil
 }
 
-// UpsertSkillExecutionRecord inserts or updates one redacted execution summary.
+// UpsertSkillExecutionRecord inserts one minimal execution audit row.
 func (s *Store) UpsertSkillExecutionRecord(record SkillExecutionRecord) (SkillExecutionRecord, error) {
 	prepared, err := prepareSkillExecutionRecord(record)
 	if err != nil {
 		return SkillExecutionRecord{}, err
 	}
-	_, err = s.db.Exec(`INSERT INTO skill_execution_records (
+	_, err = s.db.Exec(`INSERT OR IGNORE INTO skill_execution_records (
 		execution_id, pod_id, human_user_id, agent_id, skill_name, skill_scope,
-		skill_version, entry_type, activation_mode, event_seq, status, started_at,
-		ended_at, duration_ms, progress_json, last_tool_name, terminal_reason,
-		error_code, error_message, input_summary, output_summary, created_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	ON CONFLICT(execution_id) DO UPDATE SET
-		status=excluded.status, ended_at=excluded.ended_at,
-		duration_ms=excluded.duration_ms, progress_json=excluded.progress_json,
-		event_seq=excluded.event_seq, last_tool_name=excluded.last_tool_name,
-		terminal_reason=excluded.terminal_reason,
-		error_code=excluded.error_code, error_message=excluded.error_message,
-		input_summary=excluded.input_summary, output_summary=excluded.output_summary
-	WHERE excluded.event_seq > skill_execution_records.event_seq
-		AND skill_execution_records.pod_id = excluded.pod_id
-		AND skill_execution_records.status = ?
-		AND excluded.status IN ('running','succeeded','failed','cancelled')`,
+		started_at, created_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		prepared.ExecutionID, prepared.PodID, prepared.HumanUserID, prepared.AgentID,
-		prepared.SkillName, prepared.SkillScope, prepared.SkillVersion, prepared.EntryType,
-		prepared.ActivationMode, prepared.EventSeq, prepared.Status, formatTime(prepared.StartedAt),
-		formatOptionalTime(prepared.EndedAt), prepared.DurationMS, prepared.ProgressJSON,
-		prepared.LastToolName, prepared.TerminalReason, prepared.ErrorCode, prepared.ErrorMessage,
-		prepared.InputSummary, prepared.OutputSummary, formatTime(prepared.CreatedAt),
-		SkillExecutionRunning)
+		prepared.SkillName, prepared.SkillScope, formatTime(prepared.StartedAt),
+		formatTime(prepared.CreatedAt))
 	if err != nil {
-		return SkillExecutionRecord{}, fmt.Errorf("upsert Skill execution: %w", err)
+		return SkillExecutionRecord{}, fmt.Errorf("insert Skill execution: %w", err)
 	}
 	return s.GetSkillExecutionRecord(prepared.ExecutionID)
 }
@@ -581,23 +560,6 @@ func prepareSkillExecutionRecord(
 	record.AgentID = strings.TrimSpace(record.AgentID)
 	record.SkillName = strings.TrimSpace(record.SkillName)
 	record.SkillScope = strings.TrimSpace(record.SkillScope)
-	record.EntryType = strings.TrimSpace(record.EntryType)
-	record.ActivationMode = strings.TrimSpace(record.ActivationMode)
-	if record.Status == "" {
-		record.Status = SkillExecutionRunning
-	}
-	if record.EntryType == "" {
-		record.EntryType = SkillEntryManaged
-	}
-	if record.ActivationMode == "" {
-		record.ActivationMode = SkillActivationRunner
-	}
-	if record.EventSeq == 0 {
-		record.EventSeq = defaultSkillExecutionEventSeq(record.Status)
-	}
-	if record.ProgressJSON == "" {
-		record.ProgressJSON = "[]"
-	}
 	if err := validateSkillExecutionRecord(record); err != nil {
 		return SkillExecutionRecord{}, err
 	}
@@ -606,20 +568,10 @@ func prepareSkillExecutionRecord(
 
 func validateSkillExecutionRecord(record SkillExecutionRecord) error {
 	if record.PodID == "" || record.HumanUserID == "" || record.AgentID == "" ||
-		!validSkillName(record.SkillName) || !validSkillScope(record.SkillScope) ||
-		!validSkillEntryType(record.EntryType) || !validSkillActivationMode(record.ActivationMode) ||
-		record.EventSeq < 1 || !validSkillExecutionStatus(record.Status) ||
-		!json.Valid([]byte(record.ProgressJSON)) {
+		!validSkillName(record.SkillName) || !validSkillScope(record.SkillScope) {
 		return ErrInvalidSkill
 	}
 	return nil
-}
-
-func defaultSkillExecutionEventSeq(status string) int64 {
-	if status == SkillExecutionRunning || status == SkillExecutionRejected {
-		return 1
-	}
-	return 2
 }
 
 func fillSkillExecutionDefaults(
@@ -798,12 +750,11 @@ func skillAssetWhere(filter SkillAssetListFilter) (string, []any) {
 }
 
 func skillExecutionWhere(filter SkillExecutionListFilter) (string, []any) {
-	clauses := make([]string, 0, 10)
-	args := make([]any, 0, 14)
+	clauses := make([]string, 0, 8)
+	args := make([]any, 0, 12)
 	for _, item := range []struct{ clause, value string }{
 		{"pod_id = ?", filter.PodID}, {"human_user_id = ?", filter.HumanUserID},
 		{"agent_id = ?", filter.AgentID}, {"skill_scope = ?", filter.SkillScope},
-		{"entry_type = ?", filter.EntryType}, {"status = ?", filter.Status},
 	} {
 		if strings.TrimSpace(item.value) != "" {
 			clauses = append(clauses, item.clause)
@@ -931,32 +882,23 @@ func scanSkillPolicy(sc scanner) (SkillPolicy, error) {
 
 func scanSkillExecutionRecord(sc scanner) (SkillExecutionRecord, error) {
 	var record SkillExecutionRecord
-	var startedAt, endedAt, createdAt string
+	var startedAt, createdAt string
 	err := sc.Scan(&record.ExecutionID, &record.PodID, &record.HumanUserID,
-		&record.AgentID, &record.SkillName, &record.SkillScope, &record.SkillVersion,
-		&record.EntryType, &record.ActivationMode, &record.EventSeq, &record.Status,
-		&startedAt, &endedAt, &record.DurationMS, &record.ProgressJSON,
-		&record.LastToolName, &record.TerminalReason, &record.ErrorCode,
-		&record.ErrorMessage, &record.InputSummary,
-		&record.OutputSummary, &createdAt)
+		&record.AgentID, &record.SkillName, &record.SkillScope, &startedAt, &createdAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SkillExecutionRecord{}, ErrNotFound
 	}
 	if err != nil {
 		return SkillExecutionRecord{}, fmt.Errorf("scan Skill execution: %w", err)
 	}
-	return parseSkillExecutionRecord(record, startedAt, endedAt, createdAt)
+	return parseSkillExecutionRecord(record, startedAt, createdAt)
 }
 
 func parseSkillExecutionRecord(
-	record SkillExecutionRecord, startedAt, endedAt, createdAt string,
+	record SkillExecutionRecord, startedAt, createdAt string,
 ) (SkillExecutionRecord, error) {
 	var err error
 	record.StartedAt, err = parseRequiredTime(startedAt, "skill_execution_records.started_at")
-	if err != nil {
-		return SkillExecutionRecord{}, err
-	}
-	record.EndedAt, err = parseOptionalTime(endedAt, "skill_execution_records.ended_at")
 	if err != nil {
 		return SkillExecutionRecord{}, err
 	}
@@ -1006,16 +948,6 @@ func validSkillAssetStatusTransition(asset SkillAsset, next string) bool {
 func validSkillPolicyAction(action string) bool {
 	switch action {
 	case SkillPolicyDisable, SkillPolicyAllowOverride:
-		return true
-	default:
-		return false
-	}
-}
-
-func validSkillExecutionStatus(status string) bool {
-	switch status {
-	case SkillExecutionRunning, SkillExecutionSucceeded, SkillExecutionFailed,
-		SkillExecutionCancelled, SkillExecutionRejected:
 		return true
 	default:
 		return false

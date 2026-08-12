@@ -1,11 +1,11 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Banner, Button } from "@douyinfe/semi-ui";
 import { PageSection } from "../../components/ConsolePage";
 import { ErrorDetail } from "../../utils/error";
-import { SkillExecutionDetailModal } from "./SkillExecutionDetailModal";
 import { SkillExecutionTable } from "./SkillExecutionTable";
 import { SkillExecutionToolbar } from "./SkillExecutionToolbar";
+import { useHumanUserNames } from "../../hooks/useHumanUserNames";
+import { usePodNames } from "../../hooks/usePodNames";
 import { useSkillExecutionRecords } from "./useSkillExecutionRecords";
 import styles from "./SkillExecutions.module.css";
 
@@ -17,38 +17,38 @@ interface Props {
 export function SkillExecutionLogTab({ active, onOpenPod }: Props) {
   const { t } = useTranslation();
   const state = useSkillExecutionRecords(active);
-  const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
+  const userNames = useHumanUserNames(active);
+  const podNames = usePodNames(active);
   return (
-    <>
-      <PageSection>
-        <SkillExecutionToolbar
-          value={state.draftFilters}
-          busy={state.loading}
-          onChange={state.setDraftFilters}
-          onSearch={state.search}
-          onReset={state.reset}
-        />
-        {state.error && (
-          <div className={styles.error}>
-            <Banner
-              type="danger"
-              description={state.error}
-              fullMode={false}
-              bordered
-              closeIcon={null}
-            />
-            <ErrorDetail detail={state.errorDetail} />
-            <Button aria-label={t("execution.reloadList")} onClick={() => void state.refresh()}>
-              {t("execution.reloadList")}
-            </Button>
-          </div>
-        )}
-        <SkillExecutionTable state={state} onOpenPod={onOpenPod} onView={setSelectedExecutionId} />
-      </PageSection>
-      <SkillExecutionDetailModal
-        executionId={selectedExecutionId}
-        onClose={() => setSelectedExecutionId(null)}
+    <PageSection>
+      <SkillExecutionToolbar
+        value={state.draftFilters}
+        onChange={state.setDraftFilters}
+        onSearch={state.search}
+        onApply={state.applyFilter}
+        onReset={state.reset}
       />
-    </>
+      {state.error && (
+        <div className={styles.error}>
+          <Banner
+            type="danger"
+            description={state.error}
+            fullMode={false}
+            bordered
+            closeIcon={null}
+          />
+          <ErrorDetail detail={state.errorDetail} />
+          <Button aria-label={t("execution.reloadList")} onClick={() => void state.refresh()}>
+            {t("execution.reloadList")}
+          </Button>
+        </div>
+      )}
+      <SkillExecutionTable
+        state={state}
+        userNames={userNames}
+        podNames={podNames}
+        onOpenPod={onOpenPod}
+      />
+    </PageSection>
   );
 }

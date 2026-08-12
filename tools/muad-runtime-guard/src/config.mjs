@@ -12,6 +12,7 @@ export function parseGuardConfig(value) {
   const locale = String(input.locale ?? "").trim();
   const agentProfiles = parseAgentProfiles(input.agentProfiles);
   const skillReadRoots = parseSkillReadRoots(input.skillReadRoots);
+  const skillAuditGrants = parseSkillAuditGrants(input.skillAuditGrants);
   const longTaskSkillGrants = parseLongTaskSkillGrants(input.longTaskSkillGrants);
   const sessionAgentIds = parseAgentIds(input.sessionAgentIds);
   const maxBrowserConcurrency = input.maxBrowserConcurrency;
@@ -20,7 +21,8 @@ export function parseGuardConfig(value) {
   const valid = Number.isInteger(generation) && generation > 0 && mainAgentId === "main" &&
     ID_PATTERN.test(quarantineProfile) && validURL(consoleInternalURL) &&
     serviceTokenFile === POD_SERVICE_TOKEN_FILE && agentProfiles !== null && sessionAgentIds !== null &&
-    skillReadRoots !== null && sameAgentSet(agentProfiles, sessionAgentIds) &&
+    skillReadRoots !== null && skillAuditGrants !== null && sameAgentSet(agentProfiles, sessionAgentIds) &&
+    grantsUseMappedAgents(agentProfiles, skillAuditGrants) &&
     longTaskSkillGrants !== null && longTaskGrantsUseMappedAgents(agentProfiles, longTaskSkillGrants) &&
     sameSkillRootAgentSet(agentProfiles, skillReadRoots) &&
     agentProfiles.every((mapping) => mapping.profile !== quarantineProfile) &&
@@ -37,12 +39,33 @@ export function parseGuardConfig(value) {
     locale: valid ? locale || "zh" : "zh",
     agentProfiles: agentProfiles ?? [],
     skillReadRoots: skillReadRoots ?? [],
+    skillAuditGrants: skillAuditGrants ?? [],
     longTaskSkillGrants: longTaskSkillGrants ?? [],
     sessionAgentIds: sessionAgentIds ?? [],
     maxBrowserConcurrency: positiveInteger(maxBrowserConcurrency) ? maxBrowserConcurrency : 1,
     maxSkillConcurrency: positiveInteger(maxSkillConcurrency) ? maxSkillConcurrency : 1,
     maxLongTaskConcurrency: positiveInteger(maxLongTaskConcurrency) ? maxLongTaskConcurrency : 1,
   };
+}
+
+function parseSkillAuditGrants(value) {
+  if (!Array.isArray(value)) return null;
+  const seenRoots = new Set();
+  const output = [];
+  for (const item of value) {
+    if (!isRecord(item)) return null;
+    const agentId = String(item.agentId ?? "").trim();
+    const name = String(item.name ?? "").trim();
+    const rootPath = String(item.rootPath ?? "").trim();
+    const source = String(item.source ?? "").trim();
+    const key = `${agentId}\0${rootPath}`;
+    if (!ID_PATTERN.test(agentId) || agentId === "main" || !SKILL_NAME_PATTERN.test(name) ||
+      !validSkillScope(source) || !rootPath.startsWith("/") || rootPath.includes("\0") ||
+      seenRoots.has(key)) return null;
+    seenRoots.add(key);
+    output.push({ agentId, name, rootPath, source });
+  }
+  return output;
 }
 
 function parseLongTaskSkillGrants(value) {
@@ -63,9 +86,18 @@ function parseLongTaskSkillGrants(value) {
   return output;
 }
 
+function grantsUseMappedAgents(profiles, grants) {
+  const agents = new Set(profiles.map((profile) => profile.agentId));
+  return grants.every((grant) => agents.has(grant.agentId));
+}
+
 function longTaskGrantsUseMappedAgents(profiles, grants) {
   const agents = new Set(profiles.map((profile) => profile.agentId));
   return grants.every((grant) => agents.has(grant.agentId));
+}
+
+function validSkillScope(scope) {
+  return scope === "system" || scope === "public" || scope === "private";
 }
 
 function parseSkillReadRoots(value) {

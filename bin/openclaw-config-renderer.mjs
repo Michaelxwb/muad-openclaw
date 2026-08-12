@@ -298,6 +298,7 @@ function renderPlugins(output, runtime) {
           quarantineProfile: runtime.guard.quarantineProfile,
           agentProfiles: runtime.guard.agentProfiles,
           skillReadRoots: renderSkillReadRoots(runtime),
+          skillAuditGrants: renderSkillAuditGrants(runtime),
           longTaskSkillGrants: renderLongTaskSkillGrants(runtime),
           sessionAgentIds: runtime.sessionManager.agents.map((agent) => agent.agentId),
           maxBrowserConcurrency: runtime.concurrency.maxBrowser,
@@ -316,6 +317,24 @@ function activePluginEntries(entries) {
   return Object.fromEntries(
     Object.entries(entries).filter(([id]) => !DEPRECATED_RUNTIME_PLUGINS.has(id)),
   );
+}
+
+function renderSkillAuditGrants(runtime) {
+  const grants = [];
+  for (const policy of runtime.skills.agents) {
+    for (const skill of policy.allowed) {
+      grants.push({
+        agentId: policy.agentId,
+        name: skill.name,
+        rootPath: skill.rootPath,
+        source: skill.source,
+      });
+    }
+  }
+  return grants.sort((left, right) =>
+    `${left.agentId}/${left.name}/${left.rootPath}`.localeCompare(
+      `${right.agentId}/${right.name}/${right.rootPath}`,
+    ));
 }
 
 function renderLongTaskSkillGrants(runtime) {

@@ -384,7 +384,7 @@ function globalUserColumns(
     {
       title: t("user.columnUser"),
       key: "user",
-      width: 220,
+      width: 300,
       render: (_: unknown, user: HumanUser) => (
         <div>
           <div className={styles.primaryText}>{user.displayName}</div>
@@ -395,7 +395,7 @@ function globalUserColumns(
     {
       title: "Pod",
       key: "pod",
-      width: 190,
+      width: 140,
       render: (_: unknown, user: HumanUser) => {
         if (user.podId === "") {
           return (

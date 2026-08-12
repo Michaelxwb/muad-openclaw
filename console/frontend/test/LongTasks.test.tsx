@@ -6,6 +6,8 @@ import { LongTasks } from "../src/pages/LongTasks";
 
 const apiMocks = vi.hoisted(() => ({
   listLongTasks: vi.fn(),
+  listAllHumanUsers: vi.fn(),
+  listPods: vi.fn(),
 }));
 
 vi.mock("../src/api", async (importOriginal) => {
@@ -63,6 +65,18 @@ beforeEach(() => {
       total: 2,
     }),
   );
+  apiMocks.listAllHumanUsers.mockReset().mockResolvedValue({
+    items: [{ humanUserId: "human-a", displayName: "张三" }],
+    total: 1,
+    page: 1,
+    pageSize: 1000,
+  });
+  apiMocks.listPods.mockReset().mockResolvedValue({
+    items: [{ podId: "pod-a", displayName: "主节点" }],
+    total: 1,
+    page: 1,
+    pageSize: 10,
+  });
 });
 
 describe("LongTasks", () => {
@@ -76,12 +90,14 @@ describe("LongTasks", () => {
     expect(screen.getByText("task-running")).toBeInTheDocument();
     expect(screen.getByText("task-queued")).toBeInTheDocument();
     expect(screen.getAllByText("alice")).toHaveLength(2);
+    expect(screen.getAllByText("张三")).toHaveLength(2);
+    expect(screen.getAllByText("主节点")).toHaveLength(2);
     expect(screen.getAllByText("agent:alice:wecom:direct:wx-1")).toHaveLength(2);
     expect(screen.getAllByLabelText("待消费: 1; 执行中: 1; 上限: 2")).toHaveLength(2);
     expect(screen.getAllByText(formatDate(runningTask.startedAt)).length).toBeGreaterThan(0);
     expect(screen.getAllByText(formatClock(runningTask.startedAt)).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "pod-a" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /主节点/ })[0]);
     expect(onOpenPod).toHaveBeenCalledWith("pod-a");
   });
 

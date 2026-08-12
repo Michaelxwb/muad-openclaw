@@ -273,14 +273,7 @@ function skillColumns(t: TFunction, humanUserId: string, state: HumanUserSkillsS
       key: "lastExecution",
       width: 150,
       render: (_: unknown, skill: EffectiveSkill) =>
-        skill.lastExecution ? (
-          <div>
-            <Tag>{skill.lastExecution.status}</Tag>
-            <div className="mono">{skill.lastExecution.durationMs}ms</div>
-          </div>
-        ) : (
-          "-"
-        ),
+        skill.lastExecution ? new Date(skill.lastExecution.startedAt).toLocaleString() : "-",
     },
     {
       title: t("common.actions"),

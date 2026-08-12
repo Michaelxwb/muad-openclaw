@@ -166,9 +166,7 @@ const effectiveSkill: EffectiveSkill = {
   runtimePending: true,
   lastExecution: {
     executionId: "exec-a",
-    status: "failed",
     startedAt: "2026-07-11T00:00:00Z",
-    durationMs: 123,
   },
 };
 
@@ -615,8 +613,6 @@ describe("HumanUsersPanel", () => {
     expect(screen.getByText("缺少平台凭证")).toBeInTheDocument();
     expect(screen.getByText("xdr: 缺凭证")).toBeInTheDocument();
     expect(screen.getByText("待应用")).toBeInTheDocument();
-    expect(screen.getByText("failed")).toBeInTheDocument();
-    expect(screen.getByText("123ms")).toBeInTheDocument();
     expect(screen.getByText("SOAR Sync")).toBeInTheDocument();
     expect(screen.getAllByText("冲突").length).toBeGreaterThan(0);
     expect(screen.getByText("private_overrides_public_requires_approval")).toBeInTheDocument();

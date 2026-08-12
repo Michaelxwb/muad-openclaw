@@ -142,8 +142,6 @@ var errorCatalog = map[int]errorDef{
 	errcode.InvalidSkillScope: {http.StatusBadRequest, "Skill 作用域不合法", "Invalid Skill scope"},
 	// invalid.skill_status
 	errcode.InvalidSkillStatus: {http.StatusBadRequest, "Skill 状态不合法", "Invalid Skill status"},
-	// invalid.skill_execution_status
-	errcode.InvalidSkillExecutionStatus: {http.StatusBadRequest, "Skill 执行状态不合法", "Invalid Skill execution status"},
 	// invalid.skill_execution_filter
 	errcode.InvalidSkillExecutionFilter: {http.StatusBadRequest, "Skill 执行过滤条件不合法", "Invalid Skill execution filter"},
 	// invalid.long_task_status
@@ -244,8 +242,6 @@ var errorCatalog = map[int]errorDef{
 	errcode.InternalListPods: {http.StatusInternalServerError, "查询 Pod 列表失败", "Failed to list Pods"},
 	// internal.query_alerts
 	errcode.InternalQueryAlerts: {http.StatusInternalServerError, "查询运行时告警失败", "Failed to query runtime failure alerts"},
-	// internal.query_stale_executions
-	errcode.InternalQueryStaleExecutions: {http.StatusInternalServerError, "查询过期 Skill 执行记录失败", "Failed to query stale Skill executions"},
 	// internal.read_agent_guidance
 	errcode.InternalReadAgentGuidance: {http.StatusInternalServerError, "读取 Agent 指引失败", "Failed to read Agent guidance"},
 	// internal.expire_binding_codes

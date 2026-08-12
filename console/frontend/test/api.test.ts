@@ -176,7 +176,6 @@ describe("Skill API", () => {
       page: 2,
       pageSize: 50,
       q: "xdr-query",
-      status: "failed",
     });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -186,7 +185,7 @@ describe("Skill API", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      "/api/v1/skill-executions?page=2&pageSize=50&q=xdr-query&status=failed",
+      "/api/v1/skill-executions?page=2&pageSize=50&q=xdr-query",
       expect.objectContaining({ method: "GET" }),
     );
   });
@@ -203,33 +202,14 @@ describe("Skill API", () => {
       agentId: "agent-a",
       skillName: "report skill",
       scope: "private",
-      entryType: "traditional-script",
-      status: "rejected",
       startedFrom: "2026-07-14T01:00:00Z",
       startedTo: "2026-07-14T02:00:00Z",
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/skill-executions?page=3&pageSize=20&podId=pod%2Fa&agentId=agent-a&skillName=report+skill&scope=private&entryType=traditional-script&status=rejected&startedFrom=2026-07-14T01%3A00%3A00Z&startedTo=2026-07-14T02%3A00%3A00Z",
+      "/api/v1/skill-executions?page=3&pageSize=20&podId=pod%2Fa&agentId=agent-a&skillName=report+skill&scope=private&startedFrom=2026-07-14T01%3A00%3A00Z&startedTo=2026-07-14T02%3A00%3A00Z",
       expect.objectContaining({ method: "GET" }),
     );
-  });
-
-  it("loads a Skill execution detail through an encoded path", async () => {
-    const detail = {
-      executionId: "run/a",
-      status: "succeeded",
-      progressJson: null,
-    };
-    const fetchMock = stubResponse(detail);
-
-    const result = await api.getSkillExecution("run/a");
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/skill-executions/run%2Fa",
-      expect.objectContaining({ method: "GET" }),
-    );
-    expect(result).toEqual(detail);
   });
 
   it("uploads private Skill bundles as multipart with auth but without JSON content type", async () => {

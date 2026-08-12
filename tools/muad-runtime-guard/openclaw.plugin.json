@@ -21,6 +21,7 @@
       "quarantineProfile",
       "agentProfiles",
       "skillReadRoots",
+      "skillAuditGrants",
       "longTaskSkillGrants",
       "sessionAgentIds",
       "maxBrowserConcurrency",
@@ -57,6 +58,20 @@
               "type": "array",
               "items": { "type": "string" }
             }
+          }
+        }
+      },
+      "skillAuditGrants": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agentId", "name", "rootPath", "source"],
+          "properties": {
+            "agentId": { "type": "string" },
+            "name": { "type": "string" },
+            "rootPath": { "type": "string" },
+            "source": { "type": "string", "enum": ["system", "public", "private"] }
           }
         }
       },

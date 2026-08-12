@@ -149,11 +149,8 @@ function OperationAuditToolbar(props: {
           <Button
             aria-label={t("audit.searchAria")}
             icon={<IconSearch />}
-            theme="solid"
             onClick={props.onSearch}
-          >
-            {t("common.search")}
-          </Button>
+          />
         </Space>
       }
     />

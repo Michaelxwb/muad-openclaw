@@ -11,6 +11,8 @@ import { LongTaskManager } from "./long-task-manager.mjs";
 import { createMainBindingReply } from "./main-binding-reply.mjs";
 import { createModelConfigDispatch } from "./model-config-reply.mjs";
 import { createRouteVerifier } from "./route-verifier.mjs";
+import { createSkillAuditHooks } from "./skill-audit-hooks.mjs";
+import { SkillAuditClient, SkillAuditClientError } from "./skill-audit-client.mjs";
 import { createSkillLeaseHooks } from "./skill-hooks.mjs";
 import { createSkillOutputHooks } from "./skill-output-hooks.mjs";
 import { SharedSkillLeaseManager } from "./skill-lease.mjs";
@@ -37,6 +39,7 @@ const plugin = {
     registerLongTaskHooks(api, config, longTaskManager);
     registerSkillOutputHooks(api, longTaskManager);
     registerCrossUserGuard(api, config);
+    registerSkillAuditHooks(api, config, createSkillAuditClient(config));
     registerReloadPolicy(api);
     const client = createBindingClient(config);
     api.registerCommand(createBindCommand({
@@ -142,6 +145,17 @@ function registerCrossUserGuard(api, config) {
   api.on("reply_payload_sending", hooks.replyPayloadSending, { priority: -850, timeoutMs: 1_000 });
 }
 
+function registerSkillAuditHooks(api, config, client) {
+  const hooks = createSkillAuditHooks({
+    config,
+    client,
+    log: (message) => console.warn(`[muad-runtime-guard]${message}`),
+  });
+  api.on("before_dispatch", hooks.beforeDispatch, { priority: -100, timeoutMs: 1_000 });
+  api.on("before_agent_run", hooks.beforeAgentRun, { priority: -100, timeoutMs: 1_000 });
+  api.on("before_tool_call", hooks.beforeToolCall, { priority: -100, timeoutMs: 1_000 });
+}
+
 function resolveWorkspace(api, agentId) {
   try {
     const workspace = api.runtime.agent.resolveAgentWorkspaceDir(api.config, agentId);
@@ -213,6 +227,16 @@ function createBindingClient(config) {
     return { activate: async () => { throw new BindingClientError("service_unavailable", true); } };
   }
   return new BindingClient({
+    baseURL: config.consoleInternalURL,
+    tokenFile: config.serviceTokenFile,
+  });
+}
+
+function createSkillAuditClient(config) {
+  if (!config.valid) {
+    return { report: async () => { throw new SkillAuditClientError("service_unavailable", true); } };
+  }
+  return new SkillAuditClient({
     baseURL: config.consoleInternalURL,
     tokenFile: config.serviceTokenFile,
   });

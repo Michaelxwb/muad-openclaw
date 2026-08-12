@@ -58,12 +58,12 @@ export function AppShell({ theme, onTheme, onLogout }: Props) {
         icon: <IconClockStroked size="large" />,
       },
       { key: "llm" as Page, label: t("nav.llm"), icon: <IconComponentStroked size="large" /> },
+      { key: "audit" as Page, label: t("nav.audit"), icon: <IconSearchStroked size="large" /> },
       {
         key: "settings" as Page,
         label: t("nav.settings"),
         icon: <IconSettingStroked size="large" />,
       },
-      { key: "audit" as Page, label: t("nav.audit"), icon: <IconSearchStroked size="large" /> },
     ],
     [t],
   );

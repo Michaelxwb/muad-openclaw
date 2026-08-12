@@ -10,8 +10,6 @@ import {
   type SkillExecutionRecordsState,
 } from "./skillExecutionTypes";
 
-const RUNNING_REFRESH_MS = 5000;
-
 export function useSkillExecutionRecords(
   active: boolean,
 ): SkillExecutionRecordsState & { errorDetail?: string } {
@@ -24,7 +22,7 @@ export function useSkillExecutionRecords(
     filters.pageSize,
     result,
   );
-  useExecutionRefreshEffects(active, result.rows, loader.refresh, loader.requestRef);
+  useExecutionRefreshEffects(active, loader.refresh, loader.requestRef);
   return {
     rows: result.rows,
     total: result.total,
@@ -38,6 +36,7 @@ export function useSkillExecutionRecords(
     setPage: filters.setPage,
     setPageSize: filters.setPageSize,
     search: filters.search,
+    applyFilter: filters.applyFilter,
     reset: filters.reset,
     refresh: loader.refresh,
   };
@@ -68,15 +67,41 @@ function useExecutionFilterState() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [draftFilters, setDraftFilters] = useState(EMPTY_SKILL_EXECUTION_FILTERS);
   const [filters, setFilters] = useState(EMPTY_SKILL_EXECUTION_FILTERS);
+  const applyTimerRef = useRef<number | null>(null);
+  const clearApplyTimer = () => {
+    if (applyTimerRef.current !== null) {
+      window.clearTimeout(applyTimerRef.current);
+      applyTimerRef.current = null;
+    }
+  };
+  // 范围/时间过滤自动生效：draftFilters 立即同步（控件即时显示），
+  // filters 经短 debounce 提交，避免 datetime 输入逐字触发请求。
+  const applyFilter = (patch: Partial<SkillExecutionFilters>) => {
+    setDraftFilters((prev) => ({ ...prev, ...patch }));
+    clearApplyTimer();
+    applyTimerRef.current = window.setTimeout(() => {
+      applyTimerRef.current = null;
+      setPage(1);
+      setFilters((prev) => ({ ...prev, ...patch }));
+    }, 250);
+  };
   const search = () => {
+    clearApplyTimer();
     setPage(1);
     setFilters({ ...draftFilters });
   };
   const reset = () => {
+    clearApplyTimer();
     setPage(1);
     setDraftFilters(EMPTY_SKILL_EXECUTION_FILTERS);
     setFilters(EMPTY_SKILL_EXECUTION_FILTERS);
   };
+  useEffect(
+    () => () => {
+      if (applyTimerRef.current !== null) window.clearTimeout(applyTimerRef.current);
+    },
+    [],
+  );
   return {
     page,
     setPage,
@@ -86,6 +111,7 @@ function useExecutionFilterState() {
     setDraftFilters,
     filters,
     search,
+    applyFilter,
     reset,
   };
 }
@@ -144,7 +170,6 @@ function useExecutionLoader(
 
 function useExecutionRefreshEffects(
   active: boolean,
-  rows: SkillExecution[],
   refresh: (background?: boolean) => Promise<void>,
   requestRef: React.MutableRefObject<number>,
 ) {
@@ -155,12 +180,6 @@ function useExecutionRefreshEffects(
     }
     void refresh();
   }, [active, refresh, requestRef]);
-  const hasRunning = rows.some((row) => row.status === "running");
-  useEffect(() => {
-    if (!active || !hasRunning) return;
-    const timer = window.setInterval(() => void refresh(true), RUNNING_REFRESH_MS);
-    return () => window.clearInterval(timer);
-  }, [active, hasRunning, refresh]);
 }
 
 function buildExecutionQuery(
@@ -170,9 +189,7 @@ function buildExecutionQuery(
 ): SkillExecutionQuery {
   const query: SkillExecutionQuery = { page, pageSize };
   if (filters.q) query.q = filters.q;
-  if (filters.status) query.status = filters.status;
   if (filters.scope) query.scope = filters.scope;
-  if (filters.entryType) query.entryType = filters.entryType;
   const startedFrom = toRFC3339(filters.startedFrom);
   const startedTo = toRFC3339(filters.startedTo);
   if (startedFrom) query.startedFrom = startedFrom;

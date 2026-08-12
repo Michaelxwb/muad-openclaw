@@ -127,33 +127,33 @@ func TestSkillExecutionRecord_UpsertListAndFilters(t *testing.T) {
 	record, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
 		ExecutionID: "exec-1", PodID: "pod-a", HumanUserID: alice.HumanUserID,
 		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
-		Status: repo.SkillExecutionRunning, EventSeq: 1,
-		StartedAt: started, ProgressJSON: `[{"stage":"start"}]`,
+		StartedAt: started,
 	})
 	if err != nil {
-		t.Fatalf("UpsertSkillExecutionRecord running: %v", err)
+		t.Fatalf("UpsertSkillExecutionRecord: %v", err)
 	}
 	if record.ExecutionID != "exec-1" || record.CreatedAt.IsZero() {
 		t.Fatalf("unexpected execution defaults: %+v", record)
 	}
-	ended := time.Now().UTC()
-	if _, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
+	duplicate, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
 		ExecutionID: "exec-1", PodID: "pod-a", HumanUserID: alice.HumanUserID,
-		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
-		Status: repo.SkillExecutionSucceeded, EventSeq: 2,
-		StartedAt: started, EndedAt: ended,
-		DurationMS: 1500, ProgressJSON: `[{"stage":"done"}]`, OutputSummary: "ok",
-	}); err != nil {
-		t.Fatalf("UpsertSkillExecutionRecord done: %v", err)
+		AgentID: alice.AgentID, SkillName: "other-skill", SkillScope: repo.SkillScopePrivate,
+		StartedAt: started.Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("UpsertSkillExecutionRecord duplicate: %v", err)
+	}
+	if duplicate.SkillName != "xdr-query" || !duplicate.StartedAt.Equal(record.StartedAt) {
+		t.Fatalf("duplicate execution_id changed record: %+v", duplicate)
 	}
 	items, total, err := store.ListSkillExecutionRecords(repo.SkillExecutionListFilter{
-		HumanUserID: alice.HumanUserID, SkillName: "xdr-query", Status: repo.SkillExecutionSucceeded,
-		From: started.Add(-time.Second), To: ended.Add(time.Second),
+		HumanUserID: alice.HumanUserID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
+		From: started.Add(-time.Second), To: started.Add(time.Second),
 	})
 	if err != nil || total != 1 || len(items) != 1 {
 		t.Fatalf("ListSkillExecutionRecords = %+v/%d, %v", items, total, err)
 	}
-	if items[0].Status != repo.SkillExecutionSucceeded || items[0].DurationMS != 1500 {
+	if items[0].ExecutionID != "exec-1" || items[0].SkillScope != repo.SkillScopePublic {
 		t.Fatalf("unexpected execution row: %+v", items[0])
 	}
 	if _, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
@@ -164,7 +164,7 @@ func TestSkillExecutionRecord_UpsertListAndFilters(t *testing.T) {
 	}
 }
 
-func TestSkillExecutionRecord_RejectsCrossPodEventSeqUpdate(t *testing.T) {
+func TestSkillExecutionRecord_IgnoresDuplicateFromOtherPod(t *testing.T) {
 	store := newStore(t)
 	createTestPod(t, store, "pod-a", 3)
 	createTestPod(t, store, "pod-b", 3)
@@ -173,81 +173,21 @@ func TestSkillExecutionRecord_RejectsCrossPodEventSeqUpdate(t *testing.T) {
 	if _, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
 		ExecutionID: "exec-cross-pod", PodID: "pod-a", HumanUserID: alice.HumanUserID,
 		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
-		Status: repo.SkillExecutionRunning, EventSeq: 1, StartedAt: started, ProgressJSON: `[]`,
+		StartedAt: started,
 	}); err != nil {
-		t.Fatalf("insert running: %v", err)
+		t.Fatalf("insert execution: %v", err)
 	}
 
-	// Same execution_id + higher event_seq but different pod_id must not rewrite the row.
 	stored, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
 		ExecutionID: "exec-cross-pod", PodID: "pod-b", HumanUserID: alice.HumanUserID,
-		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
-		Status: repo.SkillExecutionSucceeded, EventSeq: 2, StartedAt: started,
-		EndedAt: started.Add(time.Second), ProgressJSON: `[{"stage":"done"}]`, OutputSummary: "forged",
+		AgentID: alice.AgentID, SkillName: "forged-skill", SkillScope: repo.SkillScopePrivate,
+		StartedAt: started.Add(time.Minute),
 	})
 	if err != nil {
-		t.Fatalf("cross-pod upsert: %v", err)
+		t.Fatalf("cross-pod duplicate: %v", err)
 	}
-	if stored.PodID != "pod-a" || stored.Status != repo.SkillExecutionRunning || stored.EventSeq != 1 {
+	if stored.PodID != "pod-a" || stored.SkillName != "xdr-query" {
 		t.Fatalf("cross-pod update leaked: %+v", stored)
-	}
-}
-
-func TestSkillExecutionRepositoryRejectsLateEventAfterTerminal(t *testing.T) {
-	store := newStore(t)
-	createTestPod(t, store, "pod-a", 3)
-	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
-	started := time.Now().UTC().Add(-time.Minute)
-	base := repo.SkillExecutionRecord{
-		ExecutionID: "exec-terminal", PodID: "pod-a", HumanUserID: alice.HumanUserID,
-		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
-		SkillVersion: "1.0.0", EntryType: repo.SkillEntryTraditionalPrompt,
-		ActivationMode: repo.SkillActivationTool, StartedAt: started, ProgressJSON: `[]`,
-	}
-	running := base
-	running.Status = repo.SkillExecutionRunning
-	running.EventSeq = 1
-	if _, err := store.UpsertSkillExecutionRecord(running); err != nil {
-		t.Fatalf("insert running execution: %v", err)
-	}
-	terminal := base
-	terminal.Status = repo.SkillExecutionSucceeded
-	terminal.EventSeq = 2
-	terminal.EndedAt = started.Add(time.Second)
-	terminal.TerminalReason = "agent_end"
-	terminal.OutputSummary = "completed"
-	stored, err := store.UpsertSkillExecutionRecord(terminal)
-	if err != nil {
-		t.Fatalf("finish execution: %v", err)
-	}
-	if stored.Status != repo.SkillExecutionSucceeded || stored.EventSeq != 2 {
-		t.Fatalf("terminal execution = %+v", stored)
-	}
-
-	late := base
-	late.Status = repo.SkillExecutionRunning
-	late.EventSeq = 1
-	late.ProgressJSON = `[{"stage":"late"}]`
-	stored, err = store.UpsertSkillExecutionRecord(late)
-	if err != nil {
-		t.Fatalf("upsert late event: %v", err)
-	}
-	if stored.Status != repo.SkillExecutionSucceeded || stored.EventSeq != 2 ||
-		stored.TerminalReason != "agent_end" || stored.OutputSummary != "completed" {
-		t.Fatalf("late event changed terminal execution: %+v", stored)
-	}
-
-	conflictingTerminal := base
-	conflictingTerminal.Status = repo.SkillExecutionFailed
-	conflictingTerminal.EventSeq = 3
-	conflictingTerminal.TerminalReason = "tool_error"
-	stored, err = store.UpsertSkillExecutionRecord(conflictingTerminal)
-	if err != nil {
-		t.Fatalf("upsert conflicting terminal event: %v", err)
-	}
-	if stored.Status != repo.SkillExecutionSucceeded || stored.EventSeq != 2 ||
-		stored.TerminalReason != "agent_end" {
-		t.Fatalf("terminal state was overwritten: %+v", stored)
 	}
 }
 
@@ -281,7 +221,6 @@ func TestEffectiveSkillResolver_MergesSourcesPoliciesCredentialsAndExecutions(t 
 	if _, err := store.UpsertSkillExecutionRecord(repo.SkillExecutionRecord{
 		ExecutionID: "exec-xdr", PodID: "pod-a", HumanUserID: alice.HumanUserID,
 		AgentID: alice.AgentID, SkillName: "xdr-query", SkillScope: repo.SkillScopePublic,
-		Status: repo.SkillExecutionSucceeded, ProgressJSON: `[]`,
 	}); err != nil {
 		t.Fatalf("UpsertSkillExecutionRecord: %v", err)
 	}
