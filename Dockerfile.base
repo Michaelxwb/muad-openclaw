@@ -8,10 +8,10 @@ FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 ARG OPENCLAW_VERSION
 # 本地构建可指定国内 apt 镜像源（如 https://mirrors.aliyun.com）避开 deb.debian.org CDN 超时；
 # 默认空 = 官方源，GitHub Actions 构建行为不变。
-ARG APT_MIRROR
+ARG APT_MIRROR=
 # 本地构建可指定 Playwright 浏览器下载镜像（如 https://npmmirror.com/mirrors/playwright）
 # 避开 playwright 官方 CDN 超时；默认空 = 官方源，GitHub Actions 构建行为不变。
-ARG PLAYWRIGHT_DOWNLOAD_HOST
+ARG PLAYWRIGHT_DOWNLOAD_HOST=
 LABEL org.opencontainers.image.base.name="ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}" \
       io.muad.openclaw.version="${OPENCLAW_VERSION}" \
       io.muad.image.role="base"
