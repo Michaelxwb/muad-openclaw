@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { basename, dirname, join } from "node:path";
 import {
   IMAGE_CHANNEL_PLUGIN_SPECS,
   MUAD_RUNTIME_PLUGIN_SPECS,
@@ -321,20 +321,53 @@ function activePluginEntries(entries) {
 
 function renderSkillAuditGrants(runtime) {
   const grants = [];
+  const publicRoot = runtime.skills.publicDirectory;
+  const privateRoot = runtime.skills.privateRoot;
   for (const policy of runtime.skills.agents) {
+    const agentId = policy.agentId;
+    // Public and private Skills are covered by directory grants so the guard
+    // config stays byte stable across Skill add/remove (no gateway restart).
+    // The guard derives the real Skill name from the executed path at report
+    // time, so the placeholder name only has to stay schema-valid.
+    grants.push({
+      agentId,
+      name: sanitizeGrantName(basename(publicRoot)),
+      rootPath: publicRoot,
+      source: "public",
+      dir: true,
+    });
+    grants.push({
+      agentId,
+      name: sanitizeGrantName(basename(privateAgentSkillsRoot(privateRoot, agentId))),
+      rootPath: privateAgentSkillsRoot(privateRoot, agentId),
+      source: "private",
+      dir: true,
+    });
+    // System Skills ship with the image and are not hot-changed; keep them
+    // per-Skill so the guard's exact-name match stays precise.
     for (const skill of policy.allowed) {
-      grants.push({
-        agentId: policy.agentId,
-        name: skill.name,
-        rootPath: skill.rootPath,
-        source: skill.source,
-      });
+      if (skill.source !== "system") continue;
+      grants.push({ agentId, name: skill.name, rootPath: skill.rootPath, source: "system" });
     }
   }
   return grants.sort((left, right) =>
     `${left.agentId}/${left.name}/${left.rootPath}`.localeCompare(
       `${right.agentId}/${right.name}/${right.rootPath}`,
     ));
+}
+
+function privateAgentSkillsRoot(privateRoot, agentId) {
+  return join(privateRoot, `workspace-${agentId}`, "skills");
+}
+
+// Guard config Skill names must match the parser's SKILL_NAME_PATTERN (also
+// enforced by older guards that ignore the `dir` marker), so the directory
+// grant placeholder is sanitized to always stay schema-valid.
+function sanitizeGrantName(value) {
+  const normalized = String(value ?? "").toLowerCase().replace(/[^a-z0-9_-]/gu, "-");
+  const withoutPrefix = normalized.replace(/^[-0-9]+/u, "");
+  const fallback = withoutPrefix || "public";
+  return fallback.slice(0, 64);
 }
 
 function renderLongTaskSkillGrants(runtime) {
@@ -355,16 +388,16 @@ function renderLongTaskSkillGrants(runtime) {
 }
 
 function renderSkillReadRoots(runtime) {
-  const policies = new Map(runtime.skills.agents.map((policy) => [policy.agentId, policy]));
   return runtime.agents.filter((agent) => !agent.default).map((agent) => ({
     agentId: agent.id,
-    // Directory-level roots: public Skills live under the public directory and
-    // private Skills under the agent workspace skills root, so this stays byte
-    // stable across Skill add/remove (no gateway restart). isWithin covers the
-    // concrete child Skill directories.
-    roots: uniqueSorted(
-      (policies.get(agent.id)?.allowed ?? []).map((grant) => dirname(grant.rootPath)),
-    ),
+    // Public and private roots are granted unconditionally so the config stays
+    // byte stable across Skill add/remove (no gateway restart). Public Skills
+    // are shared by design; the private root is the agent's own workspace
+    // Skills dir. isWithin covers the concrete child Skill directories.
+    roots: uniqueSorted([
+      runtime.skills.publicDirectory,
+      privateAgentSkillsRoot(runtime.skills.privateRoot, agent.id),
+    ]),
   }));
 }
 
