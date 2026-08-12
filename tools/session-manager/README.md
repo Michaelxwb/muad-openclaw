@@ -163,7 +163,8 @@ session-manager 的登录逻辑以 `PlatformAdapter` 形式接入，按平台名
    import { NewPlatformAdapter } from "./<platform>.js";
    // ...
    return new AdapterRegistry(
-     [new MSSWSessionAdapter(fetchLike), new NewPlatformAdapter(fetchLike)],
+     // mssw 不传 fetchLike：内部默认走 insecure fetch（自签证书环境，跳过 TLS 校验）
+     [new MSSWSessionAdapter(), new NewPlatformAdapter(fetchLike)],
      (platform) => new HTTPSessionAdapter(platform, fetchLike),
    );
    ```
