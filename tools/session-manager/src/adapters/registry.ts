@@ -40,7 +40,13 @@ export class AdapterRegistry {
 
 export function createInstalledAdapterRegistry(fetchLike: FetchLike = fetch): AdapterRegistry {
   return new AdapterRegistry(
-    [new MSSWSessionAdapter(fetchLike), new SmokePlatformSessionAdapter(fetchLike)],
+    // mssw keeps strict TLS verification off: SIT/UAT/prod all use self-signed internal
+    // certs, so the adapter uses its own insecure fetch (constructor default) instead of
+    // the injected fetchLike. Other adapters stay strict via fetchLike.
+    [
+        new MSSWSessionAdapter(),
+        new SmokePlatformSessionAdapter(fetchLike)
+    ],
     (platform) => new HTTPSessionAdapter(platform, fetchLike),
   );
 }

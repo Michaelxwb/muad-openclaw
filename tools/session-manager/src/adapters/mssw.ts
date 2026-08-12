@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
+import { createInsecureFetch } from "./insecure-fetch.js";
 import {
   type AdapterRefreshInput,
   type AdapterValidateInput,
@@ -64,7 +65,13 @@ export class MSSWSessionAdapter implements PlatformAdapter {
   readonly #fetch: FetchLike;
   readonly #now: () => number;
 
-  constructor(fetchLike: FetchLike = fetch, now: () => number = () => Math.floor(Date.now() / 1000)) {
+  // mssw environments (SIT/UAT/prod) all use self-signed TLS certificates on the
+  // internal network, so the adapter defaults to an insecure fetch. Tests inject a
+  // mock fetch to keep unit tests offline; explicit fetch injection stays possible.
+  constructor(
+    fetchLike: FetchLike = createInsecureFetch(),
+    now: () => number = () => Math.floor(Date.now() / 1000),
+  ) {
     this.#fetch = fetchLike;
     this.#now = now;
   }
