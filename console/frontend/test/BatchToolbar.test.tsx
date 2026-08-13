@@ -10,7 +10,7 @@ describe("BatchToolbar", () => {
     const onBatchUpgrade = vi.fn();
     const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
       expect(config.content).toContain("2 个");
-      config.onOk?.();
+      config.onOk?.({} as never);
       return {} as ReturnType<typeof Modal.confirm>;
     });
     render(

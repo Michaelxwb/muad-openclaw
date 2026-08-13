@@ -13,12 +13,8 @@ import (
 )
 
 type collectorSource struct {
-	pods          []repo.PodSummary
-	global        repo.ResourceConfig
-	users         map[string][]repo.HumanUser
-	reconciled    map[string][]repo.LongTaskTask
-	reconcileErr  error
-	humanUsersErr error
+	pods   []repo.PodSummary
+	global repo.ResourceConfig
 }
 
 func (source *collectorSource) ListPods(repo.PodListFilter) ([]repo.PodSummary, int, error) {
@@ -30,27 +26,6 @@ func (source *collectorSource) GetResourceGlobal() (repo.ResourceConfig, error) 
 		return repo.ResourceConfig{}, repo.ErrNotFound
 	}
 	return source.global, nil
-}
-
-func (source *collectorSource) ListHumanUsersByPod(
-	podID string, _ repo.HumanUserListFilter,
-) ([]repo.HumanUser, int, error) {
-	if source.humanUsersErr != nil {
-		return nil, 0, source.humanUsersErr
-	}
-	users := append([]repo.HumanUser(nil), source.users[podID]...)
-	return users, len(users), nil
-}
-
-func (source *collectorSource) ReconcileLongTaskTasks(podID string, tasks []repo.LongTaskTask) error {
-	if source.reconcileErr != nil {
-		return source.reconcileErr
-	}
-	if source.reconciled == nil {
-		source.reconciled = map[string][]repo.LongTaskTask{}
-	}
-	source.reconciled[podID] = append([]repo.LongTaskTask(nil), tasks...)
-	return nil
 }
 
 func TestCollector_CollectOnce_PopulatesCache(t *testing.T) {
@@ -108,69 +83,6 @@ func TestCollector_CollectOnce_PopulatesCache(t *testing.T) {
 	bob, ok := cache.Get("bob")
 	if !ok || bob.EffectiveMemLimit != "2g" {
 		t.Errorf("bob should inherit global memory limit: %+v", bob)
-	}
-}
-
-func TestCollector_CollectOnce_ReconcilesLongTaskSnapshot(t *testing.T) {
-	fd := newFakeDriver()
-	_ = fd.Create(context.Background(), driver.PodSpec{PodID: "alice"})
-	fd.longTasksOutput = `{"pools":[{"poolKey":"agent:alice:wecom:direct:wx-1","queued":4,"active":2,"limit":2,` +
-		`"agentId":"alice","peerId":"wx-1","tasks":[` +
-		`{"taskId":"task-a","skillName":"report-customer","skillRoot":"/skills/report",` +
-		`"status":"running","submittedAt":"2026-08-09T10:00:00.000Z",` +
-		`"startedAt":"2026-08-09T10:00:01.000Z","updatedAt":"2026-08-09T10:00:01.000Z"}]},` +
-		`{"agentId":"bob","peerId":"wx-2","queued":1,"active":0,"tasks":[` +
-		`{"id":"task-b","skill":"xdr-query","rootPath":"/skills/xdr",` +
-		`"status":"queued","submittedAt":"2026-08-09T10:02:00.000Z",` +
-		`"updatedAt":"2026-08-09T10:02:00.000Z"}]}]}`
-	source := collectorSource{
-		pods: []repo.PodSummary{{Pod: repo.Pod{PodID: "alice", MaxUsers: 10}}},
-		users: map[string][]repo.HumanUser{"alice": {
-			{HumanUserID: "human-alice", AgentID: "alice"},
-			{HumanUserID: "human-bob", AgentID: "bob"},
-		}},
-	}
-	cache := monitor.NewCache()
-	defaults := driver.ResourceSpec{
-		MemLimit: "1g", CPULimit: "1", RestartPolicy: "unless-stopped",
-		MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1, MaxLongTaskConcurrency: 2,
-	}
-
-	collector.New(fd, &source, cache, defaults, time.Minute).CollectOnce(context.Background())
-
-	tasks := source.reconciled["alice"]
-	if len(tasks) != 2 {
-		t.Fatalf("reconciled Long Tasks = %+v", tasks)
-	}
-	if tasks[0].TaskID != "task-a" || tasks[0].HumanUserID != "human-alice" ||
-		tasks[0].PoolKey != "agent:alice:wecom:direct:wx-1" ||
-		tasks[0].PoolQueued != 4 || tasks[0].PoolRunning != 2 ||
-		tasks[0].PoolLimit != 2 || tasks[0].StartedAt.IsZero() {
-		t.Fatalf("primary Long Task not mapped from snapshot: %+v", tasks[0])
-	}
-	if tasks[1].TaskID != "task-b" || tasks[1].SkillName != "xdr-query" ||
-		tasks[1].SkillRoot != "/skills/xdr" || tasks[1].HumanUserID != "human-bob" ||
-		tasks[1].PoolKey != "agent:bob:unknown:direct:wx-2" ||
-		tasks[1].PoolQueued != 1 || tasks[1].PoolRunning != 0 {
-		t.Fatalf("compat Long Task not mapped from snapshot: %+v", tasks[1])
-	}
-}
-
-func TestCollector_CollectOnce_ReconcilesEmptyLongTaskSnapshot(t *testing.T) {
-	fd := newFakeDriver()
-	_ = fd.Create(context.Background(), driver.PodSpec{PodID: "alice"})
-	source := collectorSource{
-		pods: []repo.PodSummary{{Pod: repo.Pod{PodID: "alice", MaxUsers: 10}}},
-	}
-	defaults := driver.ResourceSpec{
-		MemLimit: "1g", CPULimit: "1", RestartPolicy: "unless-stopped",
-		MaxSkillConcurrency: 1, MaxBrowserConcurrency: 1, MaxLongTaskConcurrency: 2,
-	}
-
-	collector.New(fd, &source, monitor.NewCache(), defaults, time.Minute).CollectOnce(context.Background())
-
-	if tasks, ok := source.reconciled["alice"]; !ok || len(tasks) != 0 {
-		t.Fatalf("empty Long Task snapshot should reconcile an empty list: ok=%v tasks=%+v", ok, tasks)
 	}
 }
 

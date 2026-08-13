@@ -145,7 +145,7 @@ describe("Skills", () => {
     const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
       expect(config.title).toBe("应用 Skill 到所有 Pod");
       expect(config.content).toContain("所有运行中的 Pod");
-      void config.onOk?.();
+      void config.onOk?.({} as never);
       return {} as ReturnType<typeof Modal.confirm>;
     });
     render(<Skills />);
@@ -159,7 +159,7 @@ describe("Skills", () => {
 
   it("continues refreshing the Skill list after an apply request is queued", async () => {
     const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
-      void config.onOk?.();
+      void config.onOk?.({} as never);
       return {} as ReturnType<typeof Modal.confirm>;
     });
     const view = render(<Skills />);
@@ -194,7 +194,7 @@ describe("Skills", () => {
     });
     const warning = vi.spyOn(Toast, "warning").mockImplementation(() => "");
     const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
-      void config.onOk?.();
+      void config.onOk?.({} as never);
       return {} as ReturnType<typeof Modal.confirm>;
     });
     try {
@@ -219,7 +219,7 @@ describe("Skills", () => {
     });
     const warning = vi.spyOn(Toast, "warning").mockImplementation(() => "");
     const confirm = vi.spyOn(Modal, "confirm").mockImplementation((config) => {
-      void config.onOk?.();
+      void config.onOk?.({} as never);
       return {} as ReturnType<typeof Modal.confirm>;
     });
     try {

@@ -1,9 +1,12 @@
 ---
 name: smoke-platform
-description: Smoke-test Skill for validating cookie-backed business platform sessions.
+description: Smoke-test Skill named "smoke-platform" (with a hyphen) that validates the "smoke_platform" (with an underscore) business platform session.
 ---
 
 # Smoke Platform Skill
+
+This Skill's name is `smoke-platform` (with a hyphen); the business platform it
+validates is named `smoke_platform` (with an underscore). The two names differ.
 
 Use this Skill when the user asks to check or validate `smoke_platform`,
 business-platform cookies, or fake business platform login state.

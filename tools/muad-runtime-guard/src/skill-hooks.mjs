@@ -2,7 +2,8 @@ import { SkillBusyError } from "./skill-lease.mjs";
 
 const SKILL_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;
 
-export function createSkillLeaseHooks({ config, leaseManager }) {
+export function createSkillLeaseHooks({ config, leaseManager, log = () => {} }) {
+  const diag = (message) => log(`[skill-lease] ${message}`);
   return {
     before: async (event, ctx) => {
       const skillName = explicitSkillName(event?.prompt);
@@ -11,8 +12,10 @@ export function createSkillLeaseHooks({ config, leaseManager }) {
       if (!key) return block("skill concurrency identity is unavailable");
       try {
         await leaseManager.acquire(key, { agentId: ctx.agentId, skillName });
+        diag(`acquired agent=${ctx?.agentId || "unknown"} skill=${skillName}`);
         return pass();
       } catch (error) {
+        diag(`blocked agent=${ctx?.agentId || "unknown"} skill=${skillName} reason=${error instanceof SkillBusyError ? "skill_busy" : "guard_failed"}`);
         return block(error instanceof SkillBusyError
           ? "skill_busy: skill concurrency limit reached"
           : "skill concurrency guard failed");
@@ -21,7 +24,10 @@ export function createSkillLeaseHooks({ config, leaseManager }) {
     end: async (event, ctx) => {
       if (!isBusinessAgent(config, ctx?.agentId)) return;
       const key = skillRunKey(event, ctx);
-      if (key) await leaseManager.release(key);
+      if (key) {
+        await leaseManager.release(key);
+        diag(`released agent=${ctx?.agentId || "unknown"}`);
+      }
     },
   };
 }

@@ -34,10 +34,14 @@ const pod: Pod = {
   configGeneration: 2,
   appliedGeneration: 1,
   generationLag: 1,
+  skillsPending: false,
   lastApplyStatus: "pending",
   serviceTokenFingerprint: "sha256:test",
   cpuPercent: 1.2,
+  cpuMills: 0,
+  cpuLimitCores: "0",
   memMiB: 256,
+  memLimitMiB: 0,
   skillActive: 0,
   skillQueued: 0,
   browserActive: 0,
@@ -55,7 +59,7 @@ beforeEach(() => {
 
 describe("Containers Pod list", () => {
   it("renders capacity and configuration generation from the Pod response", async () => {
-    render(<Containers />);
+    render(<Containers onOpenPod={vi.fn()} />);
 
     expect(await screen.findByText("Pod A")).toBeInTheDocument();
     expect(screen.getByText("1/10")).toBeInTheDocument();
@@ -65,7 +69,7 @@ describe("Containers Pod list", () => {
   });
 
   it("sends search and pagination to the backend", async () => {
-    render(<Containers />);
+    render(<Containers onOpenPod={vi.fn()} />);
     await screen.findByText("Pod A");
 
     fireEvent.change(screen.getByPlaceholderText("Pod ID 或名称"), {
@@ -107,7 +111,7 @@ describe("Containers create Pod flow", () => {
   }
 
   it("validates the Pod ID before sending", async () => {
-    render(<Containers />);
+    render(<Containers onOpenPod={vi.fn()} />);
     await screen.findByText("Pod A");
     openCreateModal();
     fireEvent.click(screen.getByRole("checkbox", { name: "💬 微信" }));
@@ -119,7 +123,7 @@ describe("Containers create Pod flow", () => {
   });
 
   it("rejects non-numeric memory limits before sending", async () => {
-    render(<Containers />);
+    render(<Containers onOpenPod={vi.fn()} />);
     await screen.findByText("Pod A");
     openCreateModal();
     fillMinimalCreateForm();
@@ -135,7 +139,7 @@ describe("Containers create Pod flow", () => {
 
   it("accepts a bare numeric memory limit (GiB)", async () => {
     apiMocks.createPod.mockResolvedValue({ ...pod, podId: "pod-new" });
-    render(<Containers />);
+    render(<Containers onOpenPod={vi.fn()} />);
     await screen.findByText("Pod A");
     openCreateModal();
     fillMinimalCreateForm();
@@ -150,7 +154,7 @@ describe("Containers create Pod flow", () => {
 
   it("creates a Pod with capacity, resource, concurrency, and channel fields", async () => {
     apiMocks.createPod.mockResolvedValue({ ...pod, podId: "pod-new", displayName: "pod-new" });
-    render(<Containers />);
+    render(<Containers onOpenPod={vi.fn()} />);
     await screen.findByText("Pod A");
     openCreateModal();
     fillMinimalCreateForm();
@@ -175,7 +179,7 @@ describe("Containers create Pod flow", () => {
 
   it("keeps the modal open and shows backend create errors", async () => {
     apiMocks.createPod.mockRejectedValue(new Error("Pod already exists"));
-    render(<Containers />);
+    render(<Containers onOpenPod={vi.fn()} />);
     await screen.findByText("Pod A");
     openCreateModal();
     fillMinimalCreateForm();
@@ -188,7 +192,7 @@ describe("Containers create Pod flow", () => {
 
   it("can select 接管同名保留状态卷 and sends adoptState=true", async () => {
     apiMocks.createPod.mockResolvedValue({ ...pod, podId: "pod-new", displayName: "pod-new" });
-    render(<Containers />);
+    render(<Containers onOpenPod={vi.fn()} />);
     await screen.findByText("Pod A");
     openCreateModal();
     fillMinimalCreateForm();
@@ -211,7 +215,7 @@ describe("Containers create Pod flow", () => {
 
   it("restore users requires adopting state and is forced off otherwise", async () => {
     apiMocks.createPod.mockResolvedValue({ ...pod, podId: "pod-new", displayName: "pod-new" });
-    render(<Containers />);
+    render(<Containers onOpenPod={vi.fn()} />);
     await screen.findByText("Pod A");
     openCreateModal();
     fillMinimalCreateForm();

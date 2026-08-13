@@ -39,10 +39,14 @@ const pod: Pod = {
   configGeneration: 2,
   appliedGeneration: 1,
   generationLag: 1,
+  skillsPending: false,
   lastApplyStatus: "applied",
   serviceTokenFingerprint: "sha256:test",
   cpuPercent: 0,
+  cpuMills: 0,
+  cpuLimitCores: "0",
   memMiB: 256,
+  memLimitMiB: 0,
   skillActive: 0,
   skillQueued: 0,
   browserActive: 0,
@@ -86,7 +90,7 @@ describe("PodEditDialog", () => {
     expect(screen.getByDisplayValue("4")).toBeInTheDocument();
   });
 
-  it("单次保存：先提交通道，再提交资源", async () => {
+  it("单次保存：先提交通道，再提交资源", { timeout: 10000 }, async () => {
     render(<PodEditDialog podId="pod-a" onClose={vi.fn()} onSaved={vi.fn()} />);
     // 等表单内容渲染，确保编辑模式的凭据已从 initial seed（依赖校验通过）
     await screen.findByText("消息通道");
@@ -96,6 +100,8 @@ describe("PodEditDialog", () => {
     // 两个提交是串行 await（通道 → 资源），waitFor 内同时断言两个 mock，
     // 避免通道调用出现后、资源调用的微任务续延尚未执行时的竞态。
     // 超时放宽到 5s：cf-stop / CI 并发跑多套测试时事件循环可能饥饿，默认 1s 会误报 flake。
+    // 测试级 testTimeout 同步放宽到 10s：waitFor 用满 5s 时叠加 findByText 与渲染耗时，
+    // 会超出 vitest 默认 5s testTimeout，被误判为 long-running test。
     await waitFor(
       () => {
         expect(apiMocks.updatePodChannels).toHaveBeenCalledTimes(1);

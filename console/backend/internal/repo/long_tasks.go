@@ -12,11 +12,6 @@ const longTaskColumns = `task_id, pod_id, human_user_id, pool_key, agent_id, pee
 	skill_name, skill_root, pool_queued, pool_running, pool_limit, status, submitted_at, started_at, ended_at,
 	terminal_reason, error_code, updated_at, last_seen_at`
 
-const (
-	longTaskMissingSnapshotReason = "runtime queue no longer reports task"
-	longTaskMissingSnapshotCode   = "long_task_missing_snapshot"
-)
-
 func (s *Store) migrateLongTaskTasks() error {
 	if _, err := s.db.Exec(longTaskSchemaDDL); err != nil {
 		return fmt.Errorf("create long task schema: %w", err)
@@ -88,42 +83,6 @@ func (s *Store) UpsertLongTaskTasks(tasks []LongTaskTask) error {
 	return nil
 }
 
-// ReconcileLongTaskTasks mirrors one successful runtime snapshot for a Pod.
-// Existing non-terminal rows omitted from the snapshot are marked failed so
-// the Console view cannot retain stale queued/running tasks forever.
-func (s *Store) ReconcileLongTaskTasks(podID string, tasks []LongTaskTask) error {
-	podID = strings.TrimSpace(podID)
-	if podID == "" {
-		return ErrInvalidSkill
-	}
-	normalized := make([]LongTaskTask, 0, len(tasks))
-	for _, task := range tasks {
-		task.PodID = strings.TrimSpace(task.PodID)
-		if task.PodID == "" {
-			task.PodID = podID
-		}
-		if task.PodID != podID {
-			return ErrInvalidSkill
-		}
-		normalized = append(normalized, task)
-	}
-	tx, err := s.db.Begin()
-	if err != nil {
-		return fmt.Errorf("begin reconcile Long Tasks: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	if err := upsertLongTaskTasksTx(tx, normalized); err != nil {
-		return err
-	}
-	if err := failMissingLongTasksTx(tx, podID, normalized); err != nil {
-		return err
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit reconcile Long Tasks: %w", err)
-	}
-	return nil
-}
-
 func upsertLongTaskTasksTx(tx *sql.Tx, tasks []LongTaskTask) error {
 	for _, task := range tasks {
 		if err := upsertLongTaskTaskTx(tx, task); err != nil {
@@ -149,49 +108,6 @@ func upsertLongTaskTaskTx(tx *sql.Tx, task LongTaskTask) error {
 		return err
 	}
 	return insertLongTaskTaskTx(tx, prepared)
-}
-
-func failMissingLongTasksTx(tx *sql.Tx, podID string, tasks []LongTaskTask) error {
-	now := time.Now().UTC()
-	seen := make([]string, 0, len(tasks))
-	for _, task := range tasks {
-		if task.TaskID != "" {
-			seen = append(seen, task.TaskID)
-		}
-	}
-	args := []any{
-		LongTaskFailed, formatTime(now), longTaskMissingSnapshotReason,
-		longTaskMissingSnapshotCode, formatTime(now), formatTime(now), podID,
-		LongTaskQueued, LongTaskRunning,
-	}
-	query := `UPDATE long_task_tasks SET status = ?, ended_at = ?,
-		pool_queued = 0, pool_running = 0,
-		terminal_reason = ?, error_code = ?, updated_at = ?, last_seen_at = ?
-		WHERE pod_id = ? AND status IN (?, ?)`
-	if len(seen) > 0 {
-		query += ` AND task_id NOT IN (` + placeholders(len(seen)) + `)`
-		for _, taskID := range seen {
-			args = append(args, taskID)
-		}
-	}
-	if _, err := tx.Exec(query, args...); err != nil {
-		return fmt.Errorf("reconcile missing Long Tasks: %w", err)
-	}
-	return nil
-}
-
-func placeholders(count int) string {
-	if count <= 0 {
-		return ""
-	}
-	var builder strings.Builder
-	for i := 0; i < count; i++ {
-		if i > 0 {
-			builder.WriteString(", ")
-		}
-		builder.WriteByte('?')
-	}
-	return builder.String()
 }
 
 func prepareLongTaskTask(task LongTaskTask) (LongTaskTask, error) {

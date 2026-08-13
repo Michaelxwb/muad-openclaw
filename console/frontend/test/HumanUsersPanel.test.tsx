@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { Modal, Toast } from "@douyinfe/semi-ui";
+import { Toast } from "@douyinfe/semi-ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   BindingCode,
@@ -55,10 +55,14 @@ const pod: Pod = {
   configGeneration: 2,
   appliedGeneration: 2,
   generationLag: 0,
+  skillsPending: false,
   lastApplyStatus: "applied",
   serviceTokenFingerprint: "sha256:service",
   cpuPercent: 0,
+  cpuMills: 0,
+  cpuLimitCores: "0",
   memMiB: 0,
+  memLimitMiB: 0,
   skillActive: 0,
   skillQueued: 0,
   browserActive: 0,
@@ -163,6 +167,7 @@ const effectiveSkill: EffectiveSkill = {
   ],
   progressSupported: true,
   browserRequired: false,
+  longTask: false,
   runtimePending: true,
   lastExecution: {
     executionId: "exec-a",
@@ -185,6 +190,7 @@ const conflictSkill: EffectiveSkill = {
   platforms: [],
   progressSupported: false,
   browserRequired: false,
+  longTask: false,
   runtimePending: false,
 };
 

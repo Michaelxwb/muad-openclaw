@@ -1,4 +1,5 @@
 import { HTTPSessionAdapter, type FetchLike } from "./http-session.js";
+import { MSSPSessionAdapter } from "./mssp.js";
 import { MSSWSessionAdapter } from "./mssw.js";
 import { SmokePlatformSessionAdapter } from "./smoke-platform.js";
 import { PlatformAdapterError, type PlatformAdapter } from "./types.js";
@@ -38,13 +39,19 @@ export class AdapterRegistry {
   }
 }
 
-export function createInstalledAdapterRegistry(fetchLike: FetchLike = fetch): AdapterRegistry {
+export function createInstalledAdapterRegistry(
+  fetchLike: FetchLike = fetch,
+  log: (message: string) => void = () => {},
+): AdapterRegistry {
   return new AdapterRegistry(
     // mssw keeps strict TLS verification off: SIT/UAT/prod all use self-signed internal
     // certs, so the adapter uses its own insecure fetch (constructor default) instead of
     // the injected fetchLike. Other adapters stay strict via fetchLike.
+    // mssw/mssp 复用同一 SigV4 登录实现，log 打登录过程日志；其余构造参数走默认值
+    // （insecure fetch + 平台名 + 对应 branch tag）。
     [
-        new MSSWSessionAdapter(),
+        new MSSWSessionAdapter(undefined, undefined, undefined, undefined, log),
+        new MSSPSessionAdapter(undefined, undefined, log),
         new SmokePlatformSessionAdapter(fetchLike)
     ],
     (platform) => new HTTPSessionAdapter(platform, fetchLike),

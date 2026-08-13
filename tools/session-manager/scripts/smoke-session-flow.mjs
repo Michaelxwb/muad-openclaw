@@ -81,6 +81,7 @@ function parseReady(line) {
 }
 
 async function getState(root, resolver) {
+  const log = (message) => console.warn(message);
   const result = await runCLI(
     ["get-state", "--skill-name", SKILL_NAME],
     {
@@ -90,9 +91,10 @@ async function getState(root, resolver) {
     resolver,
     {
       store: new SessionStore({ rootDir: root }),
-      adapters: createInstalledAdapterRegistry(),
+      adapters: createInstalledAdapterRegistry(undefined, log),
       adapterTimeoutMs: 5_000,
       lock: { waitMs: 5_000, pollMs: 10 },
+      log,
     },
   );
   if (result.exitCode !== 0) throw new Error(`session-manager smoke failed: ${result.stderr}`);

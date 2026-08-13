@@ -29,6 +29,7 @@ export type SessionServiceOptions = {
   adapterTimeoutMs?: number;
   lock?: RefreshLockOptions;
   browserApplier?: BrowserSessionApplier;
+  log?: (message: string) => void;
 };
 
 export class SessionService {
@@ -38,11 +39,13 @@ export class SessionService {
   readonly #adapterTimeoutMs: number;
   readonly #lockOptions: RefreshLockOptions;
   readonly #browserApplier: BrowserSessionApplier | undefined;
+  readonly #log: (message: string) => void;
 
   constructor(resolver: Resolver, options: SessionServiceOptions = {}) {
     this.#resolver = resolver;
     this.#store = options.store ?? new SessionStore();
-    this.#adapters = options.adapters ?? createInstalledAdapterRegistry();
+    this.#log = options.log ?? (() => {});
+    this.#adapters = options.adapters ?? createInstalledAdapterRegistry(undefined, this.#log);
     this.#adapterTimeoutMs = positive(options.adapterTimeoutMs, DEFAULT_ADAPTER_TIMEOUT_MS);
     this.#lockOptions = options.lock ?? {};
     this.#browserApplier = options.browserApplier;
@@ -130,12 +133,14 @@ export class SessionService {
       if (adapter.platform !== credential.platform) throw new PlatformAdapterError();
       const state = await adapter.refresh({ credential, signal: controller.signal });
       validateAdapterState(state);
+      this.#log(`[session-manager] platform=${credential.platform} login succeeded cookies=${state.cookies.length}`);
       return await this.#store.write(credential, state);
     } catch (error) {
       if (error instanceof PlatformAdapterError) {
         if (error.authenticationFailed) {
           await this.#store.clear(credential.agentId, credential.platform);
         }
+        this.#log(`[session-manager] platform=${credential.platform} login failed reason=${error.reason} code=${error.businessCode ?? "n/a"} msg=${error.message}`);
         throw SessionManagerError.fromAdapter(error, credential.platform);
       }
       if (error instanceof SessionManagerError) throw withSessionErrorPlatform(error, credential.platform);
@@ -162,6 +167,7 @@ export class SessionService {
       const valid = await adapter.validate({ credential, state: cached.state, signal: controller.signal });
       if (valid) return true;
       await this.#store.clear(credential.agentId, credential.platform);
+      this.#log(`[session-manager] platform=${credential.platform} cached session invalid, re-login`);
       return false;
     } catch (error) {
       if (error instanceof PlatformAdapterError) {
