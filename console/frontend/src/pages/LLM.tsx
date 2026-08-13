@@ -17,6 +17,16 @@ import { LLMCreateDialog } from "./llm/LLMCreateDialog";
 
 const { Text } = Typography;
 type ModelBoundFilter = "" | "bound" | "available";
+export const MODEL_TABLE_COLUMN_WIDTHS = {
+  displayName: 220,
+  model: 140,
+  baseUrl: 220,
+  apiKey: 260,
+  boundStatus: 150,
+  toolCalls: 90,
+  testResult: 90,
+  actions: 72,
+};
 
 export function LLM() {
   const { t } = useTranslation();
@@ -243,7 +253,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: t("model.displayName"),
       dataIndex: "displayName",
-      width: 300,
+      width: MODEL_TABLE_COLUMN_WIDTHS.displayName,
       render: (_: unknown, model: LLMModelConfig) => (
         <div className={styles.tableCellStack}>
           <div className={styles.tableCellPrimary}>{model.displayName}</div>
@@ -256,7 +266,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: t("model.model"),
       dataIndex: "model",
-      width: 160,
+      width: MODEL_TABLE_COLUMN_WIDTHS.model,
       render: (_: unknown, model: LLMModelConfig) => (
         <div className={styles.tableCellStack}>
           <div className={styles.tableCellPrimary}>{model.provider}</div>
@@ -269,7 +279,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: "Base URL",
       dataIndex: "baseUrl",
-      width: 260,
+      width: MODEL_TABLE_COLUMN_WIDTHS.baseUrl,
       render: (_: unknown, model: LLMModelConfig) => (
         <span className={styles.tableCellLine}>{model.baseUrl}</span>
       ),
@@ -277,7 +287,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: "API Key",
       dataIndex: "apiKey",
-      width: 360,
+      width: MODEL_TABLE_COLUMN_WIDTHS.apiKey,
       render: (_: unknown, model: LLMModelConfig) => (
         <Text type="tertiary" size="small" className="mono">
           <span className={styles.tableCellLine}>{model.apiKey || t("model.notConfigured")}</span>
@@ -287,7 +297,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: t("model.boundStatus"),
       dataIndex: "boundHumanUserId",
-      width: 180,
+      width: MODEL_TABLE_COLUMN_WIDTHS.boundStatus,
       render: (_: unknown, model: LLMModelConfig) =>
         model.boundHumanUserId ? (
           <Space className={styles.boundStatus}>
@@ -299,9 +309,20 @@ function ModelTable({ state }: { state: LLMModelsState }) {
         ),
     },
     {
+      title: t("model.toolCalls"),
+      dataIndex: "supportsTools",
+      width: MODEL_TABLE_COLUMN_WIDTHS.toolCalls,
+      render: (_: unknown, model: LLMModelConfig) =>
+        model.supportsTools ? (
+          <Tag color="green">{t("model.toolCallsSupported")}</Tag>
+        ) : (
+          <Tag color="grey">{t("model.toolCallsUnsupported")}</Tag>
+        ),
+    },
+    {
       title: t("model.testResult"),
       dataIndex: "test",
-      width: 110,
+      width: MODEL_TABLE_COLUMN_WIDTHS.testResult,
       render: (_: unknown, model: LLMModelConfig) => {
         if (!model.lastTestAt) return <Text type="tertiary">{t("model.notTested")}</Text>;
         return model.lastTestOK ? (
@@ -314,7 +335,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
     {
       title: t("common.actions"),
       key: "actions",
-      width: 90,
+      width: MODEL_TABLE_COLUMN_WIDTHS.actions,
       render: (_: unknown, model: LLMModelConfig) => (
         <DeleteModelButton
           model={model}
@@ -326,6 +347,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
   ];
   return (
     <Table
+      className={styles.modelTable}
       rowKey="modelConfigId"
       loading={state.busy === "load"}
       columns={columns}
@@ -357,7 +379,6 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       renderPagination={renderTablePagination}
       empty={t("model.empty")}
       size="small"
-      scroll={{ x: 1520 }}
     />
   );
 }

@@ -11,6 +11,11 @@
   max-width: 100%;
 }
 
+.filterGroup {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .actionGroup {
   flex-wrap: wrap;
 }

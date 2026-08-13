@@ -1,3 +1,7 @@
+.podTable :global(.semi-table) {
+  min-width: var(--pod-table-min-width);
+}
+
 .identityCell {
   min-width: 0;
 }

@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pod } from "../src/api";
 import { Containers } from "../src/pages/Containers";
+import { POD_TABLE_MIN_WIDTH, POD_TABLE_SCROLL_X } from "../src/pages/containers/PodTable";
 
 const apiMocks = vi.hoisted(() => ({
   listPods: vi.fn(),
@@ -66,6 +67,19 @@ describe("Containers Pod list", () => {
     expect(screen.getByText("剩余 9")).toBeInTheDocument();
     expect(screen.getByRole("gridcell", { name: /待应用 1\/2/ })).toBeInTheDocument();
     expect(screen.getByText("待应用")).toBeInTheDocument();
+  });
+
+  it("keeps the Pod table inside the content width with an internal minimum width", async () => {
+    render(<Containers onOpenPod={vi.fn()} />);
+
+    expect(await screen.findByText("Pod A")).toBeInTheDocument();
+    const podTable = screen.getByRole("grid");
+    const podTableWrapper = podTable.closest(".semi-table-wrapper");
+    if (!podTableWrapper) throw new Error("missing Pod table wrapper");
+    expect(podTable).toHaveStyle({ width: POD_TABLE_SCROLL_X });
+    expect(podTableWrapper.getAttribute("style")).toContain(
+      `--pod-table-min-width: ${POD_TABLE_MIN_WIDTH}px`,
+    );
   });
 
   it("sends search and pagination to the backend", async () => {

@@ -1,7 +1,14 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "../src/components/AppShell";
+
+const appShellCss = readFileSync(
+  path.join(process.cwd(), "src/components/AppShell.module.css"),
+  "utf8",
+);
 
 const apiMocks = vi.hoisted(() => ({ me: vi.fn(), alerts: vi.fn() }));
 
@@ -94,6 +101,10 @@ describe("AppShell", () => {
     fireEvent(window, new Event("resize"));
 
     expect(screen.getByRole("button", { name: "展开导航" })).toBeInTheDocument();
+  });
+
+  it("keeps content padding inside the viewport-height scroll container", () => {
+    expect(appShellCss).toMatch(/\.content\s*\{[^}]*box-sizing:\s*border-box;/s);
   });
 
   it("keeps the sidebar brand explicit on desktop and compact when collapsed", () => {
