@@ -30,7 +30,10 @@ const plugin = {
       toolContext,
       service: new SessionService(
         new ResolverClient({ baseURL }),
-        browserApplier ? { browserApplier } : {},
+        {
+          ...(browserApplier ? { browserApplier } : {}),
+          log: (message) => api.logger?.warn?.(message),
+        },
       ),
     }), { name: "session_get_state" });
     globalThis[Symbol.for("muad.session-manager.health")] = { loaded: true, version: 1 };

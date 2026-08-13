@@ -296,6 +296,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.InternalScanSkills: {http.StatusInternalServerError, "扫描 Skill 失败", "Failed to scan Skills"},
 	// internal.list_long_tasks
 	errcode.InternalListLongTasks: {http.StatusInternalServerError, "查询 Long Task 列表失败", "Failed to list Long Tasks"},
+	// internal.upsert_long_tasks
+	errcode.InternalUpsertLongTasks: {http.StatusInternalServerError, "写入 Long Task 记录失败", "Failed to upsert Long Tasks"},
 	// runtime.read_pod_logs
 	errcode.RuntimeReadPodLogs: {http.StatusBadGateway, "读取 Pod 日志失败", "Failed to read Pod logs"},
 	// runtime.wechat_login

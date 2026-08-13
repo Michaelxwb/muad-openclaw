@@ -8,6 +8,7 @@ import { createCrossUserGuard } from "./cross-user-guard.mjs";
 import { createHealthHandler } from "./health.mjs";
 import { createLongTaskHooks } from "./long-task-hooks.mjs";
 import { LongTaskManager } from "./long-task-manager.mjs";
+import { LongTaskStateClient, LongTaskStateClientError } from "./long-task-state-client.mjs";
 import { createMainBindingReply } from "./main-binding-reply.mjs";
 import { createModelConfigDispatch } from "./model-config-reply.mjs";
 import { createRouteVerifier } from "./route-verifier.mjs";
@@ -30,7 +31,12 @@ const plugin = {
     const config = parseGuardConfig(api.pluginConfig);
     const leaseManager = installBrowserLease(config.maxBrowserConcurrency);
     const skillLeaseManager = installSkillLease(config.maxSkillConcurrency);
-    const longTaskManager = installLongTaskManager(config.maxLongTaskConcurrency);
+    const longTaskManager = installLongTaskManager(
+      config.maxLongTaskConcurrency,
+      globalThis,
+      (message) => api.logger?.warn?.(message),
+    );
+    installLongTaskStatePush(longTaskManager, config, api);
     registerMainBindingReply(api, config);
     registerModelConfigDispatch(api, config);
     registerToolPolicies(api, config);
@@ -40,6 +46,7 @@ const plugin = {
     registerSkillOutputHooks(api, longTaskManager);
     registerCrossUserGuard(api, config);
     registerSkillAuditHooks(api, config, createSkillAuditClient(config));
+    registerExecFailureLog(api);
     registerReloadPolicy(api);
     const client = createBindingClient(config);
     api.registerCommand(createBindCommand({
@@ -55,11 +62,25 @@ const plugin = {
     api.registerGatewayMethod("muad.runtime.verify-routes", createRouteVerifier(api), {
       scope: "operator.read",
     });
-    api.registerGatewayMethod("muad.runtime.long-tasks", async () => longTaskManager.snapshot(), {
-      scope: "operator.read",
-    });
   },
 };
+
+function registerExecFailureLog(api) {
+  // exec 子进程（skill 脚本 → session-manager CLI）的 stderr 不进 openclaw 日志，
+  // 这里在 exec 失败时把 stderr 转发到 openclaw 日志，便于排查 session-manager 登录失败。
+  api.on("after_tool_call", (event) => {
+    if (event?.toolName !== "exec" && event?.toolName !== "bash") return;
+    const error = event?.error;
+    if (!error) return;
+    const message = typeof error === "string"
+      ? error
+      : (typeof error === "object" && error !== null
+        ? (error.stderr || error.message || error.output || "")
+        : String(error));
+    if (!message) return;
+    api.logger?.warn?.(`[muad-runtime-guard][exec-failed] tool=${event.toolName} ${String(message).slice(0, 2000)}`);
+  }, { priority: 900, timeoutMs: 1_000 });
+}
 
 function registerReloadPolicy(api) {
   api.registerReload?.({
@@ -102,13 +123,21 @@ function registerToolPolicies(api, config) {
 }
 
 function registerBrowserLeaseHooks(api, config, leaseManager) {
-  const hooks = createBrowserLeaseHooks({ config, leaseManager });
+  const hooks = createBrowserLeaseHooks({
+    config,
+    leaseManager,
+    log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
+  });
   api.on("before_tool_call", hooks.before, { priority: -1000, timeoutMs: 35_000 });
   api.on("after_tool_call", hooks.after, { priority: 1000, timeoutMs: 1_000 });
 }
 
 function registerSkillLeaseHooks(api, config, leaseManager) {
-  const hooks = createSkillLeaseHooks({ config, leaseManager });
+  const hooks = createSkillLeaseHooks({
+    config,
+    leaseManager,
+    log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
+  });
   api.on("before_agent_run", hooks.before, { priority: -1000, timeoutMs: 35_000 });
   api.on("agent_end", hooks.end, { priority: 1000, timeoutMs: 1_000 });
 }
@@ -118,7 +147,7 @@ function registerLongTaskHooks(api, config, manager) {
     config,
     manager,
     resolveWorkspace: (agentId) => resolveWorkspace(api, agentId),
-    log: (message) => console.warn(`[muad-runtime-guard]${message}`),
+    log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
   });
   api.on("before_dispatch", hooks.beforeDispatch, { priority: -1100, timeoutMs: 1_000 });
   api.on("before_agent_run", hooks.beforeAgentRun, { priority: -900, timeoutMs: 1_000 });
@@ -139,7 +168,7 @@ function registerSkillOutputHooks(api, manager) {
 function registerCrossUserGuard(api, config) {
   const hooks = createCrossUserGuard({
     config,
-    log: (message) => console.warn(`[muad-runtime-guard]${message}`),
+    log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
   });
   api.on("before_tool_call", hooks.beforeToolCall, { priority: -950, timeoutMs: 1_000 });
   api.on("reply_payload_sending", hooks.replyPayloadSending, { priority: -850, timeoutMs: 1_000 });
@@ -149,7 +178,7 @@ function registerSkillAuditHooks(api, config, client) {
   const hooks = createSkillAuditHooks({
     config,
     client,
-    log: (message) => console.warn(`[muad-runtime-guard]${message}`),
+    log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
   });
   api.on("before_dispatch", hooks.beforeDispatch, { priority: -100, timeoutMs: 1_000 });
   api.on("before_agent_run", hooks.beforeAgentRun, { priority: -100, timeoutMs: 1_000 });
@@ -181,7 +210,7 @@ export function installBrowserLease(limit, globals = globalThis) {
   return manager;
 }
 
-export function installLongTaskManager(limit, globals = globalThis) {
+export function installLongTaskManager(limit, globals = globalThis, log = () => {}) {
   const symbol = Symbol.for("muad.longtask.manager");
   const existing = globals[symbol];
   if (existing?.shared === true && existing.closed !== true) {
@@ -189,9 +218,50 @@ export function installLongTaskManager(limit, globals = globalThis) {
     return existing;
   }
   existing?.close?.();
-  const manager = new LongTaskManager({ limit });
+  const manager = new LongTaskManager({ limit, log });
   globals[symbol] = manager;
   return manager;
+}
+
+export function installLongTaskStatePush(longTaskManager, config, api) {
+  if (!longTaskManager?.subscribe) return;
+  longTaskManager.subscribe(createLongTaskStatePushTrigger(
+    createLongTaskStateClient(config),
+    (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
+  ));
+}
+
+export function createLongTaskStatePushTrigger(client, log = () => {}) {
+  // 串行化 push：每次快照接在上一个 push 之后，保证 console 收到的顺序与状态变更
+  // 顺序一致，避免两个快速状态变更的 push 乱序完成、旧快照覆盖新快照的计数。
+  // catch 吞掉错误，chain 不会变 rejected，后续 push 照常排队执行。
+  let chain = Promise.resolve();
+  return (snapshot) => {
+    if (!client || typeof client.push !== "function") return;
+    chain = chain
+      .then(() => client.push(snapshot))
+      .then(() => log(`[longtask-push] pushed ${countTasks(snapshot)} task(s)`))
+      .catch((error) => {
+        const code = error?.code ?? "unknown";
+        const retryable = error?.retryable === true;
+        log(`[longtask-push] snapshot push failed code=${code} retryable=${retryable}`);
+      });
+  };
+}
+
+function createLongTaskStateClient(config) {
+  if (!config.valid) {
+    return { push: async () => { throw new LongTaskStateClientError("service_unavailable", true); } };
+  }
+  return new LongTaskStateClient({
+    baseURL: config.consoleInternalURL,
+    tokenFile: config.serviceTokenFile,
+  });
+}
+
+function countTasks(snapshot) {
+  if (!Array.isArray(snapshot?.pools)) return 0;
+  return snapshot.pools.reduce((sum, pool) => sum + (Array.isArray(pool?.tasks) ? pool.tasks.length : 0), 0);
 }
 
 export function installSkillLease(limit, globals = globalThis) {

@@ -37,6 +37,24 @@ test("browser hooks fail closed for forged profile and missing tool-call id", as
   manager.close();
 });
 
+test("browser hooks log acquire/release through the injected log", async () => {
+  const logs = [];
+  const manager = leases();
+  const hooks = createBrowserLeaseHooks({
+    config,
+    leaseManager: manager,
+    log: (message) => logs.push(message),
+  });
+
+  const ctx1 = context("call-1");
+  await hooks.before(browserEvent("call-1"), ctx1);
+  assert.equal(logs.some((msg) => msg.includes("[browser-lease] acquired") && msg.includes("agent=alice")), true);
+
+  await hooks.after({ ...browserEvent("call-1"), error: "done" }, ctx1);
+  assert.equal(logs.some((msg) => msg.includes("[browser-lease] released")), true);
+  manager.close();
+});
+
 function leases() {
   return new BrowserLeaseManager({ limit: 1, autoStart: false });
 }

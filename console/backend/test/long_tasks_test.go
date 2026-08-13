@@ -2,6 +2,8 @@ package test
 
 import (
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -100,63 +102,6 @@ func TestLongTaskTasks_ListPoolsUsesUnpaginatedSummary(t *testing.T) {
 	}
 }
 
-func TestLongTaskTasks_ReconcileMarksMissingNonTerminalTasksFailed(t *testing.T) {
-	store := newStore(t)
-	now := time.Date(2026, 8, 9, 12, 0, 0, 0, time.UTC)
-	taskA := repo.LongTaskTask{
-		TaskID: "task-a", PodID: "pod-a", HumanUserID: "user-a",
-		PoolKey: "agent:alice:wecom:direct:wx-1", PoolQueued: 1, PoolRunning: 1,
-		AgentID: "alice", PeerID: "wx-1",
-		SkillName: "xdr-query", Status: repo.LongTaskRunning,
-		SubmittedAt: now, StartedAt: now, UpdatedAt: now, LastSeenAt: now,
-	}
-	taskB := repo.LongTaskTask{
-		TaskID: "task-b", PodID: "pod-a", HumanUserID: "user-a",
-		PoolKey: "agent:alice:wecom:direct:wx-1", PoolQueued: 1, PoolRunning: 1,
-		AgentID: "alice", PeerID: "wx-1",
-		SkillName: "xdr-query", Status: repo.LongTaskQueued,
-		SubmittedAt: now, UpdatedAt: now, LastSeenAt: now,
-	}
-	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{taskA, taskB}); err != nil {
-		t.Fatalf("seed Long Tasks: %v", err)
-	}
-	taskA.UpdatedAt = now.Add(time.Minute)
-	taskA.LastSeenAt = now.Add(time.Minute)
-	if err := store.ReconcileLongTaskTasks("pod-a", []repo.LongTaskTask{taskA}); err != nil {
-		t.Fatalf("reconcile Long Tasks: %v", err)
-	}
-	failed, total, err := store.ListLongTaskTasks(repo.LongTaskListFilter{
-		PodID: "pod-a", Status: repo.LongTaskFailed, Limit: 10,
-	})
-	if err != nil {
-		t.Fatalf("ListLongTaskTasks failed: %v", err)
-	}
-	if total != 1 || len(failed) != 1 || failed[0].TaskID != "task-b" ||
-		failed[0].ErrorCode != "long_task_missing_snapshot" || failed[0].EndedAt.IsZero() {
-		t.Fatalf("failed Long Tasks after reconcile = total %d items %+v", total, failed)
-	}
-
-	if err := store.ReconcileLongTaskTasks("pod-a", nil); err != nil {
-		t.Fatalf("reconcile empty Long Tasks: %v", err)
-	}
-	failed, total, err = store.ListLongTaskTasks(repo.LongTaskListFilter{
-		PodID: "pod-a", Status: repo.LongTaskFailed, Limit: 10,
-	})
-	if err != nil {
-		t.Fatalf("ListLongTaskTasks after empty reconcile: %v", err)
-	}
-	if total != 2 || len(failed) != 2 {
-		t.Fatalf("empty reconcile did not fail all non-terminal tasks: total %d items %+v", total, failed)
-	}
-	pools, err := store.ListLongTaskPools(repo.LongTaskListFilter{PodID: "pod-a"})
-	if err != nil {
-		t.Fatalf("ListLongTaskPools after empty reconcile: %v", err)
-	}
-	if len(pools) != 1 || pools[0].PoolQueued != 0 || pools[0].PoolRunning != 0 {
-		t.Fatalf("empty reconcile left stale pool counters: %+v", pools)
-	}
-}
-
 func TestLongTaskAPI_ListAndRejectInvalidStatus(t *testing.T) {
 	env := newTestEnv(t)
 	createTestPod(t, env.store, "pod-a", 10)
@@ -207,4 +152,107 @@ func TestLongTaskAPI_ListAndRejectInvalidStatus(t *testing.T) {
 
 	response = env.do(http.MethodGet, "/api/v1/long-tasks?status=blocked", "")
 	assertStatus(t, response, http.StatusBadRequest)
+}
+
+func TestLongTaskInternalAPI_UpsertsGuardSnapshot(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+	alice := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	// The body mirrors the guard snapshot payload exactly, including the
+	// top-level active/queued/limit and per-task sourceSessionKey fields that
+	// decodeJSONBody (DisallowUnknownFields) would otherwise reject.
+	body := `{"active":1,"queued":0,"limit":2,"pools":[{"poolKey":"agent:alice:wecom:direct:wx-1",` +
+		`"sessionKey":"agent:alice:wecom:direct:wx-1","agentId":"alice","peerId":"wx-1",` +
+		`"queued":0,"active":1,"limit":2,"tasks":[{"taskId":"task-push-1",` +
+		`"poolKey":"agent:alice:wecom:direct:wx-1","sessionKey":"agent:alice:longtask:task-push-1",` +
+		`"sourceSessionKey":"agent:alice:wecom:direct:wx-1","agentId":"alice","peerId":"wx-1",` +
+		`"skillName":"xdr-query","skillRoot":"/skills/xdr-query","status":"running",` +
+		`"submittedAt":"2026-08-09T10:00:00.000Z","startedAt":"2026-08-09T10:00:01.000Z","endedAt":"",` +
+		`"terminalReason":"","errorCode":"","updatedAt":"2026-08-09T10:00:01.000Z"}]}]}`
+
+	rr := doInternalLongTasks(env, token, body)
+	assertStatus(t, rr, http.StatusOK)
+	if updated := decodeAPIData[struct {
+		Updated int `json:"updated"`
+	}](t, rr.Body.Bytes()).Updated; updated != 1 {
+		t.Fatalf("push updated count = %d, want 1", updated)
+	}
+
+	rr = env.do(http.MethodGet, "/api/v1/long-tasks?status=running&pageSize=10", "")
+	assertStatus(t, rr, http.StatusOK)
+	list := decodeAPIData[struct {
+		Items []struct {
+			TaskID      string `json:"taskId"`
+			HumanUserID string `json:"humanUserId"`
+			AgentID     string `json:"agentId"`
+			PoolQueued  int    `json:"poolQueued"`
+			PoolRunning int    `json:"poolRunning"`
+			PoolLimit   int    `json:"poolLimit"`
+			Status      string `json:"status"`
+		} `json:"items"`
+		Total int `json:"total"`
+	}](t, rr.Body.Bytes())
+	if list.Total != 1 || len(list.Items) != 1 || list.Items[0].TaskID != "task-push-1" ||
+		list.Items[0].HumanUserID != alice.HumanUserID || list.Items[0].AgentID != "alice" ||
+		list.Items[0].PoolQueued != 0 || list.Items[0].PoolRunning != 1 ||
+		list.Items[0].PoolLimit != 2 || list.Items[0].Status != repo.LongTaskRunning {
+		t.Fatalf("Long Task after push = %+v", list)
+	}
+}
+
+func TestLongTaskInternalAPI_UnknownAgentUpsertsLeniently(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+
+	body := `{"active":0,"queued":1,"limit":2,"pools":[{"poolKey":"agent:ghost:wecom:direct:wx-9",` +
+		`"sessionKey":"agent:ghost:wecom:direct:wx-9","agentId":"ghost","peerId":"wx-9",` +
+		`"queued":1,"active":0,"limit":2,"tasks":[{"taskId":"task-ghost",` +
+		`"poolKey":"agent:ghost:wecom:direct:wx-9","sessionKey":"agent:ghost:longtask:task-ghost",` +
+		`"sourceSessionKey":"agent:ghost:wecom:direct:wx-9","agentId":"ghost","peerId":"wx-9",` +
+		`"skillName":"xdr-query","skillRoot":"/skills/xdr-query","status":"queued",` +
+		`"submittedAt":"2026-08-09T10:00:00.000Z","startedAt":"","endedAt":"",` +
+		`"terminalReason":"","errorCode":"","updatedAt":"2026-08-09T10:00:00.000Z"}]}]}`
+
+	rr := doInternalLongTasks(env, token, body)
+	assertStatus(t, rr, http.StatusOK)
+	if updated := decodeAPIData[struct {
+		Updated int `json:"updated"`
+	}](t, rr.Body.Bytes()).Updated; updated != 1 {
+		t.Fatalf("push updated count = %d, want 1", updated)
+	}
+
+	items, total, err := env.store.ListLongTaskTasks(repo.LongTaskListFilter{
+		PodID: "pod-a", AgentID: "ghost", Limit: 10,
+	})
+	if err != nil || total != 1 || len(items) != 1 || items[0].HumanUserID != "" {
+		t.Fatalf("lenient upsert for unknown agent = total %d items %+v, err %v", total, items, err)
+	}
+}
+
+func TestLongTaskInternalAPI_InvalidSkillNameRejected(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+
+	// skillName 为空触发 repo.ErrInvalidSkill，handler 应映射为 400 请求体错误
+	// （而非误导性的"无效 Skill"客户端错误码），避免把服务端数据校验失败伪装成 Skill 错误。
+	body := `{"active":0,"queued":0,"limit":2,"pools":[{"poolKey":"agent:alice:wecom:direct:wx-1",` +
+		`"sessionKey":"agent:alice:wecom:direct:wx-1","agentId":"alice","peerId":"wx-1",` +
+		`"queued":0,"active":0,"limit":2,"tasks":[{"taskId":"task-invalid",` +
+		`"poolKey":"agent:alice:wecom:direct:wx-1","sessionKey":"agent:alice:longtask:task-invalid",` +
+		`"sourceSessionKey":"agent:alice:wecom:direct:wx-1","agentId":"alice","peerId":"wx-1",` +
+		`"skillName":"","skillRoot":"/skills/xdr-query","status":"queued",` +
+		`"submittedAt":"2026-08-09T10:00:00.000Z","startedAt":"","endedAt":"",` +
+		`"terminalReason":"","errorCode":"","updatedAt":"2026-08-09T10:00:00.000Z"}]}]}`
+
+	rr := doInternalLongTasks(env, token, body)
+	assertStatus(t, rr, http.StatusBadRequest)
+}
+
+func doInternalLongTasks(env *testEnv, token, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/internal/v1/long-tasks", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	recorder := httptest.NewRecorder()
+	env.h.ServeHTTP(recorder, req)
+	return recorder
 }

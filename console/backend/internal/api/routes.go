@@ -88,6 +88,7 @@ func (s *Server) registerInternalRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /internal/v1/bindings/activate", s.handleActivateBinding)
 	mux.HandleFunc("POST /internal/v1/session-credentials/resolve", s.handleResolveSessionCredential)
 	mux.HandleFunc("POST /internal/v1/skill-executions", s.handleUpsertSkillExecution)
+	mux.HandleFunc("POST /internal/v1/long-tasks", s.handleUpsertLongTasks)
 	mux.HandleFunc("POST /internal/v1/skills/private/ingest", s.handleIngestPrivateSkill)
 }
 

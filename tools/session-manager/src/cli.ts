@@ -86,7 +86,14 @@ function failure(error: SessionManagerError): CLIResult {
 }
 
 async function main(): Promise<void> {
-  const result = await runCLI(process.argv.slice(2), process.env);
+  // CLI 是独立进程（skill 脚本通过 `get-state` 调用），日志走 stderr 便于脚本透传；
+  // openclaw 插件路径（session_get_state 工具）则由 openclaw-plugin.mjs 注入 api.logger。
+  const result = await runCLI(
+    process.argv.slice(2),
+    process.env,
+    undefined,
+    { log: (message) => console.warn(message) },
+  );
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
   process.exitCode = result.exitCode;

@@ -27,6 +27,8 @@ export class LongTaskManager {
   #stateFile;
   #writesSinceCompact = 0;
   #now;
+  #onChange;
+  #log;
 
   constructor(options) {
     this.limit = positiveInteger(options?.limit) ? options.limit : 2;
@@ -42,6 +44,7 @@ export class LongTaskManager {
     this.#runTask = options?.runTask ?? spawnOpenClawTask;
     this.#stateFile = options?.stateFile ?? DEFAULT_STATE_FILE;
     this.#now = options?.now ?? (() => new Date());
+    this.#log = options?.log ?? (() => {});
     this.shared = true;
     this.closed = false;
     this.#loadInterruptedTasks();
@@ -53,6 +56,7 @@ export class LongTaskManager {
     const pool = this.#pool(task);
     this.#purgeTerminal(pool);
     const queuedAhead = pool.queue.length;
+    this.#log(`[muad-runtime-guard] long task submitted taskId=${task.taskId} skill=${task.skillName} queuedAhead=${queuedAhead}`);
     if (pool.active.size < this.limit) {
       this.#start(pool, task);
       return { task, queuedAhead: 0, ...poolCounts(pool, this.limit) };
@@ -107,6 +111,18 @@ export class LongTaskManager {
       queued,
       limit: this.limit,
       pools: pools.sort((left, right) => left.poolKey.localeCompare(right.poolKey)),
+    };
+  }
+
+  subscribe(onChange) {
+    this.#onChange = onChange;
+    try {
+      if (typeof onChange === "function") onChange(this.snapshot());
+    } catch (error) {
+      this.#log(`[muad-runtime-guard] long task onChange failed: ${errorMessage(error)}`);
+    }
+    return () => {
+      if (this.#onChange === onChange) this.#onChange = undefined;
     };
   }
 
@@ -169,6 +185,7 @@ export class LongTaskManager {
     task.startedAt = this.#now().toISOString();
     task.updatedAt = task.startedAt;
     pool.active.set(task.taskId, task);
+    this.#log(`[muad-runtime-guard] long task started taskId=${task.taskId} skill=${task.skillName}`);
     this.#record(task);
     void this.#runTask(task, { timeoutSeconds: this.timeoutSeconds })
       .then(() => this.#finish(pool, task, "succeeded", "", ""))
@@ -183,6 +200,7 @@ export class LongTaskManager {
     task.updatedAt = endedAt;
     task.terminalReason = reason;
     task.errorCode = code;
+    this.#log(`[muad-runtime-guard] long task ${status} taskId=${task.taskId} skill=${task.skillName}${code ? ` errorCode=${code}` : ""}`);
     pool.terminal.push(task);
     this.#record(task);
     this.#drain(pool);
@@ -209,7 +227,17 @@ export class LongTaskManager {
       chmodSync(this.#stateFile, 0o600);
       this.#compactStateWhenDue();
     } catch (error) {
-      console.warn(`[muad-runtime-guard] long task state write failed: ${errorMessage(error)}`);
+      this.#log(`[muad-runtime-guard] long task state write failed: ${errorMessage(error)}`);
+    }
+    this.#notifyChange();
+  }
+
+  #notifyChange() {
+    if (typeof this.#onChange !== "function") return;
+    try {
+      this.#onChange(this.snapshot());
+    } catch (error) {
+      this.#log(`[muad-runtime-guard] long task onChange failed: ${errorMessage(error)}`);
     }
   }
 
@@ -222,6 +250,9 @@ export class LongTaskManager {
 
   #loadInterruptedTasks() {
     const tasks = loadInterruptedTasks(this.#stateFile, this.#now);
+    if (tasks.length > 0) {
+      this.#log(`[muad-runtime-guard] long task restored ${tasks.length} interrupted task(s)`);
+    }
     for (const task of tasks) {
       const pool = this.#pool(task);
       pool.terminal.push(task);

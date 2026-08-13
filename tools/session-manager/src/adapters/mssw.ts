@@ -61,19 +61,28 @@ export type MSSWCredential = {
 };
 
 export class MSSWSessionAdapter implements PlatformAdapter {
-  readonly platform = "mssw";
+  readonly platform: string;
   readonly #fetch: FetchLike;
   readonly #now: () => number;
+  readonly #branchTag: string;
+  readonly #log: (message: string) => void;
 
-  // mssw environments (SIT/UAT/prod) all use self-signed TLS certificates on the
+  // mssw/mssp environments (SIT/UAT/prod) all use self-signed TLS certificates on the
   // internal network, so the adapter defaults to an insecure fetch. Tests inject a
   // mock fetch to keep unit tests offline; explicit fetch injection stays possible.
+  // platform/branchTag 默认值保持 mssw 现状，mssp 用薄子类覆盖这两个参数复用全部登录实现。
   constructor(
     fetchLike: FetchLike = createInsecureFetch(),
     now: () => number = () => Math.floor(Date.now() / 1000),
+    platform = "mssw",
+    branchTag = "MSSW-ADAPTER",
+    log: (message: string) => void = () => {},
   ) {
     this.#fetch = fetchLike;
     this.#now = now;
+    this.platform = platform;
+    this.#branchTag = branchTag;
+    this.#log = log;
   }
 
   async refresh(input: AdapterRefreshInput): Promise<AdapterSessionState> {
@@ -84,13 +93,15 @@ export class MSSWSessionAdapter implements PlatformAdapter {
       const body = "";
       const signPath = stripGatewayPrefix(url.pathname);
       const csrfToken = credential.csrfEnabled ? await this.#fetchCSRFToken(credential, input.signal) : "";
+      this.#log(`[session-manager] platform=${this.platform} login request path=${signPath} csrf=${credential.csrfEnabled ? "on" : "off"}`);
       const response = await this.#fetch(url, {
         method: "POST",
         signal: input.signal,
         headers: this.#buildHeaders(credential, signPath, url.search, body, csrfToken),
         body,
       });
-      return await readSessionResponse(response, url, credential, this.#now);
+      const state = await readSessionResponse(response, url, credential, this.#now, this.platform);
+      return state;
     } catch (error) {
       if (error instanceof PlatformAdapterError) throw error;
       throw new PlatformAdapterError(false, true, "network", "platform network request failed");
@@ -129,6 +140,7 @@ export class MSSWSessionAdapter implements PlatformAdapter {
       .map((header) => parseSetCookie(header, url))
       .filter((cookie): cookie is SessionCookie => cookie !== null);
     const csrf = cookies.find((cookie) => cookie.name === CSRF_COOKIE_NAME);
+    this.#log(`[session-manager] platform=${this.platform} csrf token ${csrf ? "fetched" : "absent"}`);
     return csrf?.value ?? "";
   }
 
@@ -144,7 +156,7 @@ export class MSSWSessionAdapter implements PlatformAdapter {
     const signedHeaders: Record<string, string> = { [SIGN_DATE_HEADER]: ts, "content-type": contentType };
     const headers: Record<string, string> = {
       "Content-Type": contentType,
-      "X-Branch-Tag": "MSSW-ADAPTER",
+      "X-Branch-Tag": this.#branchTag,
       "Agent-Nonce": randomUUID().replace(/-/gu, ""),
     };
     const canonical = makeCanonicalRequest("POST", signPath, query, signedHeaders, body);
@@ -206,6 +218,7 @@ async function readSessionResponse(
   url: URL,
   credential: MSSWCredential,
   now: () => number,
+  platform: string,
 ): Promise<AdapterSessionState> {
   if (response.status === 401 || response.status === 403) {
     throw new PlatformAdapterError(true, false, "auth_failed", "platform returned 401/403");
@@ -225,7 +238,7 @@ async function readSessionResponse(
     const authenticationFailed = mapped?.authenticationFailed ?? false;
     const retryable = mapped?.retryable ?? true;
     const reason = mapped?.reason ?? "unknown";
-    const message = business.msg || `mssw code=${String(business.code)}`;
+    const message = business.msg || `${platform} code=${String(business.code)}`;
     throw new PlatformAdapterError(authenticationFailed, retryable, reason, message, business.code);
   }
   const cookies = setCookieHeaders(response.headers)

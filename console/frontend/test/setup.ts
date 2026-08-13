@@ -17,4 +17,6 @@ await import("../src/i18n");
 HTMLCanvasElement.prototype.getContext = (() => ({
   fillRect: () => undefined,
   fillStyle: "",
-})) as typeof HTMLCanvasElement.prototype.getContext;
+})) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+
+export {};

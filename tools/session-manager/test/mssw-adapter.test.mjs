@@ -361,3 +361,27 @@ test("mssw adapter treats unknown body code as retryable service error and forwa
       && error.message === "unknown failure",
   );
 });
+
+test("mssw adapter emits login request log through the injected log callback", async () => {
+  const logs = [];
+  const log = (message) => logs.push(message);
+  const credential = () => ({
+    humanUserId: "user-a", podId: "pod-a", agentId: "alice", skillName: "mssw-query",
+    platform: "mssw", credentialFingerprint: "sha256:credential",
+    credentials: {
+      baseUrl: "https://sitmssw.soar.sangfor.com",
+      sessionEndpoint: "/gateway/mss-auth-acl-service/v1/certification/login_agent",
+      ak: "agent_ak_test", sk: "secret-sk-value",
+    },
+  });
+
+  const ok = new MSSWSessionAdapter(
+    async () => new Response("", {
+      status: 200,
+      headers: { "set-cookie": "soc-token=jwt-value; Path=/; HttpOnly" },
+    }),
+    () => 1786361604, undefined, undefined, log,
+  );
+  await ok.refresh({ credential: credential(), signal: new AbortController().signal });
+  assert.equal(logs.some((msg) => msg.includes("platform=mssw") && msg.includes("login request") && msg.includes("path=/v1/certification/login_agent")), true);
+});

@@ -4,11 +4,9 @@ package collector
 import (
 	"context"
 	"errors"
-	"log"
 	"sync"
 	"time"
 
-	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
@@ -37,11 +35,6 @@ type Collector struct {
 type PodSource interface {
 	ListPods(filter repo.PodListFilter) ([]repo.PodSummary, int, error)
 	GetResourceGlobal() (repo.ResourceConfig, error)
-}
-
-type longTaskSource interface {
-	ListHumanUsersByPod(podID string, filter repo.HumanUserListFilter) ([]repo.HumanUser, int, error)
-	ReconcileLongTaskTasks(podID string, tasks []repo.LongTaskTask) error
 }
 
 // New builds a Pod collector.
@@ -101,7 +94,6 @@ func (c *Collector) probeRunningPods(ctx context.Context, snaps map[string]monit
 			pctx, cancel := context.WithTimeout(ctx, probeTimeout)
 			defer cancel()
 			mergeGatewayStatus(&base, gateway.Probe(pctx, c.drv, id))
-			c.collectLongTasks(pctx, id)
 			mu.Lock()
 			results[id] = base
 			mu.Unlock()
@@ -205,67 +197,3 @@ func mergeGatewayStatus(snapshot *monitor.Snapshot, status gateway.Status) {
 	snapshot.BrowserQueued = status.BrowserQueued
 }
 
-func (c *Collector) collectLongTasks(ctx context.Context, podID string) {
-	source, ok := c.source.(longTaskSource)
-	if !ok {
-		return
-	}
-	tasks, err := gateway.LongTasks(ctx, c.drv, podID)
-	if err != nil {
-		log.Printf("long_task_snapshot_failed pod=%s error=%s", podID, auditlog.RedactDiagnostic(err.Error()))
-		return
-	}
-	userIDs := c.humanUserIDsByAgent(podID, source)
-	if err := source.ReconcileLongTaskTasks(podID, repoLongTaskTasks(podID, tasks, userIDs)); err != nil {
-		log.Printf("long_task_reconcile_failed pod=%s error=%s", podID, auditlog.RedactDiagnostic(err.Error()))
-	}
-}
-
-func (c *Collector) humanUserIDsByAgent(podID string, source longTaskSource) map[string]string {
-	users, _, err := source.ListHumanUsersByPod(podID, repo.HumanUserListFilter{})
-	if err != nil {
-		return map[string]string{}
-	}
-	index := make(map[string]string, len(users))
-	for _, user := range users {
-		index[user.AgentID] = user.HumanUserID
-	}
-	return index
-}
-
-func repoLongTaskTasks(
-	podID string, tasks []gateway.LongTaskRuntimeTask, userIDs map[string]string,
-) []repo.LongTaskTask {
-	output := make([]repo.LongTaskTask, 0, len(tasks))
-	for _, task := range tasks {
-		output = append(output, repo.LongTaskTask{
-			TaskID: task.TaskID, PodID: podID, HumanUserID: userIDs[task.AgentID],
-			PoolKey: poolKey(task), PoolQueued: task.PoolQueued, PoolRunning: task.PoolRunning,
-			PoolLimit: task.PoolLimit, AgentID: task.AgentID, PeerID: task.PeerID,
-			SkillName: task.SkillName, SkillRoot: task.SkillRoot, Status: task.Status,
-			SubmittedAt: parseRuntimeTime(task.SubmittedAt), StartedAt: parseRuntimeTime(task.StartedAt),
-			EndedAt: parseRuntimeTime(task.EndedAt), TerminalReason: task.TerminalReason,
-			ErrorCode: task.ErrorCode, UpdatedAt: parseRuntimeTime(task.UpdatedAt),
-			LastSeenAt: time.Now().UTC(),
-		})
-	}
-	return output
-}
-
-func poolKey(task gateway.LongTaskRuntimeTask) string {
-	if task.PoolKey != "" {
-		return task.PoolKey
-	}
-	return "agent:" + task.AgentID + ":unknown:direct:" + task.PeerID
-}
-
-func parseRuntimeTime(value string) time.Time {
-	if value == "" {
-		return time.Time{}
-	}
-	parsed, err := time.Parse(time.RFC3339Nano, value)
-	if err != nil {
-		return time.Time{}
-	}
-	return parsed
-}

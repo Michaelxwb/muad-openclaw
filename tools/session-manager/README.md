@@ -62,7 +62,7 @@ skill-scoped 文件返回给调用方：
 
 session-manager 的登录逻辑以 `PlatformAdapter` 形式接入，按平台名选择实现：
 
-- **预注册适配器**：在 `src/adapters/registry.ts` 的 `createInstalledAdapterRegistry` 中显式注册，目前只有 `mssw`。
+- **预注册适配器**：在 `src/adapters/registry.ts` 的 `createInstalledAdapterRegistry` 中显式注册，目前有 `mssw` 与 `mssp`（`mssp` 复用 `mssw` 的登录实现，仅平台名与 `X-Branch-Tag` 不同）。
 - **通用 HTTP 适配器（fallback）**：任何符合 `PLATFORM_PATTERN` 的平台名都会落到 `HTTPSessionAdapter`，按下面"通用 HTTP 平台"字段读取凭据，无需写代码。
 - **新平台定制适配器**：当平台登录需要特殊签名、CSRF、多步流程时，在 `src/adapters/` 下新增一个 `.ts` 实现 `PlatformAdapter` 接口，并在 `registry.ts` 的 `createInstalledAdapterRegistry` 中注册。
 
@@ -115,6 +115,16 @@ session-manager 的登录逻辑以 `PlatformAdapter` 形式接入，按平台名
 - `csrfEnabled=true` 时，先 GET `/v1/certification/get_token` 拿 `csrf_token` cookie，再以 `x-csrftoken` 头附在登录请求上。
 - 登录响应通过 `Set-Cookie` 设置 `soc-token`（JWT）和 `login-source=agent`。
 - 配置 `healthEndpoint` 时，缓存复用前会 GET 校验；401/403 返回 `false` 触发重新登录。
+
+### MSSP 平台适配器（复用 MSSW 实现）
+
+`mssp` 的登录协议与 `mssw` **完全一致**（同一套 Sangfor SigV4 风格 AK/SK 签名、同一批业务返回码、同样的 CSRF 与 health 校验），差异只有平台名与请求头 `X-Branch-Tag: MSSP-ADAPTER`。因此 `MSSPSessionAdapter` 是 `MSSWSessionAdapter` 的薄子类：
+
+- `MSSWSessionAdapter` 的构造器把平台名与 branch tag 参数化（`platform = "mssw"`、`branchTag = "MSSW-ADAPTER"`），默认值保持 mssw 现状。
+- `MSSPSessionAdapter` 仅用 `super(fetchLike, now, "mssp", "MSSP-ADAPTER")` 覆盖这两个参数，`refresh/validate/CSRF/签名` 全部继承基类实现。
+- 凭据 JSON 字段与签名细节和上面的 MSSW 平台适配器相同，仅 `baseUrl` 换成 mssp 环境地址（如 `https://sitmssp.soar.sangfor.com`）。
+
+新增一个复用 mssw 协议的平台时，照此再加一个 ~12 行的薄子类并在 `registry.ts` 注册即可，无需复制签名/错误映射逻辑。
 
 ## 接入一个新平台的登录逻辑
 

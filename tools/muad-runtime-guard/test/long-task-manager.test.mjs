@@ -257,6 +257,94 @@ test("LongTaskManager resolves the peer for a task session across running, queue
   assert.equal(manager.resolvePeerForTaskId("no-such-task"), "");
 });
 
+test("LongTaskManager notifies onChange on submit, queue, and finish", async () => {
+  const runs = [];
+  let now = new Date("2026-08-09T10:00:00.000Z");
+  const manager = new LongTaskManager({
+    limit: 1,
+    stateFile: join(mkdtempSync(join(tmpdir(), "muad-long-task-change-")), "state.jsonl"),
+    now: () => now,
+    runTask: (task) => new Promise((resolve) => runs.push({ task, resolve })),
+  });
+
+  const snapshots = [];
+  manager.subscribe((snapshot) => snapshots.push(snapshot));
+
+  // subscribe fires immediately with the current (empty) snapshot.
+  assert.equal(snapshots.length, 1);
+  assert.equal(snapshots[0].active, 0);
+
+  manager.submit(taskInput("first"));
+  assert.equal(snapshots.length, 2);
+  assert.equal(snapshots[1].active, 1);
+
+  manager.submit(taskInput("second"));
+  assert.equal(snapshots.length, 3);
+  assert.equal(snapshots[2].active, 1);
+  assert.equal(snapshots[2].queued, 1);
+
+  now = new Date("2026-08-09T10:01:00.000Z");
+  runs[0].resolve();
+  await tick();
+
+  // finish → onChange, then drain starts the queued task → onChange.
+  assert.equal(snapshots.length, 5);
+  assert.equal(snapshots[3].pools[0].tasks.some((task) => task.status === "succeeded"), true);
+  assert.equal(snapshots[4].active, 1);
+  assert.equal(snapshots[4].queued, 0);
+});
+
+test("LongTaskManager unsubscribe stops onChange notifications", async () => {
+  const runs = [];
+  const manager = new LongTaskManager({
+    limit: 1,
+    stateFile: join(mkdtempSync(join(tmpdir(), "muad-long-task-unsub-")), "state.jsonl"),
+    runTask: (task) => new Promise((resolve) => runs.push({ task, resolve })),
+  });
+
+  const snapshots = [];
+  const unsubscribe = manager.subscribe((snapshot) => snapshots.push(snapshot));
+  manager.submit(taskInput("first"));
+  assert.equal(snapshots.length, 2);
+  unsubscribe();
+
+  runs[0].resolve();
+  await tick();
+  assert.equal(snapshots.length, 2);
+});
+
+test("LongTaskManager subscribe fires immediately with restored interrupted tasks", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-long-task-subscribe-interrupted-"));
+  const stateFile = join(root, "state.jsonl");
+  writeFileSync(stateFile, `${JSON.stringify({
+    taskId: "task-1",
+    poolKey: "agent:alice:wecom:direct:wx-1",
+    sourceSessionKey: "agent:alice:wecom:direct:wx-1",
+    sessionKey: "agent:alice:longtask:task-1",
+    agentId: "alice",
+    peerId: "wx-1",
+    skillName: "xdr-query",
+    skillRoot: "/skills/xdr-query",
+    status: "running",
+    submittedAt: "2026-08-09T10:00:00.000Z",
+    startedAt: "2026-08-09T10:00:01.000Z",
+    updatedAt: "2026-08-09T10:00:01.000Z",
+  })}\n`);
+
+  const manager = new LongTaskManager({
+    stateFile,
+    now: () => new Date("2026-08-09T10:05:00.000Z"),
+    runTask: async () => {},
+  });
+
+  const snapshots = [];
+  manager.subscribe((snapshot) => snapshots.push(snapshot));
+  const tasks = snapshots[0].pools[0].tasks;
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].status, "failed");
+  assert.equal(tasks[0].errorCode, "long_task_interrupted");
+});
+
 function failingSpawn(code, stderr) {
   return () => {
     const child = new EventEmitter();
@@ -283,6 +371,26 @@ function spawnTask() {
     replyChannel: "wecom",
   };
 }
+
+test("LongTaskManager logs submit/start/finish through the injected log", async () => {
+  const logs = [];
+  const runs = [];
+  const manager = new LongTaskManager({
+    limit: 1,
+    stateFile: join(mkdtempSync(join(tmpdir(), "muad-long-task-log-")), "state.jsonl"),
+    now: () => new Date("2026-08-09T10:00:00.000Z"),
+    runTask: (task) => new Promise((resolve) => runs.push({ task, resolve })),
+    log: (message) => logs.push(message),
+  });
+
+  manager.submit(taskInput("first"));
+  assert.equal(logs.some((msg) => msg.includes("long task submitted") && msg.includes("xdr-query")), true);
+  assert.equal(logs.some((msg) => msg.includes("long task started") && msg.includes("xdr-query")), true);
+
+  runs[0].resolve();
+  await tick();
+  assert.equal(logs.some((msg) => msg.includes("long task succeeded") && msg.includes("xdr-query")), true);
+});
 
 function taskInput(objective) {
   return {

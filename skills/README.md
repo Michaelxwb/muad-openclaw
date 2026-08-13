@@ -80,6 +80,25 @@ cookies 使用（文件只含当前 Skill 声明的平台）。cookie 不进入 
 需要浏览器能力（`capabilities: ["browser"]`）的 Skill 仍走
 `session_get_state` 模型工具，因为只有插件工具能调用 `browser.request`。
 
+## 写 Skill 的关键提醒
+
+### skill 名 ≠ platform 名，别让两者长得像
+
+- `SKILL.md` 的 `name` 是 **skill 名**（横杠 `-`，如 `smoke-platform`、`policy-check-new`）。
+- `muad.skill.json` 的 `platforms` 是 **平台名**（Console 里配置的自由字符串，如 `mssw`、`smoke_platform`）。
+- 两者是不同概念，**不要长得像**（反例：`smoke-platform` vs `smoke_platform` 只差横杠/下划线）——模型会把平台名当 skill 名传给工具，Console 按 skill 名解析时找不到、报 `agent is not active`。
+- SKILL.md 正文若提到平台，明确写「skill 名是 X，平台名是 Y」。
+
+### 脚本自助：skill 名硬编码 + 失败 fail loud
+
+- 脚本里 `session-manager get-state --skill-name <skill名>` 的 skill 名**硬编码**（不要从模型或参数动态取），保证解析稳定。
+- 脚本失败必须写 **stderr** 并 **exit 非 0**（fail loud）；错误写 stdout 会导致 exec 失败日志转发不到，排查链路断掉。
+
+### 引导模型跑脚本，而非直接调工具
+
+- SKILL.md 顶部用「快速调用速查」直接列出脚本命令（如 `node scripts/run.mjs`），引导模型跑脚本。
+- 不要让模型直接调 `session_get_state` 工具——该工具需要 `skillName` 参数，模型容易传成平台名。
+
 ## 长任务反馈
 
 最小版本不再内置独立进度 CLI。长耗时任务先通过 OpenClaw 原生最终回复返回结果；需要阶段性反馈时，后续迭代由平台 adapter 或新的受控执行层补齐。

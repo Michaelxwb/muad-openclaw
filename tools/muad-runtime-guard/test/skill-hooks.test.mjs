@@ -46,6 +46,27 @@ test("skill hooks recognize expanded native Skill prompts and stable run keys", 
   ]));
 });
 
+test("skill hooks log acquire/block/release through the injected log", async () => {
+  const logs = [];
+  const manager = leases();
+  const hooks = createSkillLeaseHooks({
+    config,
+    leaseManager: manager,
+    log: (message) => logs.push(message),
+  });
+
+  await hooks.before(skillEvent("run-1", "/skill:xdr-query now"), context("run-1"));
+  assert.equal(logs.some((msg) => msg.includes("[skill-lease] acquired") && msg.includes("skill=xdr-query")), true);
+
+  const busy = await hooks.before(skillEvent("run-2", "/skill:mssw-query now"), context("run-2"));
+  assert.equal(busy.outcome, "block");
+  assert.equal(logs.some((msg) => msg.includes("[skill-lease] blocked") && msg.includes("skill_busy")), true);
+
+  await hooks.end({ runId: "run-1" }, context("run-1"));
+  assert.equal(logs.some((msg) => msg.includes("[skill-lease] released")), true);
+  manager.close();
+});
+
 function leases() {
   return new SkillLeaseManager({ limit: 1, waitTimeoutMs: 1, autoStart: false });
 }

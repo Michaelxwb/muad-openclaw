@@ -14,6 +14,21 @@ verifiers:
     config:
       checklist: Confirm system-first resolution, system_protected, and no silent public/private overwrite without allow_override.
       owner: project-owner
+  - rule: RULE-runtime-log-injection-001
+    type: manual
+    config:
+      checklist: Confirm tool/plugin modules inject `log` (default no-op) instead of scattered console.*; plugin path uses api.logger.warn, CLI path uses console.warn.
+      owner: project-owner
+  - rule: RULE-runtime-log-prefix-001
+    type: manual
+    config:
+      checklist: Confirm log lines carry a stable module prefix ([session-manager]/[muad-runtime-guard]) and [<module>-<action>] sub-tags.
+      owner: project-owner
+  - rule: RULE-runtime-skill-fail-loud-001
+    type: manual
+    config:
+      checklist: Confirm skill scripts write failures to stderr and exit non-zero; stdout reserved for machine-readable result.
+      owner: project-owner
 ---
 
 # Runtime Skill Execution
@@ -34,9 +49,27 @@ public vs private 同名：默认冲突失败
 install private "web-tools-guide" over system seed without error
 ```
 
+✅ 失败写 stderr + exit 非 0（fail loud）
+
+```js
+process.stderr.write(`${error.message}\n`);
+process.exitCode = 1;
+```
+
+❌ 失败写 stdout（exec 失败日志转发不到，guard hook 只读 stderr）
+
+```python
+def _die(message):
+    print(f"[ERROR] {message}")   # ← 写 stdout，排查时日志进不了 openclaw 日志
+    sys.exit(1)
+```
+
 ## Rules
 - [RULE-runtime-skill-001] Skills must honor system/public/private layering, require explicit activation/policy gates before tools run, emit progress/telemetry without secrets, and respect concurrency/lease limits.
 - [RULE-runtime-skill-layering-001] Resolution order prefers system (`system_protected`) over public/private; public/private name conflicts must not silently overwrite—override only via explicit allow_override policy.
+- [RULE-runtime-log-injection-001] Tool/plugin modules must receive logging via an injected `log` callback (default no-op) instead of scattered `console.*`; the openclaw plugin path injects `api.logger?.warn`, the CLI path injects `console.warn`.
+- [RULE-runtime-log-prefix-001] Log lines must carry a stable module prefix (`[session-manager]`, `[muad-runtime-guard]`) with `[<module>-<action>]` sub-tags for grep-ability.
+- [RULE-runtime-skill-fail-loud-001] Skill scripts must report failures to stderr and exit non-zero (fail loud); stdout is reserved for the machine-readable result. Errors written to stdout break exec-failure log forwarding.
 
 ## Guidance
 - `SKILL.md` 为最小必需；`muad.skill.json` 为 managed 编排增强
@@ -57,3 +90,5 @@ install private "web-tools-guide" over system seed without error
 - 禁止执行日志写入密钥或完整 cookie
 - 禁止无并发上限地并行打开浏览器会话
 - 禁止 private 默认覆盖 public/system
+- 禁止在工具/插件模块散落 `console.*`（应走注入的 `log`）
+- 禁止 skill 脚本把失败信息写 stdout（应写 stderr 并 exit 非 0）

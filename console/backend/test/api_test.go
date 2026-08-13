@@ -47,7 +47,6 @@ type fakeDriver struct {
 	logsErr           error
 	cleanupErr        error
 	execCalls         []execCall
-	longTasksOutput   string
 	// channelDisconnected makes `channels status` report no linked account,
 	// so the QR handler triggers a login. Default (false) = connected.
 	channelDisconnected bool
@@ -226,11 +225,6 @@ func (f *fakeDriver) Exec(_ context.Context, podID string, cmd ...string) (strin
 			generation = 3
 		}
 		return fmt.Sprintf(`{"ok":true,"generation":%d,"skill":{"active":1,"queued":2},"browser":{"active":1,"queued":0}}`, generation), nil
-	case strings.Contains(joined, "muad.runtime.long-tasks"):
-		if f.longTasksOutput != "" {
-			return f.longTasksOutput, nil
-		}
-		return `{"pools":[]}`, nil
 	default:
 		// `openclaw channels status --json`.
 		if f.channelDisconnected {
