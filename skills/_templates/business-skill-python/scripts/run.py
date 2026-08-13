@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 import subprocess
 import sys
 
@@ -20,6 +21,12 @@ def session_state():
 
 def main():
     state = session_state()
+    # 写文件用 SKILL_OUTPUT_DIR（guard 注入的 per-agent 目录）；别写 Skill 根目录（只读）或 /tmp
+    out_dir = os.environ.get("SKILL_OUTPUT_DIR")
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+        with open(os.path.join(out_dir, "result.json"), "w", encoding="utf-8") as f:
+            json.dump({"ok": True}, f, ensure_ascii=False)
     print(json.dumps({"ok": True, "sessionState": state.get("state", "ready")}, ensure_ascii=False))
 
 
