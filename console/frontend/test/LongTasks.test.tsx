@@ -2,7 +2,12 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LongTask, LongTaskListResult, LongTaskPool } from "../src/api";
-import { LongTasks } from "../src/pages/LongTasks";
+import {
+  LONG_TASK_POD_USER_COLUMN_WIDTH,
+  LONG_TASK_TABLE_MIN_WIDTH,
+  LONG_TASK_TABLE_SCROLL_X,
+  LongTasks,
+} from "../src/pages/LongTasks";
 
 const apiMocks = vi.hoisted(() => ({
   listLongTasks: vi.fn(),
@@ -96,8 +101,33 @@ describe("LongTasks", () => {
     expect(screen.getAllByLabelText("待消费: 1; 执行中: 1; 上限: 2")).toHaveLength(2);
     expect(screen.getAllByText(formatDate(runningTask.startedAt)).length).toBeGreaterThan(0);
     expect(screen.getAllByText(formatClock(runningTask.startedAt)).length).toBeGreaterThan(0);
+    const taskTable = screen.getByRole("grid");
+    const taskTableWrapper = taskTable.closest(".semi-table-wrapper");
+    if (!taskTableWrapper) throw new Error("missing long task table wrapper");
+    expect(taskTable).toHaveStyle({ width: LONG_TASK_TABLE_SCROLL_X });
+    expect(taskTableWrapper.getAttribute("style")).toContain(
+      `--long-task-table-min-width: ${LONG_TASK_TABLE_MIN_WIDTH}px`,
+    );
+    const columnStyles = Array.from(taskTable.querySelectorAll("col")).map(
+      (column) => column.getAttribute("style") ?? "",
+    );
+    expect(columnStyles[0]).not.toContain("width");
+    expect(columnStyles[1]).not.toContain("width");
+    expect(columnStyles[2]).toContain(`width: ${LONG_TASK_POD_USER_COLUMN_WIDTH}px`);
+    expect(columnStyles[3]).not.toContain("width");
+    expect(columnStyles[8]).toContain("width: 130px");
 
-    fireEvent.click(screen.getAllByRole("button", { name: /主节点/ })[0]);
+    const podButtons = screen.getAllByRole("button", { name: /主节点/ });
+    const podUserCell = podButtons[0].closest('[role="gridcell"]');
+    if (!podUserCell?.firstElementChild) throw new Error("missing pod/user cell content");
+    const podUserLines = Array.from(podUserCell.firstElementChild.children);
+    expect(podUserLines).toHaveLength(3);
+    expect(podUserLines[0]).toHaveTextContent("主节点");
+    expect(podUserLines[0]).toHaveTextContent("pod-a");
+    expect(podUserLines[1]).toHaveTextContent("alice");
+    expect(podUserLines[2]).toHaveTextContent("张三");
+
+    fireEvent.click(podButtons[0]);
     expect(onOpenPod).toHaveBeenCalledWith("pod-a");
   });
 

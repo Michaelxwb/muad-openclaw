@@ -10,6 +10,10 @@
   width: 140px;
 }
 
+.longTaskTable :global(.semi-table) {
+  min-width: var(--long-task-table-min-width);
+}
+
 .mono {
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
@@ -23,6 +27,48 @@
   gap: 2px;
   min-width: 0;
   text-align: left;
+}
+
+.podUserCell {
+  grid-template-rows: repeat(3, auto);
+  width: 100%;
+}
+
+.podUserLine {
+  display: block;
+  min-width: 0;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.podUserLine:global(.semi-button) {
+  width: auto;
+  max-width: none;
+}
+
+.podUserLine :global(.semi-button-content) {
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.podLineText {
+  display: inline-flex;
+  max-width: none;
+  min-width: 0;
+  gap: 6px;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.podLineText > span {
+  flex: 0 0 auto;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .primary {

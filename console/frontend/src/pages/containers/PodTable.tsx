@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Table, Tag, Tooltip } from "@douyinfe/semi-ui";
 import type { TablePaginationProps } from "@douyinfe/semi-ui/lib/es/table/interface";
@@ -7,6 +8,15 @@ import { renderTablePagination } from "../../components/Pagination";
 import { RowActions } from "../../components/RowActions";
 import { applyStatusTags, podActions, statusTags } from "./model";
 import styles from "./PodTable.module.css";
+
+export const POD_TABLE_MIN_WIDTH = 1340;
+export const POD_TABLE_SCROLL_X = "100%";
+
+type PodTableStyle = CSSProperties & { "--pod-table-min-width": string };
+
+const POD_TABLE_STYLE: PodTableStyle = {
+  "--pod-table-min-width": `${POD_TABLE_MIN_WIDTH}px`,
+};
 
 interface Props {
   items: Pod[];
@@ -25,13 +35,16 @@ export function PodTable(props: Props) {
   const { t } = useTranslation();
   return (
     <Table
+      className={styles.podTable}
       columns={podColumns(props, t) as never}
       dataSource={props.items}
       loading={props.loading}
       pagination={props.pagination}
       renderPagination={renderTablePagination}
       rowKey="podId"
+      scroll={{ x: POD_TABLE_SCROLL_X }}
       size="small"
+      style={POD_TABLE_STYLE}
       rowSelection={{
         selectedRowKeys: props.selectedIds,
         onChange: (keys: (string | number)[] | undefined) =>

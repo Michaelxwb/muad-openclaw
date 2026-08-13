@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Button, Empty, Input, Select, Space, Table, Tag, Tooltip } from "@douyinfe/semi-ui";
@@ -12,7 +13,6 @@ import type {
   LongTaskStatus,
 } from "../api";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
-import { PodName } from "../components/PodName";
 import {
   DEFAULT_PAGE_SIZE,
   renderTablePagination,
@@ -25,6 +25,15 @@ import { errorMessage } from "../utils/error";
 import styles from "./LongTasks.module.css";
 
 const REFRESH_MS = 5000;
+export const LONG_TASK_TABLE_MIN_WIDTH = 1464;
+export const LONG_TASK_TABLE_SCROLL_X = "100%";
+export const LONG_TASK_POD_USER_COLUMN_WIDTH = 240;
+
+type LongTaskTableStyle = CSSProperties & { "--long-task-table-min-width": string };
+
+const LONG_TASK_TABLE_STYLE: LongTaskTableStyle = {
+  "--long-task-table-min-width": `${LONG_TASK_TABLE_MIN_WIDTH}px`,
+};
 
 interface Props {
   onOpenPod?: (podId: string) => void;
@@ -224,6 +233,7 @@ function LongTaskTable({
   );
   return (
     <Table
+      className={styles.longTaskTable}
       columns={columns as never}
       dataSource={rows}
       empty={<Empty title={t("longTasks.empty")} />}
@@ -240,8 +250,9 @@ function LongTaskTable({
       })}
       renderPagination={renderTablePagination}
       rowKey="taskId"
-      scroll={{ x: 1464 }}
+      scroll={{ x: LONG_TASK_TABLE_SCROLL_X }}
       size="small"
+      style={LONG_TASK_TABLE_STYLE}
     />
   );
 }
@@ -257,7 +268,6 @@ function longTaskColumns(
       title: t("longTasks.task"),
       key: "task",
       align: "left" as const,
-      width: 230,
       render: (_: unknown, task: LongTaskRow) => (
         <div className={styles.taskCell}>
           <span className={`${styles.primary} ${styles.mono}`}>{task.taskId}</span>
@@ -269,7 +279,6 @@ function longTaskColumns(
       title: t("longTasks.agentPool"),
       key: "pool",
       align: "left" as const,
-      width: 260,
       render: (_: unknown, task: LongTaskRow) => (
         <div className={styles.taskCell}>
           <span className={`${styles.primary} ${styles.mono}`}>{task.poolKey}</span>
@@ -283,33 +292,15 @@ function longTaskColumns(
       title: t("longTasks.podUser"),
       key: "podUser",
       align: "left" as const,
-      width: 210,
+      width: LONG_TASK_POD_USER_COLUMN_WIDTH,
       render: (_: unknown, task: LongTaskRow) => (
-        <div className={styles.taskCell}>
-          {onOpenPod ? (
-            <Button
-              className={styles.linkButton}
-              theme="borderless"
-              size="small"
-              onClick={() => onOpenPod(task.podId)}
-            >
-              <PodName podId={task.podId} podNames={podNames} />
-            </Button>
-          ) : (
-            <PodName podId={task.podId} podNames={podNames} />
-          )}
-          <span className={styles.primary}>{task.agentId}</span>
-          <span className={styles.primary}>
-            {userNames.get(task.humanUserId) || task.humanUserId || "-"}
-          </span>
-        </div>
+        <PodUserCell task={task} podNames={podNames} userNames={userNames} onOpenPod={onOpenPod} />
       ),
     },
     {
       title: t("longTasks.skill"),
       key: "skill",
       align: "left" as const,
-      width: 240,
       render: (_: unknown, task: LongTaskRow) => (
         <div className={styles.taskCell}>
           <span className={`${styles.primary} ${styles.skillName}`}>{task.skillName}</span>
@@ -353,6 +344,56 @@ function longTaskColumns(
       render: (_: unknown, task: LongTaskRow) => task.terminalReason || task.errorCode || "-",
     },
   ];
+}
+
+function PodUserCell({
+  task,
+  podNames,
+  userNames,
+  onOpenPod,
+}: {
+  task: LongTaskRow;
+  podNames: ReadonlyMap<string, string>;
+  userNames: ReadonlyMap<string, string>;
+  onOpenPod?: (podId: string) => void;
+}) {
+  const podName = podNames.get(task.podId);
+  const userName = userNames.get(task.humanUserId) || task.humanUserId || "-";
+  const podLine = <PodLine podId={task.podId} podName={podName} />;
+  return (
+    <div className={`${styles.taskCell} ${styles.podUserCell}`}>
+      {onOpenPod ? (
+        <Button
+          className={`${styles.linkButton} ${styles.podUserLine}`}
+          theme="borderless"
+          size="small"
+          onClick={() => onOpenPod(task.podId)}
+        >
+          {podLine}
+        </Button>
+      ) : (
+        <span className={styles.podUserLine}>{podLine}</span>
+      )}
+      <span className={styles.podUserLine}>{task.agentId || "-"}</span>
+      <span className={styles.podUserLine}>{userName}</span>
+    </div>
+  );
+}
+
+function PodLine({ podId, podName }: { podId: string; podName?: string }) {
+  if (!podName) {
+    return (
+      <span className={styles.podLineText}>
+        <span className={styles.mono}>{podId}</span>
+      </span>
+    );
+  }
+  return (
+    <span className={styles.podLineText}>
+      <span>{podName}</span>
+      <span className={styles.mono}>{podId}</span>
+    </span>
+  );
 }
 
 function mergePoolCounts(rows: LongTask[], pools: ApiLongTaskPool[]): LongTaskRow[] {

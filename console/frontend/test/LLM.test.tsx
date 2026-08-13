@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LLM } from "../src/pages/LLM";
+import { LLM, MODEL_TABLE_COLUMN_WIDTHS } from "../src/pages/LLM";
 
 const apiMocks = vi.hoisted(() => ({
   listLLMModels: vi.fn(),
@@ -21,6 +21,7 @@ const model = {
   baseUrl: "https://api.deepseek.com",
   model: "deepseek-chat",
   apiKey: "sk-model-key",
+  supportsTools: true,
   lastTestAt: "2026-07-11T00:00:00Z",
   lastTestOK: true,
   lastTestError: "",
@@ -35,6 +36,7 @@ const availableModel = {
   modelConfigId: "model-b",
   displayName: "Bob Model",
   apiKey: "sk-bob-key",
+  supportsTools: false,
   boundHumanUserId: undefined,
   boundHumanUserName: undefined,
 };
@@ -61,7 +63,24 @@ describe("LLM", () => {
     expect(await screen.findByText("Alice Model")).toBeInTheDocument();
     expect(screen.getByText("sk-model-key")).toBeInTheDocument();
     expect(screen.getByText("Alice User")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "工具调用" })).toBeInTheDocument();
+    expect(screen.getByText("支持")).toBeInTheDocument();
+    expect(screen.getByText("不支持")).toBeInTheDocument();
     expect(screen.getAllByText("通过").length).toBeGreaterThan(0);
+  });
+
+  it("keeps model columns compact enough to fit without horizontal table scrolling", async () => {
+    render(<LLM />);
+
+    expect(await screen.findByText("Alice Model")).toBeInTheDocument();
+    const modelTable = screen.getByRole("grid");
+    expect(modelTable.getAttribute("style") ?? "").not.toContain("width: 100%");
+    expect(modelTable.closest(".semi-table-wrapper")?.getAttribute("style") ?? "").not.toContain(
+      "--model-table-min-width",
+    );
+    expect(Object.values(MODEL_TABLE_COLUMN_WIDTHS).reduce((sum, width) => sum + width, 0)).toBe(
+      1242,
+    );
   });
 
   it("creates model configs from form fields and multiline API keys", async () => {
