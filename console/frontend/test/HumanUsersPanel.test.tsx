@@ -12,6 +12,7 @@ import type {
   PlatformCredential,
   Pod,
 } from "../src/api";
+import { ApiError } from "../src/api";
 import { HumanUsersPanel } from "../src/components/human-users/HumanUsersPanel";
 
 const apiMocks = vi.hoisted(() => ({
@@ -735,6 +736,33 @@ describe("HumanUsersPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
     expect(await screen.findByText("上传失败")).toBeInTheDocument();
+  });
+
+  it("shows backend private Skill validation details inside the dialog", async () => {
+    apiMocks.uploadPrivateSkill.mockRejectedValueOnce(
+      new ApiError(
+        "上传的 Skill 名称与期望名称不一致",
+        400,
+        40532,
+        '上传包里的 Skill 名称是 "actual-skill"，但当前操作期望名称是 "expected-skill"',
+      ),
+    );
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    await screen.findByText("XDR Query");
+    fireEvent.click(screen.getByText("上传 Private Skill").closest("button") as HTMLButtonElement);
+    const file = new File(["bundle"], "broken.tar.gz", { type: "application/gzip" });
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+    if (!fileInput) return;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    expect(await screen.findByText("上传的 Skill 名称与期望名称不一致")).toBeInTheDocument();
+    expect(screen.getByText("技术详情")).toBeInTheDocument();
+    expect(screen.getByText(/actual-skill/)).toBeInTheDocument();
   });
 
   it("deletes a private Skill through confirmation", async () => {

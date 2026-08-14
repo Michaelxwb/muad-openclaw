@@ -20,6 +20,7 @@ import (
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/api"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -35,7 +36,7 @@ func TestSkillAPI_ListDetailEffectiveAndPolicies(t *testing.T) {
 	})
 	privateSkill := createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-query", Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
-		SourcePath: "/home/node/.openclaw/workspace-alice/skills/xdr-query",
+		SourcePath:   "/home/node/.openclaw/workspace-alice/skills/xdr-query",
 		ManifestHash: "sha256:private", PlatformsJSON: `["xdr"]`,
 	})
 
@@ -296,6 +297,7 @@ func TestSkillAPI_PrivateIngestRejectsInvalidBundle(t *testing.T) {
 	rr := httptest.NewRecorder()
 	e.h.ServeHTTP(rr, req)
 	assertStatus(t, rr, http.StatusBadRequest)
+	assertAPIError(t, rr, errcode.InvalidBundleFormat, "有效的 .tar.gz 或 .zip")
 
 	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
 		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
@@ -311,7 +313,7 @@ func TestSkillAPI_PrivateIngestRespectsConfiguredMaxSize(t *testing.T) {
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 	// 把 bundle 上限压到 1 字节，重建 handler 使配置生效。
 	// ingest 走 skill-upload 的咽喉路径，必须与 multipart 上传一致 respect
-	// maxSkillUploadBundleSize，超限返回 40504 而非创建资产。
+	// maxSkillUploadBundleSize，超限返回明确的 size error 而非创建资产。
 	e.cfg.SkillMaxUploadBundleBytes = 1
 	e.h = api.NewServer(e.cfg, e.store, e.cipher, e.drv, e.cache, e.syncer, e.reconcile).Handler()
 
@@ -323,9 +325,7 @@ func TestSkillAPI_PrivateIngestRespectsConfiguredMaxSize(t *testing.T) {
 	rr := httptest.NewRecorder()
 	e.h.ServeHTTP(rr, req)
 	assertStatus(t, rr, http.StatusBadRequest)
-	if !strings.Contains(rr.Body.String(), `"code":40504`) {
-		t.Fatalf("oversize ingest body = %s, want code 40504", rr.Body.String())
-	}
+	assertAPIError(t, rr, errcode.SkillBundleTooLarge, "超过限制")
 	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
 		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
 	})
@@ -351,6 +351,19 @@ func TestSkillAPI_PrivateUploadAcceptsZipBundle(t *testing.T) {
 	if len(e.drv.execStdinCalls) != 0 {
 		t.Fatalf("zip private upload should not exec installer before apply: %+v", e.drv.execStdinCalls)
 	}
+}
+
+func TestSkillAPI_PrivateUploadReportsExpectedNameMismatch(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	rr := e.privateSkillUploadFile(
+		alice.HumanUserID, "expected-skill", "actual-skill.tar.gz",
+		makeSkillBundle(t, "actual-skill", map[string]any{"name": "actual-skill"}),
+	)
+	assertStatus(t, rr, http.StatusBadRequest)
+	assertAPIError(t, rr, errcode.SkillBundleUnexpectedName, "actual-skill")
 }
 
 func TestSkillAPI_PrivateUploadPlatformOverrideSupportsMultiplePlatforms(t *testing.T) {
@@ -413,7 +426,7 @@ func TestSkillAPI_PrivateDeleteDoesNotDependOnRuntime(t *testing.T) {
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
 	asset := createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-private", Scope: repo.SkillScopePrivate,
-		HumanUserID: alice.HumanUserID,
+		HumanUserID:  alice.HumanUserID,
 		SourcePath:   "/home/node/.openclaw/workspace-alice/skills/xdr-private",
 		ManifestHash: "sha256:private", PlatformsJSON: `["xdr"]`,
 	})
@@ -497,9 +510,28 @@ func TestSkillAPI_PublicUploadRespectsConfiguredMaxSize(t *testing.T) {
 
 	rr := e.publicSkillUpload("tiny.tar.gz", makeSkillBundle(t, "tiny", map[string]any{"name": "tiny"}))
 	assertStatus(t, rr, http.StatusBadRequest)
-	if !strings.Contains(rr.Body.String(), `"code":40504`) {
-		t.Fatalf("oversize upload body = %s, want code 40504", rr.Body.String())
-	}
+	assertAPIError(t, rr, errcode.SkillBundleTooLarge, "超过限制")
+}
+
+func TestSkillAPI_PublicUploadReportsInvalidManifestDetail(t *testing.T) {
+	e := newTestEnv(t)
+
+	rr := e.publicSkillUpload("bad-manifest.zip", makeZipWithFiles(t, map[string][]byte{
+		"bad-manifest/SKILL.md":        []byte(skillMarkdownFixture("bad-manifest")),
+		"bad-manifest/muad.skill.json": []byte("{not json"),
+	}))
+	assertStatus(t, rr, http.StatusBadRequest)
+	assertAPIError(t, rr, errcode.SkillBundleInvalidManifest, "muad.skill.json")
+}
+
+func TestSkillAPI_PublicUploadReportsMissingSkillMarkdownDetail(t *testing.T) {
+	e := newTestEnv(t)
+
+	rr := e.publicSkillUpload("missing-skill-md.zip", makeZipWithFiles(t, map[string][]byte{
+		"missing-skill-md/README.md": []byte("# Missing\n"),
+	}))
+	assertStatus(t, rr, http.StatusBadRequest)
+	assertAPIError(t, rr, errcode.SkillBundleNoSkillMd, "主 SKILL.md")
 }
 
 func TestSkillAPI_ConcurrentPublicUploadSameNameDoesNotRemoveWinner(t *testing.T) {
@@ -861,7 +893,7 @@ func TestSkillAPI_PrivateUploadRejectsExistingPrivateWithoutReplacingFiles(t *te
 	createSkillAsset(t, e.store, repo.SkillAsset{
 		Name: "xdr-private", Scope: repo.SkillScopePrivate,
 		HumanUserID: alice.HumanUserID,
-		SourcePath: privateDir, ManifestHash: "sha256:private", PlatformsJSON: `[]`,
+		SourcePath:  privateDir, ManifestHash: "sha256:private", PlatformsJSON: `[]`,
 	})
 
 	rr := e.privateSkillUploadFile(alice.HumanUserID, "xdr-private", "xdr-private.zip", makeZipWithFiles(
@@ -1062,6 +1094,30 @@ func makeZipSkillBundle(t *testing.T, name string, manifest map[string]any) []by
 
 func skillMarkdownFixture(name string) string {
 	return fmt.Sprintf("---\nname: %s\ndescription: %s test Skill.\n---\n# %s\n", name, name, name)
+}
+
+func assertAPIError(
+	t *testing.T, rr *httptest.ResponseRecorder, code int, detailContains string,
+) {
+	t.Helper()
+	var envelope struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Detail  string `json:"detail"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("decode error envelope: %v; body=%s", err, rr.Body.String())
+	}
+	if envelope.Code != code {
+		t.Fatalf("error code = %d, want %d; body=%s", envelope.Code, code, rr.Body.String())
+	}
+	if envelope.Message == "" {
+		t.Fatalf("error message is empty: %s", rr.Body.String())
+	}
+	if !strings.Contains(envelope.Detail, detailContains) {
+		t.Fatalf("error detail = %q, want containing %q; body=%s",
+			envelope.Detail, detailContains, rr.Body.String())
+	}
 }
 
 func makeZipWithFiles(t *testing.T, files map[string][]byte) []byte {

@@ -138,7 +138,7 @@ async function main() {
   });
   const text = await response.text();
   if (!response.ok) {
-    fail(`上传失败：${text}`);
+    fail(`上传失败：${formatConsoleError(text)}`);
     return;
   }
   // Remove the staging draft so a new session does not treat it as a pending
@@ -149,6 +149,28 @@ async function main() {
     // Non-fatal: a leftover draft only causes a redundant upload offer.
   }
   process.stdout.write(`Skill「${skillName}」上传成功，已清理草稿目录。\n`);
+}
+
+export function formatConsoleError(text) {
+  const trimmed = String(text ?? "").trim();
+  if (!trimmed) return "控制台未返回错误详情";
+  let payload;
+  try {
+    payload = JSON.parse(trimmed);
+  } catch {
+    return trimmed;
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return trimmed;
+  }
+  const message = typeof payload.message === "string" ? payload.message.trim() : "";
+  const detail = typeof payload.detail === "string" ? payload.detail.trim() : "";
+  const requestId = typeof payload.requestId === "string" ? payload.requestId.trim() : "";
+  const lines = [];
+  if (message) lines.push(message);
+  if (detail && detail !== message) lines.push(`具体原因：${detail}`);
+  if (requestId) lines.push(`requestId: ${requestId}`);
+  return lines.length > 0 ? lines.join("\n") : trimmed;
 }
 
 async function exists(path) {

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { Modal, Toast } from "@douyinfe/semi-ui";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "../src/api";
 import i18n from "../src/i18n";
 import { Skills } from "../src/pages/Skills";
 
@@ -256,6 +257,30 @@ describe("Skills", () => {
         platforms: [],
       }),
     );
+  });
+
+  it("shows backend public Skill validation details in the upload dialog", async () => {
+    apiMocks.uploadPublicSkill.mockRejectedValueOnce(
+      new ApiError(
+        "muad.skill.json 格式非法",
+        400,
+        40524,
+        "muad.skill.json 不是合法 JSON：invalid character",
+      ),
+    );
+    render(<Skills />);
+    await screen.findByText("XDR Query");
+
+    fireEvent.click(screen.getByRole("button", { name: "上传 Public Skill" }));
+    const file = new File(["bundle"], "broken.zip", { type: "application/zip" });
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).toBeTruthy();
+    fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    expect(await screen.findByText("muad.skill.json 格式非法")).toBeInTheDocument();
+    expect(screen.getByText("技术详情")).toBeInTheDocument();
+    expect(screen.getByText(/muad.skill.json 不是合法 JSON/)).toBeInTheDocument();
   });
 
   it("creates public Skill PVC before allowing public uploads", async () => {
