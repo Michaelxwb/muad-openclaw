@@ -2,6 +2,7 @@ import {
   IMAGE_CHANNEL_PLUGIN_SPECS,
   ensurePluginLoadPaths,
 } from "./image-plugin-paths.mjs";
+import { normalizeMattermostChannelConfig } from "./channel-config.mjs";
 
 const CHANNEL_ALIASES = {
   wechat: "openclaw-weixin",
@@ -137,19 +138,10 @@ function applyChannels(output, context) {
 
 function normalizeChannelRuntimeConfig(id, config) {
   if (id !== "mattermost") return config;
-  const allowPrivateNetwork = config.allowPrivateNetwork === "true";
-  delete config.allowPrivateNetwork;
-  delete config.botId;
-  delete config.secret;
-  config.dmPolicy = "open";
-  config.groupPolicy = "disabled";
-  config.allowFrom = ["*"];
-  if (allowPrivateNetwork) {
-    config.network = { dangerouslyAllowPrivateNetwork: true };
-  } else {
-    delete config.network;
-  }
-  return config;
+  return normalizeMattermostChannelConfig(
+    config,
+    config.allowPrivateNetwork === "true",
+  );
 }
 
 function applyChannelPlugins(output, channels) {

@@ -103,6 +103,7 @@ test("startup context renders Mattermost for Muad binding guard DMs", () => {
     dmPolicy: "open",
     groupPolicy: "disabled",
     allowFrom: ["*"],
+    streaming: "off",
     network: { dangerouslyAllowPrivateNetwork: true },
     enabled: true,
   });

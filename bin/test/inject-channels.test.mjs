@@ -72,6 +72,7 @@ test("inject-channels atomically updates config and wipes removed channel sessio
     dmPolicy: "open",
     groupPolicy: "disabled",
     allowFrom: ["*"],
+    streaming: "off",
     network: { dangerouslyAllowPrivateNetwork: true },
     enabled: true,
   });
