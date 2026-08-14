@@ -108,6 +108,7 @@ func loadDependencies() (*dependencies, error) {
 		SkillsSize:         cfg.K8sSkillsSize,
 		StorageClass:       cfg.K8sStorageClass,
 		StateSize:          cfg.K8sStateSize,
+		WorkerNodeSelector: cfg.K8sWorkerNodeSelector,
 	}, runtimeOptions)
 	if err != nil {
 		store.Close()

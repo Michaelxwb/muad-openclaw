@@ -95,6 +95,24 @@ func TestK8s_CreateProvisionsAll(t *testing.T) {
 	assertServiceTokenVolume(t, dep.Spec.Template.Spec.Volumes, "muad-oc-alice")
 }
 
+func TestK8sCreateAppliesWorkerNodeSelector(t *testing.T) {
+	d := newFakeK8s(t)
+	d.workerNodeSelector = map[string]string{"app": "openclaw"}
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	dep, err := d.client.AppsV1().Deployments("muad").Get(ctx, "muad-oc-alice", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("deployment: %v", err)
+	}
+	if dep.Spec.Template.Spec.NodeSelector["app"] != "openclaw" {
+		t.Fatalf("worker nodeSelector = %+v, want app=openclaw", dep.Spec.Template.Spec.NodeSelector)
+	}
+}
+
 func assertWorkerPodSecurity(t *testing.T, security *corev1.PodSecurityContext) {
 	t.Helper()
 	if security == nil || security.RunAsNonRoot == nil || !*security.RunAsNonRoot {

@@ -88,3 +88,7 @@ k8s:
   # 每个 worker state PVC 的 StorageClass；留空使用集群默认
   # storageClass: ""
   stateSize: 5Gi
+  # worker Pod 节点选择；例如首次只允许调度到 app=openclaw 的节点。
+  # 后续是否固定到首次节点取决于 state PVC/PV 是否具备节点亲和性。
+  # workerNodeSelector:
+  #   app: openclaw

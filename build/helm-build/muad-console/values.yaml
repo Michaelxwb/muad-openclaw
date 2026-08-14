@@ -61,6 +61,9 @@ resources:
 podAnnotations: {}
 # 节点选择（平台惯例：--set nodeSelector.app=api-server）
 nodeSelector: {}
+# Worker Pod 节点选择（Console 后端创建 OpenClaw worker Deployment 时使用）
+# 示例：--set workerNodeSelector.app=openclaw
+workerNodeSelector: {}
 # 污点容忍
 tolerations: []
 # Pod 节点亲和性

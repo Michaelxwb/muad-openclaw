@@ -122,6 +122,9 @@ k8s:
   namespace: test-ns
   skillsPVC: muad-skills
   publicSkillsMountPath: /public
+  workerNodeSelector:
+    app: openclaw
+    node-role: worker
 maxSkillUploadBundleSize: 10m
 `), 0o644)
 
@@ -164,6 +167,10 @@ maxSkillUploadBundleSize: 10m
 	if c.K8sNamespace != "test-ns" || c.K8sSkillsPVC != "muad-skills" ||
 		c.K8sPublicSkillsMount != "/public" {
 		t.Errorf("k8s config = %q/%q/%q", c.K8sNamespace, c.K8sSkillsPVC, c.K8sPublicSkillsMount)
+	}
+	if c.K8sWorkerNodeSelector["app"] != "openclaw" ||
+		c.K8sWorkerNodeSelector["node-role"] != "worker" {
+		t.Errorf("K8sWorkerNodeSelector = %+v, want app=openclaw,node-role=worker", c.K8sWorkerNodeSelector)
 	}
 	if c.SkillsDir != "/public/.muad-skill-assets" {
 		t.Errorf("K8s SkillsDir = %q, want /public/.muad-skill-assets", c.SkillsDir)
@@ -301,6 +308,7 @@ k8s:
 	t.Setenv("CONSOLE_LOG_DIR", "/tmp/env-console-logs")
 	t.Setenv("K8S_SKILLS_PVC", "env-skills")
 	t.Setenv("K8S_PUBLIC_SKILLS_MOUNT_PATH", "/env-public")
+	t.Setenv("K8S_WORKER_NODE_SELECTOR", "app=openclaw,kubernetes.io/os=linux")
 	c, err := config.Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -316,6 +324,19 @@ k8s:
 	}
 	if c.K8sPublicSkillsMount != "/env-public" {
 		t.Errorf("K8sPublicSkillsMount = %q, want env override", c.K8sPublicSkillsMount)
+	}
+	if c.K8sWorkerNodeSelector["app"] != "openclaw" ||
+		c.K8sWorkerNodeSelector["kubernetes.io/os"] != "linux" {
+		t.Errorf("K8sWorkerNodeSelector = %+v, want env override", c.K8sWorkerNodeSelector)
+	}
+}
+
+func TestLoad_RejectsInvalidWorkerNodeSelectorEnv(t *testing.T) {
+	envOnly(t)
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("K8S_WORKER_NODE_SELECTOR", "app")
+	if _, err := config.Load(); err == nil {
+		t.Fatal("expected invalid K8S_WORKER_NODE_SELECTOR to fail")
 	}
 }
 

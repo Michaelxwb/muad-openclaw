@@ -49,6 +49,7 @@ type yamlFile struct {
 	K8sSkillsSize         *string               `yaml:"k8sSkillsSize"`
 	K8sStorageClass       *string               `yaml:"k8sStorageClass"`
 	K8sStateSize          *string               `yaml:"k8sStateSize"`
+	K8sWorkerNodeSelector map[string]string     `yaml:"k8sWorkerNodeSelector"`
 	Security              *securityYAML         `yaml:"security"`
 	Admin                 *adminYAML            `yaml:"admin"`
 	Server                *serverYAML           `yaml:"server"`
@@ -105,13 +106,14 @@ type dockerYAML struct {
 }
 
 type k8sYAML struct {
-	Namespace          *string `yaml:"namespace"`
-	SkillsPVC          *string `yaml:"skillsPVC"`
-	PublicSkillsMount  *string `yaml:"publicSkillsMountPath"`
-	SkillsStorageClass *string `yaml:"skillsStorageClass"`
-	SkillsSize         *string `yaml:"skillsSize"`
-	StorageClass       *string `yaml:"storageClass"`
-	StateSize          *string `yaml:"stateSize"`
+	Namespace          *string           `yaml:"namespace"`
+	SkillsPVC          *string           `yaml:"skillsPVC"`
+	PublicSkillsMount  *string           `yaml:"publicSkillsMountPath"`
+	SkillsStorageClass *string           `yaml:"skillsStorageClass"`
+	SkillsSize         *string           `yaml:"skillsSize"`
+	StorageClass       *string           `yaml:"storageClass"`
+	StateSize          *string           `yaml:"stateSize"`
+	WorkerNodeSelector map[string]string `yaml:"workerNodeSelector"`
 }
 
 type resourceDefaultsYAML struct {
@@ -172,6 +174,7 @@ type Config struct {
 	K8sSkillsSize             string
 	K8sStorageClass           string
 	K8sStateSize              string
+	K8sWorkerNodeSelector     map[string]string
 	skillsDirExplicit         bool
 }
 
@@ -304,6 +307,7 @@ func applyLegacyYAML(c *Config, f *yamlFile) {
 	applyString(&c.K8sSkillsSize, f.K8sSkillsSize)
 	applyString(&c.K8sStorageClass, f.K8sStorageClass)
 	applyString(&c.K8sStateSize, f.K8sStateSize)
+	applyStringMap(&c.K8sWorkerNodeSelector, f.K8sWorkerNodeSelector)
 	if f.CollectIntervalSec != nil && *f.CollectIntervalSec > 0 {
 		c.CollectIntervalSec = *f.CollectIntervalSec
 	}
@@ -364,6 +368,7 @@ func applyK8sYAML(c *Config, src *k8sYAML) {
 	applyString(&c.K8sSkillsSize, src.SkillsSize)
 	applyString(&c.K8sStorageClass, src.StorageClass)
 	applyString(&c.K8sStateSize, src.StateSize)
+	applyStringMap(&c.K8sWorkerNodeSelector, src.WorkerNodeSelector)
 }
 
 func applyRuntimeDefaultsYAML(dst *RuntimeDefaults, src *runtimeDefaultsYAML) {
@@ -451,6 +456,17 @@ func applyExplicitString(dst *string, explicit *bool, src *string) {
 	*explicit = true
 }
 
+func applyStringMap(dst *map[string]string, src map[string]string) {
+	if len(src) == 0 {
+		return
+	}
+	next := make(map[string]string, len(src))
+	for key, value := range src {
+		next[strings.TrimSpace(key)] = strings.TrimSpace(value)
+	}
+	*dst = next
+}
+
 // --- env ---
 
 func (c *Config) overrideFromEnv() error {
@@ -483,6 +499,11 @@ func (c *Config) overrideFromEnv() error {
 	envOverride(&c.K8sSkillsSize, "K8S_SKILLS_SIZE")
 	envOverride(&c.K8sStorageClass, "K8S_STORAGE_CLASS")
 	envOverride(&c.K8sStateSize, "K8S_STATE_SIZE")
+	if selector, err := envStringMap("K8S_WORKER_NODE_SELECTOR"); err != nil {
+		return err
+	} else if len(selector) > 0 {
+		c.K8sWorkerNodeSelector = selector
+	}
 	if v := envIntOr("CONSOLE_COLLECT_INTERVAL", 0); v > 0 {
 		c.CollectIntervalSec = v
 	}
@@ -566,6 +587,9 @@ func (c *Config) validate() error {
 			return fmt.Errorf("k8s.skillsPVC and k8s.publicSkillsMountPath must be configured together")
 		}
 	}
+	if err := validateStringMap("k8s.workerNodeSelector", c.K8sWorkerNodeSelector); err != nil {
+		return err
+	}
 	if strings.TrimSpace(c.RuntimeTimezone) == "" {
 		return fmt.Errorf("runtime.timezone must not be empty")
 	}
@@ -576,6 +600,37 @@ func (c *Config) validate() error {
 	c.SkillMaxUploadBundleBytes = parsed
 	if err := c.RuntimeDefaults.validate(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func envStringMap(key string) (map[string]string, error) {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return nil, nil
+	}
+	out := map[string]string{}
+	for _, part := range strings.Split(raw, ",") {
+		pair := strings.SplitN(strings.TrimSpace(part), "=", 2)
+		if len(pair) != 2 {
+			return nil, fmt.Errorf("%s must be comma-separated key=value pairs", key)
+		}
+		labelKey := strings.TrimSpace(pair[0])
+		labelValue := strings.TrimSpace(pair[1])
+		if labelKey == "" || labelValue == "" {
+			return nil, fmt.Errorf("%s must not contain empty key or value", key)
+		}
+		out[labelKey] = labelValue
+	}
+	return out, nil
+}
+
+func validateStringMap(name string, values map[string]string) error {
+	for key, value := range values {
+		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" ||
+			strings.ContainsAny(key, "\n\r\x00") || strings.ContainsAny(value, "\n\r\x00") {
+			return fmt.Errorf("%s must contain non-empty string keys and values", name)
+		}
 	}
 	return nil
 }

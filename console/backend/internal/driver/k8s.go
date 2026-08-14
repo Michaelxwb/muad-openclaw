@@ -42,6 +42,7 @@ type K8sDriver struct {
 	runtime            RuntimeOptions
 	storageClass       string // for per-user state PVC (optional → cluster default)
 	stateSize          string // per-Pod state PVC size, e.g. "5Gi"
+	workerNodeSelector map[string]string
 }
 
 // K8sOptions configures the cluster driver.
@@ -54,6 +55,7 @@ type K8sOptions struct {
 	Runtime            RuntimeOptions
 	StorageClass       string
 	StateSize          string
+	WorkerNodeSelector map[string]string
 }
 
 // NewK8sDriver builds a cluster driver from in-cluster config, falling back to
@@ -92,7 +94,9 @@ func NewK8sDriver(o K8sOptions) (*K8sDriver, error) {
 		namespace: ns, skillsPVC: o.SkillsPVC, publicSkillsMount: o.PublicSkillsMount,
 		skillsStorageClass: o.SkillsStorageClass,
 		skillsSize:         skillsSize, runtime: o.Runtime.withDefaults(),
-		storageClass: o.StorageClass, stateSize: size,
+		storageClass:       o.StorageClass,
+		stateSize:          size,
+		workerNodeSelector: cloneStringMap(o.WorkerNodeSelector),
 	}, nil
 }
 
@@ -309,6 +313,7 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 				ObjectMeta: metav1.ObjectMeta{Labels: d.labels(spec.PodID)},
 				Spec: corev1.PodSpec{
 					AutomountServiceAccountToken: ptr(false),
+					NodeSelector:                 cloneStringMap(d.workerNodeSelector),
 					SecurityContext: &corev1.PodSecurityContext{
 						RunAsNonRoot: ptr(true),
 						RunAsUser:    ptr(int64(DefaultRuntimeUID)),
@@ -343,6 +348,17 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 			},
 		},
 	}
+}
+
+func cloneStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(values))
+	for key, value := range values {
+		out[key] = value
+	}
+	return out
 }
 
 func gatewayTCPProbe() *corev1.Probe {
