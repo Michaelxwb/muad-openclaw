@@ -37,7 +37,7 @@ USER root
 COPY bin/inject-env.mjs bin/inject-multi-user-config.mjs bin/openclaw-config-renderer.mjs \
     bin/runtime-config-schema.mjs bin/runtime-config-transaction.mjs bin/runtime-image-self-check.mjs \
     bin/startup-context.mjs bin/private-skill-installer.mjs bin/image-plugin-paths.mjs \
-    bin/prune-managed-plugin-installs.mjs /opt/muad/
+    bin/channel-config.mjs bin/prune-managed-plugin-installs.mjs /opt/muad/
 COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
 
 # 业务 Python 依赖（脚本类 skill 运行时）；基础镜像已含 python3-pip。

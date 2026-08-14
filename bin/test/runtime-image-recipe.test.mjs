@@ -47,6 +47,7 @@ test("worker image builds session-manager and installs all runtime plugins and C
     "/usr/local/bin/session-manager",
     "runtime-image-self-check.mjs --image-only",
     "image-plugin-paths.mjs",
+    "channel-config.mjs",
   ])
     assert.equal(
       app.includes(expected),
