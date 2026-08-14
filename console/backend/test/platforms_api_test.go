@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -65,6 +66,22 @@ func TestPlatformAPI_EmptyByDefaultAndRejectsDuplicates(t *testing.T) {
 	if list.Total != 1 || len(list.Items) != 1 {
 		t.Fatalf("platform list = %+v", list)
 	}
+}
+
+func TestPlatformAPI_ValidationIncludesDetail(t *testing.T) {
+	e := newTestEnv(t)
+
+	rr := e.do(http.MethodPost, "/api/v1/platforms",
+		`{"platform":"XDR","displayName":"XDR"}`)
+	assertAPIError(t, rr, errcode.InvalidPlatform, "platform 必须")
+
+	rr = e.do(http.MethodPost, "/api/v1/platforms",
+		`{"platform":"xdr","displayName":"   "}`)
+	assertAPIError(t, rr, errcode.InvalidPlatformDisplayName, "displayName")
+
+	createTestPlatform(t, e.store, "xdr", "XDR")
+	rr = e.do(http.MethodPatch, "/api/v1/platforms/xdr", `{"displayName":"   "}`)
+	assertAPIError(t, rr, errcode.InvalidPlatformDisplayName, "displayName")
 }
 
 func assertIdempotentPlatformPatch(t *testing.T, e *testEnv, body string) {

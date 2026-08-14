@@ -9,6 +9,7 @@ import (
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -80,9 +81,7 @@ func TestPodAPI_RejectsCapacityReduction(t *testing.T) {
 	createTestHumanUser(t, e.store, "pod-a", "bob", repo.HumanUserStatusPending)
 
 	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"maxUsers":1}`)
-	if rr.Code != http.StatusConflict || !strings.Contains(rr.Body.String(), `"code":40706`) {
-		t.Fatalf("capacity response = %d", rr.Code)
-	}
+	assertAPIError(t, rr, errcode.ConflictPodCapacity, "当前用户数 2")
 	rr = e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"displayName":"Pod Updated","maxUsers":2}`)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("valid patch status = %d", rr.Code)
@@ -91,6 +90,33 @@ func TestPodAPI_RejectsCapacityReduction(t *testing.T) {
 	if view.DisplayName != "Pod Updated" || view.UserCount != 2 || view.AvailableSlots != 0 {
 		t.Fatalf("unexpected patched Pod: %+v", view)
 	}
+}
+
+func TestPodAPI_CreateValidationIncludesDetail(t *testing.T) {
+	e := newTestEnv(t)
+
+	rr := e.do(http.MethodPost, "/api/v1/containers", `{"podId":"Bad_ID","channels":["wechat"]}`)
+	assertAPIError(t, rr, errcode.InvalidPodConfig, "podId")
+
+	rr = e.do(http.MethodPost, "/api/v1/containers",
+		`{"podId":"pod-a","channels":["mattermost"],`+
+			`"channelConfigs":{"mattermost":{"baseUrl":"mattermost","botToken":"token"}}}`)
+	assertAPIError(t, rr, errcode.InvalidChannelConfig, "mattermost.baseUrl")
+
+	rr = e.do(http.MethodPost, "/api/v1/containers",
+		`{"podId":"pod-b","channels":["wecom"],"channelConfigs":{"wecom":{"botId":"bot-a"}}}`)
+	assertAPIError(t, rr, errcode.InvalidChannelConfig, "botId 和 secret")
+}
+
+func TestPodAPI_PatchValidationIncludesDetail(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+
+	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"displayName":"   "}`)
+	assertAPIError(t, rr, errcode.InvalidPodConfig, "displayName")
+
+	rr = e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"imageTag":"bad tag"}`)
+	assertAPIError(t, rr, errcode.InvalidImageTag, "imageTag")
 }
 
 func TestPodAPI_ChannelUpdatePreservesSecret(t *testing.T) {
@@ -247,9 +273,7 @@ func TestPodAPI_PatchImageTagRejectsCapacityBeforeUpgrade(t *testing.T) {
 	createTestHumanUser(t, e.store, "pod-a", "bob", repo.HumanUserStatusPending)
 
 	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"imageTag":"img:v2","maxUsers":1}`)
-	if rr.Code != http.StatusConflict || !strings.Contains(rr.Body.String(), `"code":40706`) {
-		t.Fatalf("capacity image patch response = %d body=%s", rr.Code, rr.Body.String())
-	}
+	assertAPIError(t, rr, errcode.ConflictPodCapacity, "当前用户数 2")
 	pod, err := e.store.GetPod("pod-a")
 	if err != nil {
 		t.Fatalf("GetPod: %v", err)

@@ -419,6 +419,25 @@ describe("HumanUsersPanel", () => {
     );
   });
 
+  it("shows backend create-user validation details", async () => {
+    apiMocks.createHumanUser.mockRejectedValueOnce(
+      new ApiError("用户配置不合法", 400, 40202, "identity.externalIdType 必须以小写字母开头"),
+    );
+    renderPanel();
+    await openCreateDialog();
+    fireEvent.change(screen.getByRole("textbox", { name: "显示名称" }), {
+      target: { value: "Alice" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "External ID" }), {
+      target: { value: "EncryptedUserID" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+
+    expect(await screen.findByText("技术详情")).toBeInTheDocument();
+    expect(screen.getByText(/identity.externalIdType/)).toBeInTheDocument();
+  });
+
   it("shows bound model metadata including the plaintext API key", async () => {
     renderPanel();
     await openUserDetail();
@@ -455,6 +474,19 @@ describe("HumanUsersPanel", () => {
     expect(screen.queryByRole("button", { name: "关闭" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "保存基本信息" })).not.toBeInTheDocument();
     expect(document.querySelector(".standard-modal")).toBeInTheDocument();
+  });
+
+  it("shows backend edit-user validation details", async () => {
+    apiMocks.patchHumanUser.mockRejectedValueOnce(
+      new ApiError("用户更新不合法", 400, 40204, "status 不能改为 pending：该用户已有启用的 Identity"),
+    );
+    renderPanel();
+    await openUserDetail();
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(await screen.findByText("技术详情")).toBeInTheDocument();
+    expect(screen.getByText(/status 不能改为 pending/)).toBeInTheDocument();
   });
 
   it("shows scoped Identity fields and preserves the raw external ID", async () => {

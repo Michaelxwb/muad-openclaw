@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
@@ -123,6 +124,18 @@ func TestResources_RejectsInvalidLimitsAndConcurrency(t *testing.T) {
 			t.Errorf("body %s = %d, want 400: %s", body, response.Code, response.Body.String())
 		}
 	}
+}
+
+func TestResources_InvalidInputIncludesFieldDetail(t *testing.T) {
+	env := newTestEnv(t)
+	createTestPod(t, env.store, "pod-a", 10)
+
+	response := env.do(http.MethodPut, "/api/v1/settings/resources", `{"cpuLimit":"0"}`)
+	assertAPIError(t, response, errcode.InvalidResourceLimits, "cpuLimit")
+
+	response = env.do(http.MethodPut, "/api/v1/containers/pod-a/resources",
+		`{"maxBrowserConcurrency":1001}`)
+	assertAPIError(t, response, errcode.InvalidResourceLimits, "maxBrowserConcurrency")
 }
 
 func TestAlerts_UsePodEffectiveMemoryThreshold(t *testing.T) {

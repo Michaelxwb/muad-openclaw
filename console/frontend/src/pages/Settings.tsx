@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Input, InputNumber, Select, Tag } from "@douyinfe/semi-ui";
 import { useTranslation } from "react-i18next";
-import { api } from "../api";
+import { api, ApiError } from "../api";
 import type { GlobalResourceConfig, ResourceConfig } from "../api";
-import { errorMessage } from "../utils/error";
+import { errorMessage, ErrorDetail } from "../utils/error";
 import {
   FeedbackBanner,
   MetricDescriptions,
@@ -47,6 +47,7 @@ export function Settings() {
         }
       >
         <FeedbackBanner error={resources.error} message={resources.message} />
+        <ErrorDetail detail={resources.errorDetail} />
         <ResourceForm state={resources} />
         {resources.config && <EffectiveResources config={resources.config} />}
       </PageSection>
@@ -156,6 +157,7 @@ function useGlobalResources() {
   const [config, setConfig] = useState<GlobalResourceConfig | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [errorDetail, setErrorDetail] = useState<string | undefined>();
   const [message, setMessage] = useState("");
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
@@ -164,6 +166,8 @@ function useGlobalResources() {
     try {
       const result = await api.getResources();
       if (!mountedRef.current || requestId !== requestRef.current) return;
+      setError("");
+      setErrorDetail(undefined);
       setConfig(result);
       setForm({
         memLimit: memLimitToGB(result.memLimit),
@@ -176,6 +180,7 @@ function useGlobalResources() {
     } catch (caught) {
       if (!mountedRef.current || requestId !== requestRef.current) return;
       setError(errorMessage(caught, "settings.loadFailed"));
+      setErrorDetail(caught instanceof ApiError ? caught.detail : undefined);
     }
   }, [mountedRef]);
   useEffect(() => {
@@ -184,6 +189,7 @@ function useGlobalResources() {
   const save = async () => {
     setBusy(true);
     setError("");
+    setErrorDetail(undefined);
     setMessage("");
     try {
       const result = await api.setResources(form);
@@ -193,10 +199,11 @@ function useGlobalResources() {
     } catch (caught) {
       if (mountedRef.current) {
         setError(errorMessage(caught, "settings.saveFailed"));
+        setErrorDetail(caught instanceof ApiError ? caught.detail : undefined);
       }
     } finally {
       if (mountedRef.current) setBusy(false);
     }
   };
-  return { form, config, busy, error, message, setForm, save };
+  return { form, config, busy, error, errorDetail, message, setForm, save };
 }

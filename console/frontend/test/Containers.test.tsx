@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pod } from "../src/api";
+import { ApiError } from "../src/api";
 import { Containers } from "../src/pages/Containers";
 import { POD_TABLE_MIN_WIDTH, POD_TABLE_SCROLL_X } from "../src/pages/containers/PodTable";
 
@@ -202,6 +203,22 @@ describe("Containers create Pod flow", () => {
 
     expect(await screen.findByText("创建 Pod 失败")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("muad-pod-01")).toBeInTheDocument();
+  });
+
+  it("shows backend create validation details", async () => {
+    apiMocks.createPod.mockRejectedValue(
+      new ApiError("Pod 配置不合法", 400, 40704, "podId 必须是 1-63 位小写字母"),
+    );
+    render(<Containers onOpenPod={vi.fn()} />);
+    await screen.findByText("Pod A");
+    openCreateModal();
+    fillMinimalCreateForm();
+
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+
+    expect(await screen.findByText("Pod 配置不合法")).toBeInTheDocument();
+    expect(screen.getByText("技术详情")).toBeInTheDocument();
+    expect(screen.getByText(/podId 必须/)).toBeInTheDocument();
   });
 
   it("can select 接管同名保留状态卷 and sends adoptState=true", async () => {

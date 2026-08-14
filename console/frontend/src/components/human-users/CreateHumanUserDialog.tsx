@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, InputNumber, Modal, RadioGroup, Select, TextArea } from "@douyinfe/semi-ui";
 import { useTranslation } from "react-i18next";
-import { api } from "../../api";
+import { api, ApiError } from "../../api";
 import type {
   CreateHumanUserInput,
   HumanUserBootstrapResult,
@@ -10,7 +10,7 @@ import type {
 } from "../../api";
 import { channelMeta } from "../../channels";
 import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
-import { errorMessage } from "../../utils/error";
+import { errorMessage, ErrorDetail } from "../../utils/error";
 import i18n from "../../i18n";
 import styles from "../HumanUsersPanel.module.css";
 import { Field } from "./shared";
@@ -101,6 +101,7 @@ export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCre
   const [models, setModels] = useState<LLMModelConfig[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [errorDetail, setErrorDetail] = useState<string | undefined>();
   const previousVisibleRef = useRef(visible);
   const selectablePods = useMemo(() => podOptions ?? [pod], [pod, podOptions]);
   const canSwitchPod = Boolean(podOptions);
@@ -114,6 +115,7 @@ export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCre
     setSelectedPodId(nextPod.podId);
     setForm(initialForm(nextPod));
     setError("");
+    setErrorDetail(undefined);
     void loadAvailableModels();
   }, [pod, selectablePods, visible]);
 
@@ -132,21 +134,28 @@ export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCre
       if (requestId !== modelsRequestRef.current || !visible) return;
       setModels([]);
       setError(errorMessage(caught, "user.loadModelsFailed"));
+      setErrorDetail(caught instanceof ApiError ? caught.detail : undefined);
     }
   };
 
   const submit = async () => {
     if (canSwitchPod && selectedPod.availableSlots <= 0) {
+      setErrorDetail(undefined);
       return setRepeatableError(setError, t("user.selectAvailablePod"));
     }
     const validation = validate(form);
-    if (validation) return setRepeatableError(setError, validation);
+    if (validation) {
+      setErrorDetail(undefined);
+      return setRepeatableError(setError, validation);
+    }
     setBusy(true);
     setError("");
+    setErrorDetail(undefined);
     try {
       await onCreated(await api.createHumanUser(selectedPod.podId, createInput(form)));
     } catch (caught) {
       setError(errorMessage(caught, "user.createUserFailed"));
+      setErrorDetail(caught instanceof ApiError ? caught.detail : undefined);
     } finally {
       setBusy(false);
     }
@@ -171,6 +180,7 @@ export function CreateHumanUserDialog({ pod, podOptions, visible, onClose, onCre
       width={640}
     >
       <FeedbackBanner error={error} />
+      <ErrorDetail detail={errorDetail} />
       <CreateForm
         pod={selectedPod}
         podOptions={selectablePods}

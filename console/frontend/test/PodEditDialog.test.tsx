@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pod, PodResourceConfig } from "../src/api";
+import { ApiError } from "../src/api";
 import { PodEditDialog } from "../src/pages/containers/PodEditDialog";
 
 const apiMocks = vi.hoisted(() => ({
@@ -144,5 +145,19 @@ describe("PodEditDialog", () => {
 
     expect(await screen.findByText(/加载通道配置失败/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "保存" })).not.toBeInTheDocument();
+  });
+
+  it("保存失败时展示后端字段详情", async () => {
+    apiMocks.setPodResources.mockRejectedValueOnce(
+      new ApiError("资源配额配置不合法", 400, 40003, "cpuLimit 必须为空或正数"),
+    );
+    render(<PodEditDialog podId="pod-a" onClose={vi.fn()} onSaved={vi.fn()} />);
+    await screen.findByText("消息通道");
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(await screen.findByText("资源配额配置不合法")).toBeInTheDocument();
+    expect(screen.getByText("技术详情")).toBeInTheDocument();
+    expect(screen.getByText(/cpuLimit 必须/)).toBeInTheDocument();
   });
 });

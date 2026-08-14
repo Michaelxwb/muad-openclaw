@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { Toast } from "@douyinfe/semi-ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Platform } from "../src/api";
+import { ApiError } from "../src/api";
 import { PlatformSettings } from "../src/components/platforms/PlatformSettings";
 
 const apiMocks = vi.hoisted(() => ({
@@ -71,6 +72,22 @@ describe("PlatformSettings", () => {
         enabled: true,
       }),
     );
+  });
+
+  it("shows platform validation details returned by the backend", async () => {
+    apiMocks.createPlatform.mockRejectedValueOnce(
+      new ApiError("业务平台数据不合法", 400, 40607, "platform 必须以小写字母开头"),
+    );
+    render(<PlatformSettings />);
+    await screen.findByText("XDR");
+    fireEvent.click(screen.getByRole("button", { name: "增加平台" }));
+    fireEvent.change(screen.getByLabelText("业务平台"), { target: { value: "XDR" } });
+    fireEvent.change(screen.getByLabelText("平台显示名称"), { target: { value: "XDR" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    expect(await screen.findByText("技术详情")).toBeInTheDocument();
+    expect(screen.getByText(/platform 必须/)).toBeInTheDocument();
   });
 
   it("filters platforms from the list toolbar", async () => {
