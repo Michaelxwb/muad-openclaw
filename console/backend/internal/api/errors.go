@@ -131,11 +131,11 @@ var errorCatalog = map[int]errorDef{
 	// invalid.agent_bundle_required
 	errcode.InvalidAgentBundleRequired: {http.StatusBadRequest, "必须同时提供 agentId 与 Skill 包", "agentId and bundle are required"},
 	// invalid.bundle_format
-	errcode.InvalidBundleFormat: {http.StatusBadRequest, "Skill 包格式不合法", "Invalid bundle format"},
+	errcode.InvalidBundleFormat: {http.StatusBadRequest, "Skill 包格式不支持，仅支持 .tar.gz 或 .zip", "Unsupported Skill bundle format; only .tar.gz and .zip are supported"},
 	// invalid.bundle_encoding
 	errcode.InvalidBundleEncoding: {http.StatusBadRequest, "Skill 包编码不合法", "Invalid bundle encoding"},
 	// invalid.skill_bundle
-	errcode.InvalidSkillBundle: {http.StatusBadRequest, "Skill 包不合法", "Invalid skill bundle"},
+	errcode.InvalidSkillBundle: {http.StatusBadRequest, "Skill 包无法解析，请检查压缩包内容", "Unable to parse the Skill bundle; check the archive content"},
 	// invalid.skill_platforms
 	errcode.InvalidSkillPlatforms: {http.StatusBadRequest, "Skill 平台列表不合法", "Invalid Skill platforms"},
 	// invalid.skill_scope
@@ -182,6 +182,14 @@ var errorCatalog = map[int]errorDef{
 	errcode.SkillBundleLink: {http.StatusBadRequest, "Skill 包不能包含软链接或硬链接", "The skill bundle must not contain symbolic or hard links"},
 	// invalid.skill
 	errcode.InvalidSkill: {http.StatusBadRequest, "Skill 数据不合法", "Invalid Skill data"},
+	// skill.bundle.required
+	errcode.SkillBundleRequired: {http.StatusBadRequest, "必须选择 Skill 包文件", "A Skill bundle file is required"},
+	// skill.bundle.too_large
+	errcode.SkillBundleTooLarge: {http.StatusBadRequest, "Skill 包超过上传大小限制", "The Skill bundle exceeds the upload size limit"},
+	// skill.bundle.empty
+	errcode.SkillBundleEmpty: {http.StatusBadRequest, "Skill 包不能为空", "The Skill bundle must not be empty"},
+	// skill.bundle.unexpected_name
+	errcode.SkillBundleUnexpectedName: {http.StatusBadRequest, "上传的 Skill 名称与期望名称不一致", "The uploaded Skill name does not match the expected name"},
 	// invalid.platform_not_found
 	errcode.InvalidPlatformNotFound: {http.StatusBadRequest, "业务平台不存在", "Platform not found"},
 	// invalid.platform_display_name
@@ -348,6 +356,20 @@ func writeErr(w http.ResponseWriter, r *http.Request, code int) {
 		def = errorCatalog[code]
 	}
 	body := map[string]any{"code": code, "message": renderError(def, langFrom(r.Context()))}
+	writeErrorEnvelope(w, r, def.httpStatus, body)
+}
+
+func writeErrDetail(w http.ResponseWriter, r *http.Request, code int, detail string) {
+	def, ok := errorCatalog[code]
+	if !ok {
+		log.Printf("error_catalog_missing_code code=%d", code)
+		code = errcode.InternalError
+		def = errorCatalog[code]
+	}
+	body := map[string]any{"code": code, "message": renderError(def, langFrom(r.Context()))}
+	if strings.TrimSpace(detail) != "" {
+		body["detail"] = auditlog.RedactDiagnostic(detail)
+	}
 	writeErrorEnvelope(w, r, def.httpStatus, body)
 }
 

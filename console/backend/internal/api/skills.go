@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"slices"
@@ -205,7 +206,7 @@ func (s *Server) handleUploadPublicSkill(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		log.Printf("public_skill_upload_invalid error=%v", err)
-		writeErr(w, r, publicSkillBundleKey(err))
+		writeSkillBundleError(w, r, err)
 		return
 	}
 	result, err = applySkillPlatformOverride(result, upload)
@@ -434,7 +435,9 @@ func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if int64(len(bundle)) > s.cfg.SkillMaxUploadBundleBytes {
-		writeErr(w, r, errcode.InvalidSkillBundle)
+		writeErrDetail(w, r, errcode.SkillBundleTooLarge, skillBundleSizeDetail(
+			int64(len(bundle)), s.cfg.SkillMaxUploadBundleBytes, langFrom(r.Context()),
+		))
 		return
 	}
 	user, err := s.store.GetHumanUserByAgentID(request.AgentID)
@@ -455,7 +458,7 @@ func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request
 		}
 		log.Printf("private_skill_ingest_invalid user=%s error=%s",
 			user.HumanUserID, auditlog.RedactDiagnostic(err.Error()))
-		writeErr(w, r, publicSkillBundleKey(err))
+		writeSkillBundleError(w, r, err)
 		return
 	}
 	asset, err := s.store.CreateSkillAsset(repo.SkillAsset{
@@ -521,7 +524,7 @@ func (s *Server) handleUploadPrivateSkill(w http.ResponseWriter, r *http.Request
 			return
 		}
 		log.Printf("private_skill_upload_invalid user=%s error=%v", user.HumanUserID, err)
-		writeErr(w, r, publicSkillBundleKey(err))
+		writeSkillBundleError(w, r, err)
 		return
 	}
 	result, err = applySkillPlatformOverride(result, upload)
@@ -646,24 +649,45 @@ func readSkillBundleUpload(
 ) (skillBundleUpload, bool) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBytes+1024*1024)
 	if err := r.ParseMultipartForm(maxBytes); err != nil {
-		writeErr(w, r, errcode.InvalidRequestBody)
+		writeErrDetail(
+			w, r, multipartParseCode(err), multipartParseDetail(err, maxBytes, langFrom(r.Context())),
+		)
 		return skillBundleUpload{}, false
 	}
 	file, header, err := r.FormFile("bundle")
 	if err != nil {
-		writeErr(w, r, errcode.InvalidSkillBundle)
+		writeErrDetail(w, r, errcode.SkillBundleRequired, bundleFieldMissingDetail(langFrom(r.Context())))
 		return skillBundleUpload{}, false
 	}
 	defer file.Close()
 	format, ok := skillBundleFormat(header.Filename, allowedExts)
-	if header.Size > maxBytes || !ok {
-		writeErr(w, r, errcode.InvalidSkillBundle)
+	if !ok {
+		writeErrDetail(w, r, errcode.InvalidBundleFormat, bundleFormatDetail(
+			header.Filename, allowedExts, langFrom(r.Context()),
+		))
+		return skillBundleUpload{}, false
+	}
+	if header.Size > maxBytes {
+		writeErrDetail(w, r, errcode.SkillBundleTooLarge, skillBundleSizeDetail(
+			header.Size, maxBytes, langFrom(r.Context()),
+		))
 		return skillBundleUpload{}, false
 	}
 	var buffer bytes.Buffer
-	if _, err := buffer.ReadFrom(file); err != nil || buffer.Len() == 0 ||
-		int64(buffer.Len()) > maxBytes {
-		writeErr(w, r, errcode.InvalidSkillBundle)
+	if _, err := buffer.ReadFrom(file); err != nil {
+		writeErrDetail(w, r, errcode.InvalidSkillBundle, bundleReadDetail(
+			err, langFrom(r.Context()),
+		))
+		return skillBundleUpload{}, false
+	}
+	if buffer.Len() == 0 {
+		writeErrDetail(w, r, errcode.SkillBundleEmpty, bundleEmptyDetail(langFrom(r.Context())))
+		return skillBundleUpload{}, false
+	}
+	if int64(buffer.Len()) > maxBytes {
+		writeErrDetail(w, r, errcode.SkillBundleTooLarge, skillBundleSizeDetail(
+			int64(buffer.Len()), maxBytes, langFrom(r.Context()),
+		))
 		return skillBundleUpload{}, false
 	}
 	platforms, platformsSet, ok := readSkillUploadPlatforms(w, r)
@@ -691,10 +715,118 @@ func skillBundleFormat(filename string, allowedExts []string) (string, bool) {
 	return "", false
 }
 
-// publicSkillBundleKey maps a bundle validation error to a stable error-code
-// whose localized message is user-friendly. Unknown errors fall back to the
-// generic invalid-skill-bundle code.
+func multipartParseCode(err error) int {
+	if err != nil && strings.Contains(err.Error(), "request body too large") {
+		return errcode.SkillBundleTooLarge
+	}
+	return errcode.InvalidRequestBody
+}
+
+func multipartParseDetail(err error, maxBytes int64, lang langCode) string {
+	if lang == langEN {
+		if multipartParseCode(err) == errcode.SkillBundleTooLarge {
+			return fmt.Sprintf("Uploaded multipart body exceeds the limit %s", formatBytes(maxBytes))
+		}
+		return fmt.Sprintf("Failed to parse multipart upload form: %v", err)
+	}
+	if multipartParseCode(err) == errcode.SkillBundleTooLarge {
+		return fmt.Sprintf("上传请求体超过限制 %s", formatBytes(maxBytes))
+	}
+	return fmt.Sprintf("解析 multipart 上传表单失败：%v", err)
+}
+
+func bundleFieldMissingDetail(lang langCode) string {
+	if lang == langEN {
+		return `multipart form field "bundle" is required`
+	}
+	return `multipart 表单缺少 "bundle" 文件字段`
+}
+
+func bundleFormatDetail(filename string, allowedExts []string, lang langCode) string {
+	allowed := strings.Join(allowedExts, " / ")
+	if lang == langEN {
+		return fmt.Sprintf("File %q has an unsupported suffix; allowed suffixes: %s", filename, allowed)
+	}
+	return fmt.Sprintf("文件 %q 后缀不支持；仅支持：%s", filename, allowed)
+}
+
+func skillBundleSizeDetail(actualBytes, maxBytes int64, lang langCode) string {
+	if lang == langEN {
+		return fmt.Sprintf("Skill bundle size %s exceeds the limit %s", formatBytes(actualBytes), formatBytes(maxBytes))
+	}
+	return fmt.Sprintf("Skill 包大小 %s 超过限制 %s", formatBytes(actualBytes), formatBytes(maxBytes))
+}
+
+func bundleReadDetail(err error, lang langCode) string {
+	if lang == langEN {
+		return fmt.Sprintf("Failed to read the uploaded Skill bundle: %v", err)
+	}
+	return fmt.Sprintf("读取上传的 Skill 包失败：%v", err)
+}
+
+func bundleEmptyDetail(lang langCode) string {
+	if lang == langEN {
+		return "The uploaded Skill bundle file is empty"
+	}
+	return "上传的 Skill 包文件为空"
+}
+
+func skillPlatformsJSONDetail(err error, lang langCode) string {
+	if lang == langEN {
+		return fmt.Sprintf("The platforms form field must be a JSON string array: %v", err)
+	}
+	return fmt.Sprintf("platforms 表单字段必须是 JSON 字符串数组：%v", err)
+}
+
+func uploadPlatformsDetail(err error, lang langCode) string {
+	var issue *skillBundleIssue
+	if errors.As(err, &issue) {
+		return issue.detail(lang)
+	}
+	if lang == langEN {
+		return fmt.Sprintf("Invalid platforms form field: %v", err)
+	}
+	return fmt.Sprintf("platforms 表单字段不合法：%v", err)
+}
+
+func formatBytes(bytes int64) string {
+	return fmt.Sprintf("%d B", bytes)
+}
+
+func writeSkillBundleError(w http.ResponseWriter, r *http.Request, err error) {
+	writeErrDetail(w, r, skillBundleErrorCode(err), skillBundleErrorDetail(err, langFrom(r.Context())))
+}
+
+func skillBundleErrorCode(err error) int {
+	var issue *skillBundleIssue
+	if errors.As(err, &issue) && issue.code != 0 {
+		return issue.code
+	}
+	return legacySkillBundleKey(err)
+}
+
+func skillBundleErrorDetail(err error, lang langCode) string {
+	var issue *skillBundleIssue
+	if errors.As(err, &issue) {
+		return issue.detail(lang)
+	}
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+// publicSkillBundleKey maps a bundle validation error to a stable error-code.
+// Kept for older tests/callers; new upload handlers use writeSkillBundleError
+// so the response also carries a concrete detail.
 func publicSkillBundleKey(err error) int {
+	return skillBundleErrorCode(err)
+}
+
+func legacySkillBundleKey(err error) int {
+	if err == nil {
+		return errcode.InvalidSkillBundle
+	}
 	message := err.Error()
 	switch {
 	case strings.Contains(message, "OpenClaw frontmatter name and description"):
@@ -710,6 +842,8 @@ func publicSkillBundleKey(err error) int {
 		return errcode.SkillBundleInvalidName
 	case strings.Contains(message, "invalid platform dependency"):
 		return errcode.SkillBundleInvalidPlatform
+	case strings.Contains(message, "unexpected skill name"):
+		return errcode.SkillBundleUnexpectedName
 	case strings.Contains(message, "decode Skill manifest") ||
 		strings.Contains(message, "invalid Skill manifest"):
 		return errcode.SkillBundleInvalidManifest
@@ -787,12 +921,16 @@ func readSkillUploadPlatforms(
 	}
 	var values []string
 	if err := json.Unmarshal([]byte(raw), &values); err != nil {
-		writeErr(w, r, errcode.InvalidSkillPlatforms)
+		writeErrDetail(w, r, errcode.InvalidSkillPlatforms, skillPlatformsJSONDetail(
+			err, langFrom(r.Context()),
+		))
 		return nil, false, false
 	}
 	platforms, err := normalizeUploadPlatforms(values)
 	if err != nil {
-		writeErr(w, r, errcode.InvalidSkillPlatforms)
+		writeErrDetail(w, r, errcode.InvalidSkillPlatforms, uploadPlatformsDetail(
+			err, langFrom(r.Context()),
+		))
 		return nil, false, false
 	}
 	return platforms, true, true
@@ -816,7 +954,12 @@ func normalizeUploadPlatforms(values []string) ([]string, error) {
 	for _, value := range values {
 		platform := normalizePlatformName(value)
 		if platform == "" {
-			return nil, repo.ErrInvalidPlatform
+			return nil, skillBundleErrorf(
+				errcode.InvalidSkillPlatforms,
+				"platforms 字段包含非法平台名 %q；只能使用小写字母、数字或 _，且必须以字母开头",
+				"platforms field contains invalid platform name %q; use lowercase letters, digits, or _, starting with a letter",
+				value,
+			)
 		}
 		platforms = append(platforms, platform)
 	}

@@ -19,6 +19,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 var (
@@ -48,12 +50,70 @@ type skillMarkdownMetadata struct {
 	Description string
 }
 
+type skillBundleIssue struct {
+	code     int
+	detailZH string
+	detailEN string
+	cause    error
+}
+
+func (err *skillBundleIssue) Error() string {
+	detail := strings.TrimSpace(err.detailEN)
+	if detail == "" {
+		detail = strings.TrimSpace(err.detailZH)
+	}
+	if err.cause != nil && detail != "" {
+		return detail + ": " + err.cause.Error()
+	}
+	if err.cause != nil {
+		return err.cause.Error()
+	}
+	return detail
+}
+
+func (err *skillBundleIssue) Unwrap() error {
+	return err.cause
+}
+
+func (err *skillBundleIssue) detail(lang langCode) string {
+	detail := strings.TrimSpace(err.detailZH)
+	if lang == langEN && strings.TrimSpace(err.detailEN) != "" {
+		detail = strings.TrimSpace(err.detailEN)
+	}
+	if err.cause != nil && detail != "" {
+		return detail + ": " + err.cause.Error()
+	}
+	if err.cause != nil {
+		return err.cause.Error()
+	}
+	return detail
+}
+
+func skillBundleError(code int, zh, en string) error {
+	return &skillBundleIssue{code: code, detailZH: zh, detailEN: en}
+}
+
+func skillBundleErrorf(code int, zh, en string, args ...any) error {
+	return skillBundleError(code, fmt.Sprintf(zh, args...), fmt.Sprintf(en, args...))
+}
+
+func skillBundleWrap(code int, cause error, zh, en string, args ...any) error {
+	return &skillBundleIssue{
+		code: code, detailZH: fmt.Sprintf(zh, args...), detailEN: fmt.Sprintf(en, args...),
+		cause: cause,
+	}
+}
+
 func installPublicSkillBundle(
 	bundle []byte, publicRoot string, validateName func(string) error,
 ) (privateSkillInstallResult, error) {
 	root, err := resolvePublicSkillRoot(publicRoot)
 	if err != nil {
-		return privateSkillInstallResult{}, errors.New("invalid public Skill root")
+		return privateSkillInstallResult{}, skillBundleWrap(
+			errcode.InvalidSkillBundle, err,
+			"Public Skill 存储目录配置不可用，无法保存上传的 Skill",
+			"Public Skill storage root is not usable; the uploaded Skill cannot be saved",
+		)
 	}
 	return installSkillBundleToRoot(bundle, root, "", "public", validateName)
 }
@@ -63,7 +123,11 @@ func installPrivateSkillBundle(
 ) (privateSkillInstallResult, error) {
 	root, err := resolvePrivateSkillRoot(skillsRoot, humanUserID)
 	if err != nil {
-		return privateSkillInstallResult{}, errors.New("invalid private Skill root")
+		return privateSkillInstallResult{}, skillBundleWrap(
+			errcode.InvalidSkillBundle, err,
+			"Private Skill 存储目录配置不可用，无法保存上传的 Skill",
+			"Private Skill storage root is not usable; the uploaded Skill cannot be saved",
+		)
 	}
 	return installSkillBundleToRoot(bundle, root, expectedName, "private", validateName)
 }
@@ -92,7 +156,12 @@ func installSkillBundleToRoot(
 		return privateSkillInstallResult{}, err
 	}
 	if expected := strings.TrimSpace(expectedName); expected != "" && metadata.Name != expected {
-		return privateSkillInstallResult{}, errors.New("unexpected skill name")
+		return privateSkillInstallResult{}, skillBundleErrorf(
+			errcode.SkillBundleUnexpectedName,
+			"上传包里的 Skill 名称是 %q，但当前操作期望名称是 %q；请修改 SKILL.md frontmatter name 或 muad.skill.json.name 后重新打包",
+			"Uploaded Skill name is %q, but this operation expects %q; update SKILL.md frontmatter name or muad.skill.json.name and repackage",
+			metadata.Name, expected,
+		)
 	}
 	if validateName != nil {
 		if err := validateName(metadata.Name); err != nil {
@@ -101,7 +170,12 @@ func installSkillBundleToRoot(
 	}
 	targetDir := filepath.Join(root, metadata.Name)
 	if !pathWithin(root, targetDir) {
-		return privateSkillInstallResult{}, errors.New("target path escapes public Skill root")
+		return privateSkillInstallResult{}, skillBundleErrorf(
+			errcode.SkillBundleUnsafePath,
+			"Skill 名称 %q 生成的目标路径会逃逸存储目录",
+			"Skill name %q resolves outside the storage root",
+			metadata.Name,
+		)
 	}
 	if err := replaceSkillDirectory(skillDir, targetDir); err != nil {
 		return privateSkillInstallResult{}, err
@@ -144,23 +218,31 @@ func resolvePublicSkillRoot(publicRoot string) (string, error) {
 func extractSkillBundle(bundle []byte, targetRoot string) error {
 	if err := extractTarGzSkillBundle(bundle, targetRoot); err == nil {
 		return nil
-	} else if !isInvalidTarGzBundle(err) {
+	} else if !isInvalidArchiveBundle(err) {
 		return err
 	}
 	if err := extractZipSkillBundle(bundle, targetRoot); err != nil {
-		return fmt.Errorf("invalid skill bundle: %w", err)
+		return skillBundleWrap(
+			errcode.InvalidBundleFormat, err,
+			"上传文件内容不是有效的 .tar.gz 或 .zip 压缩包",
+			"Uploaded file content is not a valid .tar.gz or .zip archive",
+		)
 	}
 	return nil
 }
 
-func isInvalidTarGzBundle(err error) bool {
-	return strings.HasPrefix(err.Error(), "invalid skill bundle:")
+func isInvalidArchiveBundle(err error) bool {
+	return skillBundleErrorCode(err) == errcode.InvalidBundleFormat
 }
 
 func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 	gz, err := gzip.NewReader(bytes.NewReader(bundle))
 	if err != nil {
-		return fmt.Errorf("invalid skill bundle: %w", err)
+		return skillBundleWrap(
+			errcode.InvalidBundleFormat, err,
+			"上传文件内容不是有效的 tar.gz 压缩包",
+			"Uploaded file content is not a valid tar.gz archive",
+		)
 	}
 	defer gz.Close()
 	reader := tar.NewReader(gz)
@@ -170,7 +252,11 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("read skill bundle: %w", err)
+			return skillBundleWrap(
+				errcode.InvalidBundleFormat, err,
+				"读取 tar.gz 压缩包失败，文件可能已损坏",
+				"Failed to read the tar.gz archive; the file may be corrupted",
+			)
 		}
 		relative, err := safeArchivePath(header.Name)
 		if err != nil {
@@ -178,7 +264,12 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 		}
 		target := filepath.Join(targetRoot, filepath.FromSlash(relative))
 		if !pathWithin(targetRoot, target) {
-			return errors.New("bundle path escapes extract root")
+			return skillBundleErrorf(
+				errcode.SkillBundleUnsafePath,
+				"归档路径 %q 会逃逸解压目录",
+				"Archive path %q escapes the extract root",
+				header.Name,
+			)
 		}
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -193,7 +284,12 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 				return err
 			}
 		case tar.TypeSymlink, tar.TypeLink:
-			return errors.New("bundle must not contain links")
+			return skillBundleErrorf(
+				errcode.SkillBundleLink,
+				"归档条目 %q 是软链接或硬链接，Skill 包不允许包含链接",
+				"Archive entry %q is a symbolic or hard link; links are not allowed",
+				header.Name,
+			)
 		default:
 			continue
 		}
@@ -203,7 +299,11 @@ func extractTarGzSkillBundle(bundle []byte, targetRoot string) error {
 func extractZipSkillBundle(bundle []byte, targetRoot string) error {
 	reader, err := zip.NewReader(bytes.NewReader(bundle), int64(len(bundle)))
 	if err != nil {
-		return err
+		return skillBundleWrap(
+			errcode.InvalidBundleFormat, err,
+			"上传文件内容不是有效的 zip 压缩包",
+			"Uploaded file content is not a valid zip archive",
+		)
 	}
 	for _, file := range reader.File {
 		if ignoredZipEntry(file.Name) {
@@ -223,11 +323,21 @@ func extractZipEntry(file *zip.File, targetRoot string) error {
 	}
 	target := filepath.Join(targetRoot, filepath.FromSlash(relative))
 	if !pathWithin(targetRoot, target) {
-		return errors.New("bundle path escapes extract root")
+		return skillBundleErrorf(
+			errcode.SkillBundleUnsafePath,
+			"归档路径 %q 会逃逸解压目录",
+			"Archive path %q escapes the extract root",
+			file.Name,
+		)
 	}
 	mode := file.FileInfo().Mode()
 	if mode&os.ModeSymlink != 0 {
-		return errors.New("bundle must not contain symlinks")
+		return skillBundleErrorf(
+			errcode.SkillBundleLink,
+			"zip 条目 %q 是软链接，Skill 包不允许包含链接",
+			"Zip entry %q is a symbolic link; links are not allowed",
+			file.Name,
+		)
 	}
 	if file.FileInfo().IsDir() || zipNameIsDirectory(file.Name) {
 		return os.MkdirAll(target, 0o700)
@@ -256,7 +366,11 @@ func zipNameIsDirectory(name string) bool {
 
 func writeBundleFile(target string, reader io.Reader, size int64) error {
 	if size < 0 {
-		return errors.New("bundle contains an invalid file size")
+		return skillBundleError(
+			errcode.InvalidSkillBundle,
+			"压缩包里存在非法文件大小",
+			"The archive contains an invalid file size",
+		)
 	}
 	file, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
@@ -271,16 +385,46 @@ func writeBundleFile(target string, reader io.Reader, size int64) error {
 
 func safeArchivePath(name string) (string, error) {
 	normalized := strings.ReplaceAll(name, "\\", "/")
-	if normalized == "" || strings.HasPrefix(normalized, "/") || strings.Contains(normalized, ":") {
-		return "", errors.New("bundle contains an invalid path")
+	if normalized == "" {
+		return "", skillBundleError(
+			errcode.SkillBundleUnsafePath,
+			"压缩包里存在空路径条目",
+			"The archive contains an empty path entry",
+		)
+	}
+	if strings.HasPrefix(normalized, "/") {
+		return "", skillBundleErrorf(
+			errcode.SkillBundleUnsafePath,
+			"归档路径 %q 是绝对路径，必须使用相对路径",
+			"Archive path %q is absolute; use a relative path",
+			name,
+		)
+	}
+	if strings.Contains(normalized, ":") {
+		return "", skillBundleErrorf(
+			errcode.SkillBundleUnsafePath,
+			"归档路径 %q 包含冒号，可能是 Windows 盘符或特殊路径，禁止上传",
+			"Archive path %q contains a colon, which may be a Windows drive or special path and is not allowed",
+			name,
+		)
 	}
 	cleaned := path.Clean(normalized)
 	if cleaned == "." || strings.HasPrefix(cleaned, "../") || cleaned == ".." {
-		return "", errors.New("bundle contains a parent path segment")
+		return "", skillBundleErrorf(
+			errcode.SkillBundleUnsafePath,
+			"归档路径 %q 包含 ..，会逃逸 Skill 目录",
+			"Archive path %q contains .. and would escape the Skill directory",
+			name,
+		)
 	}
 	for _, part := range strings.Split(cleaned, "/") {
 		if part == ".." {
-			return "", errors.New("bundle contains a parent path segment")
+			return "", skillBundleErrorf(
+				errcode.SkillBundleUnsafePath,
+				"归档路径 %q 包含 ..，会逃逸 Skill 目录",
+				"Archive path %q contains .. and would escape the Skill directory",
+				name,
+			)
 		}
 	}
 	return cleaned, nil
@@ -293,7 +437,12 @@ func findPrimarySkillDir(root string) (string, error) {
 			return err
 		}
 		if entry.Type()&fs.ModeSymlink != 0 {
-			return errors.New("bundle must not contain symlinks")
+			return skillBundleErrorf(
+				errcode.SkillBundleLink,
+				"压缩包解压后发现链接条目 %q，Skill 包不允许包含软链接或硬链接",
+				"Extracted bundle contains link entry %q; symbolic or hard links are not allowed",
+				archiveDisplayPath(root, item),
+			)
 		}
 		if !entry.IsDir() && filepath.Base(item) == "SKILL.md" {
 			found = append(found, filepath.Dir(item))
@@ -304,7 +453,11 @@ func findPrimarySkillDir(root string) (string, error) {
 		return "", err
 	}
 	if len(found) == 0 {
-		return "", errors.New("bundle must contain a SKILL.md")
+		return "", skillBundleError(
+			errcode.SkillBundleNoSkillMd,
+			"压缩包内没有找到主 SKILL.md；请把 Skill 说明文件命名为 SKILL.md 并放在 Skill 根目录",
+			"The archive does not contain a primary SKILL.md; name the Skill instruction file SKILL.md and place it in the Skill root",
+		)
 	}
 	sortSkillDirs(root, found)
 	topDepth := archivePathDepth(root, found[0])
@@ -316,15 +469,40 @@ func findPrimarySkillDir(root string) (string, error) {
 		topLevelRoots++
 	}
 	if topLevelRoots > 1 {
-		return "", errors.New("bundle contains multiple top-level Skill roots")
+		return "", skillBundleErrorf(
+			errcode.SkillBundleMultiRoot,
+			"压缩包内发现多个同层 Skill 根目录：%s；请拆成多个 Skill 包分别上传",
+			"The archive contains multiple peer Skill roots: %s; split them into separate Skill bundles",
+			strings.Join(relativeSkillDirs(root, found[:topLevelRoots]), ", "),
+		)
 	}
 	return found[0], nil
+}
+
+func archiveDisplayPath(root, item string) string {
+	relative, err := filepath.Rel(root, item)
+	if err != nil {
+		return filepath.ToSlash(filepath.Base(item))
+	}
+	return filepath.ToSlash(relative)
+}
+
+func relativeSkillDirs(root string, dirs []string) []string {
+	out := make([]string, 0, len(dirs))
+	for _, dir := range dirs {
+		out = append(out, archiveDisplayPath(root, dir))
+	}
+	return out
 }
 
 func readSkillBundleMetadata(skillDir, defaultVisibility string) (privateSkillInstallResult, error) {
 	skillMarkdown, err := os.ReadFile(filepath.Join(skillDir, "SKILL.md"))
 	if err != nil {
-		return privateSkillInstallResult{}, fmt.Errorf("read SKILL.md: %w", err)
+		return privateSkillInstallResult{}, skillBundleWrap(
+			errcode.SkillBundleNoSkillMd, err,
+			"读取主 SKILL.md 失败",
+			"Failed to read the primary SKILL.md",
+		)
 	}
 	manifest, managed, err := readSkillManifest(filepath.Join(skillDir, "muad.skill.json"))
 	if err != nil {
@@ -333,7 +511,9 @@ func readSkillBundleMetadata(skillDir, defaultVisibility string) (privateSkillIn
 	frontmatter := skillMarkdownFrontmatter(string(skillMarkdown))
 	name := firstSkillName(manifest.Name, frontmatter.Name, filepath.Base(skillDir))
 	if name == "" || !skillNameRegexp.MatchString(name) {
-		return privateSkillInstallResult{}, errors.New("invalid skill name")
+		return privateSkillInstallResult{}, invalidSkillNameError(
+			manifest.Name, frontmatter.Name, filepath.Base(skillDir),
+		)
 	}
 	if err := validateOpenClawSkillMetadata(manifest, frontmatter, name, defaultVisibility); err != nil {
 		return privateSkillInstallResult{}, err
@@ -404,7 +584,11 @@ func ensureLongTaskSubmitStub(skillDir, name string, longTask bool) error {
 	}
 	stubPath := filepath.Join(skillDir, "_longtask_submit.md")
 	if err := os.WriteFile(stubPath, []byte(longTaskSubmitStub(name)), 0o600); err != nil {
-		return fmt.Errorf("write long task submit stub: %w", err)
+		return skillBundleWrap(
+			errcode.InvalidSkillBundle, err,
+			"为 longTask Skill 写入 _longtask_submit.md 失败",
+			"Failed to write _longtask_submit.md for the longTask Skill",
+		)
 	}
 	return nil
 }
@@ -436,7 +620,12 @@ func hashSkillDirectory(skillDir string) (string, error) {
 			return walkErr
 		}
 		if entry.Type()&fs.ModeSymlink != 0 {
-			return errors.New("Skill directory must not contain symlinks")
+			return skillBundleErrorf(
+				errcode.SkillBundleLink,
+				"Skill 目录里的路径 %q 是链接，Skill 包不允许包含软链接或硬链接",
+				"Skill directory path %q is a link; symbolic or hard links are not allowed",
+				archiveDisplayPath(skillDir, item),
+			)
 		}
 		if item != skillDir && entry.IsDir() && ignoredSkillScriptDirectory(entry.Name()) {
 			return filepath.SkipDir
@@ -453,7 +642,12 @@ func hashSkillDirectory(skillDir string) (string, error) {
 		}
 		relative, err := filepath.Rel(skillDir, item)
 		if err != nil || !pathWithin(skillDir, item) {
-			return errors.New("Skill file escapes bundle root")
+			return skillBundleErrorf(
+				errcode.SkillBundleUnsafePath,
+				"Skill 文件路径 %q 会逃逸 Skill 根目录",
+				"Skill file path %q escapes the Skill root",
+				archiveDisplayPath(skillDir, item),
+			)
 		}
 		files = append(files, filepath.ToSlash(relative))
 		return nil
@@ -467,7 +661,12 @@ func hashSkillDirectory(skillDir string) (string, error) {
 	for _, file := range files {
 		content, err := os.ReadFile(filepath.Join(skillDir, filepath.FromSlash(file)))
 		if err != nil {
-			return "", fmt.Errorf("read Skill file for hash: %w", err)
+			return "", skillBundleWrap(
+				errcode.InvalidSkillBundle, err,
+				"读取 Skill 文件 %q 计算内容指纹失败",
+				"Failed to read Skill file %q while computing the content hash",
+				file,
+			)
 		}
 		hash.Write([]byte(file))
 		hash.Write(separator)
@@ -483,11 +682,19 @@ func readSkillManifest(path string) (skillBundleManifest, bool, error) {
 		return skillBundleManifest{}, false, nil
 	}
 	if err != nil {
-		return skillBundleManifest{}, false, fmt.Errorf("read Skill manifest: %w", err)
+		return skillBundleManifest{}, false, skillBundleWrap(
+			errcode.SkillBundleInvalidManifest, err,
+			"读取 muad.skill.json 失败",
+			"Failed to read muad.skill.json",
+		)
 	}
 	var manifest skillBundleManifest
 	if err := json.Unmarshal(raw, &manifest); err != nil {
-		return skillBundleManifest{}, false, errors.New("invalid Skill manifest")
+		return skillBundleManifest{}, false, skillBundleWrap(
+			errcode.SkillBundleInvalidManifest, err,
+			"muad.skill.json 不是合法 JSON",
+			"muad.skill.json is not valid JSON",
+		)
 	}
 	return manifest, true, nil
 }
@@ -509,7 +716,12 @@ func scanTraditionalSkillScripts(skillDir string) ([]string, error) {
 			return walkErr
 		}
 		if entry.Type()&fs.ModeSymlink != 0 {
-			return errors.New("Skill directory must not contain symlinks")
+			return skillBundleErrorf(
+				errcode.SkillBundleLink,
+				"Skill 目录里的脚本路径 %q 是链接，Skill 包不允许包含软链接或硬链接",
+				"Skill script path %q is a link; symbolic or hard links are not allowed",
+				archiveDisplayPath(skillDir, item),
+			)
 		}
 		if item != skillDir && entry.IsDir() && ignoredSkillScriptDirectory(entry.Name()) {
 			return filepath.SkipDir
@@ -519,7 +731,12 @@ func scanTraditionalSkillScripts(skillDir string) ([]string, error) {
 		}
 		relative, err := filepath.Rel(skillDir, item)
 		if err != nil || !pathWithin(skillDir, item) {
-			return errors.New("Skill script escapes bundle root")
+			return skillBundleErrorf(
+				errcode.SkillBundleUnsafePath,
+				"Skill 脚本路径 %q 会逃逸 Skill 根目录",
+				"Skill script path %q escapes the Skill root",
+				archiveDisplayPath(skillDir, item),
+			)
 		}
 		scripts = append(scripts, filepath.ToSlash(relative))
 		return nil
@@ -550,21 +767,79 @@ func validateOpenClawSkillMetadata(
 	if skillDefaultVisibility(defaultVisibility) != "public" {
 		return nil
 	}
-	if !frontmatter.Present || strings.TrimSpace(frontmatter.Name) == "" ||
-		strings.TrimSpace(frontmatter.Description) == "" {
-		return errors.New("public Skill SKILL.md must include OpenClaw frontmatter name and description")
+	if !frontmatter.Present {
+		return skillBundleError(
+			errcode.SkillBundleFrontmatter,
+			"Public Skill 的 SKILL.md 顶部缺少 YAML frontmatter；需要包含 name 和 description",
+			"The Public Skill's SKILL.md is missing YAML frontmatter; include name and description",
+		)
+	}
+	if strings.TrimSpace(frontmatter.Name) == "" {
+		return skillBundleError(
+			errcode.SkillBundleFrontmatter,
+			"Public Skill 的 SKILL.md frontmatter 缺少 name 字段",
+			"The Public Skill's SKILL.md frontmatter is missing the name field",
+		)
+	}
+	if strings.TrimSpace(frontmatter.Description) == "" {
+		return skillBundleError(
+			errcode.SkillBundleFrontmatter,
+			"Public Skill 的 SKILL.md frontmatter 缺少 description 字段",
+			"The Public Skill's SKILL.md frontmatter is missing the description field",
+		)
 	}
 	frontmatterName := strings.TrimSpace(frontmatter.Name)
 	if !skillNameRegexp.MatchString(frontmatterName) {
-		return errors.New("invalid skill name")
+		return invalidSkillNameError("", frontmatterName, "")
 	}
 	if strings.TrimSpace(manifest.Name) != "" && normalizeSkillName(manifest.Name) != frontmatterName {
-		return errors.New("public Skill muad.skill.json name must match SKILL.md frontmatter name")
+		return skillBundleErrorf(
+			errcode.SkillBundleNameMismatch,
+			"muad.skill.json.name 解析为 %q，但 SKILL.md frontmatter name 是 %q；两个字段必须一致",
+			"muad.skill.json.name resolves to %q, but SKILL.md frontmatter name is %q; they must match",
+			normalizeSkillName(manifest.Name), frontmatterName,
+		)
 	}
 	if resolvedName != frontmatterName {
-		return errors.New("public Skill name must match SKILL.md frontmatter name")
+		return skillBundleErrorf(
+			errcode.SkillBundleNameMismatch,
+			"Skill 目录或 manifest 推导出的名称是 %q，但 SKILL.md frontmatter name 是 %q；请保持一致",
+			"Skill directory or manifest resolved to %q, but SKILL.md frontmatter name is %q; keep them consistent",
+			resolvedName, frontmatterName,
+		)
 	}
 	return nil
+}
+
+func invalidSkillNameError(manifestName, frontmatterName, dirName string) error {
+	values := skillNameSourceSummary(manifestName, frontmatterName, dirName)
+	return skillBundleErrorf(
+		errcode.SkillBundleInvalidName,
+		"无法确定合法 Skill 名称（当前值：%s）；名称必须以小写字母开头，只能包含小写字母、数字、- 或 _，最长 64 个字符",
+		"Unable to determine a valid Skill name (current values: %s); the name must start with a lowercase letter and contain only lowercase letters, digits, - or _, up to 64 characters",
+		values,
+	)
+}
+
+func skillNameSourceSummary(manifestName, frontmatterName, dirName string) string {
+	parts := make([]string, 0, 3)
+	if strings.TrimSpace(manifestName) != "" {
+		parts = append(parts, "muad.skill.json.name="+strconvQuote(manifestName))
+	}
+	if strings.TrimSpace(frontmatterName) != "" {
+		parts = append(parts, "SKILL.md name="+strconvQuote(frontmatterName))
+	}
+	if strings.TrimSpace(dirName) != "" {
+		parts = append(parts, "目录名="+strconvQuote(dirName))
+	}
+	if len(parts) == 0 {
+		return "空"
+	}
+	return strings.Join(parts, ", ")
+}
+
+func strconvQuote(value string) string {
+	return fmt.Sprintf("%q", strings.TrimSpace(value))
 }
 
 func skillMarkdownFrontmatter(markdown string) skillMarkdownMetadata {
@@ -607,7 +882,12 @@ func normalizeSkillPlatforms(manifest skillBundleManifest) ([]string, error) {
 		}
 		platform := normalizePlatformName(item)
 		if platform == "" {
-			return nil, errors.New("invalid platform dependency")
+			return nil, skillBundleErrorf(
+				errcode.SkillBundleInvalidPlatform,
+				"muad.skill.json 的 platform/platforms 包含非法平台名 %q；只能使用小写字母、数字或 _，且必须以字母开头",
+				"muad.skill.json platform/platforms contains invalid platform name %q; use lowercase letters, digits, or _, starting with a letter",
+				item,
+			)
 		}
 		if seen[platform] {
 			continue
@@ -761,7 +1041,12 @@ func copySkillDirectory(source, target string) error {
 			return err
 		}
 		if entry.Type()&fs.ModeSymlink != 0 {
-			return errors.New("bundle must not contain symlinks")
+			return skillBundleErrorf(
+				errcode.SkillBundleLink,
+				"Skill 目录里的路径 %q 是链接，Skill 包不允许包含软链接或硬链接",
+				"Skill directory path %q is a link; symbolic or hard links are not allowed",
+				archiveDisplayPath(source, item),
+			)
 		}
 		relative, err := filepath.Rel(source, item)
 		if err != nil {

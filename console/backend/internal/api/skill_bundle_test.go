@@ -6,10 +6,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 func TestInspectSkillBundleClassifiesTraditionalScript(t *testing.T) {
@@ -147,9 +150,7 @@ func TestInstallPublicSkillBundle_RejectsInvalidManifest(t *testing.T) {
 		"Web Tools Guide 1.0.2/SKILL.md":        []byte("# Web\n"),
 		"Web Tools Guide 1.0.2/muad.skill.json": []byte("{not json"),
 	}), root, nil)
-	if err == nil || !strings.Contains(err.Error(), "invalid Skill manifest") {
-		t.Fatalf("invalid manifest error = %v", err)
-	}
+	assertSkillBundleIssue(t, err, errcode.SkillBundleInvalidManifest, "muad.skill.json 不是合法 JSON")
 }
 
 func TestInstallPublicSkillBundle_RejectsMissingOpenClawFrontmatterDescription(t *testing.T) {
@@ -157,9 +158,7 @@ func TestInstallPublicSkillBundle_RejectsMissingOpenClawFrontmatterDescription(t
 	_, err := installPublicSkillBundle(makeAPIZipWithFiles(t, map[string][]byte{
 		"missing-description/SKILL.md": []byte("---\nname: missing-description\n---\n# Missing\n"),
 	}), root, nil)
-	if err == nil || !strings.Contains(err.Error(), "OpenClaw frontmatter name and description") {
-		t.Fatalf("missing frontmatter description error = %v", err)
-	}
+	assertSkillBundleIssue(t, err, errcode.SkillBundleFrontmatter, "缺少 description 字段")
 }
 
 func TestInstallPublicSkillBundle_RejectsManifestFrontmatterNameMismatch(t *testing.T) {
@@ -168,9 +167,7 @@ func TestInstallPublicSkillBundle_RejectsManifestFrontmatterNameMismatch(t *test
 		"policy-check/SKILL.md":        []byte("---\nname: policy-check\ndescription: Policy check Skill.\n---\n# Policy\n"),
 		"policy-check/muad.skill.json": []byte(`{"name":"extract"}`),
 	}), root, nil)
-	if err == nil || !strings.Contains(err.Error(), "must match SKILL.md frontmatter name") {
-		t.Fatalf("frontmatter mismatch error = %v", err)
-	}
+	assertSkillBundleIssue(t, err, errcode.SkillBundleNameMismatch, "muad.skill.json.name")
 }
 
 func TestInstallPublicSkillBundle_RejectsTarSymlink(t *testing.T) {
@@ -204,9 +201,7 @@ func TestInstallPublicSkillBundle_RejectsMultipleTopLevelSkillRoots(t *testing.T
 		"skill-a/SKILL.md": []byte("# A\n"),
 		"skill-b/SKILL.md": []byte("# B\n"),
 	}), root, nil)
-	if err == nil || !strings.Contains(err.Error(), "multiple top-level Skill roots") {
-		t.Fatalf("multiple top-level roots error = %v", err)
-	}
+	assertSkillBundleIssue(t, err, errcode.SkillBundleMultiRoot, "skill-a, skill-b")
 }
 
 func TestInstallPublicSkillBundle_RejectsMissingSkillMarkdown(t *testing.T) {
@@ -214,9 +209,7 @@ func TestInstallPublicSkillBundle_RejectsMissingSkillMarkdown(t *testing.T) {
 	_, err := installPublicSkillBundle(makeAPIZipWithFiles(t, map[string][]byte{
 		"skill-a/README.md": []byte("# A\n"),
 	}), root, nil)
-	if err == nil || !strings.Contains(err.Error(), "must contain a SKILL.md") {
-		t.Fatalf("missing SKILL.md error = %v", err)
-	}
+	assertSkillBundleIssue(t, err, errcode.SkillBundleNoSkillMd, "没有找到主 SKILL.md")
 }
 
 func TestHashSkillDirectoryUsesAllIncludedFiles(t *testing.T) {
@@ -301,5 +294,19 @@ func writeSkillBundleTestFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
+func assertSkillBundleIssue(t *testing.T, err error, code int, detailContains string) {
+	t.Helper()
+	var issue *skillBundleIssue
+	if !errors.As(err, &issue) {
+		t.Fatalf("error = %v, want skillBundleIssue", err)
+	}
+	if issue.code != code {
+		t.Fatalf("code = %d, want %d; error=%v", issue.code, code, err)
+	}
+	if detail := issue.detail(langZH); !strings.Contains(detail, detailContains) {
+		t.Fatalf("detail = %q, want containing %q", detail, detailContains)
 	}
 }
