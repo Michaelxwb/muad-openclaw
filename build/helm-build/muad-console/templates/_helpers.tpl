@@ -58,3 +58,14 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Render worker nodeSelector values for the Console backend env parser.
+*/}}
+{{- define "muad-console.workerNodeSelectorEnv" -}}
+{{- $pairs := list -}}
+{{- range $key := keys . | sortAlpha -}}
+{{- $pairs = append $pairs (printf "%s=%v" $key (index $ $key)) -}}
+{{- end -}}
+{{- join "," $pairs -}}
+{{- end }}

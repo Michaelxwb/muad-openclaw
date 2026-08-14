@@ -86,6 +86,9 @@ spec:
       labels: { app: muad-console }
     spec:
       serviceAccountName: muad-console
+      # Console 自身的节点选择；Worker Pod 使用 config.yaml 的 k8s.workerNodeSelector。
+      # nodeSelector:
+      #   app: api-server
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

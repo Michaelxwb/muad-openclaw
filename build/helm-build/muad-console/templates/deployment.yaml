@@ -37,6 +37,10 @@ spec:
           env:
             - name: CONSOLE_CONFIG
               value: /etc/muad-console/config.yaml
+            {{- with .Values.workerNodeSelector }}
+            - name: K8S_WORKER_NODE_SELECTOR
+              value: {{ include "muad-console.workerNodeSelectorEnv" . | quote }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
