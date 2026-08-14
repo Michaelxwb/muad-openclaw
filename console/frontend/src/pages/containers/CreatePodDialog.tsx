@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Checkbox, Input, InputNumber, Modal, Select } from "@douyinfe/semi-ui";
-import { api } from "../../api";
+import { api, ApiError } from "../../api";
 import type { ChannelCredential, Pod } from "../../api";
 import { ChannelForm } from "../../components/ChannelForm";
 import { FeedbackBanner, setRepeatableError } from "../../components/ConsolePage";
@@ -25,20 +25,27 @@ export function CreatePodDialog(props: Props) {
   const [form, setForm] = useState<CreateFormState>(EMPTY_CREATE_FORM);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [errorDetail, setErrorDetail] = useState<string | undefined>();
   useEffect(() => {
     if (!props.visible) return;
     setForm(EMPTY_CREATE_FORM);
     setError("");
+    setErrorDetail(undefined);
   }, [props.visible]);
   const submit = async (channels: string[], channelConfigs: Record<string, ChannelCredential>) => {
     const validation = validateCreateForm(form);
-    if (validation) return setRepeatableError(setError, validation);
+    if (validation) {
+      setErrorDetail(undefined);
+      return setRepeatableError(setError, validation);
+    }
     setBusy(true);
     setError("");
+    setErrorDetail(undefined);
     try {
       await props.onCreated(await api.createPod(createPodInput(form, channels, channelConfigs)));
     } catch (caught) {
       setError(errorMessage(caught, "pod.createFailed"));
+      setErrorDetail(caught instanceof ApiError ? caught.detail : undefined);
     } finally {
       setBusy(false);
     }
@@ -57,7 +64,8 @@ export function CreatePodDialog(props: Props) {
       <ChannelForm
         mode="create"
         busy={busy}
-        error=""
+        error={error}
+        errorDetail={errorDetail}
         onSubmit={(channelForm) => submit(channelForm.channels, channelForm.channelConfigs)}
         onCancel={props.onClose}
       />

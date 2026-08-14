@@ -25,8 +25,12 @@ func (s *Server) handleCreateHumanUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request createHumanUserRequest
-	if err := decodeJSONBody(w, r, &request); err != nil || !validHumanUserCreateRequest(request) {
+	if err := decodeJSONBody(w, r, &request); err != nil {
 		writeErr(w, r, errcode.InvalidHumanUserRequest)
+		return
+	}
+	if err := validateHumanUserCreateRequest(request); err != nil {
+		writeInputValidationError(w, r, errcode.InvalidHumanUserRequest, err)
 		return
 	}
 	agentID, err := resolveAgentID(request.AgentID, request.DisplayName)
@@ -49,11 +53,37 @@ func (s *Server) handleCreateHumanUser(w http.ResponseWriter, r *http.Request) {
 	s.writeHumanUserBootstrap(w, r, result)
 }
 
-func validHumanUserCreateRequest(request createHumanUserRequest) bool {
+func validateHumanUserCreateRequest(request createHumanUserRequest) error {
 	displayName := strings.TrimSpace(request.DisplayName)
-	return displayName != "" && len(displayName) <= 128 && len(request.Notes) <= 4000 &&
-		strings.TrimSpace(request.ModelConfigID) != "" &&
-		(request.Identity == nil) != (request.Activation == nil)
+	if displayName == "" || len(displayName) > 128 {
+		return newInputValidationError(
+			errcode.InvalidHumanUserRequest,
+			"displayName 不能为空，且不能超过 128 个字符",
+			"displayName is required and must be at most 128 characters",
+		)
+	}
+	if len(request.Notes) > 4000 {
+		return newInputValidationError(
+			errcode.InvalidHumanUserRequest,
+			"notes 不能超过 4000 个字符",
+			"notes must be at most 4000 characters",
+		)
+	}
+	if strings.TrimSpace(request.ModelConfigID) == "" {
+		return newInputValidationError(
+			errcode.InvalidHumanUserRequest,
+			"modelConfigId 必须选择一个未绑定的模型配置",
+			"modelConfigId must reference an available unbound model configuration",
+		)
+	}
+	if (request.Identity == nil) == (request.Activation == nil) {
+		return newInputValidationError(
+			errcode.InvalidHumanUserRequest,
+			"identity 和 activation 必须且只能填写其中一个",
+			"exactly one of identity or activation must be provided",
+		)
+	}
+	return nil
 }
 
 func (s *Server) bootstrapHumanUser(
@@ -78,6 +108,14 @@ func (s *Server) bootstrapHumanUser(
 }
 
 func (s *Server) writeHumanUserCreateError(w http.ResponseWriter, r *http.Request, err error) {
+	var validationErr *inputValidationError
+	if errors.As(err, &validationErr) {
+		writeInputValidationError(w, r, errcode.InvalidHumanUserConfig, err)
+		return
+	}
+	if writeHumanUserModelConfigError(w, r, errcode.InvalidHumanUserConfig, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, repo.ErrNotFound):
 		writeRepoError(w, r, err)
@@ -221,11 +259,19 @@ func (s *Server) handlePatchHumanUser(w http.ResponseWriter, r *http.Request) {
 	}
 	update, changed, stateChanged, err := s.humanUserPatch(user, request)
 	if err != nil {
-		writeErr(w, r, errcode.InvalidHumanUserUpdate)
+		var validationErr *inputValidationError
+		if errors.As(err, &validationErr) {
+			writeInputValidationError(w, r, errcode.InvalidHumanUserUpdate, err)
+		} else {
+			writeRepoError(w, r, err)
+		}
 		return
 	}
 	if changed {
 		if err := s.store.UpdateHumanUser(user.HumanUserID, update); err != nil {
+			if writeHumanUserModelConfigError(w, r, errcode.InvalidLLMModel, err) {
+				return
+			}
 			writeRepoError(w, r, err)
 			return
 		}
@@ -235,6 +281,22 @@ func (s *Server) handlePatchHumanUser(w http.ResponseWriter, r *http.Request) {
 		s.auditHumanUser(r, auditlog.ActionHumanUserUpdate, user, update.Status)
 	}
 	s.writeHumanUserDetail(w, r, user.HumanUserID, http.StatusOK)
+}
+
+func writeHumanUserModelConfigError(
+	w http.ResponseWriter, r *http.Request, invalidCode int, err error,
+) bool {
+	if errors.Is(err, repo.ErrInvalidLLMModel) || errors.Is(err, repo.ErrNotFound) {
+		writeErrDetail(w, r, invalidCode,
+			"modelConfigId 不存在或不可用，请选择列表中的模型配置")
+		return true
+	}
+	if errors.Is(err, repo.ErrLLMModelAlreadyBound) {
+		writeErrDetail(w, r, errcode.ConflictLLMModelBound,
+			"modelConfigId 已被其他用户绑定，请选择未绑定的模型配置")
+		return true
+	}
+	return false
 }
 
 func (s *Server) humanUserPatch(
@@ -256,9 +318,8 @@ func (s *Server) humanUserPatch(
 	if request.ModelConfigID != nil {
 		update.ModelConfigID = strings.TrimSpace(*request.ModelConfigID)
 	}
-	if update.DisplayName == "" || len(update.DisplayName) > 128 || len(update.Notes) > 4000 ||
-		!validHumanUserStatus(update.Status) || update.Status == repo.HumanUserStatusDeleting {
-		return repo.HumanUserUpdate{}, false, false, errors.New("invalid mutable fields")
+	if err := validateHumanUserPatchFields(update); err != nil {
+		return repo.HumanUserUpdate{}, false, false, err
 	}
 	if err := s.validateHumanUserStatus(user, update.Status); err != nil {
 		return repo.HumanUserUpdate{}, false, false, err
@@ -269,9 +330,56 @@ func (s *Server) humanUserPatch(
 	return update, changed, stateChanged, nil
 }
 
+func validateHumanUserPatchFields(update repo.HumanUserUpdate) error {
+	if update.DisplayName == "" || len(update.DisplayName) > 128 {
+		return newInputValidationError(
+			errcode.InvalidHumanUserUpdate,
+			"displayName 不能为空，且不能超过 128 个字符",
+			"displayName is required and must be at most 128 characters",
+		)
+	}
+	if len(update.Notes) > 4000 {
+		return newInputValidationError(
+			errcode.InvalidHumanUserUpdate,
+			"notes 不能超过 4000 个字符",
+			"notes must be at most 4000 characters",
+		)
+	}
+	if strings.TrimSpace(update.ModelConfigID) == "" {
+		return newInputValidationError(
+			errcode.InvalidHumanUserUpdate,
+			"modelConfigId 必须选择一个可用模型配置",
+			"modelConfigId must reference an available model configuration",
+		)
+	}
+	return validateHumanUserPatchStatus(update.Status)
+}
+
+func validateHumanUserPatchStatus(status string) error {
+	if !validHumanUserStatus(status) {
+		return newInputValidationError(
+			errcode.InvalidHumanUserUpdate,
+			"status 只能是 pending、active 或 disabled",
+			"status must be pending, active, or disabled",
+		)
+	}
+	if status == repo.HumanUserStatusDeleting {
+		return newInputValidationError(
+			errcode.InvalidHumanUserUpdate,
+			"status 不能手动设置为 deleting，请使用删除操作",
+			"status cannot be set to deleting manually; use the delete action",
+		)
+	}
+	return nil
+}
+
 func (s *Server) validateHumanUserStatus(user repo.HumanUser, next string) error {
 	if user.Status == repo.HumanUserStatusDeleting {
-		return errors.New("deleting Human User is immutable")
+		return newInputValidationError(
+			errcode.InvalidHumanUserUpdate,
+			"当前用户正在删除，不能再编辑",
+			"the user is being deleted and cannot be edited",
+		)
 	}
 	identities, err := s.store.ListIdentitiesByHumanUser(user.HumanUserID)
 	if err != nil {
@@ -283,9 +391,19 @@ func (s *Server) validateHumanUserStatus(user repo.HumanUser, next string) error
 			active++
 		}
 	}
-	if (next == repo.HumanUserStatusActive && active == 0) ||
-		(next == repo.HumanUserStatusPending && active > 0) {
-		return errors.New("Human User status conflicts with identities")
+	if next == repo.HumanUserStatusActive && active == 0 {
+		return newInputValidationError(
+			errcode.InvalidHumanUserUpdate,
+			"status 不能改为 active：该用户还没有启用的 Identity",
+			"status cannot become active because the user has no active Identity",
+		)
+	}
+	if next == repo.HumanUserStatusPending && active > 0 {
+		return newInputValidationError(
+			errcode.InvalidHumanUserUpdate,
+			"status 不能改为 pending：该用户已有启用的 Identity，请先停用或删除 Identity",
+			"status cannot become pending because the user already has active identities",
+		)
 	}
 	return nil
 }

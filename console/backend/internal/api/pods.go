@@ -63,7 +63,7 @@ func (s *Server) handleCreatePod(w http.ResponseWriter, r *http.Request) {
 	pod, token, err := s.newPodRecord(request)
 	if err != nil {
 		if errors.Is(err, errInvalidPodRequest) {
-			writeErr(w, r, errcode.InvalidPodConfig)
+			writeInputValidationError(w, r, errcode.InvalidPodConfig, err)
 		} else {
 			writeErr(w, r, errcode.InternalPreparePodConfig)
 		}
@@ -107,8 +107,8 @@ func (s *Server) newPodRecord(request createPodRequest) (repo.Pod, serviceTokenM
 	}
 	// 内存上限支持只填数字（按 GiB 解释），落库前归一化为 "Ng"。
 	request.MemLimit = normalizeMemLimit(request.MemLimit)
-	if !validPodRequest(request) {
-		return repo.Pod{}, serviceTokenMaterial{}, errInvalidPodRequest
+	if err := validatePodCreateRequest(request); err != nil {
+		return repo.Pod{}, serviceTokenMaterial{}, errors.Join(errInvalidPodRequest, err)
 	}
 	channels, configs, err := s.normalizeChannelSettings(
 		podChannelsRequest{Channels: request.Channels, ChannelConfigs: request.ChannelConfigs}, nil,
@@ -136,12 +136,16 @@ func (s *Server) newPodRecord(request createPodRequest) (repo.Pod, serviceTokenM
 	}, token, nil
 }
 
-func validPodRequest(request createPodRequest) bool {
-	if !podIdentifierPattern.MatchString(request.PodID) || request.MaxUsers < 1 || request.MaxUsers > maxUsersPerPod {
-		return false
+func validatePodCreateRequest(request createPodRequest) error {
+	if !podIdentifierPattern.MatchString(request.PodID) {
+		return newInputValidationError(
+			errcode.InvalidPodConfig,
+			"podId 必须是 1-63 位小写字母、数字或中划线，并且以字母或数字开头结尾",
+			"podId must be 1-63 lowercase letters, digits, or hyphens and start/end with a letter or digit",
+		)
 	}
-	if request.DisplayName == "" || len(request.DisplayName) > 128 || request.ImageTag == "" || len(request.ImageTag) > 512 {
-		return false
+	if err := validatePodMutableFields(request.DisplayName, request.ImageTag, request.MaxUsers); err != nil {
+		return err
 	}
 	resources := resourceFieldsRequest{
 		MemLimit: &request.MemLimit, CPULimit: &request.CPULimit, RestartPolicy: &request.RestartPolicy,
@@ -151,7 +155,35 @@ func validPodRequest(request createPodRequest) bool {
 		MaxBrowserConcurrency:  &request.MaxBrowserConcurrency,
 		MaxLongTaskConcurrency: &request.MaxLongTaskConcurrency,
 	}
-	return validateResourceRequest(resources) == nil && validateConcurrency(concurrency) == nil
+	if err := validateResourceRequest(resources); err != nil {
+		return err
+	}
+	return validateConcurrency(concurrency)
+}
+
+func validatePodMutableFields(displayName, imageTag string, maxUsers int) error {
+	if maxUsers < 1 || maxUsers > maxUsersPerPod {
+		return newInputValidationError(
+			errcode.InvalidPodConfig,
+			fmt.Sprintf("maxUsers 必须在 1-%d 之间", maxUsersPerPod),
+			fmt.Sprintf("maxUsers must be between 1 and %d", maxUsersPerPod),
+		)
+	}
+	if strings.TrimSpace(displayName) == "" || len(displayName) > 128 {
+		return newInputValidationError(
+			errcode.InvalidPodConfig,
+			"displayName 不能为空，且不能超过 128 个字符",
+			"displayName is required and must be at most 128 characters",
+		)
+	}
+	if !validImageTag(imageTag) {
+		return newInputValidationError(
+			errcode.InvalidImageTag,
+			"imageTag 不能为空、不能超过 512 个字符，且不能包含空格或换行",
+			"imageTag is required, must be at most 512 characters, and must not contain whitespace",
+		)
+	}
+	return nil
 }
 
 func (s *Server) provisionPod(
@@ -262,12 +294,13 @@ func (s *Server) handlePatchPod(w http.ResponseWriter, r *http.Request) {
 		s.writePodDetail(w, r, pod.PodID, http.StatusOK)
 		return
 	}
-	if update.MaxUsers < 1 || update.MaxUsers > maxUsersPerPod || update.DisplayName == "" || update.ImageTag == "" {
-		writeErr(w, r, errcode.InvalidPodConfig)
+	if err := validatePodMutableFields(update.DisplayName, update.ImageTag, update.MaxUsers); err != nil {
+		writeInputValidationError(w, r, errcode.InvalidPodConfig, err)
 		return
 	}
 	if update.MaxUsers < summary.UserCount {
-		writeRepoError(w, r, repo.ErrPodCapacity)
+		writeErrDetail(w, r, errcode.ConflictPodCapacity,
+			fmt.Sprintf("maxUsers 不能小于当前用户数 %d", summary.UserCount))
 		return
 	}
 	// Image changes must recreate the workload (same as /upgrade), not only bump generation.
@@ -289,7 +322,8 @@ func (s *Server) handlePatchPodImageChange(
 	w http.ResponseWriter, r *http.Request, pod repo.Pod, update repo.PodUpdate,
 ) {
 	if !validImageTag(update.ImageTag) {
-		writeErr(w, r, errcode.InvalidImageTag)
+		writeErrDetail(w, r, errcode.InvalidImageTag,
+			"imageTag 不能为空、不能超过 512 个字符，且不能包含空格或换行")
 		return
 	}
 	err := s.updatePodImageViaPatch(r.Context(), pod, update)

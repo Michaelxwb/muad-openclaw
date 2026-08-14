@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Input, Modal, Switch, Toast } from "@douyinfe/semi-ui";
 import { useTranslation } from "react-i18next";
-import { api } from "../../api";
+import { api, ApiError } from "../../api";
 import type { Platform } from "../../api";
 import { FeedbackBanner, setRepeatableError } from "../ConsolePage";
 import { Field } from "../human-users/shared";
-import { errorMessage } from "../../utils/error";
+import { errorMessage, ErrorDetail } from "../../utils/error";
 import styles from "./PlatformSettings.module.css";
 
 interface Props {
@@ -48,6 +48,7 @@ export function PlatformEditorDialog(props: Props) {
       width={620}
     >
       <FeedbackBanner error={editor.error} />
+      <ErrorDetail detail={editor.errorDetail} />
       <PlatformFields
         form={editor.form}
         editing={props.platform !== null}
@@ -62,18 +63,22 @@ function usePlatformEditor(props: Props) {
   const [form, setForm] = useState<Form>(() => initialForm(props.platform));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [errorDetail, setErrorDetail] = useState<string | undefined>();
   useEffect(() => {
     if (!props.visible) return;
     setForm(initialForm(props.platform));
     setError("");
+    setErrorDetail(undefined);
   }, [props.platform, props.visible]);
 
   const submit = async () => {
     if (!form.platform || !form.displayName.trim()) {
+      setErrorDetail(undefined);
       return setRepeatableError(setError, t("platform.nameRequired"));
     }
     setBusy(true);
     setError("");
+    setErrorDetail(undefined);
     try {
       if (props.platform) {
         await api.patchPlatform(props.platform.platform, {
@@ -91,12 +96,13 @@ function usePlatformEditor(props: Props) {
       await props.onSaved();
     } catch (caught) {
       setError(errorMessage(caught, "platform.saveFailed"));
+      setErrorDetail(caught instanceof ApiError ? caught.detail : undefined);
     } finally {
       setBusy(false);
     }
   };
 
-  return { form, busy, error, setForm, submit };
+  return { form, busy, error, errorDetail, setForm, submit };
 }
 
 function PlatformFields({

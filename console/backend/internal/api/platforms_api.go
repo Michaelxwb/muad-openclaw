@@ -1,9 +1,9 @@
 package api
 
 import (
-	"errors"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -36,6 +36,8 @@ type deletePlatformResponse struct {
 	AffectedPodIDs []string `json:"affectedPodIds"`
 }
 
+var platformIdentifierPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+
 func (s *Server) handleListPlatforms(w http.ResponseWriter, r *http.Request) {
 	configs, err := s.store.ListPlatformConfigs()
 	if err != nil {
@@ -56,8 +58,8 @@ func (s *Server) handleCreatePlatform(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.Platform, request.DisplayName = strings.TrimSpace(request.Platform), strings.TrimSpace(request.DisplayName)
-	if request.DisplayName == "" || len(request.DisplayName) > 128 {
-		writeErr(w, r, errcode.InvalidPlatformDisplayName)
+	if err := validateCreatePlatformRequest(request); err != nil {
+		writeInputValidationError(w, r, errcode.InvalidPlatformConfig, err)
 		return
 	}
 	enabled := true
@@ -95,7 +97,7 @@ func (s *Server) handlePatchPlatform(w http.ResponseWriter, r *http.Request) {
 	}
 	next, changed, err := s.applyPlatformPatch(current, request)
 	if err != nil {
-		writeErr(w, r, errcode.InvalidPlatformConfig)
+		writeInputValidationError(w, r, errcode.InvalidPlatformConfig, err)
 		return
 	}
 	if changed {
@@ -150,11 +152,33 @@ func (s *Server) applyPlatformPatch(
 	if request.Enabled != nil {
 		next.Enabled = *request.Enabled
 	}
-	if next.DisplayName == "" || len(next.DisplayName) > 128 {
-		return repo.PlatformConfig{}, false, errors.New("invalid display name")
+	if err := validatePlatformDisplayName(next.DisplayName); err != nil {
+		return repo.PlatformConfig{}, false, err
 	}
 	changed := next.DisplayName != current.DisplayName || next.Enabled != current.Enabled
 	return next, changed, nil
+}
+
+func validateCreatePlatformRequest(request createPlatformRequest) error {
+	if !platformIdentifierPattern.MatchString(request.Platform) {
+		return newInputValidationError(
+			errcode.InvalidPlatform,
+			"platform 必须以小写字母开头，只能包含小写字母、数字和下划线，最长 64 位",
+			"platform must start with a lowercase letter and contain lowercase letters, digits, or underscores, max 64 characters",
+		)
+	}
+	return validatePlatformDisplayName(request.DisplayName)
+}
+
+func validatePlatformDisplayName(displayName string) error {
+	if strings.TrimSpace(displayName) == "" || len(displayName) > 128 {
+		return newInputValidationError(
+			errcode.InvalidPlatformDisplayName,
+			"displayName 不能为空，且不能超过 128 个字符",
+			"displayName is required and must be at most 128 characters",
+		)
+	}
+	return nil
 }
 
 func makePlatformView(config repo.PlatformConfig) platformView {

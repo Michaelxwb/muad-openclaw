@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Input, Select, TextArea, Toast } from "@douyinfe/semi-ui";
 import { useTranslation } from "react-i18next";
-import { api } from "../../api";
+import { api, ApiError } from "../../api";
 import type { HumanUser, HumanUserStatus, LLMModelConfig, LLMModelView } from "../../api";
 import { FeedbackBanner } from "../ConsolePage";
 import i18n from "../../i18n";
-import { errorMessage } from "../../utils/error";
+import { errorMessage, ErrorDetail } from "../../utils/error";
 import styles from "../HumanUsersPanel.module.css";
 import { Field, normalizeStatus, userStatusOptions } from "./shared";
 
@@ -30,6 +30,7 @@ export function BasicUserForm({ user, onSaved, formId, onBusyChange }: Props) {
   return (
     <form id={formId} onSubmit={submit}>
       <FeedbackBanner error={form.error} />
+      <ErrorDetail detail={form.errorDetail} />
       <BasicUserFields
         displayName={form.displayName}
         notes={form.notes}
@@ -59,12 +60,15 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
   const [modelLoading, setModelLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [errorDetail, setErrorDetail] = useState<string | undefined>();
 
   useEffect(() => {
     setDisplayName(user.displayName);
     setNotes(user.notes);
     if (user.status !== "deleting") setStatus(user.status);
     setModelConfigId(user.modelConfigId);
+    setError("");
+    setErrorDetail(undefined);
   }, [user]);
 
   useEffect(() => {
@@ -89,12 +93,14 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
   const save = useCallback(async () => {
     setBusy(true);
     setError("");
+    setErrorDetail(undefined);
     try {
       await api.patchHumanUser(user.humanUserId, { displayName, notes, status, modelConfigId });
       Toast.success(i18n.t("user.infoSaved"));
       await onSaved();
     } catch (caught) {
       setError(errorMessage(caught, "user.saveUserFailed"));
+      setErrorDetail(caught instanceof ApiError ? caught.detail : undefined);
     } finally {
       setBusy(false);
     }
@@ -109,6 +115,7 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
     modelLoading,
     busy,
     error,
+    errorDetail,
     setDisplayName,
     setNotes,
     setStatus,

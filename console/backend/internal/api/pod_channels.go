@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -43,20 +44,36 @@ func (s *Server) normalizeChannelSettings(
 	for _, raw := range request.Channels {
 		channel := strings.TrimSpace(raw)
 		if !driver.IsValidChannel(channel) {
-			return nil, nil, errors.New("unsupported channel alias")
+			return nil, nil, newInputValidationError(
+				errcode.InvalidChannelConfig,
+				fmt.Sprintf("channels 包含不支持的通道 %q，目前支持 wecom、wechat、mattermost", channel),
+				fmt.Sprintf("channels contains unsupported channel %q; supported channels are wecom, wechat, mattermost", channel),
+			)
 		}
 		if _, exists := seen[channel]; exists {
-			return nil, nil, errors.New("duplicate channel alias")
+			return nil, nil, newInputValidationError(
+				errcode.InvalidChannelConfig,
+				fmt.Sprintf("channels 中的通道 %q 重复，请只保留一次", channel),
+				fmt.Sprintf("channel %q appears more than once in channels", channel),
+			)
 		}
 		seen[channel] = struct{}{}
 		channels = append(channels, channel)
 	}
 	if len(channels) == 0 {
-		return nil, nil, errors.New("at least one channel is required")
+		return nil, nil, newInputValidationError(
+			errcode.InvalidChannelConfig,
+			"channels 至少要选择一个消息通道",
+			"channels must contain at least one message channel",
+		)
 	}
 	for channel := range request.ChannelConfigs {
 		if _, exists := seen[channel]; !exists {
-			return nil, nil, errors.New("channel config does not belong to an enabled channel")
+			return nil, nil, newInputValidationError(
+				errcode.InvalidChannelConfig,
+				fmt.Sprintf("channelConfigs.%s 不属于已启用的通道，请先在 channels 中选择它", channel),
+				fmt.Sprintf("channelConfigs.%s is not enabled in channels", channel),
+			)
 		}
 	}
 	slices.Sort(channels)
@@ -100,24 +117,44 @@ func mergeChannelInput(current, requested channelConfigInput) channelConfigInput
 func validateChannelInput(channel string, config channelConfigInput) error {
 	if len(config.BotID) > 256 || len(config.Secret) > 4096 || len(config.BotToken) > 4096 ||
 		len(config.BaseURL) > 2048 {
-		return errors.New("channel credential is too long")
+		return newInputValidationError(
+			errcode.InvalidChannelConfig,
+			"channelConfigs 中的 botId/baseUrl 过长，或 secret/botToken 超过长度限制",
+			"channelConfigs contains an overlong botId/baseUrl or secret/botToken",
+		)
 	}
 	if channel == driver.ChannelWeCom && (config.BotID == "" || config.Secret == "") {
-		return errors.New("wecom botId and secret are required")
+		return newInputValidationError(
+			errcode.InvalidChannelConfig,
+			"channelConfigs.wecom 必须填写 botId 和 secret",
+			"channelConfigs.wecom requires botId and secret",
+		)
 	}
 	if channel == driver.ChannelWeChat && hasAnyChannelCredential(config) {
-		return errors.New("wechat does not accept bot credentials")
+		return newInputValidationError(
+			errcode.InvalidChannelConfig,
+			"channelConfigs.wechat 不需要填写 botId、secret、baseUrl 或 botToken",
+			"channelConfigs.wechat must not include botId, secret, baseUrl, or botToken",
+		)
 	}
 	if channel == driver.ChannelMattermost {
 		if config.BaseURL == "" || config.BotToken == "" {
-			return errors.New("mattermost baseUrl and botToken are required")
+			return newInputValidationError(
+				errcode.InvalidChannelConfig,
+				"channelConfigs.mattermost 必须填写 baseUrl 和 botToken",
+				"channelConfigs.mattermost requires baseUrl and botToken",
+			)
 		}
 		if err := validateHTTPURL(config.BaseURL); err != nil {
 			return err
 		}
 		if config.AllowPrivateNetwork != "" && config.AllowPrivateNetwork != "true" &&
 			config.AllowPrivateNetwork != "false" {
-			return errors.New("mattermost allowPrivateNetwork is invalid")
+			return newInputValidationError(
+				errcode.InvalidChannelConfig,
+				"channelConfigs.mattermost.allowPrivateNetwork 只能为空、true 或 false",
+				"channelConfigs.mattermost.allowPrivateNetwork must be empty, true, or false",
+			)
 		}
 	}
 	return nil
@@ -131,10 +168,18 @@ func hasAnyChannelCredential(config channelConfigInput) bool {
 func validateHTTPURL(value string) error {
 	parsed, err := url.ParseRequestURI(value)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return errors.New("channel url is invalid")
+		return newInputValidationError(
+			errcode.InvalidChannelConfig,
+			"channelConfigs.mattermost.baseUrl 必须是完整 URL，例如 https://mattermost.example.com",
+			"channelConfigs.mattermost.baseUrl must be a full URL, for example https://mattermost.example.com",
+		)
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return errors.New("channel url must use http or https")
+		return newInputValidationError(
+			errcode.InvalidChannelConfig,
+			"channelConfigs.mattermost.baseUrl 只能使用 http 或 https",
+			"channelConfigs.mattermost.baseUrl must use http or https",
+		)
 	}
 	return nil
 }

@@ -26,7 +26,7 @@ func (s *Server) handlePutPodChannels(w http.ResponseWriter, r *http.Request) {
 	}
 	channels, configs, err := s.normalizeChannelSettings(request, current)
 	if err != nil {
-		writeErr(w, r, errcode.InvalidChannelConfig)
+		writeInputValidationError(w, r, errcode.InvalidChannelConfig, err)
 		return
 	}
 	channelsJSON, configsEnc, err := s.encodeChannelSettings(channels, configs)

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -89,11 +90,8 @@ func normalizeIdentityInput(pod repo.Pod, input identityInput) (repo.UserIdentit
 	if input.PeerKind == "" {
 		input.PeerKind = "direct"
 	}
-	if !driver.IsValidChannel(input.Channel) || !podUsesChannel(pod, input.Channel) ||
-		input.PeerKind != "direct" || !identityFieldPattern.MatchString(input.ExternalIDType) ||
-		strings.TrimSpace(input.ExternalID) == "" || len(input.ExternalID) > 512 ||
-		!accountIDPattern.MatchString(input.AccountID) {
-		return repo.UserIdentity{}, repo.ErrInvalidHumanUser
+	if err := validateIdentityInput(pod, input); err != nil {
+		return repo.UserIdentity{}, err
 	}
 	return repo.UserIdentity{
 		Channel: input.Channel, OpenClawChannel: driver.OpenClawChannelFor(input.Channel),
@@ -101,6 +99,45 @@ func normalizeIdentityInput(pod repo.Pod, input identityInput) (repo.UserIdentit
 		ExternalIDType: input.ExternalIDType, PeerKind: input.PeerKind,
 		Status: repo.IdentityStatusActive,
 	}, nil
+}
+
+func validateIdentityInput(pod repo.Pod, input identityInput) error {
+	if !driver.IsValidChannel(input.Channel) {
+		return wrapInputValidationError(
+			errcode.InvalidHumanUserConfig, repo.ErrInvalidHumanUser,
+			fmt.Sprintf("identity.channel %q 不支持，请选择 Pod 已启用的通道", input.Channel),
+			fmt.Sprintf("identity.channel %q is not supported", input.Channel),
+		)
+	}
+	if !podUsesChannel(pod, input.Channel) {
+		return wrapInputValidationError(
+			errcode.InvalidHumanUserConfig, repo.ErrInvalidHumanUser,
+			fmt.Sprintf("identity.channel %q 未在当前 Pod 启用", input.Channel),
+			fmt.Sprintf("identity.channel %q is not enabled on this Pod", input.Channel),
+		)
+	}
+	if input.PeerKind != "direct" {
+		return invalidHumanUserField("identity.peerKind 只能填写 direct", "identity.peerKind must be direct")
+	}
+	if !identityFieldPattern.MatchString(input.ExternalIDType) {
+		return invalidHumanUserField(
+			"identity.externalIdType 必须以小写字母开头，只能包含小写字母、数字和下划线，最长 64 位",
+			"identity.externalIdType must start with a lowercase letter and contain lowercase letters, digits, or underscores, max 64 characters",
+		)
+	}
+	if strings.TrimSpace(input.ExternalID) == "" || len(input.ExternalID) > 512 {
+		return invalidHumanUserField(
+			"identity.externalId 不能为空，且不能超过 512 个字符",
+			"identity.externalId is required and must be at most 512 characters",
+		)
+	}
+	if !accountIDPattern.MatchString(input.AccountID) {
+		return invalidHumanUserField(
+			"identity.accountId 只能包含字母、数字、点、下划线、冒号或中划线，最长 128 位",
+			"identity.accountId may contain letters, digits, dots, underscores, colons, or hyphens, max 128 characters",
+		)
+	}
+	return nil
 }
 
 func normalizeActivationInput(pod repo.Pod, input activationInput) (repo.BindingCodeRequest, error) {
@@ -112,16 +149,54 @@ func normalizeActivationInput(pod repo.Pod, input activationInput) (repo.Binding
 	if input.ExpiresInMinutes == 0 {
 		input.ExpiresInMinutes = 30
 	}
-	if !driver.IsValidChannel(input.Channel) || !podUsesChannel(pod, input.Channel) ||
-		input.ExpiresInMinutes < 1 || input.ExpiresInMinutes > 24*60 ||
-		!accountIDPattern.MatchString(input.AccountID) {
-		return repo.BindingCodeRequest{}, repo.ErrInvalidBindingCode
+	if err := validateActivationInput(pod, input); err != nil {
+		return repo.BindingCodeRequest{}, err
 	}
 	return repo.BindingCodeRequest{
 		Channel: input.Channel, OpenClawChannel: driver.OpenClawChannelFor(input.Channel),
 		AccountID: input.AccountID, Purpose: repo.BindingPurposeFirstIdentity,
 		ExpiresAt: time.Now().UTC().Add(time.Duration(input.ExpiresInMinutes) * time.Minute),
 	}, nil
+}
+
+func validateActivationInput(pod repo.Pod, input activationInput) error {
+	if !driver.IsValidChannel(input.Channel) {
+		return invalidBindingField(
+			fmt.Sprintf("activation.channel %q 不支持，请选择 Pod 已启用的通道", input.Channel),
+			fmt.Sprintf("activation.channel %q is not supported", input.Channel),
+		)
+	}
+	if !podUsesChannel(pod, input.Channel) {
+		return invalidBindingField(
+			fmt.Sprintf("activation.channel %q 未在当前 Pod 启用", input.Channel),
+			fmt.Sprintf("activation.channel %q is not enabled on this Pod", input.Channel),
+		)
+	}
+	if input.ExpiresInMinutes < 1 || input.ExpiresInMinutes > 24*60 {
+		return invalidBindingField(
+			"activation.expiresInMinutes 必须在 1-1440 分钟之间",
+			"activation.expiresInMinutes must be between 1 and 1440 minutes",
+		)
+	}
+	if !accountIDPattern.MatchString(input.AccountID) {
+		return invalidBindingField(
+			"activation.accountId 只能包含字母、数字、点、下划线、冒号或中划线，最长 128 位",
+			"activation.accountId may contain letters, digits, dots, underscores, colons, or hyphens, max 128 characters",
+		)
+	}
+	return nil
+}
+
+func invalidHumanUserField(detailZH, detailEN string) error {
+	return wrapInputValidationError(
+		errcode.InvalidHumanUserConfig, repo.ErrInvalidHumanUser, detailZH, detailEN,
+	)
+}
+
+func invalidBindingField(detailZH, detailEN string) error {
+	return wrapInputValidationError(
+		errcode.InvalidHumanUserConfig, repo.ErrInvalidBindingCode, detailZH, detailEN,
+	)
 }
 
 func podUsesChannel(pod repo.Pod, channel string) bool {

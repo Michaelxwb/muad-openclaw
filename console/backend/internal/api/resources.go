@@ -50,10 +50,18 @@ func validateResourceRequest(request resourceFieldsRequest) error {
 			// 裸数字按 GiB 解释；归一化为 "Ng" 后按既有格式校验。
 			normalized := normalizeMemLimit(value)
 			if !memPattern.MatchString(normalized) {
-				return errors.New("memLimit must be a number (GiB) or like 512m / 2g / 2.5g")
+				return newInputValidationError(
+					errcode.InvalidResourceLimits,
+					"memLimit 必须为空、裸数字 GiB，或带单位 b/k/m/g，例如 2、512m、2g、2.5g",
+					"memLimit must be empty, a bare GiB number, or use unit b/k/m/g, for example 2, 512m, 2g, 2.5g",
+				)
 			}
 			if _, err := driver.MemoryLimitMiB(normalized); err != nil {
-				return err
+				return wrapInputValidationError(
+					errcode.InvalidResourceLimits, err,
+					"memLimit 必须大于 0，请填写有效的内存上限",
+					"memLimit must be greater than 0; provide a valid memory limit",
+				)
 			}
 		}
 	}
@@ -61,13 +69,21 @@ func validateResourceRequest(request resourceFieldsRequest) error {
 		value := strings.TrimSpace(*request.CPULimit)
 		parsed, err := strconv.ParseFloat(value, 64)
 		if value != "" && (!cpuPattern.MatchString(value) || err != nil || parsed <= 0) {
-			return errors.New("cpuLimit must be a positive number like 1.5")
+			return newInputValidationError(
+				errcode.InvalidResourceLimits,
+				"cpuLimit 必须为空或正数，例如 1、1.5",
+				"cpuLimit must be empty or a positive number, for example 1 or 1.5",
+			)
 		}
 	}
 	if request.RestartPolicy != nil {
 		value := strings.TrimSpace(*request.RestartPolicy)
 		if value != "" && !driver.IsValidRestartPolicy(value) {
-			return errors.New("restartPolicy must be no / on-failure / always / unless-stopped")
+			return newInputValidationError(
+				errcode.InvalidResourceLimits,
+				"restartPolicy 只能为空或为 no、on-failure、always、unless-stopped",
+				"restartPolicy must be empty or one of no, on-failure, always, unless-stopped",
+			)
 		}
 	}
 	return nil
@@ -91,14 +107,31 @@ func normalizeMemLimitPtr(field *string) *string {
 }
 
 func validateConcurrency(request podResourceRequest) error {
-	for _, value := range []*int{
-		request.MaxSkillConcurrency, request.MaxBrowserConcurrency, request.MaxLongTaskConcurrency,
-	} {
-		if value != nil && (*value < 0 || *value > maxRuntimeConcurrency) {
-			return errors.New("concurrency must be 0 (inherit) or between 1 and 1000")
+	fields := []struct {
+		name  string
+		value *int
+	}{
+		{"maxSkillConcurrency", request.MaxSkillConcurrency},
+		{"maxBrowserConcurrency", request.MaxBrowserConcurrency},
+		{"maxLongTaskConcurrency", request.MaxLongTaskConcurrency},
+	}
+	for _, field := range fields {
+		if field.value != nil && (*field.value < 0 || *field.value > maxRuntimeConcurrency) {
+			return newInputValidationError(
+				errcode.InvalidResourceLimits,
+				field.name+" 必须为 0（继承）或 1-1000 之间的整数",
+				field.name+" must be 0 (inherit) or an integer between 1 and 1000",
+			)
 		}
 	}
 	return nil
+}
+
+func validatePodResourceRequest(request podResourceRequest) error {
+	if err := validateResourceRequest(request.resourceFieldsRequest); err != nil {
+		return err
+	}
+	return validateConcurrency(request)
 }
 
 func (s *Server) handleGetResources(w http.ResponseWriter, r *http.Request) {
@@ -129,8 +162,8 @@ func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.MemLimit = normalizeMemLimitPtr(request.MemLimit)
-	if validateResourceRequest(request.resourceFieldsRequest) != nil || validateConcurrency(request) != nil {
-		writeErr(w, r, errcode.InvalidResourceLimits)
+	if err := validatePodResourceRequest(request); err != nil {
+		writeInputValidationError(w, r, errcode.InvalidResourceLimits, err)
 		return
 	}
 	next := applyGlobalRequest(current, request)
@@ -185,8 +218,8 @@ func (s *Server) handleSetPodResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.MemLimit = normalizeMemLimitPtr(request.MemLimit)
-	if validateResourceRequest(request.resourceFieldsRequest) != nil || validateConcurrency(request) != nil {
-		writeErr(w, r, errcode.InvalidResourceLimits)
+	if err := validatePodResourceRequest(request); err != nil {
+		writeInputValidationError(w, r, errcode.InvalidResourceLimits, err)
 		return
 	}
 	next := applyPodResourceRequest(pod, request)

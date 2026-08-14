@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -147,6 +148,32 @@ func TestHumanUserAPI_CreateEnforcesPodCapacity(t *testing.T) {
 	}
 }
 
+func TestHumanUserAPI_CreateValidationIncludesDetail(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+
+	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users",
+		`{"displayName":"Alice","identity":{"channel":"wecom","externalId":"alice",`+
+			`"externalIdType":"corp_userid"}}`)
+	assertAPIError(t, rr, errcode.InvalidHumanUserRequest, "modelConfigId")
+
+	rr = e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users",
+		`{"displayName":"Alice","modelConfigId":"missing-model","identity":{`+
+			`"channel":"wecom","externalId":"alice","externalIdType":"corp_userid"}}`)
+	assertAPIError(t, rr, errcode.InvalidHumanUserConfig, "modelConfigId 不存在")
+
+	modelID := createLLMModelForAPI(t, e, "alice-model")
+	rr = e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users",
+		`{"displayName":"Alice","modelConfigId":"`+modelID+`","identity":{`+
+			`"channel":"wecom","externalId":"alice","externalIdType":"Bad-Type"}}`)
+	assertAPIError(t, rr, errcode.InvalidHumanUserConfig, "identity.externalIdType")
+
+	rr = e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users",
+		`{"displayName":"Bob","modelConfigId":"`+modelID+`","activation":{`+
+			`"channel":"wechat","expiresInMinutes":30}}`)
+	assertAPIError(t, rr, errcode.InvalidHumanUserConfig, `activation.channel "wechat" 未在当前 Pod 启用`)
+}
+
 func TestHumanUserAPI_PatchProtectsRuntimeIdentityAndGeneration(t *testing.T) {
 	e, user := createDirectHumanUser(t)
 	rr := e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID, `{"agentId":"other"}`)
@@ -166,6 +193,20 @@ func TestHumanUserAPI_PatchProtectsRuntimeIdentityAndGeneration(t *testing.T) {
 	if podAfterDisable.ConfigGeneration != podAfter.ConfigGeneration+1 || len(e.reconcile.podIDs) != 1 {
 		t.Fatalf("disable did not trigger one generation: %+v queue=%v", podAfterDisable, e.reconcile.podIDs)
 	}
+}
+
+func TestHumanUserAPI_PatchValidationIncludesDetail(t *testing.T) {
+	e, user := createDirectHumanUser(t)
+
+	rr := e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID, `{"displayName":"   "}`)
+	assertAPIError(t, rr, errcode.InvalidHumanUserUpdate, "displayName")
+
+	rr = e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID, `{"status":"pending"}`)
+	assertAPIError(t, rr, errcode.InvalidHumanUserUpdate, "已有启用的 Identity")
+
+	rr = e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID,
+		`{"modelConfigId":"missing-model"}`)
+	assertAPIError(t, rr, errcode.InvalidLLMModel, "modelConfigId 不存在")
 }
 
 func TestHumanUserAPI_DeleteRemainsDeletingUntilCleanerRuns(t *testing.T) {

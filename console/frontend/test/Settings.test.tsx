@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "../src/api";
 import { Settings } from "../src/pages/Settings";
 
 class ResizeObserverMock {
@@ -102,6 +103,19 @@ describe("Settings", () => {
       }),
     );
     expect(await screen.findByText(/1 个 Pod 等待应用/)).toBeInTheDocument();
+  });
+
+  it("shows resource validation details returned by the backend", async () => {
+    apiMocks.setResources.mockRejectedValueOnce(
+      new ApiError("资源配额配置不合法", 400, 40003, "maxBrowserConcurrency 必须为 0 或 1-1000"),
+    );
+    render(<Settings />);
+    await screen.findByLabelText("全局 Pod 内存上限");
+
+    fireEvent.click(screen.getByRole("button", { name: "保存资源默认值" }));
+
+    expect(await screen.findByText("技术详情")).toBeInTheDocument();
+    expect(screen.getByText(/maxBrowserConcurrency/)).toBeInTheDocument();
   });
 
   it("saves agent workspace guidance", async () => {
