@@ -116,23 +116,23 @@ test("file policy allows only read access to the current agent authorized Skill 
 
 test("file policy lets the owning agent read its own skill output directory but no one else's", async () => {
   const policy = filePolicy();
-  const aliceReport = "/state/skill-outputs/alice/wx-1/测试客户-2026-W32.md";
+  const aliceReport = "/state/workspace-alice/skill-outputs/wx-1/测试客户-2026-W32.md";
   assert.equal(await policy.evaluate(file("read", aliceReport), context("alice")), undefined);
   // The owning agent may not write the output directory via file tools (scripts write via exec).
   assert.equal((await policy.evaluate(file("write", aliceReport), context("alice"))).allow, false);
   assert.equal((await policy.evaluate(file("edit", aliceReport), context("alice"))).allow, false);
   // Another agent's output tree stays off-limits.
   assert.equal((await policy.evaluate(
-    file("read", "/state/skill-outputs/bob/wx-9/bob-report.md"), context("alice"),
+    file("read", "/state/workspace-bob/skill-outputs/wx-9/bob-report.md"), context("alice"),
   )).allow, false);
   assert.equal((await policy.evaluate(
-    file("read", "/state/skill-outputs/alice/../bob/x.md"), context("alice"),
+    file("read", "/state/workspace-alice/skill-outputs/../../workspace-bob/x.md"), context("alice"),
   )).allow, false);
 });
 
 test("file policy lets the model read the per-task long-task submit stub from the output directory", async () => {
   const policy = filePolicy();
-  const stub = "/state/skill-outputs/alice/_longtask_submit_123e4567-e89b-12d3-a456-426614174000.md";
+  const stub = "/state/workspace-alice/skill-outputs/_longtask_submit_123e4567-e89b-12d3-a456-426614174000.md";
   assert.equal(await policy.evaluate(file("read", stub), context("alice")), undefined);
   // The stub is a read-only lever; write/edit stay denied (scripts write via exec).
   assert.equal((await policy.evaluate(file("write", stub), context("alice"))).allow, false);
@@ -197,7 +197,7 @@ function filePolicy() {
       workspace: `/state/workspace-${agentId}`,
       agentDir: `/state/agents/${agentId}/agent`,
       sessionStore: `/state/agents/${agentId}/session-store`,
-      outputs: `/state/skill-outputs/${agentId}`,
+      outputs: `/state/workspace-${agentId}/skill-outputs`,
     }),
   });
 }

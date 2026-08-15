@@ -89,6 +89,11 @@ function evaluateFileAccess(event, ctx, config, resolvePaths) {
     if (event.toolName !== "read" && isWithin(path.join(roots.workspace, "skills"), target)) {
       return deny("private Skill files are read-only for the agent");
     }
+    // Skill output lives under workspace/skill-outputs; scripts write it via
+    // exec, so the file-tool surface stays read-only (mirrors skills/ above).
+    if (event.toolName !== "read" && isWithin(path.join(roots.workspace, "skill-outputs"), target)) {
+      return deny("skill output files are read-only for the agent");
+    }
   }
   return undefined;
 }

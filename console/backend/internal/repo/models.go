@@ -39,6 +39,7 @@ const (
 const (
 	SkillStatusActive   = "active"
 	SkillStatusDisabled = "disabled"
+	SkillStatusPending  = "pending"
 	SkillStatusDeleted  = "deleted"
 )
 

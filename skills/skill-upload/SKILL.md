@@ -1,6 +1,6 @@
 ---
 name: skill-upload
-description: 将用户写在 skill-staging/<name>/ 草稿目录中的自建 Skill 上传到控制台，使其成为平台托管的私有 Skill 并正式可调用。上传前 skill 不会对 agent 生效。
+description: 将用户写在 skill-staging/<name>/ 草稿目录中的自建 Skill 上传到控制台，使其成为平台托管的私有 Skill。上传后进入待审批状态，需管理员审批通过后才会对 agent 生效。
 ---
 
 # Skill 上传
@@ -29,11 +29,11 @@ bash -c 'node /opt/openclaw-skills/skill-upload/scripts/upload-skill.mjs "<skill
 ```
 
 3. 脚本会：预检 → 打包 tar.gz → 上传到控制台 ingest 端点。
-4. 输出"上传成功，已清理草稿目录"即完成；**成功后脚本会删除 `skill-staging/<skill_name>/` 草稿**，避免新会话误判为"还没上传"。输出"上传失败：<原因>"时，**原样转述原因**给用户（如缺 SKILL.md、skill 名不合法、控制台校验失败、skill 已存在等），不要自行改写或吞掉。
+4. 输出"已提交，请联系管理员审批，通过后才会生效"即完成；**脚本不删除 `skill-staging/<skill_name>/` 草稿**（skill 进入待审批，被拒后可修改重传）。输出"上传失败：<原因>"时，**原样转述原因**给用户（如缺 SKILL.md、skill 名不合法、控制台校验失败、skill 已存在等），不要自行改写或吞掉。
 
 ## 注意
 
 - **不要**直接编辑 `workspace-<agent>/skills/`（平台托管的私有 skill，只读）。
-- 上传后 skill 成为平台私有 skill，随 Pod 持久，草稿目录自动清理。
+- 上传后 skill 进入**待审批**状态，管理员审批通过后才会生效、才随 Pod 持久；草稿保留，被拒后可修改重传。
 - 若用户要**修改已上传**的 skill：当前同名 skill 已存在时重传会被控制台拒绝（"skill already exists"），需先告知用户在控制台删除旧 skill 后再上传，或走控制台编辑。
 - 若用户要删除已上传的 skill，走控制台删除，不要直接删文件。

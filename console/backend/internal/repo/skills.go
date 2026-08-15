@@ -735,8 +735,8 @@ func skillAssetWhere(filter SkillAssetListFilter) (string, []any) {
 		clauses = append(clauses, "status = ?")
 		args = append(args, status)
 	} else {
-		clauses = append(clauses, "status IN (?, ?)")
-		args = append(args, SkillStatusActive, SkillStatusDisabled)
+		clauses = append(clauses, "status IN (?, ?, ?)")
+		args = append(args, SkillStatusActive, SkillStatusDisabled, SkillStatusPending)
 	}
 	if query := strings.TrimSpace(filter.Query); query != "" {
 		clauses = append(clauses, "(name LIKE ? OR display_name LIKE ?)")
@@ -928,7 +928,7 @@ func validSkillSource(source string) bool {
 
 func validSkillAssetStatus(status string) bool {
 	switch status {
-	case SkillStatusActive, SkillStatusDisabled, SkillStatusDeleted:
+	case SkillStatusActive, SkillStatusDisabled, SkillStatusPending, SkillStatusDeleted:
 		return true
 	default:
 		return false
@@ -939,7 +939,9 @@ func validSkillAssetStatusTransition(asset SkillAsset, next string) bool {
 	if asset.Status == SkillStatusDeleted {
 		return false
 	}
-	if next == SkillStatusDeleted && asset.Scope == SkillScopePrivate {
+	// A private Skill may only be soft-deleted from the pending review state; an
+	// active/disabled private Skill is removed via DeletePrivateSkillAssetAndMarkPod.
+	if next == SkillStatusDeleted && asset.Scope == SkillScopePrivate && asset.Status != SkillStatusPending {
 		return false
 	}
 	return next == SkillStatusActive || next == SkillStatusDisabled || next == SkillStatusDeleted

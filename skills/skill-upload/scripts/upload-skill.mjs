@@ -9,7 +9,7 @@
 //   - console internal URL + pod service token are read from openclaw.json
 //     (plugins.entries.muad-runtime-guard.config) so the agent does not need to
 //     know them.
-import { readFileSync, readdirSync, rmSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -141,14 +141,9 @@ async function main() {
     fail(`上传失败：${formatConsoleError(text)}`);
     return;
   }
-  // Remove the staging draft so a new session does not treat it as a pending
-  // (un-uploaded) Skill again and ask to re-upload.
-  try {
-    rmSync(staging, { recursive: true, force: true });
-  } catch {
-    // Non-fatal: a leftover draft only causes a redundant upload offer.
-  }
-  process.stdout.write(`Skill「${skillName}」上传成功，已清理草稿目录。\n`);
+  // 上传后 Skill 进入 pending（待审批），保留草稿以便被拒后修改重传；审批通过
+  // 生效后由后续流程清理草稿。
+  process.stdout.write(`Skill「${skillName}」已提交，请联系管理员审批，审批通过后才会生效。\n`);
 }
 
 export function formatConsoleError(text) {
