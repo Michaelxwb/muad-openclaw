@@ -22,6 +22,7 @@ import { useMountedRef } from "../hooks/useMountedRef";
 import { useHumanUserNames } from "../hooks/useHumanUserNames";
 import { usePodNames } from "../hooks/usePodNames";
 import { errorMessage } from "../utils/error";
+import { normalizePage } from "../utils/pageClamp";
 import styles from "./LongTasks.module.css";
 
 const REFRESH_MS = 5000;
@@ -99,6 +100,7 @@ function useLongTasks() {
         setRows(result.items);
         setPools(result.pools ?? []);
         setTotal(result.total);
+        normalizePage(page, result.total, pageSize, setPage);
       } catch (caught) {
         if (mountedRef.current && dataRequestId === dataRequestRef.current)
           setError(errorMessage(caught, "longTasks.loadFailed"));
@@ -111,7 +113,7 @@ function useLongTasks() {
           setLoading(false);
       }
     },
-    [filters, mountedRef, page, pageSize],
+    [filters, mountedRef, page, pageSize, setPage],
   );
   useEffect(() => void refresh(), [refresh]);
   const hasActive = pools.some((pool) => pool.poolQueued > 0 || pool.poolRunning > 0);

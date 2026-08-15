@@ -88,7 +88,7 @@ function podColumns(actions: Props, t: (key: string, options?: Record<string, un
       render: (_: unknown, pod: Pod) => (
         <RowActions
           pod={pod}
-          actions={podActions(t)}
+          actions={podActions(t, pod)}
           onViewLogs={actions.onLogs}
           onOpenQr={actions.onQr}
           onEdit={actions.onEdit}
@@ -105,7 +105,7 @@ function podDataColumns(
 ) {
   return [
     {
-      title: "Pod",
+      title: t("pod.columnPod"),
       key: "podId",
       width: 180,
       render: (_: unknown, pod: Pod) => (
@@ -154,7 +154,7 @@ function podDataColumns(
       className: "mono",
     },
     {
-      title: "CPU",
+      title: t("pod.cpuColumn"),
       key: "cpu",
       width: 120,
       render: (_: unknown, pod: Pod) =>

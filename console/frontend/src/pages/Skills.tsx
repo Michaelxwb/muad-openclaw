@@ -34,6 +34,8 @@ import {
 import { requestAlertsRefresh } from "../components/NotificationBell";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
 import { useMountedRef } from "../hooks/useMountedRef";
+import { useHumanUserNames } from "../hooks/useHumanUserNames";
+import { normalizePage } from "../utils/pageClamp";
 import { PublicSkillUploadDialog } from "./skills/PublicSkillUploadDialog";
 import styles from "./Skills.module.css";
 
@@ -67,6 +69,7 @@ export function Skills() {
   const { t } = useTranslation();
   const state = useSkillAssets();
   const storage = usePublicSkillStorage();
+  const userNames = useHumanUserNames(true);
   const [selected, setSelected] = useState<SkillAsset | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<SkillStatusAction | null>(null);
@@ -83,8 +86,13 @@ export function Skills() {
   );
 
   const refreshAfterUpload = async () => {
-    state.setPage(1);
-    await state.refresh();
+    // 上传后回到第 1 页：page > 1 时只 setPage(1)，交由 effect 用新 page 触发一次刷新，
+    // 避免旧 page 闭包先多拉一次；page 本就是 1 时 setPage 不触发重渲染，需手动刷新一次。
+    if (state.page !== 1) {
+      state.setPage(1);
+    } else {
+      await state.refresh();
+    }
     await storage.refresh();
   };
   const refreshApplyState = () => {
@@ -165,7 +173,12 @@ export function Skills() {
           onUpload={() => setUploadOpen(true)}
         />
         <PublicStorageNotice storage={storage} />
-        <SkillTable state={state} onOpen={setSelected} onStatusAction={setPendingAction} />
+        <SkillTable
+          state={state}
+          userNames={userNames}
+          onOpen={setSelected}
+          onStatusAction={setPendingAction}
+        />
       </PageSection>
       <SkillDetailDrawer skill={selected} onClose={() => setSelected(null)} />
       <SkillStatusActionDialog
@@ -298,6 +311,7 @@ function useSkillAssets() {
         if (!mountedRef.current || requestId !== requestRef.current) return;
         setItems(result.items);
         setTotal(result.total);
+        normalizePage(page, result.total, pageSize, setPage);
       } catch (caught) {
         if (mountedRef.current && requestId === requestRef.current) {
           setError(errorMessage(caught, "skill.loadFailed"));
@@ -312,7 +326,7 @@ function useSkillAssets() {
         }
       }
     },
-    [mountedRef, page, pageSize, query, scope, status],
+    [mountedRef, page, pageSize, query, scope, setPage, status],
   );
 
   useEffect(() => {
@@ -520,17 +534,19 @@ function publicStorageDescription(status: PublicSkillStorageStatus) {
 
 function SkillTable({
   state,
+  userNames,
   onOpen,
   onStatusAction,
 }: {
   state: SkillAssetsState;
+  userNames: ReadonlyMap<string, string>;
   onOpen: (skill: SkillAsset) => void;
   onStatusAction: (action: SkillStatusAction) => void;
 }) {
   const { t } = useTranslation();
   return (
     <Table
-      columns={skillColumns(t, onOpen, onStatusAction) as never}
+      columns={skillColumns(t, onOpen, onStatusAction, userNames) as never}
       dataSource={state.items}
       rowKey="skillId"
       loading={state.loading}
@@ -555,10 +571,11 @@ function skillColumns(
   t: TFunction,
   onOpen: (skill: SkillAsset) => void,
   onStatusAction: (action: SkillStatusAction) => void,
+  userNames: ReadonlyMap<string, string>,
 ) {
   return [
     {
-      title: "Skill",
+      title: t("skill.columnName"),
       key: "name",
       width: 240,
       render: (_: unknown, skill: SkillAsset) => (
@@ -618,7 +635,7 @@ function skillColumns(
       title: t("skill.owner"),
       key: "owner",
       width: 210,
-      render: (_: unknown, skill: SkillAsset) => <SkillOwner skill={skill} />,
+      render: (_: unknown, skill: SkillAsset) => <SkillOwner skill={skill} userNames={userNames} />,
     },
     {
       title: t("common.actions"),
@@ -631,14 +648,24 @@ function skillColumns(
   ];
 }
 
-function SkillOwner({ skill }: { skill: SkillAsset }) {
+function SkillOwner({
+  skill,
+  userNames,
+}: {
+  skill: SkillAsset;
+  userNames: ReadonlyMap<string, string>;
+}) {
   const { t } = useTranslation();
   if (skill.scope === "system") return <span>{t("skill.ownerSystem")}</span>;
   if (skill.scope === "public") return <span>{t("skill.ownerPublic")}</span>;
+
+  // 归属展示用户名称（humanUserId → displayName 映射）；映射缺失（拉取失败或
+  // 用户已删除）时回退显示 humanUserId，绝不回退到 skill 自身的 displayName。
+  const ownerName = userNames.get(skill.humanUserId ?? "") || skill.humanUserId || "-";
   return (
     <div>
-      <div>Private Skill</div>
-      <div className="mono">{skill.humanUserId || skill.podId || "-"}</div>
+      <div>{t("skill.ownerPrivate")}</div>
+      <div className="mono">{ownerName}</div>
     </div>
   );
 }
@@ -811,7 +838,7 @@ function SkillDetailDrawer({ skill, onClose }: { skill: SkillAsset | null; onClo
           label: t("skill.featureLongTask"),
           value: skill.longTask ? t("common.yes") : t("common.no"),
         },
-        { label: "Manifest", value: skill.manifestHash || "-", wide: true, mono: true },
+        { label: t("skill.manifest"), value: skill.manifestHash || "-", wide: true, mono: true },
         { label: "Human User", value: skill.humanUserId || "-", mono: Boolean(skill.humanUserId) },
         { label: "Pod", value: skill.podId || "-", mono: Boolean(skill.podId) },
         { label: t("skill.sourcePath"), value: skill.sourcePath || "-", wide: true, mono: true },
@@ -838,7 +865,7 @@ function SkillDetailDrawer({ skill, onClose }: { skill: SkillAsset | null; onClo
             <PlatformTags platformsJson={skill.platformsJson} />
           </div>
           <div>
-            <div className={styles.subtle}>Manifest JSON</div>
+            <div className={styles.subtle}>{t("skill.manifestJson")}</div>
             <pre className={styles.manifest}>{prettyManifest(skill.manifestJson)}</pre>
           </div>
         </div>

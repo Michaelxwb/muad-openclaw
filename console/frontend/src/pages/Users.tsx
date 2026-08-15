@@ -24,6 +24,7 @@ import {
 } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
 import { errorMessage } from "../utils/error";
+import { normalizePage } from "../utils/pageClamp";
 import styles from "./Users.module.css";
 
 interface SelectedUser {
@@ -140,10 +141,12 @@ function useGlobalHumanUsers(): GlobalUsersState {
   const [error, setError] = useState("");
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
+  const foregroundRequestRef = useRef(0);
 
   const refresh = useCallback(
     async (background = false) => {
       const requestId = ++requestRef.current;
+      const foregroundRequestId = background ? 0 : ++foregroundRequestRef.current;
       if (mountedRef.current) {
         if (!background) setLoading(true);
         setError("");
@@ -159,11 +162,16 @@ function useGlobalHumanUsers(): GlobalUsersState {
         if (!mountedRef.current || requestId !== requestRef.current) return;
         setItems(result.items);
         setTotal(result.total);
+        normalizePage(page, result.total, pageSize, setPage);
       } catch (caught) {
         if (!mountedRef.current || requestId !== requestRef.current) return;
         setError(errorMessage(caught, "user.loadUsersFailed"));
       } finally {
-        if (mountedRef.current && requestId === requestRef.current && !background)
+        if (
+          mountedRef.current &&
+          !background &&
+          foregroundRequestId === foregroundRequestRef.current
+        )
           setLoading(false);
       }
     },

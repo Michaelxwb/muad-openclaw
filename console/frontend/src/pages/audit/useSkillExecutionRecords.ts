@@ -4,6 +4,7 @@ import type { SkillExecution, SkillExecutionQuery } from "../../api";
 import { DEFAULT_PAGE_SIZE } from "../../components/Pagination";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import { errorMessage } from "../../utils/error";
+import { normalizePage } from "../../utils/pageClamp";
 import {
   EMPTY_SKILL_EXECUTION_FILTERS,
   type SkillExecutionFilters,
@@ -23,6 +24,10 @@ export function useSkillExecutionRecords(
     result,
   );
   useExecutionRefreshEffects(active, loader.refresh, loader.requestRef);
+  // 删除末条记录后 total 缩减，page 超界时回退到最大页，避免空列表。
+  useEffect(() => {
+    normalizePage(filters.page, result.total, filters.pageSize, filters.setPage);
+  }, [filters.page, filters.pageSize, filters.setPage, result.total]);
   return {
     rows: result.rows,
     total: result.total,

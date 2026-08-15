@@ -64,7 +64,7 @@ function executionColumns(
       ),
     },
     {
-      title: "Pod",
+      title: t("execution.pod"),
       width: 200,
       render: (_: unknown, row: SkillExecution) =>
         onOpenPod ? (
@@ -81,7 +81,7 @@ function executionColumns(
         ),
     },
     {
-      title: "Skill",
+      title: t("execution.skill"),
       flex: 1,
       render: (_: unknown, row: SkillExecution) => (
         <div>

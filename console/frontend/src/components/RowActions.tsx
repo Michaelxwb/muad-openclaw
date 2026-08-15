@@ -33,15 +33,17 @@ export function RowActions({ pod, actions, onViewLogs, onOpenQr, onEdit, onActio
       <Button size="small" onClick={() => onEdit(pod.podId)}>
         {t("common.edit")}
       </Button>
-      <Dropdown
-        menu={actions.map((a) => ({
-          node: "item",
-          name: a.label,
-          onClick: () => onAction(pod.podId, a.key),
-        }))}
-      >
-        <Button size="small">{t("common.more")}▾</Button>
-      </Dropdown>
+      {actions.length > 0 && (
+        <Dropdown
+          menu={actions.map((a) => ({
+            node: "item",
+            name: a.label,
+            onClick: () => onAction(pod.podId, a.key),
+          }))}
+        >
+          <Button size="small">{t("common.more")}▾</Button>
+        </Dropdown>
+      )}
     </Space>
   );
 }

@@ -28,10 +28,10 @@ export const CHANNEL_DEFS: ChannelDef[] = [
     label: "channel.wecom",
     icon: "🏢",
     credentialFields: [
-      { key: "botId", label: "Bot ID", type: "text", required: true, placeholder: "aib…" },
+      { key: "botId", label: "channel.field.botId", type: "text", required: true, placeholder: "aib…" },
       {
         key: "secret",
-        label: "Secret",
+        label: "channel.field.secret",
         type: "password",
         required: true,
         placeholder: "channel.placeholder.secret",
@@ -47,12 +47,12 @@ export const CHANNEL_DEFS: ChannelDef[] = [
   },
   {
     id: "mattermost",
-    label: "Mattermost",
+    label: "channel.mattermost",
     icon: "M",
     credentialFields: [
       {
         key: "baseUrl",
-        label: "Mattermost URL",
+        label: "channel.field.mattermostUrl",
         type: "text",
         required: true,
         placeholder: "channel.placeholder.mattermostUrl",

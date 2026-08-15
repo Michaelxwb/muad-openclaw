@@ -128,8 +128,12 @@ function PodEditForm({
       setErrorDetail(undefined);
       try {
         await api.updatePodChannels(podId, v);
-        await api.setPodResources(podId, resources);
-        Toast.success(t("channel.updated"));
+        const result = await api.setPodResources(podId, resources);
+        if (result?.requiresPodRestart) {
+          Toast.warning(t("pod.requiresRestartWarning"));
+        } else {
+          Toast.success(t("channel.updated"));
+        }
         onSaved();
       } catch (e) {
         setError(errorMessage(e, "channel.updateFailed"));

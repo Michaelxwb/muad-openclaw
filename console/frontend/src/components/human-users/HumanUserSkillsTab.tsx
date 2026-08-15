@@ -174,7 +174,6 @@ function useHumanUserSkills(humanUserId: string) {
           if (mountedRef.current) {
             setError(errorMessage(caught, "user.deletePrivateSkillFailed"));
           }
-          throw caught;
         }
       },
     });
