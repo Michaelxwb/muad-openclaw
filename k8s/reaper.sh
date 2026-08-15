@@ -47,11 +47,18 @@ workload_for_user() {
 [[ "${1:-}" == "--revive" ]] && { revive "$2"; exit 0; }
 
 # 扫描所有用户实例
+# 与 Console K8s driver 对齐：driver 给 Deployment/StatefulSet 打的标签是
+#   app=muad-oc + muad-pod=<podID>
+# （旧标签 app=muad-openclaw / muad-user 只存在于已废弃的手动开通模板，不再扫描）。
+# 注意：driver 当前不写 muad/last-active 注解——TODO-A 仍未实现，活跃判定用
+# Pod 启动时间占位，会误回收"刚起但没人说话"的实例，生产启用 DRY_RUN=false 前必须补。
 echo "[reaper] ns=${NS} idle_days=${IDLE_DAYS} dry_run=${DRY_RUN}"
 for kind in deployment statefulset; do
-  kubectl -n "${NS}" get "${kind}" -l app=muad-openclaw \
-    -o jsonpath="{range .items[*]}${kind}{\" \"}{.metadata.name}{\" \"}{.metadata.labels.muad-user}{\" \"}{.spec.replicas}{\" \"}{.metadata.annotations.muad/last-active}{\"\\n\"}{end}"
+  kubectl -n "${NS}" get "${kind}" -l app=muad-oc \
+    -o jsonpath="{range .items[*]}${kind}{\" \"}{.metadata.name}{\" \"}{.metadata.labels.muad-pod}{\" \"}{.spec.replicas}{\" \"}{.metadata.annotations.muad/last-active}{\"\\n\"}{end}"
 done | while read -r kind name user replicas last_active; do
+    # user 取 muad-pod 标签；缺失时从 workload 名 muad-oc-<id> 回退推导
+    [[ -z "${user}" || "${user}" == "<no value>" ]] && user="${name#muad-oc-}"
     [[ -z "${user}" ]] && continue
     [[ "${replicas:-0}" == "0" ]] && continue   # 已回收
     # TODO-A：优先用 annotation muad/last-active；缺失则用 Pod 启动时间占位
@@ -62,7 +69,7 @@ done | while read -r kind name user replicas last_active; do
       fi
       idle=$(( (now - last_active) / 86400 ))
     else
-      started=$(kubectl -n "${NS}" get pod -l "muad-user=${user}" \
+      started=$(kubectl -n "${NS}" get pod -l "muad-pod=${user}" \
         -o jsonpath='{.items[0].status.startTime}' 2>/dev/null || echo "")
       [[ -n "${started}" ]] && idle=$(( (now - $(date -j -f "%Y-%m-%dT%H:%M:%SZ" "${started}" +%s 2>/dev/null || date -d "${started}" +%s)) / 86400 )) || idle=0
     fi

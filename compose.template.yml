@@ -1,3 +1,6 @@
+# ⚠️ 已废弃：本模板属于旧版手动开通流（provision-user.sh）。worker 镜像入口要求
+# Console 下发的 Runtime DTO（MUAD_RUNTIME_CONFIG，经 stdin 或 env 注入），本模板
+# 不提供 → 容器必然 CrashLoop。请改用 Console 的 Docker RuntimeDriver 开通用户。
 # 每用户 compose 模板。provision-user.sh 用 sed 渲染 PC_USER / MUAD_IMAGE。
 # per-user 凭证在同目录 .env（由 provision 从 config + 生成的网关 token 合成）。
 #
