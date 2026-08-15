@@ -67,6 +67,39 @@ func TestUserCleanup_OfflineAndFailuresRemainRetryable(t *testing.T) {
 	}
 }
 
+func TestUserCleanup_PodDeletedUsersCompleteInsteadOfRetry(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 1)
+	user := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
+	if err := store.MarkHumanUserDeleting(user.HumanUserID); err != nil {
+		t.Fatalf("mark deleting: %v", err)
+	}
+	// Deleting the Pod detaches the user (pod_id -> NULL); there is no runtime
+	// to exec cleanup into, so the sweep must complete the group instead of
+	// retrying GetPod("") forever.
+	if err := store.DeletePod("pod-a"); err != nil {
+		t.Fatalf("DeletePod: %v", err)
+	}
+	driver, queue := newFakeDriver(), &fakeReconcileQueue{}
+	cleaner, err := usercleanup.New(store, driver, queue, time.Millisecond)
+	if err != nil {
+		t.Fatalf("New cleaner: %v", err)
+	}
+	result, err := cleaner.Sweep(context.Background())
+	if err != nil || result.Deleted != 1 || result.Retry != 0 {
+		t.Fatalf("Sweep = %+v, %v", result, err)
+	}
+	if _, getErr := store.GetHumanUser(user.HumanUserID); !errors.Is(getErr, repo.ErrNotFound) {
+		t.Fatalf("orphaned Human User row was not removed: %v", getErr)
+	}
+	if len(driver.execCalls) != 0 {
+		t.Fatalf("pod-deleted cleanup must not exec runtime: %+v", driver.execCalls)
+	}
+	if len(queue.podIDs) != 0 {
+		t.Fatalf("pod-deleted cleanup must not enqueue reconcile: %v", queue.podIDs)
+	}
+}
+
 func markPodApplied(t *testing.T, store *repo.Store, podID string) {
 	t.Helper()
 	pod, err := store.GetPod(podID)

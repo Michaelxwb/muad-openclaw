@@ -56,6 +56,38 @@ func TestSkillExecutionInternalAPI_RejectsCrossPodAgent(t *testing.T) {
 	assertStatus(t, rr, http.StatusNotFound)
 }
 
+func TestSkillExecutionInternalAPI_RejectsCrossPodExecutionIDReuse(t *testing.T) {
+	env := newTestEnv(t)
+	tokenA := createPodWithToken(t, env, "pod-a")
+	tokenB := createPodWithToken(t, env, "pod-b")
+	alice := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createTestHumanUser(t, env.store, "pod-b", "bob", repo.HumanUserStatusActive)
+
+	// pod-a claims exec-shared first.
+	rr := doInternalSkillExecution(env, tokenA,
+		`{"executionId":"exec-shared","agentId":"alice","skillName":"xdr-query","skillScope":"public"}`)
+	assertStatus(t, rr, http.StatusOK)
+
+	// pod-b reuses the same executionId: the pre-existing row is owned by
+	// pod-a's user, so the upsert must be rejected instead of returning the
+	// foreign record (INSERT OR IGNORE would leak it).
+	rr = doInternalSkillExecution(env, tokenB,
+		`{"executionId":"exec-shared","agentId":"bob","skillName":"mss-report","skillScope":"private"}`)
+	assertStatus(t, rr, http.StatusConflict)
+	if !strings.Contains(rr.Body.String(), `"code":40902`) {
+		t.Fatalf("cross-Pod reuse response = %s", rr.Body.String())
+	}
+	stored, err := env.store.GetSkillExecutionRecord("exec-shared")
+	if err != nil || stored.HumanUserID != alice.HumanUserID || stored.PodID != "pod-a" {
+		t.Fatalf("cross-Pod reuse mutated the record: %+v, %v", stored, err)
+	}
+
+	// The same Pod/user replaying its own executionId stays idempotent.
+	rr = doInternalSkillExecution(env, tokenA,
+		`{"executionId":"exec-shared","agentId":"alice","skillName":"xdr-query","skillScope":"public"}`)
+	assertStatus(t, rr, http.StatusOK)
+}
+
 func TestSkillExecutionRuntimeFailureDoesNotWriteOperationAudit(t *testing.T) {
 	env := newTestEnv(t)
 	token := createPodWithToken(t, env, "pod-a")

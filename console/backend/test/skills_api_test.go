@@ -261,6 +261,10 @@ func TestSkillAPI_ApprovePendingSkillActivatesAndSyncs(t *testing.T) {
 	skillID := ingestPrivateSkill(t, e, alice, "approve-skill")
 	e.drv.execStdinCalls = nil
 	e.reconcile.podIDs = nil
+	podBefore, err := e.store.GetPod(alice.PodID)
+	if err != nil {
+		t.Fatalf("get Pod before approve: %v", err)
+	}
 
 	rr := e.do(http.MethodPost, "/api/v1/skills/"+skillID+"/approve", "")
 	assertStatus(t, rr, http.StatusOK)
@@ -269,11 +273,47 @@ func TestSkillAPI_ApprovePendingSkillActivatesAndSyncs(t *testing.T) {
 	if err != nil || got.Status != repo.SkillStatusActive {
 		t.Fatalf("approved skill = %+v, %v", got, err)
 	}
-	if len(e.drv.execStdinCalls) == 0 {
-		t.Fatalf("approve should trigger installer sync")
+	// Approval marks the owning Pod pending (transactionally) and enqueues the
+	// reconcile; the apply chain runs the installer sync, so there must be no
+	// direct exec here and the Pod must be retryable if the sync later fails.
+	if len(e.drv.execStdinCalls) != 0 {
+		t.Fatalf("approve should not exec installer directly: %+v", e.drv.execStdinCalls)
 	}
-	if len(e.reconcile.podIDs) != 0 {
-		t.Fatalf("approve should direct-sync, not reconcile: %v", e.reconcile.podIDs)
+	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
+		t.Fatalf("approve should enqueue reconcile for the user Pod: %v", e.reconcile.podIDs)
+	}
+	podAfter, err := e.store.GetPod(alice.PodID)
+	if err != nil {
+		t.Fatalf("get Pod after approve: %v", err)
+	}
+	if podAfter.ConfigGeneration != podBefore.ConfigGeneration+1 || !podAfter.SkillsPending ||
+		podAfter.LastApplyStatus != repo.ApplyStatusPending {
+		t.Fatalf("approve did not mark Pod pending: before=%+v after=%+v", podBefore, podAfter)
+	}
+}
+
+func TestSkillAPI_PrivateIngestRejectsCrossPodAgent(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createPodThroughAPI(t, e, strings.ReplaceAll(testPodBody, "pod-a", "pod-b"))
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	// Ingest must resolve the agent inside the authenticated Pod's scope: the
+	// token belongs to pod-b, so alice (pod-a) must be rejected as not found.
+	bundle := makeSkillBundle(t, "cross-pod-skill", map[string]any{"name": "cross-pod-skill"})
+	body := fmt.Sprintf(`{"agentId":%q,"bundleFormat":"tar.gz","bundle":%q}`,
+		alice.AgentID, base64.StdEncoding.EncodeToString(bundle))
+	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-b"].ServiceToken.Value)
+	rr := httptest.NewRecorder()
+	e.h.ServeHTTP(rr, req)
+	assertStatus(t, rr, http.StatusNotFound)
+
+	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
+		Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
+	})
+	if err != nil || len(assets) != 0 {
+		t.Fatalf("cross-Pod ingest must not create an asset: %+v, %v", assets, err)
 	}
 }
 
@@ -307,6 +347,28 @@ func TestSkillAPI_ApproveRejectNonPendingSkillNotFound(t *testing.T) {
 	assertStatus(t, rr, http.StatusNotFound)
 	rr = e.do(http.MethodPost, "/api/v1/skills/"+publicSkill.SkillID+"/reject", "")
 	assertStatus(t, rr, http.StatusNotFound)
+}
+
+// Pending 只能经审批端点流转：通用 PATCH 不得绕过审批直接激活/停用待审 Skill。
+func TestSkillAPI_PatchRejectsPendingSkill(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	skillID := ingestPrivateSkill(t, e, alice, "patch-pending")
+	e.reconcile.podIDs = nil
+
+	rr := e.do(http.MethodPatch, "/api/v1/skills/"+skillID, `{"status":"active"}`)
+	assertStatus(t, rr, http.StatusBadRequest)
+	rr = e.do(http.MethodPatch, "/api/v1/skills/"+skillID, `{"status":"disabled"}`)
+	assertStatus(t, rr, http.StatusBadRequest)
+
+	got, err := e.store.GetSkillAsset(skillID)
+	if err != nil || got.Status != repo.SkillStatusPending {
+		t.Fatalf("asset after rejected PATCH = %+v, %v", got, err)
+	}
+	if len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("rejected PATCH must not enqueue reconcile: %v", e.reconcile.podIDs)
+	}
 }
 
 func ingestPrivateSkill(t *testing.T, e *testEnv, user repo.HumanUser, name string) string {

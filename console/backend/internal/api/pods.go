@@ -305,6 +305,12 @@ func (s *Server) handlePatchPod(w http.ResponseWriter, r *http.Request) {
 	}
 	// Image changes must recreate the workload (same as /upgrade), not only bump generation.
 	if imageChanged {
+		// A stopped/error Pod cannot be upgraded in place; rejecting here avoids
+		// the full upgrade chain timing out and rolling back for nothing.
+		if pod.State != repo.PodStateRunning && pod.State != repo.PodStateUnhealthy {
+			writeErrDetail(w, r, errcode.ConflictPodRunningUpgrade, "pod 未运行，无法升级镜像")
+			return
+		}
 		s.handlePatchPodImageChange(w, r, pod, update)
 		return
 	}

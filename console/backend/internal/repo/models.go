@@ -81,6 +81,7 @@ const (
 // Effective Skill view states used by the Human User resolver.
 const (
 	EffectiveSkillStatusEffective         = "effective"
+	EffectiveSkillStatusPending           = "pending"
 	EffectiveSkillStatusConflict          = "conflict"
 	EffectiveSkillStatusDisabled          = "disabled"
 	EffectiveSkillStatusMissingCredential = "missing_credential"

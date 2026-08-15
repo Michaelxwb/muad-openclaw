@@ -223,6 +223,25 @@ func TestHumanUserAPI_DeleteRemainsDeletingUntilCleanerRuns(t *testing.T) {
 	}
 }
 
+func TestHumanUserAPI_UnboundUserPatchSavesMetadata(t *testing.T) {
+	e, user := createDirectHumanUser(t)
+	if err := e.store.DeletePod("pod-a"); err != nil {
+		t.Fatalf("delete Pod: %v", err)
+	}
+	e.reconcile.podIDs = nil
+	newModel := createLLMModelForAPI(t, e, "bob-model")
+	rr := e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID,
+		`{"modelConfigId":"`+newModel+`"}`)
+	assertStatus(t, rr, http.StatusOK)
+	stored, err := e.store.GetHumanUser(user.HumanUserID)
+	if err != nil || stored.ModelConfigID != newModel || stored.PodID != "" {
+		t.Fatalf("unbound PATCH result = %+v, %v", stored, err)
+	}
+	if len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("unbound PATCH must not enqueue reconcile: %v", e.reconcile.podIDs)
+	}
+}
+
 func createDirectHumanUser(t *testing.T) (*testEnv, humanUserAPIView) {
 	t.Helper()
 	e := newTestEnv(t)

@@ -379,6 +379,36 @@ func TestEffectiveSkillResolver_DisablePolicyAndPlatformDisabled(t *testing.T) {
 	}
 }
 
+func TestEffectiveSkillResolver_PendingPrivateMapsToPendingStatus(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 3)
+	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createSkillAsset(t, store, repo.SkillAsset{
+		Name: "review-me", Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
+		SourcePath:   "/home/node/.openclaw/workspace-alice/skills/review-me",
+		ManifestHash: "sha256:review", PlatformsJSON: `[]`, Status: repo.SkillStatusPending,
+	})
+
+	skills, total, err := store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{})
+	if err != nil {
+		t.Fatalf("ResolveEffectiveSkills: %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("effective skills total = %d, want 1: %+v", total, skills)
+	}
+	got := indexEffectiveSkills(skills)["review-me"]
+	if got.Status != repo.EffectiveSkillStatusPending || got.Effective {
+		t.Fatalf("pending private Skill must map to pending, not effective: %+v", got)
+	}
+	// The pending status is filterable through the effective resolver.
+	filtered, _, err := store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{
+		Status: repo.EffectiveSkillStatusPending,
+	})
+	if err != nil || len(filtered) != 1 {
+		t.Fatalf("pending filter = %+v, %v", filtered, err)
+	}
+}
+
 func createSkillAsset(t *testing.T, store *repo.Store, asset repo.SkillAsset) repo.SkillAsset {
 	t.Helper()
 	created, err := store.CreateSkillAsset(asset)

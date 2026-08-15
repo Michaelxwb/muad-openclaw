@@ -30,7 +30,18 @@ func TestInternalBindingAPI_UnboundSenderActivatesAndQueuesConfig(t *testing.T) 
 	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
 		t.Fatalf("binding reconcile queue = %v", e.reconcile.podIDs)
 	}
-	assertStatus(t, doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct")), http.StatusConflict)
+	// Retrying the same (code, external_id) is idempotent: it returns the same
+	// binding instead of being rejected as a replay.
+	retry := doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct"))
+	assertStatus(t, retry, http.StatusOK)
+	body := retry.Body.String()
+	if !strings.Contains(body, `"identityBound":true`) ||
+		!strings.Contains(body, `"humanUserId":"`+user.HumanUserID+`"`) {
+		t.Fatalf("idempotent retry response = %s", body)
+	}
+	if len(e.reconcile.podIDs) != 2 || e.reconcile.podIDs[1] != "pod-a" {
+		t.Fatalf("idempotent retry reconcile queue = %v", e.reconcile.podIDs)
+	}
 	assertBindingAuditHasNoCode(t, e, code)
 }
 
@@ -48,7 +59,31 @@ func TestInternalBindingAPI_ReportsRuntimeApplyFailure(t *testing.T) {
 	if err != nil || stored.Status != repo.HumanUserStatusActive || identity.HumanUserID != user.HumanUserID {
 		t.Fatalf("binding should remain saved user=%+v identity=%+v error=%v", stored, identity, err)
 	}
-	assertStatus(t, doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct")), http.StatusConflict)
+	// Once the runtime recovers, the same (code, external_id) retry converges
+	// idempotently and returns the already committed binding instead of 409.
+	e.reconcile.err = nil
+	rr = doInternalBind(e, token, bindingBody(code, "default", "new-sender", "direct"))
+	assertStatus(t, rr, http.StatusOK)
+	if !strings.Contains(rr.Body.String(), `"humanUserId":"`+user.HumanUserID+`"`) ||
+		!strings.Contains(rr.Body.String(), `"identityId":"`+identity.IdentityID+`"`) {
+		t.Fatalf("recovered retry response = %s", rr.Body.String())
+	}
+}
+
+func TestInternalBindingAPI_RejectsReplayedCodeWithDifferentExternalID(t *testing.T) {
+	e, user, code := createBindingTarget(t)
+	token := e.drv.created["pod-a"].ServiceToken.Value
+	assertStatus(t, doInternalBind(e, token, bindingBody(code, "default", "sender-a", "direct")), http.StatusOK)
+	// Same code, different sender: still rejected as a replay.
+	rr := doInternalBind(e, token, bindingBody(code, "default", "sender-b", "direct"))
+	assertStatus(t, rr, http.StatusConflict)
+	if !strings.Contains(rr.Body.String(), `"code":40405`) {
+		t.Fatalf("replay rejection response = %s", rr.Body.String())
+	}
+	identities, err := e.store.ListIdentitiesByHumanUser(user.HumanUserID)
+	if err != nil || len(identities) != 1 || identities[0].ExternalID != "sender-a" {
+		t.Fatalf("replayed code must not create a second identity: %+v, %v", identities, err)
+	}
 }
 
 func TestInternalBindingAPI_RequiresSynchronousRuntimeApply(t *testing.T) {

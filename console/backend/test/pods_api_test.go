@@ -283,6 +283,38 @@ func TestPodAPI_PatchImageTagRejectsCapacityBeforeUpgrade(t *testing.T) {
 	}
 }
 
+func TestPodAPI_PatchImageTagRejectedWhenNotRunning(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	if err := e.store.UpdatePodState("pod-a", repo.PodStateStopped); err != nil {
+		t.Fatalf("stop Pod: %v", err)
+	}
+
+	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"imageTag":"img:v2"}`)
+	assertAPIError(t, rr, errcode.ConflictPodRunningUpgrade, "pod 未运行，无法升级镜像")
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.ImageTag != "img:test" {
+		t.Fatalf("rejected image patch changed Pod image: %+v", pod)
+	}
+	if len(e.drv.replaced) != 0 || e.drv.created["pod-a"].ImageTag != "img:test" {
+		t.Fatalf("rejected image patch touched the runtime: replaced=%d", len(e.drv.replaced))
+	}
+}
+
+func TestPodAPI_ListAndDetailReturnStructuredDriverError(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	e.drv.listErr = errors.New("runtime driver unavailable")
+
+	rr := e.do(http.MethodGet, "/api/v1/containers", "")
+	assertAPIError(t, rr, errcode.RuntimeListPods, "runtime driver unavailable")
+	rr = e.do(http.MethodGet, "/api/v1/containers/pod-a", "")
+	assertAPIError(t, rr, errcode.RuntimeInspectPod, "runtime driver unavailable")
+}
+
 func createPodThroughAPI(t *testing.T, e *testEnv, body string) podAPIView {
 	t.Helper()
 	rr := e.do(http.MethodPost, "/api/v1/containers", body)

@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -297,6 +296,15 @@ func (s *Server) handlePatchSkill(w http.ResponseWriter, r *http.Request) {
 		}
 		publicDeleteName = asset.Name
 	}
+	// pending 只能经审批端点（approve/reject）流转；通用 PATCH 不得绕过审批
+	// 直接激活/停用待审 Skill（会跳过审批的 SyncPod 语义与磁盘清理）。
+	if current, err := s.store.GetSkillAsset(r.PathValue("skillId")); err != nil {
+		writeRepoError(w, r, err)
+		return
+	} else if current.Status == repo.SkillStatusPending {
+		writeRepoError(w, r, repo.ErrInvalidSkill)
+		return
+	}
 	asset, podIDs, err := s.store.UpdateSkillAssetStatusAndMarkPods(
 		r.PathValue("skillId"), status,
 	)
@@ -441,7 +449,16 @@ func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request
 		))
 		return
 	}
-	user, err := s.store.GetHumanUserByAgentID(request.AgentID)
+	// Resolve the agent strictly inside the authenticated Pod's scope: the
+	// schema only guarantees UNIQUE(pod_id, agent_id), so a global lookup could
+	// attribute the upload to a user of another Pod. An agent that belongs to a
+	// different Pod resolves to not-found here and is rejected.
+	pod, ok := podFromContext(r.Context())
+	if !ok {
+		writeErr(w, r, errcode.UnauthorizedPodToken)
+		return
+	}
+	user, err := s.store.GetHumanUserByAgent(pod.PodID, request.AgentID)
 	if err != nil {
 		writeRepoError(w, r, err)
 		return
@@ -596,7 +613,9 @@ func (s *Server) handleDeletePrivateSkill(w http.ResponseWriter, r *http.Request
 }
 
 // handleApproveSkill transitions a pending user-authored private Skill to active
-// and syncs it to the owning Pod so it becomes effective.
+// and marks the owning Pod pending so the apply chain syncs it to the worker
+// (the same transaction pattern as the console upload flow). A failed runtime
+// sync stays retryable via the reconcile queue instead of being lost.
 func (s *Server) handleApproveSkill(w http.ResponseWriter, r *http.Request) {
 	asset, err := s.store.GetSkillAsset(r.PathValue("skillId"))
 	if err != nil {
@@ -607,26 +626,14 @@ func (s *Server) handleApproveSkill(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, r, repo.ErrNotFound)
 		return
 	}
-	if err := s.store.UpdateSkillAssetStatus(asset.SkillID, repo.SkillStatusActive); err != nil {
+	updated, podIDs, err := s.store.UpdateSkillAssetStatusAndMarkPods(asset.SkillID, repo.SkillStatusActive)
+	if err != nil {
 		writeRepoError(w, r, err)
 		return
 	}
-	asset.Status = repo.SkillStatusActive
-	if s.skillSyncer != nil {
-		user, err := s.store.GetHumanUser(asset.HumanUserID)
-		if err != nil {
-			writeRepoError(w, r, err)
-			return
-		}
-		syncCtx, cancel := context.WithTimeout(r.Context(), podRuntimeOpTimeout)
-		defer cancel()
-		if err := s.skillSyncer.SyncPod(syncCtx, user.PodID); err != nil {
-			log.Printf("private_skill_approve_sync_failed user=%s skill=%s error=%v",
-				user.HumanUserID, asset.Name, auditlog.RedactDiagnostic(err.Error()))
-		}
-	}
-	s.auditSkill(r, auditlog.ActionSkillAssetUpdate, asset, "approved", 1)
-	writeJSON(w, http.StatusOK, map[string]any{"skill": skillAssetToView(asset)})
+	s.auditSkill(r, auditlog.ActionSkillAssetUpdate, updated, "approved", len(podIDs))
+	s.enqueueReconcileForPods(podIDs)
+	writeJSON(w, http.StatusOK, map[string]any{"skill": skillAssetToView(updated)})
 }
 
 // handleRejectSkill soft-deletes a pending user-authored private Skill and removes

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
@@ -47,5 +48,53 @@ func TestAgentGuidanceRoundTrip(t *testing.T) {
 	}
 	if got.UserSkill != "only" || got.Memory != "" || got.Main != "" {
 		t.Fatalf("Agent guidance after overwrite = %+v", got)
+	}
+}
+
+func TestSaveAgentGuidanceAndMarkPods_IsAtomic(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 10)
+	createTestPod(t, store, "pod-b", 10)
+	before, err := store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod before: %v", err)
+	}
+
+	podIDs, err := store.SaveAgentGuidanceAndMarkPods(repo.AgentGuidance{UserSkill: "shared rule"})
+	if err != nil {
+		t.Fatalf("SaveAgentGuidanceAndMarkPods: %v", err)
+	}
+	if len(podIDs) != 2 {
+		t.Fatalf("affected Pod IDs = %v, want both Pods", podIDs)
+	}
+	guidance, err := store.GetAgentGuidance()
+	if err != nil || guidance.UserSkill != "shared rule" {
+		t.Fatalf("guidance after save = %+v, %v", guidance, err)
+	}
+	after, err := store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod after: %v", err)
+	}
+	if after.ConfigGeneration != before.ConfigGeneration+1 ||
+		after.LastApplyStatus != repo.ApplyStatusPending {
+		t.Fatalf("Pod not marked pending atomically: before=%+v after=%+v", before, after)
+	}
+}
+
+func TestAgentGuidanceAPI_PutSavesAndQueuesAllPods(t *testing.T) {
+	env := newTestEnv(t)
+	createTestPod(t, env.store, "pod-a", 10)
+	createTestPod(t, env.store, "pod-b", 10)
+	env.reconcile.podIDs = nil
+
+	response := env.do(http.MethodPut, "/api/v1/settings/agent-guidance",
+		`{"userSkill":"rule A","memory":"memory B","main":"main C"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("PUT agent guidance = %d: %s", response.Code, response.Body.String())
+	}
+	assertQueuedPods(t, env, "pod-a", "pod-b")
+	guidance, err := env.store.GetAgentGuidance()
+	if err != nil || guidance.UserSkill != "rule A" || guidance.Memory != "memory B" || guidance.Main != "main C" {
+		t.Fatalf("stored guidance = %+v, %v", guidance, err)
 	}
 }

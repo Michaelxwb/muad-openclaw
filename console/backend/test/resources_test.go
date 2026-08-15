@@ -110,6 +110,56 @@ func TestResources_AcceptsBareMemLimitAsGiB(t *testing.T) {
 	}
 }
 
+func TestSaveResourcesAndMarkPods_IsAtomic(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 10)
+	createTestPod(t, store, "pod-b", 10)
+	if _, err := store.UpdatePodResources("pod-a", repo.PodResourceUpdate{MemLimit: "4g"}); err != nil {
+		t.Fatalf("set Pod override: %v", err)
+	}
+	before, err := store.GetPod("pod-b")
+	if err != nil {
+		t.Fatalf("GetPod before: %v", err)
+	}
+	overrideBefore, err := store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod override before: %v", err)
+	}
+
+	// Only the memLimit change is applied; pod-a overrides memLimit so it must
+	// not be marked pending while the inheriting pod-b is.
+	podIDs, err := store.SaveResourcesAndMarkPods(repo.ResourceConfig{
+		MemLimit: "3g", CPULimit: "2", RestartPolicy: "always",
+		MaxSkillConcurrency: 2, MaxBrowserConcurrency: 1, MaxLongTaskConcurrency: 3,
+	}, true, false, false, false, false, false)
+	if err != nil {
+		t.Fatalf("SaveResourcesAndMarkPods: %v", err)
+	}
+	if len(podIDs) != 1 || podIDs[0] != "pod-b" {
+		t.Fatalf("affected Pod IDs = %v, want [pod-b]", podIDs)
+	}
+	global, err := store.GetResourceGlobal()
+	if err != nil || global.MemLimit != "3g" || global.MaxSkillConcurrency != 2 {
+		t.Fatalf("global resources after save = %+v, %v", global, err)
+	}
+	after, err := store.GetPod("pod-b")
+	if err != nil {
+		t.Fatalf("GetPod after: %v", err)
+	}
+	if after.ConfigGeneration != before.ConfigGeneration+1 ||
+		after.LastApplyStatus != repo.ApplyStatusPending {
+		t.Fatalf("inheriting Pod not marked pending atomically: before=%+v after=%+v", before, after)
+	}
+	overrideAfter, err := store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod override after: %v", err)
+	}
+	if overrideAfter.ConfigGeneration != overrideBefore.ConfigGeneration {
+		t.Fatalf("non-inheriting Pod generation changed: %d -> %d",
+			overrideBefore.ConfigGeneration, overrideAfter.ConfigGeneration)
+	}
+}
+
 func TestResources_RejectsInvalidLimitsAndConcurrency(t *testing.T) {
 	env := newTestEnv(t)
 	createTestPod(t, env.store, "pod-a", 10)

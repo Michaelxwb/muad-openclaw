@@ -98,16 +98,34 @@ func upsertLongTaskTaskTx(tx *sql.Tx, task LongTaskTask) error {
 		return err
 	}
 	existing, err := getLongTaskTaskTx(tx, prepared.TaskID)
-	if err == nil && !longTaskStatusCanAdvance(existing.Status, prepared.Status) {
-		return nil
+	if errors.Is(err, ErrNotFound) {
+		return insertLongTaskTaskTx(tx, prepared)
 	}
-	if err == nil {
-		return updateLongTaskTaskTx(tx, prepared)
-	}
-	if !errors.Is(err, ErrNotFound) {
+	if err != nil {
 		return err
 	}
-	return insertLongTaskTaskTx(tx, prepared)
+	if longTaskStatusCanAdvance(existing.Status, prepared.Status) {
+		return updateLongTaskTaskTx(tx, prepared)
+	}
+	// A status regression (e.g. running -> queued, or a stale non-terminal
+	// snapshot after a terminal row) must never silently drop the incoming
+	// snapshot — that loses its pool counters and last_seen. Keep the record
+	// and converge it to a terminal failed state so operators can see the
+	// anomaly instead of a stale row.
+	regressed := prepared
+	regressed.Status = LongTaskFailed
+	regressed.TerminalReason = longTaskRegressionReason(existing.Status, prepared.Status)
+	if regressed.EndedAt.IsZero() {
+		regressed.EndedAt = time.Now().UTC()
+	}
+	if regressed.UpdatedAt.IsZero() {
+		regressed.UpdatedAt = time.Now().UTC()
+	}
+	return updateLongTaskTaskTx(tx, regressed)
+}
+
+func longTaskRegressionReason(current, incoming string) string {
+	return fmt.Sprintf("status_regressed: %s -> %s", current, incoming)
 }
 
 func prepareLongTaskTask(task LongTaskTask) (LongTaskTask, error) {

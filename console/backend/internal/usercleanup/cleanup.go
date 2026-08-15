@@ -116,6 +116,14 @@ type podResult struct {
 
 func (cleaner *Cleaner) cleanPod(ctx context.Context, podID string, users []repo.HumanUser) podResult {
 	pod, err := cleaner.store.GetPod(podID)
+	if errors.Is(err, repo.ErrNotFound) {
+		// The Pod was deleted (or the users were already detached with
+		// pod_id NULL): there is no runtime to exec cleanup into. Remove the
+		// orphaned records synchronously and treat the group as complete
+		// instead of retrying every sweep.
+		deleted, deleteErr := cleaner.deleteUserRecords(users)
+		return podResult{deleted: deleted, retry: len(users) - deleted, err: deleteErr}
+	}
 	if err != nil {
 		return podResult{retry: len(users), err: err}
 	}
@@ -137,6 +145,19 @@ func (cleaner *Cleaner) cleanPod(ctx context.Context, podID string, users []repo
 		return getErr
 	})
 	return podResult{deleted: deleted, retry: len(users) - deleted, err: err}
+}
+
+// deleteUserRecords physically removes already-deleting user rows that have no
+// Pod left to exec cleanup into.
+func (cleaner *Cleaner) deleteUserRecords(users []repo.HumanUser) (int, error) {
+	deleted := 0
+	for _, user := range users {
+		if err := cleaner.store.DeleteHumanUser(user.HumanUserID); err != nil {
+			return deleted, fmt.Errorf("delete orphaned Human User record: %w", err)
+		}
+		deleted++
+	}
+	return deleted, nil
 }
 
 func readyForCleanup(pod repo.Pod) bool {

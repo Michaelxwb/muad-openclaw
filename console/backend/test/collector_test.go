@@ -86,6 +86,33 @@ func TestCollector_CollectOnce_PopulatesCache(t *testing.T) {
 	}
 }
 
+func TestCollector_ListFailureMarksSnapshotsStale(t *testing.T) {
+	fd := newFakeDriver()
+	_ = fd.Create(context.Background(), driver.PodSpec{PodID: "alice"})
+	fd.listErr = errors.New("runtime driver unavailable")
+
+	source := collectorSource{pods: []repo.PodSummary{
+		{Pod: repo.Pod{PodID: "alice", MaxUsers: 10}, UserCount: 1, AvailableSlots: 9},
+	}}
+	cache := monitor.NewCache()
+	c := collector.New(fd, &source, cache, driver.ResourceSpec{}, time.Minute)
+	c.CollectOnce(context.Background())
+
+	// A failed sampling cycle must not leave the previous Healthy=true snapshot
+	// in the cache: the control-plane snapshot is published as stale/unhealthy
+	// so alerting reports "Pod down or unreachable".
+	snap, ok := cache.Get("alice")
+	if !ok {
+		t.Fatal("alice missing from cache after failed List")
+	}
+	if snap.Healthy {
+		t.Fatalf("failed collection left a healthy snapshot: %+v", snap)
+	}
+	if snap.PodID != "alice" || snap.UserCount != 1 {
+		t.Fatalf("stale snapshot lost control-plane data: %+v", snap)
+	}
+}
+
 func TestMonitorCache_DetachesPerPodChannelMaps(t *testing.T) {
 	cache := monitor.NewCache()
 	original := map[string]monitor.Snapshot{

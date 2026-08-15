@@ -371,6 +371,11 @@ func applyK8sYAML(c *Config, src *k8sYAML) {
 	applyStringMap(&c.K8sWorkerNodeSelector, src.WorkerNodeSelector)
 }
 
+// applyRuntimeDefaultsYAML 应用遗留的顶层 runtimeDefaults 块（先于 resources 块）。
+// 注意：memLimit/cpuLimit/restartPolicy/maxSkillConcurrency/maxBrowserConcurrency/
+// maxLongTaskConcurrency 六个键与 resources 块重叠——resources 块（applyGroupedYAML
+// 后应用）会覆盖这里的值，因此这六个键应以 resources 块为准（见 config.example.yaml
+// 注释）；本块只保证 locale / browserCDPPort* 这类独有键不被覆盖。
 func applyRuntimeDefaultsYAML(dst *RuntimeDefaults, src *runtimeDefaultsYAML) {
 	if src == nil {
 		return
