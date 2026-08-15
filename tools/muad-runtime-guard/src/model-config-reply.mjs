@@ -1,22 +1,6 @@
 export const MODEL_CONFIG_REPLY =
   "当前智能体模型配置不可用，请联系管理员检查模型配置后重试。";
 
-export function createModelConfigGate({ mainAgentId, config, onInvalid }) {
-  const state = resolveModelState(config);
-  return (_event, context) => {
-    const reason = resolveInvalidReason({ state, mainAgentId, context });
-    if (!reason) return undefined;
-    const agentId = resolveAgentId({ context });
-    onInvalid?.({ agentId: safeId(agentId), reason });
-    return {
-      outcome: "block",
-      reason: "muad-model-config-unavailable",
-      message: MODEL_CONFIG_REPLY,
-      category: "model_config",
-    };
-  };
-}
-
 export function createModelConfigDispatch({ mainAgentId, config, onInvalid }) {
   const state = resolveModelState(config);
   return (event, context) => {
@@ -27,21 +11,6 @@ export function createModelConfigDispatch({ mainAgentId, config, onInvalid }) {
     return {
       handled: true,
       text: MODEL_CONFIG_REPLY,
-      reason: "muad-model-config-unavailable",
-    };
-  };
-}
-
-export function createModelConfigReply({ mainAgentId, config, onInvalid }) {
-  const state = resolveModelState(config);
-  return (_event, context) => {
-    const reason = resolveInvalidReason({ state, mainAgentId, context });
-    if (!reason) return undefined;
-    const agentId = resolveAgentId({ context });
-    onInvalid?.({ agentId: safeId(agentId), reason });
-    return {
-      handled: true,
-      reply: { text: MODEL_CONFIG_REPLY },
       reason: "muad-model-config-unavailable",
     };
   };
@@ -67,7 +36,10 @@ export function resolveModelState(config) {
 
 function resolveInvalidReason({ state, mainAgentId, event, context }) {
   const agentId = resolveAgentId({ event, context });
-  if (!agentId || agentId === mainAgentId) return "";
+  // fail-closed：无法解析调用方身份时拦截，避免身份缺失的调用绕过模型配置门禁
+  // （long-task-manager 生成的 session key 为无前缀 agent:<id>:... 形式，必须能解析）。
+  if (!agentId) return "agent_identity_unresolved";
+  if (agentId === mainAgentId) return "";
   return invalidModelReason(state, agentId);
 }
 
@@ -77,9 +49,11 @@ function resolveAgentId({ event, context }) {
   return parseAgentIdFromSessionKey(context?.sessionKey) || parseAgentIdFromSessionKey(event?.sessionKey);
 }
 
+// 兼容两种格式：带 session: 前缀（OpenClaw 运行时）与无前缀 agent:<id>:...（长任务
+// 会话密钥 agent:<agentId>:longtask:<taskId>）。
 function parseAgentIdFromSessionKey(value) {
   const sessionKey = String(value ?? "").trim();
-  const match = /^session:agent:([^:]+)(?::|$)/u.exec(sessionKey);
+  const match = /^(?:session:)?agent:([^:]+)(?::|$)/u.exec(sessionKey);
   return match?.[1] ?? "";
 }
 

@@ -4,7 +4,6 @@ import test from "node:test";
 import {
   createSkillLeaseHooks,
   explicitSkillName,
-  skillRunKey,
 } from "../src/skill-hooks.mjs";
 import { SkillLeaseManager } from "../src/skill-lease.mjs";
 
@@ -37,13 +36,10 @@ test("skill hooks acquire only for explicit Skill commands and release on agent 
   manager.close();
 });
 
-test("skill hooks recognize expanded native Skill prompts and stable run keys", () => {
+test("skill hooks recognize expanded native Skill prompts", () => {
   assert.equal(explicitSkillName('/skill:xdr-query {"target":"host"}'), "xdr-query");
   assert.equal(explicitSkillName('<skill name="mssw-query" location="/skills/mssw-query/SKILL.md">'), "mssw-query");
   assert.equal(explicitSkillName("/skill:Bad"), "");
-  assert.equal(skillRunKey({ runId: "run-a" }, context("run-b")), JSON.stringify([
-    "alice", "run-a", "agent:alice:wecom:direct:user",
-  ]));
 });
 
 test("skill hooks log acquire/block/release through the injected log", async () => {

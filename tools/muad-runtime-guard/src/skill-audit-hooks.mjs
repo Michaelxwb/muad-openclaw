@@ -8,7 +8,6 @@ import { explicitSkillName } from "./skill-hooks.mjs";
 // { executionId, agentId, skillName, skillScope, startedAt }。结果、耗时、进度都不记录。
 const TURN_CONTEXT_TTL_MS = 10 * 60_000;
 const READ_PATH_KEYS = ["path", "file_path", "filePath", "file"];
-const SKILL_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;
 
 export function createSkillAuditHooks({
   config, client, now = () => Date.now(), log = () => {},
@@ -222,8 +221,4 @@ function pruneExpired(map, now) {
 
 function textValue(value) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-export function validAuditSkillName(value) {
-  return SKILL_NAME_PATTERN.test(value);
 }

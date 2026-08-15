@@ -61,6 +61,19 @@ test("binding client returns stable redacted errors", async () => {
   );
 });
 
+test("binding client treats 401 as non-retryable like the other internal API clients", async () => {
+  const client = new BindingClient({
+    baseURL: "http://console.internal:8080",
+    readToken: async () => "pod-token",
+    fetch: async () => response(401, { code: 40101, message: "invalid pod token" }),
+  });
+  await assert.rejects(
+    () => client.activate(activation()),
+    (error) => error instanceof BindingClientError && error.code === "service_unavailable" &&
+      error.retryable === false,
+  );
+});
+
 function activation() {
   return {
     code: "MUAD-23456789", channel: "wecom", openclawChannel: "wecom",

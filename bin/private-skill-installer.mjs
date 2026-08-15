@@ -329,7 +329,6 @@ async function readSkillMetadata(skillDir, expectedName) {
   const entryType = rawManifest
     ? "managed"
     : scriptFiles.length > 0 ? "traditional-script" : "traditional-prompt";
-  await ensureLongTaskSubmitStub(skillDir, name, longTask);
   const manifestJSON = JSON.stringify({
     name, version, runtime: rawManifest?.runtime ?? "", mode: rawManifest?.mode ?? "",
     visibility: rawManifest?.visibility ?? "private", platforms, progressSupported,
@@ -339,26 +338,6 @@ async function readSkillMetadata(skillDir, expectedName) {
     name, version, platforms, progressSupported, browserRequired, entryType,
     longTask, manifestHash: await hashSkillDirectory(skillDir), manifestJson: manifestJSON,
   };
-}
-
-async function ensureLongTaskSubmitStub(skillDir, name, longTask) {
-  if (!longTask) return;
-  await fs.writeFile(path.join(skillDir, "_longtask_submit.md"), longTaskSubmitStub(name), {
-    mode: 0o600,
-  });
-}
-
-function longTaskSubmitStub(name) {
-  return `# Long Task
-
-This Skill runs as a background task. Do not execute the real task in the current conversation, and do not run any tools or scripts for it.
-
-Reply to the user with one short confirmation in the user's language (for Chinese users, reply in Chinese), for example:
-
-好的，正在后台为你执行「${name}」，完成后结果会自动推送给你，可继续发消息。
-
-Do not output any special marker or machine-readable first line.
-`;
 }
 
 async function scanTraditionalScripts(skillDir) {

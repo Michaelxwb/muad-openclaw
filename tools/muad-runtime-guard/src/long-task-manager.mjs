@@ -188,7 +188,11 @@ export class LongTaskManager {
     pool.active.set(task.taskId, task);
     this.#log(`[muad-runtime-guard] long task started taskId=${task.taskId} skill=${task.skillName}`);
     this.#record(task);
-    void this.#runTask(task, { timeoutSeconds: this.timeoutSeconds })
+    const running = this.#runTask(task, { timeoutSeconds: this.timeoutSeconds });
+    // runTask 同步 spawn 完成后会设置 task.childPid（见 runOpenClawAgent）；再落盘一次，
+    // 让 state 记录携带 PID，供下次启动的孤儿检测（childStillRunning）使用。
+    if (Number.isInteger(task.childPid)) this.#record(task);
+    void running
       .then(() => this.#finish(pool, task, "succeeded", "", ""))
       .catch((error) => this.#finish(pool, task, "failed", errorMessage(error), errorCode(error)));
   }
@@ -221,7 +225,13 @@ export class LongTaskManager {
   #record(task) {
     try {
       ensureStateFile(this.#stateFile);
-      appendFileSync(this.#stateFile, `${JSON.stringify(publicTask(task))}\n`, {
+      // childPid 仅落入 state 文件（供下次启动的孤儿检测），不进 publicTask——
+      // console 快照契约保持不变。
+      const record = {
+        ...publicTask(task),
+        ...(Number.isInteger(task.childPid) ? { childPid: task.childPid } : {}),
+      };
+      appendFileSync(this.#stateFile, `${JSON.stringify(record)}\n`, {
         encoding: "utf8",
         mode: 0o600,
       });
@@ -255,6 +265,10 @@ export class LongTaskManager {
       this.#log(`[muad-runtime-guard] long task restored ${tasks.length} interrupted task(s)`);
     }
     for (const task of tasks) {
+      // 恢复即终态：立即把 failed 落盘（与终端任务同一 retention），否则每次重启都会
+      // 重复恢复同一批 queued/running 记录，且 compact 永远保留它们 → 文件只增不减、
+      // 僵尸记录反复出现。落盘后该 taskId 的最新记录是 failed，下次重启不再恢复。
+      this.#record(task);
       const pool = this.#pool(task);
       pool.terminal.push(task);
     }
@@ -284,14 +298,44 @@ function runOpenClawAgent(task, messageFile, options) {
     "--json",
     "--timeout", String(options.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS),
   ];
+  const watchdogMs = positiveInteger(options.watchdogMs)
+    ? options.watchdogMs
+    : (options.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS) * 1000;
   return new Promise((resolve, reject) => {
-    const child = (options.spawn ?? spawn)("openclaw", args, { stdio: ["ignore", "pipe", "pipe"] });
+    // stdout 置 ignore：长任务 openclaw agent 会在 stdout 上输出进度/结果，若无人
+    // 消费，64KB 管道缓冲区写满即永久阻塞、exit 永不触发、并发槽泄漏。stderr 仅作
+    // 错误诊断收集，同样设上限防止无限增长。
+    const child = (options.spawn ?? spawn)("openclaw", args, { stdio: ["ignore", "ignore", "pipe"] });
+    // 进程级 watchdog：timeoutSeconds 只是传给子进程自己的 --timeout 参数，父进程
+    // 必须兜底——子进程挂死（不响应 kill 前）时按 watchdogMs 强杀并 reject，保证
+    // promise 必然 settle，队列不会因一个僵尸子进程永久占槽。
+    let settled = false;
     let stderr = "";
     child.stderr?.on("data", (chunk) => { stderr += String(chunk).slice(0, 4096); });
-    child.on("error", reject);
+    const watchdog = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try {
+        child.kill("SIGKILL");
+      } catch {
+        // child already gone; reject below is authoritative
+      }
+      reject(new LongTaskRunError(124, `openclaw agent exceeded the ${watchdogMs}ms watchdog timeout and was killed`));
+    }, watchdogMs);
+    watchdog.unref?.();
+    const settle = (fn) => (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(watchdog);
+      fn(value);
+    };
+    child.on("error", settle(reject));
     child.on("exit", (code) => {
-      code === 0 ? resolve() : reject(new LongTaskRunError(code, stderr.trim()));
+      settle(code === 0 ? resolve : () => reject(new LongTaskRunError(code, stderr.trim())))();
     });
+    // 记录子进程 PID 到任务对象：manager 在 #start 时把带 PID 的记录落盘，供下次
+    // 启动做孤儿检测（见 loadInterruptedTasks 的 childStillRunning）。
+    if (Number.isInteger(child.pid)) task.childPid = child.pid;
   });
 }
 
@@ -336,7 +380,7 @@ function loadInterruptedTasks(stateFile, now) {
   try {
     return [...readLatestTaskRecords(stateFile).values()]
       .filter((task) => task.status === "queued" || task.status === "running")
-      .map((task) => interruptedTask(task, now));
+      .map((task) => interruptedTask(task, now, childStillRunning(task.childPid)));
   } catch {
     return [];
   }
@@ -345,6 +389,9 @@ function loadInterruptedTasks(stateFile, now) {
 function compactStateFile(stateFile, now, terminalRetentionMs) {
   if (!existsSync(stateFile)) return;
   const cutoff = now().getTime() - terminalRetentionMs;
+  // readLatestTaskRecords 已按 taskId 去重保留最新记录：恢复流程会把 queued/running
+  // 落盘为 failed，因此此处保留 queued/running 只覆盖"本进程仍在运行的活任务"；
+  // 终端记录按 retention 过期，僵尸记录不会永久滞留。
   const records = [...readLatestTaskRecords(stateFile).values()].filter((task) =>
     task.status === "queued" || task.status === "running" ||
     Date.parse(task.updatedAt) >= cutoff);
@@ -368,14 +415,34 @@ function readLatestTaskRecords(stateFile) {
   return latest;
 }
 
-function interruptedTask(task, now) {
+// 孤儿子进程检测：state 记录若带 childPid，用 kill(pid, 0) 探测进程是否仍存活。
+// 残余风险说明：被 spawn 的 openclaw agent 子进程独立于插件进程存活，重启后 guard
+// 无法重新挂接其 exit 事件（ChildProcess 句柄已随旧进程销毁），因此即使探测到存活，
+// 也无法收养并跟踪它——该子进程仍可能经 --deliver 直接向用户投递结果，与 console 的
+// failed 状态并存。彻底解决需要 spawn 时使用独立进程组 + 父进程死亡即连带终止
+// （或控制面侧的 per-agent 归属证明），超出本模块范围；此处至少把"孤儿仍存活"这一
+// 事实记入 terminalReason，便于排障。
+function childStillRunning(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM：进程存在但属其他用户，视为存活。
+    return error?.code === "EPERM";
+  }
+}
+
+function interruptedTask(task, now, childAlive) {
   const endedAt = now().toISOString();
   return {
     ...task,
     status: "failed",
     endedAt,
     updatedAt: endedAt,
-    terminalReason: "runtime restarted before the long task finished",
+    terminalReason: childAlive
+      ? "runtime restarted before the long task finished (orphaned child may still deliver its result)"
+      : "runtime restarted before the long task finished",
     errorCode: "long_task_interrupted",
   };
 }

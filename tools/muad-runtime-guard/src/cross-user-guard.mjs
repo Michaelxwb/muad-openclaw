@@ -12,21 +12,49 @@ const SESSION_ARTIFACT_PATTERNS = [
   /\bbundle\.json\b/u,
   // per-skill session state files (<skill>.session.json)
   /\.session\.json\b/u,
-  // the pod service token is the resolver credential; reading it enables direct
-  // credential resolution for any agent in the pod
-  /\/run\/secrets\/muad\/pod-service-token\b/u,
 ];
 
-// resolve_exec_env injects MUAD_SESSION_KEY for every exec; an inline assignment
-// is the one way a command can re-assert its identity and is never legitimate.
-const FORGED_SESSION_KEY_PATTERN = /MUAD_SESSION_KEY\s*=/u;
+// The pod service token is the resolver credential; reading it enables direct
+// credential resolution for any agent in the pod. Unlike session artifacts it is
+// never exempted by the directory-op whitelist below (chmod/chown of the token
+// would enable reading it).
+const POD_SERVICE_TOKEN_PATTERN = /\/run\/secrets\/muad\/pod-service-token\b/u;
 
-// High-precision markers of dumped session files: JSON keys that only appear in
-// session-manager artifacts, never in ordinary conversation about sessions.
-const SESSION_DUMP_PATTERNS = [
-  /"(?:storageState|credentialFingerprint)"\s*:/u,
-  /"(?:httpOnly|sameSite)"\s*:\s*(?:true|false)\b/u,
+// 本地正则仅为辅助防线：exec 子进程可任意改写自身 env（字符串拼接、env 字典赋值
+// 都能绕过字面匹配），Node 进程内无法完全防伪。硬边界在服务端归属校验——console
+// resolver 按 pod 校验 agent 归属（GetHumanUserByAgent(pod, agent)），session-manager
+// CLI 亦校验 credential.agentId === 请求 agentId；本扫描只拦截明显的字面/拼接赋值形态。
+const FORGED_SESSION_KEY_PATTERNS = [
+  // 字面赋值：MUAD_SESSION_KEY=… / export MUAD_SESSION_KEY=…
+  /MUAD_SESSION_KEY\s*=(?!=)/u,
+  // env 字典写值：os.environ["MUAD_SESSION_KEY"]=… / env['MUAD_SESSION_KEY'] = …
+  /["']MUAD_SESSION_KEY["']\s*\]\s*=(?!=)/u,
+  // 拼接键写值：os.environ["MUAD_" + "SESSION_KEY"]=… / env["MUAD_"+"SESSION_KEY"]=…
+  /["']MUAD_["']\s*\+\s*["']SESSION_KEY["']\s*\]?\s*=(?!=)/u,
+  // putenv/setenv 拼接：os.putenv("MUAD_" + "SESSION_KEY", …)
+  /(?:putenv|setenv)\s*\(\s*["']MUAD_["']\s*\+\s*["']SESSION_KEY/u,
 ];
+
+// 目录操作白名单：这些命令只触碰目录元数据，不读取会话内容（mkdir -p session-store
+// 等合法操作不再被误伤）。读取/拷贝类命令（cat/cp/find -exec 等）不在白名单内，仍拦截。
+const DIRECTORY_OP_TOOLS = new Set([
+  "mkdir", "mkdirp", "rmdir", "rm", "ls", "stat", "touch", "chmod", "chown", "du", "df",
+]);
+
+// 会话文件转储的结构特征（高精度）：只有 dump 出 session-manager 产物时才拦截，
+// 单个字段的普通技术讨论（如提及 httpOnly）不再误伤整条回复。
+const STRONG_SESSION_DUMP_MARKERS = [
+  /"storageState"\s*:/u,
+  /"credentialFingerprint"\s*:/u,
+];
+const WEAK_SESSION_DUMP_MARKERS = [
+  /"httpOnly"\s*:\s*(?:true|false)\b/u,
+  /"sameSite"\s*:/u,
+  /"cookies"\s*:/u,
+  /"origins"\s*:/u,
+];
+// 大段 base64（会话 cookie bundle 的常见编码形态）。
+const BASE64_RUN = /[A-Za-z0-9+/]{64,}={0,2}/u;
 
 const EXEC_TOOLS = new Set(["exec", "bash"]);
 const FILE_CONTENT_TOOLS = new Set(["write", "edit", "apply_patch"]);
@@ -50,7 +78,7 @@ export function createCrossUserGuard({ config, log = () => {} }) {
     },
     replyPayloadSending: async (event, ctx) => {
       const text = event?.payload?.text;
-      if (typeof text !== "string" || !SESSION_DUMP_PATTERNS.some((pattern) => pattern.test(text))) {
+      if (typeof text !== "string" || !isSessionDump(text)) {
         return undefined;
       }
       diag(log, `blocked reply leak agent=${safeId(ctx?.agentId)}`);
@@ -65,8 +93,35 @@ function scanToolCall(event) {
     ? shellCommandText(event)
     : FILE_CONTENT_TOOLS.has(toolName) ? fileContentText(event) : "";
   if (!text) return "";
-  if (FORGED_SESSION_KEY_PATTERN.test(text)) return FORGED_KEY_REASON;
-  return SESSION_ARTIFACT_PATTERNS.some((pattern) => pattern.test(text)) ? SESSION_ACCESS_REASON : "";
+  if (FORGED_SESSION_KEY_PATTERNS.some((pattern) => pattern.test(text))) return FORGED_KEY_REASON;
+  return sessionAccessReason(text);
+}
+
+function sessionAccessReason(text) {
+  if (POD_SERVICE_TOKEN_PATTERN.test(text)) return SESSION_ACCESS_REASON;
+  if (!SESSION_ARTIFACT_PATTERNS.some((pattern) => pattern.test(text))) return "";
+  if (directoryOpWhitelisted(text)) return "";
+  return SESSION_ACCESS_REASON;
+}
+
+// 仅当命令首 token 是目录操作白名单工具时放行；其余命令触及会话产物一律拦截。
+// 复合命令（&& / ; / 管道 / 换行拼接的多个命令）不享受白名单——`rm -rf x && cat
+// y/session-store/bundle.json` 这类组合不能因首命令是 rm 而放行。
+function directoryOpWhitelisted(text) {
+  if (/[;&|]|\n/u.test(text)) return false;
+  const first = String(text.trim().split(/\s+/u)[0] ?? "").split("/").pop().toLowerCase();
+  return DIRECTORY_OP_TOOLS.has(first);
+}
+
+// 结构感知的会话转储检测：至少 1 个强特征，或 2 个以上弱特征（"同时含多个 session
+// 字段"），或 1 个弱特征 + 大段 base64。单个字段的提及（如技术讨论里的 httpOnly）
+// 不再触发拦截。
+function isSessionDump(text) {
+  const strong = STRONG_SESSION_DUMP_MARKERS.filter((pattern) => pattern.test(text)).length;
+  if (strong > 0) return true;
+  const weak = WEAK_SESSION_DUMP_MARKERS.filter((pattern) => pattern.test(text)).length;
+  if (weak >= 2) return true;
+  return weak >= 1 && BASE64_RUN.test(text);
 }
 
 function shellCommandText(event) {

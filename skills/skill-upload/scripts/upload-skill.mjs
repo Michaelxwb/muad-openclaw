@@ -17,8 +17,14 @@ import { fileURLToPath } from "node:url";
 
 const STATE_DIR = process.env.OPENCLAW_STATE_DIR || join(homedir(), ".openclaw");
 const CONFIG_PATH = join(STATE_DIR, "openclaw.json");
-const INSTALLER = "/opt/muad/private-skill-installer.mjs";
+// 安装器路径可经 MUAD_INSTALLER 覆盖（部署形态不同时无需改脚本），缺省回退硬编码路径。
+const DEFAULT_INSTALLER = "/opt/muad/private-skill-installer.mjs";
+const INSTALLER = process.env.MUAD_INSTALLER || DEFAULT_INSTALLER;
 const SKILL_NAME_RE = /^[a-z][a-z0-9_-]{0,63}$/u;
+// 内部 API 是固定契约路径，不受 consoleInternalURL 前缀影响（与 long-task-state-client
+// 的策略一致），避免带 /internal/v1 前缀的 baseURL 拼出双前缀 404。
+const INGEST_PATH = "/internal/v1/skills/private/ingest";
+const DEFAULT_INGEST_TIMEOUT_MS = 30_000;
 
 function fail(message) {
   process.stderr.write(`${message}\n`);
@@ -124,26 +130,66 @@ async function main() {
     return;
   }
   // 3) POST to the console ingest endpoint (base64 bundle in JSON body).
-  const response = await fetch(`${consoleUrl.replace(/\/$/, "")}/internal/v1/skills/private/ingest`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      agentId,
-      bundleFormat: "tar.gz",
-      bundle: exported.stdout.toString("base64"),
-    }),
+  const posted = await postIngestBundle({
+    consoleUrl,
+    token,
+    agentId,
+    skillName,
+    bundleBase64: exported.stdout.toString("base64"),
   });
-  const text = await response.text();
-  if (!response.ok) {
-    fail(`上传失败：${formatConsoleError(text)}`);
+  if (!posted.ok) {
+    fail(`上传失败：${formatConsoleError(posted.text)}`);
     return;
   }
   // 上传后 Skill 进入 pending（待审批），保留草稿以便被拒后修改重传；审批通过
   // 生效后由后续流程清理草稿。
   process.stdout.write(`Skill「${skillName}」已提交，请联系管理员审批，审批通过后才会生效。\n`);
+}
+
+// POST bundle 到 console ingest 端点。固定契约路径（new URL() 覆盖 pathname，不受
+// baseURL 前缀影响）；网络错误（含 30s 超时）一律抛出，由调用方（main）输出稳定文案。
+export async function postIngestBundle({
+  consoleUrl, token, agentId, skillName, bundleBase64,
+  fetch: fetchLike = fetch, timeoutMs = DEFAULT_INGEST_TIMEOUT_MS,
+}) {
+  const url = ingestURL(consoleUrl);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchLike(url, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        agentId,
+        bundleFormat: "tar.gz",
+        bundle: bundleBase64,
+      }),
+    });
+    const text = await response.text();
+    return { ok: response.ok, text };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function ingestURL(consoleUrl) {
+  const url = new URL(consoleUrl);
+  url.pathname = INGEST_PATH;
+  url.search = "";
+  url.hash = "";
+  return url;
+}
+
+function stableUploadError(error) {
+  if (error?.name === "AbortError") {
+    return `上传失败：连接控制台超时（${DEFAULT_INGEST_TIMEOUT_MS / 1000}s），请稍后重试。`;
+  }
+  const reason = error instanceof Error ? error.message : String(error);
+  return `上传失败：无法连接控制台（${reason}）。`;
 }
 
 export function formatConsoleError(text) {
@@ -202,5 +248,7 @@ function detectStagedSkillName() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  main();
+  main().catch((error) => {
+    fail(stableUploadError(error));
+  });
 }

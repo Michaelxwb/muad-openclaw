@@ -81,7 +81,9 @@ function responseError(status, code) {
   if (status === 429 || code === 42901) return new BindingClientError("rate_limited", true);
   if (status === 400 || status === 409) return new BindingClientError("invalid_binding");
   if (code === CODE_RUNTIME_APPLY_FAILED) return new BindingClientError("config_apply_failed", true);
-  return new BindingClientError("service_unavailable", status >= 500 || status === 401);
+  // 401 是 pod token 失效/无权限，重试无意义；仅 5xx 视为可重试（与
+  // long-task-state-client / skill-audit-client 的 401 语义一致）。
+  return new BindingClientError("service_unavailable", status >= 500);
 }
 
 function bindingURL(baseURL) {

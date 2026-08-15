@@ -414,6 +414,145 @@ test("LongTaskManager logs submit/start/finish through the injected log", async 
   assert.equal(logs.some((msg) => msg.includes("long task succeeded") && msg.includes("xdr-query")), true);
 });
 
+test("spawnOpenClawTask spawns with stdout ignored so an unconsumed pipe cannot deadlock", async () => {
+  const calls = [];
+  await spawnOpenClawTask(spawnTask(), {
+    spawn: (command, args, options) => {
+      calls.push({ command, options });
+      const child = new EventEmitter();
+      child.stdout = new EventEmitter();
+      child.stderr = new EventEmitter();
+      queueMicrotask(() => child.emit("exit", 0));
+      return child;
+    },
+  });
+  assert.deepEqual(calls[0].options.stdio, ["ignore", "ignore", "pipe"]);
+});
+
+test("spawnOpenClawTask watchdog kills a never-exiting child and rejects with a timeout error", async () => {
+  const killed = [];
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  child.kill = (signal) => { killed.push(signal); return true; };
+
+  await assert.rejects(
+    () => spawnOpenClawTask(spawnTask(), {
+      watchdogMs: 25,
+      spawn: () => child,
+    }),
+    (error) => error.code === "longtask.timeout" && error.exitCode === 124 &&
+      /timeout/u.test(error.message),
+  );
+  assert.deepEqual(killed, ["SIGKILL"]);
+
+  // A late exit after the watchdog must not flip the already-rejected outcome.
+  child.emit("exit", 0);
+  child.emit("error", new Error("late failure"));
+});
+
+test("spawnOpenClawTask watchdog does not fire when the child exits in time", async () => {
+  const calls = [];
+  await spawnOpenClawTask(spawnTask(), {
+    watchdogMs: 60_000,
+    spawn: () => {
+      const child = new EventEmitter();
+      child.stdout = new EventEmitter();
+      child.stderr = new EventEmitter();
+      calls.push(child);
+      queueMicrotask(() => child.emit("exit", 0));
+      return child;
+    },
+  });
+  assert.equal(calls.length, 1);
+});
+
+test("LongTaskManager persists recovered interrupted tasks as failed so restarts never re-restore them", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-long-task-persist-interrupted-"));
+  const stateFile = join(root, "state.jsonl");
+  writeFileSync(stateFile, `${JSON.stringify(interruptedStateRecord("task-1", "running"))}\n`);
+
+  const now = new Date("2026-08-09T10:05:00.000Z");
+  const manager = new LongTaskManager({
+    stateFile,
+    now: () => now,
+    runTask: async () => {},
+  });
+
+  // 内存视图：恢复为 failed。
+  const tasks = manager.snapshot().pools[0].tasks;
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].status, "failed");
+  assert.equal(tasks[0].errorCode, "long_task_interrupted");
+
+  // 落盘：state 文件最新记录必须是 failed（terminal_reason 走终端 retention）。
+  const records = readFileSync(stateFile, "utf8").trim().split(/\r?\n/u).map((line) => JSON.parse(line));
+  assert.equal(records[records.length - 1].taskId, "task-1");
+  assert.equal(records[records.length - 1].status, "failed");
+  assert.equal(records[records.length - 1].terminalReason, "runtime restarted before the long task finished");
+
+  // 第二次启动：task-1 已是终态，不再恢复。
+  const manager2 = new LongTaskManager({
+    stateFile,
+    now: () => now,
+    runTask: async () => {},
+  });
+  assert.equal(manager2.snapshot().pools.length, 0);
+});
+
+test("LongTaskManager records the child pid and flags recovered running tasks whose orphan still lives", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-long-task-orphan-"));
+  const stateFile = join(root, "state.jsonl");
+  // childPid = 本进程 PID：孤儿仍在运行 → terminalReason 需标注残余风险。
+  writeFileSync(stateFile, `${JSON.stringify(interruptedStateRecord("task-alive", "running", process.pid))}\n`);
+  const manager = new LongTaskManager({
+    stateFile,
+    now: () => new Date("2026-08-09T10:05:00.000Z"),
+    runTask: async () => {},
+  });
+  const alive = manager.snapshot().pools[0].tasks[0];
+  assert.equal(alive.status, "failed");
+  assert.match(alive.terminalReason, /orphaned child may still deliver/u);
+
+  // childPid 已死/不存在 → 标准 interrupted 文案。
+  const deadRoot = mkdtempSync(join(tmpdir(), "muad-long-task-orphan-dead-"));
+  const deadFile = join(deadRoot, "state.jsonl");
+  writeFileSync(deadFile, `${JSON.stringify(interruptedStateRecord("task-dead", "running", 999_999_999))}\n`);
+  const deadManager = new LongTaskManager({
+    stateFile: deadFile,
+    now: () => new Date("2026-08-09T10:05:00.000Z"),
+    runTask: async () => {},
+  });
+  const dead = deadManager.snapshot().pools[0].tasks[0];
+  assert.equal(dead.status, "failed");
+  assert.equal(dead.terminalReason, "runtime restarted before the long task finished");
+});
+
+test("LongTaskManager writes the spawned child pid into the state record", async () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-long-task-pid-record-"));
+  const stateFile = join(root, "state.jsonl");
+  const runs = [];
+  const manager = new LongTaskManager({
+    limit: 1,
+    stateFile,
+    runTask: (task) => {
+      // 模拟 runOpenClawAgent 同步 spawn 后写回 task.childPid。
+      task.childPid = 4242;
+      return new Promise((resolve, reject) => runs.push({ task, resolve, reject }));
+    },
+  });
+  const submitted = manager.submit(taskInput("pid task"));
+  assert.equal(runs.length, 1);
+  assert.equal(submitted.task.childPid, 4242);
+
+  // #start 在 spawn 后二次落盘，state 文件应携带 childPid（供孤儿检测）。
+  const records = readFileSync(stateFile, "utf8").trim().split(/\r?\n/u).map((line) => JSON.parse(line));
+  assert.ok(records.some((record) =>
+    record.taskId === submitted.task.taskId && record.childPid === 4242));
+  runs[0].resolve();
+  await tick();
+});
+
 function taskInput(objective) {
   return {
     agentId: "alice",
@@ -424,5 +563,23 @@ function taskInput(objective) {
     originalPrompt: objective,
     replyChannel: "wecom",
     sessionKey: "agent:alice:wecom:direct:wx-1",
+  };
+}
+
+function interruptedStateRecord(taskId, status, childPid) {
+  return {
+    taskId,
+    poolKey: "agent:alice:wecom:direct:wx-1",
+    sourceSessionKey: "agent:alice:wecom:direct:wx-1",
+    sessionKey: `agent:alice:longtask:${taskId}`,
+    agentId: "alice",
+    peerId: "wx-1",
+    skillName: "xdr-query",
+    skillRoot: "/skills/xdr-query",
+    status,
+    submittedAt: "2026-08-09T10:00:00.000Z",
+    startedAt: "2026-08-09T10:00:01.000Z",
+    updatedAt: "2026-08-09T10:00:01.000Z",
+    ...(Number.isInteger(childPid) ? { childPid } : {}),
   };
 }

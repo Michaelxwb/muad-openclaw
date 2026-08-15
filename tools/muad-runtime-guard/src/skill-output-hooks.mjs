@@ -6,6 +6,12 @@ import path from "node:path";
 // model or script env self-reports), plus a per-agent/per-user output directory
 // inside the agent workspace as SKILL_OUTPUT_DIR. Long tasks are just one
 // consumer of the output dir.
+//
+// 防伪边界说明：本注入只保证"默认上下文"是可信的——exec 子进程一旦启动即可改写自身
+// env（如 os.environ["MUAD_"+"SESSION_KEY"]=…），Node 进程内无法阻止；cross-user-guard
+// 的本地正则仅为辅助扫描。硬边界在服务端归属校验：console resolver 按 pod 校验 agent
+// 归属（GetHumanUserByAgent(pod, agent)），session-manager CLI 亦校验
+// credential.agentId === 请求 agentId，绝不返回密钥声称 agent 以外的凭据。
 const LONG_TASK_PREFIX = "longtask:";
 const DIR_SEGMENT_PATTERN = /[^\p{L}\p{N}_.-]/gu;
 const LEADING_TRAILING_DASH = /^-+|-+$/gu;

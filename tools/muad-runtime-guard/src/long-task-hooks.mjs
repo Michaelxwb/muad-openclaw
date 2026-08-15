@@ -5,12 +5,14 @@ import path from "node:path";
 import { explicitSkillName } from "./skill-hooks.mjs";
 import { taskIdLine } from "./long-task-manager.mjs";
 
-const SKILL_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;
 const READ_PATH_KEYS = ["path", "file_path", "filePath", "file"];
 const TURN_CONTEXT_TTL_MS = 10 * 60_000;
 const KNOWN_CHANNEL_TYPES = new Set(["wecom", "mattermost", "openclaw-weixin", "wechat", "weixin"]);
 const LONG_TASK_SUBMIT_STUB_PREFIX = "_longtask_submit_";
 const SUPPORTED_LOCALES = new Set(["zh", "en"]);
+// 桩文件清扫阈值：超过 24h 未动的桩视为残留（进程崩溃后 stubFiles 内存 map 丢失，
+// 桩文件不会随 agent_end/TTL 清理）。运行中任务的桩 mtime 是新鲜的，不会被误删。
+const STUB_STALE_MS = 24 * 60 * 60 * 1000;
 
 // 桩文件格式（命名常量）：模型读到的是提交协议而非真实 SKILL.md。桩内容=协议头 +
 // 按 locale 渲染的确认文案（模型照抄后即投递，直投型 IM 无需 hook 也能一致）。
@@ -50,6 +52,8 @@ export function createLongTaskHooks({
   // runId -> { path, cleanup }：本次 turn 生成的 per-task 提交桩文件，agent_end / TTL 时删除。
   const stubFiles = new Map();
   const diag = (message) => log(`[longtask] ${message}`);
+  // 插件启动清扫：崩溃后内存 map 丢失，残留桩文件按前缀 + mtime 过期清理。
+  sweepStaleSubmitStubs(config, resolveWorkspace, now(), diag);
   return {
     beforeDispatch: async (event, ctx) => {
       pruneExpired(turnContexts, now());
@@ -292,6 +296,36 @@ function forgetTaskSubmitStub(stubFiles, runId) {
   stubFiles.delete(runId);
 }
 
+// 启动清扫：遍历所有长任务授权 agent 的 workspace/.openclaw/tmp，删除超过
+// STUB_STALE_MS 未动的 _longtask_submit_*.md 残留（进程崩溃后内存 map 丢失的清理
+// 兜底）；运行中任务的桩 mtime 新鲜，保留。best effort：目录缺失/权限问题直接跳过。
+function sweepStaleSubmitStubs(config, resolveWorkspace, now, diag) {
+  const agents = new Set((config?.longTaskSkillGrants ?? []).map((grant) => grant.agentId));
+  for (const agentId of agents) {
+    const workspace = typeof resolveWorkspace === "function" ? resolveWorkspace(agentId) : "";
+    if (!workspace || !path.isAbsolute(workspace)) continue;
+    const tmpDir = path.join(workspace, ".openclaw", "tmp");
+    let names;
+    try {
+      names = fs.readdirSync(tmpDir);
+    } catch {
+      continue;
+    }
+    for (const name of names) {
+      if (!name.startsWith(LONG_TASK_SUBMIT_STUB_PREFIX) || !name.endsWith(".md")) continue;
+      const file = path.join(tmpDir, name);
+      try {
+        if (now - fs.statSync(file).mtimeMs > STUB_STALE_MS) {
+          fs.rmSync(file, { force: true });
+          diag(`stale submit stub swept: ${name}`);
+        }
+      } catch {
+        // best effort
+      }
+    }
+  }
+}
+
 function diskManifestIsLongTask(skillDir, expectedName) {
   try {
     const manifest = JSON.parse(fs.readFileSync(path.join(skillDir, "muad.skill.json"), "utf8"));
@@ -460,8 +494,4 @@ function pruneExpired(map, now) {
 
 function textValue(value) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-export function validSkillName(value) {
-  return SKILL_NAME_PATTERN.test(value);
 }

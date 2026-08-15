@@ -41,7 +41,8 @@ export function explicitSkillName(prompt) {
   return "";
 }
 
-export function skillRunKey(event, ctx) {
+// 模块内部使用（createSkillLeaseHooks 的 acquire/release 键）；不导出。
+function skillRunKey(event, ctx) {
   const agentId = textValue(ctx?.agentId);
   if (!agentId) return "";
   const runId = textValue(event?.runId) || textValue(ctx?.runId);

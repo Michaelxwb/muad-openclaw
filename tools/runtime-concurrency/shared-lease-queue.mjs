@@ -63,7 +63,11 @@ export class SharedLeaseQueue {
 
   #lease(slot, owner) {
     let timer;
-    const expiresAt = Date.now() + this.#options.leaseTtlMs;
+    // 心跳即续期：expiresAt 每次心跳刷新为 now + leaseTtlMs，运行超过一个 TTL 的
+    // skill 不会被静默释放（旧实现一次性计算 expiresAt，10min 级长任务被提前释放、
+    // 并发上限被突破）。进程崩溃后 interval 停止 → 不再续期 → 由 sweepStale 的
+    // 10×TTL 兜底回收。
+    let expiresAt = Date.now() + this.#options.leaseTtlMs;
     let released = false;
     const release = async () => {
       if (released) return;
@@ -77,6 +81,7 @@ export class SharedLeaseQueue {
         void release().catch((error) => reportCleanupError("expire", error));
         return;
       }
+      expiresAt = Date.now() + this.#options.leaseTtlMs;
       void touchOwned(slot, owner).catch((error) => reportCleanupError("heartbeat", error));
     }, this.#options.heartbeatMs);
     timer.unref?.();

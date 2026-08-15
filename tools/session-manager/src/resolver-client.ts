@@ -144,6 +144,9 @@ function parseCredential(value: unknown, request: ResolveRequest): ResolvedCrede
     skillName: requiredString(value.skillName),
     platforms: parsePlatforms(value.platforms),
   };
+  // 归属校验（本地防线）：resolver 返回的凭据必须与请求 agent/skill 一致，否则视为
+  // 服务端异常。服务端（console）另按 pod 校验 agent 归属；pod 内跨 agent 的密钥伪造
+  // 需要 per-agent 证明（控制面侧变更），本地无法阻止，见 config.ts 的说明。
   if (credential.agentId !== request.agentId || credential.skillName !== request.skillName) throw unavailable();
   return credential;
 }
