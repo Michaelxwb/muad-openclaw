@@ -22,7 +22,9 @@ func TestApplyGatewayRestartSuccess(t *testing.T) {
 	if result.RestartMode != RestartGateway || result.ConfigHash != "sha256:test" {
 		t.Fatalf("result = %+v", result)
 	}
-	if driver.gatewayRestarts != 1 || driver.podRestarts != 0 || !driver.committed {
+	// RestartGateway 现在是 no-op：配置生效依赖 openclaw hybrid watcher 热加载
+	// （agents/plugins/skills 分层热更），不再对每个变更强制 kill -USR1 全量重启。
+	if driver.gatewayRestarts != 0 || driver.podRestarts != 0 || !driver.committed {
 		t.Fatalf("driver state = %+v", driver)
 	}
 	if driver.routeVerifyCalls == 0 {
@@ -92,7 +94,8 @@ func TestApplyHealthFailureRestoresPreviousGeneration(t *testing.T) {
 	applier := newTestApplier(t, driver)
 	_, err := applier.Apply(context.Background(), testRequest(false))
 	assertApplyStage(t, err, StageHealth)
-	if !driver.rolledBack || driver.gatewayRestarts != 2 {
+	// 回滚同样不再发 USR1（依赖 watcher 热加载回退）；断言 0 次全量重启。
+	if !driver.rolledBack || driver.gatewayRestarts != 0 {
 		t.Fatalf("health rollback state = %+v", driver)
 	}
 	var applyErr *ApplyError
@@ -122,7 +125,7 @@ func TestApplyRouteVerificationFailureRollsBack(t *testing.T) {
 	applier := newTestApplier(t, driver)
 	_, err := applier.Apply(context.Background(), testRequest(false))
 	assertApplyStage(t, err, StageHealth)
-	if !driver.rolledBack || driver.gatewayRestarts != 2 || driver.routeVerifyCalls == 0 {
+	if !driver.rolledBack || driver.gatewayRestarts != 0 || driver.routeVerifyCalls == 0 {
 		t.Fatalf("route verification failure state = %+v", driver)
 	}
 	if !strings.Contains(err.Error(), "L5_route_not_applied") {
@@ -260,6 +263,7 @@ type fakeDriver struct {
 	podRestarts                  int
 	configApplyLag               int
 	configGetCalls               int
+	validateCalls                int
 	routeVerifyCalls             int
 	routeVerifyFailure           bool
 	routeVerifyRPCTemporaryFails int
@@ -274,6 +278,7 @@ func (driver *fakeDriver) Exec(_ context.Context, _ string, cmd ...string) (stri
 	joined := strings.Join(cmd, " ")
 	switch {
 	case strings.HasSuffix(joined, " validate"):
+		driver.validateCalls++
 		if driver.failValidate {
 			return "", errors.New("schema rejected")
 		}
@@ -386,5 +391,31 @@ func assertApplyStage(t *testing.T, err error, stage Stage) {
 	var applyErr *ApplyError
 	if !errors.As(err, &applyErr) || applyErr.Stage != stage {
 		t.Fatalf("error = %v, want stage %s", err, stage)
+	}
+}
+
+// 相同配置 hash 重复校验应跳过 pod 内 openclaw CLI 调用（性能优化）。
+func TestValidate_SkipsIdenticalConfigHash(t *testing.T) {
+	driver := newFakeDriver(RestartNone)
+	applier := newTestApplier(t, driver)
+	ctx := context.Background()
+
+	if err := applier.validate(ctx, "pod-a", "sha256:cfg-1"); err != nil {
+		t.Fatalf("first validate: %v", err)
+	}
+	if driver.validateCalls != 1 {
+		t.Fatalf("validate calls after first = %d, want 1", driver.validateCalls)
+	}
+	if err := applier.validate(ctx, "pod-a", "sha256:cfg-1"); err != nil {
+		t.Fatalf("second validate (same hash): %v", err)
+	}
+	if driver.validateCalls != 1 {
+		t.Fatalf("identical hash must skip pod validate, calls = %d", driver.validateCalls)
+	}
+	if err := applier.validate(ctx, "pod-a", "sha256:cfg-2"); err != nil {
+		t.Fatalf("third validate (new hash): %v", err)
+	}
+	if driver.validateCalls != 2 {
+		t.Fatalf("changed hash must re-validate, calls = %d", driver.validateCalls)
 	}
 }

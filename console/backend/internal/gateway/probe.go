@@ -59,28 +59,119 @@ type Execer interface {
 
 // Probe queries one container. A failed exec or unparseable output yields an
 // unhealthy status (the caller treats that as the container's health signal).
+//
+// The underlying openclaw CLI calls are expensive (~1.75s each: CLI framework
+// init + gateway RPC round-trip), so the independent calls run concurrently:
+// channels status and the guard health RPC are started together and the probe
+// waits only for the slowest one.
 func Probe(ctx context.Context, ex Execer, podID string) Status {
-	out, err := ex.Exec(ctx, podID, "openclaw", "channels", "status", "--json")
-	if err != nil {
-		return Status{Healthy: false}
-	}
-	st, err := ParseStatus([]byte(out))
-	if err != nil {
-		return Status{Healthy: false}
-	}
-	mergeRuntimeHealth(ctx, ex, podID, &st)
-	return st
+	return probeConcurrent(ctx, ex, podID, false)
 }
 
 // ProbeWithConfigRevision adds OpenClaw's applied config revision signal. It is
 // intentionally not used by the collector because it adds another gateway RPC.
 func ProbeWithConfigRevision(ctx context.Context, ex Execer, podID string) Status {
-	status := Probe(ctx, ex, podID)
-	if !status.Healthy {
-		return status
+	return probeConcurrent(ctx, ex, podID, true)
+}
+
+// probeResult carries one concurrent exec outcome into the collecting goroutine.
+type probeResult struct {
+	out string
+	err error
+}
+
+func probeConcurrent(ctx context.Context, ex Execer, podID string, withConfigRevision bool) Status {
+	type command struct {
+		name string
+		args []string
 	}
-	mergeConfigRevision(ctx, ex, podID, &status)
-	return status
+	commands := []command{
+		{name: "channels", args: []string{"openclaw", "channels", "status", "--json"}},
+		{name: "health", args: []string{"openclaw", "gateway", "call", "muad.runtime.health", "--json"}},
+	}
+	if withConfigRevision {
+		commands = append(commands, command{name: "config", args: []string{"openclaw", "gateway", "call", "config.get", "--json"}})
+	}
+	results := make(chan probeResult, len(commands))
+	names := make(chan string, len(commands))
+	for _, cmd := range commands {
+		go func(cmd command) {
+			out, err := ex.Exec(ctx, podID, cmd.args...)
+			names <- cmd.name
+			results <- probeResult{out: out, err: err}
+		}(cmd)
+	}
+	// 先取 channels 结果决定基础健康；health/config 结果到达后合并。
+	var channelsOut, healthOut, configOut probeResult
+	haveChannels, haveHealth, haveConfig := false, false, false
+	for i := 0; i < len(commands); i++ {
+		name := <-names
+		res := <-results
+		switch name {
+		case "channels":
+			channelsOut, haveChannels = res, true
+		case "health":
+			healthOut, haveHealth = res, true
+		case "config":
+			configOut, haveConfig = res, true
+		}
+	}
+	st := Status{Healthy: false}
+	if !haveChannels {
+		return st
+	}
+	if channelsOut.err != nil {
+		return st
+	}
+	parsed, err := ParseStatus([]byte(channelsOut.out))
+	if err != nil {
+		return st
+	}
+	st = parsed
+	if haveHealth {
+		mergeRuntimeHealthResult(&st, healthOut.out, healthOut.err)
+	}
+	if haveConfig {
+		mergeConfigRevisionResult(&st, configOut.out, configOut.err)
+	}
+	return st
+}
+
+// mergeRuntimeHealthResult merges the guard health RPC output; a failed exec or
+// unparseable payload leaves the guard fields at their zero values.
+func mergeRuntimeHealthResult(status *Status, out string, err error) {
+	if err != nil {
+		return
+	}
+	var health runtimeHealthJSON
+	if err := json.Unmarshal([]byte(out), &health); err != nil {
+		return
+	}
+	status.RuntimeGuardHealthy = health.OK
+	status.RuntimeGeneration = health.Generation
+	status.SkillActive = health.Skill.Active
+	status.SkillQueued = health.Skill.Queued
+	status.BrowserActive = health.Browser.Active
+	status.BrowserQueued = health.Browser.Queued
+}
+
+// mergeConfigRevisionResult merges the config.get RPC output.
+func mergeConfigRevisionResult(status *Status, out string, err error) {
+	if err != nil {
+		return
+	}
+	var config configGetJSON
+	if err := json.Unmarshal([]byte(out), &config); err != nil {
+		return
+	}
+	applied := ""
+	if config.AppliedConfigHash != nil {
+		applied = *config.AppliedConfigHash
+	}
+	status.ConfigRevisionHash = firstNonEmpty(config.ConfigRevisionHash, config.Hash)
+	status.AppliedConfigHash = applied
+	status.ConfigGeneration = config.runtimeGeneration()
+	status.ConfigApplied = configApplied(config, status.RuntimeGeneration)
 }
 
 // RouteExpectation is a direct inbound route that must resolve in the running
@@ -154,23 +245,6 @@ type runtimeHealthJSON struct {
 	} `json:"browser"`
 }
 
-func mergeRuntimeHealth(ctx context.Context, ex Execer, podID string, status *Status) {
-	out, err := ex.Exec(ctx, podID, "openclaw", "gateway", "call", "muad.runtime.health", "--json")
-	if err != nil {
-		return
-	}
-	var health runtimeHealthJSON
-	if err := json.Unmarshal([]byte(out), &health); err != nil {
-		return
-	}
-	status.RuntimeGuardHealthy = health.OK
-	status.RuntimeGeneration = health.Generation
-	status.SkillActive = health.Skill.Active
-	status.SkillQueued = health.Skill.Queued
-	status.BrowserActive = health.Browser.Active
-	status.BrowserQueued = health.Browser.Queued
-}
-
 type configGetJSON struct {
 	ConfigRevisionHash string          `json:"configRevisionHash"`
 	AppliedConfigHash  *string         `json:"appliedConfigHash"`
@@ -178,25 +252,6 @@ type configGetJSON struct {
 	Parsed             json.RawMessage `json:"parsed"`
 	RuntimeConfig      json.RawMessage `json:"runtimeConfig"`
 	Config             json.RawMessage `json:"config"`
-}
-
-func mergeConfigRevision(ctx context.Context, ex Execer, podID string, status *Status) {
-	out, err := ex.Exec(ctx, podID, "openclaw", "gateway", "call", "config.get", "--json")
-	if err != nil {
-		return
-	}
-	var config configGetJSON
-	if err := json.Unmarshal([]byte(out), &config); err != nil {
-		return
-	}
-	applied := ""
-	if config.AppliedConfigHash != nil {
-		applied = *config.AppliedConfigHash
-	}
-	status.ConfigRevisionHash = firstNonEmpty(config.ConfigRevisionHash, config.Hash)
-	status.AppliedConfigHash = applied
-	status.ConfigGeneration = config.runtimeGeneration()
-	status.ConfigApplied = configApplied(config, status.RuntimeGeneration)
 }
 
 func configApplied(config configGetJSON, runtimeGeneration int64) bool {

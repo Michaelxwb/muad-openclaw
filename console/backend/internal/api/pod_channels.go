@@ -221,6 +221,40 @@ func (s *Server) decodeChannelSettings(pod repo.Pod) ([]string, map[string]chann
 	return channels, configs, nil
 }
 
+// sameChannelSettings reports whether the normalized next channel set equals the
+// current one (order-insensitive for the channel list; per-channel config
+// compared field-by-field). Used to skip no-op PUTs so pod config state
+// (generation / last_apply_status) stays untouched for identical submissions.
+func sameChannelSettings(
+	nextChannels []string, nextConfigs map[string]channelConfigInput,
+	currentChannels []string, currentConfigs map[string]channelConfigInput,
+) bool {
+	if len(nextChannels) != len(currentChannels) || len(nextConfigs) != len(currentConfigs) {
+		return false
+	}
+	nextSet := make(map[string]struct{}, len(nextChannels))
+	for _, channel := range nextChannels {
+		nextSet[channel] = struct{}{}
+	}
+	for _, channel := range currentChannels {
+		if _, ok := nextSet[channel]; !ok {
+			return false
+		}
+	}
+	for id, next := range nextConfigs {
+		current, ok := currentConfigs[id]
+		if !ok {
+			return false
+		}
+		if next.BotID != current.BotID || next.BaseURL != current.BaseURL ||
+			next.BotToken != current.BotToken || next.AllowPrivateNetwork != current.AllowPrivateNetwork ||
+			next.Secret != current.Secret {
+			return false
+		}
+	}
+	return true
+}
+
 func channelConfigViews(
 	channels []string, configs map[string]channelConfigInput,
 ) map[string]channelConfigView {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
@@ -76,6 +77,14 @@ func (e *ApplyError) Unwrap() error { return e.Cause }
 type Applier struct {
 	driver  Driver
 	options Options
+
+	// validatedHashes caches the last successfully validated config hash per
+	// Pod. Validating runs `openclaw config validate` + a skill-tree scan inside
+	// the Pod (~0.7s+ of openclaw CLI overhead); re-applying an identical config
+	// (apply-config, reconcile retries) can safely skip it because the candidate
+	// was already proven loadable.
+	mu              sync.Mutex
+	validatedHashes map[string]string
 }
 
 type prepareResult struct {
@@ -117,7 +126,7 @@ func (applier *Applier) Apply(ctx context.Context, request Request) (Result, err
 	if request.ForcePodRestart {
 		mode = RestartPod
 	}
-	if err := applier.validate(ctx, request.PodID); err != nil {
+	if err := applier.validate(ctx, request.PodID, prepared.ConfigHash); err != nil {
 		return Result{}, applier.abortFailure(ctx, request.PodID, StageValidate, err)
 	}
 	if err := applier.commit(ctx, request); err != nil {
@@ -164,9 +173,27 @@ func (applier *Applier) prepare(ctx context.Context, request Request) (prepareRe
 	return result, nil
 }
 
-func (applier *Applier) validate(ctx context.Context, podID string) error {
-	_, err := applier.transaction(ctx, podID, "validate")
-	return err
+// validate verifies the staged candidate config is loadable inside the Pod.
+// Re-applying a config hash that already passed validation is skipped: the
+// candidate was proven loadable before, and the expensive openclaw CLI calls
+// (~0.7s+ each) are pure overhead on apply-config / reconcile retries.
+func (applier *Applier) validate(ctx context.Context, podID, configHash string) error {
+	applier.mu.Lock()
+	if applier.validatedHashes != nil && applier.validatedHashes[podID] == configHash {
+		applier.mu.Unlock()
+		return nil
+	}
+	applier.mu.Unlock()
+	if _, err := applier.transaction(ctx, podID, "validate"); err != nil {
+		return err
+	}
+	applier.mu.Lock()
+	if applier.validatedHashes == nil {
+		applier.validatedHashes = make(map[string]string)
+	}
+	applier.validatedHashes[podID] = configHash
+	applier.mu.Unlock()
+	return nil
 }
 
 func (applier *Applier) commit(ctx context.Context, request Request) error {
@@ -176,15 +203,22 @@ func (applier *Applier) commit(ctx context.Context, request Request) error {
 
 func (applier *Applier) restart(ctx context.Context, podID string, mode RestartMode) error {
 	switch mode {
-	case RestartNone:
+	case RestartNone, RestartGateway:
+		// RestartGateway is intentionally a no-op: OpenClaw's gateway runs its
+		// own config watcher in hybrid mode (gateway.reload.mode=hybrid, the
+		// default) and applies changes with layered granularity — agents.list /
+		// plugins / skills changes are HOT-reloaded in ~150ms without interrupting
+		// channels, while only models.pricing / plugins.load / gateway / discovery
+		// changes trigger a full in-process restart. Issuing `kill -USR1 1` here
+		// forced a full gateway restart for EVERY config change (agent/skill/IM
+		// edits all restarted the gateway and reconnected channels), which is what
+		// made routine admin operations disruptive to live users. waitForHealth
+		// still gates on the new generation being visible (guard reads generation
+		// from disk on every probe), so removing the forced restart does not relax
+		// convergence. RestartPod (image upgrades / ForcePodRestart) is unchanged.
 		return nil
 	case RestartPod:
 		return applier.driver.Restart(ctx, podID)
-	case RestartGateway:
-		// Worker images run the Gateway in the foreground as PID 1; the CLI restart
-		// command only targets a systemd service and is a no-op inside containers.
-		_, err := applier.driver.Exec(ctx, podID, "kill", "-USR1", "1")
-		return err
 	default:
 		return fmt.Errorf("unsupported restart mode: %s", mode)
 	}
