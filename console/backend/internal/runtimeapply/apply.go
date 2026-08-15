@@ -194,30 +194,56 @@ func (applier *Applier) waitForHealth(
 	ctx context.Context, podID string, generation int64, mode RestartMode,
 	expectedRoutes []gateway.RouteExpectation,
 ) error {
-	probeCtx, cancel := context.WithTimeout(ctx, applier.options.HealthTimeout)
-	defer cancel()
-	var last gateway.Status
 	requireConfigApplied := mode == RestartNone
+	requireRoutes := len(expectedRoutes) > 0
+	deadline := time.Now().Add(applier.options.HealthTimeout)
+	extended := false
+	var last gateway.Status
 	for {
-		last = applier.probeHealth(probeCtx, podID, generation, requireConfigApplied, expectedRoutes)
-		if applyReady(last, generation, requireConfigApplied, len(expectedRoutes) > 0) {
+		last = applier.probeHealth(ctx, podID, generation, requireConfigApplied, expectedRoutes)
+		if applyReady(last, generation, requireConfigApplied, requireRoutes) {
 			return nil
 		}
 		timer := time.NewTimer(applier.options.PollInterval)
 		select {
-		case <-probeCtx.Done():
+		case <-ctx.Done():
 			timer.Stop()
-			return fmt.Errorf(
-				"%s generation %d health timeout (gateway=%t guard=%t observed=%d configApplied=%t configGeneration=%d revision=%q applied=%q routeVerified=%t routeChecked=%d routeFailed=%d routeGeneration=%d routeError=%q): %w",
-				healthFailureCode(last, generation, requireConfigApplied, len(expectedRoutes) > 0),
-				generation, last.Healthy, last.RuntimeGuardHealthy, last.RuntimeGeneration,
-				last.ConfigApplied, last.ConfigGeneration, last.ConfigRevisionHash, last.AppliedConfigHash,
-				last.RouteVerified, last.RouteChecked, last.RouteFailed, last.RouteGeneration,
-				last.RouteError, probeCtx.Err(),
-			)
+			return applier.healthTimeoutError(last, generation, requireConfigApplied, requireRoutes, ctx.Err())
 		case <-timer.C:
 		}
+		if time.Now().After(deadline) {
+			if routeHealthExtension(last, extended) {
+				// 路由验证 RPC 失败（状态未知）≠ 确定性失败：再等一个健康窗口，
+				// 避免网关重启期间 verify-routes 瞬时不可用导致整体回滚。
+				extended = true
+				deadline = time.Now().Add(applier.options.HealthTimeout)
+				continue
+			}
+			return applier.healthTimeoutError(last, generation, requireConfigApplied, requireRoutes,
+				fmt.Errorf("health not ready within %s", applier.options.HealthTimeout))
+		}
 	}
+}
+
+// routeHealthExtension reports whether the health wait should extend its
+// deadline once: the runtime is healthy but the route verification state is
+// unknown (verification RPC failed) — an unknown state is not a deterministic
+// failure, so the wait keeps polling instead of rolling back.
+func routeHealthExtension(status gateway.Status, alreadyExtended bool) bool {
+	return !alreadyExtended && status.Healthy && status.RouteUnknown
+}
+
+func (applier *Applier) healthTimeoutError(
+	status gateway.Status, generation int64, requireConfigApplied, requireRoutes bool, cause error,
+) error {
+	return fmt.Errorf(
+		"%s generation %d health timeout (gateway=%t guard=%t observed=%d configApplied=%t configGeneration=%d revision=%q applied=%q routeVerified=%t routeUnknown=%t routeChecked=%d routeFailed=%d routeGeneration=%d routeError=%q): %w",
+		healthFailureCode(status, generation, requireConfigApplied, requireRoutes),
+		generation, status.Healthy, status.RuntimeGuardHealthy, status.RuntimeGeneration,
+		status.ConfigApplied, status.ConfigGeneration, status.ConfigRevisionHash, status.AppliedConfigHash,
+		status.RouteVerified, status.RouteUnknown, status.RouteChecked, status.RouteFailed, status.RouteGeneration,
+		status.RouteError, cause,
+	)
 }
 
 func (applier *Applier) probeHealth(
@@ -246,7 +272,8 @@ func applyReady(
 ) bool {
 	return runtimeReady(status, generation) &&
 		(!requireConfigApplied || status.ConfigApplied) &&
-		(!requireRoutes || status.RouteVerified)
+		// 路由验证结果必须针对当前 generation：旧 generation 的 OK 不能放行。
+		(!requireRoutes || (status.RouteVerified && status.RouteGeneration == generation))
 }
 
 func (applier *Applier) abortFailure(ctx context.Context, podID string, stage Stage, cause error) *ApplyError {
@@ -285,9 +312,13 @@ func mergeRouteVerification(
 ) {
 	result, err := gateway.VerifyRoutes(ctx, ex, podID, generation, expectedRoutes)
 	if err != nil {
+		// RPC/解码失败：路由状态未知，不是确定性失败——健康等待继续轮询，
+		// 不把瞬时不可达当成验证失败。
 		status.RouteError = err.Error()
+		status.RouteUnknown = true
 		return
 	}
+	status.RouteUnknown = false
 	status.RouteVerified = result.OK
 	status.RouteChecked = result.Checked
 	status.RouteFailed = result.Failed
@@ -325,6 +356,10 @@ func healthFailureCode(
 		return "L3_config_not_applied"
 	case !status.RuntimeGuardHealthy || status.RuntimeGeneration != generation:
 		return "L4_guard_unready"
+	case requireRoutes && status.RouteUnknown:
+		return "L5_route_unknown"
+	case requireRoutes && status.RouteVerified && status.RouteGeneration != generation:
+		return "L5_route_generation_mismatch"
 	case requireRoutes && !status.RouteVerified:
 		return "L5_route_not_applied"
 	default:

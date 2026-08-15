@@ -70,8 +70,12 @@ func TestSyncPublicPublishesValidSkillsBeforeReportingInvalidAsset(t *testing.T)
 	syncer := newSyncTestSyncer(t, store, drv, root)
 
 	result, err := syncer.SyncPublic(context.Background())
-	if err != nil || !result.HasPublic {
-		t.Fatalf("SyncPublic invalid asset = %+v/%v, want published with warning", result, err)
+	if !result.HasPublic {
+		t.Fatalf("SyncPublic invalid asset result = %+v, want published with warning", result)
+	}
+	var partialErr *PublicSkillPartialSyncError
+	if !errors.As(err, &partialErr) {
+		t.Fatalf("SyncPublic invalid asset error = %v, want PublicSkillPartialSyncError", err)
 	}
 	if len(result.Warnings) != 1 || !strings.Contains(result.Warnings[0], "1 个 Public Skill 同步失败") {
 		t.Fatalf("SyncPublic warnings = %v", result.Warnings)
@@ -94,6 +98,9 @@ func TestSyncPublicPublishesValidSkillsBeforeReportingInvalidAsset(t *testing.T)
 	if syncer.publicSignature != "" {
 		t.Fatalf("partial public sync must not set desired signature, got %q", syncer.publicSignature)
 	}
+	if drv.publicSignature != "" {
+		t.Fatalf("partial public sync must retain the old signature, got %q", drv.publicSignature)
+	}
 	if syncer.publicFailSnapshot == "" || syncer.publicFailAt.IsZero() {
 		t.Fatal("partial public sync should record a failure snapshot")
 	}
@@ -108,35 +115,40 @@ func TestSyncPublicPartialFailureCooldownSkipsSameSnapshot(t *testing.T) {
 	bad.Name = "bad-skill"
 	bad.SourcePath = filepath.Join(root, "missing-bad-skill")
 	store.assets = append(store.assets, good, bad)
-	drv := &syncTestDriver{}
+	drv := &syncTestDriver{publicSignature: "sha256:last-good"}
 	syncer := newSyncTestSyncer(t, store, drv, root)
 
 	result, err := syncer.SyncPublic(context.Background())
-	if err != nil || len(result.Warnings) != 1 {
+	if err == nil || !result.HasPublic || len(result.Warnings) != 1 {
 		t.Fatalf("first SyncPublic = %+v, %v", result, err)
 	}
 	if drv.publicSyncs != 1 {
 		t.Fatalf("first SyncPublic calls = %d, want 1", drv.publicSyncs)
 	}
+	if drv.publicSignature != "sha256:last-good" {
+		t.Fatalf("partial failure must retain the old published signature, got %q", drv.publicSignature)
+	}
 
+	// 冷却期内：不重复发布文件，但仍如实返回失败（不再把部分成功当成功）。
 	result, err = syncer.SyncPublic(context.Background())
-	if err != nil || !result.HasPublic || len(result.Warnings) != 1 {
-		t.Fatalf("cooldown SyncPublic = %+v, %v", result, err)
+	if err == nil || !result.HasPublic || len(result.Warnings) != 1 {
+		t.Fatalf("cooldown SyncPublic = %+v, %v; want partial failure error", result, err)
 	}
 	if drv.publicSyncs != 1 {
 		t.Fatalf("same failed snapshot should not republish during cooldown, got %d calls", drv.publicSyncs)
 	}
 
+	// 快照变化（bad 资产更新）→ 立即重试并再次失败。
 	store.assets[1].ManifestHash = "sha256:bad-updated"
-	if _, err := syncer.SyncPublic(context.Background()); err != nil {
-		t.Fatalf("changed snapshot SyncPublic: %v", err)
+	if _, err := syncer.SyncPublic(context.Background()); err == nil {
+		t.Fatalf("changed failed snapshot should report partial failure, got nil")
 	}
 	if drv.publicSyncs != 2 {
 		t.Fatalf("changed failed snapshot should republish immediately, got %d calls", drv.publicSyncs)
 	}
 
-	if _, err := syncer.SyncPublicForced(context.Background()); err != nil {
-		t.Fatalf("forced SyncPublic: %v", err)
+	if _, err := syncer.SyncPublicForced(context.Background()); err == nil {
+		t.Fatalf("forced SyncPublic should report partial failure, got nil")
 	}
 	if drv.publicSyncs != 3 {
 		t.Fatalf("forced sync should bypass cooldown, got %d calls", drv.publicSyncs)
@@ -290,6 +302,77 @@ func TestSyncPodDeletesStalePrivateSkillPerUserName(t *testing.T) {
 	}
 	if fmt.Sprint(drv.privateDeletes) != "[bob/dupe-skill]" {
 		t.Fatalf("private deletes = %v, want bob/dupe-skill", drv.privateDeletes)
+	}
+}
+
+// 清点收敛：已安装但不再期望的 skill（资产已从 DB 硬删，DB 无法再枚举）必须被删除。
+func TestSyncPodPrunesInstalledSkillsNotInDesiredSet(t *testing.T) {
+	store := newSyncTestStore()
+	root := t.TempDir()
+	store.users["user-a"] = repo.HumanUser{HumanUserID: "user-a", AgentID: "alice", PodID: "pod-a"}
+	store.assets = append(store.assets,
+		syncTestPrivateAsset(t, root, "user-a", "pod-a", "kept-skill", repo.SkillStatusActive, "sha256:keep"),
+	)
+	drv := &syncTestDriver{privateHashes: map[string]map[string]string{
+		"alice": {"kept-skill": "sha256:keep", "orphan-skill": "sha256:old"},
+	}}
+	syncer := newSyncTestSyncer(t, store, drv, root)
+
+	if err := syncer.SyncPod(context.Background(), "pod-a"); err != nil {
+		t.Fatalf("SyncPod: %v", err)
+	}
+	if fmt.Sprint(drv.privateDeletes) != "[alice/orphan-skill]" {
+		t.Fatalf("private deletes = %v, want [alice/orphan-skill]", drv.privateDeletes)
+	}
+	if fmt.Sprint(drv.privateInstalls) != "[]" {
+		t.Fatalf("private installs = %v, want none", drv.privateInstalls)
+	}
+}
+
+// 用户被移出 pod（DB 中无任何该用户的资产）后，其已安装 skill 全部清空。
+func TestSyncPodPrunesAllInstalledSkillsForRemovedUser(t *testing.T) {
+	store := newSyncTestStore()
+	root := t.TempDir()
+	store.users["user-a"] = repo.HumanUser{HumanUserID: "user-a", AgentID: "alice", PodID: "pod-a"}
+	store.users["user-b"] = repo.HumanUser{HumanUserID: "user-b", AgentID: "bob", PodID: "pod-a"}
+	// user-b 已移出 pod，但仍通过 stale 资产进入已知用户集。
+	store.assets = append(store.assets,
+		syncTestPrivateAsset(t, root, "user-b", "pod-a", "left-skill", repo.SkillStatusDeleted, "sha256:old"),
+	)
+	drv := &syncTestDriver{privateHashes: map[string]map[string]string{
+		"alice": {"kept-skill": "sha256:keep"},
+		"bob":   {"left-skill": "sha256:old", "other-skill": "sha256:stale"},
+	}}
+	syncer := newSyncTestSyncer(t, store, drv, root)
+
+	if err := syncer.SyncPod(context.Background(), "pod-a"); err != nil {
+		t.Fatalf("SyncPod: %v", err)
+	}
+	if fmt.Sprint(drv.privateDeletes) != "[bob/left-skill bob/other-skill]" {
+		t.Fatalf("private deletes = %v, want [bob/left-skill bob/other-skill]", drv.privateDeletes)
+	}
+}
+
+// 公共 Skill 部分失败必须经 SyncPod/BeforeApply 上抛为错误，而不是静默成功。
+func TestSyncPodFailsWhenPublicSyncPartiallyFails(t *testing.T) {
+	store := newSyncTestStore()
+	root := t.TempDir()
+	good := syncTestPublicAsset(t, root, "good-skill", "sha256:good")
+	bad := good
+	bad.SkillID = "skill-bad"
+	bad.Name = "bad-skill"
+	bad.SourcePath = filepath.Join(root, "missing-bad-skill")
+	store.assets = append(store.assets, good, bad)
+	drv := &syncTestDriver{}
+	syncer := newSyncTestSyncer(t, store, drv, root)
+
+	err := syncer.BeforeApply(context.Background(), "pod-a")
+	var partialErr *PublicSkillPartialSyncError
+	if !errors.As(err, &partialErr) {
+		t.Fatalf("BeforeApply error = %v, want PublicSkillPartialSyncError", err)
+	}
+	if len(drv.privateInstalls) != 0 {
+		t.Fatalf("private sync should not run after public failure: %v", drv.privateInstalls)
 	}
 }
 

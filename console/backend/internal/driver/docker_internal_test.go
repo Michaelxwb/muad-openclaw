@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,6 +14,7 @@ import (
 type dockerCallRecorder struct {
 	calls        [][]string
 	volumeExists bool
+	nameExists   bool // simulate a same-name container left behind (crash window)
 }
 
 func (r *dockerCallRecorder) run(_ context.Context, args []string) (string, error) {
@@ -25,6 +27,48 @@ func (r *dockerCallRecorder) run(_ context.Context, args []string) (string, erro
 	}
 	if len(args) >= 2 && args[0] == "volume" && args[1] == "create" {
 		r.volumeExists = true
+	}
+	if len(args) >= 2 && args[0] == "ps" {
+		if r.nameExists {
+			return "muad-oc-pod-a\n", nil
+		}
+		return "", nil
+	}
+	if len(args) >= 2 && args[0] == "rm" {
+		r.nameExists = false
+	}
+	return "ok", nil
+}
+
+// dockerSequenceRecorder returns the recorded docker command sequence in order
+// and can fail a specific command once.
+type dockerSequenceRecorder struct {
+	calls       [][]string
+	failCommand string // command (args[0]) that fails when encountered
+}
+
+func (r *dockerSequenceRecorder) run(_ context.Context, args []string) (string, error) {
+	r.calls = append(r.calls, append([]string(nil), args...))
+	if r.failCommand != "" && args[0] == r.failCommand {
+		return "", errors.New("docker " + args[0] + ": simulated failure")
+	}
+	if len(args) >= 2 && args[0] == "volume" && args[1] == "inspect" {
+		return "", errors.New("docker volume inspect: no such volume")
+	}
+	if len(args) >= 2 && args[0] == "ps" {
+		return "", nil
+	}
+	return "ok", nil
+}
+
+// dockerListRecorder serves a fixed `docker ps --format {{json .}}` payload.
+type dockerListRecorder struct {
+	lines string
+}
+
+func (r *dockerListRecorder) run(_ context.Context, args []string) (string, error) {
+	if len(args) >= 2 && args[0] == "ps" {
+		return r.lines, nil
 	}
 	return "ok", nil
 }
@@ -112,11 +156,37 @@ func TestDockerSyncPublicSkills_MirrorsActiveSkillsOnly(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(activeRoot, "stale-skill")); !os.IsNotExist(err) {
 		t.Fatalf("stale Skill should be removed from runtime mount: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(activeRoot, "manual-skill", "SKILL.md")); err != nil {
-		t.Fatalf("unmanaged Skill should be preserved: %v", err)
+	if _, err := os.Stat(filepath.Join(activeRoot, "manual-skill")); !os.IsNotExist(err) {
+		t.Fatalf("unmanaged Skill should be removed by convergence: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(source, "enabled-skill", "SKILL.md")); err != nil {
 		t.Fatalf("source Skill should stay intact: %v", err)
+	}
+}
+
+func TestDockerSyncPublicSkills_RemovesUnmanagedDirectories(t *testing.T) {
+	skillsRoot := t.TempDir()
+	source := t.TempDir()
+	driver := &DockerDriver{skillsDir: skillsRoot}
+	activeRoot := filepath.Join(skillsRoot, dockerActivePublicSkillsDir)
+	writeDockerSkillFile(t, source, "managed-skill", "SKILL.md", "# managed\n")
+	writeDockerSkillFile(t, activeRoot, "orphan-skill", "SKILL.md", "# orphan\n")
+	if err := os.WriteFile(
+		filepath.Join(source, publicSkillIndexFile),
+		[]byte("managed-skill\n"),
+		0o600,
+	); err != nil {
+		t.Fatalf("write public Skill index: %v", err)
+	}
+
+	if err := driver.SyncPublicSkills(context.Background(), "pod-a", source); err != nil {
+		t.Fatalf("SyncPublicSkills: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(activeRoot, "managed-skill", "SKILL.md")); err != nil {
+		t.Fatalf("managed Skill was not published: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(activeRoot, "orphan-skill")); !os.IsNotExist(err) {
+		t.Fatalf("unmanaged directory should be deleted: %v", err)
 	}
 }
 
@@ -300,6 +370,147 @@ func TestDockerCreate_RetainedVolumeRequiresExplicitAdopt(t *testing.T) {
 	if err := driver.Create(context.Background(), spec); err != nil {
 		t.Fatalf("Create with adopt: %v", err)
 	}
+}
+
+func TestDockerCreate_RemovesConflictingContainerFirst(t *testing.T) {
+	recorder := &dockerCallRecorder{nameExists: true}
+	driver := &DockerDriver{secretDir: t.TempDir(), runHook: recorder.run}
+	spec := dockerTestPodSpec("pod-a", "token")
+	if err := driver.Create(context.Background(), spec); err != nil {
+		t.Fatalf("Create with same-name container: %v", err)
+	}
+	rmIndex := findDockerCallIndex(t, recorder.calls, "rm")
+	runIndex := findDockerCallIndex(t, recorder.calls, "run")
+	if rmIndex == -1 || runIndex == -1 || rmIndex >= runIndex {
+		t.Fatalf("expected rm -f before run, calls=%v", recorder.calls)
+	}
+	if !slices.Contains(recorder.calls[rmIndex], ContainerName("pod-a")) {
+		t.Fatalf("rm call did not target %s: %v", ContainerName("pod-a"), recorder.calls[rmIndex])
+	}
+}
+
+func TestDockerCreate_LeavesFreshNameAlone(t *testing.T) {
+	recorder := &dockerCallRecorder{}
+	driver := &DockerDriver{secretDir: t.TempDir(), runHook: recorder.run}
+	spec := dockerTestPodSpec("pod-a", "token")
+	if err := driver.Create(context.Background(), spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if findDockerCallIndex(t, recorder.calls, "rm") != -1 {
+		t.Fatalf("fresh Create must not remove containers: %v", recorder.calls)
+	}
+}
+
+func TestDockerReplaceRuntime_KeepsOldContainerWhenCreateFails(t *testing.T) {
+	recorder := &dockerSequenceRecorder{failCommand: "run"}
+	driver := &DockerDriver{secretDir: t.TempDir(), runHook: recorder.run}
+	spec := dockerTestPodSpec("pod-a", "token")
+	err := driver.ReplaceRuntime(context.Background(), spec)
+	if err == nil || !strings.Contains(err.Error(), "simulated failure") {
+		t.Fatalf("ReplaceRuntime error = %v, want create failure", err)
+	}
+	for _, call := range recorder.calls {
+		if call[0] == "rm" || call[0] == "rename" {
+			t.Fatalf("old container must be preserved on create failure, got call %v", call)
+		}
+	}
+}
+
+func TestDockerReplaceRuntime_SwapsContainerAfterSuccessfulCreate(t *testing.T) {
+	recorder := &dockerSequenceRecorder{}
+	driver := &DockerDriver{secretDir: t.TempDir(), runHook: recorder.run}
+	spec := dockerTestPodSpec("pod-a", "token")
+	if err := driver.ReplaceRuntime(context.Background(), spec); err != nil {
+		t.Fatalf("ReplaceRuntime: %v", err)
+	}
+	runIndex := findDockerCallIndex(t, recorder.calls, "run")
+	rmIndex := findDockerCallIndex(t, recorder.calls, "rm")
+	renameIndex := findDockerCallIndex(t, recorder.calls, "rename")
+	if runIndex == -1 || rmIndex == -1 || renameIndex == -1 {
+		t.Fatalf("expected run + rm + rename sequence, calls=%v", recorder.calls)
+	}
+	if !(runIndex < rmIndex && rmIndex < renameIndex) {
+		t.Fatalf("order must be run < rm < rename, calls=%v", recorder.calls)
+	}
+	if !slices.Contains(recorder.calls[runIndex], ContainerName("pod-a")+".new") {
+		t.Fatalf("create must target temporary name %s.new: %v", ContainerName("pod-a"), recorder.calls[runIndex])
+	}
+	if !slices.Contains(recorder.calls[rmIndex], ContainerName("pod-a")) {
+		t.Fatalf("rm must target old container: %v", recorder.calls[rmIndex])
+	}
+	if !slices.Contains(recorder.calls[renameIndex], ContainerName("pod-a")+".new") ||
+		!slices.Contains(recorder.calls[renameIndex], ContainerName("pod-a")) {
+		t.Fatalf("rename must move %s.new to %s: %v", ContainerName("pod-a"), ContainerName("pod-a"), recorder.calls[renameIndex])
+	}
+}
+
+func TestDockerReplaceRuntime_CleansTemporaryContainerWhenRenameFails(t *testing.T) {
+	recorder := &dockerSequenceRecorder{failCommand: "rename"}
+	driver := &DockerDriver{secretDir: t.TempDir(), runHook: recorder.run}
+	spec := dockerTestPodSpec("pod-a", "token")
+	err := driver.ReplaceRuntime(context.Background(), spec)
+	if err == nil || !strings.Contains(err.Error(), "simulated failure") {
+		t.Fatalf("ReplaceRuntime error = %v, want rename failure", err)
+	}
+	cleanupFound := false
+	for _, call := range recorder.calls {
+		if call[0] == "rm" && slices.Contains(call, ContainerName("pod-a")+".new") {
+			cleanupFound = true
+		}
+	}
+	if !cleanupFound {
+		t.Fatalf("temporary container was not cleaned up after rename failure: %v", recorder.calls)
+	}
+}
+
+func TestDockerReplaceRuntime_CleansStaleTemporaryContainerBeforeCreate(t *testing.T) {
+	recorder := &dockerSequenceRecorder{}
+	driver := &DockerDriver{secretDir: t.TempDir(), runHook: func(_ context.Context, args []string) (string, error) {
+		recorder.calls = append(recorder.calls, append([]string(nil), args...))
+		if len(args) >= 2 && args[0] == "ps" {
+			return ContainerName("pod-a") + ".new\n", nil // stale temp container exists
+		}
+		if len(args) >= 2 && args[0] == "volume" && args[1] == "inspect" {
+			return "", errors.New("docker volume inspect: no such volume")
+		}
+		return "ok", nil
+	}}
+	if err := driver.ReplaceRuntime(context.Background(), dockerTestPodSpec("pod-a", "token")); err != nil {
+		t.Fatalf("ReplaceRuntime: %v", err)
+	}
+	rmIndex := findDockerCallIndex(t, recorder.calls, "rm")
+	if rmIndex == -1 || !slices.Contains(recorder.calls[rmIndex], ContainerName("pod-a")+".new") {
+		t.Fatalf("stale temporary container was not removed before create: %v", recorder.calls)
+	}
+}
+
+func TestDockerList_IgnoresReplaceRuntimeTemporaryContainer(t *testing.T) {
+	recorder := &dockerListRecorder{lines: `{"Names":"muad-oc-pod-a","State":"running"}` + "\n" +
+		`{"Names":"muad-oc-pod-b.new","State":"running"}` + "\n" +
+		`{"Names":"muad-oc-pod-c","State":"exited"}` + "\n"}
+	driver := &DockerDriver{runHook: recorder.run}
+	infos, err := driver.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	var podIDs []string
+	for _, info := range infos {
+		podIDs = append(podIDs, info.PodID)
+	}
+	slices.Sort(podIDs)
+	if fmt.Sprint(podIDs) != "[pod-a pod-c]" {
+		t.Fatalf("List Pod IDs = %v, want [pod-a pod-c] (no .new phantom)", podIDs)
+	}
+}
+
+func findDockerCallIndex(t *testing.T, calls [][]string, command string) int {
+	t.Helper()
+	for index, call := range calls {
+		if len(call) > 0 && call[0] == command {
+			return index
+		}
+	}
+	return -1
 }
 
 func TestDockerExec_MapsRuntimeReadinessErrors(t *testing.T) {

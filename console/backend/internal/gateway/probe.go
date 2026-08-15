@@ -12,6 +12,8 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 )
 
@@ -43,6 +45,11 @@ type Status struct {
 	RouteFailed         int
 	RouteGeneration     int64
 	RouteError          string
+	// RouteUnknown marks a verification attempt that could not produce a
+	// verdict (the verify-routes RPC failed or its response was unparseable).
+	// Unlike a deterministic RouteVerified=false, the route state is unknown and
+	// health waits should keep polling instead of treating it as a failure.
+	RouteUnknown bool
 }
 
 // Execer runs a command inside a Pod (satisfied by each RuntimeDriver).
@@ -103,6 +110,12 @@ type RouteVerificationFailure struct {
 	MatchedBy       string `json:"matchedBy"`
 }
 
+// VerifyRoutes asks the runtime gateway to resolve the expected direct routes.
+// It distinguishes two outcomes:
+//   - RPC/decode failures are wrapped with ErrRouteVerificationRPC — the route
+//     state is UNKNOWN and callers should keep polling, not roll back.
+//   - A parsed verification result (OK=false with failures) is a DETERMINISTIC
+//     verification failure — the routes are provably not as expected.
 func VerifyRoutes(
 	ctx context.Context, ex Execer, podID string, generation int64,
 	routes []RouteExpectation,
@@ -112,18 +125,18 @@ func VerifyRoutes(
 	}
 	payload, err := json.Marshal(map[string]any{"generation": generation, "routes": routes})
 	if err != nil {
-		return RouteVerification{}, err
+		return RouteVerification{}, fmt.Errorf("%w: %v", ErrRouteVerificationRPC, err)
 	}
 	out, err := ex.Exec(
 		ctx, podID, "openclaw", "gateway", "call", "muad.runtime.verify-routes",
 		"--params", string(payload), "--json",
 	)
 	if err != nil {
-		return RouteVerification{}, errRouteVerificationRPC
+		return RouteVerification{}, fmt.Errorf("%w: %v", ErrRouteVerificationRPC, err)
 	}
 	var result RouteVerification
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
-		return RouteVerification{}, errRouteVerificationDecode
+		return RouteVerification{}, fmt.Errorf("%w: %v", ErrRouteVerificationRPC, err)
 	}
 	return result, nil
 }
@@ -236,15 +249,12 @@ func firstNonEmpty(values ...string) string {
 }
 
 var (
-	errRouteVerificationRPC    = routeVerificationError("rpc_failed")
-	errRouteVerificationDecode = routeVerificationError("decode_failed")
+	// ErrRouteVerificationRPC reports that the route verification RPC could not
+	// be executed or its response parsed. The route state is unknown (the
+	// gateway may be momentarily busy); health waits keep polling on it instead
+	// of treating it as a deterministic verification failure.
+	ErrRouteVerificationRPC = errors.New("route verification RPC failed")
 )
-
-type routeVerificationError string
-
-func (err routeVerificationError) Error() string {
-	return string(err)
-}
 
 // channelStatusJSON mirrors the relevant parts of `openclaw channels status --json`.
 // The per-channel shape varies by plugin: the wecom long-connection bot reports

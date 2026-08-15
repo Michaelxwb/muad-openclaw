@@ -74,21 +74,92 @@ func (d *DockerDriver) Create(ctx context.Context, spec PodSpec) error {
 		return err
 	}
 	defer cleanup()
-	args := d.createArgs(spec, envFile, secretPath)
+	// 同名残留容器（控制面崩溃窗口/手动创建）会令 docker run --name 永久失败；
+	// 与 Remove 的孤儿容忍对称：创建前先清理同名容器。
+	if err := d.ensureContainerNameFree(ctx, ContainerName(spec.PodID)); err != nil {
+		return err
+	}
+	args := d.createArgs(spec, ContainerName(spec.PodID), envFile, secretPath)
 	_, err = d.run(ctx, args...)
 	return err
 }
 
 // ReplaceRuntime recreates the container onto the new image while keeping the
-// state volume. `docker rm` is synchronous, so unlike a k8s remove-then-create
-// race there is no window where the workload is absent; keepState=true lets the
-// subsequent Create adopt the existing state volume.
+// state volume. It is atomic in the sense that the old container is preserved
+// until the new one has been created successfully: the new image boots as
+// <podID>.new first, then the old container is removed and the new one renamed
+// into place. A failed Create leaves the old container untouched (k8s's
+// in-place upsert has no such gap; the two sides stay symmetric).
 func (d *DockerDriver) ReplaceRuntime(ctx context.Context, spec PodSpec) error {
-	if err := d.Remove(ctx, spec.PodID, true); err != nil {
+	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
+		return ErrInvalidPodSpec
+	}
+	if spec.MultiUser.Version != 0 {
+		if err := spec.Validate(); err != nil {
+			return err
+		}
+	}
+	if err := d.ensureStateVolume(ctx, spec.PodID, true); err != nil {
 		return err
 	}
-	spec.AdoptState = true
-	return d.Create(ctx, spec)
+	if err := d.ensurePublicSkillsDir(); err != nil {
+		return err
+	}
+	secretPath, err := d.writeServiceToken(spec)
+	if err != nil {
+		return err
+	}
+	envFile, cleanup, err := writeEnvFile(BuildEnv(spec))
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	name := ContainerName(spec.PodID)
+	newName := name + ".new"
+	// 上次崩溃可能遗留 <podID>.new 容器，先清理避免 docker run 名字冲突。
+	if err := d.ensureContainerNameFree(ctx, newName); err != nil {
+		return err
+	}
+	args := d.createArgs(spec, newName, envFile, secretPath)
+	if _, err = d.run(ctx, args...); err != nil {
+		// Create 失败：旧容器原样保留，返回错误。
+		return err
+	}
+	if _, err = d.run(ctx, "rm", "-f", name); err != nil && !isAbsentErr(err) {
+		_ = d.cleanupTemporaryContainer(ctx, newName)
+		return err
+	}
+	if _, err = d.run(ctx, "rename", newName, name); err != nil {
+		_ = d.cleanupTemporaryContainer(ctx, newName)
+		return err
+	}
+	return nil
+}
+
+// cleanupTemporaryContainer removes a mid-replace <podID>.new container,
+// restoring the "old container preserved" invariant after a failed swap.
+func (d *DockerDriver) cleanupTemporaryContainer(ctx context.Context, name string) error {
+	if _, err := d.run(ctx, "rm", "-f", name); err != nil && !isAbsentErr(err) {
+		return err
+	}
+	return nil
+}
+
+// ensureContainerNameFree removes a same-name container left behind by a
+// control-plane crash window or manual creation, so `docker run --name` cannot
+// fail permanently. It is the create-side mirror of Remove's orphan tolerance.
+func (d *DockerDriver) ensureContainerNameFree(ctx context.Context, name string) error {
+	out, err := d.run(ctx, "ps", "-a", "--filter", "name=^/"+name+"$", "--format", "{{.Names}}")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(out) == "" {
+		return nil
+	}
+	if _, err := d.run(ctx, "rm", "-f", name); err != nil && !isAbsentErr(err) {
+		return err
+	}
+	return nil
 }
 
 func (d *DockerDriver) Start(ctx context.Context, userID string) error {
@@ -175,6 +246,11 @@ func (d *DockerDriver) List(ctx context.Context) ([]ContainerInfo, error) {
 		if err := json.Unmarshal([]byte(line), &p); err != nil {
 			return nil, fmt.Errorf("parse docker ps: %w", err)
 		}
+		// ReplaceRuntime 的中间容器 <podID>.new 不对外暴露：避免 List/collector
+		// 出现瞬时幻影 Pod。
+		if strings.HasSuffix(p.Names, ".new") {
+			continue
+		}
 		infos = append(infos, ContainerInfo{
 			PodID:    strings.TrimPrefix(p.Names, "muad-oc-"),
 			UserID:   strings.TrimPrefix(p.Names, "muad-oc-"),
@@ -199,11 +275,11 @@ func (d *DockerDriver) ensureStateVolume(ctx context.Context, podID string, adop
 	return err
 }
 
-func (d *DockerDriver) createArgs(spec PodSpec, envFile, secretPath string) []string {
+func (d *DockerDriver) createArgs(spec PodSpec, containerName, envFile, secretPath string) []string {
 	resource := spec.Resource
 	runtime := d.runtime.withDefaults()
 	args := []string{
-		"run", "-d", "--name", ContainerName(spec.PodID),
+		"run", "-d", "--name", containerName,
 		"--restart", orDefault(resource.RestartPolicy, fallbackRestartPolicy),
 		"--env-file", envFile, "-e", "TZ=" + runtime.Timezone,
 		"-e", "OPENCLAW_STATE_DIR=" + runtime.StateDir,
