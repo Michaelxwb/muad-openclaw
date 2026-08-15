@@ -51,7 +51,7 @@
 | 概念 | 说明 |
 |---|---|
 | 长任务标记 | `muad.skill.json` 顶层布尔 `longTask`；installer / bundle ingest 解析并入 manifestJSON |
-| 提交桩 | 长任务 skill 的 `SKILL.md` 被读到时，guard 动态生成 `<workspace>/.openclaw/tmp/_longtask_submit_<taskId>.md`（内容 = 桩格式常量 + 按 locale 渲染的确认文案，含任务ID），重写 `read` 指向它；模型照抄确认文案 → 所有 IM（含绕过 outbound hook 的直投型）都收到含 taskId 的确认；`agent_end` / TTL 清理。桩落 `<workspace>/.openclaw/tmp/`（OpenClaw 原生 `read` 工具的 sandbox roots=`[workspace, ...skillDirs]`，workspace 内**原生放行**；Skill 挂载只读不可写，`skill-outputs` 在 workspace 外会被原生沙箱拒绝——这是双执行根因，故桩必须落 workspace 内）。任务会话读真实 `SKILL.md`=执行 |
+| 提交桩 | 长任务 skill 的 `SKILL.md` 被读到时，guard 动态生成 `<workspace>/.openclaw/tmp/_longtask_submit_<taskId>.md`（内容 = 桩格式常量 + 按 locale 渲染的确认文案，含任务ID），重写 `read` 指向它；模型照抄确认文案 → 所有 IM（含绕过 outbound hook 的直投型）都收到含 taskId 的确认；`agent_end` / TTL 清理。桩落 `<workspace>/.openclaw/tmp/`（OpenClaw 原生 `read` 工具的 sandbox roots=`[workspace, ...skillDirs]`，workspace 内**原生放行**；Skill 挂载只读不可写；`skill-outputs` 现已移入 workspace 内、原生可读，桩仍独立用 `.openclaw/tmp/` scratch 目录——故桩必须落 workspace 内）。任务会话读真实 `SKILL.md`=执行 |
 | 桩格式常量 + i18n | 桩文件格式为命名常量 `LONG_TASK_SUBMIT_STUB_FORMAT`；确认文案进 guard 侧 zh/en catalog（`CONFIRMATION_TEMPLATES`），按 `runtime.locale`（默认 zh，部署时可改）渲染；`/skill:` 与自然语言、提交桩与 `reply_payload_sending` 共用同一套文案 |
 | 读即入队 | 模型在正常会话中 `read` 长任务 `SKILL.md` 即视为提交信号：`before_tool_call` 立即 `manager.submit()` 入队并生成含排队数的提交桩；turn 异常中断也已提交，不依赖模型回复标记（`MUAD_TASK|...` 协议已废弃） |
 | 任务会话 | `agent:<agentId>:longtask:<taskId>`，独立 lane；复用同一 agentId（同 workspace/模型/私有 skill/记忆） |
@@ -76,7 +76,7 @@
   1. `params.path` 指向某 skill 的 `SKILL.md`（basename 为 `SKILL.md`）。
   2. 路径必须落在当前 agent 允许读取的 skill root 内；读取同目录 `muad.skill.json`，`longTask === true` → 命中（识别层读**磁盘 manifest**）。
   3. 立即 `manager.submit()` 入队：`taskId = uuid`，objective/originalPrompt 取 `before_agent_run` 记录的原始 prompt，sessionKey/agentId/peerId/replyChannel 从上下文解析；提交失败则退化为串行执行。turn 异常中断也已提交（read-to-enqueue 的韧性）。
-  4. 经统一提交入口 `submitLongTask`（`/skill:` 与自然语言共用：支持 `taskId` / `stripSkillPrefix` / turn 上下文优先）入队后，动态生成 `<workspace>/.openclaw/tmp/_longtask_submit_<taskId>.md`——桩内容 = 命名常量 `LONG_TASK_SUBMIT_STUB_FORMAT` + 按 `runtime.locale`（默认 zh，en 可部署时切换）渲染的**完整确认文案（含排队数）**，改写 `params.path` 指向它。**桩必须落 workspace 内**：OpenClaw 原生 `read` 工具（`fs.workspaceOnly: true`）只放行 `[workspace, ...skillDirs]`，`skill-outputs` 在 workspace 外会被原生沙箱以 `Path escapes sandbox root` 拒绝——此前桩落 `skill-outputs` 导致模型读不到"后台任务"确认、前台照常执行，双执行；`<workspace>/.openclaw/tmp/` 是 OpenClaw 认可的 scratch 位置（workspace 内原生可读），guard 文件策略 `isWithin(workspace)` 也已放行。模型照抄 → 所有 IM（含绕过 outbound hook 的直投型）都收到含 taskId + 排队数的同一确认；`agent_end` / TTL 清理桩文件。
+  4. 经统一提交入口 `submitLongTask`（`/skill:` 与自然语言共用：支持 `taskId` / `stripSkillPrefix` / turn 上下文优先）入队后，动态生成 `<workspace>/.openclaw/tmp/_longtask_submit_<taskId>.md`——桩内容 = 命名常量 `LONG_TASK_SUBMIT_STUB_FORMAT` + 按 `runtime.locale`（默认 zh，en 可部署时切换）渲染的**完整确认文案（含排队数）**，改写 `params.path` 指向它。**桩必须落 workspace 内**：OpenClaw 原生 `read` 工具（`fs.workspaceOnly: true`）只放行 `[workspace, ...skillDirs]`，`skill-outputs` 现已在 workspace 内（此前在 workspace 外会被原生沙箱以 `Path escapes sandbox root` 拒绝，桩落 `skill-outputs` 导致模型读不到"后台任务"确认、前台照常执行，双执行）；`<workspace>/.openclaw/tmp/` 是 OpenClaw 认可的 scratch 位置（workspace 内原生可读），guard 文件策略 `isWithin(workspace)` 也已放行。模型照抄 → 所有 IM（含绕过 outbound hook 的直投型）都收到含 taskId + 排队数的同一确认；`agent_end` / TTL 清理桩文件。
   5. 同一 run 再次 read → 复用同一桩路径，不重复提交。首版不强行 block 后续工具调用；稳定边界由“真实 `SKILL.md` 已被提交桩替换”保证。若联调确认模型在读桩后仍会继续调工具，再单独打开 block 策略并补回归测试。
 - `before_agent_reply` 标记解析机制已废弃：提交不依赖模型回复标记，无 `MUAD_TASK|...` 协议。
 - 兜底：若模型未走 `read` 工具（如用 `cat`）→ 不提交、串行执行（功能不坏，只是阻塞），见 §11。
@@ -278,7 +278,7 @@ config: {
 
 | 项 | 说明 |
 |---|---|
-| 依赖模型走 `read` 工具 + 遵守提交桩 | 稳定边界是“只要模型读 longTask 的 SKILL.md，就不会在主会话执行”；未读 SKILL.md 则退化为串行执行；`read` 参数名需兼容 `path/file_path/filePath/file`。**桩必须可被原生 `read` 读到**：guard 的 trustedToolPolicy 只能改写路径/阻止，无法绕过原生 sandbox（roots=`[workspace, ...skillDirs]`），桩落 workspace 外（如 `skill-outputs`）会被 `Path escapes sandbox root` 拒绝，模型转而前台执行 → 双执行 |
+| 依赖模型走 `read` 工具 + 遵守提交桩 | 稳定边界是“只要模型读 longTask 的 SKILL.md，就不会在主会话执行”；未读 SKILL.md 则退化为串行执行；`read` 参数名需兼容 `path/file_path/filePath/file`。**桩必须可被原生 `read` 读到**：guard 的 trustedToolPolicy 只能改写路径/阻止，无法绕过原生 sandbox（roots=`[workspace, ...skillDirs]`），桩落 workspace 外会被 `Path escapes sandbox root` 拒绝，模型转而前台执行 → 双执行 |
 | 全局 `main` lane（默认 4） | 并发任务可能挤压普通回复 → 实施时验证配平（调大全局池或降默认值） |
 | 确认延迟 | `/skill:` 瞬时；自然语言约数秒（一次短模型 turn） |
 | pod 重启 | 热 reload 不中断；真实 gateway/pod 进程重启后遗留 `queued/running` reconcile 为 failed |

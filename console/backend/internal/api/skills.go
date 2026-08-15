@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"slices"
 	"sort"
 	"strconv"
@@ -468,6 +469,7 @@ func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request
 		ManifestJSON: result.ManifestJSON, EntryType: result.EntryType,
 		PlatformsJSON:     mustMarshalStringSlice(result.Platforms),
 		ProgressSupported: result.ProgressSupported, BrowserRequired: result.BrowserRequired,
+		Status: repo.SkillStatusPending,
 		Source: repo.SkillSourceUser,
 	})
 	if err != nil {
@@ -475,18 +477,10 @@ func (s *Server) handleIngestPrivateSkill(w http.ResponseWriter, r *http.Request
 		writeRepoError(w, r, err)
 		return
 	}
-	// Direct sync without a config generation bump: the skill is installed to the
-	// workspace now; the watcher discovers it without a gateway restart. A sync
-	// failure leaves the asset recorded for a later reconcile/reload to retry.
-	if s.skillSyncer != nil {
-		syncCtx, cancel := context.WithTimeout(r.Context(), podRuntimeOpTimeout)
-		defer cancel()
-		if err := s.skillSyncer.SyncPod(syncCtx, user.PodID); err != nil {
-			log.Printf("private_skill_ingest_sync_failed user=%s skill=%s error=%v",
-				user.HumanUserID, result.Name, auditlog.RedactDiagnostic(err.Error()))
-		}
-	}
-	s.auditSkill(r, auditlog.ActionSkillAssetInstall, asset, "ingested", 1)
+	// The asset is recorded as pending and not synced to the workspace until an
+	// admin approves it — the runtime only installs active Skills. Approval drives
+	// the install (handleApproveSkill), so there is no direct sync here.
+	s.auditSkill(r, auditlog.ActionSkillAssetInstall, asset, "submitted", 1)
 	writeJSON(w, http.StatusOK, map[string]any{"skill": skillAssetToView(asset)})
 }
 
@@ -599,6 +593,90 @@ func (s *Server) handleDeletePrivateSkill(w http.ResponseWriter, r *http.Request
 	// workspace (SyncPod → installer) and clears skills_pending without a restart.
 	s.enqueueReconcile(pod.PodID)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": true, "skillId": asset.SkillID})
+}
+
+// handleApproveSkill transitions a pending user-authored private Skill to active
+// and syncs it to the owning Pod so it becomes effective.
+func (s *Server) handleApproveSkill(w http.ResponseWriter, r *http.Request) {
+	asset, err := s.store.GetSkillAsset(r.PathValue("skillId"))
+	if err != nil {
+		writeRepoError(w, r, err)
+		return
+	}
+	if asset.Scope != repo.SkillScopePrivate || asset.Status != repo.SkillStatusPending {
+		writeRepoError(w, r, repo.ErrNotFound)
+		return
+	}
+	if err := s.store.UpdateSkillAssetStatus(asset.SkillID, repo.SkillStatusActive); err != nil {
+		writeRepoError(w, r, err)
+		return
+	}
+	asset.Status = repo.SkillStatusActive
+	if s.skillSyncer != nil {
+		user, err := s.store.GetHumanUser(asset.HumanUserID)
+		if err != nil {
+			writeRepoError(w, r, err)
+			return
+		}
+		syncCtx, cancel := context.WithTimeout(r.Context(), podRuntimeOpTimeout)
+		defer cancel()
+		if err := s.skillSyncer.SyncPod(syncCtx, user.PodID); err != nil {
+			log.Printf("private_skill_approve_sync_failed user=%s skill=%s error=%v",
+				user.HumanUserID, asset.Name, auditlog.RedactDiagnostic(err.Error()))
+		}
+	}
+	s.auditSkill(r, auditlog.ActionSkillAssetUpdate, asset, "approved", 1)
+	writeJSON(w, http.StatusOK, map[string]any{"skill": skillAssetToView(asset)})
+}
+
+// handleRejectSkill soft-deletes a pending user-authored private Skill and removes
+// its on-disk directory; the user can re-upload the same name as a new asset.
+func (s *Server) handleRejectSkill(w http.ResponseWriter, r *http.Request) {
+	asset, err := s.store.GetSkillAsset(r.PathValue("skillId"))
+	if err != nil {
+		writeRepoError(w, r, err)
+		return
+	}
+	if asset.Scope != repo.SkillScopePrivate || asset.Status != repo.SkillStatusPending {
+		writeRepoError(w, r, repo.ErrNotFound)
+		return
+	}
+	if err := s.store.UpdateSkillAssetStatus(asset.SkillID, repo.SkillStatusDeleted); err != nil {
+		writeRepoError(w, r, err)
+		return
+	}
+	s.removePrivateSkillAfterDelete(asset.HumanUserID, asset.Name)
+	s.auditSkill(r, auditlog.ActionSkillAssetDelete, asset, "rejected", 1)
+	writeJSON(w, http.StatusOK, map[string]any{"skill": skillAssetToView(asset)})
+}
+
+// handleDownloadSkill streams a Skill's directory as a .tar.gz so an admin can
+// review the code before approving a pending Skill.
+func (s *Server) handleDownloadSkill(w http.ResponseWriter, r *http.Request) {
+	asset, err := s.store.GetSkillAsset(r.PathValue("skillId"))
+	if err != nil {
+		writeRepoError(w, r, err)
+		return
+	}
+	dir := strings.TrimSpace(asset.SourcePath)
+	if dir == "" {
+		writeRepoError(w, r, repo.ErrInvalidSkill)
+		return
+	}
+	if _, statErr := os.Stat(dir); statErr != nil {
+		writeRepoError(w, r, repo.ErrNotFound)
+		return
+	}
+	bundle, err := tarSkillDirectory(dir)
+	if err != nil {
+		writeErr(w, r, errcode.InternalError)
+		return
+	}
+	filename := asset.Name + ".tar.gz"
+	w.Header().Set("Content-Type", "application/gzip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Length", strconv.Itoa(len(bundle)))
+	_, _ = w.Write(bundle)
 }
 
 func (s *Server) handleDeleteSkillPolicy(w http.ResponseWriter, r *http.Request) {
@@ -1138,7 +1216,7 @@ func validSkillScope(scope string) bool {
 
 func validSkillStatus(status string) bool {
 	switch status {
-	case repo.SkillStatusActive, repo.SkillStatusDisabled, repo.SkillStatusDeleted:
+	case repo.SkillStatusActive, repo.SkillStatusDisabled, repo.SkillStatusPending, repo.SkillStatusDeleted:
 		return true
 	default:
 		return false

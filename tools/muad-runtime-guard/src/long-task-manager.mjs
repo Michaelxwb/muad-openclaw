@@ -152,6 +152,7 @@ export class LongTaskManager {
       objective: textValue(input.objective),
       originalPrompt: textValue(input.originalPrompt),
       replyChannel,
+      locale: normalizedLocale(textValue(input.locale)),
       status: "queued",
       submittedAt,
       updatedAt: submittedAt,
@@ -294,7 +295,18 @@ function runOpenClawAgent(task, messageFile, options) {
   });
 }
 
+// 任务ID行（提交确认与结果前缀共用，保证格式一致）。
+export function taskIdLine(locale, taskId) {
+  const id = textValue(taskId);
+  if (!id) return "";
+  return normalizedLocale(locale) === "en" ? `Task ID: ${id}` : `任务ID：${id}`;
+}
+
 export function longTaskMessage(task) {
+  const idLine = taskIdLine(task.locale, task.taskId);
+  const resultPrefix = idLine
+    ? `\nWhen you deliver the final result, your reply MUST begin with the following line, verbatim and character-for-character, on its own line, so the user can match this result back to the submitted task:\n\n${idLine}\n\nDo not omit, alter, or reword it.\n`
+    : "";
   return `You are executing a background long task for a user.
 
 Task objective:
@@ -307,7 +319,7 @@ Read and follow the real Skill instructions at:
 ${path.join(task.skillRoot, "SKILL.md")}
 
 Do not start this task by sending or expanding /skill:${task.skillName}. Execute the Skill instructions directly in this task session, then deliver the final result.
-`;
+${resultPrefix}`;
 }
 
 export class LongTaskRunError extends Error {
@@ -429,4 +441,8 @@ function errorCode(error) {
 
 function textValue(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizedLocale(value) {
+  return textValue(value).toLowerCase() === "en" ? "en" : "zh";
 }

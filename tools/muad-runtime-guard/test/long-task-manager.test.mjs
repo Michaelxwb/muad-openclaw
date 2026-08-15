@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { setImmediate as tick } from "node:timers/promises";
 import test from "node:test";
 
-import { LongTaskManager, spawnOpenClawTask } from "../src/long-task-manager.mjs";
+import { LongTaskManager, spawnOpenClawTask, longTaskMessage, taskIdLine } from "../src/long-task-manager.mjs";
 
 test("LongTaskManager limits concurrency per agent-user pool and drains FIFO", async () => {
   const runs = [];
@@ -222,6 +222,28 @@ test("spawnOpenClawTask uses isolated session and independent reply channel", as
   assert.equal(calls[0].args.includes("--json"), true);
   assert.equal(calls[0].args[calls[0].args.indexOf("--timeout") + 1], "30");
   assert.match(calls[0].message, /Read and follow the real Skill instructions/u);
+  assert.match(calls[0].message, /任务ID：task-1/u);
+  assert.match(calls[0].message, /character-for-character/u);
+});
+
+test("taskIdLine renders the task ID in the guard locale", () => {
+  assert.equal(taskIdLine("zh", "task-1"), "任务ID：task-1");
+  assert.equal(taskIdLine("en", "task-1"), "Task ID: task-1");
+  assert.equal(taskIdLine("zh", ""), "");
+});
+
+test("longTaskMessage prefixes the final result with the task ID in the guard locale", () => {
+  const zh = longTaskMessage({ ...spawnTask(), locale: "zh" });
+  assert.match(zh, /任务ID：task-1/u);
+  assert.match(zh, /MUST begin with the following line/u);
+
+  const en = longTaskMessage({ ...spawnTask(), locale: "en" });
+  assert.match(en, /Task ID: task-1/u);
+  assert.doesNotMatch(en, /任务ID/u);
+
+  const noId = longTaskMessage({ ...spawnTask(), taskId: "" });
+  assert.doesNotMatch(noId, /任务ID/u);
+  assert.doesNotMatch(noId, /Task ID/u);
 });
 
 test("spawnOpenClawTask classifies non-zero exits and timeouts", async () => {

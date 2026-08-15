@@ -28,4 +28,9 @@ python3 scripts/run.py --customer "<客户名>" --period "<周期，如 2026-W31
 
 ## 输出
 
-脚本会向 stdout 打印一个 JSON 摘要（如 `{"status":"ok","report":"...","rows":N}`），并生成报告文件。任务会话用中文总结后回推给用户。
+脚本会向 stdout 打印一个 JSON 摘要（如 `{"status":"ok","report":"<绝对路径>","rows":N}`），并生成报告文件。
+
+任务会话最终回复时，按顺序做三件事：
+1. 读 stdout JSON 里的 `report` 字段——它是报告文件的**绝对路径**，原样保留，**不要改成相对路径、不要截断**。
+2. 用 `MEDIA: <report 的绝对路径>` 把报告文件直接发给用户（报告在 workspace 内，可直接作为媒体发送）。
+3. 再用中文简要总结报告内容（状态 / 行数 / 报告 ID）。

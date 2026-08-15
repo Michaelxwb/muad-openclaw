@@ -218,7 +218,7 @@ func TestSkillAPI_PrivateUploadAndDelete(t *testing.T) {
 	}
 }
 
-func TestSkillAPI_PrivateIngestCreatesAssetAndDirectSyncs(t *testing.T) {
+func TestSkillAPI_PrivateIngestCreatesPendingAsset(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
@@ -229,6 +229,7 @@ func TestSkillAPI_PrivateIngestCreatesAssetAndDirectSyncs(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
 	e.reconcile.podIDs = nil // ignore pod-creation enqueues from setup
+	e.drv.execStdinCalls = nil
 	rr := httptest.NewRecorder()
 	e.h.ServeHTTP(rr, req)
 	assertStatus(t, rr, http.StatusOK)
@@ -239,14 +240,92 @@ func TestSkillAPI_PrivateIngestCreatesAssetAndDirectSyncs(t *testing.T) {
 	if err != nil || len(assets) != 1 || assets[0].Name != "ingest-skill" {
 		t.Fatalf("ingest assets = %+v, %v", assets, err)
 	}
-	// Direct sync: the installer should have been invoked without a reconcile
-	// enqueue (no config_generation bump / no gateway restart path).
-	if len(e.drv.execStdinCalls) == 0 {
-		t.Fatalf("ingest should trigger direct installer sync")
+	if assets[0].Status != repo.SkillStatusPending {
+		t.Fatalf("ingest asset status = %q, want pending", assets[0].Status)
+	}
+	// No sync until approval: ingest records the asset as pending and must NOT
+	// trigger a direct installer sync or a reconcile enqueue.
+	if len(e.drv.execStdinCalls) != 0 {
+		t.Fatalf("ingest should not sync before approval")
 	}
 	if len(e.reconcile.podIDs) != 0 {
 		t.Fatalf("ingest should not enqueue reconcile: %v", e.reconcile.podIDs)
 	}
+}
+
+func TestSkillAPI_ApprovePendingSkillActivatesAndSyncs(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	skillID := ingestPrivateSkill(t, e, alice, "approve-skill")
+	e.drv.execStdinCalls = nil
+	e.reconcile.podIDs = nil
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/"+skillID+"/approve", "")
+	assertStatus(t, rr, http.StatusOK)
+
+	got, err := e.store.GetSkillAsset(skillID)
+	if err != nil || got.Status != repo.SkillStatusActive {
+		t.Fatalf("approved skill = %+v, %v", got, err)
+	}
+	if len(e.drv.execStdinCalls) == 0 {
+		t.Fatalf("approve should trigger installer sync")
+	}
+	if len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("approve should direct-sync, not reconcile: %v", e.reconcile.podIDs)
+	}
+}
+
+func TestSkillAPI_RejectPendingSkillSoftDeletes(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+
+	skillID := ingestPrivateSkill(t, e, alice, "reject-skill")
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/"+skillID+"/reject", "")
+	assertStatus(t, rr, http.StatusOK)
+
+	got, err := e.store.GetSkillAsset(skillID)
+	if err != nil || got.Status != repo.SkillStatusDeleted {
+		t.Fatalf("rejected skill = %+v, %v", got, err)
+	}
+}
+
+func TestSkillAPI_ApproveRejectNonPendingSkillNotFound(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	createTestPlatform(t, e.store, "xdr", "XDR")
+	publicSkill := createSkillAsset(t, e.store, repo.SkillAsset{
+		Name: "xdr-query", Scope: repo.SkillScopePublic,
+		SourcePath: "/opt/openclaw-skills/xdr-query", ManifestHash: "sha256:public",
+		PlatformsJSON: `["xdr"]`,
+	})
+
+	rr := e.do(http.MethodPost, "/api/v1/skills/"+publicSkill.SkillID+"/approve", "")
+	assertStatus(t, rr, http.StatusNotFound)
+	rr = e.do(http.MethodPost, "/api/v1/skills/"+publicSkill.SkillID+"/reject", "")
+	assertStatus(t, rr, http.StatusNotFound)
+}
+
+func ingestPrivateSkill(t *testing.T, e *testEnv, user repo.HumanUser, name string) string {
+	t.Helper()
+	bundle := makeSkillBundle(t, name, map[string]any{"name": name})
+	body := fmt.Sprintf(`{"agentId":%q,"bundleFormat":"tar.gz","bundle":%q}`,
+		user.AgentID, base64.StdEncoding.EncodeToString(bundle))
+	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
+	rr := httptest.NewRecorder()
+	e.h.ServeHTTP(rr, req)
+	assertStatus(t, rr, http.StatusOK)
+	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
+		Scope: repo.SkillScopePrivate, HumanUserID: user.HumanUserID,
+	})
+	if err != nil || len(assets) == 0 {
+		t.Fatalf("ingest assets = %+v, %v", assets, err)
+	}
+	return assets[0].SkillID
 }
 
 func TestSkillAPI_PrivateIngestDoesNotBumpConfigGeneration(t *testing.T) {

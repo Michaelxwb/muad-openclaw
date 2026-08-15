@@ -38,7 +38,8 @@ import { PublicSkillUploadDialog } from "./skills/PublicSkillUploadDialog";
 import styles from "./Skills.module.css";
 
 type ScopeFilter = SkillScope | "";
-type StatusFilter = Extract<SkillStatus, "active" | "disabled"> | "";
+type StatusFilter = Extract<SkillStatus, "active" | "disabled" | "pending"> | "";
+type SkillActionKind = "status" | "approve" | "reject";
 
 interface DetailFieldRow {
   label: string;
@@ -49,6 +50,7 @@ interface DetailFieldRow {
 
 interface SkillStatusAction {
   skill: SkillAsset;
+  kind: SkillActionKind;
   status: SkillStatus;
   label: string;
   danger?: boolean;
@@ -103,7 +105,13 @@ export function Skills() {
     if (!pendingAction) return;
     setActionBusy(true);
     try {
-      await api.updateSkill(pendingAction.skill.skillId, { status: pendingAction.status });
+      if (pendingAction.kind === "approve") {
+        await api.approveSkill(pendingAction.skill.skillId);
+      } else if (pendingAction.kind === "reject") {
+        await api.rejectSkill(pendingAction.skill.skillId);
+      } else {
+        await api.updateSkill(pendingAction.skill.skillId, { status: pendingAction.status });
+      }
       if (!mountedRef.current) return;
       Toast.warning(
         t("skill.applyStatusToast", {
@@ -381,6 +389,7 @@ function SkillToolbar({
       { value: "", label: t("skill.statusFilterAll") },
       { value: "active", label: t("status.active") },
       { value: "disabled", label: t("status.disabled") },
+      { value: "pending", label: t("status.pending") },
     ],
     [t],
   );
@@ -645,10 +654,24 @@ function SkillRowActions({
 }) {
   const { t } = useTranslation();
   const actions = skillStatusActions(skill);
+  const [downloading, setDownloading] = useState(false);
+  const download = async () => {
+    setDownloading(true);
+    try {
+      await api.downloadSkill(skill.skillId, skill.name);
+    } catch (caught) {
+      Toast.error(errorMessage(caught, "skill.downloadFailed"));
+    } finally {
+      setDownloading(false);
+    }
+  };
   return (
     <Space spacing={4}>
       <Button size="small" onClick={() => onOpen(skill)}>
         {t("skill.detail")}
+      </Button>
+      <Button size="small" loading={downloading} onClick={() => void download()}>
+        {t("skill.download")}
       </Button>
       {actions.map((action) => (
         <Button
@@ -668,14 +691,31 @@ function SkillRowActions({
 function skillStatusActions(skill: SkillAsset): SkillStatusAction[] {
   if (skill.systemProtected) return [];
   const actions: SkillStatusAction[] = [];
+  if (skill.status === "pending") {
+    actions.push({ skill, kind: "approve", status: "active", label: i18n.t("skill.approve") });
+    actions.push({
+      skill,
+      kind: "reject",
+      status: "deleted",
+      label: i18n.t("skill.reject"),
+      danger: true,
+    });
+    return actions;
+  }
   if (skill.status === "active") {
-    actions.push({ skill, status: "disabled", label: i18n.t("status.disable") });
+    actions.push({ skill, kind: "status", status: "disabled", label: i18n.t("status.disable") });
   }
   if (skill.status === "disabled") {
-    actions.push({ skill, status: "active", label: i18n.t("status.enable") });
+    actions.push({ skill, kind: "status", status: "active", label: i18n.t("status.enable") });
   }
   if (skill.status !== "deleted" && skill.scope === "public") {
-    actions.push({ skill, status: "deleted", label: i18n.t("common.delete"), danger: true });
+    actions.push({
+      skill,
+      kind: "status",
+      status: "deleted",
+      label: i18n.t("common.delete"),
+      danger: true,
+    });
   }
   return actions;
 }
@@ -727,13 +767,22 @@ function ScopeTag({ scope }: { scope: SkillScope }) {
 
 function StatusTag({ status }: { status: SkillStatus }) {
   const { t } = useTranslation();
-  const color = status === "active" ? "green" : status === "disabled" ? "grey" : "orange";
+  const color =
+    status === "active"
+      ? "green"
+      : status === "disabled"
+        ? "grey"
+        : status === "pending"
+          ? "amber"
+          : "orange";
   const label =
     status === "active"
       ? t("status.active")
       : status === "disabled"
         ? t("status.disabled")
-        : t("skill.statusDeleted");
+        : status === "pending"
+          ? t("status.pending")
+          : t("skill.statusDeleted");
   return <Tag color={color}>{label}</Tag>;
 }
 

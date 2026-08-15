@@ -268,7 +268,8 @@ test("submit stubs are written inside the agent workspace at .openclaw/tmp", asy
 
   // 桩落 <workspace>/.openclaw/tmp/：位于 agent workspace 内（OpenClaw 原生 read
   // 工具的 sandbox roots=[workspace, ...skillDirs]），模型读改写后的桩不会被原生
-  // 沙箱拦截；skill-outputs 在 workspace 外，是双执行根因，此处绝不落桩。
+  // 沙箱拦截。skill-outputs 现在也在 workspace 内，但桩用独立 scratch 目录，
+  // 不与 skill 输出文件混放。
   assert.equal(dirname(rewritten.params.path), join(workspace, ".openclaw", "tmp"));
   assert.match(rewritten.params.path, /_longtask_submit_[0-9a-f-]+\.md$/u);
   assert.ok(existsSync(rewritten.params.path), "submit stub exists under .openclaw/tmp");

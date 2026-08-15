@@ -404,6 +404,10 @@ const zh = {
     statusDeleteHint:
       "删除会移除 Console 管理的 Public Skill 目录；应用 Skill 后会从所有 Pod 的公共 Skill 目录移除。",
     statusDeleted: "已删除",
+    approve: "批准",
+    reject: "拒绝",
+    download: "下载",
+    downloadFailed: "下载失败",
     entryType: "入口类型",
     sourcePath: "来源路径",
     detailTitle: "Skill 详情",

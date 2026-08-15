@@ -414,6 +414,10 @@ const en: AppLocale = {
     statusDeleteHint:
       "Deleting removes the Console-managed Public Skill directory; after applying skills it will be removed from the public skill directory of all Pods.",
     statusDeleted: "Deleted",
+    approve: "Approve",
+    reject: "Reject",
+    download: "Download",
+    downloadFailed: "Download failed",
     entryType: "Entry type",
     sourcePath: "Source path",
     detailTitle: "Skill Details",

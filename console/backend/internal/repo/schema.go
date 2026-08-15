@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS skill_assets (
 	display_name TEXT NOT NULL,
 	version TEXT NOT NULL DEFAULT '',
 	status TEXT NOT NULL DEFAULT 'active'
-		CHECK (status IN ('active','disabled','deleted')),
+		CHECK (status IN ('active','disabled','pending','deleted')),
 	source_path TEXT NOT NULL,
 	manifest_hash TEXT NOT NULL,
 	manifest_json TEXT NOT NULL DEFAULT '{}',
@@ -275,6 +275,9 @@ func (s *Store) migrate() error {
 	if err := s.migratePodAgnosticUsers(); err != nil {
 		return err
 	}
+	if err := s.migrateSkillAssetStatusPending(); err != nil {
+		return err
+	}
 	if err := s.migrateSkillExecutionRecords(); err != nil {
 		return err
 	}
@@ -283,6 +286,93 @@ func (s *Store) migrate() error {
 	}
 	return nil
 }
+
+// migrateSkillAssetStatusPending rebuilds skill_assets to add 'pending' to the
+// status CHECK constraint (SQLite cannot ALTER a CHECK). Existing rows are copied
+// unchanged; fresh databases already carry the updated DDL.
+func (s *Store) migrateSkillAssetStatusPending() error {
+	allows, err := skillAssetsAllowsPending(s.db)
+	if err != nil {
+		return err
+	}
+	if allows {
+		return nil
+	}
+	if _, err := s.db.Exec(`PRAGMA foreign_keys=OFF`); err != nil {
+		return fmt.Errorf("disable foreign keys for skill status migration: %w", err)
+	}
+	defer func() { _, _ = s.db.Exec(`PRAGMA foreign_keys=ON`) }()
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin skill status migration: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(skillAssetStatusPendingStatements); err != nil {
+		return fmt.Errorf("migrate skill status: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit skill status migration: %w", err)
+	}
+	return nil
+}
+
+func skillAssetsAllowsPending(db *sql.DB) (bool, error) {
+	var one int
+	err := db.QueryRow(`SELECT 1 FROM sqlite_master
+		WHERE type = 'table' AND name = 'skill_assets' AND sql LIKE "%'pending'%"`).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("inspect skill_assets schema: %w", err)
+	}
+	return true, nil
+}
+
+const skillAssetStatusPendingStatements = `
+ALTER TABLE skill_assets RENAME TO skill_assets_legacy;
+CREATE TABLE skill_assets (
+	skill_id TEXT PRIMARY KEY,
+	name TEXT NOT NULL,
+	scope TEXT NOT NULL CHECK (scope IN ('system','public','private')),
+	human_user_id TEXT,
+	display_name TEXT NOT NULL,
+	version TEXT NOT NULL DEFAULT '',
+	status TEXT NOT NULL DEFAULT 'active'
+		CHECK (status IN ('active','disabled','pending','deleted')),
+	source_path TEXT NOT NULL,
+	manifest_hash TEXT NOT NULL,
+	manifest_json TEXT NOT NULL DEFAULT '{}',
+	entry_type TEXT NOT NULL DEFAULT 'managed',
+	platforms_json TEXT NOT NULL DEFAULT '[]',
+	browser_required INTEGER NOT NULL DEFAULT 0 CHECK (browser_required IN (0,1)),
+	progress_supported INTEGER NOT NULL DEFAULT 0 CHECK (progress_supported IN (0,1)),
+	system_protected INTEGER NOT NULL DEFAULT 0 CHECK (system_protected IN (0,1)),
+	source TEXT NOT NULL DEFAULT 'platform',
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	FOREIGN KEY (human_user_id) REFERENCES human_users(human_user_id) ON DELETE CASCADE,
+	CHECK (
+		(scope = 'private' AND human_user_id IS NOT NULL)
+		OR (scope IN ('system','public') AND human_user_id IS NULL)
+	)
+);
+INSERT INTO skill_assets (
+	skill_id, name, scope, human_user_id, display_name, version, status, source_path,
+	manifest_hash, manifest_json, entry_type, platforms_json, browser_required,
+	progress_supported, system_protected, source, created_at, updated_at
+) SELECT skill_id, name, scope, human_user_id, display_name, version, status, source_path,
+	manifest_hash, manifest_json, entry_type, platforms_json, browser_required,
+	progress_supported, system_protected, source, created_at, updated_at FROM skill_assets_legacy;
+DROP TABLE skill_assets_legacy;
+CREATE INDEX IF NOT EXISTS idx_skill_assets_scope_name ON skill_assets(scope, name);
+CREATE INDEX IF NOT EXISTS idx_skill_assets_human_user ON skill_assets(human_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_skill_assets_status ON skill_assets(status, updated_at);
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_skill_public_name
+	ON skill_assets(name) WHERE scope IN ('system','public') AND status != 'deleted';
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_skill_private_user_name
+	ON skill_assets(human_user_id, name) WHERE scope = 'private' AND status != 'deleted';
+`
 
 func (s *Store) migrateLLMModelSupportsTools() error {
 	exists, err := columnExists(s.db, "llm_model_configs", "supports_tools")

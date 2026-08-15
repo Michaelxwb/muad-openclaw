@@ -160,7 +160,7 @@ function registerLongTaskHooks(api, config, manager) {
 function registerSkillOutputHooks(api, manager) {
   const hooks = createSkillOutputHooks({
     manager,
-    resolveStateRoot: (agentId) => resolveStateRoot(api, agentId),
+    resolveWorkspace: (agentId) => resolveWorkspace(api, agentId),
   });
   api.on("resolve_exec_env", hooks.resolveExecEnv, { priority: -800, timeoutMs: 1_000 });
 }
@@ -193,11 +193,6 @@ function resolveWorkspace(api, agentId) {
   } catch {
     return "";
   }
-}
-
-function resolveStateRoot(api, agentId) {
-  const workspace = resolveWorkspace(api, agentId);
-  return workspace ? path.dirname(workspace) : "";
 }
 
 export function installBrowserLease(limit, globals = globalThis) {
@@ -284,7 +279,7 @@ export function createAgentPathResolver(api) {
         workspace: path.resolve(workspace),
         agentDir: path.resolve(agentDir),
         sessionStore: path.resolve(path.dirname(agentDir), "session-store"),
-        outputs: path.resolve(path.dirname(workspace), "skill-outputs", agentId),
+        outputs: path.resolve(workspace, "skill-outputs"),
       };
     } catch {
       return null;

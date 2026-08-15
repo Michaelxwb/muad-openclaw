@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { explicitSkillName } from "./skill-hooks.mjs";
+import { taskIdLine } from "./long-task-manager.mjs";
 
 const SKILL_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;
 const READ_PATH_KEYS = ["path", "file_path", "filePath", "file"];
@@ -27,12 +28,14 @@ Do not output any special marker or machine-readable first line.
 // 确认文案国际化：按 guard config.locale（默认 zh）渲染；deploy 时经 runtime.locale 下发。
 const CONFIRMATION_TEMPLATES = {
   zh: ({ skillName, taskId, queued, active }) => {
-    const taskIdLine = taskId ? `任务ID：${taskId}\n` : "";
-    return `任务已提交：${skillName}\n${taskIdLine}当前排队：${queued} ｜ 执行中：${active}\n完成后结果会自动推送给你，可继续发消息。`;
+    const idLine = taskIdLine("zh", taskId);
+    const idLineWithNewline = idLine ? `${idLine}\n` : "";
+    return `任务已提交：${skillName}\n${idLineWithNewline}当前排队：${queued} ｜ 执行中：${active}\n完成后结果会自动推送给你，可继续发消息。`;
   },
   en: ({ skillName, taskId, queued, active }) => {
-    const taskIdLine = taskId ? `Task ID: ${taskId}\n` : "";
-    return `Task submitted: ${skillName}\n${taskIdLine}Queued: ${queued} | Running: ${active}\nResults will be pushed to you when done; keep messaging freely.`;
+    const idLine = taskIdLine("en", taskId);
+    const idLineWithNewline = idLine ? `${idLine}\n` : "";
+    return `Task submitted: ${skillName}\n${idLineWithNewline}Queued: ${queued} | Running: ${active}\nResults will be pushed to you when done; keep messaging freely.`;
   },
 };
 
@@ -60,6 +63,7 @@ export function createLongTaskHooks({
       const submit = safeSubmit(() => submitLongTask(manager, grant, event, ctx, {
         originalPrompt: promptText(event),
         stripSkillPrefix: true,
+        locale,
       }));
       if (!submit) return { handled: true, text: "Long Task submission failed.", reason: "muad-long-task-submit-failed" };
       return { handled: true, text: queuedReply(submit, grant.name, locale), reason: "muad-long-task-submitted" };
@@ -106,8 +110,7 @@ export function createLongTaskHooks({
       // ones like Mattermost that bypass outbound hooks — receives the identical
       // message with task ID and queue counts. The stub lives in the writable
       // <workspace>/.openclaw/tmp/ (the read-only Skill mount cannot hold runtime
-      // files; skill-outputs is outside the native read-tool sandbox) until
-      // agent_end / TTL.
+      // files) until agent_end / TTL.
       const turn = turnContexts.get(runId) ?? {};
       const taskId = randomUUID();
       const originalPrompt = textValue(turn.prompt) || promptText(event);
@@ -117,6 +120,7 @@ export function createLongTaskHooks({
         sessionKey: turn.sessionKey,
         agentId: turn.agentId,
         peerId: turn.peerId,
+        locale,
       }));
       if (!submit) {
         diag(`read submit failed runId=${runId}; serial execution fallback`);
@@ -211,7 +215,7 @@ function rewriteReadTo(event, read, stubPath) {
 // stripSkillPrefix 剥离 /skill:<name> 前缀作为 objective；sessionKey/agentId/peerId
 // 优先取 turn 上下文（before_agent_run 已解析），缺省再回落 event/ctx。
 function submitLongTask(manager, grant, event, ctx, options = {}) {
-  const { taskId, stripSkillPrefix = false, originalPrompt } = options;
+  const { taskId, stripSkillPrefix = false, originalPrompt, locale = "zh" } = options;
   return manager.submit({
     ...(taskId ? { taskId } : {}),
     skillName: grant.name,
@@ -222,6 +226,7 @@ function submitLongTask(manager, grant, event, ctx, options = {}) {
     agentId: textValue(options.agentId) || resolveAgentId(event, ctx),
     peerId: textValue(options.peerId) || resolvePeerId(event, ctx),
     replyChannel: resolveReplyChannel(event, ctx),
+    locale,
   });
 }
 
@@ -250,7 +255,7 @@ function normalizedLocale(value) {
 
 // 桩目录 = <workspace>/.openclaw/tmp/：位于 agent workspace 内，OpenClaw 原生
 // read 工具（roots=[workspace, ...skillDirs]）放行，可写（Skill 挂载只读不可写）。
-// SKILL_OUTPUT_DIR 仍在 <stateRoot>/skill-outputs/<agentId>/<peerId>/，不受影响。
+// SKILL_OUTPUT_DIR 现在位于 <workspace>/skill-outputs/<peerId>/，不受影响。
 function stubOutputDir(resolveWorkspace, agentId) {
   const workspace = typeof resolveWorkspace === "function" ? resolveWorkspace(agentId) : "";
   if (!workspace || !path.isAbsolute(workspace)) return "";

@@ -11,8 +11,8 @@ test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for
     context(),
   );
 
-  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:longtask:task-9", SKILL_OUTPUT_DIR: "/state/skill-outputs/alice/wx-9" });
-  assert.deepEqual(mkdirs, [{ dir: "/state/skill-outputs/alice/wx-9", opts: { recursive: true, mode: 0o700 } }]);
+  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:longtask:task-9", SKILL_OUTPUT_DIR: "/state/workspace-alice/skill-outputs/wx-9" });
+  assert.deepEqual(mkdirs, [{ dir: "/state/workspace-alice/skill-outputs/wx-9", opts: { recursive: true, mode: 0o700 } }]);
 });
 
 test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for a normal business session from the session key", async () => {
@@ -23,8 +23,8 @@ test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for
     context(),
   );
 
-  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:wecom:direct:wx-1", SKILL_OUTPUT_DIR: "/state/skill-outputs/alice/wx-1" });
-  assert.deepEqual(mkdirs, [{ dir: "/state/skill-outputs/alice/wx-1", opts: { recursive: true, mode: 0o700 } }]);
+  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:wecom:direct:wx-1", SKILL_OUTPUT_DIR: "/state/workspace-alice/skill-outputs/wx-1" });
+  assert.deepEqual(mkdirs, [{ dir: "/state/workspace-alice/skill-outputs/wx-1", opts: { recursive: true, mode: 0o700 } }]);
 });
 
 test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for the main session", async () => {
@@ -35,7 +35,7 @@ test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for
     context({ agentId: "main", sessionKey: "agent:main:main" }),
   );
 
-  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:main:main", SKILL_OUTPUT_DIR: "/state/skill-outputs/main/main" });
+  assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:main:main", SKILL_OUTPUT_DIR: "/state/workspace-main/skill-outputs/main" });
 });
 
 test("resolve_exec_env fails closed when the session key agent mismatches the trusted agent context", async () => {
@@ -76,8 +76,8 @@ test("resolve_exec_env still injects MUAD_SESSION_KEY when no output dir is deri
   assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:longtask:missing-task" });
 });
 
-test("resolve_exec_env still injects MUAD_SESSION_KEY when the state root cannot be resolved", async () => {
-  const { hooks } = setupHooks({ resolveStateRoot: () => "" });
+test("resolve_exec_env still injects MUAD_SESSION_KEY when the workspace cannot be resolved", async () => {
+  const { hooks } = setupHooks({ resolveWorkspace: () => "" });
 
   const env = await hooks.resolveExecEnv(
     { toolName: "exec", sessionKey: "agent:alice:wecom:direct:wx-1" },
@@ -127,13 +127,13 @@ test("resolve_exec_env sanitizes peerId into a directory segment", async () => {
   );
 
   // user: prefix stripped, remaining ":" and unsafe chars become "-"; unicode kept.
-  assert.equal(env.SKILL_OUTPUT_DIR, "/state/skill-outputs/alice/team-内部-客户");
+  assert.equal(env.SKILL_OUTPUT_DIR, "/state/workspace-alice/skill-outputs/team-内部-客户");
 });
 
 function setupHooks(overrides = {}) {
   const mkdirs = [];
   const hooks = createSkillOutputHooks({
-    resolveStateRoot: () => "/state",
+    resolveWorkspace: (agentId) => `/state/workspace-${agentId}`,
     manager: { resolvePeerForTaskId: () => "" },
     mkdir: (dir, opts) => mkdirs.push({ dir, opts }),
     ...overrides,

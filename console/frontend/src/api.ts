@@ -363,6 +363,33 @@ export const api = {
       `/skills/${segment(skillId)}`,
       input,
     ),
+  approveSkill: (skillId: string) =>
+    request<{ skill: SkillAsset }>("POST", `/skills/${segment(skillId)}/approve`),
+  rejectSkill: (skillId: string) =>
+    request<{ skill: SkillAsset }>("POST", `/skills/${segment(skillId)}/reject`),
+  downloadSkill: async (skillId: string, name: string): Promise<void> => {
+    const headers: Record<string, string> = { "Accept-Language": i18n.language };
+    const currentToken = token.get();
+    if (currentToken) headers.Authorization = `Bearer ${currentToken}`;
+    const path = `/skills/${segment(skillId)}/download`;
+    const response = await fetch(BASE + path, { headers });
+    if (response.status === 401) {
+      handleUnauthorized(path, Boolean(currentToken));
+    }
+    if (!response.ok) {
+      const raw = await response.text();
+      throw errorFromResponse(parseResponseBody(raw, response.status), response.status);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${name}.tar.gz`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
   listHumanUserSkills: (humanUserId: string, query: { q?: string; status?: string } = {}) =>
     request<ListResult<EffectiveSkill>>(
       "GET",

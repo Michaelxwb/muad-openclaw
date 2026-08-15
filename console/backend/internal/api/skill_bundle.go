@@ -676,6 +676,69 @@ func hashSkillDirectory(skillDir string) (string, error) {
 	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+// tarSkillDirectory archives a Skill directory into a .tar.gz byte slice using
+// the same relative-path rules as upload bundles, so an admin can inspect the
+// exact code before approving a pending Skill.
+func tarSkillDirectory(skillDir string) ([]byte, error) {
+	var buffer bytes.Buffer
+	gzipWriter := gzip.NewWriter(&buffer)
+	tarWriter := tar.NewWriter(gzipWriter)
+	err := filepath.WalkDir(skillDir, func(item string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.Type()&fs.ModeSymlink != 0 {
+			return skillBundleErrorf(
+				errcode.SkillBundleLink,
+				"Skill 目录里的路径 %q 是链接，无法打包下载",
+				"Skill directory path %q is a link and cannot be archived",
+				archiveDisplayPath(skillDir, item),
+			)
+		}
+		relative, err := filepath.Rel(skillDir, item)
+		if err != nil {
+			return err
+		}
+		relative = filepath.ToSlash(relative)
+		if relative == "." {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		header, err := tar.FileInfoHeader(info, "")
+		if err != nil {
+			return err
+		}
+		header.Name = relative
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		content, err := os.ReadFile(item)
+		if err != nil {
+			return err
+		}
+		_, err = tarWriter.Write(content)
+		return err
+	})
+	if err != nil {
+		_ = tarWriter.Close()
+		_ = gzipWriter.Close()
+		return nil, err
+	}
+	if err := tarWriter.Close(); err != nil {
+		return nil, err
+	}
+	if err := gzipWriter.Close(); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
 func readSkillManifest(path string) (skillBundleManifest, bool, error) {
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
