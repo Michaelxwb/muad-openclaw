@@ -9,6 +9,8 @@ tools/session-manager/dist/
 .DS_Store
 .idea/
 .local/
+.go-cache/
+.docker/
 
 # skill 打包产物（本地上传/测试生成，不入库）
 skills/*.zip

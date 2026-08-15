@@ -1,5 +1,7 @@
+# ⚠️ 已废弃：本模板属于旧版手动开通流（provision-user-k8s.sh），worker 镜像要求
+# Console 下发的 Runtime DTO（MUAD_RUNTIME_CONFIG），请改用 Console 的 K8s
+# RuntimeDriver 开通用户。本文件仅供 MUAD_ALLOW_LEGACY_PROVISION=1 时参考。
 # 每用户 k8s 清单模板（provision-user-k8s.sh 渲染 __USER__ / __IMAGE__）。
-# 复用与 Docker 版完全相同的镜像 + 环境变量契约——载体从 .env 换成 Secret，契约不变。
 # 渲染时占位：__USER__（租户）、__IMAGE__（镜像）、__SECRET_*__（base64 凭证，由脚本注入）
 ---
 apiVersion: v1
@@ -9,13 +11,10 @@ metadata:
   labels: { app: muad-openclaw, muad-user: "__USER__" }
 type: Opaque
 stringData:
-  # 外部面环境变量契约（与 Docker 版一致）
+  # 外部面环境变量契约（与 Docker 版一致）；LLM_* 已移除（pod 侧无消费者，
+  # 模型只能经 Console DTO providers 下发）
   WECOM_BOT_ID: "__WECOM_BOT_ID__"
   WECOM_SECRET: "__WECOM_SECRET__"
-  LLM_PROVIDER: "__LLM_PROVIDER__"
-  LLM_API_KEY: "__LLM_API_KEY__"
-  LLM_MODEL: "__LLM_MODEL__"
-  LLM_BASE_URL: "__LLM_BASE_URL__"
   OPENCLAW_GATEWAY_TOKEN: "__GATEWAY_TOKEN__"
 ---
 apiVersion: apps/v1

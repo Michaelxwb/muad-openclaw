@@ -42,7 +42,7 @@ runtimeDriver: k8s
 masterKey: "<生成: openssl rand -hex 32>"
 adminUser: admin
 adminPassword: "<你的密码>"
-defaultImage: ghcr.io/michaelxwb/muad-openclaw:0.1.1
+defaultImage: ghcr.io/michaelxwb/muad-openclaw:latest
 k8sNamespace: muad
 k8sStateSize: 3Gi
 collectIntervalSec: 30
@@ -54,8 +54,8 @@ EOF
 # 3.2 部署
 kubectl create namespace muad
 kubectl -n muad create secret generic muad-console-config --from-file=config.yaml
-# 把 console 的 Deployment 镜像改成最新版
-sed 's|image: ghcr.io/michaelxwb/muad-console:latest|image: ghcr.io/michaelxwb/muad-console:0.1.9|' k8s/console.yaml | kubectl apply -f -
+# 应用 console Deployment（manifest 默认 latest；要固定版本先 kubectl set image）
+kubectl apply -f k8s/console.yaml
 
 # 3.3 等就绪
 kubectl -n muad get pods -w    # Ctrl+C 退出
@@ -92,4 +92,4 @@ kubectl delete namespace muad    # 删全部资源
 
 ---
 
-*当前最新镜像：console `0.1.9`，worker `0.1.1`。*
+*镜像版本：manifest 默认 `latest`；如需固定版本，用 `kubectl set image` 指定最近一次 CI 推送的 tag（见仓库 Actions 页 ghcr.io/<owner>/muad-openclaw / muad-console）。*

@@ -96,6 +96,8 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: console
+          # 镜像路径含 owner；fork/迁移仓库时替换为自有 GHCR 路径：
+          #   kubectl set image deployment/muad-console console=ghcr.io/<owner>/muad-console:<tag>
           image: ghcr.io/michaelxwb/muad-console:latest
           securityContext:
             allowPrivilegeEscalation: false

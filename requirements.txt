@@ -1,5 +1,6 @@
 # Python 业务依赖（脚本类 skill 运行时）
-# 手动维护：脚本类 skill 需要什么包就加什么；改动后重建基础镜像生效
+# 手动维护：脚本类 skill 需要什么包就加什么；改动后重建 **app 镜像** 生效
+# （Dockerfile 在 app 层执行 pip3 install -r，无需重建 base 镜像）
 requests>=2.31
 openpyxl>=3.1.0
 PyYAML>=6.0

@@ -73,9 +73,11 @@ Pod ── Runtime generation / service token / state volume
 | `runtime.stateDir` | `CONSOLE_RUNTIME_STATE_DIR` | `/home/node/.openclaw` | Worker 状态挂载点 |
 | `runtime.publicSkillsDir` | `CONSOLE_RUNTIME_PUBLIC_SKILLS_DIR` | `/opt/openclaw-skills` | Worker Public Skill 目录 |
 | `docker.network` | `MUAD_NET` | `muad-net` | Console 与 Worker 共享网络 |
-| `resources.memLimit/cpuLimit/restartPolicy` | `CONSOLE_RESOURCE_*` | `3g` / `2` / `unless-stopped` | Pod 默认资源 |
+| `resources.memLimit/cpuLimit/restartPolicy` | `CONSOLE_RESOURCE_*` | `3g` / `2` / `unless-stopped` | Pod 默认资源（资源键**唯一入口**是 resources 块；遗留 runtimeDefaults 块中的同名键会被覆盖，勿混用） |
 | `resources.maxSkillConcurrency` | `CONSOLE_RUNTIME_MAX_SKILL_CONCURRENCY` | `2` | Pod Skill 并发上限 |
 | `resources.maxBrowserConcurrency` | `CONSOLE_RUNTIME_MAX_BROWSER_CONCURRENCY` | `2` | Pod 浏览器并发 |
+| `resources.maxLongTaskConcurrency` | `CONSOLE_RUNTIME_MAX_LONG_TASK_CONCURRENCY` | `2` | 每 user-agent 池长任务并发上限 |
+| `runtimeDefaults.locale` | `CONSOLE_RUNTIME_LOCALE` | `zh` | 运行时确认文案语言（zh/en） |
 | `browser.cdpPortStart/end` | `CONSOLE_RUNTIME_BROWSER_CDP_PORT_START/END` | `18802/65535` | 用户浏览器端口池 |
 | `k8s.namespace` | `K8S_NAMESPACE` | `muad` | Worker namespace |
 | `k8s.skillsPVC` | `K8S_SKILLS_PVC` | 空 | Public Skill RWX PVC 名 |
@@ -83,7 +85,7 @@ Pod ── Runtime generation / service token / state volume
 | `k8s.skillsStorageClass` | `K8S_SKILLS_STORAGE_CLASS` | 空 | 可动态创建 RWX PVC 的 StorageClass |
 | `k8s.skillsSize` | `K8S_SKILLS_SIZE` | `5Gi` | Public Skill PVC 容量 |
 | `k8s.storageClass/stateSize` | `K8S_STORAGE_CLASS/K8S_STATE_SIZE` | 集群默认 / `5Gi` | 每 Pod state PVC |
-| `k8s.workerNodeSelector` / Helm `workerNodeSelector` | `K8S_WORKER_NODE_SELECTOR` | 空 | Worker Pod 节点选择；env 形如 `app=openclaw,kubernetes.io/os=linux` |
+| `k8s.workerNodeSelector` | `K8S_WORKER_NODE_SELECTOR` | 空 | Worker Pod 节点选择；env 形如 `app=openclaw,kubernetes.io/os=linux` |
 
 完整模板见 [`backend/config.example.yaml`](backend/config.example.yaml)。
 
@@ -124,7 +126,7 @@ k8s:
 
 - 每个 Worker Pod 使用独立 state PVC 保存用户工作区、会话、浏览器 Profile 和 Private Skill。
 - Public Skill 使用共享 RWX PVC。Console 读写挂载同一个 PVC 到 `publicSkillsMountPath`，上传源默认保存到 `<publicSkillsMountPath>/.muad-skill-assets`，Worker 只读挂载 active 子目录。
-- `workerNodeSelector` 只作用于 Console 创建的 Worker Pod；Helm 部署可用 `--set workerNodeSelector.app=openclaw` 注入。Console 自身的调度由 Helm values 的 `nodeSelector` / `affinity` / `tolerations` 控制。
+- `workerNodeSelector` 只作用于 Console 创建的 Worker Pod；仓库目前提供原生 k8s 清单（`k8s/console.yaml`），未内置 Helm chart，节点选择直接改 `k8s.workerNodeSelector` 配置即可。
 - `skillsPVC`、`publicSkillsMountPath` 和 `skillsStorageClass` 已配置时，Skill 管理页会检查 Public Skill 存储状态；PVC Ready 前禁止上传 Public Skill。
 - 使用 `k8s/console.yaml` 部署时，需要先准备好与 `k8s.skillsPVC` 同名的 RWX PVC，否则 Console Pod 会因 `/public` 挂载失败无法启动。
 - 只有 RWO 的默认 `local-path` 不能作为多 Pod Public Skill 共享卷。本地单节点可使用仓库 `k8s/` 下的 hostPath 静态 PV 进行功能测试。

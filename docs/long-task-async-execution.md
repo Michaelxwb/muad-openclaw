@@ -158,7 +158,7 @@ openclaw agent \
 - 运行时队列在 guard 内存 + JSONL 运行态（状态目录，`0o600`）；manager 放在 `globalThis[Symbol.for("muad.longtask.manager")]`，插件热 reload 不丢队列、不重复 spawn。
 - JSONL 只作为恢复用运行态日志，按最新 task 状态定期压缩；过期终态按终态保留窗口清理，避免无限增长。
 - 每次状态变更经 guard 主动推送全量快照到 console `POST /internal/v1/long-tasks`，落账到 `long_task_tasks`（§8.2）；推送失败仅记日志，不影响 skill 执行。
-- gateway/pod 进程重启时无法继续持有 child handle：启动 reconcile 将遗留 `queued/running` 标记为 `failed`（`terminal_reason="pod restart"`），reconcile 结果进入快照，DB 镜像随之收敛，并尽量通知用户。
+- gateway/pod 进程重启时无法继续持有 child handle：启动 reconcile 将遗留 `queued/running` 标记为 `failed`（`terminal_reason="runtime restarted before the long task finished"`、`errorCode="long_task_interrupted"`，与实现 long-task-manager.mjs 一致），reconcile 结果进入快照，DB 镜像随之收敛，并尽量通知用户。
 - MVP 不做 detached child；因此不声明“pod 重启后已 spawn 子进程仍会投递”。后续若要 detached，需引入 `orphaned/unknown` 或独立 wrapper 回写终态。
 
 ### 6.6 投递

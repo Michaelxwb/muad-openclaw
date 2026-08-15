@@ -1,11 +1,26 @@
 #!/usr/bin/env bash
-# 管理员两步起一个用户容器：
+# ⚠️ 已废弃：本脚本是旧版"每用户手动开通"流程，不再作为受支持部署路径。
+# worker 镜像入口（entrypoint.sh → inject-env.mjs）要求 Console 下发的
+# MUAD_RUNTIME_CONFIG Runtime DTO（含 agents/providers/guard 配置与 service
+# token），本脚本无法生成——容器必然 CrashLoop。请改用 Console 的 Pod 管理
+# （Docker/K8s RuntimeDriver）开通用户。
+# 仅当你有完整 DTO 下发通道且确需保留旧流时，设 MUAD_ALLOW_LEGACY_PROVISION=1 强制运行。
+#
+# 历史用法：
 #   1) ./provision-user.sh <userId> --init   # 生成 users/<userId>/config 模板，去填
 #   2) ./provision-user.sh <userId>          # 读 config → 起容器（起来即用）
 #   ./provision-user.sh <userId> --down      # 停该用户容器（状态保留在卷）
 # 凭证只落 users/<userId>/{config,.env}（chmod 600），不进镜像/不入 git。
 set -euo pipefail
 cd "$(dirname "$0")"
+
+if [[ "${MUAD_ALLOW_LEGACY_PROVISION:-0}" != "1" ]]; then
+  echo "FATAL: provision-user.sh 已废弃——worker 镜像要求 Console 下发的 Runtime DTO" >&2
+  echo "       （entrypoint 依赖 MUAD_RUNTIME_CONFIG，手动脚本无法提供），容器必然 CrashLoop。" >&2
+  echo "       请改用 Console 的 Pod 管理（Docker/K8s RuntimeDriver）开通用户。" >&2
+  echo "       若确需保留旧流：export MUAD_ALLOW_LEGACY_PROVISION=1 后重试。" >&2
+  exit 1
+fi
 
 USER_ID="${1:?用法: provision-user.sh <userId> [--init|--down]}"; shift || true
 IMAGE="${MUAD_OC_IMAGE:-ghcr.io/${MUAD_OC_OWNER:-OWNER}/muad-openclaw:latest}"
@@ -58,7 +73,8 @@ case "${ACTION}" in
     [[ -f "${DIR}/config" ]] || { echo "FATAL: 先 ./provision-user.sh ${USER_ID} --init 并填好 config" >&2; exit 1; }
     # KEY=VALUE only — never shell-source config (avoids bare sk- lines / injection)
     load_user_config "${DIR}/config"
-    : "${WECOM_BOT_ID:?config 缺 WECOM_BOT_ID}" "${WECOM_SECRET:?config 缺 WECOM_SECRET}" "${LLM_API_KEY:?config 缺 LLM_API_KEY}"
+    # LLM_* 已废弃（pod 侧无消费者，模型只能经 Console DTO 下发），只保留通道凭证校验。
+    : "${WECOM_BOT_ID:?config 缺 WECOM_BOT_ID}" "${WECOM_SECRET:?config 缺 WECOM_SECRET}"
     # 合成运行时 .env = config + 生成的网关 token
     umask 077
     {

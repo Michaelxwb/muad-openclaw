@@ -14,9 +14,6 @@ on:
         description: '基础镜像 tag（默认 latest；不存在则自动构建）'
         default: 'latest'
 
-env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/muad-openclaw
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -42,6 +39,7 @@ jobs:
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           BASE_IMAGE="ghcr.io/${OWNER}/muad-openclaw-base"
+          echo "owner=${OWNER}" >> "$GITHUB_OUTPUT"
           # tag push → base 镜像用相同版本号；workflow_dispatch → 用输入或 latest
           if [ "${{ github.event_name }}" = "push" ]; then
             TAG="${{ github.ref_name }}"   # e.g. v0.4.1
@@ -78,7 +76,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE }}
+          images: ghcr.io/${{ steps.base.outputs.owner }}/muad-openclaw
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -93,5 +91,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BASE_IMAGE=ghcr.io/michaelxwb/muad-openclaw-base
+            BASE_IMAGE=${{ steps.base.outputs.base_image }}
             BASE_TAG=${{ steps.base.outputs.base_tag }}

@@ -12,7 +12,8 @@ name: muad-console
 
 services:
   console:
-    image: ghcr.io/michaelxwb/muad-console:latest
+    # 镜像 owner/版本可经 MUAD_CONSOLE_IMAGE 覆盖（fork/迁移仓库时改为自己的 GHCR 路径）
+    image: ${MUAD_CONSOLE_IMAGE:-ghcr.io/michaelxwb/muad-console:latest}
     container_name: muad-console
     restart: unless-stopped
     environment:

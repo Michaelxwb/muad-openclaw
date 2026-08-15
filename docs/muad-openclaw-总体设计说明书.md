@@ -390,7 +390,7 @@ Human User 是平台用户；IM external id 是 Identity。未绑定不自动开
 
 - `POST /internal/v1/bindings/activate` — Guard  
 - `POST /internal/v1/session-credentials/resolve` — session-manager  
-- `POST /internal/v1/skill-executions` — run-skill  
+- `POST /internal/v1/skill-executions` — guard skill-audit 上报（run-skill 已移除）  
 
 ### B.2 配置 apply
 

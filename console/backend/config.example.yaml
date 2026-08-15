@@ -57,14 +57,21 @@ docker:
   network: muad-net
 
 # Pod 资源默认值；DB 中的全局/Pod 覆写优先级高于这里
+# 注意：以下 6 个键（memLimit/cpuLimit/restartPolicy/maxSkillConcurrency/
+# maxBrowserConcurrency/maxLongTaskConcurrency）**唯一入口是本 resources 块**——
+# 遗留的顶层 runtimeDefaults 块里同名键会被本块静默覆盖（配置了不生效），请勿混用。
 resources:
   memLimit: 3g
   cpuLimit: "2"
   restartPolicy: unless-stopped
   maxSkillConcurrency: 2
   maxBrowserConcurrency: 2
+  # 每 user-agent 池的长任务并发上限；env 覆盖: CONSOLE_RUNTIME_MAX_LONG_TASK_CONCURRENCY
+  maxLongTaskConcurrency: 2
 
 # Worker 运行时非资源类默认值
+# 仅两个键：locale（文案语言）与 browserCDPPort*（遗留，等价 browser 块）。
+# 不要在这里放资源键（见上方 resources 块注释）。
 runtimeDefaults:
   # 运行时文案语言（zh / en），缺省 zh；env 覆盖: CONSOLE_RUNTIME_LOCALE
   locale: zh
