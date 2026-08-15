@@ -3,6 +3,7 @@ package runtimeapply
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -39,8 +40,13 @@ type CoordinatorOptions struct {
 	MaxAttempts         int
 	NotReadyMaxAttempts int
 	RetryDelay          time.Duration
+	RescanInterval      time.Duration
 	BeforeApply         BeforeApplyHook
 }
+
+// errPodNotRunning 表示 Pod 当前不能 apply（stopped/creating 等）：协调器跳过
+// 本次同步——不重试、不写 failed，保留 pending 等 start 后的 enqueueReconcile 收敛。
+var errPodNotRunning = errors.New("runtimeapply: pod is not running")
 
 type Coordinator struct {
 	store    CoordinatorStore
@@ -72,6 +78,9 @@ func NewCoordinator(
 	}
 	if options.RetryDelay <= 0 {
 		options.RetryDelay = 2 * time.Second
+	}
+	if options.RescanInterval <= 0 {
+		options.RescanInterval = 30 * time.Second
 	}
 	return &Coordinator{
 		store: store, builder: builder, executor: executor, hook: options.BeforeApply, options: options,
@@ -128,12 +137,17 @@ func (coordinator *Coordinator) ReconcileNow(ctx context.Context, podID string) 
 	})
 }
 
-// Run recovers unconverged Pods and dispatches one serial worker per Pod.
+// Run recovers unconverged Pods and dispatches one serial worker per Pod. A
+// periodic rescan re-lists Pods needing apply so a Pod that failed its apply
+// transiently (or was created/updated without an explicit enqueue) is not
+// permanently stuck in failed/pending.
 func (coordinator *Coordinator) Run(ctx context.Context) {
 	if !coordinator.markStarted() {
 		return
 	}
 	coordinator.enqueueRecovery(ctx)
+	ticker := time.NewTicker(coordinator.options.RescanInterval)
+	defer ticker.Stop()
 	for {
 		coordinator.dispatch(ctx)
 		select {
@@ -141,8 +155,34 @@ func (coordinator *Coordinator) Run(ctx context.Context) {
 			coordinator.wg.Wait()
 			return
 		case <-coordinator.wake:
+		case <-ticker.C:
+			coordinator.rescan(ctx)
 		}
 	}
+}
+
+// rescan 周期性地把需要 apply 的 Pod 重新入队。running map 做去重：正在 apply
+// 的 Pod 不会被再次入队，避免与并发 apply 冲突。
+func (coordinator *Coordinator) rescan(ctx context.Context) {
+	pods, err := coordinator.store.ListPodsNeedingApply()
+	if err != nil {
+		log.Printf("runtime_reconcile_rescan_failed error=%v", err)
+		return
+	}
+	for _, pod := range pods {
+		coordinator.enqueueIfIdle(pod.PodID)
+	}
+}
+
+// enqueueIfIdle 只在 Pod 不在 running（无并发 apply）时置 pending；正在运行的
+// apply 不受干扰，其 worker 结束后自然回到空闲。
+func (coordinator *Coordinator) enqueueIfIdle(podID string) {
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
+	if coordinator.running[podID] {
+		return
+	}
+	coordinator.pending[podID] = true
 }
 
 func (coordinator *Coordinator) markStarted() bool {
@@ -190,6 +230,7 @@ func (coordinator *Coordinator) dispatch(ctx context.Context) {
 
 func (coordinator *Coordinator) runPod(ctx context.Context, podID string) {
 	defer coordinator.wg.Done()
+	defer coordinator.recoverRunPodPanic(podID)
 	for {
 		err := coordinator.reconcileWithRetry(ctx, podID)
 		if err != nil && ctx.Err() == nil {
@@ -198,6 +239,26 @@ func (coordinator *Coordinator) runPod(ctx context.Context, podID string) {
 		if !coordinator.repeatPending(ctx, podID) {
 			return
 		}
+	}
+}
+
+// recoverRunPodPanic 把 runPod goroutine 的 panic 转成该 Pod 的 apply 失败记录并
+// 清理 running/pending 状态，进程不退出、其余 Pod 的 apply 不受影响。已收敛的
+// Pod（AppliedGeneration >= ConfigGeneration）不覆盖为 failed。
+func (coordinator *Coordinator) recoverRunPodPanic(podID string) {
+	recovered := recover()
+	if recovered == nil {
+		return
+	}
+	log.Printf("runtime_reconcile_panic pod=%s panic=%v", podID, recovered)
+	coordinator.mu.Lock()
+	delete(coordinator.pending, podID)
+	delete(coordinator.running, podID)
+	coordinator.mu.Unlock()
+	if pod, err := coordinator.store.GetPod(podID); err == nil &&
+		pod.AppliedGeneration < pod.ConfigGeneration {
+		_ = coordinator.recordFailure(podID, pod.ConfigGeneration,
+			fmt.Errorf("reconcile panic: %v", recovered))
 	}
 }
 
@@ -222,7 +283,7 @@ func (coordinator *Coordinator) reconcileWithRetry(ctx context.Context, podID st
 		last = coordinator.RunExclusive(ctx, podID, func(runCtx context.Context) error {
 			return coordinator.reconcileOnce(runCtx, podID)
 		})
-		if last == nil || errors.Is(last, repo.ErrNotFound) {
+		if last == nil || errors.Is(last, repo.ErrNotFound) || errors.Is(last, errPodNotRunning) {
 			return nil
 		}
 		maxAttempts := coordinator.options.MaxAttempts
@@ -242,7 +303,7 @@ func (coordinator *Coordinator) reconcileWithRetry(ctx context.Context, podID st
 func (coordinator *Coordinator) reconcileImmediate(ctx context.Context, podID string) error {
 	for attempt := 1; ; attempt++ {
 		err := coordinator.reconcileOnce(ctx, podID)
-		if err == nil || errors.Is(err, repo.ErrNotFound) {
+		if err == nil || errors.Is(err, repo.ErrNotFound) || errors.Is(err, errPodNotRunning) {
 			return nil
 		}
 		if !errors.Is(err, repo.ErrGenerationConflict) || attempt >= coordinator.options.MaxAttempts {
@@ -263,6 +324,12 @@ func (coordinator *Coordinator) reconcileOnce(ctx context.Context, podID string)
 	}
 	if pod.ConfigGeneration != generation {
 		return repo.ErrGenerationConflict
+	}
+	// stopped/creating 等非运行态 Pod 不能 accept exec：直接跳过，不重试也不写
+	// failed（否则 stopped 容器会被 NotReady 重试 60 次后误标 failed）。pending
+	// 状态保留，由 api 侧 start 后的 enqueueReconcile / 周期 rescan 收敛。
+	if pod.State != repo.PodStateRunning && pod.State != repo.PodStateUnhealthy {
+		return errPodNotRunning
 	}
 	if pod.AppliedGeneration >= generation {
 		if pod.SkillsPending {

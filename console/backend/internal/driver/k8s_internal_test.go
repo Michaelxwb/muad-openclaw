@@ -5,7 +5,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -732,5 +734,93 @@ func TestK8s_RestartMissingWorkloadReturnsErrWorkloadMissing(t *testing.T) {
 	err := d.Restart(ctx, "pod-missing")
 	if !errors.Is(err, ErrWorkloadMissing) {
 		t.Fatalf("Restart on missing Deployment = %v, want ErrWorkloadMissing", err)
+	}
+}
+
+func TestK8s_ScaleMissingWorkloadReturnsErrWorkloadMissing(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	if err := d.Start(ctx, "pod-missing"); !errors.Is(err, ErrWorkloadMissing) {
+		t.Fatalf("Start on missing Deployment = %v, want ErrWorkloadMissing", err)
+	}
+	if err := d.Stop(ctx, "pod-missing"); !errors.Is(err, ErrWorkloadMissing) {
+		t.Fatalf("Stop on missing Deployment = %v, want ErrWorkloadMissing", err)
+	}
+}
+
+func TestRestartTimestampUniqueWithinSameSecond(t *testing.T) {
+	base := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
+	first := restartTimestamp(base)
+	second := restartTimestamp(base.Add(500 * time.Millisecond))
+	if first == second {
+		t.Fatalf("two restarts within one second produced the same annotation %q", first)
+	}
+	if _, err := strconv.ParseInt(first, 10, 64); err != nil {
+		t.Fatalf("restart annotation %q is not an integer timestamp: %v", first, err)
+	}
+}
+
+func TestK8s_RestartBumpsAnnotationEachCall(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("restart-me", "img:1")
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := d.Restart(ctx, "restart-me"); err != nil {
+		t.Fatalf("first Restart: %v", err)
+	}
+	dep, err := d.client.AppsV1().Deployments("muad").Get(ctx, "muad-oc-restart-me", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get deployment: %v", err)
+	}
+	first := dep.Spec.Template.Annotations["muad/restartedAt"]
+	if err := d.Restart(ctx, "restart-me"); err != nil {
+		t.Fatalf("second Restart: %v", err)
+	}
+	dep, err = d.client.AppsV1().Deployments("muad").Get(ctx, "muad-oc-restart-me", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get deployment after second Restart: %v", err)
+	}
+	second := dep.Spec.Template.Annotations["muad/restartedAt"]
+	if first == "" || second == "" {
+		t.Fatalf("restartedAt annotations missing: first=%q second=%q", first, second)
+	}
+	if first == second {
+		t.Fatalf("second Restart did not change the template annotation: %q", first)
+	}
+}
+
+func TestK8s_PodNameSkipsTerminatingPod(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	now := metav1.Now()
+	terminating := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "muad-oc-rotate-old",
+			Namespace:         "muad",
+			Labels:            map[string]string{"muad-pod": "rotate"},
+			DeletionTimestamp: &now,
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	if _, err := d.client.CoreV1().Pods("muad").Create(ctx, terminating, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("create terminating Pod: %v", err)
+	}
+	if name, err := d.podName(ctx, "rotate"); err == nil {
+		t.Fatalf("podName selected terminating Pod %q, want ErrRuntimeNotReady", name)
+	} else if !errors.Is(err, ErrRuntimeNotReady) {
+		t.Fatalf("podName error = %v, want ErrRuntimeNotReady", err)
+	}
+	// A healthy running Pod of the same workload wins over the terminating one.
+	healthy := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "muad-oc-rotate-new", Namespace: "muad", Labels: map[string]string{"muad-pod": "rotate"}},
+		Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	if _, err := d.client.CoreV1().Pods("muad").Create(ctx, healthy, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("create healthy Pod: %v", err)
+	}
+	if name, err := d.podName(ctx, "rotate"); err != nil || name != healthy.Name {
+		t.Fatalf("podName = %q, %v; want %q", name, err, healthy.Name)
 	}
 }

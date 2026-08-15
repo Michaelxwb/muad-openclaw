@@ -412,6 +412,11 @@ func (d *K8sDriver) scale(ctx context.Context, podID string, n int32) error {
 	name := ContainerName(podID)
 	patch := []byte(fmt.Sprintf(`{"spec":{"replicas":%d}}`, n))
 	_, err := d.client.AppsV1().Deployments(d.namespace).Patch(ctx, name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
+	if apierrors.IsNotFound(err) {
+		// 与 Restart 的语义对齐：Deployment 已不存在时返回 ErrWorkloadMissing，
+		// 调用方可以 fallback 到用 DB spec 重建。
+		return ErrWorkloadMissing
+	}
 	return err
 }
 
@@ -420,12 +425,14 @@ func (d *K8sDriver) Stop(ctx context.Context, podID string) error   { return d.s
 func (d *K8sDriver) Reap(ctx context.Context, podID string) error   { return d.scale(ctx, podID, 0) }
 func (d *K8sDriver) Revive(ctx context.Context, podID string) error { return d.scale(ctx, podID, 1) }
 
-// Restart triggers a rollout by bumping a template annotation.
+// Restart triggers a rollout by bumping a template annotation. The value uses
+// UnixNano so two restarts within the same second always produce a template
+// diff; a second-precision timestamp would silently no-op the second restart.
 func (d *K8sDriver) Restart(ctx context.Context, podID string) error {
 	name := ContainerName(podID)
 	patch := []byte(fmt.Sprintf(
 		`{"spec":{"template":{"metadata":{"annotations":{"muad/restartedAt":%q}}}}}`,
-		time.Now().Format(time.RFC3339)))
+		restartTimestamp(time.Now())))
 	_, err := d.client.AppsV1().Deployments(d.namespace).Patch(ctx, name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
 	if apierrors.IsNotFound(err) {
 		// Deployment 已不存在（如坏镜像升级把 workload 清掉后回滚失败），
@@ -433,6 +440,13 @@ func (d *K8sDriver) Restart(ctx context.Context, podID string) error {
 		return ErrWorkloadMissing
 	}
 	return err
+}
+
+// restartTimestamp renders a rollout annotation value that is unique per call
+// even within one second (RFC3339 second precision is not enough for back-to-back
+// restarts, which would otherwise be silent no-ops).
+func restartTimestamp(now time.Time) string {
+	return fmt.Sprintf("%d", now.UnixNano())
 }
 
 // Remove deletes the Deployment + Secret; when !keepState the state PVC too.
@@ -602,19 +616,33 @@ func (d *K8sDriver) Exec(ctx context.Context, podID string, cmd ...string) (stri
 }
 
 // podName returns a running worker Pod or a retryable readiness error.
+// Pods that are terminating (DeletionTimestamp set) are skipped: during a
+// Recreate rollout the old Pod is still Phase=Running while being removed, and
+// selecting it would exec/log into a dying workload.
 func (d *K8sDriver) podName(ctx context.Context, podID string) (string, error) {
 	pods, err := d.client.CoreV1().Pods(d.namespace).List(ctx, metav1.ListOptions{LabelSelector: "muad-pod=" + podID})
 	if err != nil {
 		return "", err
 	}
 	for i := range pods.Items {
-		if pods.Items[i].Status.Phase == corev1.PodRunning {
-			return pods.Items[i].Name, nil
+		pod := &pods.Items[i]
+		if pod.DeletionTimestamp != nil {
+			continue
 		}
+		if pod.Status.Phase == corev1.PodRunning {
+			return pod.Name, nil
+		}
+	}
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
+		return "", fmt.Errorf("%w: Pod %s phase=%s", ErrRuntimeNotReady, pod.Name, pod.Status.Phase)
 	}
 	if len(pods.Items) > 0 {
 		pod := pods.Items[0]
-		return "", fmt.Errorf("%w: Pod %s phase=%s", ErrRuntimeNotReady, pod.Name, pod.Status.Phase)
+		return "", fmt.Errorf("%w: Pod %s phase=%s (terminating)", ErrRuntimeNotReady, pod.Name, pod.Status.Phase)
 	}
 	return "", fmt.Errorf("%w: no workload Pod for %q", ErrRuntimeNotReady, podID)
 }

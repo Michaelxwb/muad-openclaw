@@ -130,6 +130,76 @@ func TestApplyRouteVerificationFailureRollsBack(t *testing.T) {
 	}
 }
 
+func TestRouteHealthExtensionDecision(t *testing.T) {
+	tests := []struct {
+		name     string
+		status   gateway.Status
+		extended bool
+		want     bool
+	}{
+		{name: "unknown not yet extended", status: gateway.Status{Healthy: true, RouteUnknown: true}, want: true},
+		{name: "unknown already extended", status: gateway.Status{Healthy: true, RouteUnknown: true}, extended: true, want: false},
+		{name: "gateway unhealthy never extends", status: gateway.Status{Healthy: false, RouteUnknown: true}, want: false},
+		{name: "deterministic failure never extends", status: gateway.Status{Healthy: true, RouteVerified: false}, want: false},
+		{name: "verified never extends", status: gateway.Status{Healthy: true, RouteVerified: true}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := routeHealthExtension(tt.status, tt.extended); got != tt.want {
+				t.Fatalf("routeHealthExtension(%+v, %t) = %v, want %v", tt.status, tt.extended, got, tt.want)
+			}
+		})
+	}
+}
+
+// 路由验证 RPC 瞬时失败（状态未知）不算确定性失败：健康等待继续轮询直到 RPC
+// 恢复，不触发回滚。
+func TestApplyRouteVerificationRPCFailureRecoversAfterExtension(t *testing.T) {
+	driver := newFakeDriver(RestartGateway)
+	driver.routeVerifyRPCTemporaryFails = 3
+	applier, err := New(driver, Options{HealthTimeout: 10 * time.Millisecond, PollInterval: 5 * time.Millisecond})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	result, err := applier.Apply(context.Background(), testRequest(false))
+	if err != nil {
+		t.Fatalf("Apply with temporary RPC failures: %v", err)
+	}
+	if result.RestartMode != RestartGateway || driver.rolledBack {
+		t.Fatalf("apply should succeed without rollback, result=%+v rolledBack=%t", result, driver.rolledBack)
+	}
+	if driver.routeVerifyCalls <= driver.routeVerifyRPCTemporaryFails {
+		t.Fatalf("expected verification retries beyond the RPC failures, calls=%d", driver.routeVerifyCalls)
+	}
+}
+
+// RPC 持续失败（未知）最终超时：诊断是 L5_route_unknown，与确定性失败区分。
+func TestApplyRouteVerificationRPCFailureTimesOutWithUnknownDiagnostic(t *testing.T) {
+	driver := newFakeDriver(RestartGateway)
+	driver.routeVerifyRPCTemporaryFails = 1 << 20
+	applier := newTestApplier(t, driver)
+	_, err := applier.Apply(context.Background(), testRequest(false))
+	assertApplyStage(t, err, StageHealth)
+	if !driver.rolledBack {
+		t.Fatal("persistent unknown route state should eventually roll back")
+	}
+	if !strings.Contains(err.Error(), "L5_route_unknown") {
+		t.Fatalf("error should include L5_route_unknown diagnostic: %v", err)
+	}
+}
+
+// 路由验证结果是旧 generation 的 OK：applyReady 必须拒绝（RouteGeneration 参与判定）。
+func TestApplyRouteVerificationStaleGenerationIsNotReady(t *testing.T) {
+	driver := newFakeDriver(RestartGateway)
+	driver.routeVerifyGeneration = 6 // 旧 generation 的验证结果
+	applier := newTestApplier(t, driver)
+	_, err := applier.Apply(context.Background(), testRequest(false))
+	assertApplyStage(t, err, StageHealth)
+	if !strings.Contains(err.Error(), "L5_route_generation_mismatch") {
+		t.Fatalf("error should include L5_route_generation_mismatch diagnostic: %v", err)
+	}
+}
+
 func TestHealthFailureCodeReportsLayeredDiagnostics(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -179,19 +249,21 @@ func TestApplyRestartFailureRestartsRestoredPod(t *testing.T) {
 }
 
 type fakeDriver struct {
-	prepareMode             RestartMode
-	appliedHealthGeneration int64
-	failValidate            bool
-	failFirstPodRestart     bool
-	committed               bool
-	aborted                 bool
-	rolledBack              bool
-	gatewayRestarts         int
-	podRestarts             int
-	configApplyLag          int
-	configGetCalls          int
-	routeVerifyCalls        int
-	routeVerifyFailure      bool
+	prepareMode                 RestartMode
+	appliedHealthGeneration     int64
+	failValidate                bool
+	failFirstPodRestart         bool
+	committed                   bool
+	aborted                     bool
+	rolledBack                  bool
+	gatewayRestarts              int
+	podRestarts                  int
+	configApplyLag               int
+	configGetCalls               int
+	routeVerifyCalls             int
+	routeVerifyFailure           bool
+	routeVerifyRPCTemporaryFails int
+	routeVerifyGeneration        int64
 }
 
 func newFakeDriver(mode RestartMode) *fakeDriver {
@@ -225,7 +297,14 @@ func (driver *fakeDriver) Exec(_ context.Context, _ string, cmd ...string) (stri
 		return fmt.Sprintf(`{"ok":true,"generation":%d}`, generation), nil
 	case strings.Contains(joined, "muad.runtime.verify-routes"):
 		driver.routeVerifyCalls++
-		generation := driver.appliedHealthGeneration
+		if driver.routeVerifyRPCTemporaryFails > 0 {
+			driver.routeVerifyRPCTemporaryFails--
+			return "", errors.New("exec failed: gateway is restarting")
+		}
+		generation := driver.routeVerifyGeneration
+		if generation == 0 {
+			generation = driver.appliedHealthGeneration
+		}
 		if driver.routeVerifyFailure {
 			return fmt.Sprintf(`{"ok":false,"generation":%d,"checked":1,"failed":1,"error":"agent_mismatch"}`, generation), nil
 		}

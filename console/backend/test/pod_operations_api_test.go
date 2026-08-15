@@ -194,7 +194,9 @@ func TestPodOperationsAPI_SkillReloadSyncsOnlyActivePublicSkills(t *testing.T) {
 	}
 }
 
-func TestPodOperationsAPI_SkillReloadWarnsAndContinuesWhenPublicAssetStagingFails(t *testing.T) {
+// 公共 Skill 部分失败：不再发布部分签名、不再静默当成功——reload 报告 per-pod
+// failed_sync，warnings 仍随响应上抛，且不排队 apply（apply 会在 BeforeApply 失败）。
+func TestPodOperationsAPI_SkillReloadReportsPartialPublicFailure(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	createPublicSkillDir(t, e.skillsDir, "good-skill")
@@ -217,8 +219,8 @@ func TestPodOperationsAPI_SkillReloadWarnsAndContinuesWhenPublicAssetStagingFail
 		Results  map[string]string `json:"results"`
 		Warnings []string          `json:"warnings"`
 	}](t, rr.Body.Bytes())
-	if data.Results["pod-a"] != "queued" {
-		t.Fatalf("result[pod-a] = %q, want queued", data.Results["pod-a"])
+	if data.Results["pod-a"] != "failed_sync" {
+		t.Fatalf("result[pod-a] = %q, want failed_sync (partial failure must not be treated as success)", data.Results["pod-a"])
 	}
 	if len(data.Warnings) != 1 || !strings.Contains(data.Warnings[0], "bad-skill") {
 		t.Fatalf("warnings = %v", data.Warnings)
@@ -226,8 +228,8 @@ func TestPodOperationsAPI_SkillReloadWarnsAndContinuesWhenPublicAssetStagingFail
 	if got := strings.Join(e.drv.syncPublicSkillCalls[0].sourceSkillNames, ","); got != "good-skill" {
 		t.Fatalf("published public Skills = %q, want good-skill", got)
 	}
-	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
-		t.Fatalf("reconcile queue = %v", e.reconcile.podIDs)
+	if len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("reconcile queue = %v, want empty on partial public failure", e.reconcile.podIDs)
 	}
 }
 
@@ -371,6 +373,8 @@ func TestPodOperationsAPI_SkillReloadDeletesSameNamePrivateSkillPerUser(t *testi
 	bob := createTestHumanUser(t, e.store, "pod-a", "bob", repo.HumanUserStatusActive)
 	createPrivateSkillAsset(t, e, alice, "shared-private", repo.SkillStatusActive)
 	createPrivateSkillAsset(t, e, bob, "shared-private", repo.SkillStatusDeleted)
+	// bob 的 shared-private 已安装在运行时（清点收敛依赖已安装集与期望集求差）。
+	e.drv.privateSkillHashes["bob"] = map[string]string{"shared-private": "sha256:shared-private"}
 	markPodSkillsPending(t, e.store, "pod-a")
 	e.drv.execStdinCalls = nil
 

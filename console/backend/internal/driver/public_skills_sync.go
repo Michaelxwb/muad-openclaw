@@ -205,6 +205,29 @@ func publishPublicSkillStaging(staging, targetRoot string, removeNames []string)
 			return fmt.Errorf("remove stale public Skill: %w", err)
 		}
 	}
+	// 全量删除收敛：目标目录中不在 managed 列表的目录（手工放置、或资产已从 DB
+	// 硬删导致 remove-index 无法再枚举）一律清除；与 remove-index 合并互补，
+	// remove-index 兼容保留。managed 但本次未发布（部分失败）的目录仍保留。
+	managed, err := publicSkillManagedNames(staging)
+	if err != nil {
+		return err
+	}
+	managedSet := make(map[string]struct{}, len(managed.names))
+	for _, name := range managed.names {
+		managedSet[name] = struct{}{}
+	}
+	existing, err := publicSkillDirectoryNames(targetRoot)
+	if err != nil {
+		return err
+	}
+	for _, name := range existing {
+		if _, isManaged := managedSet[name]; isManaged {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(targetRoot, name)); err != nil {
+			return fmt.Errorf("remove unmanaged public Skill %q: %w", name, err)
+		}
+	}
 	if err := replacePublicSkillFile(filepath.Join(staging, publicSkillIndexFile), filepath.Join(targetRoot, publicSkillIndexFile), 0o600); err != nil {
 		return err
 	}

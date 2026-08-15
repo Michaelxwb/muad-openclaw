@@ -73,6 +73,19 @@ type PublicSyncResult struct {
 	Warnings  []string
 }
 
+// PublicSkillPartialSyncError reports that some managed public Skills could not
+// be synchronized. The previously published signature is retained so later syncs
+// keep retrying; the failure is surfaced to callers instead of being silently
+// treated as a success (the runtime would otherwise keep serving stale versions
+// while the signature never converges).
+type PublicSkillPartialSyncError struct {
+	Warnings []string
+}
+
+func (err *PublicSkillPartialSyncError) Error() string {
+	return fmt.Sprintf("public Skill sync partial failure: %s", strings.Join(err.Warnings, "; "))
+}
+
 const (
 	defaultPublicSyncLockTimeout = 30 * time.Second
 	publicPartialFailCooldown    = 30 * time.Second
@@ -160,7 +173,7 @@ func (syncer *Syncer) syncPublic(ctx context.Context, options publicSyncOptions)
 			return PublicSyncResult{HasPublic: true}, nil
 		}
 	}
-	staging, err := syncer.activePublicSkillSyncDir(snapshot)
+	staging, err := syncer.activePublicSkillSyncDir(ctx, snapshot)
 	if err != nil {
 		return PublicSyncResult{}, err
 	}
@@ -172,7 +185,8 @@ func (syncer *Syncer) syncPublic(ctx context.Context, options publicSyncOptions)
 		log.Printf("public_skill_sync_partial_failed failed=%d skills=%s",
 			len(staging.failedSkills), strings.Join(staging.failedSkills, ","))
 		syncer.recordPublicPartialFailure(snapshot.Signature, staging.warnings)
-		return PublicSyncResult{HasPublic: true, Warnings: staging.warnings}, nil
+		return PublicSyncResult{HasPublic: true, Warnings: staging.warnings},
+			&PublicSkillPartialSyncError{Warnings: staging.warnings}
 	}
 	syncer.publicSignature = snapshot.Signature
 	syncer.clearPublicPartialFailure()
@@ -193,10 +207,14 @@ func (syncer *Syncer) cachedPublicPartialFailure(
 		return PublicSyncResult{}, false, err
 	}
 	if current == "" {
+		// 磁盘上还没有任何已发布签名（首次同步即部分失败）：不套用冷却，
+		// 让后续同步持续重试直到收敛。
 		return PublicSyncResult{}, false, nil
 	}
+	// 冷却期内不重复发布文件，但必须如实报告失败——部分成功不再当作成功。
 	warnings := append([]string(nil), syncer.publicFailWarnings...)
-	return PublicSyncResult{HasPublic: true, Warnings: warnings}, true, nil
+	return PublicSyncResult{HasPublic: true, Warnings: warnings}, true,
+		&PublicSkillPartialSyncError{Warnings: warnings}
 }
 
 func (syncer *Syncer) recordPublicPartialFailure(signature string, warnings []string) {
@@ -258,10 +276,16 @@ func (syncer *Syncer) syncPrivateSkills(ctx context.Context, podID string) error
 	if err != nil {
 		return err
 	}
-	installed := map[string]map[string]string{}
-	activeKeys := map[string]struct{}{}
+	desired := map[string]map[string]string{}
 	for _, asset := range active {
-		activeKeys[privateSkillKey(asset)] = struct{}{}
+		user := users[asset.HumanUserID]
+		if desired[user.AgentID] == nil {
+			desired[user.AgentID] = map[string]string{}
+		}
+		desired[user.AgentID][asset.Name] = asset.ManifestHash
+	}
+	installed := map[string]map[string]string{}
+	for _, asset := range active {
 		user := users[asset.HumanUserID]
 		hashes, err := syncer.installedPrivateSkillHashes(ctx, podID, user, installed)
 		if err != nil {
@@ -274,19 +298,40 @@ func (syncer *Syncer) syncPrivateSkills(ctx context.Context, podID string) error
 			return err
 		}
 	}
-	for _, asset := range stale {
-		if _, exists := activeKeys[privateSkillKey(asset)]; exists {
-			continue
-		}
-		if err := syncer.deletePrivateSkillAsset(ctx, podID, users[asset.HumanUserID], asset); err != nil {
+	// 清点收敛：已安装集与期望集求差集删除。DB 中 disabled/deleted 资产、资产硬删
+	// 或用户移出 pod 后的残留都会在这里被清理——只依赖 DB 状态枚举 stale 资产会漏删。
+	for _, user := range users {
+		if err := syncer.prunePrivateInstalled(ctx, podID, user, desired[user.AgentID], installed); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func privateSkillKey(asset repo.SkillAsset) string {
-	return strings.TrimSpace(asset.HumanUserID) + "\x00" + strings.TrimSpace(asset.Name)
+// prunePrivateInstalled 删除该 agent 已安装但不再期望的私有 Skill。desired 为
+// 空 map 时表示该用户当前没有任何期望资产（如用户已移出 pod），全部清空。
+func (syncer *Syncer) prunePrivateInstalled(
+	ctx context.Context, podID string, user repo.HumanUser,
+	desired map[string]string, installedCache map[string]map[string]string,
+) error {
+	hashes, err := syncer.installedPrivateSkillHashes(ctx, podID, user, installedCache)
+	if err != nil {
+		return err
+	}
+	names := make([]string, 0, len(hashes))
+	for name := range hashes {
+		names = append(names, name)
+	}
+	sort.Strings(names) // 确定性删除顺序：审计/驱动调用稳定，测试可断言
+	for _, name := range names {
+		if _, keep := desired[name]; keep {
+			continue
+		}
+		if err := syncer.deletePrivateSkillInPod(ctx, podID, user.AgentID, name); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (syncer *Syncer) privateSkillAssets(podID, status string) ([]repo.SkillAsset, error) {
@@ -374,12 +419,6 @@ func (syncer *Syncer) installPrivateSkillAsset(
 	return nil
 }
 
-func (syncer *Syncer) deletePrivateSkillAsset(
-	ctx context.Context, podID string, user repo.HumanUser, asset repo.SkillAsset,
-) error {
-	return syncer.deletePrivateSkillInPod(ctx, podID, user.AgentID, asset.Name)
-}
-
 func (syncer *Syncer) installPrivateSkillInPod(
 	ctx context.Context, podID, agentID, expectedName, format string, bundle []byte,
 ) (privateSkillInstallResult, error) {
@@ -426,7 +465,9 @@ func (syncer *Syncer) appendRuntimeStateDir(args []string) []string {
 	return append(args, "--state-dir", syncer.runtimeStateDir)
 }
 
-func (syncer *Syncer) activePublicSkillSyncDir(snapshot publicSkillSnapshot) (publicSkillStaging, error) {
+func (syncer *Syncer) activePublicSkillSyncDir(
+	ctx context.Context, snapshot publicSkillSnapshot,
+) (publicSkillStaging, error) {
 	root, err := resolvePublicSkillRoot(syncer.skillsDir)
 	if err != nil {
 		return publicSkillStaging{}, err
@@ -463,7 +504,13 @@ func (syncer *Syncer) activePublicSkillSyncDir(snapshot publicSkillSnapshot) (pu
 	}
 	signature := snapshot.Signature
 	if len(failedSkills) > 0 {
-		signature = publicSkillSignature(published, snapshot.ManagedNames)
+		// 部分失败时不发布部分签名：保留当前已发布签名（首次失败则为空），
+		// 磁盘签名与期望签名永不相等，后续同步持续重试直至全部收敛。
+		signature, err = syncer.driver.PublicSkillFilesSignature(ctx)
+		if err != nil {
+			cleanup()
+			return publicSkillStaging{}, err
+		}
 	}
 	if err := writePublicSkillSignature(tempRoot, signature); err != nil {
 		cleanup()

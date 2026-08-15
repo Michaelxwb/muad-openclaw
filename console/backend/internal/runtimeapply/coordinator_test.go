@@ -349,9 +349,17 @@ type coordinatorStore struct {
 func newCoordinatorStore(podIDs ...string) *coordinatorStore {
 	store := &coordinatorStore{pods: map[string]repo.Pod{}, failures: map[string]int{}}
 	for _, podID := range podIDs {
-		store.pods[podID] = repo.Pod{PodID: podID, ConfigGeneration: 1}
+		store.pods[podID] = repo.Pod{PodID: podID, ConfigGeneration: 1, State: repo.PodStateRunning}
 	}
 	return store
+}
+
+func (store *coordinatorStore) setState(podID, state string) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	pod := store.pods[podID]
+	pod.State = state
+	store.pods[podID] = pod
 }
 
 func (store *coordinatorStore) GetPod(podID string) (repo.Pod, error) {
@@ -575,4 +583,138 @@ func waitFor(t *testing.T, condition func() bool) {
 func stopCoordinator(cancel context.CancelFunc, _ *Coordinator, _ context.Context) {
 	cancel()
 	time.Sleep(2 * time.Millisecond)
+}
+
+// 周期 rescan：新出现（或瞬时失败后仍待收敛）的 Pod 不需要显式 Enqueue 也会被拾起。
+func TestCoordinatorRescanPicksUpNewlyNeededPods(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	store.recovery = []repo.Pod{{PodID: "pod-a", State: repo.PodStateRunning}}
+	executor := newCoordinatorExecutor()
+	coordinator, err := NewCoordinator(
+		store, coordinatorBuilder{store: store}, executor,
+		CoordinatorOptions{MaxAttempts: 1, RetryDelay: time.Millisecond, RescanInterval: 10 * time.Millisecond},
+	)
+	if err != nil {
+		t.Fatalf("NewCoordinator: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer stopCoordinator(cancel, coordinator, ctx)
+	go coordinator.Run(ctx)
+
+	// 初始恢复扫描消费一次。
+	waitFor(t, func() bool { return store.appliedGeneration("pod-a") == 1 })
+
+	// 新 generation 出现但无显式 Enqueue → 周期 rescan 必须拾起。
+	store.setGeneration("pod-a", 2)
+	waitFor(t, func() bool { return store.appliedGeneration("pod-a") == 2 })
+	if got := executor.generations("pod-a"); fmt.Sprint(got) != "[1 2]" {
+		t.Fatalf("applied generations = %v, want [1 2]", got)
+	}
+}
+
+func TestCoordinatorEnqueueIfIdleSkipsRunningPod(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	executor := newCoordinatorExecutor()
+	coordinator := newTestCoordinator(t, store, executor, 1)
+
+	coordinator.mu.Lock()
+	coordinator.running["pod-a"] = true
+	coordinator.mu.Unlock()
+	coordinator.enqueueIfIdle("pod-a")
+	coordinator.mu.Lock()
+	pending := coordinator.pending["pod-a"]
+	coordinator.mu.Unlock()
+	if pending {
+		t.Fatal("running pod must not be re-enqueued by rescan")
+	}
+
+	coordinator.mu.Lock()
+	delete(coordinator.running, "pod-a")
+	coordinator.mu.Unlock()
+	coordinator.enqueueIfIdle("pod-a")
+	coordinator.mu.Lock()
+	pending = coordinator.pending["pod-a"]
+	coordinator.mu.Unlock()
+	if !pending {
+		t.Fatal("idle pod should be enqueued by rescan")
+	}
+}
+
+// stopped 态 Pod 收到配置变更：跳过、不重试、不写 failed；start 后收敛。
+func TestCoordinatorSkipsStoppedPodWithoutFailing(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	store.setState("pod-a", repo.PodStateStopped)
+	executor := newCoordinatorExecutor()
+	coordinator, err := NewCoordinator(
+		store, coordinatorBuilder{store: store}, executor,
+		CoordinatorOptions{MaxAttempts: 3, NotReadyMaxAttempts: 60, RetryDelay: time.Millisecond},
+	)
+	if err != nil {
+		t.Fatalf("NewCoordinator: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer stopCoordinator(cancel, coordinator, ctx)
+	go coordinator.Run(ctx)
+	coordinator.Enqueue("pod-a")
+
+	time.Sleep(20 * time.Millisecond)
+	if executor.count("pod-a") != 0 {
+		t.Fatalf("stopped pod must not be applied: %d", executor.count("pod-a"))
+	}
+	if store.failedCount("pod-a") != 0 {
+		t.Fatalf("stopped pod must not be marked failed: %d", store.failedCount("pod-a"))
+	}
+
+	// start 后收敛路径。
+	store.setState("pod-a", repo.PodStateRunning)
+	coordinator.Enqueue("pod-a")
+	waitFor(t, func() bool { return store.appliedGeneration("pod-a") == 1 })
+}
+
+// runPod panic 必须被 recover：转为该 Pod 的失败记录并清理 running 状态，
+// 进程不退出、其余 Pod 继续 apply。
+func TestCoordinatorRecoversFromRunPodPanic(t *testing.T) {
+	store := newCoordinatorStore("pod-a", "pod-b")
+	executor := &panicOnceCoordinatorExecutor{}
+	coordinator, err := NewCoordinator(
+		store, coordinatorBuilder{store: store}, executor,
+		CoordinatorOptions{MaxAttempts: 1, RetryDelay: time.Millisecond, RescanInterval: time.Hour},
+	)
+	if err != nil {
+		t.Fatalf("NewCoordinator: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer stopCoordinator(cancel, coordinator, ctx)
+	go coordinator.Run(ctx)
+
+	coordinator.Enqueue("pod-a")
+	// panic 被 recover 并转成失败记录。
+	waitFor(t, func() bool { return store.failedCount("pod-a") == 1 })
+	coordinator.mu.Lock()
+	_, stillRunning := coordinator.running["pod-a"]
+	coordinator.mu.Unlock()
+	if stillRunning {
+		t.Fatal("running state was not cleaned up after panic")
+	}
+
+	// 控制面未退出，其他 Pod 仍可正常 apply。
+	coordinator.Enqueue("pod-b")
+	waitFor(t, func() bool { return store.appliedGeneration("pod-b") == 1 })
+}
+
+// panicOnceCoordinatorExecutor 在第一次 Apply 时 panic，之后恢复正常。
+type panicOnceCoordinatorExecutor struct {
+	mu       sync.Mutex
+	panicked bool
+}
+
+func (executor *panicOnceCoordinatorExecutor) Apply(_ context.Context, _ Request) (Result, error) {
+	executor.mu.Lock()
+	if !executor.panicked {
+		executor.panicked = true
+		executor.mu.Unlock()
+		panic("boom: apply panicked")
+	}
+	executor.mu.Unlock()
+	return Result{ConfigHash: "config-2"}, nil
 }
