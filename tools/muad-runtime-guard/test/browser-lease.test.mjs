@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmodSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -73,7 +73,7 @@ test("shared browser lease tightens a pre-existing queue directory", async (t) =
   assert.equal(await leases.release("call-1"), true);
 });
 
-test("shared browser lease expires when release hook is missed", async (t) => {
+test("shared browser lease holds past the TTL while the heartbeat runs", async (t) => {
   const directory = mkdtempSync(join(tmpdir(), "muad-shared-browser-expire-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const leases = new SharedBrowserLeaseManager({
@@ -84,9 +84,36 @@ test("shared browser lease expires when release hook is missed", async (t) => {
   });
 
   await leases.acquire("call-1");
-  await waitFor(() => leases.snapshot().active === 0);
+  // 越过 3×TTL：心跳续期下运行中的租赁不得被静默释放（D#4），否则长任务
+  // 并发上限会被突破。
+  await sleep(100);
+  assert.deepEqual(leases.snapshot(), { active: 1, queued: 0, limit: 1 });
 
-  assert.deepEqual(leases.snapshot(), { active: 0, queued: 0, limit: 1 });
+  assert.equal(await leases.release("call-1"), true);
+  leases.close();
+});
+
+test("shared browser lease reclaims stale slots from a dead process on the next acquire", async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "muad-shared-browser-stale-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  // 模拟崩溃/漏释放残留：写一个 mtime 已过期的 active 槽（无心跳续期）。
+  const stale = join(directory, "active-0.json");
+  writeFileSync(stale, `${JSON.stringify({
+    owner: "dead-owner", keyHash: "dead", createdAt: new Date().toISOString(),
+  })}\n`, { mode: 0o600 });
+  const old = new Date(Date.now() - 60_000);
+  utimesSync(stale, old, old);
+
+  const leases = new SharedBrowserLeaseManager({
+    directory,
+    limit: 1,
+    leaseTtlMs: 1_000,
+    heartbeatMs: 100,
+  });
+  // acquire 前 sweepStale 回收僵尸槽：limit=1 下若未回收，acquire 只能排队直至超时。
+  await leases.acquire("call-1");
+  assert.deepEqual(leases.snapshot(), { active: 1, queued: 0, limit: 1 });
+  assert.equal(await leases.release("call-1"), true);
   leases.close();
 });
 
@@ -123,4 +150,8 @@ async function waitFor(predicate) {
     if (Date.now() >= deadline) throw new Error("shared queue state timeout");
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
+}
+
+function sleep(durationMs) {
+  return new Promise((resolve) => setTimeout(resolve, durationMs));
 }

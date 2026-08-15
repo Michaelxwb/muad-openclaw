@@ -37,3 +37,4 @@ bash -c 'node /opt/openclaw-skills/skill-upload/scripts/upload-skill.mjs "<skill
 - 上传后 skill 进入**待审批**状态，管理员审批通过后才会生效、才随 Pod 持久；草稿保留，被拒后可修改重传。
 - 若用户要**修改已上传**的 skill：当前同名 skill 已存在时重传会被控制台拒绝（"skill already exists"），需先告知用户在控制台删除旧 skill 后再上传，或走控制台编辑。
 - 若用户要删除已上传的 skill，走控制台删除，不要直接删文件。
+- 脚本细节：上传打包器路径可用环境变量 `MUAD_INSTALLER` 覆盖（缺省 `/opt/muad/private-skill-installer.mjs`）；上传请求带 30 秒超时，超时或网络失败会输出稳定的"上传失败：…"文案（原样转述给用户即可）。

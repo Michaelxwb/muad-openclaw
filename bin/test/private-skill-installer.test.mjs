@@ -30,9 +30,10 @@ test("installs one private skill into the target agent workspace", async () => {
   assert.equal(result.longTask, true);
   assert.equal(result.entryType, "managed");
   assert.match(result.manifestHash, /^sha256:/u);
-  const stub = readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "_longtask_submit.md"), "utf8");
-  assert.match(stub, /background task/u);
-  assert.doesNotMatch(stub, /MUAD_TASK/u);
+  // 提交桩由 guard 运行时动态生成（含 taskId/排队数），installer 不再落静态桩——
+  // 安装产物不应包含 _longtask_submit.md（旧协议残留已移除）。
+  assert.throws(() =>
+    readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "_longtask_submit.md")));
   assert.equal(readFileSync(join(root, "workspace-alice", "skills", "xdr-query", "SKILL.md"), "utf8"), "# XDR\n");
 });
 

@@ -65,7 +65,9 @@ async function readAuditResponse(response) {
   if (text.length > MAX_RESPONSE_BYTES) throw new SkillAuditClientError("service_unavailable", true);
   const envelope = parseEnvelope(text);
   if (!response.ok || envelope.code !== 0) {
-    throw new SkillAuditClientError("service_unavailable", response.status >= 500 || response.status === 401);
+    // 401 是 pod token 失效，重试无意义；仅 5xx 视为可重试（与
+    // long-task-state-client / binding-client 的 401 语义一致）。
+    throw new SkillAuditClientError("service_unavailable", response.status >= 500);
   }
   return envelope.data;
 }

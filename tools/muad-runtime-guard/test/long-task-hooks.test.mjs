@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -335,6 +335,34 @@ test("reply_payload_sending rewrite follows the guard locale", async () => {
   assert.match(rewritten.payload.text, /Task submitted: xdr-query/u);
   assert.ok(rewritten.payload.text.includes(`Task ID: ${en.submissions[0].taskId}`));
   assert.match(rewritten.payload.text, /Queued: 0 \| Running: 1/u);
+});
+
+test("long task hooks sweep stale submit stubs at plugin startup but keep fresh ones", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-long-task-sweep-"));
+  const workspace = join(root, "workspace-alice");
+  const tmpDir = join(workspace, ".openclaw", "tmp");
+  mkdirSync(tmpDir, { recursive: true });
+  const staleStub = join(tmpDir, "_longtask_submit_stale-task.md");
+  const freshStub = join(tmpDir, "_longtask_submit_fresh-task.md");
+  const otherFile = join(tmpDir, "notes.txt");
+  writeFileSync(staleStub, "# stale");
+  writeFileSync(freshStub, "# fresh");
+  writeFileSync(otherFile, "notes");
+  // 崩溃残留桩：mtime 超过 24h。
+  const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
+  utimesSync(staleStub, old, old);
+
+  setupHooks({ resolveWorkspace: () => workspace });
+
+  assert.equal(existsSync(staleStub), false, "stale stub swept at startup");
+  assert.equal(existsSync(freshStub), true, "fresh stub kept (running task)");
+  assert.equal(existsSync(otherFile), true, "non-stub files untouched");
+});
+
+test("long task hooks sweep tolerates a missing tmp directory", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-long-task-sweep-missing-"));
+  const workspace = join(root, "workspace-alice");
+  assert.doesNotThrow(() => setupHooks({ resolveWorkspace: () => workspace }));
 });
 
 function setupHooks(overrides = {}) {

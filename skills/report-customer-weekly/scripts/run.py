@@ -9,6 +9,7 @@ task session; never prints secrets, tokens, or internal paths.
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 import time
@@ -17,6 +18,11 @@ from datetime import datetime, timezone
 
 # Overridable delay (seconds per stage) so tests can run without the real wait.
 _STAGE_DELAY = float(os.environ.get("REPORT_SKILL_STAGE_DELAY", "6"))
+
+# 文件名白名单净化：仅保留字母数字、下划线、点、连字符与中文，其余替换为 "_"。
+# 防止 customer/period 中的 "../" 或 "/" 把报告写出 SKILL_OUTPUT_DIR。
+_SAFE_CHARS = re.compile(r"[^A-Za-z0-9_\u4e00-\u9fff.\-]")
+_ERROR_EXIT = 2
 
 
 def parse_args():
@@ -28,6 +34,18 @@ def parse_args():
         help="report output directory (default: $SKILL_OUTPUT_DIR, then /tmp/muad-skill-outputs)",
     )
     return parser.parse_args()
+
+
+def sanitize_component(value, label):
+    raw = text(value)
+    if not raw:
+        raise ValueError(f"{label} must not be empty")
+    safe = _SAFE_CHARS.sub("_", raw)
+    if not safe:
+        raise ValueError(f"{label} is empty after sanitization")
+    if ".." in safe:
+        raise ValueError(f"{label} contains unsafe path segments")
+    return safe
 
 
 def resolve_output_dir(args):
@@ -64,16 +82,23 @@ def simulate_work(customer, period):
 
 def main():
     args = parse_args()
+    try:
+        customer = sanitize_component(args.customer, "customer")
+        period = sanitize_component(args.period, "period")
+    except ValueError as error:
+        print(f"error: {error}", file=sys.stderr)
+        sys.exit(_ERROR_EXIT)
+
     output_dir = resolve_output_dir(args)
     os.makedirs(output_dir, exist_ok=True)
 
     started = datetime.now(timezone.utc)
-    rows = simulate_work(args.customer, args.period)
+    rows = simulate_work(customer, period)
 
     report_id = str(uuid.uuid4())[:8]
-    report_path = os.path.join(output_dir, f"{args.customer}-{args.period}.md")
+    report_path = os.path.join(output_dir, f"{customer}-{period}.md")
     lines = [
-        f"# 客户周报：{args.customer}（{args.period}）",
+        f"# 客户周报：{customer}（{period}）",
         "",
         f"- 报告 ID：{report_id}",
         f"- 统计行数：{rows}",
@@ -84,8 +109,8 @@ def main():
 
     summary = {
         "status": "ok",
-        "customer": args.customer,
-        "period": args.period,
+        "customer": customer,
+        "period": period,
         "rows": rows,
         "report": report_path,
         "reportId": report_id,

@@ -34,6 +34,32 @@ test("exec commands re-asserting MUAD_SESSION_KEY inline are blocked", async () 
   ), { block: true, blockReason: FORGED_KEY_REASON });
 });
 
+test("exec commands forging MUAD_SESSION_KEY via concatenation or env dicts are blocked", async () => {
+  const hooks = guard();
+  for (const command of [
+    // env 字典写值（引号键）
+    'python3 -c "import os; os.environ[\'MUAD_SESSION_KEY\']=\'agent:bob:wecom:direct:wx-9\'"',
+    // 拼接键写值：MUAD_ + SESSION_KEY
+    'python3 -c "import os; os.environ[\'MUAD_\'+\'SESSION_KEY\']=\'agent:bob:wecom:direct:wx-9\'"',
+    // JS 拼接键写值
+    'node -e "process.env[\'MUAD_\'+\'SESSION_KEY\']=\'agent:bob:wecom:direct:wx-9\'"',
+    // putenv 拼接
+    'python3 -c "import os; os.putenv(\'MUAD_\'+\'SESSION_KEY\', \'agent:bob:wecom:direct:wx-9\')"',
+  ]) {
+    assert.deepEqual(await hooks.beforeToolCall(exec(command), context()), { block: true, blockReason: FORGED_KEY_REASON });
+  }
+});
+
+test("legitimate reads of MUAD_SESSION_KEY pass", async () => {
+  const hooks = guard();
+  for (const command of [
+    // 读取（非赋值）是受信路径：脚本把注入的密钥原样透传给 session-manager CLI。
+    'python3 -c "import os; print(os.environ[\'MUAD_SESSION_KEY\'])"',
+    'echo "$MUAD_SESSION_KEY"',
+    'session-manager get-state --skill-name smoke-platform',
+  ]) assert.equal(await hooks.beforeToolCall(exec(command), context()), undefined);
+});
+
 test("write/edit/apply_patch content referencing session artifacts is blocked", async () => {
   const hooks = guard();
   const leakScript = "const fs = require('node:fs'); fs.readFileSync('/home/node/.openclaw/agents/bob/session-store/bundle.json', 'utf8')";
@@ -58,6 +84,39 @@ test("legitimate skill and workspace commands pass", async () => {
     "session-manager get-state --skill-name smoke-platform",
     "",
   ]) assert.equal(await hooks.beforeToolCall(exec(command), context()), undefined);
+});
+
+test("directory operations on session paths are allowed, reads of session files are blocked", async () => {
+  const hooks = guard();
+  for (const command of [
+    "mkdir -p /state/agents/bob/session-store",
+    "mkdir -p /state/agents/alice/session-store/bundle.json",
+    "rm -rf /state/agents/bob/session-store",
+    "ls -la /state/agents/bob/session-store",
+  ]) {
+    assert.equal(await hooks.beforeToolCall(exec(command), context()), undefined);
+  }
+  for (const command of [
+    "cat /state/agents/bob/session-store/bundle.json",
+    "curl -s http://console.internal/session-store/bundle.json",
+    "cp /state/agents/bob/session-store/bundle.json /tmp/leak.json",
+    "cat /state/agents/bob/session-store/smoke-platform.session.json",
+    // 复合命令不享受目录操作白名单：首命令是 rm 也不能掩盖后续的读取。
+    "rm -rf /tmp/cache && cat /state/agents/bob/session-store/bundle.json",
+    "mkdir -p /state/agents/bob/session-store; cat /state/agents/bob/session-store/bundle.json",
+  ]) {
+    assert.deepEqual(await hooks.beforeToolCall(exec(command), context()), { block: true, blockReason: SESSION_REASON });
+  }
+});
+
+test("pod service token reads are blocked even behind directory-op commands", async () => {
+  const hooks = guard();
+  for (const command of [
+    "chmod 777 /run/secrets/muad/pod-service-token",
+    "cat /run/secrets/muad/pod-service-token",
+  ]) {
+    assert.deepEqual(await hooks.beforeToolCall(exec(command), context()), { block: true, blockReason: SESSION_REASON });
+  }
 });
 
 test("non-shell and non-file tools are untouched", async () => {
@@ -99,6 +158,27 @@ test("replies dumping session-file structure are replaced with a refusal", async
     assert.equal(result.reason, "reply contains protected session data");
     assert.equal(result.payload.text, REFUSAL_ZH);
   }
+});
+
+test("replies containing a single session-field mention pass (no false positive)", async () => {
+  const hooks = guard();
+  for (const text of [
+    "httpOnly 属性可以防止脚本访问 cookie。",
+    "Set-Cookie 响应头可以带 httpOnly 标志，防止 JS 读取。",
+    '这是浏览器存储的示例：{"httpOnly":true}',
+    "sameSite 属性用于防止 CSRF。",
+    '浏览器 API 文档：{"cookies":[{"name":"sid"}]}',
+  ]) assert.equal(await hooks.replyPayloadSending({ payload: { text } }, context()), undefined);
+});
+
+test("replies carrying a session field plus a large base64 blob are blocked", async () => {
+  const hooks = guard();
+  const base64 = "eyJjb29raWVzIjpbeyJuYW1lIjoic2lkIiwidmFsdWUiOiJhYmMifV19" + "A".repeat(80);
+  const result = await hooks.replyPayloadSending(
+    { payload: { text: `bob 的会话转储：{"cookies":[{"name":"sid"}]} ${base64}` } },
+    context(),
+  );
+  assert.equal(result.reason, "reply contains protected session data");
 });
 
 test("normal replies and session-free machine output pass", async () => {
