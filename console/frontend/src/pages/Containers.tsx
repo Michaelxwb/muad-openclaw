@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Toast } from "@douyinfe/semi-ui";
 import { api } from "../api";
@@ -26,6 +26,17 @@ function useContainersController() {
   const list = usePodList();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const mountedRef = useMountedRef();
+
+  // 轮询刷新后已删除的 Pod 不在 items 中：把 selectedIds 与当前 items 求交集，
+  // 避免批量操作命中不存在的 Pod（如 409）或残留已删项。
+  useEffect(() => {
+    setSelectedIds((previous) => {
+      if (previous.length === 0) return previous;
+      const alive = new Set(list.items.map((pod) => pod.podId));
+      const next = previous.filter((id) => alive.has(id));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [list.items]);
   const runAction = async (podId: string, action: PodAction) => {
     try {
       await api.action(podId, action);

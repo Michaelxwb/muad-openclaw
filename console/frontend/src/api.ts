@@ -388,7 +388,8 @@ export const api = {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    // 立即 revoke 可能中断浏览器尚未开始的下载，延迟到下载启动后再释放。
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   },
   listHumanUserSkills: (humanUserId: string, query: { q?: string; status?: string } = {}) =>
     request<ListResult<EffectiveSkill>>(

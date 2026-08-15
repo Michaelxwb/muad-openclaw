@@ -12,6 +12,7 @@ import {
 } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
 import { errorMessage } from "../utils/error";
+import { maxPageFor } from "../utils/pageClamp";
 import styles from "./LLM.module.css";
 import { LLMCreateDialog } from "./llm/LLMCreateDialog";
 
@@ -102,6 +103,12 @@ function useLLMModels() {
     [filteredModels, page, pageSize],
   );
 
+  // 删除末条模型后列表缩短，page 超界时回退到最大页，避免空列表。
+  useEffect(() => {
+    const maxPage = maxPageFor(filteredModels.length, pageSize);
+    if (page > maxPage) setPage(maxPage);
+  }, [filteredModels.length, page, pageSize]);
+
   const createBatch = async (input: LLMModelInput[]) => {
     setBusy("create");
     setError("");
@@ -139,17 +146,19 @@ function useLLMModels() {
     }
   };
 
-  const deleteModel = async (modelConfigId: string) => {
+  const deleteModel = async (modelConfigId: string): Promise<boolean> => {
     setBusy("delete");
     setError("");
     setMessage("");
     try {
       await api.deleteLLMModel(modelConfigId);
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) return false;
       setMessage(t("model.deletedMessage"));
       await load();
+      return true;
     } catch (caught) {
       if (mountedRef.current) setError(errorMessage(caught, "model.deleteFailed"));
+      return false;
     } finally {
       if (mountedRef.current) setBusy(null);
     }
@@ -277,7 +286,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       ),
     },
     {
-      title: "Base URL",
+      title: t("model.baseUrl"),
       dataIndex: "baseUrl",
       width: MODEL_TABLE_COLUMN_WIDTHS.baseUrl,
       render: (_: unknown, model: LLMModelConfig) => (
@@ -285,7 +294,7 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       ),
     },
     {
-      title: "API Key",
+      title: t("model.apiKey"),
       dataIndex: "apiKey",
       width: MODEL_TABLE_COLUMN_WIDTHS.apiKey,
       render: (_: unknown, model: LLMModelConfig) => (
@@ -389,7 +398,7 @@ function DeleteModelButton({
   busy,
 }: {
   model: LLMModelConfig;
-  onDelete: (modelConfigId: string) => Promise<void>;
+  onDelete: (modelConfigId: string) => Promise<boolean>;
   busy: boolean;
 }) {
   const { t } = useTranslation();
@@ -398,12 +407,8 @@ function DeleteModelButton({
   const bound = Boolean(model.boundHumanUserId);
   const confirm = async () => {
     setError("");
-    try {
-      await onDelete(model.modelConfigId);
-      setOpen(false);
-    } catch (caught) {
-      setError(errorMessage(caught, "model.deleteFailed"));
-    }
+    const deleted = await onDelete(model.modelConfigId);
+    if (deleted) setOpen(false);
   };
   return (
     <>
@@ -425,6 +430,7 @@ function DeleteModelButton({
         onOk={() => void confirm()}
         okText={t("common.confirmDelete")}
         okButtonProps={{ type: "danger" as const }}
+        confirmLoading={busy}
       >
         <FeedbackBanner error={error} />
         <p className="hint">{t("model.deleteHint")}</p>

@@ -65,7 +65,9 @@ function UpgradeDialog({
   }, [pod.imageTag, visible]);
   const { t } = useTranslation();
   const confirm = async () => {
-    if (imageTag.trim() && (await onUpgrade(imageTag.trim()))) onClose();
+    const tag = imageTag.trim();
+    if (!tag) return;
+    if (await onUpgrade(tag)) onClose();
   };
   return (
     <Modal
@@ -74,6 +76,7 @@ function UpgradeDialog({
       onCancel={onClose}
       onOk={() => void confirm()}
       okText={t("pod.actionUpgrade")}
+      okButtonProps={{ disabled: !imageTag.trim() }}
     >
       <Input aria-label={t("pod.upgradeImageTagAria")} value={imageTag} onChange={setImageTag} />
     </Modal>

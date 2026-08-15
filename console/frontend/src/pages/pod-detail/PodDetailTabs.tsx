@@ -65,14 +65,14 @@ export function ConfigTab({ pod }: { pod: Pod }) {
     { label: t("pod.applyStatus"), value: pod.lastApplyStatus },
     { label: t("pod.applyError"), value: pod.lastApplyError || "-" },
     {
-      label: "Runtime Guard",
+      label: t("pod.runtimeGuard"),
       value: (
         <Tag color={pod.runtimeGuardHealthy ? "green" : "red"}>
           {pod.runtimeGuardHealthy ? t("pod.runtimeGuardHealthy") : t("status.unhealthy")}
         </Tag>
       ),
     },
-    { label: "Service Token", value: pod.serviceTokenFingerprint },
+    { label: t("pod.serviceToken"), value: pod.serviceTokenFingerprint },
   ];
   return <DefinitionList rows={rows} />;
 }

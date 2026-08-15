@@ -1,4 +1,4 @@
-import type { PodAction, PodState } from "../../api";
+import type { Pod, PodAction, PodState } from "../../api";
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -52,12 +52,22 @@ export function statusOptions(t: Translate): { value: string; label: string }[] 
   ];
 }
 
-export function podActions(t: Translate): Array<{ key: PodAction; label: string }> {
-  return [
-    { key: "start" as const, label: t("pod.actionStart") },
-    { key: "stop" as const, label: t("pod.actionStop") },
-    { key: "restart" as const, label: t("pod.actionRestart") },
-  ];
+/** 按 Pod 状态过滤生命周期动作：start 仅 stopped；stop/restart 仅 running/unhealthy。
+ *  与 pod-detail PodActionPanel 的 LifecycleButtons 判定保持一致。 */
+export function podActions(
+  t: Translate,
+  pod: Pod,
+): Array<{ key: PodAction; label: string }> {
+  const actions: Array<{ key: PodAction; label: string }> = [];
+  if (pod.state === "stopped") {
+    actions.push({ key: "start" as const, label: t("pod.actionStart") });
+  }
+  const active = pod.state === "running" || pod.state === "unhealthy";
+  if (active) {
+    actions.push({ key: "stop" as const, label: t("pod.actionStop") });
+    actions.push({ key: "restart" as const, label: t("pod.actionRestart") });
+  }
+  return actions;
 }
 
 export type PodStateFilter = "" | Exclude<PodState, "missing">;

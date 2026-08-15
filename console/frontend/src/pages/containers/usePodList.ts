@@ -4,6 +4,7 @@ import type { Pod } from "../../api";
 import { DEFAULT_PAGE_SIZE } from "../../components/Pagination";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import { errorMessage } from "../../utils/error";
+import { normalizePage } from "../../utils/pageClamp";
 import type { PodStateFilter } from "./model";
 
 interface UsePodListOptions {
@@ -12,12 +13,15 @@ interface UsePodListOptions {
 
 export function usePodList({ enabled = true }: UsePodListOptions = {}) {
   const state = usePodListState();
-  const { page, pageSize, search, status, setError, setItems, setLoading, setTotal } = state;
+  const { page, pageSize, search, status, setError, setItems, setLoading, setPage, setTotal } =
+    state;
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
+  const foregroundRequestRef = useRef(0);
   const refresh = useCallback(
     async (background = false) => {
       const requestId = ++requestRef.current;
+      const foregroundRequestId = background ? 0 : ++foregroundRequestRef.current;
       if (mountedRef.current) {
         if (!background) setLoading(true);
         setError("");
@@ -32,15 +36,20 @@ export function usePodList({ enabled = true }: UsePodListOptions = {}) {
         if (!mountedRef.current || requestId !== requestRef.current) return;
         setItems(result.items);
         setTotal(result.total);
+        normalizePage(page, result.total, pageSize, setPage);
       } catch (caught) {
         if (!mountedRef.current || requestId !== requestRef.current) return;
         setError(errorMessage(caught, "pod.listLoadFailed"));
       } finally {
-        if (mountedRef.current && requestId === requestRef.current && !background)
+        if (
+          mountedRef.current &&
+          !background &&
+          foregroundRequestId === foregroundRequestRef.current
+        )
           setLoading(false);
       }
     },
-    [mountedRef, page, pageSize, search, setError, setItems, setLoading, setTotal, status],
+    [mountedRef, page, pageSize, search, setError, setItems, setLoading, setPage, setTotal, status],
   );
   useEffect(() => {
     if (!enabled) return;

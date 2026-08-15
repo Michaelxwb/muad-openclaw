@@ -114,7 +114,7 @@ function identityColumns(
       ),
     },
     {
-      title: "External ID",
+      title: t("user.externalId"),
       key: "externalId",
       render: (_: unknown, identity: Identity) => (
         <div>
@@ -248,14 +248,14 @@ function IdentityFields({
           style={{ width: "100%" }}
         />
       </Field>
-      <Field label="Account ID">
+      <Field label={t("user.accountId")}>
         <Input
           aria-label={t("user.addIdentityAccountId")}
           value={form.accountId}
           onChange={(value) => set("accountId", value)}
         />
       </Field>
-      <Field label="External ID">
+      <Field label={t("user.externalId")}>
         <Input
           aria-label={t("user.addIdentityExternalId")}
           value={form.externalId}

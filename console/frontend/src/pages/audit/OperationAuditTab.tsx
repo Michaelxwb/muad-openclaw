@@ -69,7 +69,14 @@ function useOperationAuditRecords(active: boolean) {
       if (mountedRef.current && requestId === requestRef.current) setLoading(false);
     }
   }, [active, filters, mountedRef, page, pageSize]);
-  useEffect(() => void load(), [load]);
+  useEffect(() => {
+    if (!active) {
+      // 切走 tab 时递增 requestId，使仍在途的旧请求结果不会写入隐藏 tab。
+      requestRef.current += 1;
+      return;
+    }
+    void load();
+  }, [active, load, requestRef]);
   const search = (next: AuditFilters) => {
     setPage(1);
     setFilters(next);
@@ -165,7 +172,7 @@ function auditColumns(t: TFunction) {
       width: 170,
       render: (_: unknown, entry: AuditEntry) => new Date(entry.ts).toLocaleString(),
     },
-    { title: "Actor", dataIndex: "actor", key: "actor", width: 150 },
+    { title: t("audit.actor"), dataIndex: "actor", key: "actor", width: 150 },
     { title: t("audit.action"), dataIndex: "action", key: "action", width: 210 },
     {
       title: t("audit.target"),

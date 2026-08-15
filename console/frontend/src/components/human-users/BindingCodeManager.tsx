@@ -137,7 +137,7 @@ function bindingCodeColumns(
         </div>
       ),
     },
-    { title: "Hint", dataIndex: "codeHint", key: "codeHint", className: "mono" },
+    { title: t("user.codeHint"), dataIndex: "codeHint", key: "codeHint", className: "mono" },
     {
       title: t("user.columnPurpose"),
       key: "purpose",
@@ -315,7 +315,7 @@ function BindingCodeFields({
           style={{ width: "100%" }}
         />
       </Field>
-      <Field label="Account ID">
+      <Field label={t("user.accountId")}>
         <Input
           aria-label={t("user.bindingCodeAccountId")}
           value={form.accountId}
