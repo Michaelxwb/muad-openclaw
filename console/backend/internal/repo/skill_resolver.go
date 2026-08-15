@@ -179,9 +179,14 @@ func effectiveFromAsset(
 	}
 	status := EffectiveSkillStatusEffective
 	effective := asset.Status == SkillStatusActive && !missing
-	if asset.Status == SkillStatusDisabled {
+	switch {
+	case asset.Status == SkillStatusPending:
+		// A pending private Skill awaits approval; it must never be presented
+		// as "effective" even though it is not marked effective yet.
+		status = EffectiveSkillStatusPending
+	case asset.Status == SkillStatusDisabled:
 		status = EffectiveSkillStatusDisabled
-	} else if missing {
+	case missing:
 		status = EffectiveSkillStatusMissingCredential
 	}
 	skill := skillFromAsset(asset, status, effective, conflict, reason)

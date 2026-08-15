@@ -216,15 +216,7 @@ func (s *Store) MarkAllPodsConfigPending() ([]string, error) {
 		return nil, fmt.Errorf("mark all Pods config pending: %w", err)
 	}
 	defer rows.Close()
-	var podIDs []string
-	for rows.Next() {
-		var podID string
-		if err := rows.Scan(&podID); err != nil {
-			return nil, fmt.Errorf("scan pending Pod: %w", err)
-		}
-		podIDs = append(podIDs, podID)
-	}
-	return podIDs, rows.Err()
+	return collectPendingPodIDs(rows)
 }
 
 // MarkPodsInheritingResourcesPending updates all Pods affected by global changes.
@@ -234,7 +226,20 @@ func (s *Store) MarkPodsInheritingResourcesPending(
 	if !memChanged && !cpuChanged && !restartChanged && !skillChanged && !browserChanged && !longTaskChanged {
 		return []string{}, nil
 	}
-	rows, err := s.db.Query(`UPDATE pods SET config_generation = config_generation + 1,
+	return markInheritingPodsPendingTx(s.db, memChanged, cpuChanged, restartChanged,
+		skillChanged, browserChanged, longTaskChanged)
+}
+
+// podQueryer abstracts *sql.DB and *sql.Tx for the shared Pod-pending helpers.
+type podQueryer interface {
+	Query(query string, args ...any) (*sql.Rows, error)
+}
+
+func markInheritingPodsPendingTx(
+	db podQueryer,
+	memChanged, cpuChanged, restartChanged, skillChanged, browserChanged, longTaskChanged bool,
+) ([]string, error) {
+	rows, err := db.Query(`UPDATE pods SET config_generation = config_generation + 1,
 		last_apply_status = 'pending', last_apply_error = '', updated_at = ?
 		WHERE (? AND mem_limit = '')
 			OR (? AND cpu_limit = '')
@@ -248,15 +253,22 @@ func (s *Store) MarkPodsInheritingResourcesPending(
 		return nil, fmt.Errorf("mark inheriting Pods pending: %w", err)
 	}
 	defer rows.Close()
+	return collectPendingPodIDs(rows)
+}
+
+func collectPendingPodIDs(rows *sql.Rows) ([]string, error) {
 	var podIDs []string
 	for rows.Next() {
 		var podID string
 		if err := rows.Scan(&podID); err != nil {
-			return nil, fmt.Errorf("scan inheriting Pod: %w", err)
+			return nil, fmt.Errorf("scan pending Pod: %w", err)
 		}
 		podIDs = append(podIDs, podID)
 	}
-	return podIDs, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate pending Pods: %w", err)
+	}
+	return podIDs, nil
 }
 
 // UpdatePodState changes only the observed control-plane lifecycle state.

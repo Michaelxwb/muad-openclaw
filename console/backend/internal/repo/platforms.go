@@ -150,8 +150,13 @@ func (s *Store) upsertUserPlatformCredential(
 		return PlatformCredentialSummary{}, "", fmt.Errorf("upsert platform credential: %w", err)
 	}
 	if markPod {
-		if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
-			return PlatformCredentialSummary{}, "", err
+		// An unbound user has no Pod to mark pending; the credential change is
+		// still persisted and the Skill availability re-evaluated once the user
+		// is re-attached (the attach flow bumps the Pod generation).
+		if user.PodID != "" {
+			if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
+				return PlatformCredentialSummary{}, "", err
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -270,8 +275,12 @@ func (s *Store) deleteUserPlatformCredential(
 		return "", err
 	}
 	if markPod {
-		if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
-			return "", err
+		// Same unbound-user rule as the upsert path: skip the Pod mark instead
+		// of failing the credential deletion with a phantom "not found".
+		if user.PodID != "" {
+			if err := markPodConfigPendingTx(tx, user.PodID); err != nil {
+				return "", err
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {

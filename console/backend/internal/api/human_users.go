@@ -275,7 +275,7 @@ func (s *Server) handlePatchHumanUser(w http.ResponseWriter, r *http.Request) {
 			writeRepoError(w, r, err)
 			return
 		}
-		if stateChanged {
+		if stateChanged && user.PodID != "" {
 			s.enqueueReconcile(user.PodID)
 		}
 		s.auditHumanUser(r, auditlog.ActionHumanUserUpdate, user, update.Status)

@@ -9,6 +9,49 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
+func TestUnboundHumanUser_UpdatesAndCredentialsSkipPodMark(t *testing.T) {
+	store := newStore(t)
+	createTestPod(t, store, "pod-a", 10)
+	createTestPlatform(t, store, "xdr", "XDR")
+	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
+	if err := store.DeletePod("pod-a"); err != nil {
+		t.Fatalf("DeletePod: %v", err)
+	}
+
+	// Model change on an unbound user must save the metadata instead of
+	// failing on markPodConfigPendingTx("") -> 40901.
+	modelID := createTestLLMModel(t, store, "alice-new-model")
+	if err := store.UpdateHumanUser(alice.HumanUserID, repo.HumanUserUpdate{
+		DisplayName: "Alice", Status: repo.HumanUserStatusActive,
+		ModelConfigID: modelID,
+	}); err != nil {
+		t.Fatalf("UpdateHumanUser on unbound user: %v", err)
+	}
+	got, err := store.GetHumanUser(alice.HumanUserID)
+	if err != nil || got.ModelConfigID != modelID || got.PodID != "" {
+		t.Fatalf("unbound user update = %+v, %v", got, err)
+	}
+
+	// Platform credential add/remove also skip the Pod mark for unbound users.
+	summary, podID, err := store.UpsertUserPlatformCredentialAndMarkPod(
+		alice.HumanUserID, "xdr", map[string]any{"apiKey": "xdr-key"},
+	)
+	if err != nil {
+		t.Fatalf("UpsertUserPlatformCredentialAndMarkPod on unbound user: %v", err)
+	}
+	if summary.Platform != "xdr" || podID != "" {
+		t.Fatalf("credential upsert = %+v podID=%q, want empty podID", summary, podID)
+	}
+	podID, err = store.DeleteUserPlatformCredentialAndMarkPod(alice.HumanUserID, "xdr")
+	if err != nil || podID != "" {
+		t.Fatalf("DeleteUserPlatformCredentialAndMarkPod = podID %q, %v", podID, err)
+	}
+	credentials, err := store.ListUserPlatformCredentials(alice.HumanUserID)
+	if err != nil || len(credentials) != 0 {
+		t.Fatalf("credentials after delete = %+v, %v", credentials, err)
+	}
+}
+
 func TestHumanUser_CreateAllocatesPortsAndEnforcesCapacity(t *testing.T) {
 	store := newStore(t)
 	createTestPod(t, store, "pod-a", 2)

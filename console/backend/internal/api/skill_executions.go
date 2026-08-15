@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -45,12 +46,37 @@ func (s *Server) handleUpsertSkillExecution(w http.ResponseWriter, r *http.Reque
 		writeRepoError(w, r, err)
 		return
 	}
+	conflict, err := s.skillExecutionConflict(record)
+	if err != nil {
+		writeRepoError(w, r, err)
+		return
+	}
+	if conflict {
+		// INSERT OR IGNORE would return the pre-existing row owned by another
+		// Pod; reject instead of leaking a cross-Pod execution record.
+		writeErrDetail(w, r, errcode.ConflictExists,
+			"该 executionId 已属于其他 Pod 的 Agent")
+		return
+	}
 	stored, err := s.store.UpsertSkillExecutionRecord(record)
 	if err != nil {
 		writeRepoError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, skillExecutionToView(stored))
+}
+
+// skillExecutionConflict reports whether executionID already exists but belongs
+// to a different Pod/user than the authenticated one.
+func (s *Server) skillExecutionConflict(record repo.SkillExecutionRecord) (bool, error) {
+	existing, err := s.store.GetSkillExecutionRecord(record.ExecutionID)
+	if errors.Is(err, repo.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return existing.PodID != record.PodID || existing.HumanUserID != record.HumanUserID, nil
 }
 
 func (s *Server) skillExecutionRecordFromRequest(

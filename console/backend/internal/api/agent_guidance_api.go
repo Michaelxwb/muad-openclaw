@@ -43,13 +43,9 @@ func (s *Server) handleSetAgentGuidance(w http.ResponseWriter, r *http.Request) 
 		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
-	if err := s.store.SetAgentGuidance(repo.AgentGuidance{
+	podIDs, err := s.store.SaveAgentGuidanceAndMarkPods(repo.AgentGuidance{
 		UserSkill: input.UserSkill, Memory: input.Memory, Main: input.Main,
-	}); err != nil {
-		writeRepoError(w, r, err)
-		return
-	}
-	podIDs, err := s.store.MarkAllPodsConfigPending()
+	})
 	if err != nil {
 		writeRepoError(w, r, err)
 		return

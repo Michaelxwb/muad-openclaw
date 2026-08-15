@@ -31,36 +31,56 @@ func TestLongTaskTasks_UpsertListAndMonotonicStatus(t *testing.T) {
 	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{task}); err != nil {
 		t.Fatalf("advance Long Task: %v", err)
 	}
-	task.Status = repo.LongTaskQueued
-	task.PoolQueued = 1
-	task.PoolRunning = 0
-	task.UpdatedAt = submitted.Add(90 * time.Second)
-	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{task}); err != nil {
+
+	// A status regression (running -> queued) is not silently dropped: the
+	// record is kept and converged to a terminal failed state with the reason
+	// recorded, preserving the incoming pool counters and last_seen.
+	regressed := task
+	regressed.Status = repo.LongTaskQueued
+	regressed.PoolQueued = 1
+	regressed.PoolRunning = 0
+	regressed.UpdatedAt = submitted.Add(90 * time.Second)
+	regressed.LastSeenAt = submitted.Add(90 * time.Second)
+	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{regressed}); err != nil {
 		t.Fatalf("regress running Long Task: %v", err)
 	}
-	task.Status = repo.LongTaskSucceeded
-	task.PoolQueued = 0
-	task.PoolRunning = 0
-	task.EndedAt = submitted.Add(2 * time.Minute)
-	task.UpdatedAt = submitted.Add(2 * time.Minute)
-	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{task}); err != nil {
-		t.Fatalf("finish Long Task: %v", err)
+	listed, _, err := store.ListLongTaskTasks(repo.LongTaskListFilter{Query: "task-a", Limit: 1})
+	if err != nil || len(listed) != 1 {
+		t.Fatalf("list regressed Long Task = %+v, %v", listed, err)
 	}
-	task.Status = repo.LongTaskQueued
-	task.UpdatedAt = submitted.Add(3 * time.Minute)
-	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{task}); err != nil {
-		t.Fatalf("regress terminal Long Task: %v", err)
+	got := listed[0]
+	if got.Status != repo.LongTaskFailed {
+		t.Fatalf("regressed Long Task status = %q, want failed: %+v", got.Status, got)
+	}
+	if !strings.Contains(got.TerminalReason, "running") || !strings.Contains(got.TerminalReason, "queued") {
+		t.Fatalf("regressed Long Task terminal_reason = %q", got.TerminalReason)
+	}
+	if got.PoolQueued != 1 || got.PoolRunning != 0 || got.EndedAt.IsZero() ||
+		!got.LastSeenAt.Equal(submitted.Add(90*time.Second)) {
+		t.Fatalf("regression dropped incoming snapshot fields: %+v", got)
 	}
 
+	// A later terminal snapshot on the failed row stays failed (terminal rows
+	// never regress), but counters/last_seen still converge.
+	succeeded := regressed
+	succeeded.Status = repo.LongTaskSucceeded
+	succeeded.PoolQueued = 0
+	succeeded.PoolRunning = 0
+	succeeded.EndedAt = submitted.Add(2 * time.Minute)
+	succeeded.UpdatedAt = submitted.Add(2 * time.Minute)
+	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{succeeded}); err != nil {
+		t.Fatalf("finish Long Task: %v", err)
+	}
 	items, total, err := store.ListLongTaskTasks(repo.LongTaskListFilter{
-		Query: "xdr", Status: repo.LongTaskSucceeded, Limit: 10,
+		Query: "xdr", Status: repo.LongTaskFailed, Limit: 10,
 	})
 	if err != nil {
 		t.Fatalf("ListLongTaskTasks: %v", err)
 	}
-	if total != 1 || len(items) != 1 || items[0].Status != repo.LongTaskSucceeded ||
+	if total != 1 || len(items) != 1 || items[0].Status != repo.LongTaskFailed ||
 		items[0].PoolQueued != 0 || items[0].PoolRunning != 0 || items[0].PoolLimit != 2 ||
-		items[0].StartedAt.IsZero() || items[0].EndedAt.IsZero() {
+		items[0].StartedAt.IsZero() || items[0].EndedAt.IsZero() ||
+		items[0].TerminalReason == "" {
 		t.Fatalf("listed Long Tasks = total %d items %+v", total, items)
 	}
 }

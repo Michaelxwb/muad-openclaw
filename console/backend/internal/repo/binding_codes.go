@@ -137,6 +137,11 @@ func (s *Store) ExpireBindingCodes(now time.Time) (int64, error) {
 }
 
 // ActivateBindingCode atomically creates an Identity and consumes the code.
+// Retrying with the same (code, external_id) after a successful activation is
+// idempotent: the previously committed identity/binding result is returned
+// instead of ErrBindingCodeUsed, so a client that saw a 50214 apply failure can
+// converge by retrying. A different external_id on an already-used code is
+// still rejected as a replay.
 func (s *Store) ActivateBindingCode(
 	codec *secretcrypto.BindingCodeCodec, activation BindingActivation, now time.Time,
 ) (BindingActivationResult, error) {
@@ -156,6 +161,11 @@ func (s *Store) ActivateBindingCode(
 	if err != nil {
 		return BindingActivationResult{}, err
 	}
+	if record.Status == BindingCodeStatusUsed &&
+		record.UsedExternalID == strings.TrimSpace(activation.ExternalID) &&
+		bindingScopeMatches(record, activation) {
+		return replayActivationTx(tx, record, activation, now)
+	}
 	if err := validateBindingStateTx(tx, record, now); err != nil {
 		return BindingActivationResult{}, err
 	}
@@ -169,6 +179,55 @@ func (s *Store) ActivateBindingCode(
 		return BindingActivationResult{}, ErrBindingCodeScope
 	}
 	return activateBindingTx(tx, record, activation, now)
+}
+
+// replayActivationTx returns the identity and user committed by the original
+// activation of the same code, without consuming anything again or bumping the
+// Pod generation.
+func replayActivationTx(
+	tx *sql.Tx, record BindingCode, activation BindingActivation, now time.Time,
+) (BindingActivationResult, error) {
+	user, err := getHumanUserTx(tx, record.HumanUserID)
+	if err != nil {
+		return BindingActivationResult{}, err
+	}
+	identity, err := findIdentityByActivationTx(tx, record, activation)
+	if err != nil {
+		return BindingActivationResult{}, err
+	}
+	generation, err := currentPodGenerationTx(tx, record.PodID)
+	if err != nil {
+		return BindingActivationResult{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return BindingActivationResult{}, fmt.Errorf("commit binding replay: %w", err)
+	}
+	return BindingActivationResult{
+		Identity: identity, HumanUser: user, ConfigGeneration: generation,
+	}, nil
+}
+
+func findIdentityByActivationTx(
+	tx *sql.Tx, record BindingCode, activation BindingActivation,
+) (UserIdentity, error) {
+	row := tx.QueryRow(`SELECT `+identityColumns+`
+		FROM user_identities WHERE human_user_id = ? AND channel = ?
+		AND openclaw_channel = ? AND account_id = ? AND external_id = ?
+		AND peer_kind = ?`, record.HumanUserID, record.Channel,
+		record.OpenClawChannel, record.AccountID, activation.ExternalID,
+		activation.PeerKind)
+	return scanIdentity(row)
+}
+
+func currentPodGenerationTx(tx *sql.Tx, podID string) (int64, error) {
+	var generation int64
+	if err := tx.QueryRow(`SELECT config_generation FROM pods
+		WHERE pod_id = ?`, podID).Scan(&generation); errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNotFound
+	} else if err != nil {
+		return 0, fmt.Errorf("read Pod config generation: %w", err)
+	}
+	return generation, nil
 }
 
 func prepareBindingRequest(request *BindingCodeRequest) error {

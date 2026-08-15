@@ -167,15 +167,11 @@ func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	next := applyGlobalRequest(current, request)
-	if err := s.store.SetResourceGlobal(repo.ResourceConfig{
+	podIDs, err := s.store.SaveResourcesAndMarkPods(repo.ResourceConfig{
 		MemLimit: next.MemLimit, CPULimit: next.CPULimit, RestartPolicy: next.RestartPolicy,
 		MaxSkillConcurrency: next.MaxSkillConcurrency, MaxBrowserConcurrency: next.MaxBrowserConcurrency,
 		MaxLongTaskConcurrency: next.MaxLongTaskConcurrency,
-	}); err != nil {
-		writeErr(w, r, errcode.InternalSaveResourceConfig)
-		return
-	}
-	podIDs, err := s.store.MarkPodsInheritingResourcesPending(
+	},
 		current.MemLimit != next.MemLimit, current.CPULimit != next.CPULimit,
 		current.RestartPolicy != next.RestartPolicy,
 		current.MaxSkillConcurrency != next.MaxSkillConcurrency,
@@ -183,7 +179,7 @@ func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
 		current.MaxLongTaskConcurrency != next.MaxLongTaskConcurrency,
 	)
 	if err != nil {
-		writeErr(w, r, errcode.InternalMarkPodsPending)
+		writeErr(w, r, errcode.InternalSaveResourceConfig)
 		return
 	}
 	for _, podID := range podIDs {

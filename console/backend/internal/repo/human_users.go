@@ -184,8 +184,13 @@ func (s *Store) UpdateHumanUser(humanUserID string, update HumanUserUpdate) erro
 		return err
 	}
 	if current.Status != update.Status || modelChanged {
-		if err := markPodConfigPendingTx(tx, current.PodID); err != nil {
-			return err
+		// An unbound user (its Pod was deleted) has no runtime to converge;
+		// metadata changes are still saved and the runtime sync is re-applied
+		// once the user is attached to a Pod again.
+		if current.PodID != "" {
+			if err := markPodConfigPendingTx(tx, current.PodID); err != nil {
+				return err
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {

@@ -98,6 +98,53 @@ func (s *Store) GetResourceGlobal() (ResourceConfig, error) {
 	}
 }
 
+// SaveResourcesAndMarkPods atomically persists the global resource config and
+// marks the inheriting Pods pending in one transaction, so a failure cannot
+// leave the config saved while Pods stay converged (or vice versa).
+func (s *Store) SaveResourcesAndMarkPods(
+	c ResourceConfig,
+	memChanged, cpuChanged, restartChanged, skillChanged, browserChanged, longTaskChanged bool,
+) ([]string, error) {
+	if !memChanged && !cpuChanged && !restartChanged && !skillChanged && !browserChanged && !longTaskChanged {
+		if err := s.SetResourceGlobal(c); err != nil {
+			return nil, err
+		}
+		return []string{}, nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("begin save resources: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	now := time.Now().UTC().Format(tsLayout)
+	if _, err := tx.Exec(
+		`INSERT INTO resource_global (
+			id, mem_limit, cpu_limit, restart_policy, max_skill_concurrency,
+			max_browser_concurrency, max_long_task_concurrency, updated_at
+		) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(id) DO UPDATE SET
+		   mem_limit=excluded.mem_limit, cpu_limit=excluded.cpu_limit,
+		   restart_policy=excluded.restart_policy,
+		   max_skill_concurrency=excluded.max_skill_concurrency,
+		   max_browser_concurrency=excluded.max_browser_concurrency,
+		   max_long_task_concurrency=excluded.max_long_task_concurrency,
+		   updated_at=excluded.updated_at`,
+		c.MemLimit, c.CPULimit, c.RestartPolicy, c.MaxSkillConcurrency,
+		c.MaxBrowserConcurrency, c.MaxLongTaskConcurrency, now,
+	); err != nil {
+		return nil, fmt.Errorf("save resource config: %w", err)
+	}
+	podIDs, err := markInheritingPodsPendingTx(tx, memChanged, cpuChanged, restartChanged,
+		skillChanged, browserChanged, longTaskChanged)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit save resources: %w", err)
+	}
+	return podIDs, nil
+}
+
 // --- audit_log ---
 
 // AddAudit appends an audit record.

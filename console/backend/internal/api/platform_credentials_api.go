@@ -99,7 +99,9 @@ func (s *Server) handlePutPlatformCredential(w http.ResponseWriter, r *http.Requ
 		writeRepoError(w, r, err)
 		return
 	}
-	s.enqueueReconcile(podID)
+	if podID != "" {
+		s.enqueueReconcile(podID)
+	}
 	action := auditlog.ActionPlatformCredentialCreate
 	if existed {
 		action = auditlog.ActionPlatformCredentialUpdate
@@ -142,7 +144,9 @@ func (s *Server) handleDeletePlatformCredential(w http.ResponseWriter, r *http.R
 		writeRepoError(w, r, err)
 		return
 	}
-	s.enqueueReconcile(podID)
+	if podID != "" {
+		s.enqueueReconcile(podID)
+	}
 	s.auditPlatformCredential(r, auditlog.ActionPlatformCredentialDelete, user, summary)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"humanUserId": user.HumanUserID, "platform": platform, "deleted": true,

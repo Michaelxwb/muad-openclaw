@@ -4,9 +4,11 @@ package collector
 import (
 	"context"
 	"errors"
+	"log"
 	"sync"
 	"time"
 
+	auditlog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/audit"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
@@ -64,16 +66,37 @@ func (c *Collector) Run(ctx context.Context) {
 func (c *Collector) CollectOnce(ctx context.Context) {
 	infos, err := c.drv.List(ctx)
 	if err != nil {
+		// Never fail silently: log the redacted error and publish control-plane
+		// snapshots marked unhealthy so alerting does not keep serving the
+		// previous (possibly Healthy=true) snapshot as fresh state.
+		log.Printf("collector_list_failed error=%s", auditlog.RedactDiagnostic(err.Error()))
+		c.publishStaleSnapshots(err)
 		return
 	}
 	snaps, err := c.baseSnapshots()
 	if err != nil {
+		log.Printf("collector_source_failed error=%s", auditlog.RedactDiagnostic(err.Error()))
 		return
 	}
 	stats, _ := c.drv.StatsAll(ctx)
 	states := runtimeStates(infos)
 	mergeResourceStats(snaps, stats)
 	c.probeRunningPods(ctx, snaps, states)
+	c.cache.Replace(snaps)
+}
+
+// publishStaleSnapshots replaces the cache with the control-plane snapshot set
+// whose Pods are all marked unhealthy after the driver probe failed.
+func (c *Collector) publishStaleSnapshots(cause error) {
+	snaps, err := c.baseSnapshots()
+	if err != nil {
+		log.Printf("collector_stale_snapshot_failed error=%s", auditlog.RedactDiagnostic(err.Error()))
+		return
+	}
+	for podID, snapshot := range snaps {
+		snapshot.Healthy = false
+		snaps[podID] = snapshot
+	}
 	c.cache.Replace(snaps)
 }
 

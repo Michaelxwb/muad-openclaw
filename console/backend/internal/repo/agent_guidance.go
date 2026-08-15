@@ -42,6 +42,32 @@ func (s *Store) SetAgentGuidance(guidance AgentGuidance) error {
 	return nil
 }
 
+// SaveAgentGuidanceAndMarkPods atomically persists the guidance and marks every
+// Pod pending in one transaction, so a failure rolls back the guidance write.
+func (s *Store) SaveAgentGuidanceAndMarkPods(guidance AgentGuidance) ([]string, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("begin save Agent guidance: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(`INSERT INTO agent_guidance (id, user_skill, memory, main, updated_at)
+		VALUES (1, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET user_skill = excluded.user_skill,
+			memory = excluded.memory, main = excluded.main, updated_at = excluded.updated_at`,
+		guidance.UserSkill, guidance.Memory, guidance.Main,
+		formatTime(time.Now().UTC())); err != nil {
+		return nil, fmt.Errorf("save Agent guidance: %w", err)
+	}
+	podIDs, err := markAllPodsConfigPendingTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit save Agent guidance: %w", err)
+	}
+	return podIDs, nil
+}
+
 func scanAgentGuidance(sc scanner) (AgentGuidance, error) {
 	var guidance AgentGuidance
 	var updatedAt string

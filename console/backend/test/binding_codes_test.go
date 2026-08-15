@@ -31,8 +31,25 @@ func TestBindingCode_ActivationIsAtomicAndOneTime(t *testing.T) {
 	if err != nil || found.HumanUserID != alice.HumanUserID {
 		t.Fatalf("activated Identity = %+v, %v", found, err)
 	}
-	if _, err := store.ActivateBindingCode(codec, activation, time.Now().UTC()); !errors.Is(err, repo.ErrBindingCodeUsed) {
-		t.Fatalf("replay error = %v, want ErrBindingCodeUsed", err)
+	// Replaying the same (code, external_id) is idempotent: the already
+	// committed binding result is returned and the generation is not bumped.
+	replayed, err := store.ActivateBindingCode(codec, activation, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("idempotent replay = %v, want success", err)
+	}
+	if replayed.HumanUser.HumanUserID != result.HumanUser.HumanUserID ||
+		replayed.Identity.IdentityID != result.Identity.IdentityID {
+		t.Fatalf("replay returned a different binding: first=%+v replay=%+v", result, replayed)
+	}
+	if replayed.ConfigGeneration != result.ConfigGeneration {
+		t.Fatalf("replay bumped Pod generation: %d -> %d", result.ConfigGeneration, replayed.ConfigGeneration)
+	}
+	if stored, err := store.GetBindingCode(record.BindingCodeID); err != nil || stored.UsedExternalID != "Scoped-Alice" {
+		t.Fatalf("replayed code state = %+v, %v", stored, err)
+	}
+	// Replaying the same code with a different external_id stays rejected.
+	if _, err := store.ActivateBindingCode(codec, bindingActivation(plain, "Scoped-Alice-2"), time.Now().UTC()); !errors.Is(err, repo.ErrBindingCodeUsed) {
+		t.Fatalf("replay with different external ID = %v, want ErrBindingCodeUsed", err)
 	}
 }
 
