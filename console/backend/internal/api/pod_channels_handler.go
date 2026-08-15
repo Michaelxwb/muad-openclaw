@@ -19,7 +19,7 @@ func (s *Server) handlePutPodChannels(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, r, errcode.InvalidRequestBody)
 		return
 	}
-	_, current, err := s.decodeChannelSettings(pod)
+	currentChannels, current, err := s.decodeChannelSettings(pod)
 	if err != nil {
 		writeErr(w, r, errcode.InternalDecodeChannelConfig)
 		return
@@ -27,6 +27,15 @@ func (s *Server) handlePutPodChannels(w http.ResponseWriter, r *http.Request) {
 	channels, configs, err := s.normalizeChannelSettings(request, current)
 	if err != nil {
 		writeInputValidationError(w, r, errcode.InvalidChannelConfig, err)
+		return
+	}
+	// 同值去重：规范化后与当前一致时不改写 DB、不触发 apply/热加载，pod 列表的
+	// 配置状态（generation / last_apply_status）保持不动（与 PUT resources 一致）。
+	if sameChannelSettings(channels, configs, currentChannels, current) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"podId": pod.PodID, "channels": channels,
+			"channelConfigs": channelConfigViews(channels, configs),
+		})
 		return
 	}
 	channelsJSON, configsEnc, err := s.encodeChannelSettings(channels, configs)

@@ -710,6 +710,39 @@ func TestPodChannelUpdateRemovesChannelAndQueuesReconcile(t *testing.T) {
 	}
 }
 
+func TestPodChannelUpdateSameValueIsNoop(t *testing.T) {
+	e := newTestEnv(t)
+	body := `{"podId":"pod-same-ch","channels":["wecom"],` +
+		`"channelConfigs":{"wecom":{"botId":"bot-same","secret":"secret-same"}}}`
+	createPodThroughAPI(t, e, body)
+	before, err := e.store.GetPod("pod-same-ch")
+	if err != nil {
+		t.Fatalf("get Pod before: %v", err)
+	}
+	e.reconcile.podIDs = nil
+	e.drv.updateSpecCalls = nil
+	// 完全相同的通道配置重放：规范化后与当前一致 → 不 bump generation、不
+	// enqueue reconcile、不刷新 Secret，pod 列表配置状态保持不动。
+	rr := e.do(http.MethodPut, "/api/v1/containers/pod-same-ch/channels",
+		`{"channels":["wecom"],"channelConfigs":{"wecom":{"botId":"bot-same","secret":"secret-same"}}}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("same-value channel PUT = %d: %s", rr.Code, rr.Body.String())
+	}
+	after, err := e.store.GetPod("pod-same-ch")
+	if err != nil {
+		t.Fatalf("get Pod after: %v", err)
+	}
+	if after.ConfigGeneration != before.ConfigGeneration {
+		t.Fatalf("same-value PUT bumped generation: %d -> %d", before.ConfigGeneration, after.ConfigGeneration)
+	}
+	if len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("same-value PUT queued reconcile: %v", e.reconcile.podIDs)
+	}
+	if len(e.drv.updateSpecCalls) != 0 {
+		t.Fatalf("same-value PUT refreshed spec Secret: %+v", e.drv.updateSpecCalls)
+	}
+}
+
 func TestPodChannelUpdateRejectsInvalidPayload(t *testing.T) {
 	e := newTestEnv(t)
 	createWeChatPod(t, e, "pod-invalid-update")
