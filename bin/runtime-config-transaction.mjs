@@ -279,10 +279,26 @@ export function abortTransaction(configPath) {
 }
 
 export function selectRestartMode(current, next) {
+  // bindings / session.identityLinks 变化无法通过 openclaw hybrid watcher 热
+  // 加载：reload 分类把 bindings 归为 noop（不触发 hot reload），而 channel
+  // 插件在启动时快照配置对象，运行中不会重新读取新 bindings。因此这类变化
+  // 必须真实重启 gateway，让插件重新捕获配置（否则绑定后的消息仍按旧路由
+  // 落入 main agent）。其余配置变化（agents/skills/plugins 等）由 watcher
+  // 分层热加载，无需重启。
+  if (bindingStateChanged(current, next)) return "gateway";
   if (canonicalHash(stripRestartNoop(current)) === canonicalHash(stripRestartNoop(next))) {
     return "none";
   }
-  return "gateway";
+  return "none";
+}
+
+// 比较 bindings 与 session.identityLinks 两个会改变 channel 路由的配置段。
+function bindingStateChanged(current, next) {
+  return (
+    canonicalHash(current?.bindings ?? []) !== canonicalHash(next?.bindings ?? []) ||
+    canonicalHash(current?.session?.identityLinks ?? {}) !==
+      canonicalHash(next?.session?.identityLinks ?? {})
+  );
 }
 
 // runtime-guard declares plugins.entries.muad-runtime-guard.config.generation as
