@@ -439,6 +439,12 @@ func (s *Server) handleDeleteHumanUser(w http.ResponseWriter, r *http.Request) {
 		s.auditHumanUser(r, auditlog.ActionHumanUserDelete, user, "deleting")
 	}
 	s.enqueueReconcile(user.PodID)
+	// Wake the background cleaner so the user is cleaned up as soon as the
+	// Pod's config converges (routes/bindings without this user), instead of
+	// waiting up to a full sweep interval.
+	if s.cleanupWaker != nil {
+		s.cleanupWaker.Wake()
+	}
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"humanUserId": user.HumanUserID, "podId": user.PodID, "status": repo.HumanUserStatusDeleting,
 	})

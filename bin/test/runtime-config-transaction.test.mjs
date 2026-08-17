@@ -257,17 +257,47 @@ test("binding-only runtime changes restart the gateway", () => {
   assert.equal(selectRestartMode(current, next), "gateway");
 });
 
-test("non-binding runtime changes still restart the gateway", () => {
+test("identityLinks-only changes restart the gateway", () => {
+  const current = restartBaseline();
+  const next = restartBaseline();
+  next.session.identityLinks = {
+    alice: ["mattermost:default:direct:mm-user-1"],
+  };
+  next.plugins.entries["muad-runtime-guard"].config.generation = 8;
+
+  assert.equal(selectRestartMode(current, next), "gateway");
+});
+
+test("non-binding runtime changes hot-reload without a gateway restart", () => {
   const current = restartBaseline();
   const next = restartBaseline();
   next.plugins.entries["muad-runtime-guard"].config.generation = 8;
   next.plugins.entries["session-manager"].config.consoleInternalURL =
     "http://console-next/internal/v1";
 
-  assert.equal(selectRestartMode(current, next), "gateway");
+  assert.equal(selectRestartMode(current, next), "none");
 });
 
-test("adding an agent browser profile does not require a pod restart", () => {
+test("adding an agent browser profile without new bindings hot-reloads", () => {
+  const current = restartBaseline();
+  current.browser = {
+    enabled: true,
+    profiles: { alice: { cdpPort: 18802, driver: "openclaw" } },
+  };
+  const next = restartBaseline();
+  next.browser = {
+    enabled: true,
+    profiles: {
+      alice: { cdpPort: 18802, driver: "openclaw" },
+      bob: { cdpPort: 18803, driver: "openclaw" },
+    },
+  };
+  next.plugins.entries["muad-runtime-guard"].config.generation = 8;
+
+  assert.equal(selectRestartMode(current, next), "none");
+});
+
+test("adding an agent with a new binding still restarts the gateway", () => {
   const current = restartBaseline();
   current.browser = {
     enabled: true,

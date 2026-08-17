@@ -27,18 +27,18 @@ import (
 
 // fakeDriver records calls so handler logic is testable without Docker.
 type fakeDriver struct {
-	mu                sync.Mutex
-	created           map[string]driver.PodSpec
-	removed           map[string]bool
-	keepState         map[string]bool
-	restarted         map[string]int
-	createErr         error
-	createErrors      []error
+	mu           sync.Mutex
+	created      map[string]driver.PodSpec
+	removed      map[string]bool
+	keepState    map[string]bool
+	restarted    map[string]int
+	createErr    error
+	createErrors []error
 	// replaced records every ReplaceRuntime invocation (in-place upgrade);
 	// replaceErrors, when non-empty, is a queue of per-call errors.
-	replaced      []driver.PodSpec
-	replaceErrors []error
-	listErr       error
+	replaced          []driver.PodSpec
+	replaceErrors     []error
+	listErr           error
 	removeErr         error
 	restartErrors     map[string]error
 	channelLogsOutput string
@@ -410,9 +410,18 @@ type testEnv struct {
 	drv       *fakeDriver
 	cache     *monitor.Cache
 	reconcile *fakeReconcileQueue
+	waker     *fakeCleanupWaker
 	syncer    *skillsync.Syncer
 	token     string
 	skillsDir string
+}
+
+type fakeCleanupWaker struct {
+	wakes int
+}
+
+func (waker *fakeCleanupWaker) Wake() {
+	waker.wakes++
 }
 
 type fakeReconcileQueue struct {
@@ -467,10 +476,13 @@ func newTestEnv(t *testing.T) *testEnv {
 	if err := api.BootstrapAdmin(store, "root", "pw"); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
-	h := api.NewServer(cfg, store, cipher, drv, cache, syncer, reconcile).Handler()
+	waker := &fakeCleanupWaker{}
+	h := api.NewServer(cfg, store, cipher, drv, cache, syncer, reconcile).
+		WithCleanupWaker(waker).
+		Handler()
 	return &testEnv{
 		h: h, cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache, reconcile: reconcile,
-		syncer: syncer, token: login(t, h), skillsDir: skillsDir,
+		waker: waker, syncer: syncer, token: login(t, h), skillsDir: skillsDir,
 	}
 }
 

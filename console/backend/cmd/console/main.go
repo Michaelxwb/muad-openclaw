@@ -67,7 +67,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	startBackground(ctx, deps, cache, coordinator, cleaner)
-	srv := newHTTPServer(deps, cache, coordinator)
+	srv := newHTTPServer(deps, cache, coordinator, cleaner)
 	serveErr := serve(srv, deps.cfg)
 	select {
 	case <-ctx.Done():
@@ -148,12 +148,13 @@ func startBackground(
 
 func newHTTPServer(
 	deps *dependencies, cache *monitor.Cache, coordinator *runtimeapply.Coordinator,
+	cleaner *usercleanup.Cleaner,
 ) *http.Server {
 	return &http.Server{
 		Addr: deps.cfg.ListenAddr,
 		Handler: api.NewServer(
 			deps.cfg, deps.store, deps.cipher, deps.driver, cache, deps.skillSyncer, coordinator,
-		).Handler(),
+		).WithCleanupWaker(cleaner).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      3 * time.Minute,

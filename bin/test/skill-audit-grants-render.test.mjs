@@ -144,7 +144,7 @@ test("system Skills keep per-Skill grants and stay byte-stable", () => {
   assert.equal(selectRestartMode(currentConfig, nextConfig), "none");
 });
 
-test("longTask Skill changes still restart the gateway (known residual)", () => {
+test("longTask Skill changes hot-reload via plugin reload", () => {
   const current = parseRuntimeConfig(fixtureText);
   const next = structuredClone(current);
   next.generation += 1;
@@ -166,7 +166,11 @@ test("longTask Skill changes still restart the gateway (known residual)", () => 
     canonicalHash(currentConfig),
     "longTask grant 是 per-Skill 的，新增必须改字节",
   );
-  assert.equal(selectRestartMode(currentConfig, nextConfig), "gateway");
+  // longTask grant 落在 guard 插件配置（plugins.entries.muad-runtime-guard
+  // .config.longTaskSkillGrants），命中 openclaw 的 plugins 前缀 hot reload：
+  // reload-plugins 会重建插件运行时并让 channel 插件重新捕获配置，无需
+  // gateway 全量重启（曾作为 known residual 触发重启）。
+  assert.equal(selectRestartMode(currentConfig, nextConfig), "none");
 });
 
 test("sanitizeGrantName keeps unusual public/private roots schema-valid", () => {

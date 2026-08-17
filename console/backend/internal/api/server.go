@@ -34,6 +34,7 @@ type Server struct {
 	reconcile      ReconcileEnqueuer
 	reconcileNow   ReconcileRunner
 	operations     PodOperationRunner
+	cleanupWaker   CleanupWaker
 	skillUploadMu  sync.Mutex
 	bindingLimiter *bindingAttemptLimiter
 	loginLimiter   *bindingAttemptLimiter
@@ -52,6 +53,13 @@ type ReconcileRunner interface {
 // PodOperationRunner serializes runtime mutations with config reconciliation.
 type PodOperationRunner interface {
 	RunExclusive(ctx context.Context, podID string, operation func(context.Context) error) error
+}
+
+// CleanupWaker requests an immediate sweep of deleting Human Users. It lets the
+// delete endpoint wake the background cleaner right after marking a user
+// deleting, instead of waiting for the cleaner's next ticker.
+type CleanupWaker interface {
+	Wake()
 }
 
 var errRuntimeCoordinatorUnavailable = errors.New("runtime coordinator unavailable")
@@ -81,6 +89,14 @@ func NewServer(
 		server.operations, _ = enqueuers[0].(PodOperationRunner)
 	}
 	return server
+}
+
+// WithCleanupWaker wires the background cleaner so delete endpoints can wake it
+// immediately. Optional: without a waker, deletion still converges through the
+// cleaner's periodic sweep.
+func (s *Server) WithCleanupWaker(waker CleanupWaker) *Server {
+	s.cleanupWaker = waker
+	return s
 }
 
 func (s *Server) runPodExclusive(

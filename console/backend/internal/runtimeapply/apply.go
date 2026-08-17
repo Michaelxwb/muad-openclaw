@@ -203,20 +203,19 @@ func (applier *Applier) commit(ctx context.Context, request Request) error {
 
 func (applier *Applier) restart(ctx context.Context, podID string, mode RestartMode) error {
 	switch mode {
-	case RestartNone, RestartGateway:
-		// RestartGateway is intentionally a no-op: OpenClaw's gateway runs its
-		// own config watcher in hybrid mode (gateway.reload.mode=hybrid, the
-		// default) and applies changes with layered granularity — agents.list /
-		// plugins / skills changes are HOT-reloaded in ~150ms without interrupting
-		// channels, while only models.pricing / plugins.load / gateway / discovery
-		// changes trigger a full in-process restart. Issuing `kill -USR1 1` here
-		// forced a full gateway restart for EVERY config change (agent/skill/IM
-		// edits all restarted the gateway and reconnected channels), which is what
-		// made routine admin operations disruptive to live users. waitForHealth
-		// still gates on the new generation being visible (guard reads generation
-		// from disk on every probe), so removing the forced restart does not relax
-		// convergence. RestartPod (image upgrades / ForcePodRestart) is unchanged.
+	case RestartNone:
+		// 可热加载变更（agents/skills/plugins 等）由 openclaw hybrid watcher
+		// 分层热加载（~150ms）生效，无需重启 gateway；waitForHealth 通过
+		// config revision 是否 applied 门禁收敛。
 		return nil
+	case RestartGateway:
+		// bindings / session.identityLinks 变更不在 openclaw hybrid watcher 的
+		// 热加载列表（reload 分类为 noop），channel 插件启动时快照配置对象，
+		// 运行中不会重新读取新 bindings。必须真实重启 gateway（worker 镜像里
+		// gateway 是 PID 1，CLI restart 命令只面向 systemd 服务，容器内无效），
+		// 让插件重新捕获配置，否则绑定后的消息仍按旧路由落入 main agent。
+		_, err := applier.driver.Exec(ctx, podID, "kill", "-USR1", "1")
+		return err
 	case RestartPod:
 		return applier.driver.Restart(ctx, podID)
 	default:

@@ -22,9 +22,9 @@ func TestApplyGatewayRestartSuccess(t *testing.T) {
 	if result.RestartMode != RestartGateway || result.ConfigHash != "sha256:test" {
 		t.Fatalf("result = %+v", result)
 	}
-	// RestartGateway 现在是 no-op：配置生效依赖 openclaw hybrid watcher 热加载
-	// （agents/plugins/skills 分层热更），不再对每个变更强制 kill -USR1 全量重启。
-	if driver.gatewayRestarts != 0 || driver.podRestarts != 0 || !driver.committed {
+	// bindings/identityLinks 变更必须真实重启 gateway（kill -USR1 1），让
+	// channel 插件重新捕获配置；pod 不重启。
+	if driver.gatewayRestarts != 1 || driver.podRestarts != 0 || !driver.committed {
 		t.Fatalf("driver state = %+v", driver)
 	}
 	if driver.routeVerifyCalls == 0 {
@@ -94,8 +94,9 @@ func TestApplyHealthFailureRestoresPreviousGeneration(t *testing.T) {
 	applier := newTestApplier(t, driver)
 	_, err := applier.Apply(context.Background(), testRequest(false))
 	assertApplyStage(t, err, StageHealth)
-	// 回滚同样不再发 USR1（依赖 watcher 热加载回退）；断言 0 次全量重启。
-	if !driver.rolledBack || driver.gatewayRestarts != 0 {
+	// 回滚恢复旧配置同样需要真实重启 gateway（旧 bindings 才能重新生效）；
+	// apply 阶段一次 + rollback 恢复一次。
+	if !driver.rolledBack || driver.gatewayRestarts != 2 {
 		t.Fatalf("health rollback state = %+v", driver)
 	}
 	var applyErr *ApplyError
@@ -125,7 +126,8 @@ func TestApplyRouteVerificationFailureRollsBack(t *testing.T) {
 	applier := newTestApplier(t, driver)
 	_, err := applier.Apply(context.Background(), testRequest(false))
 	assertApplyStage(t, err, StageHealth)
-	if !driver.rolledBack || driver.gatewayRestarts != 0 || driver.routeVerifyCalls == 0 {
+	// 路由验证失败回滚：apply 阶段一次重启 + rollback 恢复一次。
+	if !driver.rolledBack || driver.gatewayRestarts != 2 || driver.routeVerifyCalls == 0 {
 		t.Fatalf("route verification failure state = %+v", driver)
 	}
 	if !strings.Contains(err.Error(), "L5_route_not_applied") {
@@ -252,13 +254,13 @@ func TestApplyRestartFailureRestartsRestoredPod(t *testing.T) {
 }
 
 type fakeDriver struct {
-	prepareMode                 RestartMode
-	appliedHealthGeneration     int64
-	failValidate                bool
-	failFirstPodRestart         bool
-	committed                   bool
-	aborted                     bool
-	rolledBack                  bool
+	prepareMode                  RestartMode
+	appliedHealthGeneration      int64
+	failValidate                 bool
+	failFirstPodRestart          bool
+	committed                    bool
+	aborted                      bool
+	rolledBack                   bool
 	gatewayRestarts              int
 	podRestarts                  int
 	configApplyLag               int

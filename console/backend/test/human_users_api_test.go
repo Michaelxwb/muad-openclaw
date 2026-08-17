@@ -221,6 +221,9 @@ func TestHumanUserAPI_DeleteRemainsDeletingUntilCleanerRuns(t *testing.T) {
 	if len(e.reconcile.podIDs) != 1 || e.reconcile.podIDs[0] != "pod-a" {
 		t.Fatalf("delete reconcile queue = %v", e.reconcile.podIDs)
 	}
+	if e.waker == nil || e.waker.wakes != 1 {
+		t.Fatalf("delete must wake the cleaner, wakes = %v", e.waker)
+	}
 }
 
 func TestHumanUserAPI_UnboundUserPatchSavesMetadata(t *testing.T) {
