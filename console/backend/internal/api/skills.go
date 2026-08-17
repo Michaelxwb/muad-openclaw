@@ -139,7 +139,7 @@ func (s *Server) handleGetPublicSkillStorage(w http.ResponseWriter, r *http.Requ
 		writeRuntimeFailure(w, r, err, errcode.RuntimeInspectPublicSkillStorage)
 		return
 	}
-	writeJSON(w, http.StatusOK, publicSkillStorageToView(status))
+	writeJSON(w, http.StatusOK, publicSkillStorageToView(status, langFrom(r.Context())))
 }
 
 func (s *Server) handleEnsurePublicSkillStorage(w http.ResponseWriter, r *http.Request) {
@@ -152,7 +152,7 @@ func (s *Server) handleEnsurePublicSkillStorage(w http.ResponseWriter, r *http.R
 		writeRuntimeFailure(w, r, err, errcode.RuntimeCreatePublicSkillStorage)
 		return
 	}
-	writeJSON(w, http.StatusOK, publicSkillStorageToView(status))
+	writeJSON(w, http.StatusOK, publicSkillStorageToView(status, langFrom(r.Context())))
 }
 
 func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
@@ -1195,13 +1195,34 @@ func effectiveSkillToView(skill repo.EffectiveSkill) effectiveSkillView {
 	return view
 }
 
-func publicSkillStorageToView(status driver.PublicSkillsStorageStatus) publicSkillStorageView {
+func publicSkillStorageToView(status driver.PublicSkillsStorageStatus, lang langCode) publicSkillStorageView {
+	message := status.Message
+	if lang == langEN {
+		if rendered, ok := publicSkillStorageMessageEN[status.MessageKey]; ok {
+			message = rendered
+		}
+	}
 	return publicSkillStorageView{
 		Driver: status.Driver, Name: status.Name, Namespace: status.Namespace,
 		Configured: status.Configured, Ready: status.Ready, Phase: status.Phase,
 		AccessMode: status.AccessMode, StorageClass: status.StorageClass,
-		Size: status.Size, Message: status.Message,
+		Size: status.Size, Message: message,
 	}
+}
+
+// publicSkillStorageMessageEN 是 Public Skill 存储状态的结构化英文文案；MessageKey
+// 由 driver 赋值，未知 key 回退 driver 的默认 Message（中文）。
+var publicSkillStorageMessageEN = map[string]string{
+	"active_only":        "Docker uses an active-only directory to mount public Skills",
+	"docker_dir_unset":   "Docker public Skill directory is not configured",
+	"docker_dir_pending": "Docker public Skill directory will be created on apply or Pod creation",
+	"skills_pvc_unset":   "k8s.skillsPVC is not configured",
+	"mount_unset":        "k8s.publicSkillsMountPath is not configured",
+	"pvc_missing":        "Public Skill PVC has not been created",
+	"mount_not_writable": "Console public Skill mount directory is not writable",
+	"rwm_required":       "Public Skill PVC must support ReadWriteMany",
+	"ready":              "Public Skill PVC is ready",
+	"bound_pending":      "Public Skill PVC created, waiting for storage binding",
 }
 
 func skillPolicyToView(policy repo.SkillPolicy) skillPolicyView {

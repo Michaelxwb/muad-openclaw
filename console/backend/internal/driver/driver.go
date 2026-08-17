@@ -82,6 +82,9 @@ type PublicSkillsStorageStatus struct {
 	StorageClass string
 	Size         string
 	Message      string
+	// MessageKey 是 Message 的结构化状态码（view 层按请求语言渲染文案）；
+	// Message 保留默认中文（含动态细节，如挂载不可写的错误）。
+	MessageKey string
 }
 
 // RuntimeOptions contains worker runtime paths and environment values that are

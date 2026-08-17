@@ -1296,3 +1296,40 @@ func writeZipFile(t *testing.T, writer *zip.Writer, name string, body []byte) {
 		t.Fatalf("write zip body: %v", err)
 	}
 }
+
+// Public Skill 存储状态消息按 Accept-Language 渲染（en 用结构化 MessageKey 的英文文案）。
+func TestSkillAPI_PublicStorageMessageLocalized(t *testing.T) {
+	e := newTestEnv(t)
+	e.drv.publicSkillStorage = driver.PublicSkillsStorageStatus{
+		Driver: "k8s", Name: "muad-skills", Namespace: "muad",
+		Configured: true, Ready: false, Phase: "Missing", AccessMode: "ReadWriteMany",
+		Size: "5Gi", Message: "Public Skill PVC 尚未创建", MessageKey: "pvc_missing",
+	}
+	send := func(lang string) string {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/skills/public-storage", nil)
+		req.Header.Set("Authorization", "Bearer "+e.token)
+		if lang != "" {
+			req.Header.Set("Accept-Language", lang)
+		}
+		rr := httptest.NewRecorder()
+		e.h.ServeHTTP(rr, req)
+		var payload struct {
+			Data struct {
+				Message string `json:"message"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return payload.Data.Message
+	}
+	if got := send("zh-CN"); got != "Public Skill PVC 尚未创建" {
+		t.Fatalf("zh message = %q, want 中文默认", got)
+	}
+	if got := send("en-US"); got != "Public Skill PVC has not been created" {
+		t.Fatalf("en message = %q, want English", got)
+	}
+	if got := send(""); got != "Public Skill PVC 尚未创建" {
+		t.Fatalf("default message = %q, want 中文默认", got)
+	}
+}

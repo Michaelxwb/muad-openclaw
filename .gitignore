@@ -11,6 +11,7 @@ tools/session-manager/dist/
 .local/
 .go-cache/
 .docker/
+.npm-cache/
 
 # skill 打包产物（本地上传/测试生成，不入库）
 skills/*.zip
