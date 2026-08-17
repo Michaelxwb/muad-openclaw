@@ -62,19 +62,22 @@ func (d *DockerDriver) PublicSkillsStorageStatus(
 	phase := "Missing"
 	ready := configured
 	message := "Docker 使用 active-only 运行目录挂载 Public Skill"
+	messageKey := "active_only"
 	if !configured {
 		message = "未配置 Docker Public Skill 目录"
+		messageKey = "docker_dir_unset"
 	} else if stat, err := os.Stat(hostDir); err == nil && stat.IsDir() {
 		phase = "directory"
 	} else if os.IsNotExist(err) {
 		phase = "Pending"
 		message = "Docker Public Skill 运行目录将在应用或创建 Pod 时自动创建"
+		messageKey = "docker_dir_pending"
 	} else if err != nil && !os.IsNotExist(err) {
 		return PublicSkillsStorageStatus{}, fmt.Errorf("stat Docker public Skill directory: %w", err)
 	}
 	return PublicSkillsStorageStatus{
 		Driver: "docker", Name: hostDir, Configured: configured, Ready: ready,
-		Phase: phase, Message: message,
+		Phase: phase, Message: message, MessageKey: messageKey,
 	}, nil
 }
 
@@ -627,6 +630,7 @@ func (d *K8sDriver) PublicSkillsStorageStatus(
 	if apierrors.IsNotFound(err) {
 		base.Phase = "Missing"
 		base.Message = "Public Skill PVC 尚未创建"
+		base.MessageKey = "pvc_missing"
 		return base, nil
 	}
 	if err != nil {
@@ -637,6 +641,7 @@ func (d *K8sDriver) PublicSkillsStorageStatus(
 		if err := d.ensurePublicSkillsActiveDir(); err != nil {
 			status.Ready = false
 			status.Message = fmt.Sprintf("Console Public Skill 挂载目录不可写: %v", err)
+			status.MessageKey = "mount_not_writable"
 		}
 	}
 	return status, nil
@@ -674,8 +679,10 @@ func (d *K8sDriver) publicSkillsStorageBase() PublicSkillsStorageStatus {
 	switch {
 	case !pvcConfigured:
 		status.Message = "未配置 k8s.skillsPVC"
+		status.MessageKey = "skills_pvc_unset"
 	case !mountConfigured:
 		status.Message = "未配置 k8s.publicSkillsMountPath"
+		status.MessageKey = "mount_unset"
 	}
 	return status
 }
@@ -721,10 +728,13 @@ func (d *K8sDriver) statusFromPublicSkillsPVC(
 	}
 	if pvc.Status.Phase == corev1.ClaimBound && !hasRWX {
 		status.Message = "Public Skill PVC 必须支持 ReadWriteMany"
+		status.MessageKey = "rwm_required"
 	} else if status.Ready {
 		status.Message = "Public Skill PVC 已就绪"
+		status.MessageKey = "ready"
 	} else {
 		status.Message = "Public Skill PVC 已创建，等待存储绑定"
+		status.MessageKey = "bound_pending"
 	}
 	return status
 }
