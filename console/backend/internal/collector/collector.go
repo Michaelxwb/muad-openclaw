@@ -19,8 +19,13 @@ const (
 	defaultWorkers = 16
 	// A K8s probe runs two execs (`channels status` and runtime health). Each
 	// exec often takes ~1s under kubectl/SPDY, so 3s causes false runtime guard
-	// alerts on normal cluster jitter.
-	probeTimeout = 8 * time.Second
+	// alerts on normal cluster jitter. Keep 12s headroom: on isolated (offline)
+	// networks the `openclaw` CLI→gateway RPC can take ~9-10s (gateway-side
+	// response latency, not CLI CPU), and a probe timing out marks the whole
+	// snapshot unhealthy — grey channel tags plus "Pod down or unreachable"
+	// alerts on perfectly healthy Pods. 12s still surfaces genuinely dead Pods
+	// within one collector cycle.
+	probeTimeout = 12 * time.Second
 )
 
 // Collector samples runtime state on an interval.
@@ -219,4 +224,3 @@ func mergeGatewayStatus(snapshot *monitor.Snapshot, status gateway.Status) {
 	snapshot.BrowserActive = status.BrowserActive
 	snapshot.BrowserQueued = status.BrowserQueued
 }
-
