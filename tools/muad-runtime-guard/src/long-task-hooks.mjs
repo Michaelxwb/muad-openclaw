@@ -42,9 +42,13 @@ const CONFIRMATION_TEMPLATES = {
 };
 
 export function createLongTaskHooks({
-  config, manager, resolveWorkspace, now = () => Date.now(), log = () => {},
+  getConfig, manager, resolveWorkspace, now = () => Date.now(), log = () => {},
 }) {
-  const locale = normalizedLocale(config?.locale);
+  // 动态读最新 config：长任务 grant 在 skill 上传/reconcile 后会更新 openclaw.json，
+  // 但插件 register 时快照的 config 不会变（reload-plugins 不重跑 register）。每次
+  // hook 触发时读最新，上传长任务 skill 无需重启 pod 即可生效。
+  const currentConfig = () => (typeof getConfig === "function" ? getConfig() : getConfig) ?? {};
+  const locale = () => normalizedLocale(currentConfig().locale);
   const turnContexts = new Map();
   // runId -> 提交结果快照（task/queued/active/skillName）：read 长任务 SKILL.md 时即入队，
   // reply_payload_sending 投递前一次性消费；直投型 IM 不消费，由 TTL 过期清理。
@@ -53,7 +57,34 @@ export function createLongTaskHooks({
   const stubFiles = new Map();
   const diag = (message) => log(`[longtask] ${message}`);
   // 插件启动清扫：崩溃后内存 map 丢失，残留桩文件按前缀 + mtime 过期清理。
-  sweepStaleSubmitStubs(config, resolveWorkspace, now(), diag);
+  sweepStaleSubmitStubs(currentConfig(), resolveWorkspace, now(), diag);
+  // 自然语言确定 longtask skill 后，模型绕过 read 直接跑脚本（exec/bash）时：
+  // 用命令里的路径 token 判定是否命中授权 root，命中则 deny（防脚本真的在主会话
+  // 执行出副作用）并同时入队——与 read 拦截行为一致，不依赖模型是否读过 SKILL.md。
+  const interceptShellCommand = (event, ctx, runId) => {
+    const command = shellCommandText(event);
+    const grant = findGrantForCommand(currentConfig(), event, ctx, command);
+    if (!grant) return undefined;
+    if (!submitted.has(runId)) {
+      const turn = turnContexts.get(runId) ?? {};
+      const submit = safeSubmit(() => submitLongTask(manager, grant, event, ctx, {
+        originalPrompt: textValue(turn.prompt) || promptText(event),
+        sessionKey: turn.sessionKey,
+        agentId: turn.agentId,
+        peerId: turn.peerId,
+        locale: locale(),
+      }));
+      if (!submit) {
+        diag(`exec submit failed runId=${runId} skill=${grant.name}; serial execution fallback`);
+        return undefined;
+      }
+      rememberTurn(submitted, runId, { ...submit, skillName: grant.name }, now());
+      diag(`exec blocked runId=${runId} skill=${grant.name} taskId=${submit.task?.taskId ?? ""} cmd=${JSON.stringify(command).slice(0, 120)}`);
+      return { block: true, blockReason: longTaskBlockReason(grant, submit, locale()) };
+    }
+    diag(`exec re-block runId=${runId} skill=${grant.name}`);
+    return { block: true, blockReason: longTaskBlockReason(grant, null, locale()) };
+  };
   return {
     beforeDispatch: async (event, ctx) => {
       pruneExpired(turnContexts, now());
@@ -62,15 +93,15 @@ export function createLongTaskHooks({
       const skillName = explicitSkillName(promptText(event));
       if (!skillName || isLongTaskSession(event, ctx)) return undefined;
       const agentId = resolveAgentId(event, ctx);
-      const grant = findLongTaskGrant(config, agentId, skillName);
+      const grant = findLongTaskGrant(currentConfig(), agentId, skillName);
       if (!grant) return undefined;
       const submit = safeSubmit(() => submitLongTask(manager, grant, event, ctx, {
         originalPrompt: promptText(event),
         stripSkillPrefix: true,
-        locale,
+        locale: locale(),
       }));
       if (!submit) return { handled: true, text: "Long Task submission failed.", reason: "muad-long-task-submit-failed" };
-      return { handled: true, text: queuedReply(submit, grant.name, locale), reason: "muad-long-task-submitted" };
+      return { handled: true, text: queuedReply(submit, grant.name, locale()), reason: "muad-long-task-submitted" };
     },
     beforeAgentRun: async (event, ctx) => {
       pruneExpired(turnContexts, now());
@@ -95,8 +126,11 @@ export function createLongTaskHooks({
       if (isLongTaskSession(event, ctx)) return undefined;
       const runId = textValue(event?.runId) || textValue(ctx?.runId);
       if (!runId) return undefined;
+      if (event?.toolName === "exec" || event?.toolName === "bash") {
+        return interceptShellCommand(event, ctx, runId);
+      }
       if (event?.toolName !== "read") return undefined;
-      const read = longTaskRead(config, event, ctx);
+      const read = longTaskRead(currentConfig(), event, ctx);
       if (!read) return undefined;
       if (submitted.has(runId)) {
         // Second read or a revision re-run: keep redirecting to the same per-task
@@ -124,14 +158,14 @@ export function createLongTaskHooks({
         sessionKey: turn.sessionKey,
         agentId: turn.agentId,
         peerId: turn.peerId,
-        locale,
+        locale: locale(),
       }));
       if (!submit) {
         diag(`read submit failed runId=${runId}; serial execution fallback`);
         return undefined;
       }
       const stubPath = writeTaskSubmitStub(
-        stubOutputDir(resolveWorkspace, read.agentId), taskId, queuedReply(submit, read.grant.name, locale),
+        stubOutputDir(resolveWorkspace, read.agentId), taskId, queuedReply(submit, read.grant.name, locale()),
       );
       if (!stubPath) {
         // Task is already enqueued; without a stub the model reads the real SKILL.md.
@@ -169,7 +203,7 @@ export function createLongTaskHooks({
       if (!runId) return undefined;
       if (!record || typeof event?.payload?.text !== "string") return undefined;
       submitted.delete(runId);
-      const confirmation = queuedReply(record, record.skillName, locale);
+      const confirmation = queuedReply(record, record.skillName, locale());
       if (event.payload.text === confirmation) return undefined;
       return { payload: { ...event.payload, text: confirmation } };
     },
@@ -199,11 +233,11 @@ function longTaskRead(config, event, ctx) {
   const candidate = readPathCandidate(event);
   if (!candidate) return null;
   const target = resolveExistingPath(candidate.value);
-  if (!target || path.basename(target) !== "SKILL.md") return null;
+  if (!target) return null;
   const agentId = resolveAgentId(event, ctx);
   const grant = findGrantBySkillPath(config, agentId, target);
-  if (!grant || !diskManifestIsLongTask(path.dirname(target), grant.name)) return null;
-  return { agentId, grant, candidate, skillDir: path.dirname(target) };
+  if (!grant || !diskManifestIsLongTask(grant.rootPath, grant.name)) return null;
+  return { agentId, grant, candidate, skillDir: grant.rootPath };
 }
 
 function rewriteReadTo(event, read, stubPath) {
@@ -336,15 +370,74 @@ function diskManifestIsLongTask(skillDir, expectedName) {
   }
 }
 
-function findGrantBySkillPath(config, agentId, skillMdPath) {
-  const dir = path.dirname(skillMdPath);
+function findGrantBySkillPath(config, agentId, targetPath) {
   return (config.longTaskSkillGrants ?? []).find((grant) =>
-    grant.agentId === agentId && isWithin(grant.rootPath, dir));
+    grant.agentId === agentId && isWithin(grant.rootPath, targetPath));
 }
 
 function findLongTaskGrant(config, agentId, skillName) {
   return (config.longTaskSkillGrants ?? []).find((grant) =>
     grant.agentId === agentId && grant.name === skillName);
+}
+
+function findGrantForCommand(config, event, ctx, command) {
+  const agentId = resolveAgentId(event, ctx);
+  return (config.longTaskSkillGrants ?? []).find((grant) =>
+    grant.agentId === agentId &&
+    diskManifestIsLongTask(grant.rootPath, grant.name) &&
+    commandReferencesSkill(command, grant));
+}
+
+// exec/bash 命令是自由文本，无法像 read 那样用 realpath 直接命中，这里用「命令里
+// 的路径 token」近似：绝对路径解析后 isWithin root，相对 token 先按 root 拼接再
+// resolve——覆盖 cd <root> && ./run.py、python3 <root>/scripts/run.py、cp 脚本等
+// 惯例形态；模型把脚本内容读出再凭空重建不在此列（那不算执行该 skill）。
+function commandReferencesSkill(command, grant) {
+  if (typeof command !== "string" || !command.trim()) return false;
+  const root = grant?.rootPath;
+  if (!root || !path.isAbsolute(root)) return false;
+  for (const token of commandPathTokens(command)) {
+    if (!token) continue;
+    const absolute = path.isAbsolute(token) ? token : path.join(root, token);
+    const resolved = resolveExistingPath(absolute);
+    if (resolved && isWithin(root, resolved)) return true;
+  }
+  return false;
+}
+
+// 从 shell 命令里抽出路径形态的 token：绝对路径、含 / 的相对路径、脚本扩展名。
+// 分号/管道/重定向/引号分隔符一并拆掉，避免拼接形态污染判定。
+function commandPathTokens(command) {
+  const tokens = command.match(/[^\s"'`;&|<>()=]+/gu) ?? [];
+  return tokens.filter((token) =>
+    path.isAbsolute(token) || token.includes("/") ||
+    /\.(?:py|sh|js|mjs|ts|go|rb|pl|bat|cmd|ps1)$/iu.test(token));
+}
+
+// 与 cross-user-guard 一致的 exec 参数形态：command/script/cmd + commands 数组。
+function shellCommandText(event) {
+  const params = event?.params;
+  if (!params || typeof params !== "object") return "";
+  const parts = [];
+  for (const key of ["command", "script", "cmd"]) {
+    if (typeof params[key] === "string") parts.push(params[key]);
+  }
+  if (Array.isArray(params.commands)) {
+    for (const item of params.commands) {
+      if (typeof item === "string") parts.push(item);
+    }
+  }
+  return parts.join("\n");
+}
+
+// exec/bash 被拦时的 blockReason：指引模型不执行脚本，并把规范确认文案带给模型
+// （直投型 IM 不经过 replyPayloadSending 时，模型照抄即一致）。
+function longTaskBlockReason(grant, submit, locale) {
+  const confirmation = submit ? queuedReply(submit, grant.name, locale) : "";
+  const header = normalizedLocale(locale) === "en"
+    ? `${grant.name} is a background long task and has been submitted for async execution. Do not run its scripts or tools in this conversation. Reply to the user with the confirmation below exactly as written:`
+    : `${grant.name} 是后台长任务，已提交异步执行。请勿在当前会话执行它的脚本或工具。请原样回复下面的确认文案：`;
+  return confirmation ? `${header}\n${confirmation}` : header;
 }
 
 function readPathCandidate(event) {
