@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { setImmediate as tick } from "node:timers/promises";
 import test from "node:test";
 
-import { LongTaskManager, spawnOpenClawTask, longTaskMessage, taskIdLine } from "../src/long-task-manager.mjs";
+import { LongTaskManager, spawnOpenClawTask, longTaskMessage, taskIdLine, failureText } from "../src/long-task-manager.mjs";
 
 test("LongTaskManager limits concurrency per agent-user pool and drains FIFO", async () => {
   const runs = [];
@@ -553,6 +553,45 @@ test("LongTaskManager writes the spawned child pid into the state record", async
   await tick();
 });
 
+test("LongTaskManager notifies failure through the injected notifyFailure", async () => {
+  const runs = [];
+  const failures = [];
+  const manager = new LongTaskManager({
+    limit: 1,
+    stateFile: join(mkdtempSync(join(tmpdir(), "muad-long-task-fail-notify-")), "state.jsonl"),
+    runTask: (task) => new Promise((resolve, reject) => runs.push({ task, resolve, reject })),
+    notifyFailure: async (task, code) => { failures.push({ task, code }); },
+  });
+
+  manager.submit(taskInput("boom"));
+  runs[0].reject(new Error("simulated failure"));
+  await tick();
+
+  assert.equal(failures.length, 1);
+  assert.equal(failures[0].task.skillName, "xdr-query");
+  assert.equal(failures[0].code, "long_task_failed");
+  // 任务已标记 failed 并落盘，不因通知失败而丢失状态。
+  const task = manager.snapshot().pools[0].tasks.find((item) => item.skillName === "xdr-query");
+  assert.equal(task.status, "failed");
+});
+
+test("LongTaskManager skips failure notify on success", async () => {
+  const runs = [];
+  const failures = [];
+  const manager = new LongTaskManager({
+    limit: 1,
+    stateFile: join(mkdtempSync(join(tmpdir(), "muad-long-task-success-no-notify-")), "state.jsonl"),
+    runTask: (task) => new Promise((resolve) => runs.push({ task, resolve })),
+    notifyFailure: async () => { failures.push(1); },
+  });
+
+  manager.submit(taskInput("ok"));
+  runs[0].resolve();
+  await tick();
+
+  assert.equal(failures.length, 0, "success must not trigger failure notify");
+});
+
 function taskInput(objective) {
   return {
     agentId: "alice",
@@ -565,6 +604,45 @@ function taskInput(objective) {
     sessionKey: "agent:alice:wecom:direct:wx-1",
   };
 }
+
+test("failureText includes truncated real error detail and localized labels", () => {
+  const task = {
+    taskId: "task-1",
+    skillName: "xdr-query",
+    locale: "zh",
+    terminalReason: "GatewayClientRequestError: FailoverError: HTTP 401: Authentication Fails, Your api key: ****dsfs is invalid",
+  };
+  const text = failureText(task, "long_task_spawn_failed");
+  assert.match(text, /任务ID：task-1/);
+  assert.match(text, /任务失败：xdr-query/);
+  assert.match(text, /失败原因：任务启动失败/);
+  assert.match(text, /错误信息：GatewayClientRequestError: FailoverError: HTTP 401/);
+});
+
+test("failureText truncates long error detail and omits the line when absent", () => {
+  const longDetail = `ERROR: ${"x".repeat(500)}`;
+  const text = failureText(
+    { taskId: "t", skillName: "s", locale: "zh", terminalReason: longDetail },
+    "long_task_failed",
+  );
+  assert.match(text, /错误信息：ERROR: x+/);
+  assert.ok(text.endsWith("…"), "truncated detail must end with ellipsis");
+  assert.doesNotMatch(text, /x{300}/, "detail is truncated to under 300 chars");
+
+  const noDetail = failureText({ taskId: "t", skillName: "s", locale: "zh" }, "long_task_failed");
+  assert.doesNotMatch(noDetail, /错误信息/);
+});
+
+test("failureText renders English labels for en locale", () => {
+  const text = failureText(
+    { taskId: "t", skillName: "s", locale: "en", terminalReason: "boom" },
+    "long_task_failed",
+  );
+  assert.match(text, /Task ID: t/);
+  assert.match(text, /Task failed: s/);
+  assert.match(text, /Reason: /);
+  assert.match(text, /Error: boom/);
+});
 
 function interruptedStateRecord(taskId, status, childPid) {
   return {

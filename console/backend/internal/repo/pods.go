@@ -61,7 +61,7 @@ type PodUpdate struct {
 	MaxLongTaskConcurrency int
 }
 
-// PodResourceUpdate contains only resource and runtime-concurrency overrides.
+// PodResourceUpdate contains only resource and concurrency overrides.
 type PodResourceUpdate struct {
 	MemLimit               string
 	CPULimit               string
