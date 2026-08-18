@@ -261,12 +261,12 @@ func runtimeBuilderFixture(t *testing.T, cipher *secretcrypto.Cipher) runtimeBui
 			{
 				ModelConfigID: "model-alice", DisplayName: "Alice Model",
 				Provider: "deepseek", BaseURL: "https://api.deepseek.com",
-				Model: "deepseek-chat", APIKey: "old-key",
+				Model: "deepseek-chat", APIKey: "old-key", Thinking: "medium",
 			},
 			{
 				ModelConfigID: "model-charlie", DisplayName: "Charlie Model",
 				Provider: "deepseek", BaseURL: "https://api.deepseek.com",
-				Model: "deepseek-chat", APIKey: "new-key",
+				Model: "deepseek-chat", APIKey: "new-key", Thinking: "off",
 			},
 		},
 		skills: map[string][]repo.EffectiveSkill{
@@ -368,6 +368,12 @@ func assertRuntimeModels(t *testing.T, config driver.RuntimeConfigV1) {
 	charlieID := strings.SplitN(config.Agents[2].Model, "/", 2)[0]
 	if aliceID == charlieID || providers[aliceID].APIKey != "old-key" || providers[charlieID].APIKey != "new-key" {
 		t.Fatalf("per-user providers were mixed: %+v", config.Providers)
+	}
+	if providers[aliceID].Thinking == nil || *providers[aliceID].Thinking != "medium" {
+		t.Fatalf("alice provider thinking = %v, want medium", providers[aliceID].Thinking)
+	}
+	if providers[charlieID].Thinking != nil {
+		t.Fatalf("charlie provider thinking = %v, want absent (off default)", providers[charlieID].Thinking)
 	}
 }
 

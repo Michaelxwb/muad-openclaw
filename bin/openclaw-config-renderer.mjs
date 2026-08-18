@@ -18,9 +18,10 @@ const DEPRECATED_PROFILE_TOOLS = new Set(["muad_run_skill", "muad_use_skill"]);
 export function renderOpenClawConfig(runtime, baseline = {}) {
   validateRuntimeConfig(runtime);
   const output = stripComments(cloneRecord(baseline));
+  const thinkingByProvider = providerThinkingMap(runtime);
   renderChannels(output, runtime);
   renderSession(output, runtime);
-  renderAgents(output, runtime);
+  renderAgents(output, runtime, thinkingByProvider);
   renderBindings(output, runtime);
   renderBrowser(output, runtime);
   renderProviders(output, runtime);
@@ -28,6 +29,18 @@ export function renderOpenClawConfig(runtime, baseline = {}) {
   renderSkills(output, runtime);
   renderPlugins(output, runtime);
   return sortValue(output);
+}
+
+// providerThinkingMap 建立 provider id → thinking 档位映射：renderAgents 依据
+// agent 引用的 model（providerId/modelName）把 thinking 写到该 agent 的
+// thinkingDefault。空值回落 off（renderer 统一兜底，避免输出非法档位）。
+function providerThinkingMap(runtime) {
+  const map = {};
+  for (const provider of Array.isArray(runtime.providers) ? runtime.providers : []) {
+    const thinking = textValue(provider?.thinking);
+    map[textValue(provider?.id)] = THINKING_LEVELS.has(thinking) ? thinking : "off";
+  }
+  return map;
 }
 
 function renderGlobalToolProfile(output) {
@@ -155,7 +168,7 @@ function renderSession(output, runtime) {
   };
 }
 
-function renderAgents(output, runtime) {
+function renderAgents(output, runtime, thinkingByProvider = {}) {
   const defaults = isRecord(output.agents?.defaults) ? output.agents.defaults : {};
   delete defaults.systemPrompt;
   output.agents = {
@@ -166,11 +179,22 @@ function renderAgents(output, runtime) {
       workspace: agent.workspace,
       agentDir: agent.agentDir,
       model: agent.model ? { primary: agent.model } : undefined,
+      // thinkingDefault 从该 agent 引用的 provider 继承（providerId 是
+      // agent.model 的 "providerId/modelName" 前缀）。空值回落 off。
+      thinkingDefault: agentThinking(agent, thinkingByProvider),
       // No per-agent skills allowlist: agents can use all public Skills plus
       // their own workspace Skills (openclaw "unrestricted" semantics).
       tools: renderToolPolicy(agent.tools, !agent.default),
     })),
   };
+}
+
+function agentThinking(agent, thinkingByProvider) {
+  const model = textValue(agent?.model);
+  const separator = model.indexOf("/");
+  const providerId = separator > 0 ? model.slice(0, separator) : "";
+  const thinking = thinkingByProvider[providerId];
+  return THINKING_LEVELS.has(thinking) ? thinking : "off";
 }
 
 function renderToolPolicy(policy, requireNativeSkillRead) {
@@ -437,6 +461,12 @@ function sortValue(value) {
 
 function compact(value) {
   return Object.fromEntries(Object.entries(value).filter(([, child]) => child !== undefined));
+}
+
+const THINKING_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
+
+function textValue(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function uniqueSorted(values) {

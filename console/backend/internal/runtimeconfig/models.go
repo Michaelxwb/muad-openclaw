@@ -17,6 +17,7 @@ type modelConfig struct {
 	APIKey        string `json:"apiKey"`
 	Model         string `json:"model"`
 	SupportsTools bool   `json:"supportsTools"`
+	Thinking      string `json:"thinking"`
 }
 
 func (builder *Builder) buildModels(
@@ -61,6 +62,7 @@ func (builder *Builder) modelFromConfig(stored repo.LLMModelConfig) (modelConfig
 	return modelConfig{
 		Provider: stored.Provider, BaseURL: stored.BaseURL, APIKey: stored.APIKey,
 		Model: stored.Model, SupportsTools: stored.SupportsTools,
+		Thinking: stored.Thinking,
 	}, nil
 }
 
@@ -72,6 +74,12 @@ func runtimeProvider(scope, owner string, model modelConfig) (driver.RuntimeProv
 	provider := driver.RuntimeProvider{
 		ID: id, Provider: model.Provider, BaseURL: model.BaseURL,
 		APIKey: model.APIKey, Model: model.Model,
+	}
+	// Thinking 仅显式非 off 档位才输出（缺省/off = 字段不出现），与
+	// SupportsTools 的旧 worker 兼容模式一致：renderer 对缺省回落 off，
+	// 旧 worker 镜像（schema 不认识 thinking）在默认场景下仍可 apply。
+	if thinking := strings.TrimSpace(model.Thinking); thinking != "" && thinking != "off" {
+		provider.Thinking = &thinking
 	}
 	// SupportsTools 缺省 nil = 支持函数调用（默认开启），此时字段不出现在 DTO，
 	// 兼容 schema 不认 supportsTools 的旧 worker 镜像；仅显式关闭时才输出 false。
