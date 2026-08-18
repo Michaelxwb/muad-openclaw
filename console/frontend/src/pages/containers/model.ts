@@ -54,10 +54,7 @@ export function statusOptions(t: Translate): { value: string; label: string }[] 
 
 /** 按 Pod 状态过滤生命周期动作：start 仅 stopped；stop/restart 仅 running/unhealthy。
  *  与 pod-detail PodActionPanel 的 LifecycleButtons 判定保持一致。 */
-export function podActions(
-  t: Translate,
-  pod: Pod,
-): Array<{ key: PodAction; label: string }> {
+export function podActions(t: Translate, pod: Pod): Array<{ key: PodAction; label: string }> {
   const actions: Array<{ key: PodAction; label: string }> = [];
   if (pod.state === "stopped") {
     actions.push({ key: "start" as const, label: t("pod.actionStart") });

@@ -43,7 +43,7 @@ tools/
 ├── session-manager/
 ├── muad-progress/   # Go progress + skill-check
 ├── progress-adapters/
-└── runtime-concurrency/
+└── shared/               # shared-lease-queue + notify-user
 skills/              # seeds + _templates
 k8s/ Dockerfile entrypoint.sh
 ```

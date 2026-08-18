@@ -188,7 +188,7 @@
 
   <rect x="970" y="925" width="935" height="90" class="inner" fill="#f0fdfa" stroke="#0d9488"/>
   <text x="1438" y="958" text-anchor="middle" class="label">Phase 2 替代关系</text>
-  <text x="1438" y="987" text-anchor="middle" class="small">run-skill / session-manager / muad-progress / progress-adapters / runtime-concurrency → AP + Temporal + HTTP Bridge</text>
+  <text x="1438" y="987" text-anchor="middle" class="small">run-skill / session-manager / muad-progress / progress-adapters / shared-lease-queue → AP + Temporal + HTTP Bridge</text>
 
   <!-- Bottom: enterprise systems -->
   <rect x="64" y="1135" width="1920" height="150" class="area" fill="#fef3c7" stroke="#f59e0b"/>

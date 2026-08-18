@@ -28,7 +28,13 @@ export const CHANNEL_DEFS: ChannelDef[] = [
     label: "channel.wecom",
     icon: "🏢",
     credentialFields: [
-      { key: "botId", label: "channel.field.botId", type: "text", required: true, placeholder: "aib…" },
+      {
+        key: "botId",
+        label: "channel.field.botId",
+        type: "text",
+        required: true,
+        placeholder: "aib…",
+      },
       {
         key: "secret",
         label: "channel.field.secret",

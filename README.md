@@ -146,7 +146,7 @@ skills/                       内置 Skill 与开发模板
 tools/
   ├── muad-runtime-guard/     多用户运行时边界和健康检查
   ├── session-manager/        业务平台登录态管理
-  └── runtime-concurrency/    浏览器并发 lease helper
+  └── shared/                并发 lease queue + IM 通知共享能力
 .code-flow/                   规范、设计和任务档案
 .github/workflows/            Worker/Console 镜像流水线
 ```

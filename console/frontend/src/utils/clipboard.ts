@@ -31,7 +31,7 @@ function fallbackCopy(text: string): boolean {
   document.body.appendChild(textarea);
   textarea.select();
   textarea.setSelectionRange(0, text.length);
-  let ok = false;
+  let ok: boolean;
   try {
     ok = document.execCommand("copy");
   } catch {
