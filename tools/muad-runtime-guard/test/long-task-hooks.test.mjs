@@ -365,6 +365,111 @@ test("long task hooks sweep tolerates a missing tmp directory", () => {
   assert.doesNotThrow(() => setupHooks({ resolveWorkspace: () => workspace }));
 });
 
+test("read interception widens to any file under a long-task Skill root", async () => {
+  const { hooks, skillDir, submissions } = setupHooks();
+  const scriptsDir = join(skillDir, "scripts");
+  mkdirSync(scriptsDir, { recursive: true });
+  writeFileSync(join(scriptsDir, "run.py"), "print('report')\n");
+
+  await hooks.beforeAgentRun({
+    runId: "run-1",
+    prompt: "帮我导一下客户周报",
+    senderId: "wx-1",
+  }, context({ runId: "run-1" }));
+
+  // 模型绕过 SKILL.md 直接读脚本：同样 read-to-enqueue，改写为 submit stub。
+  const rewritten = await hooks.beforeToolCall({
+    runId: "run-1",
+    toolName: "read",
+    params: { path: join(scriptsDir, "run.py") },
+  }, context({ runId: "run-1" }));
+
+  assert.match(rewritten.params.path, /_longtask_submit_[0-9a-f-]+\.md$/u);
+  assert.ok(existsSync(rewritten.params.path), "per-task submit stub exists");
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0].skillName, "xdr-query");
+  assert.equal(submissions[0].originalPrompt, "帮我导一下客户周报");
+});
+
+test("exec commands referencing a long-task Skill root are blocked and enqueued", async () => {
+  const { hooks, skillDir, submissions } = setupHooks();
+  const scriptsDir = join(skillDir, "scripts");
+  mkdirSync(scriptsDir, { recursive: true });
+  writeFileSync(join(scriptsDir, "run.py"), "print('report')\n");
+
+  await hooks.beforeAgentRun({
+    runId: "run-1",
+    prompt: "帮我导一下客户周报",
+    senderId: "wx-1",
+  }, context({ runId: "run-1" }));
+
+  const blocked = await hooks.beforeToolCall({
+    runId: "run-1",
+    toolName: "exec",
+    params: { command: `python3 ${join(scriptsDir, "run.py")}` },
+  }, context({ runId: "run-1" }));
+
+  assert.equal(blocked.block, true);
+  assert.match(blocked.blockReason, /后台长任务/u);
+  assert.match(blocked.blockReason, /任务ID：[^\n]+/u);
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0].skillName, "xdr-query");
+  assert.equal(submissions[0].originalPrompt, "帮我导一下客户周报");
+});
+
+test("bash blocked via cd-into-root form, unrelated exec passes through", async () => {
+  const { hooks, skillDir, submissions } = setupHooks();
+  await hooks.beforeAgentRun({
+    runId: "run-2", prompt: "用 xdr-query 查一下", senderId: "wx-1",
+  }, context({ runId: "run-2" }));
+
+  const blocked = await hooks.beforeToolCall({
+    runId: "run-2",
+    toolName: "bash",
+    params: { command: `cd ${skillDir} && python3 scripts/run.py` },
+  }, context({ runId: "run-2" }));
+  assert.equal(blocked.block, true);
+  assert.equal(submissions.length, 1);
+
+  // 与任何 long-task root 无关的命令放行，不入队。
+  const unrelated = await hooks.beforeToolCall({
+    runId: "run-2",
+    toolName: "exec",
+    params: { command: "ls -la /tmp" },
+  }, context({ runId: "run-2" }));
+  assert.equal(unrelated, undefined);
+  assert.equal(submissions.length, 1, "unrelated exec must not enqueue");
+});
+
+test("exec after a read-submit re-blocks without double-submitting", async () => {
+  const { hooks, skillDir, submissions } = setupHooks();
+  const scriptsDir = join(skillDir, "scripts");
+  mkdirSync(scriptsDir, { recursive: true });
+  writeFileSync(join(scriptsDir, "run.py"), "print('report')\n");
+
+  await hooks.beforeAgentRun({
+    runId: "run-1",
+    prompt: "帮我导一下客户周报",
+    senderId: "wx-1",
+  }, context({ runId: "run-1" }));
+
+  await hooks.beforeToolCall({
+    runId: "run-1",
+    toolName: "read",
+    params: { path: join(skillDir, "SKILL.md") },
+  }, context({ runId: "run-1" }));
+  assert.equal(submissions.length, 1);
+
+  const blocked = await hooks.beforeToolCall({
+    runId: "run-1",
+    toolName: "exec",
+    params: { command: `python3 ${join(scriptsDir, "run.py")}` },
+  }, context({ runId: "run-1" }));
+
+  assert.equal(blocked.block, true);
+  assert.equal(submissions.length, 1, "exec after read must not double-submit");
+});
+
 function setupHooks(overrides = {}) {
   const root = mkdtempSync(join(tmpdir(), "muad-long-task-hook-"));
   const workspace = join(root, "workspace-alice");
@@ -392,12 +497,12 @@ function setupHooks(overrides = {}) {
   };
   const { config: configOverrides = {}, ...hookOverrides } = overrides;
   const hooks = createLongTaskHooks({
-    config: {
+    getConfig: () => ({
       longTaskSkillGrants: [
         { agentId: "alice", name: "xdr-query", rootPath: skillDir },
       ],
       ...configOverrides,
-    },
+    }),
     manager,
     resolveWorkspace: () => workspace,
     ...hookOverrides,

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { HumanUserActivation } from "../../api";
 import { FeedbackBanner } from "../ConsolePage";
 import { errorMessage } from "../../utils/error";
+import { copyText } from "../../utils/clipboard";
 import styles from "../HumanUsersPanel.module.css";
 
 interface Props {
@@ -18,8 +19,7 @@ export function ActivationCodeDialog({ activation, onClose }: Props) {
   const copy = async () => {
     if (!activation) return;
     try {
-      if (!navigator.clipboard) throw new Error(t("user.clipboardUnsupported"));
-      await navigator.clipboard.writeText(activation.code);
+      await copyText(activation.code);
       Toast.success(t("user.codeCopied"));
     } catch (caught) {
       setError(errorMessage(caught, "user.copyFailed"));

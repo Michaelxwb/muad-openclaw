@@ -5,7 +5,7 @@ import { createBindCommand } from "./bind-command.mjs";
 import { BindingClient, BindingClientError } from "./binding-client.mjs";
 import { parseGuardConfig } from "./config.mjs";
 import { createCrossUserGuard } from "./cross-user-guard.mjs";
-import { createHealthHandler } from "./health.mjs";
+import { createHealthHandler, latestGuardConfig } from "./health.mjs";
 import { createLongTaskHooks } from "./long-task-hooks.mjs";
 import { LongTaskManager } from "./long-task-manager.mjs";
 import { LongTaskStateClient, LongTaskStateClientError } from "./long-task-state-client.mjs";
@@ -42,7 +42,7 @@ const plugin = {
     registerToolPolicies(api, config);
     registerBrowserLeaseHooks(api, config, leaseManager);
     registerSkillLeaseHooks(api, config, skillLeaseManager);
-    registerLongTaskHooks(api, config, longTaskManager);
+    registerLongTaskHooks(api, () => latestGuardConfig(config), longTaskManager);
     registerSkillOutputHooks(api, longTaskManager);
     registerCrossUserGuard(api, config);
     registerSkillAuditHooks(api, config, createSkillAuditClient(config));
@@ -142,9 +142,9 @@ function registerSkillLeaseHooks(api, config, leaseManager) {
   api.on("agent_end", hooks.end, { priority: 1000, timeoutMs: 1_000 });
 }
 
-function registerLongTaskHooks(api, config, manager) {
+function registerLongTaskHooks(api, getConfig, manager) {
   const hooks = createLongTaskHooks({
-    config,
+    getConfig,
     manager,
     resolveWorkspace: (agentId) => resolveWorkspace(api, agentId),
     log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
