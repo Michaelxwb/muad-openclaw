@@ -304,3 +304,29 @@ test("renderer omits compat when supportsTools is true or absent", () => {
   const provider = output.models.providers["user-alice-deepseek"];
   assert.equal(provider.models[0].compat, undefined);
 });
+
+test("renderer writes agent thinkingDefault from the referenced provider's thinking", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  runtime.providers.find((p) => p.id === "user-alice-deepseek").thinking = "high";
+
+  const output = renderOpenClawConfig(runtime, {});
+
+  const main = output.agents.list.find((agent) => agent.id === "main");
+  const alice = output.agents.list.find((agent) => agent.id === "alice");
+  assert.equal(main.thinkingDefault, "off", "provider without thinking falls back to off");
+  assert.equal(alice.thinkingDefault, "high", "alice inherits her provider's thinking");
+});
+
+test("renderer falls back to off when provider thinking is absent", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  const output = renderOpenClawConfig(runtime, {});
+  for (const agent of output.agents.list) {
+    assert.equal(agent.thinkingDefault, "off");
+  }
+});
+
+test("schema rejects invalid thinking levels", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  runtime.providers.find((p) => p.id === "user-alice-deepseek").thinking = "not-a-level";
+  assert.throws(() => parseRuntimeConfig(runtime), /thinking/);
+});

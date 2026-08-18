@@ -337,6 +337,7 @@ export interface LLMModelConfig {
   model: string;
   apiKey: string;
   supportsTools: boolean;
+  thinking: string;
   lastTestAt: string;
   lastTestOK: boolean;
   lastTestError: string;
@@ -346,6 +347,8 @@ export interface LLMModelConfig {
   updatedAt: string;
 }
 
+export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+
 export interface LLMModelInput {
   displayName: string;
   provider: string;
@@ -353,6 +356,13 @@ export interface LLMModelInput {
   apiKey: string;
   model: string;
   supportsTools?: boolean;
+  thinking?: ThinkingLevel;
+}
+
+export interface LLMModelUpdateInput {
+  apiKey?: string;
+  supportsTools?: boolean;
+  thinking?: ThinkingLevel;
 }
 
 export interface LLMModelTestResult {

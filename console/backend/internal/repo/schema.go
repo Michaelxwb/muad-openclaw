@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS llm_model_configs (
 	last_test_ok INTEGER NOT NULL DEFAULT 0 CHECK (last_test_ok IN (0,1)),
 	last_test_error TEXT NOT NULL DEFAULT '',
 	supports_tools INTEGER NOT NULL DEFAULT 1 CHECK (supports_tools IN (0,1)),
+	thinking TEXT NOT NULL DEFAULT 'off'
+		CHECK (thinking IN ('off','minimal','low','medium','high','xhigh','max')),
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );
@@ -257,6 +259,9 @@ func (s *Store) migrate() error {
 	if err := s.migrateLLMModelSupportsTools(); err != nil {
 		return err
 	}
+	if err := s.migrateLLMModelThinking(); err != nil {
+		return err
+	}
 	if err := s.migratePodSkillsPending(); err != nil {
 		return err
 	}
@@ -386,6 +391,22 @@ func (s *Store) migrateLLMModelSupportsTools() error {
 		ADD COLUMN supports_tools INTEGER NOT NULL DEFAULT 1
 		CHECK (supports_tools IN (0,1))`); err != nil {
 		return fmt.Errorf("add LLM model supports_tools column: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) migrateLLMModelThinking() error {
+	exists, err := columnExists(s.db, "llm_model_configs", "thinking")
+	if err != nil {
+		return fmt.Errorf("inspect LLM model thinking column: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	if _, err := s.db.Exec(`ALTER TABLE llm_model_configs
+		ADD COLUMN thinking TEXT NOT NULL DEFAULT 'off'
+		CHECK (thinking IN ('off','minimal','low','medium','high','xhigh','max'))`); err != nil {
+		return fmt.Errorf("add LLM model thinking column: %w", err)
 	}
 	return nil
 }

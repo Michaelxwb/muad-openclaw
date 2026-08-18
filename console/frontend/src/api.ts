@@ -32,6 +32,7 @@ import type {
   LLMModelConfig,
   LLMModelInput,
   LLMModelTestResult,
+  LLMModelUpdateInput,
   LongTaskListResult,
   LongTaskQuery,
   PageResult,
@@ -328,6 +329,8 @@ export const api = {
     request<{ results: LLMModelTestResult[] }>("POST", "/llm/models/test", { modelConfigIds }),
   deleteLLMModel: (modelConfigId: string) =>
     request<{ deleted: boolean }>("DELETE", `/llm/models/${segment(modelConfigId)}`),
+  updateLLMModel: (modelConfigId: string, update: LLMModelUpdateInput) =>
+    request<LLMModelConfig>("PATCH", `/llm/models/${segment(modelConfigId)}`, update),
 
   listSkills: (query: SkillAssetQuery = {}) =>
     request<PageResult<SkillAsset>>(

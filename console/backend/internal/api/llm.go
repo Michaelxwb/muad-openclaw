@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -19,6 +20,7 @@ type llmModelInput struct {
 	APIKey        string `json:"apiKey"`
 	Model         string `json:"model"`
 	SupportsTools *bool  `json:"supportsTools"` // 缺省 = 支持工具调用（默认开启）
+	Thinking      string `json:"thinking"`      // 思考档位，缺省 = off
 }
 
 type llmModelBatchRequest struct {
@@ -111,6 +113,58 @@ func (s *Server) handleDeleteLLMModel(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": true, "modelConfigId": modelConfigID})
 }
 
+type llmModelUpdateRequest struct {
+	APIKey        string `json:"apiKey"`
+	SupportsTools *bool  `json:"supportsTools"`
+	Thinking      string `json:"thinking"`
+}
+
+func (s *Server) handleUpdateLLMModel(w http.ResponseWriter, r *http.Request) {
+	modelConfigID := strings.TrimSpace(r.PathValue("modelConfigId"))
+	if modelConfigID == "" {
+		writeErr(w, r, errcode.InvalidRequestBody)
+		return
+	}
+	var request llmModelUpdateRequest
+	if err := decodeJSONBody(w, r, &request); err != nil {
+		writeErr(w, r, errcode.InvalidRequestBody)
+		return
+	}
+	thinking := strings.TrimSpace(request.Thinking)
+	if thinking != "" && !repo.IsValidThinkingLevel(thinking) {
+		writeErr(w, r, errcode.InvalidLLMModel)
+		return
+	}
+	update := repo.LLMModelConfigUpdate{
+		APIKey:        strings.TrimSpace(request.APIKey),
+		SupportsTools: request.SupportsTools,
+		Thinking:      thinking,
+	}
+	model, err := s.store.UpdateLLMModelConfig(modelConfigID, update)
+	if err != nil {
+		writeRepoError(w, r, err)
+		return
+	}
+	// 模型配置变更热加载：enqueue 所有绑定该模型的 Pod 的 runtime reconcile，
+	// 让 openclaw 的 hot-reload 把新 apiKey/supportsTools/thinking 下发到位。
+	s.enqueueModelReconcile(modelConfigID)
+	writeJSON(w, http.StatusOK, llmModelView(model))
+}
+
+// enqueueModelReconcile 递增引用该模型的 Pod 的 config generation 并入队
+// reconcile，让 runtime 重新渲染并下发变更字段（apiKey/supportsTools/thinking）。
+// 失败仅记日志：更新已落库，reconcile 会经周期性协调或下一次 apply 收敛。
+func (s *Server) enqueueModelReconcile(modelConfigID string) {
+	podIDs, err := s.store.MarkPodsPendingForModel(modelConfigID)
+	if err != nil {
+		log.Printf("llm_model_reconcile_mark_failed model=%s error=%v", modelConfigID, err)
+		return
+	}
+	for _, podID := range podIDs {
+		s.enqueueReconcile(podID)
+	}
+}
+
 type llmModelTestTarget struct {
 	ModelConfigID string
 	DisplayName   string
@@ -134,9 +188,14 @@ func (s *Server) prepareLLMModelCreate(input llmModelInput) (repo.LLMModelConfig
 	if input.SupportsTools != nil {
 		supportsTools = *input.SupportsTools
 	}
+	thinking := strings.TrimSpace(input.Thinking)
+	if thinking != "" && !repo.IsValidThinkingLevel(thinking) {
+		return repo.LLMModelConfigCreate{}, errors.New("thinking must be one of off/minimal/low/medium/high/xhigh/max")
+	}
 	return repo.LLMModelConfigCreate{
 		DisplayName: displayName, Provider: model.Provider, BaseURL: model.BaseURL,
 		APIKey: model.APIKey, Model: model.Model, SupportsTools: supportsTools,
+		Thinking: thinking,
 	}, nil
 }
 
@@ -199,6 +258,13 @@ func runLLMModelTests(r *http.Request, targets []llmModelTestTarget) []llmModelT
 	return results
 }
 
+func llmModelThinkingView(thinking string) string {
+	if trimmed := strings.TrimSpace(thinking); trimmed != "" {
+		return trimmed
+	}
+	return repo.DefaultThinkingLevel()
+}
+
 func llmModelView(model repo.LLMModelConfig) map[string]any {
 	lastTestAt := ""
 	if !model.LastTestAt.IsZero() {
@@ -209,6 +275,7 @@ func llmModelView(model repo.LLMModelConfig) map[string]any {
 		"provider": model.Provider, "baseUrl": model.BaseURL, "model": model.Model,
 		"apiKey":             model.APIKey,
 		"supportsTools":      model.SupportsTools,
+		"thinking":           llmModelThinkingView(model.Thinking),
 		"lastTestAt":         lastTestAt,
 		"lastTestOK":         model.LastTestOK,
 		"lastTestError":      model.LastTestError,

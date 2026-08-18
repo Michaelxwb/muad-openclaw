@@ -161,6 +161,11 @@ type RuntimeProvider struct {
 	// compat.supportsTools:false，模型不再收到 tools/tool_choice。省略字段
 	// 保证旧 worker 镜像（schema 不认识 supportsTools）在默认场景下仍可 apply。
 	SupportsTools *bool `json:"supportsTools,omitempty"`
+	// Thinking 是思考档位（off/minimal/low/medium/high/xhigh/max）。缺省/off
+	// 时字段不输出，与 SupportsTools 的旧 worker 兼容模式一致：旧 worker 镜像
+	// （schema 不认识 thinking）在默认场景下仍可 apply。renderer 会把非空档位
+	// 写成引用该 provider 的 agent 的 thinkingDefault。
+	Thinking *string `json:"thinking,omitempty"`
 }
 
 type RuntimePlatform struct {

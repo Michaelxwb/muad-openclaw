@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button, Input, Modal, Select, Space, Table, Tag, Typography } from "@douyinfe/semi-ui";
 import { IconPlus, IconPulse, IconSearch } from "@douyinfe/semi-icons";
 import { api } from "../api";
-import type { LLMModelConfig, LLMModelInput } from "../api";
+import type { LLMModelConfig, LLMModelInput, LLMModelUpdateInput } from "../api";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
 import {
   DEFAULT_PAGE_SIZE,
@@ -15,6 +15,7 @@ import { errorMessage } from "../utils/error";
 import { maxPageFor } from "../utils/pageClamp";
 import styles from "./LLM.module.css";
 import { LLMCreateDialog } from "./llm/LLMCreateDialog";
+import { LLMEditDialog } from "./llm/LLMEditDialog";
 
 const { Text } = Typography;
 type ModelBoundFilter = "" | "bound" | "available";
@@ -25,14 +26,16 @@ export const MODEL_TABLE_COLUMN_WIDTHS = {
   apiKey: 260,
   boundStatus: 150,
   toolCalls: 90,
+  thinking: 100,
   testResult: 90,
-  actions: 72,
+  actions: 120,
 };
 
 export function LLM() {
   const { t } = useTranslation();
   const state = useLLMModels();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<LLMModelConfig | null>(null);
   return (
     <div>
       <PageHeader title={t("nav.llm")} description={t("model.pageDescription")} />
@@ -42,7 +45,7 @@ export function LLM() {
           actions={<ModelActions state={state} onCreate={() => setCreateOpen(true)} />}
           filters={<ModelFilters state={state} />}
         />
-        <ModelTable state={state} />
+        <ModelTable state={state} onEdit={setEditTarget} />
       </PageSection>
       <LLMCreateDialog
         visible={createOpen}
@@ -51,11 +54,18 @@ export function LLM() {
         onCreate={state.createBatch}
         onError={state.setError}
       />
+      <LLMEditDialog
+        model={editTarget}
+        busy={state.busy === "update"}
+        onClose={() => setEditTarget(null)}
+        onSave={state.updateModel}
+        onError={state.setError}
+      />
     </div>
   );
 }
 
-type BusyState = "load" | "create" | "test" | "delete" | null;
+type BusyState = "load" | "create" | "test" | "delete" | "update" | null;
 
 function useLLMModels() {
   const { t } = useTranslation();
@@ -74,7 +84,9 @@ function useLLMModels() {
   const load = useCallback(async () => {
     const requestId = ++requestRef.current;
     setBusy((current) =>
-      current === "create" || current === "test" || current === "delete" ? current : "load",
+      current === "create" || current === "test" || current === "delete" || current === "update"
+        ? current
+        : "load",
     );
     try {
       const result = await api.listLLMModels(false);
@@ -164,6 +176,27 @@ function useLLMModels() {
     }
   };
 
+  const updateModel = async (
+    modelConfigId: string,
+    update: LLMModelUpdateInput,
+  ): Promise<boolean> => {
+    setBusy("update");
+    setError("");
+    setMessage("");
+    try {
+      await api.updateLLMModel(modelConfigId, update);
+      if (!mountedRef.current) return false;
+      setMessage(t("model.updatedMessage"));
+      await load();
+      return true;
+    } catch (caught) {
+      if (mountedRef.current) setError(errorMessage(caught, "model.updateFailed"));
+      return false;
+    } finally {
+      if (mountedRef.current) setBusy(null);
+    }
+  };
+
   return {
     models,
     pageModels,
@@ -185,6 +218,7 @@ function useLLMModels() {
     createBatch,
     testSelected,
     deleteModel,
+    updateModel,
   };
 }
 
@@ -256,7 +290,13 @@ function ModelFilters({ state }: { state: LLMModelsState }) {
   );
 }
 
-function ModelTable({ state }: { state: LLMModelsState }) {
+function ModelTable({
+  state,
+  onEdit,
+}: {
+  state: LLMModelsState;
+  onEdit: (model: LLMModelConfig) => void;
+}) {
   const { t } = useTranslation();
   const columns = [
     {
@@ -329,6 +369,14 @@ function ModelTable({ state }: { state: LLMModelsState }) {
         ),
     },
     {
+      title: t("model.thinking"),
+      dataIndex: "thinking",
+      width: MODEL_TABLE_COLUMN_WIDTHS.thinking,
+      render: (_: unknown, model: LLMModelConfig) => (
+        <Tag color={model.thinking === "off" ? "grey" : "blue"}>{model.thinking}</Tag>
+      ),
+    },
+    {
       title: t("model.testResult"),
       dataIndex: "test",
       width: MODEL_TABLE_COLUMN_WIDTHS.testResult,
@@ -346,11 +394,21 @@ function ModelTable({ state }: { state: LLMModelsState }) {
       key: "actions",
       width: MODEL_TABLE_COLUMN_WIDTHS.actions,
       render: (_: unknown, model: LLMModelConfig) => (
-        <DeleteModelButton
-          model={model}
-          onDelete={state.deleteModel}
-          busy={state.busy === "delete"}
-        />
+        <Space>
+          <Button
+            aria-label={t("model.editModel", { name: model.displayName })}
+            size="small"
+            theme="borderless"
+            onClick={() => onEdit(model)}
+          >
+            {t("common.edit")}
+          </Button>
+          <DeleteModelButton
+            model={model}
+            onDelete={state.deleteModel}
+            busy={state.busy === "delete"}
+          />
+        </Space>
       ),
     },
   ];

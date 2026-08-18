@@ -210,12 +210,13 @@ function validateProviders(value) {
     const label = `runtime.providers[${index}]`;
     assertRecord(provider, label);
     assertExactKeys(
-      provider, ["id", "provider", "baseUrl", "apiKey", "model", "supportsTools"], label,
-      ["id", "provider", "baseUrl", "apiKey", "model"], // supportsTools 可选（默认支持工具）
+      provider, ["id", "provider", "baseUrl", "apiKey", "model", "supportsTools", "thinking"], label,
+      ["id", "provider", "baseUrl", "apiKey", "model"], // supportsTools/thinking 可选
     );
     ["id", "provider", "baseUrl", "model"].forEach((key) => assertString(provider[key], `${label}.${key}`));
     if (typeof provider.apiKey !== "string") throw new Error(`${label}.apiKey must be a string`);
     assertURL(provider.baseUrl, `${label}.baseUrl`);
+    optionalThinking(provider.thinking, `${label}.thinking`);
     if (providers.has(provider.id)) throw new Error(`duplicate provider: ${provider.id}`);
     providers.add(provider.id);
   });
@@ -366,6 +367,15 @@ function assertString(value, label) {
 
 function optionalString(value, label) {
   if (value !== undefined && typeof value !== "string") throw new Error(`${label} must be a string`);
+}
+
+const THINKING_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
+
+function optionalThinking(value, label) {
+  if (value === undefined) return;
+  if (typeof value !== "string" || !THINKING_LEVELS.has(value)) {
+    throw new Error(`${label} must be one of off/minimal/low/medium/high/xhigh/max`);
+  }
 }
 
 function assertStringArray(value, label) {

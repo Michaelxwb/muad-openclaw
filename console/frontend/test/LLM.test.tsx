@@ -7,6 +7,7 @@ const apiMocks = vi.hoisted(() => ({
   listLLMModels: vi.fn(),
   createLLMModels: vi.fn(),
   testLLMModels: vi.fn(),
+  updateLLMModel: vi.fn(),
 }));
 
 vi.mock("../src/api", async (importOriginal) => {
@@ -22,6 +23,7 @@ const model = {
   model: "deepseek-chat",
   apiKey: "sk-model-key",
   supportsTools: true,
+  thinking: "off",
   lastTestAt: "2026-07-11T00:00:00Z",
   lastTestOK: true,
   lastTestError: "",
@@ -54,6 +56,12 @@ beforeEach(() => {
   apiMocks.testLLMModels.mockResolvedValue({
     results: [{ modelConfigId: "model-a", displayName: "Alice Model", ok: true }],
   });
+  apiMocks.updateLLMModel.mockResolvedValue({
+    ...model,
+    thinking: "high",
+    supportsTools: false,
+    apiKey: "sk-updated",
+  });
 });
 
 describe("LLM", () => {
@@ -79,7 +87,7 @@ describe("LLM", () => {
       "--model-table-min-width",
     );
     expect(Object.values(MODEL_TABLE_COLUMN_WIDTHS).reduce((sum, width) => sum + width, 0)).toBe(
-      1242,
+      1390,
     );
   });
 
@@ -106,6 +114,7 @@ describe("LLM", () => {
           baseUrl: "https://api.deepseek.com",
           apiKey: "sk-one",
           supportsTools: true,
+          thinking: "off",
         },
         {
           displayName: "Batch Model 2",
@@ -114,6 +123,7 @@ describe("LLM", () => {
           baseUrl: "https://api.deepseek.com",
           apiKey: "sk-two",
           supportsTools: true,
+          thinking: "off",
         },
       ]),
     );
@@ -179,5 +189,28 @@ describe("LLM", () => {
     // 回归：Field 用 <label> 包裹 checkbox 时，Chrome 中 label 激活会向 input 再转发
     // 一次合成 click → handleChange 两次 → 勾选被立刻抵消。必须用非 label 容器。
     expect(supportsTools.closest("label")).toBeNull();
+  });
+
+  it("edits apiKey, supportsTools, and thinking from the edit dialog", async () => {
+    render(<LLM />);
+    await screen.findByText("Alice Model");
+
+    fireEvent.click(screen.getByRole("button", { name: "编辑模型 Alice Model" }));
+    await screen.findByText("编辑模型配置 Alice Model");
+
+    fireEvent.change(screen.getByLabelText("API Key"), {
+      target: { value: "sk-updated" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /支持函数调用/ }));
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() =>
+      expect(apiMocks.updateLLMModel).toHaveBeenCalledWith("model-a", {
+        apiKey: "sk-updated",
+        supportsTools: false,
+        thinking: "off",
+      }),
+    );
+    expect(await screen.findByText("模型配置已更新")).toBeInTheDocument();
   });
 });
