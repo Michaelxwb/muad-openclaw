@@ -15,6 +15,8 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
+import { notifyUser } from "../../shared/notify-user.mjs";
+
 const DEFAULT_STATE_FILE = "/tmp/muad-runtime-queues/long-task/state.jsonl";
 const TERMINAL_RETENTION_MS = 10 * 60_000;
 const DEFAULT_TIMEOUT_SECONDS = 24 * 60 * 60;
@@ -29,6 +31,7 @@ export class LongTaskManager {
   #now;
   #onChange;
   #log;
+  #notifyFailure;
 
   constructor(options) {
     this.limit = positiveInteger(options?.limit) ? options.limit : 2;
@@ -45,6 +48,7 @@ export class LongTaskManager {
     this.#stateFile = options?.stateFile ?? DEFAULT_STATE_FILE;
     this.#now = options?.now ?? (() => new Date());
     this.#log = options?.log ?? (() => {});
+    this.#notifyFailure = options?.notifyFailure ?? defaultNotifyFailure;
     this.shared = true;
     this.closed = false;
     this.#loadInterruptedTasks();
@@ -209,6 +213,13 @@ export class LongTaskManager {
     pool.terminal.push(task);
     this.#record(task);
     this.#drain(pool);
+    if (status === "failed") {
+      // 失败也主动推送到 IM（成功由子进程 --deliver 投递，失败无此通道）。
+      // fire-and-forget：不阻塞 finish/队列，投递失败仅记日志，任务状态仍已落盘。
+      void this.#notifyFailure(task, code).catch((error) =>
+        this.#log(`[muad-runtime-guard] long task failure notify failed taskId=${task.taskId} error=${errorMessage(error)}`),
+      );
+    }
   }
 
   #drain(pool) {
@@ -504,6 +515,74 @@ function errorMessage(error) {
 
 function errorCode(error) {
   return error instanceof Error && typeof error.code === "string" ? error.code : "long_task_failed";
+}
+
+// 默认失败通知：走共享 notifyUser 能力，构造用户友好的简化文案。
+// 失败原因按 errorCode 简化为稳定中文文案；同时附带一段截取后的真实错误信息
+// （task.terminalReason 来自 agent 子进程 stderr，openclaw 已对 apiKey 等敏感
+// 字段脱敏），帮助用户定位。完整 reason/code 仍落盘 console 供排查。
+function defaultNotifyFailure(task, code) {
+  const text = failureText(task, code);
+  return notifyUser({
+    channel: task.replyChannel,
+    peerId: task.peerId,
+    text,
+  });
+}
+
+export function failureText(task, code) {
+  const reason = failureReason(code, task.locale);
+  const idLine = taskIdLine(task.locale, task.taskId);
+  const detail = truncateErrorDetail(task.terminalReason);
+  const separator = localeSeparator(task.locale);
+  const lines = [
+    idLine,
+    `${failureSubject(task.locale)}${separator}${task.skillName}`,
+    `${failureReasonLabel(task.locale)}${separator}${reason}`,
+    detail ? `${errorDetailLabel(task.locale)}${separator}${detail}` : "",
+  ];
+  return lines.filter(Boolean).join("\n");
+}
+
+// 真实错误信息截取：压平换行、合并空白，超过上限截断并加省略号。
+// 上限取 240 字符，既保留定位所需的关键片段（错误类型 + 状态码 + 脱敏后的
+// 提示），又不把整段堆栈刷进 IM。
+const MAX_ERROR_DETAIL_CHARS = 240;
+
+function truncateErrorDetail(value) {
+  const text = textValue(value);
+  if (!text) return "";
+  const flat = text.replace(/\s+/gu, " ").trim();
+  if (flat.length <= MAX_ERROR_DETAIL_CHARS) return flat;
+  return `${flat.slice(0, MAX_ERROR_DETAIL_CHARS)}…`;
+}
+
+function failureReason(code, locale) {
+  const en = normalizedLocale(locale) === "en";
+  switch (code) {
+    case "longtask.timeout":
+      return en ? "Timed out" : "执行超时";
+    case "long_task_spawn_failed":
+      return en ? "Task failed to start" : "任务启动失败";
+    default:
+      return en ? "Execution failed" : "执行失败";
+  }
+}
+
+function failureSubject(locale) {
+  return normalizedLocale(locale) === "en" ? "Task failed" : "任务失败";
+}
+
+function failureReasonLabel(locale) {
+  return normalizedLocale(locale) === "en" ? "Reason" : "失败原因";
+}
+
+function errorDetailLabel(locale) {
+  return normalizedLocale(locale) === "en" ? "Error" : "错误信息";
+}
+
+function localeSeparator(locale) {
+  return normalizedLocale(locale) === "en" ? ": " : "：";
 }
 
 function textValue(value) {

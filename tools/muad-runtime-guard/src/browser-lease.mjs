@@ -1,4 +1,4 @@
-import { SharedLeaseQueue, SharedQueueBusyError } from "../../runtime-concurrency/shared-lease-queue.mjs";
+import { SharedLeaseQueue, SharedQueueBusyError } from "../../shared/shared-lease-queue.mjs";
 
 const SHARED_BROWSER_QUEUE_DIRECTORY = "/tmp/muad-runtime-queues/browser";
 

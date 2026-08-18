@@ -1,0 +1,8 @@
+{
+  "name": "fail-always-test",
+  "version": "0.1.0",
+  "runtime": "script",
+  "longTask": true,
+  "entrypoint": "scripts/run.py",
+  "description": "必然失败的测试长任务，用于验证失败通知。"
+}
