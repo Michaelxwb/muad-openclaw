@@ -206,7 +206,7 @@
 | SOP 如何规模交付 | Skill + run-skill + 审计 |
 | 平台密钥如何安全 | session-manager + service token |
 | 长任务如何体验 | progress 旁路 + native final reply |
-| Pod 如何不被打满 | runtime-concurrency |
+| Pod 如何不被打满 | shared-lease-queue（tools/shared） |
 
 ---
 

@@ -77,7 +77,7 @@ def _die(message):
 - 执行入口：`tools/muad-run-skill`（activation、hook lifecycle、outbox、telemetry、manifest 选择）
 - Public skill 需控制面“应用”并标记 Pod 后才期望在运行中 Pod 生效；Private 装目标用户工作区
 - 进度经 `muad-progress` / adapters 上报；终态、耗时、失败摘要可查询且 redacted
-- 浏览器/工具并发走 lease/queue（`runtime-concurrency`、runtime-guard）
+- 浏览器/工具并发走 lease/queue（`tools/shared` 的 shared-lease-queue、runtime-guard）
 
 ## Patterns
 - 先 policy/activation gate，再 runner

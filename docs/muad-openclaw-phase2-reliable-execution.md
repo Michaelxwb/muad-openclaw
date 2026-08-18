@@ -67,7 +67,7 @@ Agent → Bridge Skill → muad-automation-platform → Temporal Workflow → Ca
 |-----------|---------|---------|
 | 1. 入口角色 | 管理员 / 服务经理 / 外部客户 | **不变** |
 | 2. 控制面 | Console FE/BE、SQLite、Config Builder、Apply Coordinator | 新增 `automationPlatformURL` / `automationPlatformToken` 全局配置 |
-| 3. 运行时 | Pod × N、Gateway、agents、**tools/六件套**（guard / run-skill / session-manager / progress / adapters / concurrency） | ~~run-skill~~、~~session-manager~~、~~muad-progress~~、~~progress-adapters~~、~~runtime-concurrency~~；**仅保留 guard**；Pod 内不再运行 Chromium |
+| 3. 运行时 | Pod × N、Gateway、agents、**tools/六件套**（guard / run-skill / session-manager / progress / adapters / concurrency） | ~~run-skill~~、~~session-manager~~、~~muad-progress~~、~~progress-adapters~~、~~shared/shared-lease-queue~~；**仅保留 guard**；Pod 内不再运行 Chromium |
 | 4. 外部 | K8S/Docker、LLM、MSSW/SDSP | 新增 **muad-automation-platform**（Temporal + Capability + Playwright）、**Temporal Server** |
 | 5. 存储 | State PVC、Public Skills、SQLite 审计 | 新增 **Execution Store**（PostgreSQL）、Capability 数据（不含用户状态） |
 
@@ -80,7 +80,7 @@ Agent → Bridge Skill → muad-automation-platform → Temporal Workflow → Ca
 | ③ session-manager | ~~废弃~~ | automation-platform 直接调 Console internal API 解析凭证 |
 | ④ muad-progress | ~~废弃~~ | Temporal Event History 替代进度记录 |
 | ⑤ progress-adapters | ~~废弃~~ | Agent native reply 直接推送最终结果 |
-| ⑥ runtime-concurrency | ~~废弃~~ | 并发控制移至 Temporal Activity max_concurrent + Task Queue |
+| ⑥ shared/shared-lease-queue | ~~废弃~~ | 并发控制移至 Temporal Activity max_concurrent + Task Queue |
 
 **最终结论**：Phase 1 六件套 → Phase 2 一件（guard）。Runtime Pod 从"重量级执行容器"简化为"纯对话容器"。
 
@@ -313,7 +313,7 @@ Phase 2 的目标态是所有 SOP Skill 都采用 Bridge Skill + Temporal Workfl
 | SOP 入口 | 全部通过 Bridge Skill 触发 automation-platform |
 | SOP 执行 | 全部由 Temporal Workflow 编排，Capability 负责业务 API 调用 |
 | Runtime Pod | 只保留 Gateway / Agent / guard / Bridge Skills，不再执行脚本或内置 Chromium |
-| tools/ | 缩减为 guard；run-skill、session-manager、muad-progress、progress-adapters、runtime-concurrency 不再承担 SOP 执行职责 |
+| tools/ | 缩减为 guard；run-skill、session-manager、muad-progress、progress-adapters、shared/shared-lease-queue 不再承担 SOP 执行职责 |
 | 浏览器场景 | 统一由 automation-platform 内 Playwright Activity 承接 |
 | 审计与状态 | Execution Store + Temporal Event History 作为 SOP 执行记录来源 |
 
@@ -339,7 +339,7 @@ muad-openclaw/（现仓库，不变）       muad-automation-platform/（新仓�
 │   ├── session-manager    ~~废弃~~ │   ├── temporal/{client,worker}.go
 │   ├── muad-progress      ~~废弃~~ │   └── workflow/
 │   ├── progress-adapters  ~~废弃~~ │       ├── mss/weekly_report.go
-│   └── runtime-concurrency ~~废弃~~│       └── soar/download_report.go
+│   └── shared/             ~~废弃~~│       └── soar/download_report.go
 ├── docs/                           ├── migrations/001_init.sql
 │   ├── muad-openclaw-总体设计说明书.md ├── skills/（bridge skill 源文件）
 │   ├── muad-openclaw-phase2-reliable-execution.md ├── docker-compose.yml
