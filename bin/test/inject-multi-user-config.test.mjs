@@ -330,3 +330,36 @@ test("schema rejects invalid thinking levels", () => {
   runtime.providers.find((p) => p.id === "user-alice-deepseek").thinking = "not-a-level";
   assert.throws(() => parseRuntimeConfig(runtime), /thinking/);
 });
+
+test("renderer marks model reasoning:true when provider thinking is non-off", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  runtime.providers.find((p) => p.id === "user-alice-deepseek").thinking = "high";
+  const output = renderOpenClawConfig(runtime, {});
+  const provider = output.models.providers["user-alice-deepseek"];
+  assert.equal(
+    provider.models[0].reasoning,
+    true,
+    "non-off thinking must open the model's reasoning capability, otherwise openclaw clamps it to off-only",
+  );
+});
+
+test("renderer omits reasoning when provider thinking is off or absent", () => {
+  const absent = renderOpenClawConfig(parseRuntimeConfig(fixtureText), {});
+  assert.equal(absent.models.providers["user-alice-deepseek"].models[0].reasoning, undefined);
+
+  const runtime = parseRuntimeConfig(fixtureText);
+  runtime.providers.find((p) => p.id === "user-alice-deepseek").thinking = "off";
+  const off = renderOpenClawConfig(runtime, {});
+  assert.equal(off.models.providers["user-alice-deepseek"].models[0].reasoning, undefined);
+});
+
+test("reasoning coexists with compat.supportsTools on the same model row", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  const target = runtime.providers.find((p) => p.id === "user-alice-deepseek");
+  target.thinking = "medium";
+  target.supportsTools = false;
+  const output = renderOpenClawConfig(runtime, {});
+  const provider = output.models.providers["user-alice-deepseek"];
+  assert.equal(provider.models[0].reasoning, true);
+  assert.equal(provider.models[0].compat.supportsTools, false);
+});

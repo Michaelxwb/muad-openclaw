@@ -37,7 +37,7 @@ func (s *Server) handleAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = s.runPodExclusive(r.Context(), pod.PodID, func(ctx context.Context) error {
-		return s.executePodAction(ctx, pod.PodID, action)
+		return s.executePodAction(ctx, pod.PodID, action, pod.State)
 	})
 	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
 		writeErr(w, r, errcode.UnavailableRuntimeCoordinator)
@@ -69,19 +69,33 @@ func podActionTarget(action, state string) (string, bool) {
 	case "stop":
 		return repo.PodStateStopped, state == repo.PodStateRunning || state == repo.PodStateUnhealthy
 	case "restart":
-		return repo.PodStateRunning, state == repo.PodStateRunning || state == repo.PodStateUnhealthy
+		// error 态（升级回滚失败等）也允许 restart 恢复，这是 brick 后 UI 的唯一出口之一。
+		return repo.PodStateRunning,
+			state == repo.PodStateRunning || state == repo.PodStateUnhealthy || state == repo.PodStateError
 	default:
 		return "", false
 	}
 }
 
-func (s *Server) executePodAction(ctx context.Context, podID, action string) error {
+func (s *Server) executePodAction(ctx context.Context, podID, action, state string) error {
 	switch action {
 	case "start":
 		return s.drv.Start(ctx, podID)
 	case "stop":
 		return s.drv.Stop(ctx, podID)
 	case "restart":
+		if state == repo.PodStateError {
+			// error 态恢复：rollout 现有 deployment（保留其实际镜像，不从可能陈旧的
+			// DB spec 重建降级），有界等健康后才允许置 Running；Deployment 缺失时才
+			// 回退用 DB spec 重建。崩溃循环的 Pod 健康等待会超时 → 保持 error，
+			// 不谎报运行态，操作者再走改镜像路径。
+			if err := s.drv.Restart(ctx, podID); errors.Is(err, driver.ErrWorkloadMissing) {
+				return s.rebuildPodRuntime(ctx, podID)
+			} else if err != nil {
+				return err
+			}
+			return waitForPodHealthy(ctx, s.drv, podID)
+		}
 		if err := s.drv.Restart(ctx, podID); errors.Is(err, driver.ErrWorkloadMissing) {
 			// Deployment 已不存在（坏镜像升级把 workload 清掉后回滚失败等），
 			// 用 DB 里的 spec 重建，作为「重启」的恢复兜底。

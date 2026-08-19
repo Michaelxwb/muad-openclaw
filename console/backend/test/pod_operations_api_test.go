@@ -510,6 +510,12 @@ func TestPodOperationsAPI_UpgradeRollbackFailureReports50215(t *testing.T) {
 	if pod.State != repo.PodStateError {
 		t.Fatalf("pod state = %s, want error after failed rollback", pod.State)
 	}
+	// 回滚失败必须落终态：last_apply_status 离开 applying，否则 UI 永远显示"应用中"
+	// 且 error 态阻塞一切操作（本次修复的 brick 根因）。
+	if pod.LastApplyStatus != repo.ApplyStatusFailed {
+		t.Fatalf("last_apply_status = %q, want %q (terminal, not stuck applying)",
+			pod.LastApplyStatus, repo.ApplyStatusFailed)
+	}
 }
 
 func TestPodOperationsAPI_RestartRebuildsMissingWorkload(t *testing.T) {
@@ -533,6 +539,128 @@ func TestPodOperationsAPI_RestartRebuildsMissingWorkload(t *testing.T) {
 	// rebuild 的 Create 会带 AdoptState=true，用于证明重建确实发生（初始创建不带）。
 	if !e.drv.created["pod-a"].AdoptState {
 		t.Fatalf("restart did not rebuild workload with AdoptState: %+v", e.drv.created["pod-a"])
+	}
+}
+
+// error 态（升级回滚失败 brick）是重启可恢复的：rollout 现有 deployment（保留实际
+// 镜像），健康后置 Running——这是 brick 后 UI 的主要恢复出口。
+func TestPodOperationsAPI_ErrorStateRestartRecovers(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	if err := e.store.UpdatePodState("pod-a", repo.PodStateError); err != nil {
+		t.Fatalf("UpdatePodState: %v", err)
+	}
+	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/actions/restart", "")
+	assertStatus(t, rr, http.StatusOK)
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.State != repo.PodStateRunning {
+		t.Fatalf("pod state = %s, want running after error-state recovery", pod.State)
+	}
+	if e.drv.restarted["pod-a"] != 1 {
+		t.Fatalf("Restart should be attempted once, got %d", e.drv.restarted["pod-a"])
+	}
+}
+
+// error 态重启且 Deployment 已缺失（坏镜像升级清掉 workload 后回滚失败）：回退用
+// DB spec 重建（AdoptState=true），与 running 态重启的兜底一致。
+func TestPodOperationsAPI_ErrorStateRestartRebuildsMissingWorkload(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	if err := e.store.UpdatePodState("pod-a", repo.PodStateError); err != nil {
+		t.Fatalf("UpdatePodState: %v", err)
+	}
+	e.drv.restartErrors["pod-a"] = driver.ErrWorkloadMissing
+	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/actions/restart", "")
+	assertStatus(t, rr, http.StatusOK)
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.State != repo.PodStateRunning {
+		t.Fatalf("pod state = %s, want running after rebuild", pod.State)
+	}
+	if !e.drv.created["pod-a"].AdoptState {
+		t.Fatalf("error-state restart did not rebuild with AdoptState: %+v", e.drv.created["pod-a"])
+	}
+}
+
+// error 态重启本身失败（rollout 报错）：不得谎报 Running，保持 error，等待操作者
+// 走改镜像路径。无健康确认绝不置 Running——避免对崩溃循环的 Pod 谎报运行态。
+func TestPodOperationsAPI_ErrorStateRestartFailureKeepsError(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	if err := e.store.UpdatePodState("pod-a", repo.PodStateError); err != nil {
+		t.Fatalf("UpdatePodState: %v", err)
+	}
+	e.drv.restartErrors["pod-a"] = errors.New("rollout boom")
+	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/actions/restart", "")
+	assertStatus(t, rr, http.StatusBadGateway)
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.State != repo.PodStateError {
+		t.Fatalf("pod state = %s, want error preserved on restart failure", pod.State)
+	}
+}
+
+// error 态改镜像（PATCH imageTag）：唯一的可靠恢复路径，放行并收敛到 Running。
+func TestPodOperationsAPI_ErrorStateImageChangeRecovers(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	if err := e.store.UpdatePodState("pod-a", repo.PodStateError); err != nil {
+		t.Fatalf("UpdatePodState: %v", err)
+	}
+	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"imageTag":"img:v2"}`)
+	assertStatus(t, rr, http.StatusOK)
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.State != repo.PodStateRunning || pod.ImageTag != "img:v2" ||
+		pod.AppliedGeneration != pod.ConfigGeneration {
+		t.Fatalf("unexpected Pod after error-state image change: %+v", pod)
+	}
+}
+
+// error 态走 /upgrade 改镜像同样放行（升级链收敛后置 Running）。
+func TestPodOperationsAPI_ErrorStateUpgradeRecovers(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	if err := e.store.UpdatePodState("pod-a", repo.PodStateError); err != nil {
+		t.Fatalf("UpdatePodState: %v", err)
+	}
+	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/upgrade", `{"imageTag":"img:v2"}`)
+	assertStatus(t, rr, http.StatusOK)
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.State != repo.PodStateRunning || pod.ImageTag != "img:v2" ||
+		pod.AppliedGeneration != pod.ConfigGeneration {
+		t.Fatalf("unexpected Pod after error-state upgrade: %+v", pod)
+	}
+}
+
+// start/stop 对 error 态仍然拒绝（401 冲突）——恢复只能走 restart / 改镜像，
+// 避免 stop/start 在未知运行态上做 scale 导致状态漂移。
+func TestPodOperationsAPI_ErrorStateStartStopConflict(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	if err := e.store.UpdatePodState("pod-a", repo.PodStateError); err != nil {
+		t.Fatalf("UpdatePodState: %v", err)
+	}
+	assertStatus(t, e.do(http.MethodPost, "/api/v1/containers/pod-a/actions/stop", ""), http.StatusConflict)
+	assertStatus(t, e.do(http.MethodPost, "/api/v1/containers/pod-a/actions/start", ""), http.StatusConflict)
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.State != repo.PodStateError {
+		t.Fatalf("pod state = %s, want error unchanged", pod.State)
 	}
 }
 

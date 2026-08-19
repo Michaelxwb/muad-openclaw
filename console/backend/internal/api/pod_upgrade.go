@@ -43,7 +43,9 @@ func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.ImageTag = strings.TrimSpace(request.ImageTag)
-	if pod.State != repo.PodStateRunning && pod.State != repo.PodStateUnhealthy {
+	// error 态放行：改镜像是升级回滚失败 brick 后唯一的可靠恢复路径。
+	if pod.State != repo.PodStateRunning && pod.State != repo.PodStateUnhealthy &&
+		pod.State != repo.PodStateError {
 		writeErr(w, r, errcode.ConflictPodRunningUpgrade)
 		return
 	}
@@ -158,6 +160,18 @@ func (s *Server) recoverPodUpgrade(
 		s.enqueueReconcile(restored.PodID)
 	}
 	if err != nil {
+		// 回滚也失败：必须落终态（last_apply_status=failed），否则 restorePodRuntime
+		// 里的 StartPodConfigApply 会把状态留在 applying，UI 永远显示"应用中"且无操作
+		// 出口。restorePodImage 已把 config_generation 前移，FailPodConfigApply 带
+		// `config_generation = ?` guard，必须用当前最新 generation 才会命中而不是空操作。
+		latest, latestErr := s.store.GetPod(original.PodID)
+		if latestErr != nil {
+			log.Printf("pod_upgrade_rollback_failed_get_pod pod=%s error=%s",
+				original.PodID, auditlog.RedactDiagnostic(latestErr.Error()))
+			latest = restored
+		}
+		_ = s.store.FailPodConfigApply(latest.PodID, latest.ConfigGeneration,
+			auditlog.RedactDiagnostic(err.Error()))
 		_ = s.store.UpdatePodState(original.PodID, repo.PodStateError)
 		log.Printf("pod_upgrade_rollback_failed pod=%s error=%s", original.PodID, auditlog.RedactDiagnostic(err.Error()))
 		// 回滚本身失败：结果不可信，标记 sentinel 让 handler 上报 50215，
@@ -203,7 +217,21 @@ func (s *Server) syncSkillsBeforeDirectApply(ctx context.Context, pod repo.Pod) 
 	return s.skillSyncer.SyncPod(ctx, pod.PodID)
 }
 
+// waitForPodHealth 有界等待 Pod 到达健康态并校验 runtime generation 已收敛到目标配置。
 func waitForPodHealth(ctx context.Context, runtime gateway.Execer, podID string, generation int64) error {
+	return probeUntilReady(ctx, runtime, podID, generation)
+}
+
+// waitForPodHealthy 有界等待 Pod 到达健康态，不校验 runtime generation——配置收敛由
+// 协调器异步完成。用于 error 态恢复动作：只有真正健康才允许置 Running，避免对崩溃
+// 循环的 Pod 谎报运行态（健康等待超时 → 保持 error）。
+func waitForPodHealthy(ctx context.Context, runtime gateway.Execer, podID string) error {
+	return probeUntilReady(ctx, runtime, podID, 0)
+}
+
+// probeUntilReady 有界轮询探活，直到 Pod 健康（可选地校验 runtime generation）。
+// generation == 0 表示跳过 generation 校验，仅等待健康。
+func probeUntilReady(ctx context.Context, runtime gateway.Execer, podID string, generation int64) error {
 	probeCtx, cancel := context.WithTimeout(ctx, upgradeHealthTimeout)
 	defer cancel()
 	for {
@@ -215,14 +243,18 @@ func waitForPodHealth(ctx context.Context, runtime gateway.Execer, podID string,
 			}
 		}
 		status := gateway.Probe(probeCtx, runtime, podID)
-		if status.Healthy && status.RuntimeGuardHealthy && status.RuntimeGeneration == generation {
+		if status.Healthy && status.RuntimeGuardHealthy &&
+			(generation == 0 || status.RuntimeGeneration == generation) {
 			return nil
 		}
 		timer := time.NewTimer(upgradePollInterval)
 		select {
 		case <-probeCtx.Done():
 			timer.Stop()
-			return fmt.Errorf("wait for Pod generation %d: %w", generation, probeCtx.Err())
+			if generation > 0 {
+				return fmt.Errorf("wait for Pod generation %d: %w", generation, probeCtx.Err())
+			}
+			return fmt.Errorf("wait for Pod health: %w", probeCtx.Err())
 		case <-timer.C:
 		}
 	}

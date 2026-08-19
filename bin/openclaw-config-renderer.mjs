@@ -24,7 +24,7 @@ export function renderOpenClawConfig(runtime, baseline = {}) {
   renderAgents(output, runtime, thinkingByProvider);
   renderBindings(output, runtime);
   renderBrowser(output, runtime);
-  renderProviders(output, runtime);
+  renderProviders(output, runtime, thinkingByProvider);
   renderGlobalToolProfile(output);
   renderSkills(output, runtime);
   renderPlugins(output, runtime);
@@ -243,10 +243,15 @@ function renderBrowser(output, runtime) {
   };
 }
 
-function renderProviders(output, runtime) {
+function renderProviders(output, runtime, thinkingByProvider) {
   const providers = {};
   for (const provider of runtime.providers) {
     const model = { id: provider.model, name: provider.model };
+    if (thinkingByProvider[provider.id] !== "off") {
+      // OpenClaw: 模型行 reasoning:true → catalog 标记为推理模型，否则 thinking
+      // 档位被钳制为 off-only（thinking 配置永不生效）。
+      model.reasoning = true;
+    }
     if (provider.supportsTools === false) {
       // OpenClaw: compat.supportsTools:false → 该模型不发 tools/tool_choice，
       // 适配不支持函数调用的内网模型（如 vLLM 未开 --enable-auto-tool-choice）。
