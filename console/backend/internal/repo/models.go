@@ -153,7 +153,7 @@ type HumanUser struct {
 	BrowserProfile string
 	BrowserCDPPort int
 	Status         string
-	Notes          string
+	Prompt         string
 	LastPodID      string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time

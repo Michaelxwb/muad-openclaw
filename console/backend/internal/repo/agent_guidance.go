@@ -11,27 +11,29 @@ import (
 // shipped to the runtime DTO and written into AGENTS.md / BOOTSTRAP.md. Empty
 // fields fall back to the runtime renderer's built-in defaults.
 type AgentGuidance struct {
-	UserSkill string
-	Memory    string
-	Main      string
-	UpdatedAt time.Time
+	UserSkill    string
+	Memory       string
+	Main         string
+	GlobalPrompt string
+	UpdatedAt    time.Time
 }
 
 // GetAgentGuidance returns the singleton guidance record; a missing row yields
 // an empty record (renderer defaults apply).
 func (s *Store) GetAgentGuidance() (AgentGuidance, error) {
-	row := s.db.QueryRow(`SELECT user_skill, memory, main, updated_at
+	row := s.db.QueryRow(`SELECT user_skill, memory, main, global_prompt, updated_at
 		FROM agent_guidance WHERE id = 1`)
 	return scanAgentGuidance(row)
 }
 
 // SetAgentGuidance upserts the singleton guidance record.
 func (s *Store) SetAgentGuidance(guidance AgentGuidance) error {
-	res, err := s.db.Exec(`INSERT INTO agent_guidance (id, user_skill, memory, main, updated_at)
-		VALUES (1, ?, ?, ?, ?)
+	res, err := s.db.Exec(`INSERT INTO agent_guidance (id, user_skill, memory, main, global_prompt, updated_at)
+		VALUES (1, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET user_skill = excluded.user_skill,
-			memory = excluded.memory, main = excluded.main, updated_at = excluded.updated_at`,
-		guidance.UserSkill, guidance.Memory, guidance.Main,
+			memory = excluded.memory, main = excluded.main,
+			global_prompt = excluded.global_prompt, updated_at = excluded.updated_at`,
+		guidance.UserSkill, guidance.Memory, guidance.Main, guidance.GlobalPrompt,
 		formatTime(time.Now().UTC()))
 	if err != nil {
 		return fmt.Errorf("set Agent guidance: %w", err)
@@ -50,11 +52,12 @@ func (s *Store) SaveAgentGuidanceAndMarkPods(guidance AgentGuidance) ([]string, 
 		return nil, fmt.Errorf("begin save Agent guidance: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(`INSERT INTO agent_guidance (id, user_skill, memory, main, updated_at)
-		VALUES (1, ?, ?, ?, ?)
+	if _, err := tx.Exec(`INSERT INTO agent_guidance (id, user_skill, memory, main, global_prompt, updated_at)
+		VALUES (1, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET user_skill = excluded.user_skill,
-			memory = excluded.memory, main = excluded.main, updated_at = excluded.updated_at`,
-		guidance.UserSkill, guidance.Memory, guidance.Main,
+			memory = excluded.memory, main = excluded.main,
+			global_prompt = excluded.global_prompt, updated_at = excluded.updated_at`,
+		guidance.UserSkill, guidance.Memory, guidance.Main, guidance.GlobalPrompt,
 		formatTime(time.Now().UTC())); err != nil {
 		return nil, fmt.Errorf("save Agent guidance: %w", err)
 	}
@@ -71,7 +74,7 @@ func (s *Store) SaveAgentGuidanceAndMarkPods(guidance AgentGuidance) ([]string, 
 func scanAgentGuidance(sc scanner) (AgentGuidance, error) {
 	var guidance AgentGuidance
 	var updatedAt string
-	err := sc.Scan(&guidance.UserSkill, &guidance.Memory, &guidance.Main, &updatedAt)
+	err := sc.Scan(&guidance.UserSkill, &guidance.Memory, &guidance.Main, &guidance.GlobalPrompt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return AgentGuidance{}, nil
 	}

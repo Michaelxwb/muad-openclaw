@@ -242,6 +242,44 @@ Keep this custom rule.
   assert.equal((firstGuidance.match(/Before using any Skill instructions/gu) ?? []).length, 0);
 });
 
+test("per-agent prompt and global prompt render once and are byte stable across apply", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  const root = mkdtempSync(join(tmpdir(), "muad-runtime-guidance-"));
+  const appliedRuntime = structuredClone(runtime);
+  appliedRuntime.guidance = {
+    ...(appliedRuntime.guidance ?? {}),
+    globalPrompt: "# 全局规则\n- 优先中文",
+  };
+  appliedRuntime.agents[1].prompt = "用中文回答中文提问";
+  appliedRuntime.skills.privateRoot = root;
+  for (const agent of appliedRuntime.agents) {
+    agent.workspace = join(root, `workspace-${agent.id}`);
+    agent.agentDir = join(root, "agents", agent.id, "agent");
+  }
+  const configPath = join(root, "openclaw.json");
+  writeFileSync(configPath, JSON.stringify({ gateway: { mode: "local" } }));
+  applyRuntimeConfig({ runtime: appliedRuntime, configPath });
+  const firstGuidance = readFileSync(join(root, "workspace-alice", "AGENTS.md"), "utf8");
+  applyRuntimeConfig({ runtime: appliedRuntime, configPath });
+  const secondGuidance = readFileSync(join(root, "workspace-alice", "AGENTS.md"), "utf8");
+
+  assert.equal(firstGuidance, secondGuidance, "re-apply must be byte stable");
+  assert.equal((firstGuidance.match(/muad:global-prompt:start/gu) ?? []).length, 1);
+  assert.equal((firstGuidance.match(/muad:user-prompt:start/gu) ?? []).length, 1);
+  assert.ok(
+    firstGuidance.indexOf("<!-- muad:global-prompt:start -->") <
+      firstGuidance.indexOf("<!-- muad:memory:start -->"),
+    "global prompt block must precede memory",
+  );
+  assert.ok(
+    firstGuidance.indexOf("<!-- muad:skill-activation:end -->") <
+      firstGuidance.indexOf("<!-- muad:user-prompt:start -->"),
+    "user prompt block must follow the skill block",
+  );
+  assert.match(firstGuidance, /用中文回答中文提问/u, "per-agent prompt content present");
+  assert.match(firstGuidance, /优先中文/u, "global prompt content present");
+});
+
 test("Runtime DTO locale is optional, accepts zh/en, and rejects other values", () => {
   const runtime = parseRuntimeConfig(fixtureText);
   assert.equal(runtime.locale, undefined, "fixture carries no locale (optional)");

@@ -40,6 +40,28 @@ func TestCopyStringsCopiesNotAliases(t *testing.T) {
 	}
 }
 
+// buildAgents 必须把每用户 Prompt 透传给 runtime DTO（trim 后），main agent 不携带。
+func TestBuildAgentsCarriesPerUserPrompt(t *testing.T) {
+	agents := buildAgents("/state", []repo.HumanUser{
+		{AgentID: "alice", Status: "active", Prompt: "  用中文回答中文提问  "},
+		{AgentID: "bob", Status: "active", Prompt: "   "},
+	}, map[string]string{}, map[string][]string{})
+
+	byID := map[string]string{}
+	for _, agent := range agents {
+		byID[agent.ID] = agent.Prompt
+	}
+	if byID["main"] != "" {
+		t.Fatalf("main agent carries a per-user prompt: %q", byID["main"])
+	}
+	if byID["alice"] != "用中文回答中文提问" {
+		t.Fatalf("alice prompt = %q, want trimmed value", byID["alice"])
+	}
+	if byID["bob"] != "" {
+		t.Fatalf("whitespace-only prompt = %q, want empty", byID["bob"])
+	}
+}
+
 func TestBuildModelsCarriesSupportsTools(t *testing.T) {
 	builder := &Builder{}
 	data := sourceData{

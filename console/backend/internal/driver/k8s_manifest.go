@@ -24,8 +24,8 @@ func serviceTokenVolumes(name string) []corev1.Volume {
 // resourceReqs maps the Pod limits to conservative requests and hard limits.
 func resourceReqs(spec PodSpec) corev1.ResourceRequirements {
 	requests := corev1.ResourceList{
-		corev1.ResourceCPU:    resource.MustParse("100m"),
-		corev1.ResourceMemory: resource.MustParse("512Mi"),
+		corev1.ResourceCPU:    resource.MustParse("3"),
+		corev1.ResourceMemory: resource.MustParse("8Gi"),
 	}
 	limits := corev1.ResourceList{}
 	if cpu, err := resource.ParseQuantity(orDefault(spec.Resource.CPULimit, fallbackCPULimit)); err == nil {

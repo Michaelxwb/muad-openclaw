@@ -130,9 +130,10 @@ func (builder *Builder) Build(podID string) (Result, error) {
 
 func runtimeGuidance(g repo.AgentGuidance) driver.RuntimeGuidance {
 	return driver.RuntimeGuidance{
-		UserSkill: strings.TrimSpace(g.UserSkill),
-		Memory:    strings.TrimSpace(g.Memory),
-		Main:      strings.TrimSpace(g.Main),
+		UserSkill:    strings.TrimSpace(g.UserSkill),
+		Memory:       strings.TrimSpace(g.Memory),
+		Main:         strings.TrimSpace(g.Main),
+		GlobalPrompt: strings.TrimSpace(g.GlobalPrompt),
 	}
 }
 
@@ -316,6 +317,7 @@ func buildAgents(
 			Workspace:      path.Join(state, "workspace-"+user.AgentID),
 			AgentDir:       path.Join(state, "agents", user.AgentID, "agent"),
 			BrowserProfile: user.BrowserProfile, Model: models[user.AgentID],
+			Prompt: strings.TrimSpace(user.Prompt),
 			Skills: copyStrings(skillFilters[user.AgentID]),
 			Tools:  businessToolPolicy(),
 		})

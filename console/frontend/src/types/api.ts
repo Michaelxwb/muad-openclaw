@@ -172,7 +172,7 @@ export interface HumanUser {
   browserProfile: string;
   browserCdpPort: number;
   status: HumanUserStatus;
-  notes: string;
+  prompt: string;
   identityCount: number;
   modelConfig: LLMModelView;
   createdAt: string;
@@ -207,7 +207,7 @@ interface CreateHumanUserBase {
   displayName: string;
   modelConfigId: string;
   agentId?: string;
-  notes?: string;
+  prompt?: string;
 }
 
 export type CreateHumanUserInput = CreateHumanUserBase &
@@ -229,7 +229,7 @@ export type HumanUserBootstrapResult =
 export interface PatchHumanUserInput {
   displayName?: string;
   status?: Exclude<HumanUserStatus, "deleting">;
-  notes?: string;
+  prompt?: string;
   modelConfigId?: string;
 }
 
@@ -545,6 +545,7 @@ export interface AgentGuidance {
   userSkill: string;
   memory: string;
   main: string;
+  globalPrompt: string;
   updatedAt: string;
 }
 
@@ -552,6 +553,7 @@ export interface AgentGuidanceInput {
   userSkill?: string;
   memory?: string;
   main?: string;
+  globalPrompt?: string;
 }
 
 export interface GlobalResourceConfig extends ResourceConfig {

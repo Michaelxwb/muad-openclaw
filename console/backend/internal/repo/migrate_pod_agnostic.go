@@ -52,7 +52,7 @@ CREATE TABLE human_users (
 	browser_profile TEXT NOT NULL,
 	browser_cdp_port INTEGER NOT NULL CHECK (browser_cdp_port = 0 OR browser_cdp_port BETWEEN 1024 AND 65535),
 	status TEXT NOT NULL CHECK (status IN ('pending','active','disabled','deleting')),
-	notes TEXT NOT NULL DEFAULT '',
+	prompt TEXT NOT NULL DEFAULT '',
 	last_pod_id TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE human_users (
 );
 INSERT INTO human_users (
 	human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile,
-	browser_cdp_port, status, notes, created_at, updated_at, last_pod_id
+	browser_cdp_port, status, prompt, created_at, updated_at, last_pod_id
 ) SELECT human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile,
 	browser_cdp_port, status, notes, created_at, updated_at, '' FROM human_users_legacy;
 DROP TABLE human_users_legacy;

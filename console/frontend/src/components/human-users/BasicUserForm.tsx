@@ -33,7 +33,7 @@ export function BasicUserForm({ user, onSaved, formId, onBusyChange }: Props) {
       <ErrorDetail detail={form.errorDetail} />
       <BasicUserFields
         displayName={form.displayName}
-        notes={form.notes}
+        prompt={form.prompt}
         status={form.status}
         modelConfigId={form.modelConfigId}
         currentBoundId={user.modelConfigId}
@@ -41,7 +41,7 @@ export function BasicUserForm({ user, onSaved, formId, onBusyChange }: Props) {
         modelLoading={form.modelLoading}
         currentModel={user.modelConfig}
         onDisplayName={form.setDisplayName}
-        onNotes={form.setNotes}
+        onPrompt={form.setPrompt}
         onStatus={form.setStatus}
         onModelConfigId={form.setModelConfigId}
       />
@@ -51,7 +51,7 @@ export function BasicUserForm({ user, onSaved, formId, onBusyChange }: Props) {
 
 function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
   const [displayName, setDisplayName] = useState(user.displayName);
-  const [notes, setNotes] = useState(user.notes);
+  const [prompt, setPrompt] = useState(user.prompt);
   const [status, setStatus] = useState<Exclude<HumanUserStatus, "deleting">>(
     user.status === "deleting" ? "disabled" : user.status,
   );
@@ -64,7 +64,7 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
 
   useEffect(() => {
     setDisplayName(user.displayName);
-    setNotes(user.notes);
+    setPrompt(user.prompt);
     if (user.status !== "deleting") setStatus(user.status);
     setModelConfigId(user.modelConfigId);
     setError("");
@@ -95,7 +95,7 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
     setError("");
     setErrorDetail(undefined);
     try {
-      await api.patchHumanUser(user.humanUserId, { displayName, notes, status, modelConfigId });
+      await api.patchHumanUser(user.humanUserId, { displayName, prompt, status, modelConfigId });
       Toast.success(i18n.t("user.infoSaved"));
       await onSaved();
     } catch (caught) {
@@ -104,11 +104,11 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
     } finally {
       setBusy(false);
     }
-  }, [displayName, modelConfigId, notes, onSaved, status, user.humanUserId]);
+  }, [displayName, modelConfigId, prompt, onSaved, status, user.humanUserId]);
 
   return {
     displayName,
-    notes,
+    prompt,
     status,
     modelConfigId,
     models,
@@ -117,7 +117,7 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
     error,
     errorDetail,
     setDisplayName,
-    setNotes,
+    setPrompt,
     setStatus,
     setModelConfigId,
     save,
@@ -126,7 +126,7 @@ function useBasicUserForm(user: HumanUser, onSaved: () => Promise<void>) {
 
 interface FieldsProps {
   displayName: string;
-  notes: string;
+  prompt: string;
   status: Exclude<HumanUserStatus, "deleting">;
   modelConfigId: string;
   currentBoundId: string;
@@ -134,7 +134,7 @@ interface FieldsProps {
   modelLoading: boolean;
   currentModel: LLMModelView;
   onDisplayName: (value: string) => void;
-  onNotes: (value: string) => void;
+  onPrompt: (value: string) => void;
   onStatus: (value: Exclude<HumanUserStatus, "deleting">) => void;
   onModelConfigId: (value: string) => void;
 }
@@ -195,11 +195,11 @@ function BasicUserFields(props: FieldsProps) {
         <div className="mono">{selectedKey || t("user.configured")}</div>
       </Field>
       <div className={styles.full}>
-        <Field label={t("user.notes")}>
+        <Field label={t("user.prompt")}>
           <TextArea
-            aria-label={t("user.editNotes")}
-            value={props.notes}
-            onChange={props.onNotes}
+            aria-label={t("user.editPrompt")}
+            value={props.prompt}
+            onChange={props.onPrompt}
             maxCount={4000}
           />
         </Field>

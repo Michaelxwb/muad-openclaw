@@ -36,7 +36,7 @@ type createHumanUserRequest struct {
 	DisplayName   string           `json:"displayName"`
 	AgentID       string           `json:"agentId"`
 	ModelConfigID string           `json:"modelConfigId"`
-	Notes         string           `json:"notes"`
+	Prompt        string           `json:"prompt"`
 	Identity      *identityInput   `json:"identity"`
 	Activation    *activationInput `json:"activation"`
 }
@@ -59,7 +59,7 @@ type humanUserView struct {
 	BrowserProfile string            `json:"browserProfile"`
 	BrowserCDPPort int               `json:"browserCdpPort"`
 	Status         string            `json:"status"`
-	Notes          string            `json:"notes"`
+	Prompt         string            `json:"prompt"`
 	IdentityCount  int               `json:"identityCount"`
 	ModelConfig    assignedModelView `json:"modelConfig"`
 	CreatedAt      time.Time         `json:"createdAt"`

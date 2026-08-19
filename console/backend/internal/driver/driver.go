@@ -32,8 +32,8 @@ type WorkloadBlockedChecker interface {
 // Built-in resource defaults are defensive fallbacks only. Deployment defaults
 // should come from config.yaml.
 const (
-	fallbackMemLimit      = "3g"
-	fallbackCPULimit      = "2"
+	fallbackMemLimit      = "12g"
+	fallbackCPULimit      = "6"
 	fallbackRestartPolicy = "unless-stopped"
 )
 

@@ -4,7 +4,7 @@
 
 .formGrid {
   display: grid;
-  grid-template-columns: 140px minmax(220px, 420px);
+  grid-template-columns: repeat(3, 140px minmax(220px, 1fr));
   gap: 10px 12px;
   align-items: center;
 }
@@ -20,21 +20,31 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .formGrid > div:empty {
-    display: none;
+  .guidanceGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.guidanceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 14px;
 }
 
 .guidanceField {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 14px;
-  max-width: 720px;
 }
 
 .guidanceField label {
   color: var(--semi-color-text-2);
   font-size: 13px;
   font-weight: 600;
+}
+
+.guidanceField textarea {
+  height: 200px;
+  overflow-y: auto;
 }

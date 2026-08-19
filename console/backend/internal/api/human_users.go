@@ -14,7 +14,7 @@ import (
 type patchHumanUserRequest struct {
 	DisplayName   *string `json:"displayName"`
 	Status        *string `json:"status"`
-	Notes         *string `json:"notes"`
+	Prompt        *string `json:"prompt"`
 	ModelConfigID *string `json:"modelConfigId"`
 }
 
@@ -41,7 +41,7 @@ func (s *Server) handleCreateHumanUser(w http.ResponseWriter, r *http.Request) {
 	user := repo.HumanUser{
 		PodID: pod.PodID, DisplayName: strings.TrimSpace(request.DisplayName),
 		AgentID: agentID, BrowserProfile: agentID, ModelConfigID: strings.TrimSpace(request.ModelConfigID),
-		Notes: request.Notes,
+		Prompt: request.Prompt,
 	}
 	result, err := s.bootstrapHumanUser(pod, user, request)
 	if err != nil {
@@ -62,11 +62,11 @@ func validateHumanUserCreateRequest(request createHumanUserRequest) error {
 			"displayName is required and must be at most 128 characters",
 		)
 	}
-	if len(request.Notes) > 4000 {
+	if len(request.Prompt) > 4000 {
 		return newInputValidationError(
 			errcode.InvalidHumanUserRequest,
-			"notes 不能超过 4000 个字符",
-			"notes must be at most 4000 characters",
+			"prompt 不能超过 4000 个字符",
+			"prompt must be at most 4000 characters",
 		)
 	}
 	if strings.TrimSpace(request.ModelConfigID) == "" {
@@ -303,7 +303,7 @@ func (s *Server) humanUserPatch(
 	user repo.HumanUser, request patchHumanUserRequest,
 ) (repo.HumanUserUpdate, bool, bool, error) {
 	update := repo.HumanUserUpdate{
-		DisplayName: user.DisplayName, Status: user.Status, Notes: user.Notes,
+		DisplayName: user.DisplayName, Status: user.Status, Prompt: user.Prompt,
 		ModelConfigID: user.ModelConfigID,
 	}
 	if request.DisplayName != nil {
@@ -312,8 +312,8 @@ func (s *Server) humanUserPatch(
 	if request.Status != nil {
 		update.Status = strings.TrimSpace(*request.Status)
 	}
-	if request.Notes != nil {
-		update.Notes = *request.Notes
+	if request.Prompt != nil {
+		update.Prompt = *request.Prompt
 	}
 	if request.ModelConfigID != nil {
 		update.ModelConfigID = strings.TrimSpace(*request.ModelConfigID)
@@ -325,8 +325,9 @@ func (s *Server) humanUserPatch(
 		return repo.HumanUserUpdate{}, false, false, err
 	}
 	changed := update.DisplayName != user.DisplayName || update.Status != user.Status ||
-		update.Notes != user.Notes || update.ModelConfigID != user.ModelConfigID
-	stateChanged := update.Status != user.Status || update.ModelConfigID != user.ModelConfigID
+		update.Prompt != user.Prompt || update.ModelConfigID != user.ModelConfigID
+	stateChanged := update.Status != user.Status || update.ModelConfigID != user.ModelConfigID ||
+		update.Prompt != user.Prompt
 	return update, changed, stateChanged, nil
 }
 
@@ -338,11 +339,11 @@ func validateHumanUserPatchFields(update repo.HumanUserUpdate) error {
 			"displayName is required and must be at most 128 characters",
 		)
 	}
-	if len(update.Notes) > 4000 {
+	if len(update.Prompt) > 4000 {
 		return newInputValidationError(
 			errcode.InvalidHumanUserUpdate,
-			"notes 不能超过 4000 个字符",
-			"notes must be at most 4000 characters",
+			"prompt 不能超过 4000 个字符",
+			"prompt must be at most 4000 characters",
 		)
 	}
 	if strings.TrimSpace(update.ModelConfigID) == "" {
@@ -485,7 +486,7 @@ func (s *Server) makeHumanUserView(user repo.HumanUser, identityCount int) (huma
 		HumanUserID: user.HumanUserID, PodID: user.PodID, LastPodID: user.LastPodID,
 		DisplayName: user.DisplayName, ModelConfigID: user.ModelConfigID, AgentID: user.AgentID,
 		BrowserProfile: user.BrowserProfile, BrowserCDPPort: user.BrowserCDPPort,
-		Status: user.Status, Notes: user.Notes, IdentityCount: identityCount,
+		Status: user.Status, Prompt: user.Prompt, IdentityCount: identityCount,
 		ModelConfig: modelConfigToView(config), CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt,
 	}, nil
 }
