@@ -22,7 +22,7 @@ interface CreateUserForm {
   displayName: string;
   modelConfigId: string;
   agentId: string;
-  notes: string;
+  prompt: string;
   channel: string;
   accountId: string;
   externalId: string;
@@ -44,7 +44,7 @@ function initialForm(pod: Pod): CreateUserForm {
     displayName: "",
     modelConfigId: "",
     agentId: "",
-    notes: "",
+    prompt: "",
     channel: pod.channels[0] ?? "",
     accountId: "default",
     externalId: "",
@@ -70,7 +70,7 @@ function createInput(form: CreateUserForm): CreateHumanUserInput {
     displayName: form.displayName.trim(),
     modelConfigId: form.modelConfigId.trim(),
     agentId: form.agentId.trim() || undefined,
-    notes: form.notes,
+    prompt: form.prompt,
   };
   if (form.mode === "identity") {
     return {
@@ -249,11 +249,11 @@ function CreateForm({
           <ActivationFields form={form} set={set} />
         )}
         <div className={styles.full}>
-          <Field label={t("user.notes")}>
+          <Field label={t("user.prompt")}>
             <TextArea
-              aria-label={t("user.notes")}
-              value={form.notes}
-              onChange={(value) => set("notes", value)}
+              aria-label={t("user.prompt")}
+              value={form.prompt}
+              onChange={(value) => set("prompt", value)}
               maxCount={4000}
             />
           </Field>

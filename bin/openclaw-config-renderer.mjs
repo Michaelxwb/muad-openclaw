@@ -89,7 +89,7 @@ export function writeAgentGuidance(runtime) {
       }
       continue;
     }
-    upsertUserGuidance(file, runtime);
+    upsertUserGuidance(file, runtime, agent);
   }
 }
 
@@ -110,26 +110,15 @@ function upsertGuidanceFile(file, content) {
   if (current !== content) writeFileSync(file, content, { mode: 0o600 });
 }
 
-function upsertUserGuidance(file, runtime) {
+function upsertUserGuidance(file, runtime, agent) {
   if (!existsSync(file)) {
-    writeGuidanceWhenMissing(file, userGuidance(runtime));
+    writeGuidanceWhenMissing(file, userGuidance(runtime, agent));
     return;
   }
   const current = readFileSync(file, "utf8");
-  const withMemory = replaceMemoryGuidance(removeLegacyMemoryGuidance(current), runtime);
-  const next = replaceManagedBlock(removeLegacySkillGuidance(withMemory), runtime);
+  const withLegacyRemoved = removeLegacySkillGuidance(removeLegacyMemoryGuidance(current));
+  const next = applyUserGuidanceBlocks(withLegacyRemoved, userGuidanceBlocks(runtime, agent));
   if (next !== current) writeFileSync(file, next, { mode: 0o600 });
-}
-
-function replaceMemoryGuidance(content, runtime) {
-  const guidance = memoryGuidance(runtime);
-  const start = content.indexOf(MEMORY_GUIDANCE_START);
-  const end = content.indexOf(MEMORY_GUIDANCE_END);
-  if (start >= 0 && end >= start) {
-    const suffix = end + MEMORY_GUIDANCE_END.length;
-    return `${content.slice(0, start)}${guidance}${content.slice(suffix)}`;
-  }
-  return `${guidance}\n\n${content.trimStart()}`;
 }
 
 function removeLegacyMemoryGuidance(content) {
@@ -141,19 +130,80 @@ function removeLegacyMemoryGuidance(content) {
   return `${content.slice(0, start)}${content.slice(end)}`;
 }
 
-function replaceManagedBlock(content, runtime) {
-  const guidance = managedSkillGuidance(runtime);
-  const start = content.indexOf(SKILL_GUIDANCE_START);
-  const end = content.indexOf(SKILL_GUIDANCE_END);
-  if (start >= 0 && end >= start) {
-    const suffix = end + SKILL_GUIDANCE_END.length;
-    return `${content.slice(0, start)}${guidance}${content.slice(suffix)}`;
-  }
-  return `${content.trimEnd()}\n\n${guidance}\n`;
-}
-
 function removeLegacySkillGuidance(content) {
   return content.replace(DEPRECATED_SKILL_GUIDANCE, "");
+}
+
+// userGuidanceBlocks 是 AGENTS.md 的规范块列表，顺序即文件内的规范顺序：
+// global → memory → skill → user。memory/skill 恒 present（内容回落内置默认），
+// global/user 为可选块（内容 trim 后为空 → present:false，块被省略或移除）。
+function userGuidanceBlocks(runtime, agent) {
+  return [
+    {
+      start: GLOBAL_PROMPT_START, end: GLOBAL_PROMPT_END,
+      inner: textValue(runtime?.guidance?.globalPrompt),
+      present: Boolean(textValue(runtime?.guidance?.globalPrompt)),
+    },
+    {
+      start: MEMORY_GUIDANCE_START, end: MEMORY_GUIDANCE_END,
+      inner: memoryGuidanceInner(runtime), present: true,
+    },
+    {
+      start: SKILL_GUIDANCE_START, end: SKILL_GUIDANCE_END,
+      inner: skillGuidanceInner(runtime), present: true,
+    },
+    {
+      start: USER_PROMPT_START, end: USER_PROMPT_END,
+      inner: textValue(agent?.prompt), present: Boolean(textValue(agent?.prompt)),
+    },
+  ];
+}
+
+// applyUserGuidanceBlocks 把每个规范块按四种情况收敛：
+//   标记存在 + present   → 原位替换 inner（块文本不变则字节不变）
+//   标记存在 + !present  → 移除整块（只删 [start, end] 标记区间，不碰手动内容）
+//   标记缺失 + present   → 插入到其后第一个已存在的规范块之前；无则末尾追加
+//   标记缺失 + !present  → 不动
+function applyUserGuidanceBlocks(content, blocks) {
+  let next = content;
+  for (let i = 0; i < blocks.length; i++) {
+    next = applyUserGuidanceBlock(next, blocks[i], blocks.slice(i + 1));
+  }
+  return next;
+}
+
+function applyUserGuidanceBlock(content, block, laterBlocks) {
+  const start = content.indexOf(block.start);
+  const end = content.indexOf(block.end);
+  if (start >= 0 && end >= start) {
+    if (!block.present) {
+      const suffix = end + block.end.length;
+      return `${content.slice(0, start)}${content.slice(suffix)}`;
+    }
+    const suffix = end + block.end.length;
+    return `${content.slice(0, start)}${blockText(block)}${content.slice(suffix)}`;
+  }
+  if (!block.present) return content;
+  return insertUserGuidanceBlock(content, block, laterBlocks);
+}
+
+function insertUserGuidanceBlock(content, block, laterBlocks) {
+  const text = blockText(block);
+  for (const later of laterBlocks) {
+    const at = content.indexOf(later.start);
+    if (at >= 0) {
+      return `${trimTrailingNewlines(content.slice(0, at))}\n\n${text}\n\n${trimLeadingNewlines(content.slice(at))}`;
+    }
+  }
+  return `${trimTrailingNewlines(content)}\n\n${text}\n`;
+}
+
+function trimTrailingNewlines(value) {
+  return value.replace(/\n+$/u, "");
+}
+
+function trimLeadingNewlines(value) {
+  return value.replace(/^\n+/u, "");
 }
 
 function renderSession(output, runtime) {
@@ -517,6 +567,10 @@ const DEPRECATED_SKILL_GUIDANCE = `- Before using any Skill instructions, script
 
 const SKILL_GUIDANCE_START = "<!-- muad:skill-activation:start -->";
 const SKILL_GUIDANCE_END = "<!-- muad:skill-activation:end -->";
+const GLOBAL_PROMPT_START = "<!-- muad:global-prompt:start -->";
+const GLOBAL_PROMPT_END = "<!-- muad:global-prompt:end -->";
+const USER_PROMPT_START = "<!-- muad:user-prompt:start -->";
+const USER_PROMPT_END = "<!-- muad:user-prompt:end -->";
 // System activation mechanics stay locked; only the "用户自建 Skill" product rules
 // are admin-configurable via runtime.guidance.userSkill.
 const ACTIVATION_BOUNDARY_GUIDANCE = `# Skill activation boundary
@@ -536,16 +590,25 @@ function mainGuidance(runtime) {
   return runtime?.guidance?.main?.trim() || DEFAULT_MAIN_GUIDANCE;
 }
 
-function memoryGuidance(runtime) {
-  const inner = runtime?.guidance?.memory?.trim() || DEFAULT_MEMORY_GUIDANCE;
-  return `${MEMORY_GUIDANCE_START}\n${inner}\n${MEMORY_GUIDANCE_END}`;
+function memoryGuidanceInner(runtime) {
+  return runtime?.guidance?.memory?.trim() || DEFAULT_MEMORY_GUIDANCE;
 }
 
-function managedSkillGuidance(runtime) {
+function skillGuidanceInner(runtime) {
   const inner = runtime?.guidance?.userSkill?.trim() || DEFAULT_USER_SKILL_GUIDANCE;
-  return `${SKILL_GUIDANCE_START}\n${ACTIVATION_BOUNDARY_GUIDANCE}\n\n# 用户自建 Skill\n\n${inner}\n${SKILL_GUIDANCE_END}`;
+  return `${ACTIVATION_BOUNDARY_GUIDANCE}\n\n# 用户自建 Skill\n\n${inner}`;
 }
 
-function userGuidance(runtime) {
-  return `${memoryGuidance(runtime)}\n\n${managedSkillGuidance(runtime)}\n`;
+function blockText(block) {
+  return `${block.start}\n${block.inner}\n${block.end}`;
+}
+
+// userGuidance 组装完整 AGENTS.md（缺失文件首次写入）：只保留 present 块，
+// 块间空行分隔，末尾换行。
+function userGuidance(runtime, agent) {
+  return userGuidanceBlocks(runtime, agent)
+    .filter((block) => block.present)
+    .map(blockText)
+    .join("\n\n")
+    .concat("\n");
 }

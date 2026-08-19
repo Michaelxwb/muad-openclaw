@@ -674,11 +674,30 @@ func secretContains(secret *corev1.Secret, value string) bool {
 }
 
 func TestToK8sMem(t *testing.T) {
-	cases := map[string]string{"2g": "2Gi", "512m": "512Mi", "3g": "3Gi", "1024k": "1024Ki", "": ""}
+	cases := map[string]string{"2g": "2Gi", "512m": "512Mi", "3g": "3Gi", "12g": "12Gi", "1024k": "1024Ki", "": ""}
 	for in, want := range cases {
 		if got := toK8sMem(in); got != want {
 			t.Errorf("toK8sMem(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// TestResourceReqsDefaults verifies the claw Pod's default requests (3C/8Gi)
+// and fallback limits (6C/12Gi) so requests never exceed limits.
+func TestResourceReqsDefaults(t *testing.T) {
+	spec := PodSpec{Resource: ResourceSpec{}}
+	rr := resourceReqs(spec)
+	if got := rr.Requests.Cpu().String(); got != "3" {
+		t.Errorf("default request cpu = %q, want 3", got)
+	}
+	if got := rr.Requests.Memory().String(); got != "8Gi" {
+		t.Errorf("default request memory = %q, want 8Gi", got)
+	}
+	if got := rr.Limits.Cpu().String(); got != "6" {
+		t.Errorf("fallback limit cpu = %q, want 6", got)
+	}
+	if got := rr.Limits.Memory().String(); got != "12Gi" {
+		t.Errorf("fallback limit memory = %q, want 12Gi", got)
 	}
 }
 

@@ -25,6 +25,12 @@ func TestOpen_MigratesPodAgnosticSchema(t *testing.T) {
 	if !tableColumnExists(t, openSchemaDB(t, path), "human_users", "last_pod_id") {
 		t.Fatal("human_users.last_pod_id missing after migration")
 	}
+	if !tableColumnExists(t, openSchemaDB(t, path), "human_users", "prompt") {
+		t.Fatal("human_users.prompt missing after migration")
+	}
+	if tableColumnExists(t, openSchemaDB(t, path), "human_users", "notes") {
+		t.Fatal("human_users.notes still present after migration")
+	}
 	if tableColumnExists(t, openSchemaDB(t, path), "user_identities", "pod_id") {
 		t.Fatal("user_identities.pod_id still present after migration")
 	}
@@ -39,6 +45,9 @@ func TestOpen_MigratesPodAgnosticSchema(t *testing.T) {
 	}
 	if user.AgentID != "alice" || user.LastPodID != "" || user.PodID != "pod-a" {
 		t.Fatalf("migrated user = %+v", user)
+	}
+	if user.Prompt != "owner note" {
+		t.Fatalf("legacy notes did not land in prompt: %q", user.Prompt)
 	}
 	idents, err := store.ListIdentitiesByHumanUser("user-1")
 	if err != nil {
@@ -160,7 +169,7 @@ func preparePodAgnosticLegacyDatabase(t *testing.T, path string) {
 		`INSERT INTO llm_model_configs (model_config_id, display_name, provider, base_url, model, created_at, updated_at)
 			VALUES ('model-1', 'm', 'p', 'u', 'm', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');`,
 		`INSERT INTO human_users (human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile, browser_cdp_port, status, notes, created_at, updated_at)
-			VALUES ('user-1', 'pod-a', 'model-1', 'Alice', 'alice', 'alice', 18802, 'active', '', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');`,
+			VALUES ('user-1', 'pod-a', 'model-1', 'Alice', 'alice', 'alice', 18802, 'active', 'owner note', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');`,
 		`INSERT INTO user_identities (identity_id, human_user_id, pod_id, channel, openclaw_channel, external_id, external_id_type, peer_kind, status, created_at, updated_at)
 			VALUES ('identity-1', 'user-1', 'pod-a', 'wechat', 'openclaw-weixin', 'wx-alice', 'openid', 'direct', 'active', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');`,
 		`INSERT INTO skill_assets (skill_id, name, scope, human_user_id, pod_id, display_name, status, source_path, manifest_hash, created_at, updated_at)

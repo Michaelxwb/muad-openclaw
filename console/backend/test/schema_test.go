@@ -26,6 +26,7 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 		"pods", "human_users", "user_identities", "binding_codes", "platform_configs",
 		"admins", "audit_log", "llm_model_configs", "resource_global",
 		"skill_assets", "skill_policies", "skill_execution_records", "long_task_tasks",
+		"agent_guidance",
 	}
 	for _, table := range expected {
 		if !schemaObjectExists(t, db, "table", table) {
@@ -80,6 +81,15 @@ func TestOpen_CreatesMultiUserSchema(t *testing.T) {
 	// is derived from human_users.pod_id only.
 	if !tableColumnExists(t, db, "human_users", "last_pod_id") {
 		t.Error("human_users.last_pod_id column was not created")
+	}
+	if !tableColumnExists(t, db, "human_users", "prompt") {
+		t.Error("human_users.prompt column was not created")
+	}
+	if tableColumnExists(t, db, "human_users", "notes") {
+		t.Error("human_users.notes column must not exist after rename")
+	}
+	if !tableColumnExists(t, db, "agent_guidance", "global_prompt") {
+		t.Error("agent_guidance.global_prompt column was not created")
 	}
 	if tableColumnExists(t, db, "user_identities", "pod_id") {
 		t.Error("user_identities.pod_id column must be removed")

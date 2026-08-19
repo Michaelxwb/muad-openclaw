@@ -2,18 +2,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, TextArea } from "@douyinfe/semi-ui";
 import { useTranslation } from "react-i18next";
 import { api } from "../../api";
-import { FeedbackBanner } from "../ConsolePage";
+import { FeedbackBanner, PageSection } from "../ConsolePage";
 import { useMountedRef } from "../../hooks/useMountedRef";
 import { errorMessage } from "../../utils/error";
 import styles from "../../pages/Settings.module.css";
 
 interface GuidanceForm {
+  globalPrompt: string;
   userSkill: string;
   memory: string;
   main: string;
 }
 
-const EMPTY: GuidanceForm = { userSkill: "", memory: "", main: "" };
+const EMPTY: GuidanceForm = { globalPrompt: "", userSkill: "", memory: "", main: "" };
 
 // AgentGuidanceSettings edits the agent workspace guidance text that the runtime
 // writes into each agent's AGENTS.md / BOOTSTRAP.md. Empty fields fall back to
@@ -35,6 +36,7 @@ export function AgentGuidanceSettings() {
       const result = await api.getAgentGuidance();
       if (!mountedRef.current || requestId !== requestRef.current) return;
       setForm({
+        globalPrompt: result.globalPrompt,
         userSkill: result.userSkill,
         memory: result.memory,
         main: result.main,
@@ -66,30 +68,42 @@ export function AgentGuidanceSettings() {
   };
 
   return (
-    <div>
+    <PageSection
+      title={t("settings.agentGuidance")}
+      extra={
+        <Button theme="solid" loading={busy} disabled={loading} onClick={() => void save()}>
+          {t("settings.saveAgentGuidance")}
+        </Button>
+      }
+    >
       <FeedbackBanner error={error} message={message} />
-      <GuidanceField
-        label={t("settings.guidanceUserSkill")}
-        value={form.userSkill}
-        disabled={loading}
-        onChange={(value) => setForm({ ...form, userSkill: value })}
-      />
-      <GuidanceField
-        label={t("settings.guidanceMemory")}
-        value={form.memory}
-        disabled={loading}
-        onChange={(value) => setForm({ ...form, memory: value })}
-      />
-      <GuidanceField
-        label={t("settings.guidanceMain")}
-        value={form.main}
-        disabled={loading}
-        onChange={(value) => setForm({ ...form, main: value })}
-      />
-      <Button theme="solid" loading={busy} disabled={loading} onClick={() => void save()}>
-        {t("settings.saveAgentGuidance")}
-      </Button>
-    </div>
+      <div className={styles.guidanceGrid}>
+        <GuidanceField
+          label={t("settings.guidanceGlobalPrompt")}
+          value={form.globalPrompt}
+          disabled={loading}
+          onChange={(value) => setForm({ ...form, globalPrompt: value })}
+        />
+        <GuidanceField
+          label={t("settings.guidanceUserSkill")}
+          value={form.userSkill}
+          disabled={loading}
+          onChange={(value) => setForm({ ...form, userSkill: value })}
+        />
+        <GuidanceField
+          label={t("settings.guidanceMemory")}
+          value={form.memory}
+          disabled={loading}
+          onChange={(value) => setForm({ ...form, memory: value })}
+        />
+        <GuidanceField
+          label={t("settings.guidanceMain")}
+          value={form.main}
+          disabled={loading}
+          onChange={(value) => setForm({ ...form, main: value })}
+        />
+      </div>
+    </PageSection>
   );
 }
 
@@ -113,7 +127,6 @@ function GuidanceField({
         value={value}
         disabled={disabled}
         onChange={onChange}
-        autosize={{ minRows: 4, maxRows: 14 }}
         placeholder={t("settings.guidancePlaceholder")}
       />
     </div>

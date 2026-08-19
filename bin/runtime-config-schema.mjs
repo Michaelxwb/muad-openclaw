@@ -72,10 +72,10 @@ export function validateRuntimeConfig(value) {
 function validateGuidance(value) {
   if (value === undefined) return;
   assertRecord(value, "runtime.guidance");
-  // All three blocks are optional: empty fields fall back to renderer defaults,
+  // All four blocks are optional: empty fields fall back to renderer defaults,
   // so an empty object (or any subset) is valid.
-  assertExactKeys(value, ["userSkill", "memory", "main"], "runtime.guidance", []);
-  for (const key of ["userSkill", "memory", "main"]) {
+  assertExactKeys(value, ["userSkill", "memory", "main", "globalPrompt"], "runtime.guidance", []);
+  for (const key of ["userSkill", "memory", "main", "globalPrompt"]) {
     if (value[key] !== undefined && typeof value[key] !== "string") {
       throw new Error(`runtime.guidance.${key} must be a string`);
     }
@@ -125,7 +125,7 @@ function validateAgents(value) {
     assertRecord(agent, label);
     assertExactKeys(
       agent,
-      ["id", "default", "status", "workspace", "agentDir", "browserProfile", "model", "skills", "tools"],
+      ["id", "default", "status", "workspace", "agentDir", "browserProfile", "model", "prompt", "skills", "tools"],
       label,
       ["id", "default", "status", "workspace", "agentDir", "tools"],
     );
@@ -136,6 +136,7 @@ function validateAgents(value) {
     assertAbsolutePath(agent.agentDir, `${label}.agentDir`);
     optionalString(agent.browserProfile, `${label}.browserProfile`);
     optionalString(agent.model, `${label}.model`);
+    optionalString(agent.prompt, `${label}.prompt`);
     optionalStringArray(agent.skills, `${label}.skills`);
     if (Array.isArray(agent.skills)) assertNoDuplicateStrings(agent.skills, `${label}.skills`);
     validateToolPolicy(agent.tools, `${label}.tools`);

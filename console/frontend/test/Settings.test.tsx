@@ -60,12 +60,14 @@ beforeEach(() => {
   apiMocks.getResources.mockResolvedValue(resources);
   apiMocks.setResources.mockResolvedValue({ configured: true, affectedPodIds: ["pod-a"] });
   apiMocks.getAgentGuidance.mockResolvedValue({
+    globalPrompt: "",
     userSkill: "",
     memory: "",
     main: "",
     updatedAt: "",
   });
   apiMocks.setAgentGuidance.mockResolvedValue({
+    globalPrompt: "",
     userSkill: "",
     memory: "",
     main: "",
@@ -75,15 +77,14 @@ beforeEach(() => {
 });
 
 describe("Settings", () => {
-  it("shows effective Pod limits and runtime concurrency defaults", async () => {
+  it("shows configured resource defaults in the form", async () => {
     render(<Settings />);
 
     expect(await screen.findByDisplayValue("4")).toBeInTheDocument();
-    // 标签同时出现在默认值表单与生效指标两块（各自含义不同，均为合法出现）
     expect(screen.getAllByText("Skill 并发默认值").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Browser 并发默认值").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
+    expect(screen.getAllByDisplayValue("2").length).toBeGreaterThan(0);
+    expect(screen.getAllByDisplayValue("1").length).toBeGreaterThan(0);
   });
 
   it("saves global defaults and reports affected Pods", async () => {
@@ -120,12 +121,19 @@ describe("Settings", () => {
 
   it("saves agent workspace guidance", async () => {
     render(<Settings />);
-    const area = await screen.findByLabelText("用户自建 Skill 规则");
+    const globalArea = await screen.findByLabelText("全局 Agent Prompt");
+    fireEvent.change(globalArea, { target: { value: "- 全局规则" } });
+    const area = screen.getByLabelText("用户自建 Skill 规则");
     fireEvent.change(area, { target: { value: "- 自定义语言规则" } });
     fireEvent.click(screen.getByRole("button", { name: "保存 Agent 工作区指导" }));
     await waitFor(() =>
       expect(apiMocks.setAgentGuidance).toHaveBeenCalledWith(
-        expect.objectContaining({ userSkill: "- 自定义语言规则" }),
+        expect.objectContaining({
+          globalPrompt: "- 全局规则",
+          userSkill: "- 自定义语言规则",
+          memory: "",
+          main: "",
+        }),
       ),
     );
   });

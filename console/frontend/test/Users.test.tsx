@@ -83,7 +83,7 @@ const user: HumanUser = {
   browserProfile: "alice-agent",
   browserCdpPort: 18801,
   status: "active",
-  notes: "operator",
+  prompt: "operator",
   identityCount: 1,
   modelConfig: {
     provider: "deepseek",
@@ -195,7 +195,7 @@ describe("Users", () => {
         displayName: "Bob",
         modelConfigId: "model-new",
         agentId: undefined,
-        notes: "",
+        prompt: "",
         identity: {
           channel: "wecom",
           accountId: "default",

@@ -172,25 +172,47 @@ func TestHumanUserAPI_CreateValidationIncludesDetail(t *testing.T) {
 		`{"displayName":"Bob","modelConfigId":"`+modelID+`","activation":{`+
 			`"channel":"wechat","expiresInMinutes":30}}`)
 	assertAPIError(t, rr, errcode.InvalidHumanUserConfig, `activation.channel "wechat" 未在当前 Pod 启用`)
+
+	rr = e.do(http.MethodPost, "/api/v1/containers/pod-a/human-users",
+		`{"displayName":"Carol","modelConfigId":"`+modelID+`","prompt":"`+
+			strings.Repeat("x", 4001) + `","identity":{"channel":"wecom",`+
+			`"externalId":"carol","externalIdType":"corp_userid"}}`)
+	assertAPIError(t, rr, errcode.InvalidHumanUserRequest, "prompt")
 }
 
 func TestHumanUserAPI_PatchProtectsRuntimeIdentityAndGeneration(t *testing.T) {
 	e, user := createDirectHumanUser(t)
 	rr := e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID, `{"agentId":"other"}`)
 	assertStatus(t, rr, http.StatusBadRequest)
+
+	// A displayName-only change is not runtime identity, so it must not bump the
+	// generation or enqueue a reconcile.
 	podBefore, _ := e.store.GetPod("pod-a")
 	e.reconcile.podIDs = nil
-	rr = e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID, `{"notes":"owner note"}`)
+	rr = e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID, `{"displayName":"renamed"}`)
 	assertStatus(t, rr, http.StatusOK)
-	podAfter, _ := e.store.GetPod("pod-a")
-	if podAfter.ConfigGeneration != podBefore.ConfigGeneration || len(e.reconcile.podIDs) != 0 {
-		t.Fatalf("notes update triggered runtime apply: %d -> %d, queue=%v",
-			podBefore.ConfigGeneration, podAfter.ConfigGeneration, e.reconcile.podIDs)
+	podAfterName, _ := e.store.GetPod("pod-a")
+	if podAfterName.ConfigGeneration != podBefore.ConfigGeneration || len(e.reconcile.podIDs) != 0 {
+		t.Fatalf("displayName update triggered runtime apply: %d -> %d, queue=%v",
+			podBefore.ConfigGeneration, podAfterName.ConfigGeneration, e.reconcile.podIDs)
 	}
+
+	// A prompt change rewrites the user's AGENTS.md, so it must bump the
+	// generation and enqueue exactly one reconcile, mirroring a model change.
+	e.reconcile.podIDs = nil
+	rr = e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID, `{"prompt":"owner prompt"}`)
+	assertStatus(t, rr, http.StatusOK)
+	podAfterPrompt, _ := e.store.GetPod("pod-a")
+	if podAfterPrompt.ConfigGeneration != podAfterName.ConfigGeneration+1 || len(e.reconcile.podIDs) != 1 {
+		t.Fatalf("prompt update did not trigger one generation: %d -> %d, queue=%v",
+			podAfterName.ConfigGeneration, podAfterPrompt.ConfigGeneration, e.reconcile.podIDs)
+	}
+
+	e.reconcile.podIDs = nil
 	rr = e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID, `{"status":"disabled"}`)
 	assertStatus(t, rr, http.StatusOK)
 	podAfterDisable, _ := e.store.GetPod("pod-a")
-	if podAfterDisable.ConfigGeneration != podAfter.ConfigGeneration+1 || len(e.reconcile.podIDs) != 1 {
+	if podAfterDisable.ConfigGeneration != podAfterPrompt.ConfigGeneration+1 || len(e.reconcile.podIDs) != 1 {
 		t.Fatalf("disable did not trigger one generation: %+v queue=%v", podAfterDisable, e.reconcile.podIDs)
 	}
 }
@@ -207,6 +229,10 @@ func TestHumanUserAPI_PatchValidationIncludesDetail(t *testing.T) {
 	rr = e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID,
 		`{"modelConfigId":"missing-model"}`)
 	assertAPIError(t, rr, errcode.InvalidLLMModel, "modelConfigId 不存在")
+
+	rr = e.do(http.MethodPatch, "/api/v1/human-users/"+user.HumanUserID,
+		`{"prompt":"`+strings.Repeat("x", 4001)+`"}`)
+	assertAPIError(t, rr, errcode.InvalidHumanUserUpdate, "prompt")
 }
 
 func TestHumanUserAPI_DeleteRemainsDeletingUntilCleanerRuns(t *testing.T) {

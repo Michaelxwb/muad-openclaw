@@ -9,16 +9,18 @@ import (
 )
 
 type agentGuidanceView struct {
-	UserSkill string    `json:"userSkill"`
-	Memory    string    `json:"memory"`
-	Main      string    `json:"main"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	UserSkill    string    `json:"userSkill"`
+	Memory       string    `json:"memory"`
+	Main         string    `json:"main"`
+	GlobalPrompt string    `json:"globalPrompt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 type agentGuidanceInput struct {
-	UserSkill string `json:"userSkill"`
-	Memory    string `json:"memory"`
-	Main      string `json:"main"`
+	UserSkill    string `json:"userSkill"`
+	Memory       string `json:"memory"`
+	Main         string `json:"main"`
+	GlobalPrompt string `json:"globalPrompt"`
 }
 
 // handleGetAgentGuidance returns the admin-configured agent workspace guidance;
@@ -31,7 +33,7 @@ func (s *Server) handleGetAgentGuidance(w http.ResponseWriter, r *http.Request) 
 	}
 	writeJSON(w, http.StatusOK, agentGuidanceView{
 		UserSkill: guidance.UserSkill, Memory: guidance.Memory, Main: guidance.Main,
-		UpdatedAt: guidance.UpdatedAt,
+		GlobalPrompt: guidance.GlobalPrompt, UpdatedAt: guidance.UpdatedAt,
 	})
 }
 
@@ -45,6 +47,7 @@ func (s *Server) handleSetAgentGuidance(w http.ResponseWriter, r *http.Request) 
 	}
 	podIDs, err := s.store.SaveAgentGuidanceAndMarkPods(repo.AgentGuidance{
 		UserSkill: input.UserSkill, Memory: input.Memory, Main: input.Main,
+		GlobalPrompt: input.GlobalPrompt,
 	})
 	if err != nil {
 		writeRepoError(w, r, err)
@@ -60,6 +63,6 @@ func (s *Server) handleSetAgentGuidance(w http.ResponseWriter, r *http.Request) 
 	}
 	writeJSON(w, http.StatusOK, agentGuidanceView{
 		UserSkill: guidance.UserSkill, Memory: guidance.Memory, Main: guidance.Main,
-		UpdatedAt: guidance.UpdatedAt,
+		GlobalPrompt: guidance.GlobalPrompt, UpdatedAt: guidance.UpdatedAt,
 	})
 }

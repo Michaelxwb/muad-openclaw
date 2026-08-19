@@ -94,8 +94,9 @@ func validRuntimeConfig() driver.RuntimeConfigV1 {
 		},
 		Agents: []driver.RuntimeAgent{
 			{ID: "main", Default: true, Status: "active", Workspace: "/state/main/workspace", AgentDir: "/state/main/agent", Skills: []string{}, Tools: driver.RuntimeToolPolicy{}},
-			{ID: "alice", Status: "active", Workspace: "/state/alice/workspace", AgentDir: "/state/alice/agent", BrowserProfile: "alice", Model: "provider-a/model", Skills: []string{"xdr-query"}, Tools: driver.RuntimeToolPolicy{WorkspaceOnly: true}},
+			{ID: "alice", Status: "active", Workspace: "/state/alice/workspace", AgentDir: "/state/alice/agent", BrowserProfile: "alice", Model: "provider-a/model", Prompt: "用中文回答中文提问", Skills: []string{"xdr-query"}, Tools: driver.RuntimeToolPolicy{WorkspaceOnly: true}},
 		},
+		Guidance: driver.RuntimeGuidance{GlobalPrompt: "# 全局规则\n- 优先中文"},
 		Routes: []driver.RuntimeRoute{
 			{AgentID: "alice", Channel: "wecom", AccountID: "default", PeerKind: "direct", ExternalID: "alice-id"},
 		},

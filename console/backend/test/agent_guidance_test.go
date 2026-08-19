@@ -14,14 +14,15 @@ func TestAgentGuidanceRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentGuidance default: %v", err)
 	}
-	if got.UserSkill != "" || got.Memory != "" || got.Main != "" {
+	if got.UserSkill != "" || got.Memory != "" || got.Main != "" || got.GlobalPrompt != "" {
 		t.Fatalf("default Agent guidance = %+v, want empty (renderer defaults)", got)
 	}
 
 	guidance := repo.AgentGuidance{
-		UserSkill: "- 用户自建 Skill 规则 A\n- 规则 B",
-		Memory:    "# 记忆规则\n- 存到 IDENTITY.md",
-		Main:      "# 回退指导\n- 只引导绑定",
+		UserSkill:    "- 用户自建 Skill 规则 A\n- 规则 B",
+		Memory:       "# 记忆规则\n- 存到 IDENTITY.md",
+		Main:         "# 回退指导\n- 只引导绑定",
+		GlobalPrompt: "# 全局规则\n- 用中文回答中文提问",
 	}
 	if err := store.SetAgentGuidance(guidance); err != nil {
 		t.Fatalf("SetAgentGuidance: %v", err)
@@ -31,7 +32,8 @@ func TestAgentGuidanceRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentGuidance after set: %v", err)
 	}
-	if got.UserSkill != guidance.UserSkill || got.Memory != guidance.Memory || got.Main != guidance.Main {
+	if got.UserSkill != guidance.UserSkill || got.Memory != guidance.Memory ||
+		got.Main != guidance.Main || got.GlobalPrompt != guidance.GlobalPrompt {
 		t.Fatalf("Agent guidance = %+v, want %+v", got, guidance)
 	}
 	if got.UpdatedAt.IsZero() {
@@ -46,7 +48,7 @@ func TestAgentGuidanceRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentGuidance after overwrite: %v", err)
 	}
-	if got.UserSkill != "only" || got.Memory != "" || got.Main != "" {
+	if got.UserSkill != "only" || got.Memory != "" || got.Main != "" || got.GlobalPrompt != "" {
 		t.Fatalf("Agent guidance after overwrite = %+v", got)
 	}
 }
@@ -88,13 +90,14 @@ func TestAgentGuidanceAPI_PutSavesAndQueuesAllPods(t *testing.T) {
 	env.reconcile.podIDs = nil
 
 	response := env.do(http.MethodPut, "/api/v1/settings/agent-guidance",
-		`{"userSkill":"rule A","memory":"memory B","main":"main C"}`)
+		`{"userSkill":"rule A","memory":"memory B","main":"main C","globalPrompt":"global D"}`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("PUT agent guidance = %d: %s", response.Code, response.Body.String())
 	}
 	assertQueuedPods(t, env, "pod-a", "pod-b")
 	guidance, err := env.store.GetAgentGuidance()
-	if err != nil || guidance.UserSkill != "rule A" || guidance.Memory != "memory B" || guidance.Main != "main C" {
+	if err != nil || guidance.UserSkill != "rule A" || guidance.Memory != "memory B" ||
+		guidance.Main != "main C" || guidance.GlobalPrompt != "global D" {
 		t.Fatalf("stored guidance = %+v, %v", guidance, err)
 	}
 }

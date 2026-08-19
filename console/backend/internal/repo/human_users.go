@@ -45,7 +45,7 @@ type HumanUserListFilter struct {
 type HumanUserUpdate struct {
 	DisplayName   string
 	Status        string
-	Notes         string
+	Prompt        string
 	ModelConfigID string
 }
 
@@ -177,16 +177,17 @@ func (s *Store) UpdateHumanUser(humanUserID string, update HumanUserUpdate) erro
 		update.ModelConfigID = current.ModelConfigID
 	}
 	res, err := tx.Exec(`UPDATE human_users SET display_name = ?, status = ?,
-		notes = ?, model_config_id = ?, updated_at = ? WHERE human_user_id = ?`,
-		strings.TrimSpace(update.DisplayName), update.Status, update.Notes,
+		prompt = ?, model_config_id = ?, updated_at = ? WHERE human_user_id = ?`,
+		strings.TrimSpace(update.DisplayName), update.Status, update.Prompt,
 		nullIfEmpty(update.ModelConfigID), formatTime(time.Now().UTC()), humanUserID)
 	if err := affectedOrNotFound(res, err, "update Human User"); err != nil {
 		return err
 	}
-	if current.Status != update.Status || modelChanged {
-		// An unbound user (its Pod was deleted) has no runtime to converge;
-		// metadata changes are still saved and the runtime sync is re-applied
-		// once the user is attached to a Pod again.
+	if current.Status != update.Status || modelChanged || update.Prompt != current.Prompt {
+		// A prompt change rewrites the agent's AGENTS.md, so it must re-apply
+		// the runtime like a model change. An unbound user (its Pod was
+		// deleted) has no runtime to converge; the sync is re-applied once the
+		// user is attached to a Pod again.
 		if current.PodID != "" {
 			if err := markPodConfigPendingTx(tx, current.PodID); err != nil {
 				return err
@@ -206,7 +207,7 @@ func (s *Store) MarkHumanUserDeleting(humanUserID string) error {
 		return err
 	}
 	return s.UpdateHumanUser(humanUserID, HumanUserUpdate{
-		DisplayName: user.DisplayName, Status: HumanUserStatusDeleting, Notes: user.Notes,
+		DisplayName: user.DisplayName, Status: HumanUserStatusDeleting, Prompt: user.Prompt,
 	})
 }
 
@@ -274,7 +275,7 @@ func (s *Store) ListDeletingHumanUsers(podID string) ([]HumanUser, error) {
 }
 
 const humanUserColumns = `human_user_id, pod_id, model_config_id, display_name, agent_id,
-	browser_profile, browser_cdp_port, status, notes, last_pod_id, created_at, updated_at`
+	browser_profile, browser_cdp_port, status, prompt, last_pod_id, created_at, updated_at`
 
 func prepareNewHumanUser(user *HumanUser) error {
 	if user.HumanUserID == "" {
@@ -371,10 +372,10 @@ func allocateBrowserPort(tx *sql.Tx, podID string, start, end int) (int, error) 
 func insertHumanUser(tx *sql.Tx, user HumanUser) error {
 	_, err := tx.Exec(`INSERT INTO human_users (
 		human_user_id, pod_id, model_config_id, display_name, agent_id, browser_profile,
-		browser_cdp_port, status, notes, last_pod_id, created_at, updated_at
+		browser_cdp_port, status, prompt, last_pod_id, created_at, updated_at
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, user.HumanUserID, user.PodID,
 		nullIfEmpty(user.ModelConfigID), user.DisplayName, user.AgentID, user.BrowserProfile, user.BrowserCDPPort,
-		user.Status, user.Notes, user.LastPodID,
+		user.Status, user.Prompt, user.LastPodID,
 		formatTime(user.CreatedAt), formatTime(user.UpdatedAt))
 	if isUniqueConstraint(err) {
 		return ErrHumanUserExists
@@ -477,7 +478,7 @@ func scanHumanUser(sc scanner) (HumanUser, error) {
 	var podID, modelConfigID sql.NullString
 	var createdAt, updatedAt string
 	err := sc.Scan(&user.HumanUserID, &podID, &modelConfigID, &user.DisplayName, &user.AgentID,
-		&user.BrowserProfile, &user.BrowserCDPPort, &user.Status, &user.Notes, &user.LastPodID,
+		&user.BrowserProfile, &user.BrowserCDPPort, &user.Status, &user.Prompt, &user.LastPodID,
 		&createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return HumanUser{}, ErrNotFound

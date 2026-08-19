@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS human_users (
 	browser_profile TEXT NOT NULL,
 	browser_cdp_port INTEGER NOT NULL CHECK (browser_cdp_port = 0 OR browser_cdp_port BETWEEN 1024 AND 65535),
 	status TEXT NOT NULL CHECK (status IN ('pending','active','disabled','deleting')),
-	notes TEXT NOT NULL DEFAULT '',
+	prompt TEXT NOT NULL DEFAULT '',
 	last_pod_id TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL,
@@ -217,6 +217,7 @@ CREATE TABLE IF NOT EXISTS agent_guidance (
 	user_skill TEXT NOT NULL DEFAULT '',
 	memory TEXT NOT NULL DEFAULT '',
 	main TEXT NOT NULL DEFAULT '',
+	global_prompt TEXT NOT NULL DEFAULT '',
 	updated_at TEXT NOT NULL
 );
 
@@ -280,6 +281,14 @@ func (s *Store) migrate() error {
 	if err := s.migratePodAgnosticUsers(); err != nil {
 		return err
 	}
+	// Run after migratePodAgnosticUsers: the rebuild reads the legacy `notes`
+	// column from the pre-rename source table, so the rename must come last.
+	if err := s.migrateHumanUserNotesToPrompt(); err != nil {
+		return err
+	}
+	if err := s.migrateAgentGuidanceGlobalPrompt(); err != nil {
+		return err
+	}
 	if err := s.migrateSkillAssetStatusPending(); err != nil {
 		return err
 	}
@@ -295,6 +304,40 @@ func (s *Store) migrate() error {
 // migrateSkillAssetStatusPending rebuilds skill_assets to add 'pending' to the
 // status CHECK constraint (SQLite cannot ALTER a CHECK). Existing rows are copied
 // unchanged; fresh databases already carry the updated DDL.
+// migrateHumanUserNotesToPrompt renames the legacy notes column to prompt so
+// it can carry the per-user agent prompt. SQLite RENAME COLUMN requires
+// SQLite >= 3.25 (modernc.org/sqlite bundles a recent engine). It must run
+// after migratePodAgnosticUsers because that rebuild copies legacy `notes`.
+func (s *Store) migrateHumanUserNotesToPrompt() error {
+	hasNotes, err := columnExists(s.db, "human_users", "notes")
+	if err != nil {
+		return fmt.Errorf("inspect human_users notes column: %w", err)
+	}
+	if !hasNotes {
+		return nil
+	}
+	if _, err := s.db.Exec(`ALTER TABLE human_users RENAME COLUMN notes TO prompt`); err != nil {
+		return fmt.Errorf("rename human_users.notes to prompt: %w", err)
+	}
+	return nil
+}
+
+// migrateAgentGuidanceGlobalPrompt adds the global_prompt column to the
+// singleton agent_guidance row.
+func (s *Store) migrateAgentGuidanceGlobalPrompt() error {
+	exists, err := columnExists(s.db, "agent_guidance", "global_prompt")
+	if err != nil {
+		return fmt.Errorf("inspect agent_guidance global_prompt column: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	if _, err := s.db.Exec(`ALTER TABLE agent_guidance ADD COLUMN global_prompt TEXT NOT NULL DEFAULT ''`); err != nil {
+		return fmt.Errorf("add agent_guidance global_prompt column: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) migrateSkillAssetStatusPending() error {
 	allows, err := skillAssetsAllowsPending(s.db)
 	if err != nil {

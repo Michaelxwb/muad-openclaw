@@ -87,9 +87,10 @@ type RuntimeConfigV1 struct {
 // runtime renderer writes into AGENTS.md / BOOTSTRAP.md. Empty fields fall back
 // to the renderer's built-in defaults.
 type RuntimeGuidance struct {
-	UserSkill string `json:"userSkill,omitempty"`
-	Memory    string `json:"memory,omitempty"`
-	Main      string `json:"main,omitempty"`
+	UserSkill    string `json:"userSkill,omitempty"`
+	Memory       string `json:"memory,omitempty"`
+	Main         string `json:"main,omitempty"`
+	GlobalPrompt string `json:"globalPrompt,omitempty"`
 }
 
 type RuntimeConcurrency struct {
@@ -116,6 +117,7 @@ type RuntimeAgent struct {
 	AgentDir       string            `json:"agentDir"`
 	BrowserProfile string            `json:"browserProfile,omitempty"`
 	Model          string            `json:"model,omitempty"`
+	Prompt         string            `json:"prompt,omitempty"`
 	Skills         []string          `json:"skills"`
 	Tools          RuntimeToolPolicy `json:"tools"`
 }

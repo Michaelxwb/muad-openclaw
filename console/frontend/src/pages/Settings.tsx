@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Input, InputNumber, Select, Tag } from "@douyinfe/semi-ui";
+import { Button, Input, InputNumber, Select, Space, Tag } from "@douyinfe/semi-ui";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../api";
 import type { GlobalResourceConfig, ResourceConfig } from "../api";
 import { errorMessage, ErrorDetail } from "../utils/error";
-import {
-  FeedbackBanner,
-  MetricDescriptions,
-  PageHeader,
-  PageSection,
-} from "../components/ConsolePage";
+import { FeedbackBanner, PageHeader, PageSection } from "../components/ConsolePage";
 import { PlatformSettings } from "../components/platforms/PlatformSettings";
 import { AgentGuidanceSettings } from "../components/settings/AgentGuidanceSettings";
 import { useMountedRef } from "../hooks/useMountedRef";
@@ -41,19 +36,23 @@ export function Settings() {
       <PageSection
         title={t("settings.resourceDefaults")}
         extra={
-          <Tag color={resources.config?.configured ? "green" : "grey"}>
-            {resources.config?.configured ? t("settings.configured") : t("settings.runtimeDefault")}
-          </Tag>
+          <Space>
+            <Tag color={resources.config?.configured ? "green" : "grey"}>
+              {resources.config?.configured
+                ? t("settings.configured")
+                : t("settings.runtimeDefault")}
+            </Tag>
+            <Button theme="solid" loading={resources.busy} onClick={() => void resources.save()}>
+              {t("settings.saveResourceDefaults")}
+            </Button>
+          </Space>
         }
       >
         <FeedbackBanner error={resources.error} message={resources.message} />
         <ErrorDetail detail={resources.errorDetail} />
         <ResourceForm state={resources} />
-        {resources.config && <EffectiveResources config={resources.config} />}
       </PageSection>
-      <PageSection title={t("settings.agentGuidance")}>
-        <AgentGuidanceSettings />
-      </PageSection>
+      <AgentGuidanceSettings />
       <PlatformSettings />
     </div>
   );
@@ -107,31 +106,7 @@ function ResourceForm({ state }: { state: ResourceState }) {
         value={state.form.maxLongTaskConcurrency ?? 0}
         onChange={(value) => set("maxLongTaskConcurrency", value)}
       />
-      <div />
-      <Button theme="solid" loading={state.busy} onClick={() => void state.save()}>
-        {t("settings.saveResourceDefaults")}
-      </Button>
     </div>
-  );
-}
-
-function EffectiveResources({ config }: { config: GlobalResourceConfig }) {
-  const { t } = useTranslation();
-  return (
-    <MetricDescriptions
-      columns={6}
-      items={[
-        { label: t("settings.effectiveMem"), value: config.effective.memLimit },
-        { label: t("settings.effectiveCpu"), value: config.effective.cpuLimit },
-        { label: t("settings.restartPolicy"), value: config.effective.restartPolicy },
-        { label: t("settings.skillConcurrency"), value: config.effective.maxSkillConcurrency },
-        { label: t("settings.browserConcurrency"), value: config.effective.maxBrowserConcurrency },
-        {
-          label: t("settings.longTaskConcurrency"),
-          value: config.effective.maxLongTaskConcurrency,
-        },
-      ]}
-    />
   );
 }
 
