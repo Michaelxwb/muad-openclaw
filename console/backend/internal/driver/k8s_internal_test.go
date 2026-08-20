@@ -66,6 +66,14 @@ func TestK8s_CreateProvisionsAll(t *testing.T) {
 	if got := c.Resources.Limits.Cpu().String(); got != "2" {
 		t.Errorf("cpu limit = %q, want 2", got)
 	}
+	// requests are clamped down to the pod's limits (3g/2) so requests never exceed
+	// limits; otherwise Kubernetes rejects the Deployment write.
+	if got := c.Resources.Requests.Cpu().String(); got != "2" {
+		t.Errorf("cpu request = %q, want 2 (clamped to limit)", got)
+	}
+	if got := c.Resources.Requests.Memory().String(); got != "3Gi" {
+		t.Errorf("mem request = %q, want 3Gi (clamped to limit)", got)
+	}
 	if dep.Spec.Strategy.Type != "Recreate" {
 		t.Errorf("strategy = %q, want Recreate", dep.Spec.Strategy.Type)
 	}
@@ -698,6 +706,32 @@ func TestResourceReqsDefaults(t *testing.T) {
 	}
 	if got := rr.Limits.Memory().String(); got != "12Gi" {
 		t.Errorf("fallback limit memory = %q, want 12Gi", got)
+	}
+}
+
+// TestResourceReqsClampsToLimits verifies a small pod's requests are clamped down to
+// its resolved limits, so requests never exceed limits (Kubernetes rejects any
+// Deployment write with requests > limits).
+func TestResourceReqsClampsToLimits(t *testing.T) {
+	spec := PodSpec{Resource: ResourceSpec{CPULimit: "2", MemLimit: "3g"}}
+	rr := resourceReqs(spec)
+	if got := rr.Requests.Cpu().String(); got != "2" {
+		t.Errorf("small-pod request cpu = %q, want 2 (clamped to limit)", got)
+	}
+	if got := rr.Requests.Memory().String(); got != "3Gi" {
+		t.Errorf("small-pod request memory = %q, want 3Gi (clamped to limit)", got)
+	}
+	if got := rr.Limits.Cpu().String(); got != "2" {
+		t.Errorf("small-pod limit cpu = %q, want 2", got)
+	}
+	if got := rr.Limits.Memory().String(); got != "3Gi" {
+		t.Errorf("small-pod limit memory = %q, want 3Gi", got)
+	}
+	if rr.Requests.Cpu().Cmp(*rr.Limits.Cpu()) > 0 {
+		t.Errorf("request cpu %s exceeds limit %s", rr.Requests.Cpu().String(), rr.Limits.Cpu().String())
+	}
+	if rr.Requests.Memory().Cmp(*rr.Limits.Memory()) > 0 {
+		t.Errorf("request memory %s exceeds limit %s", rr.Requests.Memory().String(), rr.Limits.Memory().String())
 	}
 }
 
