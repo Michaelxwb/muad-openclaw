@@ -385,3 +385,130 @@ test("mssw adapter emits login request log through the injected log callback", a
   await ok.refresh({ credential: credential(), signal: new AbortController().signal });
   assert.equal(logs.some((msg) => msg.includes("platform=mssw") && msg.includes("login request") && msg.includes("path=/v1/certification/login_agent")), true);
 });
+
+test("mssw adapter applies hostHeader dict to the login request and keeps the signature", async () => {
+  const requests = [];
+  const adapter = new MSSWSessionAdapter(async (url, options) => {
+    requests.push({ url: String(url), method: options.method, headers: options.headers });
+    return new Response("", {
+      status: 200,
+      headers: { "set-cookie": "soc-token=jwt-value; Path=/; HttpOnly" },
+    });
+  }, () => 1786361604);
+
+  const credential = {
+    humanUserId: "user-a", podId: "pod-a", agentId: "alice", skillName: "mssw-query",
+    platform: "mssw", credentialFingerprint: "sha256:credential",
+    credentials: {
+      baseUrl: "https://sitmssw.soar.sangfor.com",
+      sessionEndpoint: "/gateway/mss-auth-acl-service/v1/certification/login_agent",
+      ak: "agent_ak_test", sk: "secret-sk-value",
+      hostHeader: { Host: "inner.sangfor.com.cn", "X-Custom": "abc" },
+    },
+  };
+
+  await adapter.refresh({ credential, signal: new AbortController().signal });
+
+  assert.equal(requests[0].headers.Host, "inner.sangfor.com.cn");
+  assert.equal(requests[0].headers["X-Custom"], "abc");
+  assert.match(requests[0].headers.Authorization, /^algorithm=HMAC-SHA256,Access=agent_ak_test,/u);
+});
+
+test("mssw adapter applies hostHeader to CSRF and health requests", async () => {
+  const requests = [];
+  const adapter = new MSSWSessionAdapter(async (url, options) => {
+    requests.push({ url: String(url), method: options.method, headers: options.headers });
+    if (String(url).endsWith("/v1/certification/get_token")) {
+      return new Response("", { status: 200, headers: { "set-cookie": "csrf_token=csrf-value; Path=/; HttpOnly" } });
+    }
+    return new Response("", { status: 200, headers: { "set-cookie": "soc-token=jwt-value; Path=/; HttpOnly" } });
+  }, () => 1786361604);
+
+  const credential = {
+    humanUserId: "user-a", podId: "pod-a", agentId: "alice", skillName: "mssw-query",
+    platform: "mssw", credentialFingerprint: "sha256:credential",
+    credentials: {
+      baseUrl: "https://sitmssw.soar.sangfor.com",
+      sessionEndpoint: "/gateway/mss-auth-acl-service/v1/certification/login_agent",
+      healthEndpoint: "/v1/rtt",
+      ak: "agent_ak_test", sk: "secret-sk-value",
+      csrfEnabled: true,
+      hostHeader: { Host: "inner.sangfor.com.cn" },
+    },
+  };
+
+  await adapter.refresh({ credential, signal: new AbortController().signal });
+  await adapter.validate({
+    credential,
+    signal: new AbortController().signal,
+    state: {
+      cookies: [{ name: "soc-token", value: "jwt-value", domain: "sitmssw.soar.sangfor.com", path: "/" }],
+      storageState: { cookies: [], origins: [] },
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    },
+  });
+
+  assert.equal(requests.length, 3);
+  assert.equal(requests[0].url, "https://sitmssw.soar.sangfor.com/v1/certification/get_token");
+  assert.equal(requests[0].headers.Host, "inner.sangfor.com.cn");
+  assert.equal(requests[1].url, "https://sitmssw.soar.sangfor.com/gateway/mss-auth-acl-service/v1/certification/login_agent");
+  assert.equal(requests[1].headers.Host, "inner.sangfor.com.cn");
+  assert.equal(requests[2].url, "https://sitmssw.soar.sangfor.com/v1/rtt");
+  assert.equal(requests[2].headers.Host, "inner.sangfor.com.cn");
+  assert.equal(requests[2].headers.Cookie, "soc-token=jwt-value");
+});
+
+test("mssw adapter sends no Host header when hostHeader is not configured", async () => {
+  const requests = [];
+  const adapter = new MSSWSessionAdapter(async (url, options) => {
+    requests.push({ url: String(url), method: options.method, headers: options.headers });
+    return new Response("", {
+      status: 200,
+      headers: { "set-cookie": "soc-token=jwt-value; Path=/; HttpOnly" },
+    });
+  }, () => 1786361604);
+
+  const credential = {
+    humanUserId: "user-a", podId: "pod-a", agentId: "alice", skillName: "mssw-query",
+    platform: "mssw", credentialFingerprint: "sha256:credential",
+    credentials: {
+      baseUrl: "https://sitmssw.soar.sangfor.com",
+      sessionEndpoint: "/gateway/mss-auth-acl-service/v1/certification/login_agent",
+      ak: "agent_ak_test", sk: "secret-sk-value",
+    },
+  };
+
+  await adapter.refresh({ credential, signal: new AbortController().signal });
+
+  assert.equal(requests[0].headers.Host, undefined);
+});
+
+test("mssw adapter rejects malformed hostHeader values", async () => {
+  const adapter = new MSSWSessionAdapter(async () => new Response("", { status: 200 }));
+  const base = {
+    humanUserId: "user-a", podId: "pod-a", agentId: "alice", skillName: "mssw-query",
+    platform: "mssw", credentialFingerprint: "sha256:credential",
+    credentials: {
+      baseUrl: "https://sitmssw.soar.sangfor.com",
+      sessionEndpoint: "/gateway/mss-auth-acl-service/v1/certification/login_agent",
+      ak: "agent_ak_test", sk: "secret-sk-value",
+    },
+  };
+  const expectMissing = (error) => error instanceof PlatformAdapterError
+    && error.authenticationFailed === true
+    && error.reason === "missing_credential";
+  await assert.rejects(
+    () => adapter.refresh({
+      credential: { ...base, credentials: { ...base.credentials, hostHeader: "inner.sangfor.com.cn" } },
+      signal: new AbortController().signal,
+    }),
+    expectMissing,
+  );
+  await assert.rejects(
+    () => adapter.refresh({
+      credential: { ...base, credentials: { ...base.credentials, hostHeader: { Host: "" } } },
+      signal: new AbortController().signal,
+    }),
+    expectMissing,
+  );
+});

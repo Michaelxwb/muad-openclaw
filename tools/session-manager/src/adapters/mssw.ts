@@ -58,6 +58,9 @@ export type MSSWCredential = {
   sk: string;
   csrfEnabled?: boolean;
   sessionTtlSeconds?: number;
+  // 额外请求头字典（如 { Host: "inner.sangfor.com.cn" }），登录链路全部请求
+  // （get_token / login / health）都会带上；不参与 HMAC 签名。
+  hostHeader?: Record<string, string>;
 };
 
 export class MSSWSessionAdapter implements PlatformAdapter {
@@ -121,7 +124,7 @@ export class MSSWSessionAdapter implements PlatformAdapter {
       const response = await this.#fetch(url, {
         method: "GET",
         signal: input.signal,
-        headers: { ...(cookieHeader ? { Cookie: cookieHeader } : {}) },
+        headers: applyHostHeader(cookieHeader ? { Cookie: cookieHeader } : {}, credential.hostHeader),
       });
       if (response.status === 401 || response.status === 403) return false;
       if (!response.ok) throw new PlatformAdapterError(false, response.status >= 500 || response.status === 429, "service_error");
@@ -134,7 +137,11 @@ export class MSSWSessionAdapter implements PlatformAdapter {
 
   async #fetchCSRFToken(credential: MSSWCredential, signal: AbortSignal): Promise<string> {
     const url = new URL(GET_TOKEN_PATH, withTrailingSlash(credential.baseUrl));
-    const response = await this.#fetch(url, { method: "GET", signal });
+    const response = await this.#fetch(url, {
+      method: "GET",
+      signal,
+      headers: applyHostHeader({}, credential.hostHeader),
+    });
     if (!response.ok) throw new PlatformAdapterError(false, response.status >= 500);
     const cookies = setCookieHeaders(response.headers)
       .map((header) => parseSetCookie(header, url))
@@ -165,7 +172,7 @@ export class MSSWSessionAdapter implements PlatformAdapter {
     const signedHeadersStr = Object.keys(signedHeaders).sort().join(";");
     headers.Authorization = `algorithm=${HMAC_SHA256_ALGO},Access=${credential.ak},SignedHeaders=${signedHeadersStr},Signature=${signature},${SIGN_DATE_HEADER}=${ts}`;
     if (csrfToken) headers[CSRF_HEADER] = csrfToken;
-    return headers;
+    return applyHostHeader(headers, credential.hostHeader);
   }
 }
 
@@ -289,6 +296,7 @@ function parseCredential(credentials: Record<string, unknown>): MSSWCredential {
   const baseUrl = optionalString(credentials.baseUrl);
   const sessionEndpoint = optionalString(credentials.sessionEndpoint);
   const healthEndpoint = optionalString(credentials.healthEndpoint);
+  const hostHeader = parseHostHeader(credentials.hostHeader);
   if (!ak || !sk || !baseUrl || !sessionEndpoint) {
     throw new PlatformAdapterError(
       true, false, "missing_credential",
@@ -303,7 +311,29 @@ function parseCredential(credentials: Record<string, unknown>): MSSWCredential {
     sk,
     ...(typeof credentials.csrfEnabled === "boolean" ? { csrfEnabled: credentials.csrfEnabled } : {}),
     ...(typeof credentials.sessionTtlSeconds === "number" ? { sessionTtlSeconds: credentials.sessionTtlSeconds } : {}),
+    ...(Object.keys(hostHeader).length > 0 ? { hostHeader } : {}),
   };
+}
+
+function parseHostHeader(value: unknown): Record<string, string> {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new PlatformAdapterError(true, false, "missing_credential", "platform credential hostHeader must be an object");
+  }
+  const result: Record<string, string> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof item !== "string" || item.trim() === "") {
+      throw new PlatformAdapterError(true, false, "missing_credential", "platform credential hostHeader values must be non-empty strings");
+    }
+    result[key] = item;
+  }
+  return result;
+}
+
+// 计算出的协议头（Content-Type / Authorization / sign-date 等）优先于 hostHeader，
+// 避免覆盖导致 HMAC 签名失效；Host 等额外头原样透传。
+function applyHostHeader(headers: Record<string, string>, hostHeader?: Record<string, string>): Record<string, string> {
+  return { ...(hostHeader ?? {}), ...headers };
 }
 
 function optionalString(value: unknown): string {

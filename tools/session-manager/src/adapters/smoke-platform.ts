@@ -1,3 +1,4 @@
+import { createSecureFetch } from "./insecure-fetch.js";
 import {
   type AdapterRefreshInput,
   type AdapterValidateInput,
@@ -45,13 +46,18 @@ export type SmokePlatformCredential = {
   username: string;
   password: string;
   sessionTtlSeconds?: number;
+  // 额外请求头字典（如 { Host: "inner.sangfor.com.cn" }），登录链路全部请求
+  // （login / health）都会带上。
+  hostHeader?: Record<string, string>;
 };
 
 export class SmokePlatformSessionAdapter implements PlatformAdapter {
   readonly platform = "smoke_platform";
   readonly #fetch: FetchLike;
 
-  constructor(fetchLike: FetchLike = fetch) {
+  // 默认走 node http(s) 传输：全局 fetch (undici) 禁止自定义 Host 头，而网关按
+  // Host 路由/鉴权，hostHeader 必须能真实透传（http 与 https 都支持）。
+  constructor(fetchLike: FetchLike = createSecureFetch()) {
     this.#fetch = fetchLike;
   }
 
@@ -63,7 +69,7 @@ export class SmokePlatformSessionAdapter implements PlatformAdapter {
       const response = await this.#fetch(url, {
         method: "POST",
         signal: input.signal,
-        headers: { "Content-Type": "application/json" },
+        headers: applyHostHeader({ "Content-Type": "application/json" }, credential.hostHeader),
         body: JSON.stringify({ username: credential.username, password: credential.password }),
       });
       return await readSessionResponse(response, url, credential);
@@ -85,7 +91,7 @@ export class SmokePlatformSessionAdapter implements PlatformAdapter {
       const response = await this.#fetch(url, {
         method: "GET",
         signal: input.signal,
-        headers: { ...(cookieHeader ? { Cookie: cookieHeader } : {}) },
+        headers: applyHostHeader(cookieHeader ? { Cookie: cookieHeader } : {}, credential.hostHeader),
       });
       if (response.status === 401 || response.status === 403) return false;
       if (!response.ok) throw new PlatformAdapterError(false, response.status >= 500 || response.status === 429, "service_error");
@@ -172,6 +178,7 @@ function parseCredential(credentials: Record<string, unknown>): SmokePlatformCre
   const password = optionalString(credentials.password);
   const sessionEndpoint = optionalString(credentials.sessionEndpoint);
   const healthEndpoint = optionalString(credentials.healthEndpoint);
+  const hostHeader = parseHostHeader(credentials.hostHeader);
   if (!baseUrl || !username || !password || !sessionEndpoint) {
     throw new PlatformAdapterError(
       true, false, "missing_credential",
@@ -185,7 +192,29 @@ function parseCredential(credentials: Record<string, unknown>): SmokePlatformCre
     username,
     password,
     ...(typeof credentials.sessionTtlSeconds === "number" ? { sessionTtlSeconds: credentials.sessionTtlSeconds } : {}),
+    ...(Object.keys(hostHeader).length > 0 ? { hostHeader } : {}),
   };
+}
+
+function parseHostHeader(value: unknown): Record<string, string> {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new PlatformAdapterError(true, false, "missing_credential", "platform credential hostHeader must be an object");
+  }
+  const result: Record<string, string> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof item !== "string" || item.trim() === "") {
+      throw new PlatformAdapterError(true, false, "missing_credential", "platform credential hostHeader values must be non-empty strings");
+    }
+    result[key] = item;
+  }
+  return result;
+}
+
+// 计算出的协议头（Content-Type / Cookie）优先于 hostHeader，避免被配置覆盖；
+// Host 等额外头原样透传。
+function applyHostHeader(headers: Record<string, string>, hostHeader?: Record<string, string>): Record<string, string> {
+  return { ...(hostHeader ?? {}), ...headers };
 }
 
 function optionalString(value: unknown): string {

@@ -1,3 +1,4 @@
+import { createSecureFetch } from "./insecure-fetch.js";
 import { HTTPSessionAdapter, type FetchLike } from "./http-session.js";
 import { MSSPSessionAdapter } from "./mssp.js";
 import { MSSWSessionAdapter } from "./mssw.js";
@@ -40,7 +41,10 @@ export class AdapterRegistry {
 }
 
 export function createInstalledAdapterRegistry(
-  fetchLike: FetchLike = fetch,
+  // 默认走 node http(s) 传输而不是全局 fetch：undici 禁止自定义 Host 头，而网关按
+  // Host 路由/鉴权（http 与 https 都支持），smoke_platform 与通用 http_session
+  // 都需要能透传 hostHeader。全局 fetch 仅显式注入时使用。
+  fetchLike: FetchLike = createSecureFetch(),
   log: (message: string) => void = () => {},
 ): AdapterRegistry {
   return new AdapterRegistry(

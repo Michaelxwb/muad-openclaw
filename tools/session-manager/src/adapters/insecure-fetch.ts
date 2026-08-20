@@ -1,21 +1,35 @@
-import { request } from "node:https";
+import { request as httpRequest, type ClientRequest, type IncomingMessage } from "node:http";
+import { request as httpsRequest } from "node:https";
 
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
+// node:http and node:https accept the same URL + options + callback shape; the only
+// transport difference is TLS verification, which node:http ignores anyway.
+function nodeRequest(
+  url: URL,
+  options: { method: string; headers: Record<string, string>; rejectUnauthorized?: boolean },
+  onResponse: (res: IncomingMessage) => void,
+): ClientRequest {
+  if (url.protocol === "https:") return httpsRequest(url, options, onResponse);
+  return httpRequest(url, options, onResponse);
+}
+
 /**
- * Build a fetch-like function that skips TLS certificate verification.
+ * Node http/https based fetch-like transport.
  *
- * MSSW environments (SIT/UAT/prod) all use self-signed certificates on the internal
- * network, so the mssw adapter always goes through this fetch. Other adapters keep
- * strict TLS via the global fetch.
+ * The standard global `fetch` (undici) forbids setting a custom `Host` header, but
+ * the MSSW/MSSP gateways route and authenticate by `Host` (virtual-host routing in
+ * nginx/OpenResty), so adapters must be able to send `Host` explicitly over plain
+ * `http://` as well as `https://`. `node:http`/`node:https` both honor a `Host`
+ * header in `options.headers` while still connecting to the URL's own host.
  *
- * The standard global `fetch` (undici) does not accept a per-request `rejectUnauthorized`
- * flag, so we drop down to `node:https` and reassemble a `Response` to stay fetch-shaped.
- * Only string bodies are supported (the mssw adapter sends an empty string); other body
- * types are treated as an empty body. `Content-Length` is set explicitly so requests use
- * length-delimited framing like the global fetch instead of `Transfer-Encoding: chunked`.
+ * Only string bodies are supported (the adapters send JSON or empty strings); other
+ * body types are treated as an empty body. `Content-Length` is set explicitly so
+ * requests use length-delimited framing like the global fetch instead of
+ * `Transfer-Encoding: chunked`.
  */
-export function createInsecureFetch(): FetchLike {
+export function createNodeFetch(options?: { rejectUnauthorized?: boolean }): FetchLike {
+  const rejectUnauthorized = options?.rejectUnauthorized ?? true;
   return async (input, init) => {
     const url = new URL(String(input));
     const headerRecord: Record<string, string> = {};
@@ -38,10 +52,10 @@ export function createInsecureFetch(): FetchLike {
     const body = bodyString === null ? null : Buffer.from(bodyString);
     if (bodyString !== null) headerRecord["Content-Length"] = String(Buffer.byteLength(bodyString));
     return new Promise<Response>((resolve, reject) => {
-      const req = request(url, {
+      const req = nodeRequest(url, {
         method: init?.method ?? "GET",
         headers: headerRecord,
-        rejectUnauthorized: false,
+        ...(url.protocol === "https:" ? { rejectUnauthorized } : {}),
       }, (res) => {
         const chunks: Buffer[] = [];
         res.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -64,4 +78,16 @@ export function createInsecureFetch(): FetchLike {
       req.end();
     });
   };
+}
+
+// Skips TLS certificate verification: MSSW environments (SIT/UAT/prod) all use
+// self-signed certificates on the internal network.
+export function createInsecureFetch(): FetchLike {
+  return createNodeFetch({ rejectUnauthorized: false });
+}
+
+// Strict TLS, same node transport: for adapters that keep certificate verification
+// but still need to send a custom Host header (undici forbids it).
+export function createSecureFetch(): FetchLike {
+  return createNodeFetch({ rejectUnauthorized: true });
 }
