@@ -61,7 +61,16 @@ class FakeBusinessPlatform(ThreadingHTTPServer):
 class Handler(BaseHTTPRequestHandler):
     server: FakeBusinessPlatform
 
+    def _log_headers(self) -> None:
+        # 打印每个请求的方法/路径/协议与全部请求头，便于调试适配器是否真的带上了
+        # hostHeader（如 Host / X-Tag）。写 stderr，与 BaseHTTPRequestHandler 日志一致。
+        lines = [f"{self.command} {self.path} {self.request_version}"]
+        for key, value in self.headers.items():
+            lines.append(f"  {key}: {value}")
+        sys.stderr.write("\n".join(lines) + "\n")
+
     def do_POST(self) -> None:
+        self._log_headers()
         if urlparse(self.path).path != "/login":
             self._send_json(404, {"error": "not_found"})
             return
@@ -87,6 +96,7 @@ class Handler(BaseHTTPRequestHandler):
         )
 
     def do_GET(self) -> None:
+        self._log_headers()
         path = urlparse(self.path).path
         if path == "/":
             self._send_html(200, self._home_page())
