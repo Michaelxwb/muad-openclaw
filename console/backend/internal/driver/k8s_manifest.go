@@ -22,21 +22,34 @@ func serviceTokenVolumes(name string) []corev1.Volume {
 }
 
 // resourceReqs maps the Pod limits to conservative requests and hard limits.
+// Requests default to 3 CPU / 8Gi but are clamped down to the resolved limits, so
+// requests never exceed limits — Kubernetes rejects any Deployment write with
+// requests > limits (e.g. a small pod limited to 2 CPU / 3Gi must request no more).
 func resourceReqs(spec PodSpec) corev1.ResourceRequirements {
-	requests := corev1.ResourceList{
-		corev1.ResourceCPU:    resource.MustParse("3"),
-		corev1.ResourceMemory: resource.MustParse("8Gi"),
-	}
+	cpuRequest := resource.MustParse("3")
+	memRequest := resource.MustParse("8Gi")
 	limits := corev1.ResourceList{}
 	if cpu, err := resource.ParseQuantity(orDefault(spec.Resource.CPULimit, fallbackCPULimit)); err == nil {
 		limits[corev1.ResourceCPU] = cpu
+		if cpu.Cmp(cpuRequest) < 0 {
+			cpuRequest = cpu
+		}
 	}
 	if memory := toK8sMem(orDefault(spec.Resource.MemLimit, fallbackMemLimit)); memory != "" {
 		if quantity, err := resource.ParseQuantity(memory); err == nil {
 			limits[corev1.ResourceMemory] = quantity
+			if quantity.Cmp(memRequest) < 0 {
+				memRequest = quantity
+			}
 		}
 	}
-	return corev1.ResourceRequirements{Requests: requests, Limits: limits}
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    cpuRequest,
+			corev1.ResourceMemory: memRequest,
+		},
+		Limits: limits,
+	}
 }
 
 func toK8sMem(value string) string {
