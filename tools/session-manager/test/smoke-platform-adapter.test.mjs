@@ -199,3 +199,73 @@ test("smoke_platform adapter rejects credentials missing username/password/sessi
       && error.reason === "missing_credential",
   );
 });
+
+test("smoke_platform adapter applies hostHeader dict to login and health requests", async () => {
+  const requests = [];
+  const adapter = new SmokePlatformSessionAdapter(async (url, options) => {
+    requests.push({ url: String(url), method: options.method, headers: options.headers });
+    return new Response("", {
+      status: 200,
+      headers: { "set-cookie": "fake_session=token-value; Path=/; HttpOnly" },
+    });
+  });
+
+  const cred = credential({
+    healthEndpoint: "/health/session",
+    hostHeader: { Host: "inner.sangfor.com.cn", "X-Custom": "abc" },
+  });
+
+  await adapter.refresh({ credential: cred, signal: new AbortController().signal });
+  await adapter.validate({
+    credential: cred,
+    signal: new AbortController().signal,
+    state: {
+      cookies: [{ name: "fake_session", value: "token-value", domain: "smoke.internal", path: "/" }],
+      storageState: { cookies: [], origins: [] },
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    },
+  });
+
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].url, "https://smoke.internal/login");
+  assert.equal(requests[0].headers.Host, "inner.sangfor.com.cn");
+  assert.equal(requests[0].headers["X-Custom"], "abc");
+  assert.equal(requests[0].headers["Content-Type"], "application/json");
+  assert.equal(requests[1].url, "https://smoke.internal/health/session");
+  assert.equal(requests[1].headers.Host, "inner.sangfor.com.cn");
+  assert.equal(requests[1].headers["X-Custom"], "abc");
+  assert.equal(requests[1].headers.Cookie, "fake_session=token-value");
+});
+
+test("smoke_platform adapter sends no Host header when hostHeader is not configured", async () => {
+  const requests = [];
+  const adapter = new SmokePlatformSessionAdapter(async (url, options) => {
+    requests.push({ url: String(url), method: options.method, headers: options.headers });
+    return new Response("", {
+      status: 200,
+      headers: { "set-cookie": "fake_session=token-value; Path=/; HttpOnly" },
+    });
+  });
+
+  await adapter.refresh({ credential: credential({}), signal: new AbortController().signal });
+
+  assert.equal(requests[0].headers.Host, undefined);
+});
+
+test("smoke_platform adapter rejects malformed hostHeader values", async () => {
+  const adapter = new SmokePlatformSessionAdapter(async () => new Response("", { status: 200 }));
+  await assert.rejects(
+    () => adapter.refresh({ credential: credential({ hostHeader: "inner.sangfor.com.cn" }), signal: new AbortController().signal }),
+    rejectPredicate({
+      authenticationFailed: true, retryable: false, reason: "missing_credential",
+      businessCode: undefined, message: "platform credential hostHeader must be an object",
+    }),
+  );
+  await assert.rejects(
+    () => adapter.refresh({ credential: credential({ hostHeader: { Host: "" } }), signal: new AbortController().signal }),
+    rejectPredicate({
+      authenticationFailed: true, retryable: false, reason: "missing_credential",
+      businessCode: undefined, message: "platform credential hostHeader values must be non-empty strings",
+    }),
+  );
+});

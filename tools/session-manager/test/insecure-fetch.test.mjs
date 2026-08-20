@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:https";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { createInsecureFetch } from "../dist/index.js";
+import { createInsecureFetch, createSecureFetch } from "../dist/index.js";
 
 const fixtureDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -81,6 +82,62 @@ test("the strict global fetch rejects the same self-signed cert", async () => {
   try {
     const port = server.address().port;
     await assert.rejects(() => fetch(`https://127.0.0.1:${port}/`));
+  } finally {
+    server.close();
+  }
+});
+
+test("createSecureFetch rejects the same self-signed cert (strict TLS kept)", async () => {
+  const server = await startServer((_req, res) => { res.writeHead(200); res.end("ok"); });
+  try {
+    const port = server.address().port;
+    await assert.rejects(() => createSecureFetch()(`https://127.0.0.1:${port}/`));
+  } finally {
+    server.close();
+  }
+});
+
+// 真实环境走 http（mssw: http://mssp-nginx.mss-pro:8200, mssp: http://soar-inner.sangfor.com.cn:30001），
+// 网关按 Host 头虚拟主机路由/鉴权。node fetch 必须能连 http:// 并把自定义 Host 头真实送达。
+test("node fetch connects over plain http and transmits a custom Host header", async () => {
+  let received = null;
+  const server = createHttpServer((req, res) => {
+    received = { headers: req.headers };
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ code: 0, msg: "ok" }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const port = server.address().port;
+    const res = await createInsecureFetch()(`http://127.0.0.1:${port}/gateway/mssw/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Host: "mssw.sangfor.com.cn" },
+      body: "",
+    });
+    assert.equal(res.status, 200);
+    assert.equal(received.headers.host, "mssw.sangfor.com.cn");
+    assert.equal(received.headers["content-length"], "0");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("node fetch transmits a custom Host header over https too", async () => {
+  let received = null;
+  const server = await startServer((req, res) => {
+    received = { headers: req.headers };
+    res.writeHead(200);
+    res.end("ok");
+  });
+  try {
+    const port = server.address().port;
+    const res = await createInsecureFetch()(`https://127.0.0.1:${port}/gateway/mssw/login`, {
+      method: "POST",
+      headers: { Host: "mssw.sangfor.com.cn" },
+      body: "",
+    });
+    assert.equal(res.status, 200);
+    assert.equal(received.headers.host, "mssw.sangfor.com.cn");
   } finally {
     server.close();
   }
