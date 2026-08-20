@@ -87,7 +87,7 @@ k8s:
   # 共享 Public Skill 的 RWX PVC 名。必须同时挂载到 Console Pod 的 publicSkillsMountPath。
   # 正式环境需 NFS/CephFS/Longhorn RWX/EFS 等 RWX StorageClass。
   # skillsPVC: muad-skills
-  # Console Pod 内对同一个 RWX PVC 的读写挂载路径；k8s/console.yaml 默认挂载到 /public。
+  # Console Pod 内对同一个 RWX PVC 的读写挂载路径；Helm chart 默认 publicSkills.mountPath=/public。
   # publicSkillsMountPath: /public
   # Public Skill PVC 的 RWX StorageClass（如 nfs/cephfs/efs）
   # skillsStorageClass: ""

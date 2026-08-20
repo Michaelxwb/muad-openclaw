@@ -104,7 +104,6 @@
 | `docs/k8s-architecture-100users.md` | 100 用户容量与部署专题 |
 | `docs/multi-user-single-pod.md` | bindings / 绑定码机制 |
 | `docs/agent-runtime-selection.md` | Agent 运行时与部署单元选型调研（OpenClaw vs Hermes 等） |
-| `docs/deploy-k8s-linux.md` | 测试部署 |
 | `docs/images/total-design/` | 架构图（3 张：系统上下文 / Pod 内部与组件 / 核心数据流） |
 | `tools/*/README.md` | 各 Worker 组件说明 |
 
@@ -324,7 +323,7 @@ Human User 是平台用户；IM external id 是 Identity。未绑定不自动开
 
 ### 5.7 部署与资源规划
 
-部署支持三种形态：本地开发用 Docker Compose 按需启停；测试环境见 `deploy-k8s-linux.md` 中的 K3S 部署方案；~100 用户生产环境采用 **Console×1 + Runtime≈10 Pod** 的 K8S 部署，管理员按 Pod 分配用户，每 Pod 默认 `max_users=10` 以控制故障半径。详细部署拓扑见 [`docs/k8s-architecture-100users.md`](./k8s-architecture-100users.md)。
+部署支持三种形态：本地开发用 Docker Compose 按需启停；测试环境用 `build/helm-build/muad-console/` Helm chart 部署 K3S；~100 用户生产环境采用 **Console×1 + Runtime≈10 Pod** 的 K8S 部署，管理员按 Pod 分配用户，每 Pod 默认 `max_users=10` 以控制故障半径。详细部署拓扑见 [`docs/k8s-architecture-100users.md`](./k8s-architecture-100users.md)。
 
 **资源规划（规划值，非压测 SLA；细节见 `k8s-architecture-100users.md`）：**
 

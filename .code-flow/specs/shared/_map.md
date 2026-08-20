@@ -28,7 +28,7 @@
 |--------|------------|-------|
 | frontend | `console/frontend/**` | UI、Semi、api.ts |
 | backend | `console/backend/**` | Go 控制面、repo、driver、apply |
-| runtime | `bin/**` `tools/**` `skills/**` `k8s/**` 镜像入口 | Worker、隔离、Skill、配置事务 |
+| runtime | `bin/**` `tools/**` `skills/**` 镜像入口 | Worker、隔离、Skill、配置事务 |
 
 ## Workflow
 

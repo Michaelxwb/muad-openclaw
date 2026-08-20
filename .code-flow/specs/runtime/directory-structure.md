@@ -29,13 +29,13 @@ console/backend/internal/runtimeapply/  # 触发 apply，不复制 runner
 ```
 
 ## Rules
-- [RULE-runtime-directory-001] Worker/runtime assets must live under `bin/`, `tools/`, `skills/`, `seed/`, `k8s/`, or image entrypoints; do not vendor or fork OpenClaw upstream source into this repository.
+- [RULE-runtime-directory-001] Worker/runtime assets must live under `bin/`, `tools/`, `skills/`, `seed/`, or image entrypoints; do not vendor or fork OpenClaw upstream source into this repository.
 
 ## Guidance
 - `bin/`：镜像内 CLI/注入/事务脚本及其 `bin/test`
 - `tools/`：可独立测试的插件与适配器（Node/Go）
 - `skills/`：内置 skill 种子与 `_templates`；运行态 public/private 由 Console 管理
-- 部署清单放 `k8s/` 与 compose 模板，不把集群专用路径写死进业务代码
+- 部署清单放 Helm chart（`build/helm-build/`）与 compose 模板，不把集群专用路径写死进业务代码
 - 新增工具优先自包含 package（自有 package.json/go.mod + test）
 
 ## Patterns
