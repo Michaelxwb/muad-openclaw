@@ -1,5 +1,5 @@
 # console 以受限 RBAC 在自身 namespace 内建/删/伸缩/exec/取日志 worker（Deployment + PVC + Secret）。
-# 与 k8s/console.yaml 中 Role 的权限保持一致；仅在 runtime.driver=k8s 时起作用。
+# 仅在 runtime.driver=k8s 时起作用。
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

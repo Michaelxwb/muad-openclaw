@@ -3,6 +3,7 @@ package test
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -10,12 +11,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// helmTemplateStrip 剔除 Helm 模板指令 {{...}}，留下可解析的 YAML 骨架。
+// 本测试只校验 Role rules 的安全不变量；metadata 的 name/labels 是模板变量，不在校验范围。
+var helmTemplateStrip = regexp.MustCompile(`\{\{-?[\s\S]*?-?\}\}`)
+
 func TestConsoleManifestAllowsPVCPatchOnly(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "k8s", "console.yaml"))
+	// Role 源已从 k8s/console.yaml 迁到 Helm chart 模板（k8s/ 目录已废弃删除）。
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "build", "helm-build", "muad-console", "templates", "role.yaml"))
 	if err != nil {
-		t.Fatalf("read console manifest: %v", err)
+		t.Fatalf("read console role template: %v", err)
 	}
-	role := findConsoleRole(t, string(raw))
+	role := findConsoleRole(t, helmTemplateStrip.ReplaceAllString(string(raw), ""))
 	hasPVCPatch := false
 	for _, rule := range role.Rules {
 		if slices.Contains(rule.Resources, "secrets") && slices.Contains(rule.Verbs, "patch") {
@@ -35,13 +41,13 @@ func findConsoleRole(t *testing.T, manifest string) consoleRoleManifest {
 	for _, doc := range strings.Split(manifest, "\n---") {
 		var item consoleRoleManifest
 		if err := yaml.Unmarshal([]byte(doc), &item); err != nil {
-			t.Fatalf("parse console manifest: %v", err)
+			t.Fatalf("parse console role template: %v", err)
 		}
-		if item.Kind == "Role" && item.Metadata.Name == "muad-console" {
+		if item.Kind == "Role" {
 			return item
 		}
 	}
-	t.Fatal("muad-console Role not found")
+	t.Fatal("console Role not found")
 	return consoleRoleManifest{}
 }
 

@@ -155,7 +155,6 @@ path_mapping:
       - tools/**
       - skills/**
       - seed/**
-      - k8s/**
       - Dockerfile
       - entrypoint.sh
       - provision-user.sh

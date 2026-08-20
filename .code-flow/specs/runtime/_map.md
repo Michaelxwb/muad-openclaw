@@ -12,7 +12,7 @@
 - Control scripts: `bin/*.mjs`（配置渲染、事务 apply、自检、安装）
 - Plugins/tools: `tools/muad-run-skill`、`muad-runtime-guard`、`session-manager`、`muad-progress` 等
 - Skill seeds/templates: `skills/`
-- Deploy: `Dockerfile`、`entrypoint.sh`、`k8s/`、`compose.template.yml`
+- Deploy: `Dockerfile`、`entrypoint.sh`、`build/helm-build/`、`compose.template.yml`
 
 ## Key Files
 
@@ -31,7 +31,7 @@
 | `tools/session-manager/` | 业务平台会话/凭证解析 |
 | `tools/muad-progress/` | 进度 CLI（Go） |
 | `skills/` | system skill 种子与开发模板 |
-| `k8s/` | Console/user/reaper 清单 |
+| `build/helm-build/` | Console Helm chart（内网部署） |
 
 ## Module Map
 
@@ -45,7 +45,7 @@ tools/
 ├── progress-adapters/
 └── shared/               # shared-lease-queue + notify-user
 skills/              # seeds + _templates
-k8s/ Dockerfile entrypoint.sh
+build/helm-build/ Dockerfile entrypoint.sh
 ```
 
 ## Related Domains

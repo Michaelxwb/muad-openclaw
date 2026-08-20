@@ -57,7 +57,6 @@ muad Console
 | [`docs/agent-runtime-selection.md`](docs/agent-runtime-selection.md) | Agent 运行时选型调研（OpenClaw vs Hermes、单用户→多用户演进） |
 | [`docs/k8s-architecture-100users.md`](docs/k8s-architecture-100users.md) | 100 用户 K8S 容量与部署专题 |
 | [`docs/multi-user-single-pod.md`](docs/multi-user-single-pod.md) | 多用户 / bindings / 绑定码机制说明 |
-| [`docs/deploy-k8s-linux.md`](docs/deploy-k8s-linux.md) | 测试环境部署 |
 | [`docs/images/total-design/`](docs/images/total-design/) | 架构图（上下文 / 组件 / 数据流 / Pod 内部 / K8S 拓扑） |
 
 ## 构建 Worker 镜像
@@ -140,7 +139,6 @@ docs/
   ├── muad-openclaw-总体设计说明书.md
   ├── k8s-architecture-100users.md
   ├── multi-user-single-pod.md
-  ├── deploy-k8s-linux.md
   └── images/total-design/    架构 SVG
 skills/                       内置 Skill 与开发模板
 tools/
@@ -163,4 +161,4 @@ tools/
 - 同一个机器人或通道凭证不能同时绑定多个 Pod，否则会发生连接互斥；Pod 与机器人由管理员维护。
 - WeCom 主动推送要求用户先向机器人发送过消息。
 - Public Skill 在状态变更后必须点击“应用 Skill”才会同步到所有运行中 Pod；Private Skill 安装/删除只作用于目标用户。
-- Kubernetes Public Skill 需要可用的 RWX PVC；本地单节点测试可使用 `k8s/` 下的 hostPath 静态 PV 模拟，正式环境应使用 NFS/CephFS/EFS 等共享存储。
+- Kubernetes Public Skill 需要可用的 RWX PVC；本地单节点测试可自建 hostPath 静态 PV 模拟，正式环境应使用 NFS/CephFS/EFS 等共享存储。
