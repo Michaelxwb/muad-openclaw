@@ -40,6 +40,7 @@ type Options struct {
 	MaxBrowserConcurrency  int
 	MaxLongTaskConcurrency int
 	Locale                 string
+	MediaMaxMb             int
 }
 
 type Result struct {
@@ -188,6 +189,7 @@ func (builder *Builder) assemble(
 		ConsoleInternalURL: strings.TrimRight(builder.options.ConsoleInternalURL, "/"),
 		ServiceTokenFile:   driver.PodServiceTokenPath,
 		Locale:             builder.options.Locale,
+		MediaMaxMb:         builder.options.MediaMaxMb,
 		Concurrency: driver.RuntimeConcurrency{
 			MaxSkills:                maxSkills,
 			MaxBrowser:               maxBrowser,

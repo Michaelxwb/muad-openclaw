@@ -76,6 +76,10 @@ beforeEach(() => {
   apiMocks.setPodResources.mockReset();
   apiMocks.getPod.mockResolvedValue(pod);
   apiMocks.getPodResources.mockResolvedValue(resources);
+  // 保存链路的两个 mock 按真实 api 契约返回已 resolve 的 Promise，
+  // 避免 await undefined（微任务续延无确定性）给串行保存断言引入隐式时序依赖。
+  apiMocks.updatePodChannels.mockResolvedValue({});
+  apiMocks.setPodResources.mockResolvedValue({ requiresPodRestart: false });
 });
 
 describe("PodEditDialog", () => {
@@ -98,14 +102,20 @@ describe("PodEditDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
-    // 两个提交是串行 await（通道 → 资源），waitFor 内同时断言两个 mock，
-    // 避免通道调用出现后、资源调用的微任务续延尚未执行时的竞态。
+    // 两个提交是串行 await（通道 → 资源）。拆成两段独立 waitFor 依次等待：
+    // 每段各自以独立轮询窗口等待目标状态，避免单条 waitFor 内两条断言相互耦合
+    // （通道先到、资源续延微任务尚未执行时整条失败）。
     // 超时放宽到 5s：cf-stop / CI 并发跑多套测试时事件循环可能饥饿，默认 1s 会误报 flake。
     // 测试级 testTimeout 同步放宽到 10s：waitFor 用满 5s 时叠加 findByText 与渲染耗时，
     // 会超出 vitest 默认 5s testTimeout，被误判为 long-running test。
     await waitFor(
       () => {
         expect(apiMocks.updatePodChannels).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 5000 },
+    );
+    await waitFor(
+      () => {
         expect(apiMocks.setPodResources).toHaveBeenCalledTimes(1);
       },
       { timeout: 5000 },

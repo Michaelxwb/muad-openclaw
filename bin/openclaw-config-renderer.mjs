@@ -221,6 +221,14 @@ function renderSession(output, runtime) {
 function renderAgents(output, runtime, thinkingByProvider = {}) {
   const defaults = isRecord(output.agents?.defaults) ? output.agents.defaults : {};
   delete defaults.systemPrompt;
+  // mediaMaxMb 由控制面（config.yaml）管理：配置了写入，未配置时删除，
+  // 避免 baseline 遗留旧值导致回退不生效。
+  const mediaMaxMb = Number.isInteger(runtime.mediaMaxMb) ? runtime.mediaMaxMb : 0;
+  if (mediaMaxMb > 0) {
+    defaults.mediaMaxMb = mediaMaxMb;
+  } else {
+    delete defaults.mediaMaxMb;
+  }
   output.agents = {
     defaults,
     list: runtime.agents.map((agent) => compact({

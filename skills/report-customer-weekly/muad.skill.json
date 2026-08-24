@@ -1,8 +1,7 @@
 {
   "name": "report-customer-weekly",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "runtime": "script",
-  "longTask": true,
   "entrypoint": "scripts/run.py",
-  "description": "Generate a weekly customer activity report. Long-running background task."
+  "description": "Generate and export a weekly customer report as a tar bundle, sized to a requested minimum (default 30MiB). Long-running background task."
 }

@@ -126,6 +126,7 @@ k8s:
     app: openclaw
     node-role: worker
 maxSkillUploadBundleSize: 10m
+mediaMaxMb: 20
 `), 0o644)
 
 	c, err := config.Load()
@@ -178,6 +179,9 @@ maxSkillUploadBundleSize: 10m
 	if c.SkillMaxUploadBundleBytes != 10<<20 {
 		t.Errorf("SkillMaxUploadBundleBytes = %d, want 10m from yaml", c.SkillMaxUploadBundleBytes)
 	}
+	if c.MediaMaxMb != 20 {
+		t.Errorf("MediaMaxMb = %d, want 20 from yaml", c.MediaMaxMb)
+	}
 	// defaults still apply for fields not in yaml
 	if c.DefaultImage != "ghcr.io/michaelxwb/muad-openclaw:latest" {
 		t.Errorf("DefaultImage = %q, want default", c.DefaultImage)
@@ -185,6 +189,46 @@ maxSkillUploadBundleSize: 10m
 	// MasterKey from env (not in yaml)
 	if c.MasterKey != "master-from-env" {
 		t.Errorf("MasterKey = %q, want env value", c.MasterKey)
+	}
+}
+
+func TestLoad_MediaMaxMbEnvOverrideAndValidation(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+	// 关闭 env 覆盖（envIntOverride 对空串 no-op），单独验证 yaml 行为。
+	t.Setenv("CONSOLE_MEDIA_MAX_MB", "")
+
+	os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("mediaMaxMb: 20\n"), 0o644)
+	c, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load with mediaMaxMb: %v", err)
+	}
+	if c.MediaMaxMb != 20 {
+		t.Errorf("MediaMaxMb = %d, want 20 from yaml", c.MediaMaxMb)
+	}
+
+	t.Setenv("CONSOLE_MEDIA_MAX_MB", "30")
+	c, err = config.Load()
+	if err != nil {
+		t.Fatalf("Load with env override: %v", err)
+	}
+	if c.MediaMaxMb != 30 {
+		t.Errorf("MediaMaxMb = %d, want 30 from env", c.MediaMaxMb)
+	}
+
+	// 负数视为配置错误；env 覆盖置空后负的 yaml 值才暴露。
+	t.Setenv("CONSOLE_MEDIA_MAX_MB", "")
+	os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("mediaMaxMb: -1\n"), 0o644)
+	if _, err := config.Load(); err == nil {
+		t.Fatal("expected error for negative mediaMaxMb")
+	}
+
+	// 非整数 env 值视为配置错误。
+	os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(""), 0o644)
+	t.Setenv("CONSOLE_MEDIA_MAX_MB", "abc")
+	if _, err := config.Load(); err == nil {
+		t.Fatal("expected error for non-integer CONSOLE_MEDIA_MAX_MB")
 	}
 }
 

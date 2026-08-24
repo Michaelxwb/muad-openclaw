@@ -69,6 +69,7 @@ type RuntimeConfigV1 struct {
 	ConsoleInternalURL string                `json:"consoleInternalUrl"`
 	ServiceTokenFile   string                `json:"serviceTokenFile"`
 	Locale             string                `json:"locale,omitempty"`
+	MediaMaxMb         int                   `json:"mediaMaxMb,omitempty"`
 	Concurrency        RuntimeConcurrency    `json:"concurrency"`
 	Channels           RuntimeChannels       `json:"channels"`
 	Agents             []RuntimeAgent        `json:"agents"`

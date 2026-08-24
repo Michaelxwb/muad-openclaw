@@ -4,8 +4,33 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
+
+// assemble 必须把 options.MediaMaxMb 透传给 runtime DTO（0 表示未配置）。
+func TestAssembleCarriesMediaMaxMb(t *testing.T) {
+	builder := &Builder{options: Options{
+		StateDirectory: "/state", PublicSkillsDirectory: "/skills",
+		MaxSkillConcurrency: 2, MaxBrowserConcurrency: 2, MaxLongTaskConcurrency: 2,
+		Locale: "zh", MediaMaxMb: 20,
+	}}
+	config := builder.assemble(repo.Pod{PodID: "pod-a", ConfigGeneration: 1}, nil, nil, nil, nil,
+		map[string]string{}, nil, driver.RuntimeChannels{}, skillState{})
+	if config.MediaMaxMb != 20 {
+		t.Fatalf("MediaMaxMb = %d, want 20 from options", config.MediaMaxMb)
+	}
+	if len(config.Agents) != 1 || config.Agents[0].ID != "main" {
+		t.Fatalf("expected only main agent, got %+v", config.Agents)
+	}
+
+	builder.options.MediaMaxMb = 0
+	config = builder.assemble(repo.Pod{PodID: "pod-a", ConfigGeneration: 1}, nil, nil, nil, nil,
+		map[string]string{}, nil, driver.RuntimeChannels{}, skillState{})
+	if config.MediaMaxMb != 0 {
+		t.Fatalf("MediaMaxMb = %d, want 0 when unset", config.MediaMaxMb)
+	}
+}
 
 // copyStrings 必须保证返回非 nil 切片：validateRuntimeAgents 要求
 // agent.Skills != nil，而 append([]string(nil), 空values...) 会返回 nil，
