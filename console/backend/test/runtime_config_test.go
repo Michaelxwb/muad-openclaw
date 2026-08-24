@@ -20,7 +20,7 @@ func TestRuntimeConfig_StrictRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodeRuntimeConfig: %v", err)
 	}
-	if decoded.PodID != "pod-a" || decoded.Agents[1].ID != "alice" {
+	if decoded.PodID != "pod-a" || decoded.Agents[1].ID != "alice" || decoded.MediaMaxMb != 20 {
 		t.Fatalf("unexpected decoded config: %+v", decoded)
 	}
 }
@@ -87,6 +87,7 @@ func validRuntimeConfig() driver.RuntimeConfigV1 {
 	return driver.RuntimeConfigV1{
 		Version: driver.RuntimeConfigVersion, PodID: "pod-a", Generation: 1,
 		ConsoleInternalURL: "http://console:8080", ServiceTokenFile: driver.PodServiceTokenPath,
+		MediaMaxMb:  20,
 		Concurrency: driver.RuntimeConcurrency{MaxSkills: 2, MaxBrowser: 1, MaxLongTasksPerUserAgent: 2},
 		Channels: driver.RuntimeChannels{
 			Enabled: []string{"wecom"},

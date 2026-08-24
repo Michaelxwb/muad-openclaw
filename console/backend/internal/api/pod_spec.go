@@ -44,6 +44,7 @@ func (s *Server) newRuntimeBuilder() (*runtimeconfig.Builder, error) {
 		MaxBrowserConcurrency:  s.cfg.RuntimeDefaults.MaxBrowserConcurrency,
 		MaxLongTaskConcurrency: s.cfg.RuntimeDefaults.MaxLongTaskConcurrency,
 		Locale:                 s.cfg.RuntimeDefaults.Locale,
+		MediaMaxMb:             s.cfg.MediaMaxMb,
 	})
 	return builder, err
 }

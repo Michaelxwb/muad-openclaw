@@ -4,8 +4,8 @@ const ID_PATTERN = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/;
 
 const TOP_LEVEL_KEYS = [
   "version", "podId", "generation", "consoleInternalUrl", "serviceTokenFile", "locale",
-  "concurrency", "channels", "agents", "routes", "identityLinks", "browser", "providers",
-  "platforms", "skills", "sessionManager", "guard", "guidance",
+  "mediaMaxMb", "concurrency", "channels", "agents", "routes", "identityLinks", "browser",
+  "providers", "platforms", "skills", "sessionManager", "guard", "guidance",
 ];
 
 // Forward-compatibility warnings collected while validating a Runtime DTO that
@@ -45,7 +45,7 @@ export function validateRuntimeConfig(value) {
   // 前向兼容，而不是 inject-env exit 1 导致 CrashLoopBackOff。required-missing
   // 与值类型仍严格校验。
   assertExactKeys(value, TOP_LEVEL_KEYS, "runtime",
-    TOP_LEVEL_KEYS.filter((key) => key !== "guidance" && key !== "locale"),
+    TOP_LEVEL_KEYS.filter((key) => key !== "guidance" && key !== "locale" && key !== "mediaMaxMb"),
     true);
   if (value.version !== RUNTIME_VERSION) throw new Error(`unsupported runtime version: ${value.version}`);
   assertID(value.podId, "runtime.podId");
@@ -53,6 +53,9 @@ export function validateRuntimeConfig(value) {
   assertURL(value.consoleInternalUrl, "runtime.consoleInternalUrl");
   if (value.serviceTokenFile !== SERVICE_TOKEN_FILE) throw new Error("invalid serviceTokenFile");
   validateLocale(value.locale);
+  if (value.mediaMaxMb !== undefined) {
+    assertPositiveInteger(value.mediaMaxMb, "runtime.mediaMaxMb");
+  }
   validateConcurrency(value.concurrency);
   validateChannels(value.channels);
   const agents = validateAgents(value.agents);

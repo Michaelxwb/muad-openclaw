@@ -1,8 +1,8 @@
 {
   "name": "fail-always-test",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "runtime": "script",
   "longTask": true,
   "entrypoint": "scripts/run.py",
-  "description": "必然失败的测试长任务，用于验证失败通知。"
+  "description": "仅在明确要求验证长任务失败/失败通知推送时使用。本技能必然执行失败，业务请求（客户周报、报告导出等）一律不用。"
 }

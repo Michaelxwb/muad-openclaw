@@ -41,6 +41,7 @@ type yamlFile struct {
 	AutomationPlatformURL   *string              `yaml:"automationPlatformURL"`
 	AutomationPlatformToken *string              `yaml:"automationPlatformToken"`
 	RuntimeDefaults         *runtimeDefaultsYAML `yaml:"runtimeDefaults"`
+	MediaMaxMb              *int                 `yaml:"mediaMaxMb"`
 	// k8s driver (used when runtimeDriver=k8s)
 	K8sNamespace          *string               `yaml:"k8sNamespace"`
 	K8sSkillsPVC          *string               `yaml:"k8sSkillsPVC"`
@@ -164,6 +165,7 @@ type Config struct {
 	RuntimeDefaults           RuntimeDefaults
 	SkillMaxUploadBundleSize  string // 原始字符串（如 "5m"），validate 时解析
 	SkillMaxUploadBundleBytes int64  // 解析后的上传压缩包大小上限（字节）
+	MediaMaxMb                int    // 媒体投递上限（MiB）；0 = 未配置，使用 openclaw 默认 5MB
 	RuntimeTimezone           string
 	RuntimeStateDir           string
 	RuntimePublicSkillsDir    string
@@ -290,6 +292,7 @@ func applyLegacyYAML(c *Config, f *yamlFile) {
 	applyString(&c.MuadNet, f.MuadNet)
 	applyExplicitString(&c.SkillsDir, &c.skillsDirExplicit, f.SkillsDir)
 	applyString(&c.SkillMaxUploadBundleSize, f.SkillMaxUploadBundle)
+	applyInt(&c.MediaMaxMb, f.MediaMaxMb)
 	applyString(&c.MasterKey, f.MasterKey)
 	applyString(&c.ListenAddr, f.ListenAddr)
 	applyString(&c.LogDir, f.LogDir)
@@ -483,6 +486,9 @@ func (c *Config) overrideFromEnv() error {
 	envOverride(&c.MuadNet, "MUAD_NET")
 	envOverrideExplicit(&c.SkillsDir, &c.skillsDirExplicit, "CONSOLE_SKILLS_DIR")
 	envOverride(&c.SkillMaxUploadBundleSize, "CONSOLE_MAX_SKILL_UPLOAD_BUNDLE_SIZE")
+	if err := envIntOverride(&c.MediaMaxMb, "CONSOLE_MEDIA_MAX_MB"); err != nil {
+		return err
+	}
 	envOverride(&c.ListenAddr, "CONSOLE_LISTEN")
 	envOverride(&c.LogDir, "CONSOLE_LOG_DIR")
 	envOverride(&c.DBPath, "CONSOLE_DB")
@@ -603,6 +609,9 @@ func (c *Config) validate() error {
 		return fmt.Errorf("maxSkillUploadBundleSize: %w", err)
 	}
 	c.SkillMaxUploadBundleBytes = parsed
+	if c.MediaMaxMb < 0 {
+		return fmt.Errorf("mediaMaxMb must not be negative (0 = unset)")
+	}
 	if err := c.RuntimeDefaults.validate(); err != nil {
 		return err
 	}

@@ -194,6 +194,30 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   );
 });
 
+test("renderer maps runtime mediaMaxMb into agents.defaults and drops stale values", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  runtime.mediaMaxMb = 20;
+
+  const output = renderOpenClawConfig(runtime, {
+    agents: { defaults: { mediaMaxMb: 5, contextTokens: 32000 } },
+  });
+  assert.equal(output.agents.defaults.mediaMaxMb, 20, "set mediaMaxMb must override baseline");
+  assert.equal(output.agents.defaults.contextTokens, 32000, "unmanaged baseline defaults must pass through");
+
+  // 未配置 mediaMaxMb 时删除 baseline 遗留值（控制面拥有该字段），回退到 openclaw 默认 5MB。
+  delete runtime.mediaMaxMb;
+  const outputUnset = renderOpenClawConfig(runtime, {
+    agents: { defaults: { mediaMaxMb: 5, contextTokens: 32000 } },
+  });
+  assert.equal(outputUnset.agents.defaults.mediaMaxMb, undefined, "unset mediaMaxMb must be removed");
+
+  // schema：非正整数拒绝。
+  runtime.mediaMaxMb = 0;
+  assert.throws(() => parseRuntimeConfig(runtime), /mediaMaxMb/);
+  runtime.mediaMaxMb = "20";
+  assert.throws(() => parseRuntimeConfig(runtime), /mediaMaxMb/);
+});
+
 test("stable rendering and atomic apply create the expected workspace guidance", () => {
   const runtime = parseRuntimeConfig(fixtureText);
   const first = renderOpenClawConfig(runtime, { gateway: { port: 18789, mode: "local" } });
