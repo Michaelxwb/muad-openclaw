@@ -1,0 +1,86 @@
+{
+  "_meta": {
+    "name": "modern",
+    "label": "现代汇报",
+    "version": "2.0",
+    "description": "微软雅黑 + 主辅蓝 + 隔行斑马纹，现代展示感，适合汇报材料、对外交付、经营分析等正式场景"
+  },
+  "global": {
+    "font": "微软雅黑",
+    "base_size": 10,
+    "palette": {
+      "primary": "1F4E79",
+      "accent": "0D51D9",
+      "muted": "D9E2F3",
+      "zebra": "F2F6FC"
+    }
+  },
+  "title": {
+    "enabled": true,
+    "bg": "palette.primary",
+    "color": "FFFFFF",
+    "size": 14,
+    "merge_columns": true,
+    "align": "center",
+    "height": 30
+  },
+  "header": {
+    "bg": "palette.accent",
+    "color": "FFFFFF",
+    "bold": true,
+    "align": "center",
+    "height": 24
+  },
+  "body": {
+    "size": 10,
+    "align": "left",
+    "zebra": "palette.zebra",
+    "min_height": 24,
+    "max_height": 62,
+    "border": {
+      "style": "thin",
+      "color": "BFBFBF"
+    }
+  },
+  "formats": {
+    "currency": { "pattern": "¥#,##0.00", "detect": "number" },
+    "percent": { "pattern": "0.0%", "detect": "percent" },
+    "date": { "pattern": "yyyy-mm-dd", "detect": "date" },
+    "integer": { "pattern": "#,##0", "detect": "integer" }
+  },
+  "conditional": {
+    "direction": "china",
+    "column_types": ["percent", "number"],
+    "column_header_keywords": ["增长", "涨幅", "跌幅", "涨跌", "同比", "环比"],
+    "up": { "color": "C00000" },
+    "down": { "color": "00B050" }
+  },
+  "column_styles": [
+    {
+      "keywords": ["端口"],
+      "bold": true
+    }
+  ],
+  "semantic": {
+    "$ref": "shared_semantic.json"
+  },
+  "watermark": {
+    "enabled": false,
+    "text": "机密",
+    "font": "PingFang SC",
+    "size": 60,
+    "color": "BFBFBF",
+    "rotate": -30,
+    "opacity": 0.2
+  },
+  "page": {
+    "orientation": "landscape",
+    "fit_to_width": true,
+    "margins": {
+      "top": 0.5,
+      "bottom": 0.5,
+      "left": 0.5,
+      "right": 0.5
+    }
+  }
+}

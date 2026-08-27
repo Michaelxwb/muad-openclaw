@@ -1,0 +1,24 @@
+﻿{
+  "_comment": "策略检查（policy-check）API 端点集中配置。修改接口地址只需改这里，无需动业务代码。",
+  "_note": "所有 phase 文件通过 shared.load_api_config() 读取本文件，按 key 取对应 URL。",
+
+  "origin": "https://mssw.sangfor.com.cn",
+
+  "base": {
+    "soar_referer": "/index.html"
+  },
+
+  "endpoints": {
+    "company_list":    "/gateway/customer-mgr-service/order/v1/user/customer_statistic?_method=GET",
+    "device_info":     "/api/apex/device/v1/devices/list",
+    "policy_check_create": "/gateway/idps/order/v1/tools/task/xdr_policy_check/create",
+    "policy_check_status": "/gateway/idps/order/v1/tools/task/xdr_policy_check/status",
+    "policy_list":     "/gateway/idps/order/v1/tools/task/xdr_policy_check/result"
+  },
+
+  "cookie_file": "D:\\Users\\User\\Desktop\\下载\\mssw_cookies.txt",
+
+  "wecom": {
+    "upload_media": "https://qyapi.weixin.qq.com/cgi-bin/webhook/upload_media"
+  }
+}

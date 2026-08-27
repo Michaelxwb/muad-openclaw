@@ -1,0 +1,184 @@
+# HTML → Word 转换配置
+# 可针对不同 HTML 报告调整以下参数
+
+# 预览模式：a4-landscape / a4-portrait / html
+# 结构化映射用 html 模式（流式预览，不分页，全部内容在 #sr-page-source 中）
+# a4-landscape 模式会把内容切到 .sr-pages 容器，导致 dom_root 取不到内容
+preview_mode: html
+
+# 是否在渲染时触发 HTML 内的 paginate() 函数
+# 结构化映射不需要分页 break，关闭以避免节点被分页打乱
+trigger_paginate: false
+
+# 渲染完成等待
+# ready_markers 必须用 HTML 中真实存在的选择器：
+#   - `.chw canvas`：ECharts 在 `.chw` 容器内渲染完成后生成的 <canvas>（HTML 中 23 个 .chw）
+#   - 3 个 sketch iframe 的真实 id（HTML 中实际类名不是 sr-sketch，而是 ov4-iframe / mdr-ops-v2-iframe / attack-chain-iframe）
+# 任一 marker 命中即视为就绪；脚本对每个 marker 单独 wait_for_selector，命中即返回，未命中才告警
+render_wait:
+  goto_timeout_ms: 60000            # page.goto / reload 的 load 事件超时（默认 60s，原 30s）
+  after_load_ms: 8000               # 渲染完成后的固定稳定等待
+  ready_marker_timeout_ms: 30000    # 每个 ready_marker 的最长等待（命中即返回）
+  ready_markers:
+    - ".chw canvas"
+    - "#ov4-iframe"
+    - "#mdr-ops-v2-iframe"
+    - "#attack-chain-iframe"
+
+# DOM 根选择器（转换范围，跳过导航栏等）
+dom_root: "#sr-page-source"
+
+# 跳过节点选择器（不进 Word）
+skip_selectors:
+  - ".sr-nav-wrap"
+  - ".sr-toc-page"
+  - ".sr-copyright-page"
+  - ".sr-dev-reference"
+  - ".sr-hidden-charts"
+
+# 截图选择器（这些节点会被 Playwright 元素截图后替换为 <img> 占位）
+# 注意：报告实际类名为 sr-chart-slot / sr-chart-card 等，非 sr-chart
+snapshot_selectors:
+  - ".sr-chart-slot"
+  - ".sr-chart-card"
+  - ".sr-chart-live"
+  - ".sr-asset-donut-row"
+  - "iframe"
+  - ".sr-chart-empty"
+
+# Word 样式映射（HTML 标签/类名 → Word 处理策略）
+style_map:
+  h1: heading_1
+  h2: heading_2
+  h3: heading_3
+  h4: heading_4
+  h5: heading_5
+  h6: heading_6
+  p: paragraph
+  table: table
+  ul: bullet_list
+  ol: number_list
+  img: image
+  .sr-risk-card: risk_card_table
+  .sr-risk-card__head: risk_card_head
+  .sr-kpi-card: kpi_paragraph
+  .sr-top5-asset-ip-row: top5_asset_ip_row
+  .sr-tag--critical: tag_critical
+  .sr-tag--high: tag_high
+  .sr-tag--medium: tag_medium
+  .sr-tag--medium-low: tag_medium_low
+  .sr-tag--low: tag_low
+  .sr-tag--info: tag_info
+  .sr-tag--success: tag_success
+  .sr-tag--blue: tag_blue
+  .sr-tag--light: tag_light
+  .sr-grade: grade_badge
+  .report-chart-note: muted_note
+  .sr-p--sub: sub_paragraph
+
+# docx 页面尺寸（统一 A4 竖版 210×297mm）
+docx:
+  page_width_mm: 210
+  page_height_mm: 297
+  margin_mm: 20
+
+# 字体样式配置（应用到 docx 内置 Normal / Heading 1~6 样式）
+# - font:        拉丁字体名（font.name）
+# - east_asia:   东亚字体名（w:eastAsia，中文标题/正文走这里）
+# - size_pt:     字号（磅）；Heading 不设时由 docx 内置默认接管
+# - bold:        是否加粗（true/false）
+# - italic:      是否斜体（true/false）
+# - color_hex:   字体颜色（RRGGBB，不带 #）；留空则不覆盖
+# - space_before_pt / space_after_pt: 段前/段后间距（磅）。如按 CSS px 约定，24px≈18pt、8px≈6pt、12px≈9pt
+# - line_spacing_pt: 行距（磅），留空则不覆盖
+fonts:
+  normal:
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
+    size_pt: 10.5
+    color_hex: "000000"
+    space_after_pt: 6
+  heading_1:
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
+    size_pt: 15
+    bold: true
+    italic: false
+    color_hex: "000000"
+    space_before_pt: 18
+    space_after_pt: 9
+  heading_2:
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
+    size_pt: 14
+    bold: true
+    italic: false
+    color_hex: "000000"
+    space_before_pt: 18
+    space_after_pt: 9
+  heading_3:
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
+    size_pt: 10.5
+    bold: true
+    italic: false
+    color_hex: "000000"
+    space_before_pt: 6
+    space_after_pt: 9
+  heading_4:
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
+    size_pt: 10.5
+    bold: true
+    italic: false
+    color_hex: "000000"
+    space_before_pt: 6
+    space_after_pt: 9
+  heading_5:
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
+    size_pt: 10.5
+    bold: true
+    italic: false
+    color_hex: "000000"
+    space_before_pt: 6
+    space_after_pt: 9
+  heading_6:
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
+    size_pt: 10.5
+    bold: true
+    italic: false
+    color_hex: "000000"
+    space_before_pt: 4
+    space_after_pt: 9
+
+# 截图质量
+screenshot:
+  type: png
+  scale: 2
+
+# 中间产物目录
+tmp_dir: "tmp/html_to_word"
+
+# Word 生成完成后执行"更新域"操作（TOC / PAGE / REF 等动态字段）
+# 默认开启 win32com 后端：调用本机 Word COM 在 save 之后离线刷新所有域，
+# 让用户拿到的 docx 自带真实目录与页码，无需手动"更新域"。
+# 无 Word 环境下自动回退到 settings.xml 的 <w:updateFields w:val="true"/> 开关
+# （用户首次打开 Word 时仍会收到"是否更新域"提示）。
+update_fields_after_save:
+  enabled: true              # 是否在 doc.save() 之后调用 COM 更新域
+  backend: win32com          # win32com（Windows + MS Word） / wps（Kwps.Application） / none
+  timeout_sec: 60            # COM 调用整体超时（防 Word 卡死）
+  fail_silently: true        # 失败时仅告警不中断主流程（保留已保存的 docx）
+
+# 页眉图片（仅正文 section 生效，封面不受影响）
+# path: PNG 文件绝对路径；留空则不添加页眉图片
+# height_mm: 图片在页眉中的高度（宽度等比缩放）
+# align: left / center / right
+header_image:
+  path: "assets/header.png"
+  height_mm: 13.5
+  align: left
+  header_distance_mm: 4
+

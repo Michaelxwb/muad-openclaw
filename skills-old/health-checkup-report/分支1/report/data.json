@@ -1,0 +1,238 @@
+{
+  "scoring": {
+    "total_score": 53.1,
+    "grade": "差",
+    "grade_color": "红色",
+    "L1": {
+      "资产防护得分": 52.0,
+      "日常运营得分": 54.75
+    },
+    "L2": {
+      "托管资产得分": 100.0,
+      "组件检测得分": 20.0,
+      "事件得分": 91.25,
+      "勒索风险得分": 0.0
+    },
+    "L3": {
+      "服务器得分": 100.0,
+      "终端得分": 0.0,
+      "服务器权重": 1,
+      "终端权重": 0,
+      "设备离线得分": 40.0,
+      "策略隐患得分": 0.0,
+      "漏洞得分": 0,
+      "端口得分": 0,
+      "弱密码基础分": 0,
+      "脆弱性事件分": 0.0,
+      "弱密码得分": 0.0
+    },
+    "data_summary": {
+      "asset": {
+        "server": {
+          "both_coverage": 1,
+          "client_only": 0,
+          "net_only": 3,
+          "no_coverage": 0,
+          "total": 4
+        },
+        "pc": {
+          "both_coverage": 0,
+          "client_only": 0,
+          "net_only": 0,
+          "no_coverage": 0,
+          "total": 0
+        },
+        "all_assets": 4,
+        "device": {
+          "activated_count": 5,
+          "offline_count": 3,
+          "total": 5
+        }
+      },
+      "event": {
+        "server_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "pc_events": {
+          "critical": 0,
+          "high": 1,
+          "medium": 2,
+          "low": 0
+        },
+        "total_events": 3
+      },
+      "weak_pwd_event": {
+        "server_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "pc_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "total_events": 0
+      },
+      "vuln": {
+        "urgent_count": 3,
+        "fast_count": 9,
+        "suggest_count": 4,
+        "total_vulns": 18
+      },
+      "weak_pwd": {
+        "high_count": 7,
+        "middle_count": 0,
+        "low_count": 0,
+        "unknown_count": 4,
+        "total_weak_pwd": 11
+      },
+      "port": {
+        "risk_port_count": 8862,
+        "total_ports": 9432
+      },
+      "policy": {
+        "check_cnt": 0,
+        "risk_cnt": 0,
+        "policy_status_summary": {},
+        "risk_status_summary": {}
+      }
+    },
+    "weights_used": {
+      "DEFAULT_ASSETS_RATIO": 0.6,
+      "ASSETS_RATIO": 0.4,
+      "COMPONENTS_RATIO": 0.6,
+      "EVENTS_RATIO": 0.6,
+      "VULNERABILITIES_RATIO": 0.4,
+      "SERVER_RATIO": 0.75,
+      "PC_SCORE": 0.25,
+      "DEVICE_K": 0.5,
+      "POLICY_K": 0.5,
+      "VULNERABILITY_K": 0.5,
+      "WEAK_PASSWORD_K": 0.25,
+      "PORT_K": 0.25,
+      "WEAK_PASSWORD_BASE_K": 1,
+      "SERVER_MAJOR_EVENT_K": 10,
+      "SERVER_GENERAL_EVENT_K": 7.5,
+      "SERVER_OTHER_EVENT_K": 5,
+      "SERVER_MAJOR_THREAT_K": 2.5,
+      "PC_MAJOR_EVENT_K": 5,
+      "PC_GENERAL_EVENT_K": 3.75,
+      "PC_OTHER_EVENT_K": 2.5,
+      "PC_MAJOR_THREAT_K": 1.25,
+      "AGENT_FIX_VULN_K": 15,
+      "FAST_FIX_VULN_K": 7.5,
+      "SUGGEST_FIX_VULN_K": 1,
+      "RISK_PORT_K": 20,
+      "HIGH_LEVEL_WEAKPWD_K": 20,
+      "MIDDLE_LEVEL_WEAKPWD_K": 10,
+      "LOW_LEVEL_WEAKPWD_K": 5,
+      "UNKNOWN_LEVEL_WEAKPWD_K": 2
+    }
+  },
+  "protection_effectiveness": {
+    "without_aes_asset_stats": {
+      "ips": "10.246.152.197、10.246.152.199",
+      "total": 3,
+      "hide_hint": false
+    },
+    "policy_stats": {
+      "total": 5,
+      "abnormal_count": 3,
+      "abnormal_by_dev_type": {
+        "EDR": 3
+      },
+      "abnormal_by_dev_type_text": "EDR 3 个",
+      "abnormal_by_dev_type_bracket": "（EDR 3 个）",
+      "abnormal_component_count": 3,
+      "total_component_count": 4,
+      "by_device": [
+        {
+          "dev_name": "设备名称1",
+          "dev_type": "EDR",
+          "check_count": 2,
+          "abnormal_count": 1
+        },
+        {
+          "dev_name": "设备名称3",
+          "dev_type": "EDR",
+          "check_count": 1,
+          "abnormal_count": 1
+        },
+        {
+          "dev_name": "设备名称4",
+          "dev_type": "EDR",
+          "check_count": 1,
+          "abnormal_count": 1
+        },
+        {
+          "dev_name": "设备名称5",
+          "dev_type": "EDR",
+          "check_count": 1,
+          "abnormal_count": 0
+        }
+      ],
+      "policy_check_example": [
+        {
+          "dev_id": 154258,
+          "dev_name": "设备名称1",
+          "name": "Linux SSH暴力破解检测-处置方式",
+          "policy_type": "EDR_LINUX_ANTI_BFA_SSH_HANDLE",
+          "policy_status": "策略获取失败",
+          "description": "当前策略获取失败，请人工检查该设备策略情况。",
+          "latest_time": [
+            "2026-06-20 10:00:00"
+          ],
+          "event_time": [
+            "2026-05-25 15:18:50"
+          ],
+          "risk_desc": "风险描述举例",
+          "dev_type": "EDR",
+          "risk_status": "at_risk",
+          "handle_status": "generated"
+        },
+        {
+          "dev_id": 154258,
+          "dev_name": "设备名称3",
+          "name": "Linux SSH暴力破解检测-处置方式",
+          "policy_type": "EDR_LINUX_ANTI_BFA_SSH_HANDLE",
+          "policy_status": "策略获取失败",
+          "description": "当前策略获取失败，请人工检查该设备策略情况。",
+          "latest_time": [
+            "2026-06-10 10:00:00"
+          ],
+          "event_time": [
+            "2026-05-25 15:18:50"
+          ],
+          "risk_desc": "风险描述举例",
+          "dev_type": "EDR",
+          "risk_status": "at_risk",
+          "handle_status": "generated"
+        },
+        {
+          "dev_id": 154258,
+          "dev_name": "设备名称4",
+          "name": "Linux SSH暴力破解检测-处置方式",
+          "policy_type": "EDR_LINUX_ANTI_BFA_SSH_HANDLE",
+          "policy_status": "策略获取失败",
+          "description": "当前策略获取失败，请人工检查该设备策略情况。",
+          "latest_time": [
+            "2026-05-25 10:00:00"
+          ],
+          "event_time": [
+            "2026-05-25 15:18:50"
+          ],
+          "risk_desc": "风险描述举例",
+          "dev_type": "EDR",
+          "risk_status": "at_risk",
+          "handle_status": "generated"
+        }
+      ]
+    }
+  }
+}

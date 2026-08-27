@@ -1,0 +1,50 @@
+{
+  "_comment": "健康体检报告（health-checkup-report）API 端点集中配置。修改域名/接口地址只需改这里，无需动业务代码。",
+  "_note": "Node 侧由 src/api_config.js 读取；Python 侧由 scripts/ 与 branch*/ 下的 loader 读取。origin 支持环境变量覆盖：mssw=HEALTH_CHECKUP_MSSW_BASE_URL、mssp=HEALTH_CHECKUP_MSSP_BASE_URL。所有请求统一带 host_header 指定的 Host 头（nginx 靠 Host 路由）。",
+  "_env": "当前默认：mssw=http://mssp-nginx.mss-pro:8200，mssp=http://soar-inner.sangfor.com.cn:30001。各平台均支持环境变量覆盖。",
+
+  "host_header": "inner.sangfor.com.cn",
+
+  "platforms": {
+    "mssw": {
+      "origin": "http://mssp-nginx.mss-pro:8200",
+      "env": "HEALTH_CHECKUP_MSSW_BASE_URL",
+      "referer_path": "/index.html",
+      "endpoints": {
+        "alert_query": "/ngsoc/INCIDENT/api/v1/table/query/alertTableQueryHandler?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false",
+        "disposal_tabs": "/ngsoc/INCIDENT/api/v1/incidents",
+        "device_list": "/api/apex/device/v1/devices/list?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false",
+        "third_party_device_stats": "/api/apex/thirdparty/v1/app/instance/list?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false",
+        "incident_export_tasks": "/gateway/mss-mdr/web/api/mssw/mss-mdr/v1/incidents/export/tasks",
+        "customer_statistic": "/gateway/customer-mgr-service/order/v1/user/customer_statistic",
+        "project_list": "/gateway/customer-mgr-service/order/v1/project/project_list/company_id",
+        "asset_export_fields": "/apps/asset/view/asset/export_fields?_method=GET",
+        "asset_export": "/apps/asset/view/asset/export",
+        "asset_download_file": "/apps/asset/view/asset/download_file",
+        "asset_count": "/apps/asset/view/asset/asset_view/count?_method=GET",
+        "asset_list": "/apps/asset/view/asset/asset_view/list?_method=GET",
+        "incident_table": "/gateway/mss-mdr/web/api/mssw/mss-mdr/v1/incident_table",
+        "log_search_count": "/gateway/log-search-center-service/datalake/v1/ckCount",
+        "security_check_report_stats": "/gateway/log-search-center-service/datalake/v1/personalized_report/security_check_report_stats",
+        "attck_count": "/ngsoc/INCIDENT/api/v1/incidents/attckCount",
+        "incident_table_query": "/ngsoc/INCIDENT/api/v1/table/query/incidentTableQueryHandler",
+        "policy_check_result": "/gateway/idps/order/v1/tools/task/xdr_policy_check/result"
+      }
+    },
+    "mssp": {
+      "origin": "http://soar-inner.sangfor.com.cn:30001",
+      "env": "HEALTH_CHECKUP_MSSP_BASE_URL",
+      "referer_path": "/index.html",
+      "endpoints": {
+        "customer_search": "/order/v1/user/customer_list",
+        "report_template_list": "/order/v1/report/template_list",
+        "report_generate": "/order/v1/report/generate",
+        "report_status": "/order/v1/report/status",
+        "report_download": "/order/v1/report/report_download",
+        "vuln_risk_export": "/order/v1/vul_manage/vul_risk_export",
+        "weakpwd_export": "/order/v1/vul_manage/weakpwd_export",
+        "exposed_surface_task": "/gateway/vuln-manager/vm/order/v1/vulnmgr/exposed_surface/report_async_task"
+      }
+    }
+  }
+}

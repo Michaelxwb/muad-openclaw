@@ -1,0 +1,124 @@
+{
+  "without_aes_asset_stats": {
+    "ips": "10.246.152.197、10.246.152.199",
+    "total": 3,
+    "hide_hint": false
+  },
+  "policy_stats": {
+    "total": 5,
+    "abnormal_count": 4,
+    "abnormal_by_dev_type": {
+      "EDR": 4
+    },
+    "abnormal_by_dev_type_text": "EDR 4 个",
+    "abnormal_by_dev_type_bracket": "（EDR 4 个）",
+    "abnormal_component_count": 4,
+    "total_component_count": 5,
+    "by_device": [
+      {
+        "dev_name": "设备名称1",
+        "dev_type": "EDR",
+        "check_count": 1,
+        "abnormal_count": 1
+      },
+      {
+        "dev_name": "设备名称2",
+        "dev_type": "EDR",
+        "check_count": 1,
+        "abnormal_count": 1
+      },
+      {
+        "dev_name": "设备名称3",
+        "dev_type": "EDR",
+        "check_count": 1,
+        "abnormal_count": 1
+      },
+      {
+        "dev_name": "设备名称4",
+        "dev_type": "EDR",
+        "check_count": 1,
+        "abnormal_count": 1
+      },
+      {
+        "dev_name": "设备名称5",
+        "dev_type": "EDR",
+        "check_count": 1,
+        "abnormal_count": 0
+      }
+    ],
+    "policy_check_example": [
+      {
+        "dev_id": 154258,
+        "dev_name": "设备名称1",
+        "name": "Linux SSH暴力破解检测-处置方式",
+        "policy_type": "EDR_LINUX_ANTI_BFA_SSH_HANDLE",
+        "policy_status": "策略获取失败",
+        "description": "当前策略获取失败，请人工检查该设备策略情况。",
+        "latest_time": [
+          "2026-06-20 10:00:00"
+        ],
+        "event_time": [
+          "2026-05-25 15:18:50"
+        ],
+        "risk_desc": "风险描述举例",
+        "dev_type": "EDR",
+        "risk_status": "at_risk",
+        "handle_status": "generated"
+      },
+      {
+        "dev_id": 154258,
+        "dev_name": "设备名称2",
+        "name": "Linux SSH暴力破解检测-处置方式",
+        "policy_type": "EDR_LINUX_ANTI_BFA_SSH_HANDLE",
+        "policy_status": "策略获取失败",
+        "description": "当前策略获取失败，请人工检查该设备策略情况。",
+        "latest_time": [
+          "2026-06-15 10:00:00"
+        ],
+        "event_time": [
+          "2026-05-25 15:18:50"
+        ],
+        "risk_desc": "风险描述举例",
+        "dev_type": "EDR",
+        "risk_status": "at_risk",
+        "handle_status": "generated"
+      },
+      {
+        "dev_id": 154258,
+        "dev_name": "设备名称3",
+        "name": "Linux SSH暴力破解检测-处置方式",
+        "policy_type": "EDR_LINUX_ANTI_BFA_SSH_HANDLE",
+        "policy_status": "策略获取失败",
+        "description": "当前策略获取失败，请人工检查该设备策略情况。",
+        "latest_time": [
+          "2026-06-10 10:00:00"
+        ],
+        "event_time": [
+          "2026-05-25 15:18:50"
+        ],
+        "risk_desc": "风险描述举例",
+        "dev_type": "EDR",
+        "risk_status": "at_risk",
+        "handle_status": "generated"
+      },
+      {
+        "dev_id": 154258,
+        "dev_name": "设备名称4",
+        "name": "Linux SSH暴力破解检测-处置方式",
+        "policy_type": "EDR_LINUX_ANTI_BFA_SSH_HANDLE",
+        "policy_status": "策略获取失败",
+        "description": "当前策略获取失败，请人工检查该设备策略情况。",
+        "latest_time": [
+          "2026-05-25 10:00:00"
+        ],
+        "event_time": [
+          "2026-05-25 15:18:50"
+        ],
+        "risk_desc": "风险描述举例",
+        "dev_type": "EDR",
+        "risk_status": "at_risk",
+        "handle_status": "generated"
+      }
+    ]
+  }
+}

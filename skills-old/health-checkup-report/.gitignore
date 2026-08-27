@@ -1,0 +1,41 @@
+node_modules/
+*.log
+cookies.txt
+xdr_cookies.txt
+mssw_cookies.txt
+scripts/file-association-backups/
+nul
+
+# 生成的报告输出
+output/
+
+# 风险清单（自动生成，不需要跟踪）
+安全体检报告/风险清单/
+
+# 安全体检报告 Word 和 ZIP（自动生成）
+安全体检报告/*.docx
+安全体检报告.zip
+
+# 临时/导出文件（mock 数据除外）
+tmp/**
+!tmp/mock_incident_table_v3.xlsx
+
+# Playwright 调试产物
+.playwright-mcp/
+
+# 分支1 的导出/中间产物
+分支1/tmp/
+分支1/html_to_word/tmp/
+分支1/html_to_word/security-report-preview-2.0-standalone.html
+分支1/html_to_word/客户_start_end_安全体检报告.html
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# Claude Code
+.claude
+
+# IDE
+.idea
+~

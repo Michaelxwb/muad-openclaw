@@ -1,0 +1,17 @@
+{
+  "name": "health-checkup-report",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generate customer security health checkup HTML reports from SOAR/MSSW data.",
+  "main": "health_report.js",
+  "scripts": {
+    "generate": "node health_report.js",
+    "mock:full": "node scripts/build_full_mock_report.js",
+    "mock:zero": "node scripts/build_zero_mock_report.js",
+    "check": "node --check health_report.js && node --check src/args.js && node --check src/asset_excel_stats.js && node --check src/branch1_adapter.js && node --check src/data_client.js && node --check src/incident_excel_stats.js && node --check src/mssw_client.js && node --check src/path_helper.js && node --check src/prevention_data.js && node --check src/prevention_exports.js && node --check src/risk_asset_count.js && node --check src/template_renderer.js && node --check scripts/build_full_mock_report.js && node --check scripts/build_zero_mock_report.js",
+    "test": "npm run check"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

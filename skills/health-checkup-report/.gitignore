@@ -1,0 +1,38 @@
+node_modules/
+*.log
+cookies.txt
+xdr_cookies.txt
+mssw_cookies.txt
+scripts/file-association-backups/
+nul
+
+# 生成的报告输出（muad 运行时写入 SKILL_OUTPUT_DIR；本地调试亦不跟踪）
+output/
+tmp/**
+
+# 风险清单（自动生成，不需要跟踪）
+report/risk_list/
+
+# 安全体检报告 Word 和 ZIP（自动生成）
+report/*.docx
+安全体检报告.zip
+
+# Playwright 调试产物
+.playwright-mcp/
+
+# 分支1 的导出/中间产物
+branch1/tmp/
+branch1/html_to_word/tmp/
+branch1/html_to_word/security-report-preview-2.0-standalone.html
+branch1/html_to_word/客户_start_end_安全体检报告.html
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# Claude Code
+.claude
+
+# IDE
+.idea
+~

@@ -1,0 +1,81 @@
+{
+  "_meta": {
+    "name": "classic",
+    "label": "经典清单",
+    "version": "2.0",
+    "description": "宋体 + 深蓝表头 + 统一浅蓝底，严谨文档感，适合安全/合规检查清单、台账、加固手册等表格"
+  },
+  "global": {
+    "font": "宋体",
+    "base_size": 10,
+    "palette": {
+      "primary": "1F497D",
+      "accent": "1F497D",
+      "muted": "DCE6F2",
+      "zebra": "DCE6F2"
+    }
+  },
+  "title": {
+    "enabled": true,
+    "bg": "palette.primary",
+    "color": "FFFFFF",
+    "size": 14,
+    "merge_columns": true,
+    "align": "left",
+    "height": 24
+  },
+  "header": {
+    "bg": "palette.primary",
+    "color": "FFFFFF",
+    "bold": true,
+    "align": "left",
+    "height": 24
+  },
+  "body": {
+    "size": 10,
+    "align": "left",
+    "body_fill": "palette.muted",
+    "wrap_text": true,
+    "min_height": 24,
+    "max_height": 62,
+    "border": {
+      "style": "thin",
+      "color": "BFBFBF"
+    }
+  },
+  "formats": {
+    "currency": { "pattern": "#,##0.00", "detect": "number" },
+    "percent": { "pattern": "0.0%", "detect": "percent" },
+    "date": { "pattern": "yyyy-mm-dd", "detect": "date" },
+    "integer": { "pattern": "#,##0", "detect": "integer" }
+  },
+  "conditional": {
+    "direction": "china",
+    "column_types": ["percent"],
+    "column_header_keywords": ["增长"],
+    "up": { "color": "E65050", "font_color": "FFFFFF", "bold": true },
+    "down": { "color": "59B22D", "font_color": "FFFFFF", "bold": true }
+  },
+  "semantic": {
+    "$ref": "shared_semantic.json"
+  },
+  "watermark": {
+    "enabled": false,
+    "text": "机密",
+    "font": "PingFang SC",
+    "size": 60,
+    "color": "BFBFBF",
+    "rotate": -30,
+    "opacity": 0.2
+  },
+  "page": {
+    "orientation": "portrait",
+    "fit_to_width": true,
+    "margins": {
+      "top": 0.5,
+      "bottom": 0.5,
+      "left": 0.5,
+      "right": 0.5
+    }
+  }
+}

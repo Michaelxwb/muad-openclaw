@@ -1,0 +1,94 @@
+# 安全体检评分系统配置文件
+# ============================================
+
+# Excel/JSON 数据源配置
+data_source:
+  # 基础路径（Excel 文件的根目录，JSON 文件可用绝对路径）
+  base_path: "../../tmp/exports"
+  # 各数据文件配置
+  files:
+    asset:
+      latest_match: "asset|资产"
+      sheet: "Sheet1"
+      header_row: 2
+      data_start_row: 3
+    event:
+      latest_match: "incident|事件"
+      sheet: "事件表"
+    vuln:
+      latest_match: "vuln|漏洞"
+      sheet: "漏洞"
+    weak_pwd:
+      latest_match: "weakpwd|弱口令"
+      sheet: "弱密码"
+    expose:
+      latest_match: "exposure|暴露面"
+      sheet: "端口表"
+    policy:
+      latest_match: "策略检查|policy"
+      sheet: "策略检查"
+    # 策略检查 JSON 数据源（由 report/policy_check_export.py 的 _save_json 写入 tmp/policy_check.json）
+    # protection_effectiveness.py 读取此 JSON 进行统计；Excel 仍由其他流程使用
+    policy_json:
+      type: json
+      filename: "tmp/policy_check.json"
+    device:
+      type: json
+      filename: "tmp/device.json"
+      data_path: "data.list"
+
+# 权重与系数配置
+# 派生项（如 1-DEFAULT_ASSETS_RATIO）由代码自动计算，不在此配置
+weights:
+  # ── 总分权重 ──
+  DEFAULT_ASSETS_RATIO: 0.6       # 资产防护得分占比，日常运营占比 = 1 - 此值
+
+  # ── L1 资产防护得分权重 ──
+  ASSETS_RATIO: 0.4               # 托管资产得分占比
+  COMPONENTS_RATIO: 0.6           # 组件检测得分占比
+
+  # ── L1 日常运营得分权重 ──
+  EVENTS_RATIO: 0.6               # 事件得分占比
+  VULNERABILITIES_RATIO: 0.4      # 勒索风险得分占比
+
+  # ── L2 托管资产得分权重 ──
+  SERVER_RATIO: 0.75              # 服务器得分占比
+  PC_SCORE: 0.25                  # 终端得分占比
+
+  # ── L2 组件检测得分权重 ──
+  DEVICE_K: 0.5                   # 设备离线得分占比
+  POLICY_K: 0.5                   # 策略隐患得分占比
+
+  # ── L2 勒索风险得分权重 ──
+  VULNERABILITY_K: 0.5            # 漏洞得分占比
+  WEAK_PASSWORD_K: 0.25          # 弱密码得分占比
+  PORT_K: 0.25                    # 端口得分占比
+
+  # ── 弱密码得分权重 ──
+  WEAK_PASSWORD_BASE_K: 1         # 弱密码基础分占比，脆弱性事件分占比 = 1 - 此值
+
+  # ── 事件扣分系数（服务器） ──
+  SERVER_MAJOR_EVENT_K: 10        # 严重
+  SERVER_GENERAL_EVENT_K: 7.5     # 高危
+  SERVER_OTHER_EVENT_K: 5         # 中危
+  SERVER_MAJOR_THREAT_K: 2.5      # 低危
+
+  # ── 事件扣分系数（非服务器） ──
+  PC_MAJOR_EVENT_K: 5             # 严重
+  PC_GENERAL_EVENT_K: 3.75        # 高危
+  PC_OTHER_EVENT_K: 2.5           # 中危
+  PC_MAJOR_THREAT_K: 1.25         # 低危
+
+  # ── 漏洞扣分系数 ──
+  AGENT_FIX_VULN_K: 15            # 急需修复
+  FAST_FIX_VULN_K: 7.5            # 尽快修复
+  SUGGEST_FIX_VULN_K: 1           # 建议修复
+
+  # ── 端口扣分系数 ──
+  RISK_PORT_K: 20
+
+  # ── 弱密码扣分系数 ──
+  HIGH_LEVEL_WEAKPWD_K: 20        # 严重/高危
+  MIDDLE_LEVEL_WEAKPWD_K: 10      # 中危
+  LOW_LEVEL_WEAKPWD_K: 5          # 低危
+  UNKNOWN_LEVEL_WEAKPWD_K: 2      # 未知等级

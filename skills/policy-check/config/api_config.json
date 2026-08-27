@@ -1,0 +1,20 @@
+{
+  "_comment": "策略检查（policy-check）API 端点集中配置。修改接口地址只需改这里，无需动业务代码。",
+  "_note": "所有 phase 文件通过 shared.load_api_config() 读取本文件，按 key 取对应 URL。origin 支持环境变量 POLICY_CHECK_BASE_URL 覆盖（默认原值）；所有请求统一带 host_header 指定的 Host 头（nginx 靠 Host 路由）。登录态由 muad 的 session-manager 代管，不再需要 cookie_file。",
+  "_env": "当前默认：mssw=http://mssp-nginx.mss-pro:8200。",
+
+  "origin": "http://mssp-nginx.mss-pro:8200",
+  "host_header": "inner.sangfor.com.cn",
+
+  "base": {
+    "soar_referer": "/index.html"
+  },
+
+  "endpoints": {
+    "company_list":    "/gateway/customer-mgr-service/order/v1/user/customer_statistic?_method=GET",
+    "device_info":     "/api/apex/device/v1/devices/list",
+    "policy_check_create": "/gateway/idps/order/v1/tools/task/xdr_policy_check/create",
+    "policy_check_status": "/gateway/idps/order/v1/tools/task/xdr_policy_check/status",
+    "policy_list":     "/gateway/idps/order/v1/tools/task/xdr_policy_check/result"
+  }
+}

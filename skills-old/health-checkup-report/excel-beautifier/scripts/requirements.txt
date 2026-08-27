@@ -1,0 +1,5 @@
+# 核心依赖（必需）
+openpyxl>=3.1
+
+# 可选依赖：仅当需要水印功能时安装（CLI/MCP 传入 --watermark/watermark 参数后自动启用）
+# Pillow>=10.0
