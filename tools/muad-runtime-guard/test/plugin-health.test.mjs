@@ -48,7 +48,7 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.deepEqual(registration.hooks[12].options, { priority: -800, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[13].options, { priority: -790, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[14].options, { priority: -80, timeoutMs: 1_000 });
-  assert.deepEqual(registration.hooks[15].options, { priority: 850, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[15].options, { priority: 850, timeoutMs: 5_000 });
   assert.deepEqual(registration.hooks[16].options, { priority: -950, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[17].options, { priority: -850, timeoutMs: 1_000 });
   assert.equal(registration.hooks[0].handler({}, { agentId: "main" }).handled, true);
