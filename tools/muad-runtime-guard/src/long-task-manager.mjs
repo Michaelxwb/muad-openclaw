@@ -32,6 +32,8 @@ export class LongTaskManager {
   #onChange;
   #log;
   #notifyFailure;
+  #progressManager;
+  #progressExecutions = new Map();
 
   constructor(options) {
     this.limit = positiveInteger(options?.limit) ? options.limit : 2;
@@ -49,6 +51,7 @@ export class LongTaskManager {
     this.#now = options?.now ?? (() => new Date());
     this.#log = options?.log ?? (() => {});
     this.#notifyFailure = options?.notifyFailure ?? defaultNotifyFailure;
+    this.updateProgressManager(options?.progressManager);
     this.shared = true;
     this.closed = false;
     this.#loadInterruptedTasks();
@@ -75,6 +78,10 @@ export class LongTaskManager {
     if (!positiveInteger(limit) || limit === this.limit) return;
     this.limit = limit;
     for (const pool of this.#pools.values()) this.#drain(pool);
+  }
+
+  updateProgressManager(manager) {
+    this.#progressManager = isProgressManager(manager) ? manager : undefined;
   }
 
   resolvePeerForTaskId(taskId) {
@@ -190,13 +197,14 @@ export class LongTaskManager {
     task.startedAt = this.#now().toISOString();
     task.updatedAt = task.startedAt;
     pool.active.set(task.taskId, task);
+    this.#registerProgress(task);
     this.#log(`[muad-runtime-guard] long task started taskId=${task.taskId} skill=${task.skillName}`);
     this.#record(task);
     const running = this.#runTask(task, { timeoutSeconds: this.timeoutSeconds });
     // runTask 同步 spawn 完成后会设置 task.childPid（见 runOpenClawAgent）；再落盘一次，
     // 让 state 记录携带 PID，供下次启动的孤儿检测（childStillRunning）使用。
     if (Number.isInteger(task.childPid)) this.#record(task);
-    void running
+    void Promise.resolve(running)
       .then(() => this.#finish(pool, task, "succeeded", "", ""))
       .catch((error) => this.#finish(pool, task, "failed", errorMessage(error), errorCode(error)));
   }
@@ -209,6 +217,7 @@ export class LongTaskManager {
     task.updatedAt = endedAt;
     task.terminalReason = reason;
     task.errorCode = code;
+    this.#finishProgress(task);
     this.#log(`[muad-runtime-guard] long task ${status} taskId=${task.taskId} skill=${task.skillName}${code ? ` errorCode=${code}` : ""}`);
     pool.terminal.push(task);
     this.#record(task);
@@ -219,6 +228,43 @@ export class LongTaskManager {
       void this.#notifyFailure(task, code).catch((error) =>
         this.#log(`[muad-runtime-guard] long task failure notify failed taskId=${task.taskId} error=${errorMessage(error)}`),
       );
+    }
+  }
+
+  #registerProgress(task) {
+    const manager = this.#progressManager;
+    if (!manager) return;
+    try {
+      const registration = manager.registerBackground({
+        taskId: task.taskId,
+        agentId: task.agentId,
+        skillName: task.skillName,
+        replyChannel: task.replyChannel,
+        peerId: task.peerId,
+        locale: task.locale,
+      });
+      if (registration?.registered === true && textValue(registration.executionKey)) {
+        this.#progressExecutions.set(task.taskId, {
+          executionKey: registration.executionKey,
+          manager,
+        });
+      } else {
+        logProgressFailure(this.#log, task.taskId, "register", "progress_registration_rejected");
+      }
+    } catch {
+      logProgressFailure(this.#log, task.taskId, "register", "progress_register_failed");
+    }
+  }
+
+  #finishProgress(task) {
+    const registration = this.#progressExecutions.get(task.taskId);
+    this.#progressExecutions.delete(task.taskId);
+    if (!registration) return;
+    try {
+      void Promise.resolve(registration.manager.finish(registration.executionKey)).catch(() =>
+        logProgressFailure(this.#log, task.taskId, "finish", "progress_finish_failed"));
+    } catch {
+      logProgressFailure(this.#log, task.taskId, "finish", "progress_finish_failed");
     }
   }
 
@@ -500,6 +546,18 @@ function poolKey(agentId, replyChannel, peerId) {
 
 function positiveInteger(value) {
   return Number.isInteger(value) && value > 0;
+}
+
+function isProgressManager(manager) {
+  return typeof manager?.registerBackground === "function" && typeof manager?.finish === "function";
+}
+
+function logProgressFailure(log, taskId, action, reason) {
+  try {
+    log(`[muad-runtime-guard][skill-progress] task=${taskId} kind=background action=${action} outcome=failed reason=${reason}`);
+  } catch {
+    // Progress diagnostics are best-effort and cannot alter task state.
+  }
 }
 
 function classifyRunError(code, stderr) {

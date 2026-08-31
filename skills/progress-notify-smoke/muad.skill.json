@@ -1,0 +1,8 @@
+{
+  "name": "progress-notify-smoke",
+  "version": "0.1.0",
+  "runtime": "script",
+  "longTask": false,
+  "entrypoint": "scripts/run.mjs",
+  "description": "仅用于验证普通前台 Skill 的 muad-progress stage/done 主动通知链。"
+}

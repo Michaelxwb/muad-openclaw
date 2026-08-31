@@ -25,6 +25,19 @@ COPY tools/fake-business-platform /build/fake-business-platform
 COPY skills /skills
 RUN npm test
 
+# ── muad-progress（npm 编译；对 Skill 暴露语言无关 CLI） ──
+FROM ${BASE_IMAGE}:${BASE_TAG} AS muad-progress-builder
+
+USER root
+WORKDIR /build/muad-progress
+COPY tools/muad-progress/package.json tools/muad-progress/package-lock.json tools/muad-progress/tsconfig.json ./
+RUN npm ci --include=dev
+COPY tools/muad-progress/src ./src
+COPY tools/muad-progress/test ./test
+# 模板集成测试只读加载实际 Shell/Python/Node 模板；不复制到最终镜像的 CLI 目录。
+COPY skills /skills
+RUN npm test
+
 # ── 最终镜像 ──
 ARG BASE_IMAGE
 ARG BASE_TAG
@@ -49,6 +62,8 @@ RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5
 COPY --from=session-manager-builder /build/session-manager/dist /opt/muad/session-manager/dist
 COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \
     tools/session-manager/openclaw.plugin.json /opt/muad/session-manager/
+COPY --from=muad-progress-builder /build/muad-progress/dist /opt/muad/muad-progress/dist
+COPY tools/muad-progress/package.json /opt/muad/muad-progress/
 
 COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plugin.json \
     /opt/muad/muad-runtime-guard/
@@ -60,11 +75,14 @@ COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh
 
 RUN set -eux; \
     ln -s /opt/muad/session-manager/dist/cli.js /usr/local/bin/session-manager; \
+    ln -s /opt/muad/muad-progress/dist/cli.js /usr/local/bin/muad-progress; \
     chmod 0755 /usr/local/bin/muad-entrypoint.sh /opt/muad/session-manager/dist/cli.js \
+      /opt/muad/muad-progress/dist/cli.js \
       /opt/muad/runtime-image-self-check.mjs /opt/muad/private-skill-installer.mjs \
       /opt/muad/prune-managed-plugin-installs.mjs; \
-    chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-runtime-guard /opt/muad/shared; \
-    chown -R node:node /opt/muad/session-manager /opt/muad/muad-runtime-guard \
+    chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-progress \
+      /opt/muad/muad-runtime-guard /opt/muad/shared; \
+    chown -R node:node /opt/muad/session-manager /opt/muad/muad-progress /opt/muad/muad-runtime-guard \
       /opt/muad/shared /opt/openclaw-skills; \
     su node -c "node /opt/muad/runtime-image-self-check.mjs --image-only"
 

@@ -56,6 +56,28 @@ test("notifyUser spawns openclaw message send with the shared contract", async (
   ]);
 });
 
+test("B-04 keeps multilingual text intact in WeCom and Mattermost argv", async () => {
+  const samples = [
+    { channel: "wecom", peerId: "wecom-test-user", text: "进度 😀\n**已完成** `128 条`" },
+    { channel: "mattermost", peerId: "mattermost-test-user", text: "Progress 😀\n**Done** `128 rows`" },
+  ];
+
+  for (const sample of samples) {
+    const { spawn, calls } = fakeSpawn();
+    const result = await notifyUser({ ...sample, spawn });
+    const args = calls[0]?.args ?? [];
+    const messageIndex = args.indexOf("--message");
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(args.slice(0, 6), [
+      "message", "send", "--channel", sample.channel, "--target", sample.peerId,
+    ]);
+    assert.equal(args[messageIndex + 1], sample.text);
+    assert.equal(args.at(-1), "--json");
+    assert.equal(sample.text.startsWith("{"), false);
+  }
+});
+
 test("notifyUser rejects empty channel/peerId/text", async () => {
   const { spawn } = fakeSpawn();
   for (const bad of [

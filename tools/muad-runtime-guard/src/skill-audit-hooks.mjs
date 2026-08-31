@@ -10,7 +10,7 @@ const TURN_CONTEXT_TTL_MS = 10 * 60_000;
 const READ_PATH_KEYS = ["path", "file_path", "filePath", "file"];
 
 export function createSkillAuditHooks({
-  config, client, now = () => Date.now(), log = () => {},
+  config, client, now = () => Date.now(), log = () => {}, onSkillActivated = () => {},
 }) {
   // runId -> { agentId, expiresAt }：before_agent_run 记下 turn 上下文，
   // 供 before_tool_call 在事件缺失 agentId 时回退。
@@ -31,6 +31,7 @@ export function createSkillAuditHooks({
       if (!match) return undefined;
       const runId = resolveRunId(event, ctx);
       if (runId && alreadyReported(reported, runId, skillName)) return undefined;
+      activateProgress(onSkillActivated, activationInput(config, event, ctx, agentId, match.skillName), diag);
       reportOnce(client, match.grant, agentId, match.skillName, now(), diag);
       if (runId) rememberReported(reported, runId, skillName, now());
       return undefined;
@@ -54,10 +55,33 @@ export function createSkillAuditHooks({
       if (!read) return undefined;
       const runId = resolveRunId(event, ctx);
       if (runId && alreadyReported(reported, runId, read.skillName)) return undefined;
+      activateProgress(onSkillActivated, activationInput(config, event, ctx, read.agentId, read.skillName), diag);
       reportOnce(client, read.grant, read.agentId, read.skillName, now(), diag);
       if (runId) rememberReported(reported, runId, read.skillName, now());
       return undefined;
     },
+  };
+}
+
+function activateProgress(activate, input, diag) {
+  try {
+    const result = activate(input);
+    Promise.resolve(result).catch(() => diag("progress activation failed reason=guard_failed"));
+  } catch {
+    diag("progress activation failed reason=guard_failed");
+  }
+}
+
+function activationInput(config, event, ctx, agentId, skillName) {
+  return {
+    runId: resolveRunId(event, ctx),
+    agentId,
+    sessionKey: textValue(event?.sessionKey) || textValue(ctx?.sessionKey),
+    // OpenClaw core 在 dispatch/agent_run 事件里提供的真实 IM 发送者 id（非模型可控），
+    // 供前台进度路由优先于 session key 末段使用。
+    senderId: textValue(event?.senderId) || textValue(ctx?.senderId),
+    skillName,
+    locale: textValue(config?.locale) === "en" ? "en" : "zh",
   };
 }
 

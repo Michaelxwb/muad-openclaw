@@ -244,15 +244,18 @@ Keep this custom rule.
 - A successful muad_use_skill result is authoritative: continue the task and never claim that Skill is not enabled.
 - For traditional-script Skills, call muad_run_skill only with a script path returned by muad_use_skill; for traditional-prompt Skills, follow the returned instructions with allowed native tools.
 - Report a Skill as unavailable only when muad_use_skill rejects the activation.
-`);
+  `);
 
   const result = applyRuntimeConfig({ runtime: appliedRuntime, configPath });
+  const firstConfigBytes = readFileSync(configPath, "utf8");
   const firstGuidance = readFileSync(userGuidancePath, "utf8");
   applyRuntimeConfig({ runtime: appliedRuntime, configPath });
+  const secondConfigBytes = readFileSync(configPath, "utf8");
   const secondGuidance = readFileSync(userGuidancePath, "utf8");
   const stored = JSON.parse(readFileSync(configPath, "utf8"));
   assert.equal(stored._comment, undefined);
   assert.equal(result.hash, canonicalHash(stored));
+  assert.equal(firstConfigBytes, secondConfigBytes, "re-apply config must be byte stable");
   assert.match(firstGuidance, /Keep this custom rule/u);
   assert.match(firstGuidance, /Memory persistence/u);
   assert.match(firstGuidance, /before saying it is remembered/u);

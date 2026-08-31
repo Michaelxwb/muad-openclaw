@@ -11,6 +11,8 @@ import {
 export const PINNED_OPENCLAW_VERSION = "2026.7.1";
 export const POD_SERVICE_TOKEN_FILE = "/run/secrets/muad/pod-service-token";
 export const SESSION_MANAGER_CLI = "/usr/local/bin/session-manager";
+export const MUAD_PROGRESS_CLI = "/usr/local/bin/muad-progress";
+export const MUAD_PROGRESS_VERSION = "0.1.0";
 export const IMAGE_PLUGINS = IMAGE_PLUGIN_SPECS;
 export const REQUIRED_RUNTIME_PLUGINS = MUAD_RUNTIME_PLUGIN_SPECS;
 export const IMAGE_CHANNEL_PLUGINS = IMAGE_CHANNEL_PLUGIN_SPECS;
@@ -119,6 +121,20 @@ export function validateRuntimePermissions(config, dependencies = {}) {
   access(tokenPath, constants.R_OK);
 }
 
+export function validateProgressCLI(dependencies = {}) {
+  const access = dependencies.access ?? accessSync;
+  const execute = dependencies.execFile ?? execFileSync;
+  const cliPath = dependencies.progressCliPath ?? MUAD_PROGRESS_CLI;
+  access(cliPath, constants.R_OK | constants.X_OK);
+  const output = dependencies.progressVersionOutput ?? execute(cliPath, ["--version"], {
+    encoding: "utf8",
+  });
+  const version = String(output ?? "").trim();
+  if (version !== `muad-progress ${MUAD_PROGRESS_VERSION}`) {
+    throw new Error(`muad-progress version mismatch: expected ${MUAD_PROGRESS_VERSION}`);
+  }
+}
+
 export function runImageSelfCheck(options = {}) {
   if (!options.skipOpenClawCLI) {
     const versionOutput = options.versionOutput ?? execFileSync("openclaw", ["--version"], {
@@ -126,6 +142,7 @@ export function runImageSelfCheck(options = {}) {
     });
     assertOpenClawVersion(versionOutput);
   }
+  validateProgressCLI(options.dependencies);
   validatePluginArtifacts(options.plugins ?? IMAGE_PLUGINS, options.dependencies);
   validateRuntimePluginsOfflineSafe(options.requiredRuntimePlugins ?? REQUIRED_RUNTIME_PLUGINS, options.dependencies);
   if (options.imageOnly) return;

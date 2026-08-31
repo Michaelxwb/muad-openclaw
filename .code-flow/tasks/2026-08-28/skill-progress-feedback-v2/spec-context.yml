@@ -1,0 +1,1072 @@
+version: 1
+task: skill-progress-feedback-v2
+enforcement: required
+updated_at: '2026-08-31T02:08:20.829783+00:00'
+sources:
+- type: cli
+  ref: bind
+bindings:
+- spec_id: runtime-config-and-apply
+  path: runtime/config-and-apply.md
+  status: active
+  hashes:
+    file_sha256: 5eb887d3987869eeefd19895210afefa49a028af4fee1242a71e9a2a59c1be14
+    metadata_sha256: f275035e49c2d53961baf0ae8b9974d6867e3504a48b7128483ec94ab60e72ae
+    rules_sha256: cedb07c8944d42c5c74ebe18b0418eb7bcc2a9f7d87cb5e8b58161a83ba94d45
+  selected_by: cf-task-plan
+  reason: TASK-009 验证两套镜像接入不新增 runtime config key，并保持 schema、generation 与事务 apply
+    语义
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-config-001
+    summary: Runtime configuration changes must validate against schema, apply through
+      the transactional pipeline (`runtime-config-transaction` / control-plane `runtimeapply`),
+      and preserve rollback or failed-health recovery.
+    text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+    enforcement: required
+    verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: '2.4'
+          item_id: DEC-07
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-009
+          item_id: TASK-009
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 用户认可未新增 runtime config 行为，generation、transactional apply 与 rollback/health
+            链保持不变
+          confirmed_by: user:jahan
+          confirmed_at: '2026-08-31T09:27:32+08:00'
+          source: conversation:2026-08-31 technical review confirmation
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+          executed_at: '2026-08-30T02:45:58.365051+00:00'
+          status: unverified
+          rule_text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: d9ed2d9e2dc8c97c1a0079d253606b6a4b7d68210440719aaf5e9eceb2258f8b
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm validateRuntimeConfig, transactional apply stages,
+              generation, and rollback/health behavior.
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+          executed_at: '2026-08-30T08:09:36.852174+00:00'
+          status: unverified
+          rule_text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: d9ed2d9e2dc8c97c1a0079d253606b6a4b7d68210440719aaf5e9eceb2258f8b
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm validateRuntimeConfig, transactional apply stages,
+              generation, and rollback/health behavior.
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+          executed_at: '2026-08-31T00:08:36.048948+00:00'
+          status: unverified
+          rule_text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: d9ed2d9e2dc8c97c1a0079d253606b6a4b7d68210440719aaf5e9eceb2258f8b
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm validateRuntimeConfig, transactional apply stages,
+              generation, and rollback/health behavior.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-validate-before-write-001
+    summary: Any renderer/inject path that materializes runtime config must call `validateRuntimeConfig`
+      (or shared schema helper) before atomic write; desired state carries a monotonic
+      `generation`.
+    text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+    enforcement: required
+    verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: '2.4'
+          item_id: DEC-07
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-009
+          item_id: TASK-009
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 用户认可 renderer/inject 未新增落盘路径，validate-before-write、0o600 原子写与单调
+            generation 保持不变
+          confirmed_by: user:jahan
+          confirmed_at: '2026-08-31T09:27:32+08:00'
+          source: conversation:2026-08-31 technical review confirmation
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+          executed_at: '2026-08-30T02:45:58.365213+00:00'
+          status: unverified
+          rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: c8486f4e00c4cb9ba60a58428e3854eb90b43919cf9c57d459dc95c379efe9a7
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm renderer/inject calls validateRuntimeConfig before
+              atomic write and carries monotonic generation.
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+          executed_at: '2026-08-30T08:09:36.852624+00:00'
+          status: unverified
+          rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: c8486f4e00c4cb9ba60a58428e3854eb90b43919cf9c57d459dc95c379efe9a7
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm renderer/inject calls validateRuntimeConfig before
+              atomic write and carries monotonic generation.
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+          executed_at: '2026-08-31T00:08:36.049151+00:00'
+          status: unverified
+          rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: c8486f4e00c4cb9ba60a58428e3854eb90b43919cf9c57d459dc95c379efe9a7
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm renderer/inject calls validateRuntimeConfig before
+              atomic write and carries monotonic generation.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-001
+    summary: 控制面构建 desired DTO，Worker 执行 transaction script
+    text_sha256: 969b322dbf270438aaa0869abd0db76afeee170b3edf9baa4a61e607612a5765
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 用 generation 单调递增检测漂移与冲突（generation conflict）
+    text_sha256: 2d27b0f5e2a796b7d7190722ce790f8eb75b1ee6ea0e91d52f524b6a3cdd0b3d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-directory-structure
+  path: runtime/directory-structure.md
+  status: active
+  hashes:
+    file_sha256: 9d55d53709d88d2907088ca6e1b8f4365924cbdc91e8006471ef33c4c106f1ea
+    metadata_sha256: 7dcafd9e33ee73b9d3b5973436f845d5d11f8bf5fd52d78a946d168e8f5e010f
+    rules_sha256: 1eef557f1ace42806c61e99d746e9d7e6a112e47fb582aa2dc6a18734917df4c
+  selected_by: cf-task-plan
+  reason: TypeScript CLI、runtime-guard、模板与镜像资产均需保持 Worker 目录边界且不 fork OpenClaw
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-directory-001
+    summary: Worker/runtime assets must live under `bin/`, `tools/`, `skills/`, `seed/`,
+      or image entrypoints; do not vendor or fork OpenClaw upstream source into this
+      repository.
+    text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+    enforcement: required
+    verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: '2.4'
+          item_id: DEC-06
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-009
+          item_id: TASK-009
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 用户认可 CLI、runtime guard 与模板目录布局合规，未 vendor 或 fork OpenClaw
+          confirmed_by: user:jahan
+          confirmed_at: '2026-08-31T09:27:32+08:00'
+          source: conversation:2026-08-31 technical review confirmation
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+          executed_at: '2026-08-30T02:45:58.365807+00:00'
+          status: unverified
+          rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: ec1a7da9983a4a8dd532f5be7bc2d6b29ae5b25815ffaf989f51f8587adec419
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm runtime code stays in bin/tools/skills/k8s and does
+              not fork OpenClaw upstream into this tree.
+        - verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+          executed_at: '2026-08-30T08:09:36.853178+00:00'
+          status: unverified
+          rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: ec1a7da9983a4a8dd532f5be7bc2d6b29ae5b25815ffaf989f51f8587adec419
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm runtime code stays in bin/tools/skills/k8s and does
+              not fork OpenClaw upstream into this tree.
+        - verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+          executed_at: '2026-08-31T00:08:36.049901+00:00'
+          status: unverified
+          rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: ec1a7da9983a4a8dd532f5be7bc2d6b29ae5b25815ffaf989f51f8587adec419
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm runtime code stays in bin/tools/skills/k8s and does
+              not fork OpenClaw upstream into this tree.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-001
+    summary: 控制面改行为 → backend；Worker 内执行 → tools/bin
+    text_sha256: 8b0c2519d72b83bd812f4458edf5989a0735cdfbb1d021cdd6c9a60e3cc25a9c
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: Skill 模板变更同步 `skills/README.md` 与检查器
+    text_sha256: 95cec7580f956caf27d9b80bcba7e545c07e6ef0cfcc710da3bcebe644df4b7f
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-isolation-and-security
+  path: runtime/isolation-and-security.md
+  status: active
+  hashes:
+    file_sha256: c0d256ae3e0052120abfc554fdd38d6df1fb91c159132ba662ff163e7e8c22ab
+    metadata_sha256: b7fdca81e893c4700e546264dca611c65f0533ca1a698e426a92f5cc773a0ccd
+    rules_sha256: 92c49db785819c7ac008577a80977f3ed8b72ee244db7b0d28e5e3c1918dec63
+  selected_by: cf-task-plan
+  reason: TASK-002/003 负责 execution 文件 mode、可信路由、脱敏和多用户隔离验证
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-security-001
+    summary: Channel credentials, LLM keys, platform API keys, and service tokens
+      must be injected at runtime and never baked into images or committed; each Human
+      User must keep isolated agent workspace, browser profile, and session state.
+    text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+    enforcement: required
+    verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: 2.5.1
+          item_id: RULE-01
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-003
+          item_id: TASK-003
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+          executed_at: '2026-08-30T02:45:58.366600+00:00'
+          status: unverified
+          rule_text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: 877e490c6f1fd221b0ab859c1dee1794bcf5bce823a241cc9ff48a9b74968a98
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm secrets stay out of images, restrictive file modes,
+              users stay isolated, and tokens are not logged.
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+          executed_at: '2026-08-30T08:09:36.853956+00:00'
+          status: unverified
+          rule_text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 877e490c6f1fd221b0ab859c1dee1794bcf5bce823a241cc9ff48a9b74968a98
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm secrets stay out of images, restrictive file modes,
+              users stay isolated, and tokens are not logged.
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+          executed_at: '2026-08-31T00:08:36.050752+00:00'
+          status: unverified
+          rule_text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 877e490c6f1fd221b0ab859c1dee1794bcf5bce823a241cc9ff48a9b74968a98
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm secrets stay out of images, restrictive file modes,
+              users stay isolated, and tokens are not logged.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-secret-file-mode-001
+    summary: Files that materialize config, bundles, or secrets on disk must use restrictive
+      modes (`0o600` for written config/bundle material; Pod service token files `0400`
+      at the canonical path validated by image self-check).
+    text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+    enforcement: required
+    verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: 2.5.1
+          item_id: RULE-06
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-002
+          item_id: TASK-002
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+          executed_at: '2026-08-30T02:45:58.366607+00:00'
+          status: unverified
+          rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: 1a50bb66d5b5f21b9200a9a2f65b673f8294a904d0d8235fcea2c58eb8cdf054
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm config/secret material uses 0o600 (token files 0400
+              at canonical path) and atomic writes.
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+          executed_at: '2026-08-30T08:09:36.853965+00:00'
+          status: unverified
+          rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 1a50bb66d5b5f21b9200a9a2f65b673f8294a904d0d8235fcea2c58eb8cdf054
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm config/secret material uses 0o600 (token files 0400
+              at canonical path) and atomic writes.
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+          executed_at: '2026-08-31T00:08:36.050759+00:00'
+          status: unverified
+          rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 1a50bb66d5b5f21b9200a9a2f65b673f8294a904d0d8235fcea2c58eb8cdf054
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm config/secret material uses 0o600 (token files 0400
+              at canonical path) and atomic writes.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-001
+    summary: inject-env / inject-channels / inject-multi-user-config 作为注入单一入口
+    text_sha256: a7979f71c77a2fa895f00623ff5eab9de188d4f0db0688f72902e7ed677916d9
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 工具策略与浏览器租约集中在 `muad-runtime-guard`
+    text_sha256: 5b6b947009a89327eb4d6efa22b93892225ed01cec5e179360e3ecb522191035
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-003
+    summary: Docker driver 将 service token 以只读方式挂进容器
+    text_sha256: e93f63de52e3b507071dfe3bf56757f8fdd5276d0fed07583970a11789b55e17
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-skill-execution
+  path: runtime/skill-execution.md
+  status: active
+  hashes:
+    file_sha256: 4f0e841689b8309ad1a67186b0a82336bb1b4a6d6396d0aab6d7856a1a51d937
+    metadata_sha256: 03de1fff61c25a9ab8a640b25646b9c439eef210c576573697df99bc09e17340
+    rules_sha256: fbe9d77c7effb79a139340813eb80e706004e53b65fde04ab436f8edaeafaa2f
+  selected_by: cf-task-plan
+  reason: TASK-003/004/007 负责进度日志、Skill 激活分层与模板 fail-loud 契约
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-skill-001
+    summary: Skills must honor system/public/private layering, require explicit activation/policy
+      gates before tools run, emit progress/telemetry without secrets, and respect
+      concurrency/lease limits.
+    text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: '2.4'
+          item_id: DEC-01
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-004
+          item_id: TASK-004
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+          executed_at: '2026-08-30T02:45:58.368086+00:00'
+          status: unverified
+          rule_text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: 4b8366cf8d6532fabd8129f74c952ca4ac661a19d56788840f154c81e58c9075
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm skill layering, system protection, activation gates,
+              progress events, and concurrency limits.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+          executed_at: '2026-08-30T08:09:36.855449+00:00'
+          status: unverified
+          rule_text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 4b8366cf8d6532fabd8129f74c952ca4ac661a19d56788840f154c81e58c9075
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm skill layering, system protection, activation gates,
+              progress events, and concurrency limits.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+          executed_at: '2026-08-31T00:08:36.052256+00:00'
+          status: unverified
+          rule_text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 4b8366cf8d6532fabd8129f74c952ca4ac661a19d56788840f154c81e58c9075
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm skill layering, system protection, activation gates,
+              progress events, and concurrency limits.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-skill-layering-001
+    summary: Resolution order prefers system (`system_protected`) over public/private;
+      public/private name conflicts must not silently overwrite—override only via
+      explicit allow_override policy.
+    text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: 2.5.2
+          item_id: E-04
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-004
+          item_id: TASK-004
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+          executed_at: '2026-08-30T02:45:58.368092+00:00'
+          status: unverified
+          rule_text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: e3c95f62719b4072ff7b352417613a010a06d40998fe340b78d3bb8df0cbd741
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm system-first resolution, system_protected, and no silent
+              public/private overwrite without allow_override.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+          executed_at: '2026-08-30T08:09:36.855455+00:00'
+          status: unverified
+          rule_text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: e3c95f62719b4072ff7b352417613a010a06d40998fe340b78d3bb8df0cbd741
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm system-first resolution, system_protected, and no silent
+              public/private overwrite without allow_override.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+          executed_at: '2026-08-31T00:08:36.052262+00:00'
+          status: unverified
+          rule_text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: e3c95f62719b4072ff7b352417613a010a06d40998fe340b78d3bb8df0cbd741
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm system-first resolution, system_protected, and no silent
+              public/private overwrite without allow_override.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-log-injection-001
+    summary: Tool/plugin modules must receive logging via an injected `log` callback
+      (default no-op) instead of scattered `console.*`; the openclaw plugin path injects
+      `api.logger?.warn`, the CLI path injects `console.warn`.
+    text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: 3.5.4
+          item_id: OBS-01
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-003
+          item_id: TASK-003
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+          executed_at: '2026-08-30T02:45:58.368098+00:00'
+          status: unverified
+          rule_text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: 753de4012eed5d62eb64af02e53a6876b729cfd0a3aa0bd2a8c9c2b1ea1806f5
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm tool/plugin modules inject `log` (default no-op) instead
+              of scattered console.*; plugin path uses api.logger.warn, CLI path uses
+              console.warn.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+          executed_at: '2026-08-30T08:09:36.855461+00:00'
+          status: unverified
+          rule_text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 753de4012eed5d62eb64af02e53a6876b729cfd0a3aa0bd2a8c9c2b1ea1806f5
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm tool/plugin modules inject `log` (default no-op) instead
+              of scattered console.*; plugin path uses api.logger.warn, CLI path uses
+              console.warn.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+          executed_at: '2026-08-31T00:08:36.052267+00:00'
+          status: unverified
+          rule_text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 753de4012eed5d62eb64af02e53a6876b729cfd0a3aa0bd2a8c9c2b1ea1806f5
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm tool/plugin modules inject `log` (default no-op) instead
+              of scattered console.*; plugin path uses api.logger.warn, CLI path uses
+              console.warn.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-log-prefix-001
+    summary: Log lines must carry a stable module prefix (`[session-manager]`, `[muad-runtime-guard]`)
+      with `[<module>-<action>]` sub-tags for grep-ability.
+    text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: 3.5.4
+          item_id: OBS-02
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-003
+          item_id: TASK-003
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+          executed_at: '2026-08-30T02:45:58.368103+00:00'
+          status: unverified
+          rule_text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: 111c5b651f20a9d9af08c37c44a7a513e16e46045abc2de6906c5dd6027d6d34
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm log lines carry a stable module prefix ([session-manager]/[muad-runtime-guard])
+              and [<module>-<action>] sub-tags.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+          executed_at: '2026-08-30T08:09:36.855466+00:00'
+          status: unverified
+          rule_text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 111c5b651f20a9d9af08c37c44a7a513e16e46045abc2de6906c5dd6027d6d34
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm log lines carry a stable module prefix ([session-manager]/[muad-runtime-guard])
+              and [<module>-<action>] sub-tags.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+          executed_at: '2026-08-31T00:08:36.052272+00:00'
+          status: unverified
+          rule_text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: 111c5b651f20a9d9af08c37c44a7a513e16e46045abc2de6906c5dd6027d6d34
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm log lines carry a stable module prefix ([session-manager]/[muad-runtime-guard])
+              and [<module>-<action>] sub-tags.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-skill-fail-loud-001
+    summary: Skill scripts must report failures to stderr and exit non-zero (fail
+      loud); stdout is reserved for the machine-readable result. Errors written to
+      stdout break exec-failure log forwarding.
+    text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.design.md
+          section_id: 2.5.1
+          item_id: RULE-07
+          artifact_sha256: 1c413df9540ab826210f84834d1752b81dede696647f11e1798f35f1a77991d3
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-progress-feedback-v2.md
+          section_id: TASK-007
+          item_id: TASK-007
+          artifact_sha256: 4c6ab9f5c1a7781df3cc3a2ecbec25603deca0c9d3302a9d9d117df0d25d48f8
+        decision: null
+        evidence: []
+      code:
+        status: unverified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+          executed_at: '2026-08-30T02:45:58.368108+00:00'
+          status: unverified
+          rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+          artifact_sha256: null
+          diff_sha256: f079163a4e060830cb039461d24ed9cedeae17de7e01b9483935c0d5dc8faefe
+          result_sha256: a9a9f5f5a41e1c329d621f1f505ebba3312d03db0853c1268d94b8e849ecdadf
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm skill scripts write failures to stderr and exit non-zero;
+              stdout reserved for machine-readable result.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+          executed_at: '2026-08-30T08:09:36.855470+00:00'
+          status: unverified
+          rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: a9a9f5f5a41e1c329d621f1f505ebba3312d03db0853c1268d94b8e849ecdadf
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm skill scripts write failures to stderr and exit non-zero;
+              stdout reserved for machine-readable result.
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+          executed_at: '2026-08-31T00:08:36.052277+00:00'
+          status: unverified
+          rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+          artifact_sha256: null
+          diff_sha256: c6e064ee5dc7e985547e6d32eb7dd5bba115a173c39cf4f145e901d0c7f441e9
+          result_sha256: a9a9f5f5a41e1c329d621f1f505ebba3312d03db0853c1268d94b8e849ecdadf
+          error_code: manual_confirmation_missing
+          details:
+            checklist: Confirm skill scripts write failures to stderr and exit non-zero;
+              stdout reserved for machine-readable result.
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-001
+    summary: 先 policy/activation gate，再 runner
+    text_sha256: 22fad8cba0a207a4c85636e47ee58891b2eff905817e0faba4910158f86a5ebb
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 长任务用 progress 事件，不堵死主会话
+    text_sha256: 4ddb6175ccb7f84bc0194881aa1a6c0a32469dcb952828e2ee2efe8a35a96aa9
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-003
+    summary: 模板变更放 `skills/_templates`，种子放 `skills/<name>`
+    text_sha256: 9c50296f165ce02990c3ee15a33ffcc84da1a77d5847feb30fc50fd12e0044a2
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-004
+    summary: repo 查询 system/public 时 `ORDER BY CASE scope WHEN 'system' THEN 0 ELSE
+      1 END`
+    text_sha256: 471439c2cf2439af73880de97579916c1d2adceb0bffa375e297618b7fbf458c
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []

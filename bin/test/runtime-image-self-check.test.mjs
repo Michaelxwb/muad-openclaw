@@ -9,6 +9,7 @@ import {
   PINNED_OPENCLAW_VERSION,
   POD_SERVICE_TOKEN_FILE,
   REQUIRED_RUNTIME_PLUGINS,
+  MUAD_PROGRESS_CLI,
   assertOpenClawVersion,
   validatePluginArtifacts,
   validatePluginDependencies,
@@ -17,8 +18,50 @@ import {
   validateRuntimePermissions,
   validateRuntimePluginConfig,
   validateRuntimePluginsOfflineSafe,
+  validateProgressCLI,
   runImageSelfCheck,
 } from "../runtime-image-self-check.mjs";
+
+test("S-06 muad-progress self-check requires an executable CLI and validates --version offline", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-progress-image-check-"));
+  const cli = join(root, "muad-progress");
+  const calls = [];
+  writeFileSync(cli, "#!/bin/sh\n", { mode: 0o700 });
+
+  assert.equal(MUAD_PROGRESS_CLI, "/usr/local/bin/muad-progress");
+  assert.doesNotThrow(() => validateProgressCLI({
+    progressCliPath: cli,
+    execFile: (command, args) => {
+      calls.push({ command, args });
+      return "muad-progress 0.1.0\n";
+    },
+  }));
+  assert.deepEqual(calls, [{ command: cli, args: ["--version"] }]);
+  assert.throws(() => validateProgressCLI({
+    progressCliPath: join(root, "missing"),
+    progressVersionOutput: "muad-progress 0.1.0",
+  }));
+  assert.throws(() => validateProgressCLI({
+    progressCliPath: cli,
+    progressVersionOutput: "muad-progress 9.9.9",
+  }), /version mismatch/u);
+});
+
+test("S-06 image-only self-check validates muad-progress without config or channel credentials", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-progress-offline-check-"));
+  const cli = join(root, "muad-progress");
+  writeFileSync(cli, "#!/bin/sh\n", { mode: 0o700 });
+  assert.doesNotThrow(() => runImageSelfCheck({
+    imageOnly: true,
+    skipOpenClawCLI: true,
+    plugins: [],
+    requiredRuntimePlugins: [],
+    dependencies: {
+      progressCliPath: cli,
+      progressVersionOutput: "muad-progress 0.1.0",
+    },
+  }));
+});
 
 test("OpenClaw image version is pinned exactly", () => {
   assert.equal(PINNED_OPENCLAW_VERSION, "2026.7.1");
@@ -113,6 +156,8 @@ test("startup self-check skips OpenClaw CLI migration paths", () => {
       imageChannelPlugins: IMAGE_CHANNEL_PLUGINS,
       dependencies: {
         cliPath: cli,
+        progressCliPath: cli,
+        progressVersionOutput: "muad-progress 0.1.0",
         readFile: () => "{}",
         access: (path, mode) => accessSync(path === POD_SERVICE_TOKEN_FILE ? token : path, mode),
       },
