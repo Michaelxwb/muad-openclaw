@@ -36,7 +36,7 @@ function reportProgress(command, stage, text) {
     [command, "--stage", stage, "--text", text],
     {
       encoding: "utf8",
-      timeout: 5_000,
+      timeout: 30_000,
       env: { ...process.env, MUAD_PROGRESS_STRICT_BRIDGE: "1" },
     },
   );
