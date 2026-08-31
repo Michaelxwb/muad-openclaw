@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   postIngestBundle,
   formatConsoleError,
-} from "../../../skills/skill-upload/scripts/upload-skill.mjs";
+} from "../../../skills/self-skill-upload/scripts/upload-skill.mjs";
 
 test("upload ingest uses the fixed contract path regardless of the baseURL prefix", async () => {
   const calls = [];

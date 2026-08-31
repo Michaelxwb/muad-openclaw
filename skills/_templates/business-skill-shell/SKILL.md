@@ -9,6 +9,7 @@ Use this template for simple business-system skills implemented in shell.
 
 Execution rules:
 
-1. Use session-manager before accessing protected business systems.
-2. Do not expose Cookie, token, password, internal URLs, SQL, or stack traces.
-3. Return a concise JSON result for the Agent to summarize.
+1. Run `bash scripts/run.sh`; it uses session-manager before accessing protected business systems.
+2. Let the script report only coarse user-readable nodes through `muad-progress`; never pass a channel or recipient.
+3. Do not expose Cookie, token, password, internal URLs, SQL, or stack traces.
+4. Treat script stdout as the concise JSON result to summarize in the native final reply.

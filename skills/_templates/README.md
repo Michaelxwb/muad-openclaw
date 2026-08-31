@@ -15,7 +15,7 @@
 - Skill 激活按用户消息轮次隔离；Agent 每轮读取精确 `SKILL.md`。
 - 受保护业务系统先通过 `session-manager get-state --skill-name <skill>` 获取当前用户登录态。
 - 不在日志、错误或 manifest 中写入 Cookie、Token、密码、内部 URL、SQL 和堆栈。
-- 最小版本不内置独立进度 CLI；最终结果继续走 OpenClaw 原生最终回复。
+- 可在 Skill 自己选择的关键节点调用 `muad-progress stage|done|error`；进度是 best-effort 文本，最终结果继续走 OpenClaw 原生最终回复。
 - 脚本使用 argv 参数，不拼接 shell 字符串。
 - 读文件（`SKILL.md`、config、模板）路径保持在 Skill 根目录内；写文件（报告、临时结果）写 `SKILL_OUTPUT_DIR`（guard 注入的 per-agent 目录），别写 Skill 根目录（只读）或 `/tmp`（不隔离不持久）。
 
@@ -102,5 +102,33 @@ cookies 使用（文件只含当前 Skill 声明的平台）。cookie 不进入 
 - [`business-skill-shell/`](business-skill-shell/)
 - [`business-skill-python/`](business-skill-python/)
 - [`business-skill-ts/`](business-skill-ts/)
+
+## 主动进度 CLI
+
+三种脚本模板均直接执行 `muad-progress`，不 import TypeScript SDK，也不传 `channel`、`peerId` 或凭据。Runtime Guard 只在已激活的普通 Skill 或运行中的长任务里注入可信事件文件与收件路由。
+
+```bash
+muad-progress stage --stage query --text "正在查询"
+muad-progress done --stage query --text "已获取 128 条有效记录"
+muad-progress error --stage query --text "查询失败，请稍后重试" --code query_failed
+```
+
+- `--text` 是用户会看到的文本；换行、Emoji 和 Markdown 字符按文本原样交给企微/Mattermost 渲染。
+- 成功默认 stdout 静默。`--json` 只输出“本地参数/写文件是否成功”的机器结果，不会把 JSON 发给用户，普通业务脚本无需启用。
+- 调用失败必须按 best-effort 处理，不能把原本成功的业务误报为失败；业务自身失败仍写 stderr 并 exit 非 0。
+- 节点与次数由 Skill 自己决定。Runtime 不自动 heartbeat、补终态、去重或恢复旧 `mode/steps` manifest 规则。
+- `done` 只写节点结果摘要，不复制完整最终报告；完整结果仍由 Agent 的原生 final reply 恰好发送一次。
+
+Go 也调用同一个 OS 命令：
+
+```go
+cmd := exec.Command("muad-progress", "done", "--stage", "query", "--text", "已获取 128 条有效记录")
+cmd.Stdout = io.Discard // 默认本就静默，显式隔离业务 stdout
+if err := cmd.Run(); err != nil {
+    // progress is best-effort; keep the business result authoritative
+}
+```
+
+可执行的 Shell/Python/Node/Go 示例由 `tools/muad-progress/test/fixtures/` 的集成测试维护。
 
 完整约定见 [`../README.md`](../README.md)。

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { formatConsoleError } from "../../skills/skill-upload/scripts/upload-skill.mjs";
+import { formatConsoleError } from "../../skills/self-skill-upload/scripts/upload-skill.mjs";
 
 test("skill-upload formats backend validation detail", () => {
   const formatted = formatConsoleError(JSON.stringify({
