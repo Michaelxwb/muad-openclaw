@@ -9,12 +9,12 @@
 #   1. docker login docker.sangfor.com
 #   2. cd <repo-root>
 #   3. bash build/docker-build/task4-openclaw.sh
-#      （task4 脚本会先用 mss-fe-node:20.9.0 容器构建 session-manager dist，
-#       再调本 Dockerfile 构建 app 镜像）
+#      （Task0 会先用 mss-fe-node:20.9.0 构建 session-manager 与 muad-progress dist，
+#       task4 恢复缓存后再调本 Dockerfile 构建 app 镜像）
 #
 # 构建上下文：仓库根（需包含 bin/、tools/、skills/、requirements.txt、
 #              console/backend/internal/crypto/binding_code_spec.json 等业务代码，
-#              以及 task4 脚本预构建的 tools/session-manager/dist/）
+#              以及 task4 脚本恢复的 tools/session-manager/dist/、tools/muad-progress/dist/）
 #
 # 前置条件（base 镜像人工中转）：
 #   ghcr.io/openclaw/openclaw:<OPENCLAW_VERSION> 需先人工中转到
@@ -50,11 +50,13 @@ RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5
     -i http://mirrors.sangfor.org/pypi/simple --trusted-host mirrors.sangfor.org \
     -r /opt/muad/requirements.txt
 
-# session-manager dist 由 task4 脚本预构建（在 mss-fe-node:20.9.0 容器里跑 npm install + test + build）
+# runtime CLI dist 由 Task0 预构建，task4 从千流缓存恢复。
 # 这里直接 COPY 已构建的 dist，不在镜像内跑 npm（避免 base 镜像里 node worker thread abort）
 COPY tools/session-manager/dist /opt/muad/session-manager/dist
 COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \
     tools/session-manager/openclaw.plugin.json /opt/muad/session-manager/
+COPY tools/muad-progress/dist /opt/muad/muad-progress/dist
+COPY tools/muad-progress/package.json /opt/muad/muad-progress/
 
 COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plugin.json \
     /opt/muad/muad-runtime-guard/
@@ -70,11 +72,14 @@ COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh
 # （K8s pod cgroup 限制宽松，不会触发），build 期跳过即可。
 RUN set -eux; \
     ln -s /opt/muad/session-manager/dist/cli.js /usr/local/bin/session-manager; \
+    ln -s /opt/muad/muad-progress/dist/cli.js /usr/local/bin/muad-progress; \
     chmod 0755 /usr/local/bin/muad-entrypoint.sh /opt/muad/session-manager/dist/cli.js \
+      /opt/muad/muad-progress/dist/cli.js \
       /opt/muad/runtime-image-self-check.mjs /opt/muad/private-skill-installer.mjs \
       /opt/muad/prune-managed-plugin-installs.mjs; \
-    chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-runtime-guard /opt/muad/shared; \
-    chown -R node:node /opt/muad/session-manager /opt/muad/muad-runtime-guard \
+    chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-progress \
+      /opt/muad/muad-runtime-guard /opt/muad/shared; \
+    chown -R node:node /opt/muad/session-manager /opt/muad/muad-progress /opt/muad/muad-runtime-guard \
       /opt/muad/shared /opt/openclaw-skills
 
 USER node
