@@ -15,6 +15,38 @@ test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for
   assert.deepEqual(mkdirs, [{ dir: "/state/workspace-alice/skill-outputs/wx-9", opts: { recursive: true, mode: 0o700 } }]);
 });
 
+test("resolve_exec_env merges progress env only for a running long task owned by the trusted agent", async () => {
+  const calls = [];
+  const { hooks } = setupHooks({
+    manager: { resolvePeerForTaskId: () => "user:wx-9" },
+    progressManager: {
+      progressEnvForExec: (input) => {
+        calls.push(input);
+        return input.taskId === "task-9"
+          ? { MUAD_PROGRESS_EVENTS_FILE: "/tmp/progress/events.jsonl", MUAD_SKILL_NAME: "xdr-query" }
+          : {};
+      },
+    },
+  });
+
+  const running = await hooks.resolveExecEnv(
+    { toolName: "exec", sessionKey: "agent:alice:longtask:task-9" },
+    context(),
+  );
+  const unknown = await hooks.resolveExecEnv(
+    { toolName: "exec", sessionKey: "agent:alice:longtask:unknown" },
+    context(),
+  );
+
+  assert.equal(running.MUAD_PROGRESS_EVENTS_FILE, "/tmp/progress/events.jsonl");
+  assert.equal(running.MUAD_SKILL_NAME, "xdr-query");
+  assert.equal(unknown.MUAD_PROGRESS_EVENTS_FILE, undefined);
+  assert.deepEqual(calls, [
+    { taskId: "task-9", agentId: "alice" },
+    { taskId: "unknown", agentId: "alice" },
+  ]);
+});
+
 test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for a normal business session from the session key", async () => {
   const { hooks, mkdirs } = setupHooks();
 

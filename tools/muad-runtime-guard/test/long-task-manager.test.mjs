@@ -592,6 +592,83 @@ test("LongTaskManager skips failure notify on success", async () => {
   assert.equal(failures.length, 0, "success must not trigger failure notify");
 });
 
+test("E-05 LongTaskManager registers progress only while running and finishes before releasing lifecycle ownership", async () => {
+  const runs = [];
+  const progress = progressRecorder();
+  const manager = new LongTaskManager({
+    limit: 1,
+    stateFile: join(mkdtempSync(join(tmpdir(), "muad-long-task-progress-")), "state.jsonl"),
+    runTask: (task) => new Promise((resolve, reject) => runs.push({ task, resolve, reject })),
+    progressManager: progress.manager,
+  });
+
+  const first = manager.submit({ ...taskInput("first"), taskId: "task-progress-1" });
+  const second = manager.submit({ ...taskInput("second"), taskId: "task-progress-2" });
+  assert.equal(first.task.status, "running");
+  assert.equal(second.task.status, "queued");
+  assert.deepEqual(progress.registered.map(({ taskId, peerId }) => ({ taskId, peerId })), [
+    { taskId: "task-progress-1", peerId: "wx-1" },
+  ]);
+  assert.equal("progressExecutionKey" in manager.snapshot().pools[0].tasks[0], false);
+
+  runs[0].resolve();
+  await tick();
+  assert.deepEqual(progress.finished, ["progress-task-progress-1"]);
+  assert.equal(manager.snapshot().pools[0].tasks.some((task) => task.status === "succeeded"), true);
+  assert.equal(runs.length, 2);
+  assert.equal(progress.registered[1].taskId, "task-progress-2");
+});
+
+test("E-05 progress failures never alter failed task state, failure notify count, or queue draining", async () => {
+  const runs = [];
+  const failures = [];
+  const manager = new LongTaskManager({
+    limit: 1,
+    stateFile: join(mkdtempSync(join(tmpdir(), "muad-long-task-progress-failure-")), "state.jsonl"),
+    runTask: (task) => new Promise((resolve, reject) => runs.push({ task, resolve, reject })),
+    progressManager: {
+      registerBackground: ({ taskId }) => ({ registered: true, executionKey: `progress-${taskId}` }),
+      finish: async () => { throw new Error("bridge unavailable"); },
+    },
+    notifyFailure: async (task, code) => failures.push({ taskId: task.taskId, code }),
+  });
+
+  manager.submit({ ...taskInput("timeout"), taskId: "task-timeout" });
+  manager.submit({ ...taskInput("next"), taskId: "task-next" });
+  const timeout = new Error("timed out");
+  timeout.code = "longtask.timeout";
+  runs[0].reject(timeout);
+  await tick();
+  await tick();
+
+  assert.deepEqual(failures, [{ taskId: "task-timeout", code: "longtask.timeout" }]);
+  assert.equal(manager.snapshot().pools[0].tasks.some((task) =>
+    task.taskId === "task-timeout" && task.status === "failed"), true);
+  assert.equal(runs.length, 2, "progress finish rejection must not occupy the concurrency slot");
+});
+
+test("E-05 restart marks interrupted tasks terminal without registering or replaying progress", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-long-task-progress-restart-"));
+  const stateFile = join(root, "state.jsonl");
+  const registered = [];
+  writeFileSync(stateFile, `${JSON.stringify(interruptedStateRecord("task-restart", "running"))}\n`);
+
+  const manager = new LongTaskManager({
+    stateFile,
+    now: () => new Date("2026-08-09T10:05:00.000Z"),
+    runTask: async () => {},
+    progressManager: {
+      registerBackground: (input) => { registered.push(input); return { registered: false }; },
+      finish: async () => {},
+    },
+  });
+
+  const restored = manager.snapshot().pools[0].tasks[0];
+  assert.equal(restored.status, "failed");
+  assert.equal(restored.errorCode, "long_task_interrupted");
+  assert.deepEqual(registered, []);
+});
+
 function taskInput(objective) {
   return {
     agentId: "alice",
@@ -602,6 +679,22 @@ function taskInput(objective) {
     originalPrompt: objective,
     replyChannel: "wecom",
     sessionKey: "agent:alice:wecom:direct:wx-1",
+  };
+}
+
+function progressRecorder() {
+  const registered = [];
+  const finished = [];
+  return {
+    registered,
+    finished,
+    manager: {
+      registerBackground: (input) => {
+        registered.push(input);
+        return { registered: true, executionKey: `progress-${input.taskId}` };
+      },
+      finish: async (executionKey) => { finished.push(executionKey); },
+    },
   };
 }
 

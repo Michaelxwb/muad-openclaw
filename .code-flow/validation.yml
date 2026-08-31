@@ -59,8 +59,8 @@ validators:
     timeout: 120000
     on_fail: "session-manager 测试失败，参见 specs/runtime/isolation-and-security.md"
 
-  - name: "Runtime Go 单测（muad-progress）"
-    trigger: "tools/muad-progress/**/*.go"
-    command: "cd tools/muad-progress && go test ./..."
-    timeout: 60000
+  - name: "Runtime TypeScript 单测（muad-progress）"
+    trigger: "tools/muad-progress/**/*.{ts,mjs,js,json}"
+    command: "cd tools/muad-progress && npm test"
+    timeout: 120000
     on_fail: "muad-progress 测试失败，参见 specs/runtime/skill-execution.md"

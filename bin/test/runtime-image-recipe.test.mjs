@@ -63,6 +63,80 @@ test("worker image builds session-manager and installs all runtime plugins and C
   assert.doesNotMatch(app, /COPY --from=session-manager-builder[\s\S]*\/skills/u);
 });
 
+test("S-06 worker image builds tests and installs muad-progress without runtime npm install", () => {
+  const app = read("Dockerfile");
+  const builder = app.match(
+    /FROM \$\{BASE_IMAGE\}:\$\{BASE_TAG\} AS muad-progress-builder([\s\S]*?)# ── 最终镜像 ──/u,
+  )?.[1] ?? "";
+  const finalStage = app.split("# ── 最终镜像 ──")[1] ?? "";
+
+  for (const expected of [
+    "WORKDIR /build/muad-progress",
+    "tools/muad-progress/package.json",
+    "tools/muad-progress/package-lock.json",
+    "tools/muad-progress/tsconfig.json",
+    "npm ci --include=dev",
+    "COPY tools/muad-progress/src ./src",
+    "COPY tools/muad-progress/test ./test",
+    "RUN npm test",
+  ]) assert.equal(builder.includes(expected), true, `muad-progress builder missing ${expected}`);
+
+  assert.match(finalStage, /COPY --from=muad-progress-builder \/build\/muad-progress\/dist \/opt\/muad\/muad-progress\/dist/u);
+  assert.match(finalStage, /COPY tools\/muad-progress\/package\.json \/opt\/muad\/muad-progress\//u);
+  assert.match(finalStage, /ln -s \/opt\/muad\/muad-progress\/dist\/cli\.js \/usr\/local\/bin\/muad-progress/u);
+  assert.match(finalStage, /chmod 0755[\s\S]*\/opt\/muad\/muad-progress\/dist\/cli\.js/u);
+  assert.match(finalStage, /chmod -R a\+rX[\s\S]*\/opt\/muad\/muad-progress/u);
+  assert.match(finalStage, /chown -R node:node[\s\S]*\/opt\/muad\/muad-progress/u);
+  assert.doesNotMatch(finalStage, /npm (?:ci|install)[^\n]*muad-progress/u);
+  assert.doesNotMatch(finalStage, /COPY --from=muad-progress-builder[^\n]*\/test(?:\s|$)/u);
+});
+
+test("S-06 Qianliu recipe carries prebuilt muad-progress dist through cache into the runtime image", () => {
+  const task0 = read("build/docker-build/task0-session-manager.sh");
+  const task4 = read("build/docker-build/task4-openclaw.sh");
+  const app = read("build/docker-build/Dockerfile.openclaw");
+
+  for (const expected of [
+    "tools/muad-progress",
+    "npm run build",
+    "${CACHE_DIR}/muad-progress-dist",
+    "muad-progress/dist/cli.js",
+  ]) assert.equal(task0.includes(expected), true, `Qianliu Task0 missing ${expected}`);
+  assert.match(task0, /build_package "muad-progress" "\$\{PROGRESS_DIR\}"/u);
+  assert.match(
+    task0,
+    /cp -r "\$\{PROGRESS_DIR\}\/dist\/\." "\$\{CACHE_DIR\}\/muad-progress-dist\/"/u,
+  );
+
+  for (const expected of [
+    "${CACHE_DIR}/muad-progress-dist",
+    "tools/muad-progress/dist",
+    "muad-progress/dist/cli.js",
+  ]) assert.equal(task4.includes(expected), true, `Qianliu Task4 missing ${expected}`);
+  assert.match(
+    task4,
+    /copy_dist "muad-progress" "\$\{PROGRESS_CACHE\}" "\$\{PROGRESS_DEST\}"/u,
+  );
+  assert.match(task4, /--password-stdin/u);
+  assert.match(task4, /DOCKER_USER[^\n]*required/u);
+  assert.match(task4, /DOCKER_PASS[^\n]*required/u);
+  assert.doesNotMatch(task4, /DOCKER_(?:USER|PASS):-/u);
+
+  for (const expected of [
+    "COPY tools/muad-progress/dist /opt/muad/muad-progress/dist",
+    "COPY tools/muad-progress/package.json /opt/muad/muad-progress/",
+    "ln -s /opt/muad/muad-progress/dist/cli.js /usr/local/bin/muad-progress",
+    "/opt/muad/muad-progress/dist/cli.js",
+    "/opt/muad/runtime-image-self-check.mjs",
+    "ENTRYPOINT [\"/usr/local/bin/muad-entrypoint.sh\"]",
+  ]) assert.equal(app.includes(expected), true, `Qianliu Dockerfile missing ${expected}`);
+
+  assert.match(app, /chmod -R a\+rX[^;]*\/opt\/muad\/muad-progress/u);
+  assert.match(app, /chown -R node:node[^;]*\/opt\/muad\/muad-progress/u);
+  assert.doesNotMatch(app, /(?:RUN|&&|;)\s+npm (?:ci|install)\b/u);
+  assert.doesNotMatch(app, /COPY tools\/muad-progress\/(?:node_modules|test)(?:\s|$)/u);
+});
+
 test("base image contains OpenClaw, Chromium/Playwright, channel plugins, and seed", () => {
   const base = read("Dockerfile.base");
   const entrypoint = read("entrypoint.sh");

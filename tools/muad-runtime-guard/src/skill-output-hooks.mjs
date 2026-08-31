@@ -17,7 +17,13 @@ const DIR_SEGMENT_PATTERN = /[^\p{L}\p{N}_.-]/gu;
 const LEADING_TRAILING_DASH = /^-+|-+$/gu;
 const MAX_DIR_SEGMENT_LENGTH = 100;
 
-export function createSkillOutputHooks({ resolveWorkspace, manager, mkdir = mkdirSync }) {
+export function createSkillOutputHooks({
+  resolveWorkspace,
+  manager,
+  progressManager,
+  mkdir = mkdirSync,
+  log = () => {},
+}) {
   return {
     resolveExecEnv: async (event, ctx) => {
       if (textValue(event?.toolName) !== "exec") return undefined;
@@ -27,7 +33,10 @@ export function createSkillOutputHooks({ resolveWorkspace, manager, mkdir = mkdi
       // context. Never trust a session key whose agent differs from ctx.agentId,
       // even if it parses to a well-formed identity.
       if (!agentId || agentId !== textValue(ctx?.agentId)) return undefined;
-      const env = { MUAD_SESSION_KEY: sessionKey };
+      const env = {
+        MUAD_SESSION_KEY: sessionKey,
+        ...resolveProgressEnv(rest, agentId, progressManager, log),
+      };
       const peerId = resolvePeerId(rest, manager);
       const workspace = resolveWorkspace(agentId);
       if (peerId && workspace) {
@@ -45,6 +54,33 @@ export function createSkillOutputHooks({ resolveWorkspace, manager, mkdir = mkdi
       return env;
     },
   };
+}
+
+function resolveProgressEnv(rest, agentId, progressManager, log) {
+  if (!rest.startsWith(LONG_TASK_PREFIX)) return {};
+  const taskId = textValue(rest.slice(LONG_TASK_PREFIX.length));
+  if (!taskId || typeof progressManager?.progressEnvForExec !== "function") return {};
+  try {
+    return trustedProgressEnv(progressManager.progressEnvForExec({ taskId, agentId }));
+  } catch {
+    logProgressEnvFailure(log, taskId);
+    return {};
+  }
+}
+
+function trustedProgressEnv(env) {
+  const eventsFile = textValue(env?.MUAD_PROGRESS_EVENTS_FILE);
+  const skillName = textValue(env?.MUAD_SKILL_NAME);
+  if (!path.isAbsolute(eventsFile) || !skillName) return {};
+  return { MUAD_PROGRESS_EVENTS_FILE: eventsFile, MUAD_SKILL_NAME: skillName };
+}
+
+function logProgressEnvFailure(log, taskId) {
+  try {
+    log(`[muad-runtime-guard][skill-progress] task=${taskId} kind=background action=resolve_env outcome=failed reason=progress_env_failed`);
+  } catch {
+    // Logging cannot alter exec environment resolution.
+  }
 }
 
 function resolvePeerId(rest, manager) {

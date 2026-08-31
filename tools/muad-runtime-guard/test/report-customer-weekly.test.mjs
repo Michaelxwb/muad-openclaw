@@ -16,6 +16,7 @@ test("run.py sanitizes customer/period and writes the report inside the output d
     RUN_PY,
     "--customer", "Acme-客户A",
     "--period", "2026-W31",
+    "--size-mb", "1",
     "--output-dir", outputDir,
   ], {
     encoding: "utf8",
@@ -25,10 +26,13 @@ test("run.py sanitizes customer/period and writes the report inside the output d
   assert.equal(summary.status, "ok");
   assert.equal(summary.customer, "Acme-客户A");
   assert.equal(summary.period, "2026-W31");
-  const reportPath = join(outputDir, "Acme-客户A-2026-W31.md");
+  assert.equal(summary.format, "tar");
+  const reportPath = join(outputDir, "Acme-客户A-2026-W31.tar");
   assert.equal(summary.report, reportPath);
   assert.ok(existsSync(reportPath));
-  assert.match(readFileSync(reportPath, "utf8"), /^# 客户周报：Acme-客户A/u);
+  assert.ok(summary.sizeBytes >= 1024 * 1024, "tar must reach the requested minimum size");
+  assert.ok(summary.members.includes("Acme-客户A-2026-W31.md"), "tar must contain the summary markdown");
+  assert.match(readTarMember(reportPath, "Acme-客户A-2026-W31.md"), /^# 客户周报：Acme-客户A/u);
 });
 
 test("run.py rejects path-traversal customer names without writing outside the output dir", () => {
@@ -87,6 +91,7 @@ test("run.py replaces unsafe characters in otherwise valid names", () => {
     RUN_PY,
     "--customer", "客户/公司 A",
     "--period", "2026-W31",
+    "--size-mb", "1",
     "--output-dir", outputDir,
   ], {
     encoding: "utf8",
@@ -94,6 +99,19 @@ test("run.py replaces unsafe characters in otherwise valid names", () => {
   });
   const summary = JSON.parse(stdout);
   assert.equal(summary.customer, "客户_公司 A".replace(" ", "_"));
-  assert.ok(existsSync(join(outputDir, "客户_公司_A-2026-W31.md")));
-  assert.deepEqual(readdirSync(outputDir), ["客户_公司_A-2026-W31.md"]);
+  assert.ok(existsSync(join(outputDir, "客户_公司_A-2026-W31.tar")));
+  assert.deepEqual(readdirSync(outputDir), ["客户_公司_A-2026-W31.tar"]);
 });
+
+function readTarMember(tarPath, memberName) {
+  return execFileSync("python3", [
+    "-c",
+    [
+      "import sys, tarfile",
+      "with tarfile.open(sys.argv[1]) as archive:",
+      "    sys.stdout.buffer.write(archive.extractfile(sys.argv[2]).read())",
+    ].join("\n"),
+    tarPath,
+    memberName,
+  ], { encoding: "utf8" });
+}

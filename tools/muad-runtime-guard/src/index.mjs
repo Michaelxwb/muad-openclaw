@@ -16,7 +16,9 @@ import { createSkillAuditHooks } from "./skill-audit-hooks.mjs";
 import { SkillAuditClient, SkillAuditClientError } from "./skill-audit-client.mjs";
 import { createSkillLeaseHooks } from "./skill-hooks.mjs";
 import { createSkillOutputHooks } from "./skill-output-hooks.mjs";
+import { createSkillProgressHooks } from "./skill-progress-hooks.mjs";
 import { SharedSkillLeaseManager } from "./skill-lease.mjs";
+import { SkillProgressManager } from "./skill-progress-manager.mjs";
 import {
   createAgentFilesPolicy,
   createBrowserProfilePolicy,
@@ -31,10 +33,19 @@ const plugin = {
     const config = parseGuardConfig(api.pluginConfig);
     const leaseManager = installBrowserLease(config.maxBrowserConcurrency);
     const skillLeaseManager = installSkillLease(config.maxSkillConcurrency);
+    const skillProgressManager = installSkillProgressManager(
+      globalThis,
+      (message) => api.logger?.warn?.(message),
+    );
+    const skillProgressHooks = createSkillProgressHooks({
+      manager: skillProgressManager,
+      log: (message) => api.logger?.warn?.(message),
+    });
     const longTaskManager = installLongTaskManager(
       config.maxLongTaskConcurrency,
       globalThis,
       (message) => api.logger?.warn?.(message),
+      skillProgressManager,
     );
     installLongTaskStatePush(longTaskManager, config, api);
     registerMainBindingReply(api, config);
@@ -43,9 +54,10 @@ const plugin = {
     registerBrowserLeaseHooks(api, config, leaseManager);
     registerSkillLeaseHooks(api, config, skillLeaseManager);
     registerLongTaskHooks(api, () => latestGuardConfig(config), longTaskManager);
-    registerSkillOutputHooks(api, longTaskManager);
+    registerSkillOutputHooks(api, longTaskManager, skillProgressManager);
+    registerSkillProgressHooks(api, skillProgressHooks);
     registerCrossUserGuard(api, config);
-    registerSkillAuditHooks(api, config, createSkillAuditClient(config));
+    registerSkillAuditHooks(api, config, createSkillAuditClient(config), skillProgressHooks.activate);
     registerExecFailureLog(api);
     registerReloadPolicy(api);
     const client = createBindingClient(config);
@@ -157,12 +169,20 @@ function registerLongTaskHooks(api, getConfig, manager) {
   api.on("agent_end", hooks.agentEnd, { priority: 900, timeoutMs: 1_000 });
 }
 
-function registerSkillOutputHooks(api, manager) {
+function registerSkillOutputHooks(api, manager, progressManager) {
   const hooks = createSkillOutputHooks({
     manager,
+    progressManager,
     resolveWorkspace: (agentId) => resolveWorkspace(api, agentId),
+    log: (message) => api.logger?.warn?.(message),
   });
   api.on("resolve_exec_env", hooks.resolveExecEnv, { priority: -800, timeoutMs: 1_000 });
+}
+
+function registerSkillProgressHooks(api, hooks) {
+  api.on("resolve_exec_env", hooks.resolveExecEnv, { priority: -790, timeoutMs: 1_000 });
+  api.on("before_agent_run", hooks.beforeAgentRun, { priority: -80, timeoutMs: 1_000 });
+  api.on("agent_end", hooks.agentEnd, { priority: 850, timeoutMs: 1_000 });
 }
 
 function registerCrossUserGuard(api, config) {
@@ -174,10 +194,11 @@ function registerCrossUserGuard(api, config) {
   api.on("reply_payload_sending", hooks.replyPayloadSending, { priority: -850, timeoutMs: 1_000 });
 }
 
-function registerSkillAuditHooks(api, config, client) {
+function registerSkillAuditHooks(api, config, client, onSkillActivated) {
   const hooks = createSkillAuditHooks({
     config,
     client,
+    onSkillActivated,
     log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
   });
   api.on("before_dispatch", hooks.beforeDispatch, { priority: -100, timeoutMs: 1_000 });
@@ -205,15 +226,31 @@ export function installBrowserLease(limit, globals = globalThis) {
   return manager;
 }
 
-export function installLongTaskManager(limit, globals = globalThis, log = () => {}) {
+export function installLongTaskManager(
+  limit,
+  globals = globalThis,
+  log = () => {},
+  progressManager = undefined,
+) {
   const symbol = Symbol.for("muad.longtask.manager");
   const existing = globals[symbol];
   if (existing?.shared === true && existing.closed !== true) {
     existing.updateLimit?.(limit);
+    existing.updateProgressManager?.(progressManager);
     return existing;
   }
   existing?.close?.();
-  const manager = new LongTaskManager({ limit, log });
+  const manager = new LongTaskManager({ limit, log, progressManager });
+  globals[symbol] = manager;
+  return manager;
+}
+
+export function installSkillProgressManager(globals = globalThis, log = () => {}, options = {}) {
+  const symbol = Symbol.for("muad.skill.progress.manager");
+  const existing = globals[symbol];
+  if (existing?.shared === true && existing.closed !== true) return existing;
+  existing?.close?.();
+  const manager = new SkillProgressManager({ ...options, log });
   globals[symbol] = manager;
   return manager;
 }

@@ -26,7 +26,9 @@ Skill 激活按用户消息轮次隔离：
 
 ## 长任务反馈
 
-最小版本不再内置独立进度 CLI。长耗时任务先通过 OpenClaw 原生最终回复返回结果；需要阶段性反馈时，后续迭代由平台 adapter 或新的受控执行层补齐。
+普通 Skill 与 `longTask:true` Skill 都可在自己选择的关键业务节点执行语言无关的 `muad-progress` CLI，主动发送 stage/done/error 文本。Skill 不持有收件人：Runtime Guard 从可信前台会话或后台 task 决定企微/Mattermost 目标；事件和诊断只在 execution 生命周期内保存，不写 Console 数据库。
+
+进度调用是 best-effort，不自动 heartbeat、不做业务去重/限频，也不替代最终回复。完整结果仍只走 OpenClaw 原生 final reply。默认 stdout 静默；`--json` 仅供脚本/测试读取本地调用结果，不是用户消息。
 
 模板见 [`_templates/`](./_templates/)。
 
