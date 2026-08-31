@@ -182,7 +182,9 @@ function registerSkillOutputHooks(api, manager, progressManager) {
 function registerSkillProgressHooks(api, hooks) {
   api.on("resolve_exec_env", hooks.resolveExecEnv, { priority: -790, timeoutMs: 1_000 });
   api.on("before_agent_run", hooks.beforeAgentRun, { priority: -80, timeoutMs: 1_000 });
-  api.on("agent_end", hooks.agentEnd, { priority: 850, timeoutMs: 1_000 });
+  // agent_end 收尾要等在途进度投递 settle（finishTimeoutMs 默认 1s）：hook 上限
+  // 必须高于它，否则每次 turn 尾部有消息在途都会打 handler timed out 警告。
+  api.on("agent_end", hooks.agentEnd, { priority: 850, timeoutMs: 5_000 });
 }
 
 function registerCrossUserGuard(api, config) {
