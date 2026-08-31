@@ -1,5 +1,5 @@
 ---
-name: skill-upload
+name: self-skill-upload
 description: 将用户写在 skill-staging/<name>/ 草稿目录中的自建 Skill 上传到控制台，使其成为平台托管的私有 Skill。上传后进入待审批状态，需管理员审批通过后才会对 agent 生效。
 ---
 
