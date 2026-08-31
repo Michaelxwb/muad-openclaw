@@ -18,6 +18,8 @@ skills/*.zip
 
 # 千流流水线 task 脚本（未定稿，先不提交）
 build/docker-build/task*.sh
+!build/docker-build/task0-session-manager.sh
+!build/docker-build/task4-openclaw.sh
 
 # 运行态 SQLite DB（控制台），绝不入库
 console/backend/data/
