@@ -18,7 +18,7 @@ def report_progress(command, text, code=None):
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            timeout=5,
+            timeout=30,
         )
     except (OSError, subprocess.TimeoutExpired):
         return False

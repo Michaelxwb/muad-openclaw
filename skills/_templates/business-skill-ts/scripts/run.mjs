@@ -9,7 +9,7 @@ async function reportProgress(command, text, code) {
   const args = [command, "--stage", "execute", "--text", text];
   if (code) args.push("--code", code);
   try {
-    await execFileAsync("muad-progress", args, { timeout: 5_000 });
+    await execFileAsync("muad-progress", args, { timeout: 30_000 });
     return true;
   } catch {
     return false;
