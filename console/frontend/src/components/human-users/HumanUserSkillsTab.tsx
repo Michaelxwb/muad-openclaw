@@ -493,7 +493,7 @@ function PrivateSkillUploadDialog({
         <ErrorDetail detail={detail} />
         <Upload
           aria-label={t("user.privateSkillBundleAria")}
-          accept=".tar.gz,.zip"
+          accept=".tar.gz,.gz,.zip,application/gzip,application/x-gzip,application/zip"
           action=""
           uploadTrigger="custom"
           limit={1}
