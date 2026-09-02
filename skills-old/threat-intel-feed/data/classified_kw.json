@@ -1,0 +1,200 @@
+{
+  "generated_at": "2026-07-01T08:33:03.653253",
+  "total_articles": 12,
+  "kw_direct": 12,
+  "ai_judged": 0,
+  "stats": {
+    "二、安全热点时事资讯": {
+      "安全事件": 5,
+      "AI对攻防趋势变化": 2
+    },
+    "未分类": {
+      "待审核": 2
+    },
+    "一、网络安全政策法律动态": {
+      "国际政策热点": 1
+    },
+    "三、安全风险通告": {
+      "安全风险通告": 2
+    }
+  },
+  "categories": {
+    "二、安全热点时事资讯": {
+      "安全事件": [
+        {
+          "title": "Nissan discloses employee data breach linked to Oracle zero-day attacks",
+          "link": "https://www.bleepingcomputer.com/news/security/nissan-discloses-employee-data-breach-linked-to-oracle-zero-day-attacks/",
+          "summary": "Nissan is warning that it suffered a data breach affecting current and former employees after threat actors exploited an Oracle PeopleSoft vulnerability in data theft attacks previously linked to the ShinyHunters extortion group. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T20:40:44",
+          "score": 6,
+          "matched_keywords": [
+            "breach",
+            "data breach",
+            "attack",
+            "zero-day",
+            "nissan"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "NAIC says public data stolen in ShinyHunters' PeopleSoft breach",
+          "link": "https://www.bleepingcomputer.com/news/security/naic-says-public-data-stolen-in-shinyhunters-peoplesoft-breach/",
+          "summary": "The National Association of Insurance Commissioners (NAIC) says the ShinyHunters extortion group stole only publicly available data, outdated logs, and configuration files after breaching its systems by exploiting a zero-day vulnerability in an Oracle PeopleSoft server. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T20:30:28",
+          "score": 3,
+          "matched_keywords": [
+            "breach",
+            "zero-day",
+            "shinyhunters"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Webinar: Why business email compromise attacks keep succeeding",
+          "link": "https://www.bleepingcomputer.com/news/security/webinar-why-business-email-compromise-attacks-keep-succeeding/",
+          "summary": "Business email compromise attacks increasingly rely on convincing impersonation rather than malware, making them harder for employees and traditional email defenses to detect. This webinar explores how behavioral AI can help identify sophisticated email threats and automate response workflows. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T12:14:22",
+          "score": 3,
+          "matched_keywords": [
+            "attack",
+            "compromise",
+            "business email compromise"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "US seizes hundreds of FIFA World Cup illegal streaming domains",
+          "link": "https://www.bleepingcomputer.com/news/security/us-seizes-hundreds-of-fifa-world-cup-illegal-streaming-domains/",
+          "summary": "The U.S. Justice Department's Criminal Division has seized nearly 400 web domains used for illegally streaming matches at the FIFA World Cup. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T11:21:03",
+          "score": 1,
+          "matched_keywords": [
+            "fifa world cup"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Data breach exposes up to 14.2 million email logins at six ISPs",
+          "link": "https://www.bleepingcomputer.com/news/security/data-breach-exposes-up-to-142-million-email-logins-at-six-isps/",
+          "summary": "Japanese telecommunications operator KDDI Corporation disclosed a data breach where threat actors gained access to one of its email systems used by five other internet service providers (ISPs) in the country. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-28T14:13:46",
+          "score": 2,
+          "matched_keywords": [
+            "breach",
+            "data breach"
+          ],
+          "method": "keyword"
+        }
+      ],
+      "AI对攻防趋势变化": [
+        {
+          "title": "Agentic AI Has an Identity Problem and Attackers Know It",
+          "link": "https://www.bleepingcomputer.com/news/security/agentic-ai-has-an-identity-problem-and-attackers-know-it/",
+          "summary": "AI agents can access data, trigger workflows, and take action across enterprise systems. Token Security explains why governing these privileged identities is becoming essential for enterprise security. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T14:01:11",
+          "score": 2,
+          "matched_keywords": [
+            "agentic ai",
+            "ai agent"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Clean GitHub repo tricks AI coding agents into running malware",
+          "link": "https://www.bleepingcomputer.com/news/security/clean-github-repo-tricks-ai-coding-agents-into-running-malware/",
+          "summary": "An agentic coding tool tasked with cloning and setting up a seemingly benign GitHub repository could execute a malicious payload that remains invisible to security scanners, AI agents, and human reviewers. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-27T14:22:36",
+          "score": 3,
+          "matched_keywords": [
+            "ai agent",
+            "ai coding agent",
+            "ai coding"
+          ],
+          "method": "keyword"
+        }
+      ]
+    },
+    "未分类": {
+      "待审核": [
+        {
+          "title": "WhatsApp rolls out usernames to help users hide their phone number",
+          "link": "https://www.bleepingcomputer.com/news/security/whatsapp-rolls-out-usernames-to-help-users-hide-their-phone-number/",
+          "summary": "WhatsApp is finally allowing users to reserve usernames, a privacy feature that lets them hide their phone numbers from people not in their contact list. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T17:48:28",
+          "score": 0,
+          "matched_keywords": [],
+          "method": "keyword"
+        },
+        {
+          "title": "Microsoft extends Windows Server 2022 hotpatching until October 2027",
+          "link": "https://www.bleepingcomputer.com/news/microsoft/microsoft-extends-windows-server-2022-hotpatching-until-october-2027/",
+          "summary": "Microsoft has extended Windows Server 2022 hotpatching until October 2027, one year after the mainstream end date of October 2026. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T17:11:15",
+          "score": 0,
+          "matched_keywords": [],
+          "method": "keyword"
+        }
+      ]
+    },
+    "一、网络安全政策法律动态": {
+      "国际政策热点": [
+        {
+          "title": "U.S. offers $10 million for hackers targeting WhatsApp, Signal users",
+          "link": "https://www.bleepingcomputer.com/news/security/us-offers-10-million-for-hackers-targeting-whatsapp-signal-users/",
+          "summary": "The U.S. Department of State is offering up to $10 million for information that helps identify or locate members of the UNC5792 and UNC4221 hacker groups, which are linked to Russia's intelligence and military services. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T15:09:43",
+          "score": 2,
+          "matched_keywords": [
+            "offers $",
+            "million for"
+          ],
+          "method": "keyword"
+        }
+      ]
+    },
+    "三、安全风险通告": {
+      "安全风险通告": [
+        {
+          "title": "Critical SimpleHelp flaw exploited to deploy new stealer malware",
+          "link": "https://www.bleepingcomputer.com/news/security/hackers-exploit-critical-simplehelp-flaw-deploy-new-djinn-infostealer-taskweaver-malware/",
+          "summary": "Hackers are exploiting a recently disclosed critical vulnerability (CVE-2026-48558) in SimpleHelp to deploy Djinn Stealer, a previously undocumented cross-platform information stealer targeting Windows, macOS, and Linux. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T14:00:00",
+          "score": 4,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit",
+            "critical vulnerability"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Hackers now exploit critical Oracle E-Business flaw in attacks",
+          "link": "https://www.bleepingcomputer.com/news/security/new-oracle-e-business-suite-flaw-now-exploited-in-attacks/",
+          "summary": "Attackers have begun exploiting a critical vulnerability (CVE-2026-46817) in the Oracle E-Business Suite (EBS) financial application, according to threat intelligence company Defused. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T13:46:17",
+          "score": 4,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit",
+            "critical vulnerability"
+          ],
+          "method": "keyword"
+        }
+      ]
+    }
+  }
+}

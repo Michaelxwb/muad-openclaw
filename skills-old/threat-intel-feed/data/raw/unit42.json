@@ -1,0 +1,92 @@
+[
+  {
+    "id": "https://unit42.paloaltonetworks.com/?p=183236",
+    "title": "How We Added WebAuthn to a Browser-Based RDP Client",
+    "summary": "A look inside the reverse-engineering journey of building the first RDP client outside of Windows to support WebAuthn redirection. The post How We Added WebAuthn to a Browser-Based RDP Client appeared first on Unit 42 .",
+    "link": "https://unit42.paloaltonetworks.com/webauthn-added-to-browser-based-rdp/",
+    "published": "2026-07-02T22:00:39",
+    "source_id": "unit42",
+    "source_name": "Palo Alto Unit 42",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-07T20:23:28.924738"
+  },
+  {
+    "id": "https://unit42.paloaltonetworks.com/?p=183096",
+    "title": "Phantom Squatting: AI-Hallucinated Domains as a Software Supply Chain Vector",
+    "summary": "Attackers can exploit LLM domain hallucinations through phantom squatting to target supply chains. Read the analysis to learn more. The post Phantom Squatting: AI-Hallucinated Domains as a Software Supply Chain Vector appeared first on Unit 42 .",
+    "link": "https://unit42.paloaltonetworks.com/phantom-squatting-hallucinated-web-domains/",
+    "published": "2026-07-01T01:00:11",
+    "source_id": "unit42",
+    "source_name": "Palo Alto Unit 42",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-07T20:23:28.924738"
+  },
+  {
+    "id": "https://unit42.paloaltonetworks.com/?p=182713",
+    "title": "Threat Brief: Mitigating Large-Scale Credential Attacks",
+    "summary": "We provide guidance for preparing for and mitigating large-scale credential attacks, focusing on recent campaigns targeting security vendors' devices. The post Threat Brief: Mitigating Large-Scale Credential Attacks appeared first on Unit 42 .",
+    "link": "https://unit42.paloaltonetworks.com/large-scale-credential-attacks/",
+    "published": "2026-06-26T19:05:33",
+    "source_id": "unit42",
+    "source_name": "Palo Alto Unit 42",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-07T20:23:28.924738"
+  },
+  {
+    "id": "https://unit42.paloaltonetworks.com/?p=182868",
+    "title": "CL-STA-1062 Targets Southeast Asian Governments and Critical Infrastructure",
+    "summary": "Government entities and critical infrastructure were targeted for espionage in SE Asia by attackers using a hybrid toolkit, including custom TinyRCT backdoor. The post CL-STA-1062 Targets Southeast Asian Governments and Critical Infrastructure appeared first on Unit 42 .",
+    "link": "https://unit42.paloaltonetworks.com/cl-sta-1062-tinyrct-backdoor/",
+    "published": "2026-06-25T22:00:52",
+    "source_id": "unit42",
+    "source_name": "Palo Alto Unit 42",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-07T20:23:28.925733"
+  },
+  {
+    "id": "https://unit42.paloaltonetworks.com/?p=182742",
+    "title": "OpenClaw’s Skill Marketplace and the Emerging AI Supply Chain Threat",
+    "summary": "Unit 42's analysis of ClawHub revealed evasive malicious skills bypassing automated scanners to deploy infostealers and execute agentic financial fraud. The post OpenClaw’s Skill Marketplace and the Emerging AI Supply Chain Threat appeared first on Unit 42 .",
+    "link": "https://unit42.paloaltonetworks.com/openclaw-ai-supply-chain-risk/",
+    "published": "2026-06-23T22:00:51",
+    "source_id": "unit42",
+    "source_name": "Palo Alto Unit 42",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-07T20:23:28.925733"
+  },
+  {
+    "id": "https://unit42.paloaltonetworks.com/?p=182610",
+    "title": "The Global Namespace Risk: Universal Bucket Hijacking Technique for Cloud Data Exfiltration",
+    "summary": "Unit 42 research details how attackers could exploit global name uniqueness in bucket hijacking to redirect cloud data streams across major CSPs. The post The Global Namespace Risk: Universal Bucket Hijacking Technique for Cloud Data Exfiltration appeared first on Unit 42 .",
+    "link": "https://unit42.paloaltonetworks.com/cloud-bucket-hijacking-risks/",
+    "published": "2026-06-22T22:00:04",
+    "source_id": "unit42",
+    "source_name": "Palo Alto Unit 42",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-07T20:23:28.926739"
+  }
+]

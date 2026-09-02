@@ -1,0 +1,62 @@
+[
+  {
+    "id": "6a3c05648d8d330001fb7d45",
+    "title": "Martin Lee: Running through the Arctic (and the threat landscape)",
+    "summary": "Ever wonder how someone goes from studying human viruses to leading cybersecurity teams? In this Humans of Talos, we’re joined by Martin Lee, EMEA Lead, to talk about his journey into the industry.",
+    "link": "https://blog.talosintelligence.com/martin-lee-running-through-the-arctic-and-the-threat-landscape/",
+    "published": "2026-07-01T10:00:57",
+    "source_id": "talos",
+    "source_name": "Cisco Talos",
+    "tags": [
+      "apt",
+      "malware",
+      "threat-intel"
+    ],
+    "fetched_at": "2026-07-01T21:02:32.996060"
+  },
+  {
+    "id": "6a42cdb790dd380001fb070d",
+    "title": "ARToken: Inside an EvilTokens affiliate panel targeting Microsoft 365",
+    "summary": "Talos has identified \"ARToken,\" a phishing-as-a-service platform that targets Microsoft 365. The ARToken panel exposes 80+ API endpoints for device code phishing, Primary Refresh Token persistence, email access, BEC operations, and SharePoint exfiltration.",
+    "link": "https://blog.talosintelligence.com/artoken-inside-an-eviltokens-affiliate-panel-targeting-microsoft-365/",
+    "published": "2026-07-01T10:00:38",
+    "source_id": "talos",
+    "source_name": "Cisco Talos",
+    "tags": [
+      "apt",
+      "malware",
+      "threat-intel"
+    ],
+    "fetched_at": "2026-07-01T21:02:32.996060"
+  },
+  {
+    "id": "6a3bf17f8d8d330001fb7ce7",
+    "title": "Beyond IOCs: AI-enabled threat intelligence",
+    "summary": "In this week’s newsletter, Martin considers how AI will help threat intelligence by creating an easily queryable data source of intelligence reports.",
+    "link": "https://blog.talosintelligence.com/beyond-iocs-ai-enabled-threat-intelligence/",
+    "published": "2026-06-25T18:00:26",
+    "source_id": "talos",
+    "source_name": "Cisco Talos",
+    "tags": [
+      "apt",
+      "malware",
+      "threat-intel"
+    ],
+    "fetched_at": "2026-07-01T21:02:32.996060"
+  },
+  {
+    "id": "6a3bcd1c8d8d330001fb7c45",
+    "title": "Introduction to COM usage by Windows threats",
+    "summary": "Component Object Model (COM) is a fundamental Windows technology used by legitimate applications for object activation, inter-process communication, automation and language-independent component reuse. Those same qualities make it useful to threat actors.",
+    "link": "https://blog.talosintelligence.com/introduction-to-com-usage-by-windows-threats/",
+    "published": "2026-06-25T10:00:26",
+    "source_id": "talos",
+    "source_name": "Cisco Talos",
+    "tags": [
+      "apt",
+      "malware",
+      "threat-intel"
+    ],
+    "fetched_at": "2026-07-01T21:02:32.996060"
+  }
+]

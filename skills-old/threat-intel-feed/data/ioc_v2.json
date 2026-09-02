@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-07-01T06:26:36.354603",
+  "total_iocs": 2,
+  "stats": {
+    "cve": 2
+  },
+  "iocs": {
+    "cve": [
+      {
+        "type": "cve",
+        "value": "CVE-2026-48558",
+        "source": {
+          "article_title": "Critical SimpleHelp flaw exploited to deploy new stealer malware",
+          "article_link": "https://www.bleepingcomputer.com/news/security/hackers-exploit-critical-simplehelp-flaw-deploy-new-djinn-infostealer-taskweaver-malware/",
+          "source_name": "BleepingComputer",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-46817",
+        "source": {
+          "article_title": "Hackers now exploit critical Oracle E-Business flaw in attacks",
+          "article_link": "https://www.bleepingcomputer.com/news/security/new-oracle-e-business-suite-flaw-now-exploited-in-attacks/",
+          "source_name": "BleepingComputer",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      }
+    ]
+  }
+}

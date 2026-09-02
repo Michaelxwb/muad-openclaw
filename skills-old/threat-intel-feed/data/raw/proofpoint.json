@@ -1,0 +1,30 @@
+[
+  {
+    "id": "https://www.proofpoint.com/us/newsroom/news/new-cargo-theft-surge-lobster-heists-bourbon-warehouse-scams",
+    "title": "New Cargo Theft Surge: From Lobster Heists To Bourbon Warehouse Scams",
+    "summary": "",
+    "link": "https://www.proofpoint.com/us/newsroom/news/new-cargo-theft-surge-lobster-heists-bourbon-warehouse-scams",
+    "published": "2026-07-01T15:34:00",
+    "source_id": "proofpoint",
+    "source_name": "Proofpoint",
+    "tags": [
+      "phishing",
+      "email-security"
+    ],
+    "fetched_at": "2026-07-07T20:27:05.270656"
+  },
+  {
+    "id": "https://www.proofpoint.com/us/newsroom/news/defending-authentication-flow-device-code-phishing-selena-larson",
+    "title": "Defending the Authentication Flow: Device Code Phishing with Selena Larson",
+    "summary": "",
+    "link": "https://www.proofpoint.com/us/newsroom/news/defending-authentication-flow-device-code-phishing-selena-larson",
+    "published": "2026-06-30T15:35:04",
+    "source_id": "proofpoint",
+    "source_name": "Proofpoint",
+    "tags": [
+      "phishing",
+      "email-security"
+    ],
+    "fetched_at": "2026-07-07T20:27:05.270656"
+  }
+]

@@ -1,0 +1,737 @@
+[
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/busysnake-infostealer-critical-infrastructure-networks",
+    "title": "'BusySnake' Infostealer Slithers into Critical Infrastructure Networks",
+    "summary": "A threat group researchers call \"Armored Likho\" has gained access to government agencies and electrical power entities in Russia, Brazil, and Kazakhstan.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/busysnake-infostealer-critical-infrastructure-networks",
+    "published": "2026-07-06T21:37:56",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.464483"
+  },
+  {
+    "id": "https://www.darkreading.com/vulnerabilities-threats/citrixbleed-ing-again-netscaler-vulnerability-under-attack",
+    "title": "CitrixBleed-ing Again? NetScaler Vulnerability Under Attack",
+    "summary": "Attackers wasted little time targeting the latest memory disclosure flaw in Citrix's NetScaler products, after researchers published a proof-of-concept exploit (PoC).",
+    "link": "https://www.darkreading.com/vulnerabilities-threats/citrixbleed-ing-again-netscaler-vulnerability-under-attack",
+    "published": "2026-07-06T21:17:42",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.464483"
+  },
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/jadepuffer-first-complete-llm-driven-ransomware-attack",
+    "title": "JadePuffer: The First Complete LLM-Driven Ransomware Attack",
+    "summary": "An \"agentic threat actor\" successfully exploited a Langflow flaw to steal data from a production database server and encrypt other systems.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/jadepuffer-first-complete-llm-driven-ransomware-attack",
+    "published": "2026-07-06T16:36:50",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.464483"
+  },
+  {
+    "id": "https://www.darkreading.com/cyber-risk/chinese-llms-broaden-gap-between-attackers-and-defenders",
+    "title": "Chinese LLMs Broaden the Gap Between Attackers &amp; Defenders",
+    "summary": "Two new models from Chinese firms compete with top US mainstream and frontier models. Should cyber-defenders be worried?",
+    "link": "https://www.darkreading.com/cyber-risk/chinese-llms-broaden-gap-between-attackers-and-defenders",
+    "published": "2026-07-03T13:01:00",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.464483"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-analytics/aussies-face-reduced-cybercrime-risk-pressure-shifts-smbs",
+    "title": "Aussies Face Reduced Cybercrime Risk, as Pressure Shifts to SMBs",
+    "summary": "Improved institutional safeguards and stricter regulations have pushed the burdens of protection and risk reduction on to Australian businesses.",
+    "link": "https://www.darkreading.com/cybersecurity-analytics/aussies-face-reduced-cybercrime-risk-pressure-shifts-smbs",
+    "published": "2026-07-02T23:01:00",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.464483"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-operations/apple-patch-policy-ai",
+    "title": "Apple Reverses Age-Old Patch Policy to Keep Up With AI",
+    "summary": "Expect more compressed patching cycles from Apple going forward, as attackers leverage artificial intelligence to reduce time to exploit.",
+    "link": "https://www.darkreading.com/cybersecurity-operations/apple-patch-policy-ai",
+    "published": "2026-07-02T19:31:58",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.464483"
+  },
+  {
+    "id": "https://www.darkreading.com/threat-intelligence/fortibleed-actors-inc-lynx-ransomware-gangs",
+    "title": "FortiBleed Actors Collaborating With Inc, Lynx Ransomware Gangs",
+    "summary": "After gaining a foothold in thousands of Fortinet firewalls, the attackers are starting to monetize that access, and are also piling on a Nextcloud zero-day bug.",
+    "link": "https://www.darkreading.com/threat-intelligence/fortibleed-actors-inc-lynx-ransomware-gangs",
+    "published": "2026-07-02T19:11:33",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465025"
+  },
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/attackers-use-interpol-lure-target-small-businesses",
+    "title": "Ransomware Thugs Masquerade as Interpol to Entice Small Biz",
+    "summary": "The ransomware campaign relies on basic social engineering and stretches across multiple regions, including the US, Europe, Middle East, and elsewhere.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/attackers-use-interpol-lure-target-small-businesses",
+    "published": "2026-07-02T18:07:40",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465025"
+  },
+  {
+    "id": "https://www.darkreading.com/vulnerabilities-threats/anthropic-s-ai-finds-bugs-ibm-bets-5b-it-can-fix-them-",
+    "title": "Anthropic's AI Finds Bugs. IBM Bets $5B It Can Fix Them.",
+    "summary": "IBM and Red Hat assign 20,000 engineers to the new Project Lightwell service as Anthropic's Mythos findings ignite debate over how to secure the open source software supply chain.",
+    "link": "https://www.darkreading.com/vulnerabilities-threats/anthropic-s-ai-finds-bugs-ibm-bets-5b-it-can-fix-them-",
+    "published": "2026-07-02T12:33:57",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465025"
+  },
+  {
+    "id": "https://www.darkreading.com/application-security/phishing-campaigns-auto-adapt-victims-device-os",
+    "title": "Crafty Phishing Campaigns Auto-Adapt to Victim's Device, OS",
+    "summary": "Attackers fingerprint victims through user-agent data to deliver OS-specific payloads, increasing compromise rates and campaign profitability.",
+    "link": "https://www.darkreading.com/application-security/phishing-campaigns-auto-adapt-victims-device-os",
+    "published": "2026-07-01T20:31:21",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465025"
+  },
+  {
+    "id": "https://www.darkreading.com/vulnerabilities-threats/winner-dominant-malware-delivery-clickfix",
+    "title": "And the Winner in Dominant Malware Delivery? ClickFix",
+    "summary": "Researchers say the highly effective social engineering technique is no longer the exception for malware attacks — it's now the rule.",
+    "link": "https://www.darkreading.com/vulnerabilities-threats/winner-dominant-malware-delivery-clickfix",
+    "published": "2026-07-01T19:46:34",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465025"
+  },
+  {
+    "id": "https://www.darkreading.com/cyber-risk/too-much-security-data-risk",
+    "title": "When Too Much Security Data Becomes the Risk",
+    "summary": "Rapid growth turned routine firewall logs into a security and budget liability. One CISO used artificial intelligence to filter what data truly belongs in the SIEM.",
+    "link": "https://www.darkreading.com/cyber-risk/too-much-security-data-risk",
+    "published": "2026-07-01T15:44:41",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465025"
+  },
+  {
+    "id": "https://www.darkreading.com/endpoint-security/phantom-squatting-ai-driven-supply-chain-threat",
+    "title": "'Phantom Squatting': An Emerging AI-Driven Supply Chain Threat",
+    "summary": "LLMs consistently hallucinate Web domains for legitimate brands that attackers can register for malicious activity in a difficult-to-detect attack vector.",
+    "link": "https://www.darkreading.com/endpoint-security/phantom-squatting-ai-driven-supply-chain-threat",
+    "published": "2026-07-01T15:17:14",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465025"
+  },
+  {
+    "id": "https://www.darkreading.com/threat-intelligence/safe-events-threat-intel-digital-security",
+    "title": "Safe Events Start With Threat Intel &amp; Digital Security",
+    "summary": "Planning ahead to defend against cyber threats is the work that keeps events uneventful.",
+    "link": "https://www.darkreading.com/threat-intelligence/safe-events-threat-intel-digital-security",
+    "published": "2026-07-01T13:00:00",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/threat-intelligence/china-linked-group-targets-southeast-asia-critical-systems",
+    "title": "China-Linked Group Targets Southeast Asia Critical Systems",
+    "summary": "The group compromised at least 10 regional organizations, including two state-owned entities, and deployed a new backdoor.",
+    "link": "https://www.darkreading.com/threat-intelligence/china-linked-group-targets-southeast-asia-critical-systems",
+    "published": "2026-07-01T01:00:01",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/cyber-risk/fake-bug-report-hijacks-ai-coding-agents",
+    "title": "Fake Bug Report Hijacks AI Coding Agents at Scale",
+    "summary": "\"Agentjacking\" is the latest demonstration of how easily attackers can exploit an AI agent's inability to differentiate between content and instructions.",
+    "link": "https://www.darkreading.com/cyber-risk/fake-bug-report-hijacks-ai-coding-agents",
+    "published": "2026-06-30T21:37:50",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/cloud-security/attackers-hijack-exposed-ai-endpoints-power-offensive-ops",
+    "title": "Attackers Seize Exposed AI Endpoints to Power Offensive Ops",
+    "summary": "Threat actors don't need any special authentication to reach a target endpoint — they just need to know where it is.",
+    "link": "https://www.darkreading.com/cloud-security/attackers-hijack-exposed-ai-endpoints-power-offensive-ops",
+    "published": "2026-06-30T21:01:58",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-operations/identity-security-cyber-career-entry-point",
+    "title": "Why Identity Security Is Your Cyber Career Entry Point",
+    "summary": "In this \"Heard it From a CISO\" video, Silverfort CISO John Paul Cunningham explains that AI in cybersecurity workflows is creating opportunities rather than eliminating jobs — and there are more ways than ever to break into this essential field.",
+    "link": "https://www.darkreading.com/cybersecurity-operations/identity-security-cyber-career-entry-point",
+    "published": "2026-06-30T19:11:40",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/phishers-persistence-eu-asia-hospitality-orgs",
+    "title": "Phishers Gain Persistence at EU, Asia Hospitality Orgs",
+    "summary": "Separate but similar campaigns described by Microsoft and Trend Micro use malicious zip files to spread malware via social engineering and obsfucation, including blockchain abuse.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/phishers-persistence-eu-asia-hospitality-orgs",
+    "published": "2026-06-30T18:59:46",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/cyber-risk/ai-generated-workflows-silent-security-disaster",
+    "title": "AI-Generated Workflows Are a Silent Security Disaster",
+    "summary": "Teams are dealing with a truly dangerous problem — automation that works, but that no one understands.",
+    "link": "https://www.darkreading.com/cyber-risk/ai-generated-workflows-silent-security-disaster",
+    "published": "2026-06-30T13:00:00",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/vulnerabilities-threats/nist-enrichment-reductions-cve-coverage-accuracy",
+    "title": "NIST Enrichment Reductions Impact CVE Coverage, Accuracy",
+    "summary": "The National Institute of Standards and Technology (NIST) scaled back the number of CVEs it selects for in-depth analysis, but the move has produced mixed results, according to researchers.",
+    "link": "https://www.darkreading.com/vulnerabilities-threats/nist-enrichment-reductions-cve-coverage-accuracy",
+    "published": "2026-06-29T22:46:45",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/djinn-stealer-targets-cloud-ai-credentials",
+    "title": "'Djinn' Stealer Targets Cloud, AI Credentials",
+    "summary": "The infostealer was delivered via CVE-2026-48558, a critical authentication bypass vulnerability in SimpleHelp, targeting credentials linking development and admin environments to wider enterprise systems.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/djinn-stealer-targets-cloud-ai-credentials",
+    "published": "2026-06-29T21:29:15",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/vulnerabilities-threats/vulnerabilities-private-data-indian-government-systems",
+    "title": "Vulnerabilities Expose Private Data in Indian Government Systems",
+    "summary": "One critical vulnerability, among many discovered by a researcher, could have allowed anyone to walk in and take over a national government portal.",
+    "link": "https://www.darkreading.com/vulnerabilities-threats/vulnerabilities-private-data-indian-government-systems",
+    "published": "2026-06-29T21:05:29",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.465540"
+  },
+  {
+    "id": "https://www.darkreading.com/cyber-risk/clothes-invisible-facial-recognition",
+    "title": "Can Clothes Make You Invisible to Facial Recognition?",
+    "summary": "Does life feel Orwellian sometimes? One researcher has a solution for you: graphic tees that confuse the neural networks in surveillance cameras.",
+    "link": "https://www.darkreading.com/cyber-risk/clothes-invisible-facial-recognition",
+    "published": "2026-06-29T19:38:04",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/ics-ot-security/iran-russia-china-target-water-systems-sabotage",
+    "title": "Iran, Russia, China Target Water Systems for Sabotage",
+    "summary": "Nation-state attackers breach water systems through weak passwords, exposed PLCs, and poor segmentation — not sophisticated malware.",
+    "link": "https://www.darkreading.com/ics-ot-security/iran-russia-china-target-water-systems-sabotage",
+    "published": "2026-06-29T19:12:08",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/cloud-security/amazon-q-vs-extension-flaw-leads-cloud-credential-theft",
+    "title": "Amazon Q VS Extension Flaw Leads to Cloud Credential Theft",
+    "summary": "Adversaries could plant a malicious repository that can execute arbitrary code and steal cloud credentials by exploiting the vulnerability, which showcases growing MCP risk.",
+    "link": "https://www.darkreading.com/cloud-security/amazon-q-vs-extension-flaw-leads-cloud-credential-theft",
+    "published": "2026-06-29T11:44:42",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/cyber-risk/third-party-breaches-teaches-education-lesson-vendor-risk",
+    "title": "Third-Party Breaches Teach Education Sector a Costly Lesson in Vendor Risk",
+    "summary": "Rising threats from third-party actors are forcing institutions to play defense to protect student data from ransomware and other attacks.",
+    "link": "https://www.darkreading.com/cyber-risk/third-party-breaches-teaches-education-lesson-vendor-risk",
+    "published": "2026-06-27T11:48:05",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-operations/ai-decline-confidence-autonomous-penetration-testing",
+    "title": "AI Decline? Confidence in Autonomous Penetration Testing Falls",
+    "summary": "Companies are still experimenting with automated AI systems to find security weaknesses, but fewer are relying on the technology.",
+    "link": "https://www.darkreading.com/cybersecurity-operations/ai-decline-confidence-autonomous-penetration-testing",
+    "published": "2026-06-26T19:11:02",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/identity-access-management-security/cisco-adds-nhi-security-stack-with-astrix-widefield",
+    "title": "Cisco Adds NHI to Security Stack With Astrix, WideField Acquisitions",
+    "summary": "Cisco joins a growing list of security platform providers that are betting that securing the agentic workforce means turning identity into the primary control plane.",
+    "link": "https://www.darkreading.com/identity-access-management-security/cisco-adds-nhi-security-stack-with-astrix-widefield",
+    "published": "2026-06-26T17:31:04",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/application-security/initiative-tackles-security-end-of-life-open-source",
+    "title": "New Initiative Tackles Security for End-of-Life Open Source Software",
+    "summary": "The Open Source Sustainability Initiative's goal is to help enterprises manage and secure aging open source projects while maintaining regulatory compliance.",
+    "link": "https://www.darkreading.com/application-security/initiative-tackles-security-end-of-life-open-source",
+    "published": "2026-06-26T16:32:30",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-operations/ai-wont-wipe-out-entry-level-cybersecurity-jobs",
+    "title": "AI Won't Wipe Out Entry-Level Cybersecurity Jobs",
+    "summary": "Instead of eliminating jobs for early-career cyber pros, AI is creating new opportunities for candidates with strong human decision-making skills.",
+    "link": "https://www.darkreading.com/cybersecurity-operations/ai-wont-wipe-out-entry-level-cybersecurity-jobs",
+    "published": "2026-06-26T16:00:00",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-operations/meeting-2030-quantum-deadline-expensive-complex",
+    "title": "Meeting Trump's 2030 Quantum Deadline Will be Expensive, Complex",
+    "summary": "Getting accurate visibility into IT and OT systems will be compounded by multivendor environments, misaligned update life cycles, and interoperability gaps.",
+    "link": "https://www.darkreading.com/cybersecurity-operations/meeting-2030-quantum-deadline-expensive-complex",
+    "published": "2026-06-26T13:30:00",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-operations/submissions-guidelines-reminder",
+    "title": "Thanks for Crushing the Submissions Inbox. We're Trying to Keep Up",
+    "summary": "It might be taking a bit longer than usual to respond to your submissions — here's why.",
+    "link": "https://www.darkreading.com/cybersecurity-operations/submissions-guidelines-reminder",
+    "published": "2026-06-26T13:00:00",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/application-security/robinhood-reengineered-access-approvals-for-high-velocity-development",
+    "title": "Robinhood Cuts Access Approval Time to Support High-Velocity Development",
+    "summary": "The fintech company's engineering-first application security team reengineered the process for granting system access, making it easier and more secure for developers working on their projects. Here are the lessons learned from Robinhood's experience.",
+    "link": "https://www.darkreading.com/application-security/robinhood-reengineered-access-approvals-for-high-velocity-development",
+    "published": "2026-06-25T22:42:36",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/less-than-24-hours-attackers-weaponize-cisco-cucm-flaw",
+    "title": "In Less Than 24 Hours, Attackers Weaponize Cisco CUCM Flaw",
+    "summary": "The flaw enables server-side request forgery (SSRF) and escalates privileges to root, impacting Cisco Unified CM and Unified CM SME deployments.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/less-than-24-hours-attackers-weaponize-cisco-cucm-flaw",
+    "published": "2026-06-25T21:54:34",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/threat-intelligence/russia-apt-gamaredon-arsenal-defense",
+    "title": "Russian APT 'Gamaredon' Upgrades Its Arsenal, Requiring New Defenses",
+    "summary": "The FSB state-sponsored operation has gotten a lot better at loading its malware and hiding its servers.",
+    "link": "https://www.darkreading.com/threat-intelligence/russia-apt-gamaredon-arsenal-defense",
+    "published": "2026-06-25T21:12:01",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.466559"
+  },
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/edtech-attackers-shift-schools-software-suppliers",
+    "title": "EdTech Attackers Shift From Schools to Their Software Suppliers",
+    "summary": "Educational institutions, the edtech companies they rely on, and, more concerningly, the challenges they pose for schools are the focus of the latest Reporters' Notebook video series.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/edtech-attackers-shift-schools-software-suppliers",
+    "published": "2026-06-25T20:34:14",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.467553"
+  },
+  {
+    "id": "https://www.darkreading.com/threat-intelligence/police-collusion-crackdown-asian-scam-centers",
+    "title": "Local Police Collusion Hampers Crackdown on Asian Scam Centers",
+    "summary": "With tens of billions of dollars flowing into regional economies from cybercrime, scam centers continue to flourish, despite international and law-enforcement efforts.",
+    "link": "https://www.darkreading.com/threat-intelligence/police-collusion-crackdown-asian-scam-centers",
+    "published": "2026-06-25T19:07:41",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.467834"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-analytics/europe-evolves-ransomware-favorite-region",
+    "title": "Europe Evolves Into Ransomware's Favorite Region",
+    "summary": "After a global lull, ransomware gangs are setting sights on a rich new arena: attacking EU organizations and their suppliers.",
+    "link": "https://www.darkreading.com/cybersecurity-analytics/europe-evolves-ransomware-favorite-region",
+    "published": "2026-06-25T10:00:00",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.468366"
+  },
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/attackers-hit-cisco-sd-wan-flaw-2-months-before-disclosure",
+    "title": "Attackers Hit Cisco SD-WAN Flaw 2 Months Before Disclosure",
+    "summary": "Researchers believe rogue peering was used to connect to the victim's SD-WAN devices to gain admin privileges and root-level access.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/attackers-hit-cisco-sd-wan-flaw-2-months-before-disclosure",
+    "published": "2026-06-24T21:16:41",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.468366"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-operations/2026-fifa-world-cup-faces-surge-cyber-threats",
+    "title": "2026 FIFA World Cup Faces Surge in Cyber Threats",
+    "summary": "Persistent cybercrime, social engineering, and infrastructure threats continue to plague the FIFA 2026 World Cup across the US, Canada, and Mexico.",
+    "link": "https://www.darkreading.com/cybersecurity-operations/2026-fifa-world-cup-faces-surge-cyber-threats",
+    "published": "2026-06-24T20:29:08",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.468366"
+  },
+  {
+    "id": "https://www.darkreading.com/cybersecurity-operations/ciso-code-of-ethics",
+    "title": "Do CISOs Need a Code of Ethics?",
+    "summary": "Dark Reading Confidential Episode 19: Kickbacks, no-show jobs, \"dirty\" VCs, and shelf ware — industry expert Robert \"RSnake\" Hansen explains why he thinks it's time for a CISO code of ethics. It could ensure cybersecurity bosses aren't engaged in self-dealing that could risk enterprise, and even national, security.",
+    "link": "https://www.darkreading.com/cybersecurity-operations/ciso-code-of-ethics",
+    "published": "2026-06-24T19:10:17",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.468874"
+  },
+  {
+    "id": "https://www.darkreading.com/cyber-risk/malicious-openclaw-skills-clawhub-threaten-ai-supply-chain",
+    "title": "More Malicious OpenClaw Skills Threaten AI Supply Chain",
+    "summary": "OpenClaw removed five packages from its ClawHub skills marketplace that bypassed security checks even though they included infostealers and other threats.",
+    "link": "https://www.darkreading.com/cyber-risk/malicious-openclaw-skills-clawhub-threaten-ai-supply-chain",
+    "published": "2026-06-24T16:56:49",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.468874"
+  },
+  {
+    "id": "https://www.darkreading.com/application-security/apple-macos-security-gap-users-disable-security-tools",
+    "title": "Apple's MacOS Gap Lets Users Disable Security Tools",
+    "summary": "Attackers can exploit the issue to disable security and integrated browser tools without needing administrator privileges or kernel exploits.",
+    "link": "https://www.darkreading.com/application-security/apple-macos-security-gap-users-disable-security-tools",
+    "published": "2026-06-24T12:00:00",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.468874"
+  },
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/scope-salesforce-attacks-expands-icarus-leaks-data",
+    "title": "Scope of Salesforce Attacks Expands as Icarus Leaks Data",
+    "summary": "More victims have emerged after attackers breached application vendor Klue and used its OAuth tokens to steal customers' Salesforce data.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/scope-salesforce-attacks-expands-icarus-leaks-data",
+    "published": "2026-06-23T20:44:09",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.468874"
+  },
+  {
+    "id": "https://www.darkreading.com/application-security/cordyceps-malicious-pull-requests-developer-workflows",
+    "title": "'Cordyceps': Mushrooming Malicious Pull Requests Threaten Developer Workflows",
+    "summary": "The CI/CD workflow weakness affects Microsoft's Azure Sentinel, Google's AI Agent Development Kit, Apache's Doris analytics database, Cloudflare's Workers SDK, and Python Software Foundation's Black.",
+    "link": "https://www.darkreading.com/application-security/cordyceps-malicious-pull-requests-developer-workflows",
+    "published": "2026-06-23T19:16:42",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.469887"
+  },
+  {
+    "id": "https://www.darkreading.com/cyber-risk/socgholish-takedown-malicious-tds-threats",
+    "title": "SocGholish Takedown Highlights Malicious TDS Threats",
+    "summary": "SocGholish uses traffic distribution systems (TDSs) to provide initial access into victims' networks for cybercrime groups such as the notorious Evil Corp.",
+    "link": "https://www.darkreading.com/cyber-risk/socgholish-takedown-malicious-tds-threats",
+    "published": "2026-06-23T13:51:33",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.469887"
+  },
+  {
+    "id": "https://www.darkreading.com/cyberattacks-data-breaches/fortibleed-attackers-firewalls-credentials-stealers",
+    "title": "FortiBleed Attackers Turn Firewalls Into Credential Stealers as Heists Persist",
+    "summary": "The threat actors engineered a Golang-based sniffer to target 430,000 FortiGate firewalls and identify 110 million credentials in the ongoing global campaign.",
+    "link": "https://www.darkreading.com/cyberattacks-data-breaches/fortibleed-attackers-firewalls-credentials-stealers",
+    "published": "2026-06-23T12:34:54",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.469887"
+  },
+  {
+    "id": "https://www.darkreading.com/application-security/difytap-bugs-wiretap-ai-chat-histories",
+    "title": "DifyTap Bugs Let Attackers 'Wiretap' AI Chat Histories",
+    "summary": "Four vulnerabilities allow attackers to exploit Dify, a platform for AI application building and management, to silently access and exfiltrate sensitive data.",
+    "link": "https://www.darkreading.com/application-security/difytap-bugs-wiretap-ai-chat-histories",
+    "published": "2026-06-22T21:14:11",
+    "source_id": "darkreading",
+    "source_name": "Dark Reading",
+    "tags": [
+      "news",
+      "enterprise",
+      "threat"
+    ],
+    "fetched_at": "2026-07-07T20:35:41.469887"
+  }
+]

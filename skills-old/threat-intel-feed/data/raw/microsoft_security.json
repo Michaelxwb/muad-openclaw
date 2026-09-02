@@ -1,0 +1,152 @@
+[
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=146999",
+    "title": "5 insights from Frost & Sullivan’s 2025 Frost Radar™ for Cloud Security Posture Management",
+    "summary": "Read five key learnings from the Frost & Sullivan 2025 Frost Radar™ for CSPM to learn how CSPM is evolving from point-in-time compliance to continuous risk management. The post 5 insights from Frost & Sullivan’s 2025 Frost Radar™ for Cloud Security Posture Management appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/07/06/5-insights-from-frost-sullivans-2025-frost-radar-for-cloud-security-posture-management/",
+    "published": "2026-07-06T16:00:00",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.979043"
+  },
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=148425",
+    "title": "Improving security posture across the Microsoft partner ecosystem",
+    "summary": "Read how Microsoft strengthens partner ecosystem security with CSP vetting, least privilege access, monitoring, and risk management best practices. The post Improving security posture across the Microsoft partner ecosystem appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/07/02/improving-security-posture-across-the-microsoft-partner-ecosystem/",
+    "published": "2026-07-02T16:00:00",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.979043"
+  },
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=148373",
+    "title": "Microsoft named a leader in the Frost Radar for cloud and application runtime security",
+    "summary": "Frost & Sullivan names Microsoft a leader as cloud and application security converge into unified, runtime risk reduction. The post Microsoft named a leader in the Frost Radar for cloud and application runtime security appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/07/01/microsoft-named-a-leader-in-the-frost-radar-for-cloud-and-application-runtime-security/",
+    "published": "2026-07-01T16:00:00",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.979580"
+  },
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=148316",
+    "title": "Accelerating the quantum-safe timeline",
+    "summary": "We’re accelerating quantum-safe readiness—and sharing what organizations can do now to transition earlier and with confidence. The post Accelerating the quantum-safe timeline appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/06/30/microsoft-advances-quantum-safe-security-as-the-risk-timeline-shifts/",
+    "published": "2026-06-30T19:00:00",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.979580"
+  },
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=148103",
+    "title": "​​What’s new in Microsoft Security: June 2026",
+    "summary": "This month’s updates help security and IT teams strengthen identity and multicloud foundations, protect data wherever it lives, and secure the developer workflows powering AI innovation. The post ​​What’s new in Microsoft Security: June 2026 appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/06/30/whats-new-in-microsoft-security-june-2026/",
+    "published": "2026-06-30T16:00:00",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.980127"
+  },
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=148445",
+    "title": "Securing AI agents: When AI tools move from reading to acting",
+    "summary": "MCP tool poisoning turns trusted AI agents into a control plane for data loss. Learn how threat actors manipulate tool descriptions to trigger unauthorized actions, and how to detect, contain, and prevent it. The post Securing AI agents: When AI tools move from reading to acting appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/06/30/securing-ai-agents-ai-tools-move-from-reading-acting/",
+    "published": "2026-06-30T15:57:11",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.980127"
+  },
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=148432",
+    "title": "Chromium extension uses AI‑related branding to redirect browser search",
+    "summary": "A malicious Chromium-based extension that spoofs the AI-powered answer engine Perplexity AI redirects browser search traffic using MV3 APIs and intermediary infrastructure. The post Chromium extension uses AI‑related branding to redirect browser search appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/06/29/chromium-extension-uses-airelated-branding-redirect-browser-search/",
+    "published": "2026-06-29T16:27:46",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.980663"
+  },
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=148364",
+    "title": "Photo ZIP campaign targeting hospitality industry delivers Node.js implant for persistent access",
+    "summary": "Microsoft Threat Intelligence identified an active multi-stage intrusion campaign targeting hospitality organizations in Europe and Asia. The campaign uses photo-themed ZIP archives and fake image shortcut files to deliver a persistent Node.js implant and evade detection. The post Photo ZIP campaign targeting hospitality industry delivers Node.js implant for persistent access appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/06/25/photo-zip-campaign-targeting-hospitality-industry-delivers-node-js-implant-persistent-access/",
+    "published": "2026-06-25T22:30:29",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.980663"
+  },
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=148272",
+    "title": "Microsoft a Leader in The Forrester Wave™ for Endpoint Management Platforms",
+    "summary": "Microsoft named a Leader in the Forrester Wave™: Endpoint Management Platforms, Q2 2026, with the highest scores in the current offering and strategy categories. The post Microsoft a Leader in The Forrester Wave™ for Endpoint Management Platforms appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/06/25/microsoft-a-leader-in-the-forrester-wave-for-endpoint-management-platforms/",
+    "published": "2026-06-25T16:00:00",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.981197"
+  },
+  {
+    "id": "https://www.microsoft.com/en-us/security/blog/?p=148247",
+    "title": "CNAPP evolution: How Microsoft aligns with leading cloud risk management platforms",
+    "summary": "Learn how CNAPP platforms are helping organizations prioritize exploitable risks, reduce exposure, and operationalize security across the application lifecycle. The post CNAPP evolution: How Microsoft aligns with leading cloud risk management platforms appeared first on Microsoft Security Blog .",
+    "link": "https://www.microsoft.com/en-us/security/blog/2026/06/24/cnapp-evolution-how-microsoft-aligns-with-leading-cloud-risk-management-platforms/",
+    "published": "2026-06-24T18:00:00",
+    "source_id": "microsoft_security",
+    "source_name": "Microsoft Security",
+    "tags": [
+      "vulnerability",
+      "apt",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:26:28.981197"
+  }
+]

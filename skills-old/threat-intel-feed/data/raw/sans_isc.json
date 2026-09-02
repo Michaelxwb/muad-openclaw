@@ -1,0 +1,16 @@
+[
+  {
+    "id": "/forums/diary/RCS+and+DNS+The+NAPTR+Record/33124/",
+    "title": "RCS and DNS: The NAPTR Record",
+    "summary": "Over the last year, with recent updates to iOS and Android, RCS (Rich Communication Services) has become an increasingly used protocol [1]. RCS is supposed to eventually replace SMS, and in addition to richer formatting, provides added (but optional) security. RCS messages may be end-to-end encrypted and digitally signed. Unlike SMS, which was \"bolted on\" to existing voice-focused phone standards. The SMS standard was based on old-fashioned pagers and allowed for limited clear-text communication",
+    "link": ":///forums/diary/RCS+and+DNS+The+NAPTR+Record/33124/",
+    "published": null,
+    "source_id": "sans_isc",
+    "source_name": "SANS ISC",
+    "tags": [
+      "threat-intel",
+      "diary"
+    ],
+    "fetched_at": "2026-07-07T20:33:25.811778"
+  }
+]

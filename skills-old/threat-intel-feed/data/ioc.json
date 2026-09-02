@@ -1,0 +1,206 @@
+{
+  "generated_at": "2026-07-01T21:49:50.866636",
+  "total_iocs": 16,
+  "stats": {
+    "cve": 13,
+    "domain": 3
+  },
+  "iocs": {
+    "cve": [
+      {
+        "type": "cve",
+        "value": "CVE-2026-48558",
+        "source": [
+          {
+            "article_title": "'Djinn' Stealer Targets Cloud, AI Credentials",
+            "article_link": "https://www.darkreading.com/cyberattacks-data-breaches/djinn-stealer-targets-cloud-ai-credentials",
+            "source_name": "Dark Reading",
+            "category": "三、安全风险通告 > 安全风险通告"
+          },
+          {
+            "article_title": "Attackers Exploit SimpleHelp CVE-2026-48558 to Deploy TaskWeaver and Djinn Stealer",
+            "article_link": "https://thehackernews.com/2026/06/attackers-exploit-simplehelp-cve-2026.html",
+            "source_name": "The Hacker News",
+            "category": "三、安全风险通告 > 安全风险通告"
+          }
+        ]
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2024-2658",
+        "source": {
+          "article_title": "Beware of the license manager: how a Schneider Electric software vulnerability puts industrial facilities at risk",
+          "article_link": "https://securelist.com/tr/schneider-electric-cve-2024-2658-vulnerability/120436/",
+          "source_name": "Kaspersky SecureList",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-8451",
+        "source": {
+          "article_title": "Citrix Patches Six NetScaler Flaws Allowing File Read and Denial-of-Service",
+          "article_link": "https://thehackernews.com/2026/07/citrix-patches-six-netscaler-flaws.html",
+          "source_name": "The Hacker News",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-33017",
+        "source": [
+          {
+            "article_title": "Langflow RCE Exploited to Deploy Monero Miner on Exposed AI App Endpoints",
+            "article_link": "https://thehackernews.com/2026/06/langflow-rce-exploited-to-deploy-monero.html",
+            "source_name": "The Hacker News",
+            "category": "三、安全风险通告 > 安全风险通告"
+          },
+          {
+            "article_title": "From Langflow to Monero: Inside CVE-2026-33017 Cryptominer",
+            "article_link": "https://www.trendmicro.com/en_us/research/26/f/from-langflow-to-monero-inside-cve-2026-33017-cryptominer.html",
+            "source_name": "Trend Micro Research",
+            "category": "三、安全风险通告 > 安全风险通告"
+          }
+        ]
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-8037",
+        "source": {
+          "article_title": "Progress Kemp LoadMaster Flaw Could Let Attackers Run Root Commands Pre-Auth",
+          "article_link": "https://thehackernews.com/2026/06/progress-kemp-loadmaster-flaw-could-let.html",
+          "source_name": "The Hacker News",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-46817",
+        "source": {
+          "article_title": "Oracle E-Business Suite Flaw CVE-2026-46817 Actively Exploited in the Wild",
+          "article_link": "https://thehackernews.com/2026/06/oracle-e-business-suite-flaw-cve-2026.html",
+          "source_name": "The Hacker News",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-43707",
+        "source": {
+          "article_title": "Apple Patches 30+ iOS, macOS, Safari Flaws, Including AI-Discovered WebKit Bugs",
+          "article_link": "https://thehackernews.com/2026/06/apple-patches-30-ios-macos-safari-flaws.html",
+          "source_name": "The Hacker News",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-55200",
+        "source": {
+          "article_title": "Public PoC Released for Critical libssh2 CVE-2026-55200 Client-Side SSH Flaw",
+          "article_link": "https://thehackernews.com/2026/06/public-poc-released-for-critical.html",
+          "source_name": "The Hacker News",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-46331",
+        "source": {
+          "article_title": "New Linux pedit COW Exploit Enables Root Access by Poisoning Cached Binaries",
+          "article_link": "https://thehackernews.com/2026/06/new-linux-pedit-cow-exploit-enables.html",
+          "source_name": "The Hacker News",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-12957",
+        "source": {
+          "article_title": "Amazon Q Developer Flaw Could Let Malicious Repos Run Code via MCP Configs",
+          "article_link": "https://thehackernews.com/2026/06/amazon-q-developer-flaw-could-let.html",
+          "source_name": "The Hacker News",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-43503",
+        "source": {
+          "article_title": "New DirtyClone Linux Kernel Flaw Lets Local Users Gain Root via Cloned Packets",
+          "article_link": "https://thehackernews.com/2026/06/new-dirtyclone-linux-kernel-flaw-lets.html",
+          "source_name": "The Hacker News",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2026-20245",
+        "source": {
+          "article_title": "Cisco Catalyst SD-WAN Zero-Day CVE-2026-20245 Exploited to Gain Root Access",
+          "article_link": "https://thehackernews.com/2026/06/cisco-catalyst-sd-wan-zero-day-cve-2026.html",
+          "source_name": "The Hacker News",
+          "category": "三、安全风险通告 > 安全风险通告"
+        }
+      },
+      {
+        "type": "cve",
+        "value": "CVE-2025-8088",
+        "source": {
+          "article_title": "Old WinRAR Flaw Fuels Attacks on Ukraine: How Unmanaged Software Keeps the Door Open",
+          "article_link": "https://www.trendmicro.com/en_us/research/26/f/old-winrar-flaw-fuels-attacks-on-ukraine.html",
+          "source_name": "Trend Micro Research",
+          "category": "二、热点安全事件 > 黑客组织攻击技战术更新"
+        }
+      }
+    ],
+    "domain": [
+      {
+        "type": "domain",
+        "value": "Claude.ai",
+        "source": [
+          {
+            "article_title": "Anthropic Restores Claude Fable 5 After U.S. Lifts Jailbreak-Linked Export Controls",
+            "article_link": "https://thehackernews.com/2026/07/anthropic-restores-claude-fable-5-after.html",
+            "source_name": "The Hacker News",
+            "category": "未分类 > 待审核"
+          },
+          {
+            "article_title": "Threat Actors Abuse claude.ai Shared Chat for ClickFix Malvertising Campaign",
+            "article_link": "https://www.trendmicro.com/en_us/research/26/f/claudeai-shared-chat-abused-in-malvertising.html",
+            "source_name": "Trend Micro Research",
+            "category": "二、热点安全事件 > 黑客组织攻击技战术更新"
+          }
+        ]
+      },
+      {
+        "type": "domain",
+        "value": "Node.js",
+        "source": [
+          {
+            "article_title": "Photo ZIP campaign targeting hospitality industry delivers Node.js implant for persistent access",
+            "article_link": "https://www.microsoft.com/en-us/security/blog/2026/06/25/photo-zip-campaign-targeting-hospitality-industry-delivers-node-js-implant-persistent-access/",
+            "source_name": "Microsoft Security",
+            "category": "二、热点安全事件 > 黑客组织攻击技战术更新"
+          },
+          {
+            "article_title": "Microsoft Warns of Photo ZIP Phishing Campaign Targeting Hotels with Node.js Implant",
+            "article_link": "https://thehackernews.com/2026/06/microsoft-warns-of-photo-zip-phishing.html",
+            "source_name": "The Hacker News",
+            "category": "二、热点安全事件 > 黑客组织攻击技战术更新"
+          }
+        ]
+      },
+      {
+        "type": "domain",
+        "value": "Booking.com",
+        "source": {
+          "article_title": "TONResolver RAT Abuses TON Blockchain to Target Japan's Hotel Industry",
+          "article_link": "https://www.trendmicro.com/en_us/research/26/f/tonresolver.html",
+          "source_name": "Trend Micro Research",
+          "category": "二、热点安全事件 > 病毒新变种"
+        }
+      }
+    ]
+  }
+}

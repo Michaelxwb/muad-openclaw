@@ -1,0 +1,22 @@
+{
+  "_comment": "监控 MSSP 平台事件（monitor-mssp-events）API 端点集中配置。修改接口地址只需改这里，无需动业务代码。",
+  "_note": "脚本经 shared.get_origin() 读取 platforms.mssp.origin，支持环境变量 MONITOR_MSSP_BASE_URL 覆盖；请求统一带 host_header 指定的 Host 头（nginx 靠 Host 路由）。登录态由 muad 的 session-manager 代管。",
+  "_env": "当前默认：mssp=http://soar-inner.sangfor.com.cn:30001。",
+  "host_header": "inner.sangfor.com.cn",
+  "platforms": {
+    "mssp": {
+      "origin": "http://soar-inner.sangfor.com.cn:30001",
+      "env": "MONITOR_MSSP_BASE_URL",
+      "referer_path": "/index.html",
+      "fixed_csrf_token": "[REDACTED_SECRET]",
+      "timezone": "+08:00",
+      "endpoints": {
+        "event_table": "/gateway/event-mgr/external/event_table",
+        "event_detail": "/gateway/event-mgr/external/event_table/event?_method=GET",
+        "alarm_list": "/gateway/alarm-mgr/v1/event_table/alarm_list?_method=GET",
+        "customer_search": "/gateway/customer-mgr-service/order/v1/user?_method=GET",
+        "asset_query": "/gateway/asset-mgr-service/order/v1/asset?_method=GET"
+      }
+    }
+  }
+}

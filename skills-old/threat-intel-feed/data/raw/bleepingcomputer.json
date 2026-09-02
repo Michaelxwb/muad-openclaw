@@ -1,0 +1,227 @@
+[
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/webinar-tomorrow-why-modern-email-attacks-require-a-new-approach-to-defense/",
+    "title": "Webinar tomorrow: Why modern email attacks require a new approach to defense",
+    "summary": "Tomorrow's webinar explores how behavioral AI can help organizations detect sophisticated phishing, business email compromise, and account takeover attacks while reducing alert fatigue through automated investigation and response workflows. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/webinar-tomorrow-why-modern-email-attacks-require-a-new-approach-to-defense/",
+    "published": "2026-07-07T12:12:20",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.497847"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/linux/new-januscape-linux-kernel-flaw-allows-vm-escape-on-intel-amd-devices/",
+    "title": "New Januscape Linux flaw allows VM escape on Intel, AMD devices",
+    "summary": "A 16-year-old Linux kernel vulnerability, dubbed Januscape, allows attackers to escape a virtual machine and execute arbitrary code on the host. [...]",
+    "link": "https://www.bleepingcomputer.com/news/linux/new-januscape-linux-kernel-flaw-allows-vm-escape-on-intel-amd-devices/",
+    "published": "2026-07-07T12:06:09",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.498373"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/microsoft/microsoft-to-enable-windows-backup-for-organizations-by-default/",
+    "title": "Microsoft to enable Windows settings backup by default for orgs",
+    "summary": "Microsoft says the Windows settings backup and restore tool will be enabled by default on Microsoft Entra-joined or Microsoft Entra hybrid-joined enterprise systems after upgrading to Windows 11 26H2. [...]",
+    "link": "https://www.bleepingcomputer.com/news/microsoft/microsoft-to-enable-windows-backup-for-organizations-by-default/",
+    "published": "2026-07-07T09:41:19",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.498373"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/beyondtrust-warns-of-critical-flaws-in-remote-access-software/",
+    "title": "BeyondTrust warns of critical flaws in remote access software",
+    "summary": "BeyondTrust warned customers to patch two critical security flaws in its Remote Support (RS) and Privileged Remote Access (PRA) software that could allow attackers to bypass authentication. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/beyondtrust-warns-of-critical-flaws-in-remote-access-software/",
+    "published": "2026-07-07T08:12:10",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.498373"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/microsoft/microsoft-testing-new-cloud-rebuild-windows-11-recovery-feature/",
+    "title": "Microsoft testing new Cloud Rebuild Windows 11 recovery feature",
+    "summary": "Microsoft has begun testing the Cloud Rebuild recovery feature in the latest Windows 11 Insider Preview builds released for users in the Experimental channel. [...]",
+    "link": "https://www.bleepingcomputer.com/news/microsoft/microsoft-testing-new-cloud-rebuild-windows-11-recovery-feature/",
+    "published": "2026-07-07T07:37:38",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.498373"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/phishing-poses-as-big-brand-job-interview-to-steal-google-accounts/",
+    "title": "Phishing poses as big-brand job interview to steal Google accounts",
+    "summary": "A phishing campaign is impersonating more than 30 well-known brands, including Adobe, Netflix, Coca-Cola, and OpenAI, in fake job interviews to steal Google account credentials from marketing professionals. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/phishing-poses-as-big-brand-job-interview-to-steal-google-accounts/",
+    "published": "2026-07-06T20:27:37",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.498373"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/fake-it-support-calls-on-microsoft-teams-push-etherrat-malware/",
+    "title": "Fake IT support calls on Microsoft Teams push EtherRAT malware",
+    "summary": "Threat actors are abusing Microsoft Teams voice calls by impersonating corporate IT support staff to trick employees into installing the EtherRAT malware, giving attackers initial access to corporate networks. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/fake-it-support-calls-on-microsoft-teams-push-etherrat-malware/",
+    "published": "2026-07-06T20:23:45",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.498373"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/vietnam-arrests-suspects-behind-hianime-anime-piracy-service/",
+    "title": "Vietnam arrests suspects behind HiAnime anime piracy service",
+    "summary": "​Vietnamese authorities have arrested and are prosecuting seven suspects believed to have run HiAnime, the largest anime piracy streaming service before its shutdown in June. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/vietnam-arrests-suspects-behind-hianime-anime-piracy-service/",
+    "published": "2026-07-06T18:25:06",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.498373"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/software-is-now-written-at-the-speed-of-thought-security-isnt/",
+    "title": "Software Is Now Written at the Speed of Thought. Security Isn't.",
+    "summary": "Every evolution in software development has reduced the friction between an idea and a deployable application. AI may remove the final barrier, but it also removes many of the moments where security decisions have traditionally taken place. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/software-is-now-written-at-the-speed-of-thought-security-isnt/",
+    "published": "2026-07-06T14:00:10",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.498373"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/max-severity-adobe-coldfusion-flaw-now-exploited-in-attacks/",
+    "title": "Max severity Adobe ColdFusion flaw now exploited in attacks",
+    "summary": "Attackers are now exploiting a maximum-severity Adobe ColdFusion vulnerability tracked as CVE-2026-48282, according to vulnerability intelligence company KEVIntel. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/max-severity-adobe-coldfusion-flaw-now-exploited-in-attacks/",
+    "published": "2026-07-06T13:18:37",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.499393"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/flipper-zero-firmware-development-continues-with-community-help/",
+    "title": "Flipper Zero firmware development continues with community help",
+    "summary": "Flipper Devices says development of the Flipper Zero firmware will continue, albeit with a smaller internal team and greater reliance on community contributions. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/flipper-zero-firmware-development-continues-with-community-help/",
+    "published": "2026-07-05T14:14:52",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.499393"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/jadepuffer-ransomware-used-ai-agent-to-automate-entire-attack/",
+    "title": "JadePuffer ransomware used AI agent to automate entire attack",
+    "summary": "Researchers identified what they believe is the first documented case of a ransomware operation, JadePuffer, conducted entirely by a large language model (LLM) agent. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/jadepuffer-ransomware-used-ai-agent-to-automate-entire-attack/",
+    "published": "2026-07-04T14:16:38",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.499393"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/netnut-proxy-network-disrupted-2-million-infected-devices-cut-off/",
+    "title": "NetNut proxy network disrupted, 2 million infected devices cut off",
+    "summary": "A joint operation involving Google has disrupted NetNut, a residential proxy network that gave access to millions of compromised Android devices, including smart TVs and streaming boxes. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/netnut-proxy-network-disrupted-2-million-infected-devices-cut-off/",
+    "published": "2026-07-03T17:50:04",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.499393"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/security/artoken-phaas-exposes-eviltokens-microsoft-365-phishing-toolkit/",
+    "title": "ARToken PhaaS exposes EvilTokens' Microsoft 365 phishing toolkit",
+    "summary": "A new phishing-as-a-service (PhaaS) platform dubbed \"ARToken\" appears to operate as an affiliate of the EvilTokens phishing platform, giving researchers a glimpse into an extensive toolkit designed to compromise Microsoft 365. [...]",
+    "link": "https://www.bleepingcomputer.com/news/security/artoken-phaas-exposes-eviltokens-microsoft-365-phishing-toolkit/",
+    "published": "2026-07-03T14:12:22",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.499393"
+  },
+  {
+    "id": "https://www.bleepingcomputer.com/news/artificial-intelligence/claude-fable-5-isnt-permanently-leaving-subscriptions-anthropic-says/",
+    "title": "Claude Fable 5 isn’t permanently leaving subscriptions, Anthropic says",
+    "summary": "Anthropic says Claude Fable 5 won't be accessible via Claude subscriptions after July 7, but it's not a permanent change, and the company expects the model to return outside the usage-based plan soon. [...]",
+    "link": "https://www.bleepingcomputer.com/news/artificial-intelligence/claude-fable-5-isnt-permanently-leaving-subscriptions-anthropic-says/",
+    "published": "2026-07-03T01:37:09",
+    "source_id": "bleepingcomputer",
+    "source_name": "BleepingComputer",
+    "tags": [
+      "malware",
+      "ransomware",
+      "news"
+    ],
+    "fetched_at": "2026-07-07T20:34:31.499393"
+  }
+]

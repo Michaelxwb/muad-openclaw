@@ -1,0 +1,2537 @@
+{
+  "generated_at": "2026-07-07T21:02:20.653327",
+  "total_articles": 203,
+  "kw_direct": 16,
+  "ai_judged": 187,
+  "stats": {
+    "未分类": {
+      "待审核": 95
+    },
+    "二、热点安全事件": {
+      "黑客组织攻击技战术更新": 44,
+      "安全检测技术更新": 2,
+      "待审核": 2,
+      "AI对攻防趋势变化": 10,
+      "病毒新变种": 9
+    },
+    "二、热点安全事件 - 黑客组织攻击技战术更新": {
+      "黑客组织攻击技战术更新": 7,
+      "": 1
+    },
+    "三、安全风险通告": {
+      "安全风险通告": 28,
+      "三、安全风险通告": 2,
+      "": 2,
+      "漏洞利用预警": 1
+    }
+  },
+  "categories": {
+    "未分类": {
+      "待审核": [
+        {
+          "title": "How We Added WebAuthn to a Browser-Based RDP Client",
+          "link": "https://unit42.paloaltonetworks.com/webauthn-added-to-browser-based-rdp/",
+          "summary": "A look inside the reverse-engineering journey of building the first RDP client outside of Windows to support WebAuthn redirection. The post How We Added WebAuthn to a Browser-Based RDP Client appeared first on Unit 42 .",
+          "source_name": "Palo Alto Unit 42",
+          "published": "2026-07-02T22:00:39",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 本文是关于为基于浏览器的RDP客户端添加WebAuthn支持的逆向工程与技术实现分享，不属于政策、热点事件、风险通告或微软安全通报类别。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Catan and Mouse",
+          "link": "https://blog.talosintelligence.com/catan-and-mouse/",
+          "summary": "What do board games and cybersecurity have in common? Pattern recognition. Strategy. Adaptation. In this week’s Threat Source Bill explores why curiosity may be a defender’s most valuable skill.",
+          "source_name": "Cisco Talos",
+          "published": "2026-07-02T18:00:34",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为思辨性编辑内容，非安全事件、政策或技战术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Martin Lee: Running through the Arctic (and the threat landscape)",
+          "link": "https://blog.talosintelligence.com/martin-lee-running-through-the-arctic-and-the-threat-landscape/",
+          "summary": "Ever wonder how someone goes from studying human viruses to leading cybersecurity teams? In this Humans of Talos, we’re joined by Martin Lee, EMEA Lead, to talk about his journey into the industry.",
+          "source_name": "Cisco Talos",
+          "published": "2026-07-01T10:00:57",
+          "score": 99,
+          "matched_keywords": [
+            "AI: Talos团队人物访谈，讲述个人职业经历，非安全威胁或政策内容"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Browser Security: Zero-Days Are Only Part of the Problem",
+          "link": "https://www.crowdstrike.com/en-us/blog/browser-security-zero-days-are-only-part-of-the-problem/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 标题为浏览器安全观点文章，不涉及具体政策、攻击事件、漏洞或技战术，无法归入现有分类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Falcon Cloud Security June 2026 Release: Updates for Azure and Google Cloud",
+          "link": "https://www.crowdstrike.com/en-us/blog/new-in-falcon-cloud-security-expanding-multi-cloud-coverage/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: CrowdStrike产品更新公告，非安全政策/事件/漏洞通告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "94% of Organizations Report Cloud Breaches: CrowdStrike State of CDR Survey",
+          "link": "https://www.crowdstrike.com/en-us/blog/crowdstrike-state-of-cdr-survey-key-takeaways/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: CrowdStrike的云安全调查报告属于市场报告/行业趋势，非政策、事件或技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "After Executive Order 14409: Next Steps for Securing AI",
+          "link": "https://www.crowdstrike.com/en-us/blog/after-executive-order-14409-next-steps-for-securing-ai/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论行政令后续步骤，属评论/建议性内容，非政策文件本身"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Falcon Exposure Management Now Available for Third-Party Environments",
+          "link": "https://www.crowdstrike.com/en-us/blog/falcon-exposure-management-now-available-for-third-party-environments/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 产品功能发布，不涉及安全政策、事件或技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "CrowdStrike Announces Continuous Identity for AI Agents",
+          "link": "https://www.crowdstrike.com/en-us/blog/crowdstrike-announces-continuous-identity-for-ai-agents/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 产品发布新闻，不属于安全政策、事件或技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "The Autonomous SOC, Revisited: What 18 Months on the Road Has Taught Us",
+          "link": "https://www.sentinelone.com/blog/the-autonomous-soc-revisited-what-18-months-on-the-road-has-taught-us/",
+          "summary": "Explore SentinelOne's Autonomous SOC maturity model to map your journey toward AI autonomy through strict governance.",
+          "source_name": "SentinelOne",
+          "published": "2026-07-01T13:00:45",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 厂商SentinelOne的自主SOC成熟度模型介绍，属于行业趋势/产品方法论分享，不涉及政策法规或具体安全事件"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "5 insights from Frost & Sullivan’s 2025 Frost Radar™ for Cloud Security Posture Management",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/07/06/5-insights-from-frost-sullivans-2025-frost-radar-for-cloud-security-posture-management/",
+          "summary": "Read five key learnings from the Frost & Sullivan 2025 Frost Radar™ for CSPM to learn how CSPM is evolving from point-in-time compliance to continuous risk management. The post 5 insights from Frost & Sullivan’s 2025 Frost Radar™ for Cloud Security Posture Management appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-07-06T16:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 市场报告解读，分析CSPM行业趋势，不属于政策、安全事件、漏洞或技术更新"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Improving security posture across the Microsoft partner ecosystem",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/07/02/improving-security-posture-across-the-microsoft-partner-ecosystem/",
+          "summary": "Read how Microsoft strengthens partner ecosystem security with CSP vetting, least privilege access, monitoring, and risk management best practices. The post Improving security posture across the Microsoft partner ecosystem appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-07-02T16:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章介绍微软合作伙伴生态安全最佳实践，非政策、非安全事件、非漏洞，属于产品/最佳实践分享"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Microsoft named a leader in the Frost Radar for cloud and application runtime security",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/07/01/microsoft-named-a-leader-in-the-frost-radar-for-cloud-and-application-runtime-security/",
+          "summary": "Frost & Sullivan names Microsoft a leader as cloud and application security converge into unified, runtime risk reduction. The post Microsoft named a leader in the Frost Radar for cloud and application runtime security appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-07-01T16:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 市场研究报告与厂商评级，不属于政策、事件、技战术、病毒或漏洞等安全情报范畴"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Accelerating the quantum-safe timeline",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/06/30/microsoft-advances-quantum-safe-security-as-the-risk-timeline-shifts/",
+          "summary": "We’re accelerating quantum-safe readiness—and sharing what organizations can do now to transition earlier and with confidence. The post Accelerating the quantum-safe timeline appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-06-30T19:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章内容为量子安全战略过渡建议，无具体政策文件、非AI趋势、非攻击技战术，不在给定分类中"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "​​What’s new in Microsoft Security: June 2026",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/06/30/whats-new-in-microsoft-security-june-2026/",
+          "summary": "This month’s updates help security and IT teams strengthen identity and multicloud foundations, protect data wherever it lives, and secure the developer workflows powering AI innovation. The post ​​What’s new in Microsoft Security: June 2026 appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-06-30T16:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 微软安全月度更新博客，属于产品功能发布与介绍，不涉及政策、安全事件、漏洞或技战术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Microsoft a Leader in The Forrester Wave™ for Endpoint Management Platforms",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/06/25/microsoft-a-leader-in-the-forrester-wave-for-endpoint-management-platforms/",
+          "summary": "Microsoft named a Leader in the Forrester Wave™: Endpoint Management Platforms, Q2 2026, with the highest scores in the current offering and strategy categories. The post Microsoft a Leader in The Forrester Wave™ for Endpoint Management Platforms appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-06-25T16:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 这是一篇关于微软端点管理平台市场领导地位的分析报告，属于行业奖项和市场认可，不涉及网络安全政策、攻击事件、漏洞或安全技术内容。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "CNAPP evolution: How Microsoft aligns with leading cloud risk management platforms",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/06/24/cnapp-evolution-how-microsoft-aligns-with-leading-cloud-risk-management-platforms/",
+          "summary": "Learn how CNAPP platforms are helping organizations prioritize exploitable risks, reduce exposure, and operationalize security across the application lifecycle. The post CNAPP evolution: How Microsoft aligns with leading cloud risk management platforms appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-06-24T18:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为微软云安全管理平台市场定位文章，属产品趋势内容，不涉及政策、事件、技战术或漏洞。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "New Cargo Theft Surge: From Lobster Heists To Bourbon Warehouse Scams",
+          "link": "https://www.proofpoint.com/us/newsroom/news/new-cargo-theft-surge-lobster-heists-bourbon-warehouse-scams",
+          "summary": "",
+          "source_name": "Proofpoint",
+          "published": "2026-07-01T15:34:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章涉及货物盗窃犯罪，非网络安全议题"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Defending the Authentication Flow: Device Code Phishing with Selena Larson",
+          "link": "https://www.proofpoint.com/us/newsroom/news/defending-authentication-flow-device-code-phishing-selena-larson",
+          "summary": "",
+          "source_name": "Proofpoint",
+          "published": "2026-06-30T15:35:04",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 标题显示为与Selena Larson的访谈内容，可能为播客或编辑讨论，无具体技术分析或政策文件，不符合其他分类标准。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Governing Claude Enterprise in Environments Where Inline Controls Can't Go",
+          "link": "https://www.trendmicro.com/en_us/research/26/f/governing-claude-enterprise.html",
+          "summary": "TrendAI™ integrates the Claude Compliance API into TrendAI Vision One™ through two collectors that bring AI-aware visibility and detection to Claude Enterprise usage: one keeps all data inside the environment, while the other feeds TrendAI Vision One™ for deeper correlation and compliance.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 产品集成与解决方案发布，非政策、事件、漏洞或技战术内容"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Pwn2Own Berlin 2026: On the Ground With TrendAI™ ZDI's Biggest AI Showdown Yet",
+          "link": "https://www.trendmicro.com/en_us/research/26/f/pwn2own-berlin-2026.html",
+          "summary": "47 zero-days fell at Pwn2Own Berlin 2026 for US$1,298,250 in payouts. TrendAI™ was on the ground all three days — here's what we saw.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章是Pwn2Own比赛的现场报道，非正式漏洞通告或补丁公告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Analyzing Void Dokkaebi’s Cython-Compiled InvisibleFerret Malware",
+          "link": "https://www.trendmicro.com/en_us/research/26/e/analyzing-void-dokkaebi-invisibleferret-malware.html",
+          "summary": "Void Dokkaebi, a North Korea-aligned intrusion set, has updated its information-stealing malware, InvisibleFerret, shifting its delivery format to evade script-based detections.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "Cyber readiness for SMBs: Getting the basics right",
+          "link": "https://www.welivesecurity.com/en/business-security/cyber-readiness-smbs-getting-basics-right/",
+          "summary": "AI is changing cybercrime, but SMB cyber readiness still largely depends on closing the familiar gaps",
+          "source_name": "ESET Research",
+          "published": "2026-07-03T12:36:41",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为面向中小企业的基础网络安全准备指导，属于最佳实践/行业建议，无政策文件、具体攻击事件或技术细节，不符合现有分类体系。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "This month in security with Tony Anscombe – June 2026 edition",
+          "link": "https://www.welivesecurity.com/en/videos/month-security-tony-anscombe-june-2026/",
+          "summary": "Three-day patching deadlines, exposed fuel-tank systems, scams costing billions of dollars, and social media bans for children all gave Tony plenty to unpack in June 2026",
+          "source_name": "ESET Research",
+          "published": "2026-06-30T14:39:37",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为ESET月度安全播客综述，涵盖多个话题，非单一政策、事件或技术分析，属于编辑/播客内容"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Inside the inbox: Why cybercriminals want to break into your email account",
+          "link": "https://www.welivesecurity.com/en/cybersecurity/inside-inbox-cybercriminals-want-break-email-account/",
+          "summary": "Your inbox is an identity system all of its own: whoever owns it may own a lot more",
+          "source_name": "ESET Research",
+          "published": "2026-06-29T08:50:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为邮箱入侵动机的通用安全科普分析，无具体安全事件、恶意软件技术分析或政策文件，不符合任何热点事件或政策的严格定义"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "SMB cyber readiness: the road to resilience starts here",
+          "link": "https://www.welivesecurity.com/en/business-security/smb-cyber-readiness-road-resilience-starts-here/",
+          "summary": "Your business may be small, but its attack surface is anything but. Readiness is the first step to resilience.",
+          "source_name": "ESET Research",
+          "published": "2026-06-26T08:50:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为中小企业网络安全准备的一般性宣导内容，未涉及具体政策、事件或技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Threat landscape for industrial automation systems. Q1 2026",
+          "link": "https://securelist.com/industrial-threat-report-q1-2026/120643/",
+          "summary": "This report contains industrial threat statistics for Q1 2026, including industrial threat distribution by type, source, region and industry.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-07-07T10:00:11",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 工业自动化系统威胁态势统计报告，属于行业趋势/威胁态势分析，不在既定分类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Missed incidents, persistent threats, and response gaps: Insights from compromise assessment projects",
+          "link": "https://securelist.com/compromise-assessment-findings-2025/120542/",
+          "summary": "Kaspersky Compromise Assessment specialists analyze trends from the service's 2025 projects and provide tips on how to enhance your organization's security.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-07-02T09:00:09",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为卡巴斯基基于安全评估项目总结的趋势洞察与安全强化建议，缺乏具体技战术、病毒或政策细节，无确匹配分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "OpenClaw: risks for the users and how to mitigate them",
+          "link": "https://securelist.com/openclaw-security/120484/",
+          "summary": "Researching OpenClaw vulnerabilities, malicious skills, and other security issues with the popular agent, and providing tips on how to mitigate them.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-07-01T06:42:48",
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "Inside the 2026 SMB threat landscape: From phishing and scams to fake AI tools",
+          "link": "https://securelist.com/smb-threat-report-2026/120357/",
+          "summary": "Kaspersky researchers analyze the threat landscape for SMBs in 2026: the rise of attacks involving fake AI tools, phishing schemes, and data sold on the dark web.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-06-25T10:00:59",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为卡巴斯基对2026年中小企业威胁态势的分析展望，属于行业趋势报告，无具体政策、攻击技战术细节、病毒变种或漏洞通告，不匹配任何确切分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "6th July – Threat Intelligence Report",
+          "link": "https://research.checkpoint.com/2026/6th-july-threat-intelligence-report-2/",
+          "summary": "For the latest discoveries in cyber research for the week of 6th July, please download our Threat Intelligence Bulletin. TOP ATTACKS AND BREACHES River Bank & Trust, a US financial institution, has experienced a ransomware incident after an unauthorized actor accessed the network of parent company River Financial Corporation on June 16. The bank found […] The post 6th July – Threat Intelligence Report appeared first on Check Point Research .",
+          "source_name": "Check Point Research",
+          "published": "2026-07-06T12:01:54",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 这是Check Point的威胁情报周报，汇总了当周的攻击事件，不属于具体技战术分析、病毒新变种或政策法规，无确切匹配子类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "22nd June – Threat Intelligence Report",
+          "link": "https://research.checkpoint.com/2026/22nd-june-threat-intelligence-report/",
+          "summary": "For the latest discoveries in cyber research for the week of 22nd June, please download our Threat Intelligence Bulletin. TOP ATTACKS AND BREACHES Texas Parks and Wildlife Department has been affected by a third-party data breach involving its license system vendor. The incident exposed driver’s license information, passport numbers, emails, phone numbers, and residential addresses for […] The post 22nd June – Threat Intelligence Report appeared first on Check Point Research .",
+          "source_name": "Check Point Research",
+          "published": "2026-07-01T11:29:38",
+          "score": 99,
+          "matched_keywords": [
+            "AI: "
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "29th June – Threat Intelligence Report",
+          "link": "https://research.checkpoint.com/2026/29th-june-threat-intelligence-report-2/",
+          "summary": "For the latest discoveries in cyber research for the week of 29th June, please download our Threat Intelligence Bulletin. TOP ATTACKS AND BREACHES Polymarket, a large cryptocurrency-based prediction market, has confirmed a supply chain attack after a third-party frontend vendor breach led to malicious JavaScript being injected into its website. Attackers tricked users into approving fraudulent […] The post 29th June – Threat Intelligence Report appeared first on Check Point Research .",
+          "source_name": "Check Point Research",
+          "published": "2026-06-29T14:06:59",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为Check Point Research发布的综合威胁情报周报，涵盖多类别攻击事件但摘要未展示具体技术细节，无法准确归入单一子分类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "RCS and DNS: The NAPTR Record",
+          "link": ":///forums/diary/RCS+and+DNS+The+NAPTR+Record/33124/",
+          "summary": "Over the last year, with recent updates to iOS and Android, RCS (Rich Communication Services) has become an increasingly used protocol [1]. RCS is supposed to eventually replace SMS, and in addition to richer formatting, provides added (but optional) security. RCS messages may be end-to-end encrypted and digitally signed. Unlike SMS, which was \"bolted on\" to existing voice-focused phone standards. The SMS standard was based on old-fashioned pagers and allowed for limited clear-text communication",
+          "source_name": "SANS ISC",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为RCS协议中NAPTR DNS记录的技术介绍，不涉及安全政策、攻击事件、恶意软件或漏洞"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "FBI Seizes NetNut Proxy Platform, Popa Botnet",
+          "link": "https://krebsonsecurity.com/2026/07/fbi-seizes-netnut-proxy-platform-popa-botnet/",
+          "summary": "The Federal Bureau of Investigation (FBI) said today it worked with industry partners to seize hundreds of domains associated with NetNut, a sprawling residential proxy service operated by the publicly-traded Israeli company Alarum Technologies [NASDAQ: ALAR]. The action comes roughly two weeks after KrebsOnSecurity published findings from multiple security firms connecting NetNut to the Popa botnet, a collection of at least two million devices that have been compromised by malicious software wi",
+          "source_name": "Krebs on Security",
+          "published": "2026-07-02T19:27:33",
+          "score": 99,
+          "matched_keywords": [
+            "AI: FBI查封域名属于执法行动，非安全政策或技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Scattered Spider Hackers Plead Guilty on Day 1 of Trial",
+          "link": "https://krebsonsecurity.com/2026/06/scattered-spider-hackers-plead-guilty-on-day-1-of-trial/",
+          "summary": "Two men pleaded guilty in the United Kingdom this week to criminal charges stemming from an August 2024 cyberattack that crippled Transport for London, the entity responsible for the public transport network in the Greater London area. The duo were key members of a prolific cybercrime group known as Scattered Spider, and their guilty pleas came on the first day of what was expected to be a six-week trial.",
+          "source_name": "Krebs on Security",
+          "published": "2026-06-23T16:12:49",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 黑客认罪属执法新闻，不在既定分类体系中"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Webinar tomorrow: Why modern email attacks require a new approach to defense",
+          "link": "https://www.bleepingcomputer.com/news/security/webinar-tomorrow-why-modern-email-attacks-require-a-new-approach-to-defense/",
+          "summary": "Tomorrow's webinar explores how behavioral AI can help organizations detect sophisticated phishing, business email compromise, and account takeover attacks while reducing alert fatigue through automated investigation and response workflows. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-07T12:12:20",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 网络研讨会预告，内容为产品/方法宣传，非安全政策、攻击事件或技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Microsoft to enable Windows settings backup by default for orgs",
+          "link": "https://www.bleepingcomputer.com/news/microsoft/microsoft-to-enable-windows-backup-for-organizations-by-default/",
+          "summary": "Microsoft says the Windows settings backup and restore tool will be enabled by default on Microsoft Entra-joined or Microsoft Entra hybrid-joined enterprise systems after upgrading to Windows 11 26H2. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-07T09:41:19",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章介绍微软Windows 11 26H2将默认启用设置备份功能，属于产品功能发布，非安全政策、事件或漏洞相关。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "BeyondTrust warns of critical flaws in remote access software",
+          "link": "https://www.bleepingcomputer.com/news/security/beyondtrust-warns-of-critical-flaws-in-remote-access-software/",
+          "summary": "BeyondTrust warned customers to patch two critical security flaws in its Remote Support (RS) and Privileged Remote Access (PRA) software that could allow attackers to bypass authentication. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-07T08:12:10",
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "Microsoft testing new Cloud Rebuild Windows 11 recovery feature",
+          "link": "https://www.bleepingcomputer.com/news/microsoft/microsoft-testing-new-cloud-rebuild-windows-11-recovery-feature/",
+          "summary": "Microsoft has begun testing the Cloud Rebuild recovery feature in the latest Windows 11 Insider Preview builds released for users in the Experimental channel. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-07T07:37:38",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 微软测试Windows 11恢复功能，属于产品功能更新，非安全威胁或政策内容"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Phishing poses as big-brand job interview to steal Google accounts",
+          "link": "https://www.bleepingcomputer.com/news/security/phishing-poses-as-big-brand-job-interview-to-steal-google-accounts/",
+          "summary": "A phishing campaign is impersonating more than 30 well-known brands, including Adobe, Netflix, Coca-Cola, and OpenAI, in fake job interviews to steal Google account credentials from marketing professionals. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-06T20:27:37",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 通用钓鱼诈骗新闻，无技术分析，不涉及具体APT组织或新变种"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Vietnam arrests suspects behind HiAnime anime piracy service",
+          "link": "https://www.bleepingcomputer.com/news/security/vietnam-arrests-suspects-behind-hianime-anime-piracy-service/",
+          "summary": "​Vietnamese authorities have arrested and are prosecuting seven suspects believed to have run HiAnime, the largest anime piracy streaming service before its shutdown in June. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-06T18:25:06",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 越南逮捕动漫盗版服务嫌疑人属于版权执法案件，不涉及网络安全政策、安全事件或漏洞。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Flipper Zero firmware development continues with community help",
+          "link": "https://www.bleepingcomputer.com/news/security/flipper-zero-firmware-development-continues-with-community-help/",
+          "summary": "Flipper Devices says development of the Flipper Zero firmware will continue, albeit with a smaller internal team and greater reliance on community contributions. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-05T14:14:52",
+          "score": 99,
+          "matched_keywords": [
+            "AI: Flipper Zero固件开发社区动态，属于产品开发新闻，不涉及安全政策、攻击技战术或漏洞风险"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "NetNut proxy network disrupted, 2 million infected devices cut off",
+          "link": "https://www.bleepingcomputer.com/news/security/netnut-proxy-network-disrupted-2-million-infected-devices-cut-off/",
+          "summary": "A joint operation involving Google has disrupted NetNut, a residential proxy network that gave access to millions of compromised Android devices, including smart TVs and streaming boxes. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-03T17:50:04",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 该文章为执法部门联合取缔恶意代理网络的行动报道，属于执法新闻，不在现有分类体系中。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Claude Fable 5 isn’t permanently leaving subscriptions, Anthropic says",
+          "link": "https://www.bleepingcomputer.com/news/artificial-intelligence/claude-fable-5-isnt-permanently-leaving-subscriptions-anthropic-says/",
+          "summary": "Anthropic says Claude Fable 5 won't be accessible via Claude subscriptions after July 7, but it's not a permanent change, and the company expects the model to return outside the usage-based plan soon. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-03T01:37:09",
+          "score": 99,
+          "matched_keywords": [
+            "AI: AI产品订阅模式调整的行业新闻，非安全相关"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "⚡ Weekly Recap: Proxy Botnets, Browser Ransomware, AI Agent Tricks, Fake PoC Malware and More",
+          "link": "https://thehackernews.com/2026/07/monday-recap-proxy-botnets-browser.html",
+          "summary": "A streaming box should not need a threat model. Neither should a username field, a demo repo, a reset flow, or a browser permission prompt. That is the irritating part this week: the risky pieces were ordinary.\n\nHome devices became a routing cover. Clean code pulled dirt from a dependency. Identity shortcuts aged badly. AI systems trusted the wrong instructions. Same soft spot throughout: trust",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T13:01:14",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为The Hacker News的每周回顾汇总，综合了多个话题但缺乏针对单一事件或政策的具体分析，不符合分类体系中任何精确类别的要求"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "How to Evaluate an AI SOC Platform in 2026: 6 Capabilities That Separate Leaders from Bolt-On AI solutions",
+          "link": "https://thehackernews.com/2026/07/how-to-evaluate-ai-soc-platform-in-2026.html",
+          "summary": "Building a shortlist for an AI SOC evaluation can be tough. SIEM, SOAR, and pureplay AI SOC vendors are all saying the same thing. But behind the identical label sit very different products, from chat assistants bolted onto a legacy SIEM to agent platforms that run detection, triage, investigation, and response on their own data foundation.\n\nWhether a platform will materially change outcomes for",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T11:30:02",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章内容为AI SOC平台选型能力对比，属产品选型与行业趋势，非安全政策、事件或风险通告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "New TrojPix Attack Leaks Data From Air-Gapped Systems via Video Cable Emissions",
+          "link": "https://thehackernews.com/2026/07/new-trojpix-attack-leaks-data-from-air.html",
+          "summary": "Researchers at Shandong University have shown a fast new way to pull data off computers that are cut off from every network. The technique, called TrojPix, tweaks on-screen pixels in ways the eye cannot see, so that the video cable carrying them radiates a faint radio signal a nearby receiver can decode.\n\nBut TrojPix works only once malware is already on the target machine, so it",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T08:50:54",
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "U.S. Government Entity Paid Kairos $1 Million in Data-Theft Extortion Case",
+          "link": "https://thehackernews.com/2026/07/us-government-entity-paid-kairos-group.html",
+          "summary": "A U.S. government entity paid about $1 million to keep stolen files from being leaked, according to a new case study by Rakesh Krishnan for Ransom-ISAC, built on a leaked negotiation chat and the blockchain trail the payment left.\n\nThe odd part: the group that took the money calls itself Kairos, but it may not be a ransomware gang at all. Krishnan found no sign that it ever locked a single",
+          "source_name": "The Hacker News",
+          "published": "2026-07-04T12:47:53",
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "Google Disrupts NetNut Residential Proxy Network Spanning 2 Million Home Devices",
+          "link": "https://thehackernews.com/2026/07/google-disrupts-netnut-residential.html",
+          "summary": "Google has significantly degraded NetNut, one of the biggest networks that turns home devices into rented relays for other people's traffic.\n\nWorking with the FBI, Lumen, and others, Google's Threat Intelligence Group (GTIG) said this week it had reduced the network's pool of usable devices by millions.\n\nGoogle identifies NetNut, also tracked as Popa, as a network spread across home",
+          "source_name": "The Hacker News",
+          "published": "2026-07-02T18:54:06",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道Google联合FBI等执法机构打击住宅代理网络，属于执法行动新闻，不符合任何安全政策、攻击技战术或风险通告分类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "ThreatsDay: AI Compute Hijacking, Apple Email Flaw, BlueHammer Ransomware + 14 Stories",
+          "link": "https://thehackernews.com/2026/07/threatsday-ai-compute-hijacking-apple.html",
+          "summary": "This week’s security news is mostly about weak spots.\n\nBrowsers, bots, sandboxes, AI systems, and email flows all show the same problem in different ways. Everything looks normal until someone tests a small gap and finds a way through.\n\nThis is not one big break. It is small permissions, weak checks, open systems, and normal tools doing things they were allowed to do. That same pattern runs",
+          "source_name": "The Hacker News",
+          "published": "2026-07-02T15:24:18",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 该文为The Hacker News的每周安全新闻综述，属于编辑内容，无具体政策、技战术或漏洞分析，不宜归入特定分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "19-Year-Old Scattered Spider Suspect Extradited to Face U.S. Hacking Charges",
+          "link": "https://thehackernews.com/2026/07/19-year-old-scattered-spider-suspect.html",
+          "summary": "A teenager accused of belonging to the hacking group Scattered Spider has been extradited from Finland to face U.S. charges of conspiracy, computer intrusion, and fraud, the U.S. Department of Justice announced on July 1.\n\nPeter Stokes, 19, a dual U.S. and Estonian citizen, appeared in a Chicago federal court on June 30, where a judge ordered him held in custody.\n\nFinnish police",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T19:28:07",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 引渡嫌疑人受审属于执法案件新闻，无政策文件、技术分析或风险通告，不符合已有分类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Ousaban Banking Trojan Targets Iberian Bank Users with Fake PDF Lures",
+          "link": "https://thehackernews.com/2026/07/ousaban-banking-trojan-targets-iberian.html",
+          "summary": "A Brazilian banking trojan called Ousaban is going after Windows users who bank in Spain and Portugal. Fortinet's FortiGuard Labs identified the campaign in May 2026.\n\nIt opens with a phishing PDF disguised as a corrupted file, checks that the visitor is really in Spain or Portugal, and hides its real payload inside an image.\n\nThe goal is the usual one: steal banking logins and take",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T15:26:55",
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "2026 Cybersecurity Assessment: The Gap Between Awareness and Resilience",
+          "link": "https://thehackernews.com/2026/07/2026-cybersecurity-assessment-gap.html",
+          "summary": "Organizations have never had greater awareness of cyber risk. Yet turning that awareness into operational resilience has never been more challenging. The 2026 Bitdefender Cybersecurity Assessment confirms this is the case, as this year's findings reveal a series of surprising contradictions.\n\nHere are a few examples, based on the independent survey of 1,200 IT and cybersecurity professionals",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T11:30:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 行业调查报告，非具体政策、事件、技战术或漏洞"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Anthropic Restores Claude Fable 5 After U.S. Lifts Jailbreak-Linked Export Controls",
+          "link": "https://thehackernews.com/2026/07/anthropic-restores-claude-fable-5-after.html",
+          "summary": "Anthropic is putting Claude Fable 5 back online worldwide. On June 30, the U.S. Commerce Department lifted the export controls it had imposed on Fable and its more tightly controlled sibling Mythos 5 about two and a half weeks earlier.\n\nFable 5 returns to users on Wednesday, July 1, across Claude.ai, the Claude Platform, Claude Code, and Claude Cowork.\n\nExport controls restrict who can",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T06:46:17",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道出口管制解除，非正式政策法规发布，不属于分类体系中的任一明确类别"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "'BusySnake' Infostealer Slithers into Critical Infrastructure Networks",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/busysnake-infostealer-critical-infrastructure-networks",
+          "summary": "A threat group researchers call \"Armored Likho\" has gained access to government agencies and electrical power entities in Russia, Brazil, and Kazakhstan.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-06T21:37:56",
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "Aussies Face Reduced Cybercrime Risk, as Pressure Shifts to SMBs",
+          "link": "https://www.darkreading.com/cybersecurity-analytics/aussies-face-reduced-cybercrime-risk-pressure-shifts-smbs",
+          "summary": "Improved institutional safeguards and stricter regulations have pushed the burdens of protection and risk reduction on to Australian businesses.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-02T23:01:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论法规和制度改善对网络犯罪风险转移的影响，属于行业趋势分析，未涉及具体政策文件或技术细节"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Apple Reverses Age-Old Patch Policy to Keep Up With AI",
+          "link": "https://www.darkreading.com/cybersecurity-operations/apple-patch-policy-ai",
+          "summary": "Expect more compressed patching cycles from Apple going forward, as attackers leverage artificial intelligence to reduce time to exploit.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-02T19:31:58",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为苹果应对AI加速漏洞利用而调整补丁策略的行业动态，不属于任何安全政策、事件、技战术、病毒、检测技术或漏洞通告分类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Ransomware Thugs Masquerade as Interpol to Entice Small Biz",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/attackers-use-interpol-lure-target-small-businesses",
+          "summary": "The ransomware campaign relies on basic social engineering and stretches across multiple regions, including the US, Europe, Middle East, and elsewhere.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-02T18:07:40",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为通用勒索软件社会工程活动报道，未涉及具体组织技战术分析或病毒新变种技术细节"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Anthropic's AI Finds Bugs. IBM Bets $5B It Can Fix Them.",
+          "link": "https://www.darkreading.com/vulnerabilities-threats/anthropic-s-ai-finds-bugs-ibm-bets-5b-it-can-fix-them-",
+          "summary": "IBM and Red Hat assign 20,000 engineers to the new Project Lightwell service as Anthropic's Mythos findings ignite debate over how to secure the open source software supply chain.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-02T12:33:57",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为IBM与Red Hat针对开源软件供应链安全推出的新服务及行业动态讨论，不涉及具体政策法规、攻击事件、漏洞或技术检测更新，归入未分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "And the Winner in Dominant Malware Delivery? ClickFix",
+          "link": "https://www.darkreading.com/vulnerabilities-threats/winner-dominant-malware-delivery-clickfix",
+          "summary": "Researchers say the highly effective social engineering technique is no longer the exception for malware attacks — it's now the rule.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-01T19:46:34",
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "When Too Much Security Data Becomes the Risk",
+          "link": "https://www.darkreading.com/cyber-risk/too-much-security-data-risk",
+          "summary": "Rapid growth turned routine firewall logs into a security and budget liability. One CISO used artificial intelligence to filter what data truly belongs in the SIEM.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-01T15:44:41",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 自动推断"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Safe Events Start With Threat Intel &amp; Digital Security",
+          "link": "https://www.darkreading.com/threat-intelligence/safe-events-threat-intel-digital-security",
+          "summary": "Planning ahead to defend against cyber threats is the work that keeps events uneventful.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-01T13:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为活动安全规划的一般性指导建议，不涉及具体政策法规、攻击事件、病毒变种或漏洞通告等可明确归类的内容"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Why Identity Security Is Your Cyber Career Entry Point",
+          "link": "https://www.darkreading.com/cybersecurity-operations/identity-security-cyber-career-entry-point",
+          "summary": "In this \"Heard it From a CISO\" video, Silverfort CISO John Paul Cunningham explains that AI in cybersecurity workflows is creating opportunities rather than eliminating jobs — and there are more ways than ever to break into this essential field.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-30T19:11:40",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为CISO职业建议视频，讨论身份安全作为网络安全职业切入点，无政策、事件、技术漏洞或检测技术内容"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "NIST Enrichment Reductions Impact CVE Coverage, Accuracy",
+          "link": "https://www.darkreading.com/vulnerabilities-threats/nist-enrichment-reductions-cve-coverage-accuracy",
+          "summary": "The National Institute of Standards and Technology (NIST) scaled back the number of CVEs it selects for in-depth analysis, but the move has produced mixed results, according to researchers.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-29T22:46:45",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道NIST缩减CVE深度分析，属机构操作调整，非正式政策发布，亦非具体漏洞通告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Can Clothes Make You Invisible to Facial Recognition?",
+          "link": "https://www.darkreading.com/cyber-risk/clothes-invisible-facial-recognition",
+          "summary": "Does life feel Orwellian sometimes? One researcher has a solution for you: graphic tees that confuse the neural networks in surveillance cameras.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-29T19:38:04",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 关于利用服装图案对抗面部识别的研究，不属于政策、攻击技战术、病毒或检测技术，无匹配分类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Iran, Russia, China Target Water Systems for Sabotage",
+          "link": "https://www.darkreading.com/ics-ot-security/iran-russia-china-target-water-systems-sabotage",
+          "summary": "Nation-state attackers breach water systems through weak passwords, exposed PLCs, and poor segmentation — not sophisticated malware.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-29T19:12:08",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为基础设施攻击事件概述，未涉及具体APT组织或技战术细节，属于一般性威胁动态，不匹配分类体系中的精准要求"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Third-Party Breaches Teach Education Sector a Costly Lesson in Vendor Risk",
+          "link": "https://www.darkreading.com/cyber-risk/third-party-breaches-teaches-education-lesson-vendor-risk",
+          "summary": "Rising threats from third-party actors are forcing institutions to play defense to protect student data from ransomware and other attacks.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-27T11:48:05",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论第三方供应商违规对教育行业的影响，属于行业教训与趋势报道，无具体政策、攻击技术或漏洞细节"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "AI Decline? Confidence in Autonomous Penetration Testing Falls",
+          "link": "https://www.darkreading.com/cybersecurity-operations/ai-decline-confidence-autonomous-penetration-testing",
+          "summary": "Companies are still experimenting with automated AI systems to find security weaknesses, but fewer are relying on the technology.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-26T19:11:02",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章探讨企业对AI自主渗透测试信心下降的行业趋势，无政策文件、攻击技术或漏洞细节"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Cisco Adds NHI to Security Stack With Astrix, WideField Acquisitions",
+          "link": "https://www.darkreading.com/identity-access-management-security/cisco-adds-nhi-security-stack-with-astrix-widefield",
+          "summary": "Cisco joins a growing list of security platform providers that are betting that securing the agentic workforce means turning identity into the primary control plane.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-26T17:31:04",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 该文章为思科收购安全公司以扩展NHI安全能力的行业动态新闻，不涉及具体攻击、漏洞、政策或技术分析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "New Initiative Tackles Security for End-of-Life Open Source Software",
+          "link": "https://www.darkreading.com/application-security/initiative-tackles-security-end-of-life-open-source",
+          "summary": "The Open Source Sustainability Initiative's goal is to help enterprises manage and secure aging open source projects while maintaining regulatory compliance.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-26T16:32:30",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 属于开源安全倡议的行业新闻，无政策文件、攻击事件或漏洞具体技术信息"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "AI Won't Wipe Out Entry-Level Cybersecurity Jobs",
+          "link": "https://www.darkreading.com/cybersecurity-operations/ai-wont-wipe-out-entry-level-cybersecurity-jobs",
+          "summary": "Instead of eliminating jobs for early-career cyber pros, AI is creating new opportunities for candidates with strong human decision-making skills.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-26T16:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论AI对初级网络安全岗位就业市场的影响，属行业趋势与观点，不涉及具体政策、事件或技术，不符合任何分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Meeting Trump's 2030 Quantum Deadline Will be Expensive, Complex",
+          "link": "https://www.darkreading.com/cybersecurity-operations/meeting-2030-quantum-deadline-expensive-complex",
+          "summary": "Getting accurate visibility into IT and OT systems will be compounded by multivendor environments, misaligned update life cycles, and interoperability gaps.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-26T13:30:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论量子安全迁移的复杂性与成本，未涉及具体政策文件、攻击技战术或漏洞，属于行业观点，难以套用现有分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Thanks for Crushing the Submissions Inbox. We're Trying to Keep Up",
+          "link": "https://www.darkreading.com/cybersecurity-operations/submissions-guidelines-reminder",
+          "summary": "It might be taking a bit longer than usual to respond to your submissions — here's why.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-26T13:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为编辑说明，告知投稿回复延迟，不属于网络安全政策、事件或技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Robinhood Cuts Access Approval Time to Support High-Velocity Development",
+          "link": "https://www.darkreading.com/application-security/robinhood-reengineered-access-approvals-for-high-velocity-development",
+          "summary": "The fintech company's engineering-first application security team reengineered the process for granting system access, making it easier and more secure for developers working on their projects. Here are the lessons learned from Robinhood's experience.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-25T22:42:36",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 企业安全流程优化实践分享，不涉及政策文件、攻击事件、恶意软件或漏洞，不属于任何已定义的安全分类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "EdTech Attackers Shift From Schools to Their Software Suppliers",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/edtech-attackers-shift-schools-software-suppliers",
+          "summary": "Educational institutions, the edtech companies they rely on, and, more concerningly, the challenges they pose for schools are the focus of the latest Reporters' Notebook video series.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-25T20:34:14",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 内容为视频系列报道，讨论攻击目标转移的行业趋势，属于播客/编辑内容，无具体政策、技战术、病毒分析或漏洞信息"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Local Police Collusion Hampers Crackdown on Asian Scam Centers",
+          "link": "https://www.darkreading.com/threat-intelligence/police-collusion-crackdown-asian-scam-centers",
+          "summary": "With tens of billions of dollars flowing into regional economies from cybercrime, scam centers continue to flourish, despite international and law-enforcement efforts.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-25T19:07:41",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 关于亚洲诈骗中心与地方警察勾结的执法新闻，不涉及正式安全政策、攻击技战术、漏洞或趋势"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Europe Evolves Into Ransomware's Favorite Region",
+          "link": "https://www.darkreading.com/cybersecurity-analytics/europe-evolves-ransomware-favorite-region",
+          "summary": "After a global lull, ransomware gangs are setting sights on a rich new arena: attacking EU organizations and their suppliers.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-25T10:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为勒索软件攻击区域趋势报道，未涉及具体政策、技战术、病毒变种或安全技术细节"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Attackers Hit Cisco SD-WAN Flaw 2 Months Before Disclosure",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/attackers-hit-cisco-sd-wan-flaw-2-months-before-disclosure",
+          "summary": "Researchers believe rogue peering was used to connect to the victim's SD-WAN devices to gain admin privileges and root-level access.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-24T21:16:41",
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "2026 FIFA World Cup Faces Surge in Cyber Threats",
+          "link": "https://www.darkreading.com/cybersecurity-operations/2026-fifa-world-cup-faces-surge-cyber-threats",
+          "summary": "Persistent cybercrime, social engineering, and infrastructure threats continue to plague the FIFA 2026 World Cup across the US, Canada, and Mexico.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-24T20:29:08",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为概括性威胁态势报道，未涉及具体政策、技战术、病毒变种或漏洞细节，不宜硬套分类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Do CISOs Need a Code of Ethics?",
+          "link": "https://www.darkreading.com/cybersecurity-operations/ciso-code-of-ethics",
+          "summary": "Dark Reading Confidential Episode 19: Kickbacks, no-show jobs, \"dirty\" VCs, and shelf ware — industry expert Robert \"RSnake\" Hansen explains why he thinks it's time for a CISO code of ethics. It could ensure cybersecurity bosses aren't engaged in self-dealing that could risk enterprise, and even national, security.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-24T19:10:17",
+          "score": 99,
+          "matched_keywords": [
+            "AI: Dark Reading播客节目讨论CISO职业道德准则，属于编辑观点/行业讨论，无正式政策文件或安全事件技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Scope of Salesforce Attacks Expands as Icarus Leaks Data",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/scope-salesforce-attacks-expands-icarus-leaks-data",
+          "summary": "More victims have emerged after attackers breached application vendor Klue and used its OAuth tokens to steal customers' Salesforce data.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-23T20:44:09",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道攻击者入侵Klue并利用OAuth令牌窃取Salesforce客户数据，属于一般安全事件新闻，不符合现有任何具体分类标准"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "SocGholish Takedown Highlights Malicious TDS Threats",
+          "link": "https://www.darkreading.com/cyber-risk/socgholish-takedown-malicious-tds-threats",
+          "summary": "SocGholish uses traffic distribution systems (TDSs) to provide initial access into victims' networks for cybercrime groups such as the notorious Evil Corp.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-23T13:51:33",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 该文章主要报道SocGholish的打击行动，属执法新闻，非技战术细节分析或政策文件"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Claude Code’s hidden tracker was an “experiment,” says Anthropic",
+          "link": "https://www.malwarebytes.com/blog/news/2026/07/claude-codes-hidden-tracker-was-an-experiment-says-anthropic",
+          "summary": "Anthropic's hidden Claude Code tracker has raised new questions about prompt steganography and developer trust.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-07T11:20:28",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章涉及Anthropic在Claude Code中隐藏追踪器的实验引发的信任讨论，属于AI开发实践相关的安全新闻，不属于政策法规、攻击技战术、漏洞等任何明确分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Scammers are using AI to sell impossible flowers",
+          "link": "https://www.malwarebytes.com/blog/scams/2026/07/scammers-are-using-ai-to-sell-impossible-flowers",
+          "summary": "AI-generated flower scams are blooming online, with scammers using fake images to sell seeds for plants that don't exist, like these \"cat's face orchids.\"",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-07T09:31:52",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 属于AI生成虚假图片的网络诈骗新闻，不涉及分类体系中的任何具体类别"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "How to tell if an image is AI-generated",
+          "link": "https://www.malwarebytes.com/blog/ai/2026/07/how-to-tell-if-an-image-is-ai-generated",
+          "summary": "Scammers are using AI-generated images to make fake stories more convincing. Here's how to separate real from fake.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-06T16:22:32",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章属于AI生成图像识别指南，属于安全意识教育，不符合现有任何分类的精准定义"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Choose your WhatsApp username carefully",
+          "link": "https://www.malwarebytes.com/blog/news/2026/07/choose-your-whatsapp-username-carefully",
+          "summary": "WhatsApp is introducing usernames to help protect your phone number. Just make sure you don't undermine that privacy by choosing the wrong one.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-06T12:51:52",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 关于WhatsApp用户名的隐私建议，非政策/事件/技术/风险通告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "NetNut botnet takes a hit. Don’t be part of the next one.",
+          "link": "https://www.malwarebytes.com/blog/news/2026/07/netnut-botnet-takes-a-hit-dont-be-part-of-the-next-one",
+          "summary": "Google, the FBI, and other partners have disrupted a residential proxy network built on millions of hijacked devices and used by criminals.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-06T11:52:14",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为执法部门打击僵尸网络的新闻通报，无政策法规内容，也无具体技术分析或病毒细节，属于执法行动新闻。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "A week in security (June 29 &#8211; July 5)",
+          "link": "https://www.malwarebytes.com/blog/news/2026/07/a-week-in-security-june-29-july-5",
+          "summary": "A list of topics we covered in the week of June 29 to July 5 of 2026",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-06T07:14:12",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 每周安全内容汇总，属于编辑精选合集，无具体政策或事件分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "BioShocking: when “gaming” AI agents is no longer a game",
+          "link": "https://www.malwarebytes.com/blog/ai/2026/07/bioshocking-when-gaming-ai-agents-is-no-longer-a-game",
+          "summary": "Researchers warned AI vendors about a proof-of-concept called BioShiocking that tricks agents by gamifying the outcome.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-01T12:50:59",
+          "score": 0,
+          "matched_keywords": [
+            "AI 错误: AI返回空内容"
+          ],
+          "method": "keyword_fallback"
+        },
+        {
+          "title": "ChatGPT produced graphic violent images that shocked researchers",
+          "link": "https://www.malwarebytes.com/blog/ai/2026/07/chatgpt-produced-graphic-violent-images-that-shocked-researchers",
+          "summary": "AI assistants like ChatGPT are supposed to have appropriate guardrails to stop people creating harmful content. However, they don't always work.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-01T09:10:01",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道AI防护措施失效产生暴力图像的事件，不属于政策、攻防趋势、攻击技战术、病毒变种、检测技术或漏洞公告，故未分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Watch out for &#8220;high paying, low effort&#8221; Amazon job texts",
+          "link": "https://www.malwarebytes.com/blog/scams/2026/06/watch-out-for-high-paying-low-effort-amazon-job-texts",
+          "summary": "Scammers are using Amazon and the promise of big money to lure people in to their trap.",
+          "source_name": "Malwarebytes",
+          "published": "2026-06-30T20:46:28",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 这是一篇关于诈骗手法的消费者警示，不涉及具体APT技战术、病毒变种、政策法规或安全检测技术，属于一般网络诈骗新闻。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "This pay gap is programmed (Lock and Code S07E13)",
+          "link": "https://www.malwarebytes.com/blog/podcast/2026/06/this-pay-gap-is-programmed-lock-and-code-s07e13",
+          "summary": "This week on the Lock and Code podcast, we speak with Veena Dubal about algorithmic wage discrimination and its appetite for all worker data.",
+          "source_name": "Malwarebytes",
+          "published": "2026-06-29T14:44:37",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 播客内容讨论算法工资歧视，与网络安全或AI安全政策、事件、技术无关"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "119 Edge extensions promised useful tools, instead downloaded malware",
+          "link": "https://www.malwarebytes.com/blog/news/2026/06/119-edge-extensions-promised-useful-tools-instead-downloaded-malware",
+          "summary": "Microsoft has removed over 100 Edge extensions that were delivering malware hidden in images.",
+          "source_name": "Malwarebytes",
+          "published": "2026-06-29T14:41:18",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道了恶意Edge扩展传播恶意软件的事件，没有重大政策内容、APT技战术分析、病毒新变种技术细节或CVE漏洞通告，属于安全事件泛述，因此归为未分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "A week in security (June 22 &#8211; June 28)",
+          "link": "https://www.malwarebytes.com/blog/news/2026/06/a-week-in-security-june-22-june-28",
+          "summary": "A list of topics we covered in the week of June 22 to June 28 of 2026",
+          "source_name": "Malwarebytes",
+          "published": "2026-06-29T07:01:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章为Malwarebytes的安全周报摘要，属于编辑内容汇总，不涉及具体政策、事件或技术分析"
+          ],
+          "method": "ai"
+        }
+      ]
+    },
+    "二、热点安全事件": {
+      "黑客组织攻击技战术更新": [
+        {
+          "title": "Phantom Squatting: AI-Hallucinated Domains as a Software Supply Chain Vector",
+          "link": "https://unit42.paloaltonetworks.com/phantom-squatting-hallucinated-web-domains/",
+          "summary": "Attackers can exploit LLM domain hallucinations through phantom squatting to target supply chains. Read the analysis to learn more. The post Phantom Squatting: AI-Hallucinated Domains as a Software Supply Chain Vector appeared first on Unit 42 .",
+          "source_name": "Palo Alto Unit 42",
+          "published": "2026-07-01T01:00:11",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析攻击者利用LLM域名幻觉进行供应链攻击的具体技术，属于攻击面与技战术剖析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "CL-STA-1062 Targets Southeast Asian Governments and Critical Infrastructure",
+          "link": "https://unit42.paloaltonetworks.com/cl-sta-1062-tinyrct-backdoor/",
+          "summary": "Government entities and critical infrastructure were targeted for espionage in SE Asia by attackers using a hybrid toolkit, including custom TinyRCT backdoor. The post CL-STA-1062 Targets Southeast Asian Governments and Critical Infrastructure appeared first on Unit 42 .",
+          "source_name": "Palo Alto Unit 42",
+          "published": "2026-06-25T22:00:52",
+          "score": 99,
+          "matched_keywords": [
+            "AI: Unit 42披露组织CL-STA-1062针对东南亚政府与关基的间谍活动及自研TinyRCT后门，属典型APT攻击技战术剖析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "The Global Namespace Risk: Universal Bucket Hijacking Technique for Cloud Data Exfiltration",
+          "link": "https://unit42.paloaltonetworks.com/cloud-bucket-hijacking-risks/",
+          "summary": "Unit 42 research details how attackers could exploit global name uniqueness in bucket hijacking to redirect cloud data streams across major CSPs. The post The Global Namespace Risk: Universal Bucket Hijacking Technique for Cloud Data Exfiltration appeared first on Unit 42 .",
+          "source_name": "Palo Alto Unit 42",
+          "published": "2026-06-22T22:00:04",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析了利用云存储全局命名唯一性进行桶劫持的通用攻击技术，属于攻击手法(TTPs)研究"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "UAT-7810 continues building ORB networks using new malware",
+          "link": "https://blog.talosintelligence.com/uat-7810/",
+          "summary": "Talos’ latest findings on UAT-7810 indicate that the threat actor continues to develop their custom-made malware.",
+          "source_name": "Cisco Talos",
+          "published": "2026-07-07T10:00:05",
+          "score": 99,
+          "matched_keywords": [
+            "AI: UAT-7810持续开发定制恶意软件并构建ORB网络，属于APT组织TTP和攻击基础设施分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Introduction to COM usage by Windows threats",
+          "link": "https://blog.talosintelligence.com/introduction-to-com-usage-by-windows-threats/",
+          "summary": "Component Object Model (COM) is a fundamental Windows technology used by legitimate applications for object activation, inter-process communication, automation and language-independent component reuse. Those same qualities make it useful to threat actors.",
+          "source_name": "Cisco Talos",
+          "published": "2026-06-25T10:00:26",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章介绍威胁行为者利用Windows COM技术的攻击手法，属于TTPs分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "New Abuse of the ClickOnce Technology, Part 2: Stop Threat Actors from Clicking Once and Staying Forever",
+          "link": "https://www.crowdstrike.com/en-us/blog/new-abuse-of-the-clickonce-technology-part-two/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析威胁行为者滥用ClickOnce技术的攻击手法及防御措施，属于具体技战术更新"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "New Abuse of the ClickOnce Technology, Part 1: The Inner Workings of ClickOnce Application Deployment",
+          "link": "https://www.crowdstrike.com/en-us/blog/new-abuse-of-the-clickonce-technology-part-one/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 分析攻击者滥用ClickOnce技术的内部工作原理和部署机制，属于攻击手法（TTPs）技术剖析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Securing AI agents: When AI tools move from reading to acting",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/06/30/securing-ai-agents-ai-tools-move-from-reading-acting/",
+          "summary": "MCP tool poisoning turns trusted AI agents into a control plane for data loss. Learn how threat actors manipulate tool descriptions to trigger unauthorized actions, and how to detect, contain, and prevent it. The post Securing AI agents: When AI tools move from reading to acting appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-06-30T15:57:11",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讲述攻击者利用MCP工具描述投毒操纵AI代理的具体攻击手法、检测与遏制，属于攻击技战术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Threat Actors Abuse claude.ai Shared Chat for ClickFix Malvertising Campaign",
+          "link": "https://www.trendmicro.com/en_us/research/26/f/claudeai-shared-chat-abused-in-malvertising.html",
+          "summary": "Cybercriminals hijacked Google Ads searches for popular AI developer tools to funnel over 2,000 victims toward malicious download pages before quietly moving their operation onto claude.ai's own platform, turning the trusted domain into a delivery mechanism for credential-stealing malware.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章描述攻击者滥用claude.ai进行ClickFix恶意广告活动，剖析了具体攻击链和手法，属于攻击技战术更新。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Old WinRAR Flaw Fuels Attacks on Ukraine: How Unmanaged Software Keeps the Door Open",
+          "link": "https://www.trendmicro.com/en_us/research/26/f/old-winrar-flaw-fuels-attacks-on-ukraine.html",
+          "summary": "Two separate Russia-aligned campaigns are still exploiting the WinRAR flaw CVE-2025-8088 against Ukrainian organizations nearly a year after it was patched, showing how unmanaged software keeps an exploited entry point open long after the fix ships.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: "
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Smart Contracts for C&C: How ClearFake Hid in Plain Sight on BSC Testnet",
+          "link": "https://www.trendmicro.com/en_us/research/26/e/smart-contracts-for-command-and-control.html",
+          "summary": "TrendAI™ Research analyzed an intrusion where threat actors used the EtherHiding technique to route ClearFake payload delivery through smart contracts on the BNB Smart Chain testnet. The attack chain ended with two simultaneously deployed stealers, SectopRAT and ACRStealer alongside an on-chain execution tracker that confirmed each victim compromise in real time.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析ClearFake利用BNB Smart Chain测试网智能合约隐藏C2的技战术细节，属于攻击基础设施和攻击链剖析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Gamaredon in 2025: Leveraging tunnels, workers, dead drops, and new alliances",
+          "link": "https://www.welivesecurity.com/en/eset-research/gamaredon-2025-leveraging-tunnels-workers-dead-drops-new-alliances/",
+          "summary": "ESET Research analyzes Gamaredon’s new toolset and the group’s growing reliance on legitimate online services to hide its C&C infrastructure and exfiltrate stolen data",
+          "source_name": "ESET Research",
+          "published": "2026-06-25T08:45:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析APT组织Gamaredon的新工具集、C2隐藏和数据窃取手法，属于具体攻击技战术更新"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "ESET takes part in Operation Endgame to disrupt Amadey and Stealc",
+          "link": "https://www.welivesecurity.com/en/eset-research/eset-takes-part-operation-endgame-disrupt-amadey-stealc/",
+          "summary": "ESET researchers assisted in the global disruption of the Amadey botnet and Stealc infostealer, providing technical analysis, infrastructure tracking, and affiliate-level insights",
+          "source_name": "ESET Research",
+          "published": "2026-06-24T12:35:24",
+          "score": 99,
+          "matched_keywords": [
+            "AI: ESET参与Operation Endgame行动，对Amadey僵尸网络和Stealc窃密木马提供技术分析、基础设施跟踪及附属组织洞察，属于对恶意软件活动与攻击技战术的剖析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "When checking the URL isn’t enough: a Device Code Phishing attack via a Microsoft website",
+          "link": "https://securelist.com/microsoft-device-code-phishing-attack/120350/",
+          "summary": "The OAuth 2.0 Device Authorization Grant specification was designed to streamline authentication for Smart TVs, IoT devices, and printers. Today, threat actors are weaponizing it.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-07-06T09:00:43",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 分析攻击者武器化OAuth设备授权流程的具体钓鱼攻击手法和攻击链"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "The SOC Files: ScreenConnect masked as freeware. An inside look at a large-scale campaign",
+          "link": "https://securelist.com/tr/the-soc-files-screenconnect-campaign-with-asyncrat/120472/",
+          "summary": "Kaspersky experts have uncovered a malicious network infrastructure for delivering AsyncRAT. The Trojan is dropped via compromised ScreenConnect software. In this post, we break down the infection chain and analyze the C2 infrastructure.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-07-01T10:00:51",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析了利用ScreenConnect分发AsyncRAT的攻击基础设施和感染链，属于攻击活动与TTPs分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "ToddyCat: your hidden email assistant. Part 2",
+          "link": "https://securelist.com/toddycat-apt-umbrij-tool-and-oauth/120251/",
+          "summary": "An in-depth analysis of Umbrij, a new tool used by the ToddyCat APT group to compromise corporate email communications in Gmail. The attack targeted OAuth authorization tokens, allowing threat actors to gain access to Google services.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-06-30T10:00:13",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章深入分析ToddyCat APT组织的新工具Umbrij及其攻击OAuth令牌的技战术，属于典型的APT攻击手法剖析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "The Gentlemen are knocking: сustom backdoors and evolving tactics",
+          "link": "https://securelist.com/the-gentlemen-raas/120447/",
+          "summary": "Kaspersky researchers analyze incidents related to The Gentlemen RaaS group, disclose their tools and TTPs, and find a new ransomware variant.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-06-29T10:00:35",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析The Gentlemen RaaS团伙的工具、TTP和新变种，属于攻击团伙活动分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Cavern Manticore: Exposing Iran-Linked Modular C2 Framework",
+          "link": "https://research.checkpoint.com/2026/cavern-manticore-exposing-iran-linked-modular-c2-framework/",
+          "summary": "Key Points Introduction Since early 2026, Check Point Research (CPR) has tracked a new modular command-and-control framework used by Cavern Manticore, an Iran-nexus APT group primarily targeting Israeli organizations, with a focus on IT providers, and government sectors. Cavern Manticore is an Iran MOIS (Ministry of Intelligence and Security)-linked actor, with links to the OilRig […] The post Cavern Manticore: Exposing Iran-Linked Modular C2 Framework appeared first on Check Point Research .",
+          "source_name": "Check Point Research",
+          "published": "2026-07-06T12:25:02",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析伊朗关联APT组织Cavern Manticore的模块化C2框架及针对以色列的攻击活动，属于具体APT组织技战术剖析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Browser-Only Ransomware: From LLM Hallucinations to a Practical Attack Technique",
+          "link": "https://research.checkpoint.com/2026/browser-only-ransomware-from-llm-hallucinations-to-a-practical-attack-technique/",
+          "summary": "Research by: Alexey Bukhteyev Key Takeaways Introduction Over the past several years, large language models have reshaped software development, and malware development has followed the same path. Check Point Research has documented this trend from early experiments showing that AI systems could generate offensive components, to cases of cybercriminals using ChatGPT to create malicious tools, and […] The post Browser-Only Ransomware: From LLM Hallucinations to a Practical Attack Technique appeare",
+          "source_name": "Check Point Research",
+          "published": "2026-07-01T10:05:35",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章披露了利用LLM幻觉实现纯浏览器端勒索攻击的具体技术，属于攻击技战术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Fake IT support calls on Microsoft Teams push EtherRAT malware",
+          "link": "https://www.bleepingcomputer.com/news/security/fake-it-support-calls-on-microsoft-teams-push-etherrat-malware/",
+          "summary": "Threat actors are abusing Microsoft Teams voice calls by impersonating corporate IT support staff to trick employees into installing the EtherRAT malware, giving attackers initial access to corporate networks. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-06T20:23:45",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 滥用Microsoft Teams语音钓鱼投递EtherRAT，属于社会工程与远控木马投放的技战术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "JadePuffer ransomware used AI agent to automate entire attack",
+          "link": "https://www.bleepingcomputer.com/news/security/jadepuffer-ransomware-used-ai-agent-to-automate-entire-attack/",
+          "summary": "Researchers identified what they believe is the first documented case of a ransomware operation, JadePuffer, conducted entirely by a large language model (LLM) agent. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-04T14:16:38",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 首次记录勒索攻击全程由LLM智能体执行，属于攻击者利用AI的技战术实践，非观点趋势。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "North Korean Hackers Publish 108 Malicious Packages and Extensions in PolinRider Campaign",
+          "link": "https://thehackernews.com/2026/07/north-korean-hackers-publish-108.html",
+          "summary": "The North Korean threat actors linked to the Contagious Interview campaign have been observed publishing 108 unique packages and web browser extensions spanning npm, Packagist, Go, and Google Chrome as part of an ongoing activity referred to as PolinRider.\n\n\"The campaign remains active, and new malicious packages are likely to continue appearing as threat actors compromise maintainer accounts,",
+          "source_name": "The Hacker News",
+          "published": "2026-07-04T11:17:24",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道朝鲜威胁行为体PolinRider发布恶意包和扩展的持续攻击活动，属具体APT组织TTP分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "North Korea-Linked npm Packages Mimic Rollup Polyfills to Steal Developer Secrets",
+          "link": "https://thehackernews.com/2026/07/north-korea-linked-npm-packages-mimic.html",
+          "summary": "Threat actors with ties to North Korea have been linked to a fresh set of malicious npm packages that masquerade as Rollup polyfill tooling to facilitate remote access and data theft.\n\nAccording to JFrog, the packages \"rollup-packages-polyfill-core\" and \"rollup-runtime-polyfill-core\" mimic the legitimate \"rollup-plugin-polyfill-node\" project, down to the description, repository metadata, and",
+          "source_name": "The Hacker News",
+          "published": "2026-07-03T16:07:15",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章披露与朝鲜相关的威胁行为者利用仿冒Rollup polyfill的恶意npm包窃取开发者机密，属于具体APT组织的TTPs分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Armored Likho Targets Government Agencies, Power Sector with BusySnake Stealer",
+          "link": "https://thehackernews.com/2026/07/armored-likho-targets-government.html",
+          "summary": "A previously undocumented threat actor known as Armored Likho has been attributed to cyber attacks targeting government agencies and the electric power sector across Russia, Brazil, and Kazakhstan.\n\n\"Armored Likho blends financially motivated campaigns targeting private individuals with targeted cyber espionage aimed at organizations,\" Kaspersky said in a technical analysis published today. \"",
+          "source_name": "The Hacker News",
+          "published": "2026-07-03T13:36:33",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章披露新APT组织Armored Likho针对政府及电力部门的间谍与窃密活动，属于攻击团伙活动与手法分析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "European Parliament Member Investigating Spyware Was Hacked With Pegasus",
+          "link": "https://thehackernews.com/2026/07/european-parliament-member.html",
+          "summary": "A new report from the Citizen Lab has revealed that former Member of the European Parliament Stelios Kouloglou had his mobile device repeatedly hacked with the notorious Pegasus spyware while serving on a committee that was tasked with investigating the abuse of such commercial surveillance tools in the bloc.\n\n\"Through forensic analysis of his device, we found that the attackers could have had",
+          "source_name": "The Hacker News",
+          "published": "2026-07-03T11:05:43",
+          "score": 99,
+          "matched_keywords": [
+            "AI: Citizen Lab报告披露Pegasus间谍软件对欧洲议会议员的定向攻击，涉及入侵手法与监控工具分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "ToddyCat-Linked Umbrij Malware Abuses OAuth to Access Gmail via Google API",
+          "link": "https://thehackernews.com/2026/07/toddycat-linked-umbrij-malware-abuses.html",
+          "summary": "The threat actor known as ToddyCat has been attributed to a new malware called Umbrij that's designed to gain surreptitious access to a victim's email correspondence via the Google API.\n\n\"In this campaign, the attackers focused their attention on corporate email communications hosted on Gmail, targeting access compromise via APIs,\" Kaspersky said in a detailed report published this week. \"",
+          "source_name": "The Hacker News",
+          "published": "2026-07-02T13:04:13",
+          "score": 99,
+          "matched_keywords": [
+            "AI: ToddyCat组织利用Umbrij恶意软件通过Google API滥用OAuth访问Gmail，属于特定APT组织的新攻击技战术分析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "FortiBleed Credential Theft Linked to INC and Lynx Ransomware Operations",
+          "link": "https://thehackernews.com/2026/07/fortibleed-credential-theft-linked-to.html",
+          "summary": "The recently discovered financially-motivated FortiBleed campaign has been attributed to INC and Lynx ransomware operations, indicating that the verified, stolen credentials were intended for follow-on intrusions.\n\n\"An operator tied to FortiBleed's infrastructure was found actively working negotiation panels for both groups, tying mass FortiGate credential theft directly to ransomware deployment",
+          "source_name": "The Hacker News",
+          "published": "2026-07-02T08:00:49",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析FortiBleed凭证窃取活动及其与INC、Lynx勒索软件团伙的关联与基础设施，属于攻击活动归因和技战术剖析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "SEO-Poisoned Software Sites Abuse ScreenConnect to Deploy AsyncRAT",
+          "link": "https://thehackernews.com/2026/07/seo-poisoned-software-sites-abuse.html",
+          "summary": "Unknown threat actors are leveraging the ScreenConnect remote access tool as a way to deploy and execute AsyncRAT.\n\nKaspersky said the activity is part of a \"massive, multi-domain, multi-language\" campaign that distributes malicious installer archives hosted on spoofed websites.\n\nThese installers masquerade as popular software like OBS Studio, DNS Jumper, DS4Windows, and Bandicam, among others.",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T17:53:06",
+          "score": 99,
+          "matched_keywords": [
+            "AI: SEO中毒+滥用ScreenConnect部署AsyncRAT的具体攻击链分析，属于攻击手法和TTPs"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "VEIL#DROP Malware Chain Uses Blogger Platform to Deliver PureLogs Stealer",
+          "link": "https://thehackernews.com/2026/07/veildrop-malware-chain-uses-blogger.html",
+          "summary": "Cybersecurity researchers have flagged a new multi-stage malware delivery attack chain that uses social engineering and Blogger pages to deliver an information stealer called PureLogs.\n\nThe activity has been codenamed VEIL#DROP by Securonix. It's suspected that the initial payloads are distributed either via spear-phishing or a drive-by compromise, which occurs when an unsuspecting user lands on",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T17:18:50",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章详述了利用Blogger平台和社会工程学作为攻击基础设施的恶意软件投递链，属于攻击战术、技术和过程（TTPs）的分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Phantom Squatting Uses AI-Hallucinated Domains for Phishing and Malware",
+          "link": "https://thehackernews.com/2026/07/phantom-squatting-uses-ai-hallucinated.html",
+          "summary": "Large language models keep inventing web addresses that do not exist. Attackers have started buying those made-up domains before anyone else can, then hosting phishing pages on them to catch traffic that AI tools point their way.\n\nPalo Alto Networks' Unit 42 calls the trick phantom squatting, and its new research shows it is already happening in the wild.\n\nThe reason it matters is",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T07:20:51",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 攻击者利用AI幻觉注册域名实施钓鱼和恶意软件分发，属于具体的攻击手法分析，而非CVE漏洞通告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Azure CLI Password Spray Hits at Least 78 Microsoft Accounts in 81M+ Attempts",
+          "link": "https://thehackernews.com/2026/07/azure-cli-password-spray-hits-at-least.html",
+          "summary": "Cybersecurity researchers have warned of a \"massive, ongoing, automated password spray attack\" aimed at Microsoft's Azure command-line interface (CLI), compromising dozens of accounts in the process.\n\nThe activity, per Huntress, originates from an IPv6 address range (2a0a:d683::/32) controlled by internet infrastructure provider LSHIY LLC (AS32167).\n\n\"Between June 12 and June 26, the threat",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T05:46:03",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 描述针对Azure CLI的大规模密码喷洒攻击，涉及攻击基础设施（IPv6地址范围）和手法，属于攻击活动技战术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Researcher Analyzes 3,000 Live ClickFix Payloads, Exposing API-Driven Malware Delivery",
+          "link": "https://thehackernews.com/2026/07/researcher-analyzes-3000-live-clickfix.html",
+          "summary": "ClickFix, the trick that fools people into running malware by hand, has quietly grown a back office.\n\nNew research shows the malicious commands behind its fake \"prove you're human\" pages are now handed out by API-driven servers that give each visitor the same malware in a different disguise. The same research also turned up a new delivery method built to slip past Windows' script scanning.",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T05:32:12",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析ClickFix载荷分发机制，揭示API驱动恶意软件投递新手法，属于攻击基础设施与TTPs分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Microsoft Warns Poisoned MCP Tool Descriptions Can Make AI Agents Leak Data",
+          "link": "https://thehackernews.com/2026/06/microsoft-warns-poisoned-mcp-tool.html",
+          "summary": "New Microsoft research shows how attackers can hijack AI agents that act on a user's behalf, using nothing more than a poisoned tool description to make the agent quietly hand over company data to an outsider.\n\nThe trick is that the agent never breaks a rule. Every step looks routine, so in a default setup no alarm may fire.\n\nThe work comes from Microsoft Incident Response and its",
+          "source_name": "The Hacker News",
+          "published": "2026-06-30T17:46:07",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章揭示攻击者通过投毒MCP工具描述让AI代理泄露数据的具体攻击链，属于攻击技战术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "JadePuffer: The First Complete LLM-Driven Ransomware Attack",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/jadepuffer-first-complete-llm-driven-ransomware-attack",
+          "summary": "An \"agentic threat actor\" successfully exploited a Langflow flaw to steal data from a production database server and encrypt other systems.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-06T16:36:50",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章描述了一个利用LLM驱动的勒索软件攻击事件，涉及漏洞利用和数据加密的具体技战术，属于攻击者利用AI发起的攻击链分析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "FortiBleed Actors Collaborating With Inc, Lynx Ransomware Gangs",
+          "link": "https://www.darkreading.com/threat-intelligence/fortibleed-actors-inc-lynx-ransomware-gangs",
+          "summary": "After gaining a foothold in thousands of Fortinet firewalls, the attackers are starting to monetize that access, and are also piling on a Nextcloud zero-day bug.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-02T19:11:33",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章聚焦FortiBleed攻击者利用Fortinet防火墙漏洞并与勒索软件团伙协作变现，涉及攻击基础设施与变现手法，属于APT/攻击团伙活动与TTPs分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Crafty Phishing Campaigns Auto-Adapt to Victim's Device, OS",
+          "link": "https://www.darkreading.com/application-security/phishing-campaigns-auto-adapt-victims-device-os",
+          "summary": "Attackers fingerprint victims through user-agent data to deliver OS-specific payloads, increasing compromise rates and campaign profitability.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-01T20:31:21",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讲述攻击者利用用户代理指纹自动适配操作系统特定载荷的网络钓鱼手法，属于攻击战术与技术分析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "'Phantom Squatting': An Emerging AI-Driven Supply Chain Threat",
+          "link": "https://www.darkreading.com/endpoint-security/phantom-squatting-ai-driven-supply-chain-threat",
+          "summary": "LLMs consistently hallucinate Web domains for legitimate brands that attackers can register for malicious activity in a difficult-to-detect attack vector.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-01T15:17:14",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析攻击者利用LLM幻觉域名投毒供应链的具体攻击面，落脚点是攻击技术"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "China-Linked Group Targets Southeast Asia Critical Systems",
+          "link": "https://www.darkreading.com/threat-intelligence/china-linked-group-targets-southeast-asia-critical-systems",
+          "summary": "The group compromised at least 10 regional organizations, including two state-owned entities, and deployed a new backdoor.",
+          "source_name": "Dark Reading",
+          "published": "2026-07-01T01:00:01",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章属于APT组织攻击活动报道，涉及目标、攻击成果及部署新后门，符合技战术更新分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Fake Bug Report Hijacks AI Coding Agents at Scale",
+          "link": "https://www.darkreading.com/cyber-risk/fake-bug-report-hijacks-ai-coding-agents",
+          "summary": "\"Agentjacking\" is the latest demonstration of how easily attackers can exploit an AI agent's inability to differentiate between content and instructions.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-30T21:37:50",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章揭示攻击者利用AI编码代理无法区分内容与指令的漏洞进行大规模劫持，属于具体的攻击手法分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Attackers Seize Exposed AI Endpoints to Power Offensive Ops",
+          "link": "https://www.darkreading.com/cloud-security/attackers-hijack-exposed-ai-endpoints-power-offensive-ops",
+          "summary": "Threat actors don't need any special authentication to reach a target endpoint — they just need to know where it is.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-30T21:01:58",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 报道攻击者利用暴露的AI端点发起攻击，属于利用AI的攻击技战术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Russian APT 'Gamaredon' Upgrades Its Arsenal, Requiring New Defenses",
+          "link": "https://www.darkreading.com/threat-intelligence/russia-apt-gamaredon-arsenal-defense",
+          "summary": "The FSB state-sponsored operation has gotten a lot better at loading its malware and hiding its servers.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-25T21:12:01",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章聚焦俄罗斯APT组织Gamaredon的武器库升级，属于具体攻击组织的技战术变化分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "More Malicious OpenClaw Skills Threaten AI Supply Chain",
+          "link": "https://www.darkreading.com/cyber-risk/malicious-openclaw-skills-clawhub-threaten-ai-supply-chain",
+          "summary": "OpenClaw removed five packages from its ClawHub skills marketplace that bypassed security checks even though they included infostealers and other threats.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-24T16:56:49",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 恶意代码包绕过安全检查投放至AI技能市场，涉及攻击者利用供应链投毒的具体技战术"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "FortiBleed Attackers Turn Firewalls Into Credential Stealers as Heists Persist",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/fortibleed-attackers-firewalls-credentials-stealers",
+          "summary": "The threat actors engineered a Golang-based sniffer to target 430,000 FortiGate firewalls and identify 110 million credentials in the ongoing global campaign.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-23T12:34:54",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章描述了攻击者利用FortiGate漏洞开发Golang嗅探器窃取凭证的具体攻击手法"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Fake Google and Cloudflare verification pages spread multiple malware families",
+          "link": "https://www.malwarebytes.com/blog/threat-intel/2026/07/fake-google-and-cloudflare-verification-pages-spread-multiple-malware-families",
+          "summary": "We uncovered ClickFix attacks using fake Google and Cloudflare pages to deliver everything from infostealers to a newly discovered malware loader.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-02T16:05:08",
+          "score": 99,
+          "matched_keywords": [
+            "AI: "
+          ],
+          "method": "ai"
+        }
+      ],
+      "安全检测技术更新": [
+        {
+          "title": "Threat Brief: Mitigating Large-Scale Credential Attacks",
+          "link": "https://unit42.paloaltonetworks.com/large-scale-credential-attacks/",
+          "summary": "We provide guidance for preparing for and mitigating large-scale credential attacks, focusing on recent campaigns targeting security vendors' devices. The post Threat Brief: Mitigating Large-Scale Credential Attacks appeared first on Unit 42 .",
+          "source_name": "Palo Alto Unit 42",
+          "published": "2026-06-26T19:05:33",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章提供缓解大规模凭证攻击的检测与缓解指导，符合安全检测技术更新的定义。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "SkillCloak Lets Malicious AI Agent Skills Evade Static Scanners with Self-Extracting Packing",
+          "link": "https://thehackernews.com/2026/07/new-skillcloak-technique-lets-malicious.html",
+          "summary": "Scanners meant to catch malicious add-on \"skills\" for AI coding agents can be fooled by a few simple changes that leave the malware working, according to a new study from researchers at the Hong Kong University of Science and Technology.\n\nTheir strongest trick slipped past every scanner tested more than 90% of the time, and the same team built a runtime checker that catches most of the",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T06:33:56",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章介绍SkillCloak技术绕过静态扫描及研究者构建运行时检测器，属于检测技术对抗与更新。"
+          ],
+          "method": "ai"
+        }
+      ],
+      "待审核": [
+        {
+          "title": "OpenClaw’s Skill Marketplace and the Emerging AI Supply Chain Threat",
+          "link": "https://unit42.paloaltonetworks.com/openclaw-ai-supply-chain-risk/",
+          "summary": "Unit 42's analysis of ClawHub revealed evasive malicious skills bypassing automated scanners to deploy infostealers and execute agentic financial fraud. The post OpenClaw’s Skill Marketplace and the Emerging AI Supply Chain Threat appeared first on Unit 42 .",
+          "source_name": "Palo Alto Unit 42",
+          "published": "2026-06-23T22:00:51",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 自动推断"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "From Langflow to Monero: Inside CVE-2026-33017 Cryptominer",
+          "link": "https://www.trendmicro.com/en_us/research/26/f/from-langflow-to-monero-inside-cve-2026-33017-cryptominer.html",
+          "summary": "We tracked a cryptocurrency-mining campaign exploiting CVE-2026-33017, which revealed how threat actors are now scanning exposed AI application infrastructure for their next foothold.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: "
+          ],
+          "method": "ai"
+        }
+      ],
+      "AI对攻防趋势变化": [
+        {
+          "title": "Beyond IOCs: AI-enabled threat intelligence",
+          "link": "https://blog.talosintelligence.com/beyond-iocs-ai-enabled-threat-intelligence/",
+          "summary": "In this week’s newsletter, Martin considers how AI will help threat intelligence by creating an easily queryable data source of intelligence reports.",
+          "source_name": "Cisco Talos",
+          "published": "2026-06-25T18:00:26",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章探讨AI如何通过可查询数据源提升威胁情报，属于战略趋势观点型内容，无具体攻击技术细节。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "How AI-leading Security Teams Are Building the Agentic SOC",
+          "link": "https://www.crowdstrike.com/en-us/blog/how-ai-leading-security-teams-are-building-the-agentic-soc/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章探讨安全团队构建AI驱动的SOC，属于AI改变安全运营的战略趋势观点"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "The Identity Problem Hiding in AI Agent Deployments",
+          "link": "https://www.crowdstrike.com/en-us/blog/the-identity-problem-hiding-in-ai-agent-deployments/",
+          "summary": "",
+          "source_name": "CrowdStrike",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章探讨AI Agent部署中隐藏的身份问题，属于AI改变安全格局的宏观战略观点型分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "GenAI Is Both Hunter and Hunted at Pwn2Own Berlin 2026",
+          "link": "https://www.trendmicro.com/en_us/research/26/f/pwn2own-genai.html",
+          "summary": "This year’s Pwn2Own competition in Berlin revealed just how much of the AI stack remains exposed -- and the gap between what these tools promise and what they can withstand point to the fragile security foundations underneath.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析Pwn2Own比赛揭示的AI栈暴露问题，落脚于AI安全攻防趋势和基础脆弱性，属于趋势观点型。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Software Is Now Written at the Speed of Thought. Security Isn't.",
+          "link": "https://www.bleepingcomputer.com/news/security/software-is-now-written-at-the-speed-of-thought-security-isnt/",
+          "summary": "Every evolution in software development has reduced the friction between an idea and a deployable application. AI may remove the final barrier, but it also removes many of the moments where security decisions have traditionally taken place. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-06T14:00:10",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论AI加速软件开发对安全流程的宏观影响，属于观点趋势类内容，不涉及具体攻击技术细节。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "What Changes When Your Software Supply Chain Includes AI Writing Your Code?",
+          "link": "https://thehackernews.com/2026/07/what-changes-when-your-software-supply.html",
+          "summary": "Software supply chain security was hard enough. Then AI joined the build pipeline.\n\nFor five years, \"software supply chain security\" meant one question: what's in your code? Which open-source packages, which versions, which transitive dependencies three layers deep that nobody chose on purpose? \n\nSolarWinds, Log4Shell, and XZ Utils all taught the same lesson: the risk lives less in the code a",
+          "source_name": "The Hacker News",
+          "published": "2026-07-07T11:30:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论AI参与编码后软件供应链安全格局的战略变化，属趋势观点而非具体攻击技战术。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Identity Lifecycle Management Wasn't Built for AI Agents",
+          "link": "https://thehackernews.com/2026/07/identity-lifecycle-management.html",
+          "summary": "Identity lifecycle management was architected around a person with an employment record, a manager, and a departure date. AI agents have none of those. As autonomous principals proliferate across enterprise environments, the governance model built for humans develops structural blind spots that traditional IGA tools weren't designed to detect. This guide covers where that model breaks, what it",
+          "source_name": "The Hacker News",
+          "published": "2026-07-02T11:30:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论AI代理的身份治理模型结构性盲区，属于战略/观点型趋势分析，无具体攻击技术细节"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Microsoft Accelerates Post-Quantum Cryptography Shift to 2029",
+          "link": "https://thehackernews.com/2026/07/microsoft-accelerates-post-quantum.html",
+          "summary": "Microsoft on Tuesday said it's accelerating its quantum safe security roadmap, stating technology advances in quantum computing are making it essential to replace existing encryption standards sooner than previously expected.\n\n\"Advances in quantum research and development have shifted the risk horizon,\" Mark Russinovich, chief technology officer of Microsoft Azure, said. \"We believe",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T10:41:36",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 微软因量子计算进展加速后量子密码迁移，属于高屋建瓴的战略趋势观点，与示例“Why Post-Quantum Cryptography Starts With Credentials”同类"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Chinese LLMs Broaden the Gap Between Attackers &amp; Defenders",
+          "link": "https://www.darkreading.com/cyber-risk/chinese-llms-broaden-gap-between-attackers-and-defenders",
+          "summary": "Two new models from Chinese firms compete with top US mainstream and frontier models. Should cyber-defenders be worried?",
+          "source_name": "Dark Reading",
+          "published": "2026-07-03T13:01:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论中国LLM模型对攻防态势的影响，属战略趋势观点，无具体攻击技术细节"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "AI-Generated Workflows Are a Silent Security Disaster",
+          "link": "https://www.darkreading.com/cyber-risk/ai-generated-workflows-silent-security-disaster",
+          "summary": "Teams are dealing with a truly dangerous problem — automation that works, but that no one understands.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-30T13:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论AI生成工作流带来未被理解的安全隐患，属于AI改变安全格局的趋势观点"
+          ],
+          "method": "ai"
+        }
+      ],
+      "病毒新变种": [
+        {
+          "title": "Chromium extension uses AI‑related branding to redirect browser search",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/06/29/chromium-extension-uses-airelated-branding-redirect-browser-search/",
+          "summary": "A malicious Chromium-based extension that spoofs the AI-powered answer engine Perplexity AI redirects browser search traffic using MV3 APIs and intermediary infrastructure. The post Chromium extension uses AI‑related branding to redirect browser search appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-06-29T16:27:46",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 分析恶意Chromium扩展的技术特征，冒充AI品牌重定向搜索流量"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "TONResolver RAT Abuses TON Blockchain to Target Japan's Hotel Industry",
+          "link": "https://www.trendmicro.com/en_us/research/26/f/tonresolver.html",
+          "summary": "In this blog entry, TrendAI™ Research examines a wave of phishing emails observed in May 2026 that targeted Japanese accommodation facilities using Booking.com, detailing the victims, attack techniques used, and characteristics of the malware involved.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章标题与摘要明确围绕新型TONResolver RAT的技术特征与攻击手法分析，正例中直接包含同名RAT研究，符合病毒新变种分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "New Java-Based QuimaRAT MaaS Built to Run on Windows, Linux, and macOS",
+          "link": "https://thehackernews.com/2026/07/new-java-based-quimarat-maas-built-to.html",
+          "summary": "Cybersecurity researchers have flagged a novel Java-based remote access trojan (RAT) called QuimaRAT that's capable of targeting Windows, Linux, and macOS environments.\n\nAccording to LevelBlue, the cross-platform malware is advertised under a malware-as-a-service (MaaS) model, costing anywhere between $150 for one month to $1,200 for lifetime access. Other subscription tiers include $300 for",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T08:13:33",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章介绍新型跨平台Java RAT（QuimaRAT）的技术特征与MaaS服务模式，属于恶意软件新变种分析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "New Avalon Malware Framework Packs CrownX Ransomware Capabilities",
+          "link": "https://thehackernews.com/2026/07/new-avalon-malware-framework-packs.html",
+          "summary": "Cybersecurity researchers have discovered a previously undocumented modular malware framework codenamed Avalon that's distributed by means of a multi-stage phishing chain capable of bypassing traditional security controls.\n\nAvalon combines credential collection, lateral movement, remote access, recovery disruption, and ransomware execution, bringing together diverse functions under one",
+          "source_name": "The Hacker News",
+          "published": "2026-07-03T18:55:24",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章披露名为Avalon的新型模块化恶意软件框架，融合勒索软件等多种功能，属于病毒新变种的技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "PamStealer Uses Fake Maccy Sites and PAM Checks to Steal Mac Login Passwords",
+          "link": "https://thehackernews.com/2026/07/pamstealer-uses-fake-maccy-sites-and.html",
+          "summary": "Cybersecurity researchers have flagged a new macOS information stealer called PamStealer that employs a series of clever tricks to infect systems and siphon sensitive data.\n\nThe stealer, discovered by Jamf Threat Labs, is distributed as a compiled AppleScript (.scpt) file impersonating Maccy, a legitimate open-source clipboard manager. It has been codenamed PamStealer owing to its ability to",
+          "source_name": "The Hacker News",
+          "published": "2026-07-03T08:03:37",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析名为PamStealer的新型macOS信息窃取器技术特征与传播方式，属于恶意软件新变种分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "AI-Generated Browser Ransomware Abuses Chromium API on Windows, Linux, macOS, Android",
+          "link": "https://thehackernews.com/2026/07/ai-generated-browser-ransomware-abuses.html",
+          "summary": "Cybersecurity researchers have flagged a new malware artifact generated using DeepSeek that constructed a novel attack path combining \"unrealistic browser-malware concepts with a real browser capability\" to turn it into a working ransomware technique that runs entirely inside the browser on both Windows and Android devices.\n\n\"This is the first documented case where a frontier AI model",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T12:59:19",
+          "score": 99,
+          "matched_keywords": [
+            "AI: AI生成的浏览器勒索软件，利用Chromium API运行，属于新型恶意软件技术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "RustDuck Botnet Rebuilds in Rust to Hijack Routers and Servers for DDoS",
+          "link": "https://thehackernews.com/2026/06/rustduck-botnet-rebuilds-in-rust-to.html",
+          "summary": "A new two-stage malware family called RustDuck is hijacking home routers, IP cameras, Android boxes, and poorly secured servers, then stitching them into a network built to knock websites and online services offline.\n\nResearchers at QiAnXin's XLab have tracked it since February 2026, and say the real story is not how big it is today, but how fast it is changing.\n\nThe end goal is a",
+          "source_name": "The Hacker News",
+          "published": "2026-06-30T17:45:25",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析RustDuck僵尸网络用Rust重写、劫持路由器及服务器进行DDoS，属于新型恶意软件变种的技术特征分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Fake Perplexity Chrome extension spies on your searches",
+          "link": "https://www.malwarebytes.com/blog/privacy/2026/07/fake-perplexity-chrome-extension-spies-on-your-searches",
+          "summary": "A fake Perplexity Chrome extension secretly monitored searches. If you installed \"Search for perplexity ai,\" you need to remove it manually.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-01T20:11:27",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章披露伪装成Perplexity AI的恶意Chrome扩展，属于恶意软件新变种，专门监视用户搜索行为，符合病毒新变种分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Malware steals Chrome session cookies to take over your accounts",
+          "link": "https://www.malwarebytes.com/blog/news/2026/06/malware-steals-chrome-session-cookies-to-take-over-your-accounts",
+          "summary": "A phishing campaign installs a malicious Chrome extension to hijack browser sessions and compromise Windows devices.",
+          "source_name": "Malwarebytes",
+          "published": "2026-06-26T12:44:01",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析一种通过恶意Chrome扩展窃取会话cookie的恶意软件，属于新型恶意软件技术特征分析"
+          ],
+          "method": "ai"
+        }
+      ]
+    },
+    "二、热点安全事件 - 黑客组织攻击技战术更新": {
+      "黑客组织攻击技战术更新": [
+        {
+          "title": "ARToken: Inside an EvilTokens affiliate panel targeting Microsoft 365",
+          "link": "https://blog.talosintelligence.com/artoken-inside-an-eviltokens-affiliate-panel-targeting-microsoft-365/",
+          "summary": "Talos has identified \"ARToken,\" a phishing-as-a-service platform that targets Microsoft 365. The ARToken panel exposes 80+ API endpoints for device code phishing, Primary Refresh Token persistence, email access, BEC operations, and SharePoint exfiltration.",
+          "source_name": "Cisco Talos",
+          "published": "2026-07-01T10:00:38",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析钓鱼即服务平台ARToken的内部架构、API端点及攻击链，属于具体攻击基础设施和手法剖析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Photo ZIP campaign targeting hospitality industry delivers Node.js implant for persistent access",
+          "link": "https://www.microsoft.com/en-us/security/blog/2026/06/25/photo-zip-campaign-targeting-hospitality-industry-delivers-node-js-implant-persistent-access/",
+          "summary": "Microsoft Threat Intelligence identified an active multi-stage intrusion campaign targeting hospitality organizations in Europe and Asia. The campaign uses photo-themed ZIP archives and fake image shortcut files to deliver a persistent Node.js implant and evade detection. The post Photo ZIP campaign targeting hospitality industry delivers Node.js implant for persistent access appeared first on Microsoft Security Blog .",
+          "source_name": "Microsoft Security",
+          "published": "2026-06-25T22:30:29",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章剖析针对酒店业的入侵活动，描述攻击链及持久化植入物，属于APT攻击技战术分析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Armored Likho digging a snake pit: inside the covert BusySnake Stealer campaign",
+          "link": "https://securelist.com/tr/armored-likho-apt-with-busysnake-stealer/120292/",
+          "summary": "An inside look at the active Armored Likho APT campaign. The attackers are using spear-phishing, AI-generated loaders, and a new Python-based tool, BusySnake Stealer, to target organizations in Russia, Kazakhstan, and Brazil.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-07-03T10:00:33",
+          "score": 99,
+          "matched_keywords": [
+            "AI: Armored Likho APT组织使用AI生成加载器和新Stealer的TTP分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "ARToken PhaaS exposes EvilTokens' Microsoft 365 phishing toolkit",
+          "link": "https://www.bleepingcomputer.com/news/security/artoken-phaas-exposes-eviltokens-microsoft-365-phishing-toolkit/",
+          "summary": "A new phishing-as-a-service (PhaaS) platform dubbed \"ARToken\" appears to operate as an affiliate of the EvilTokens phishing platform, giving researchers a glimpse into an extensive toolkit designed to compromise Microsoft 365. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-03T14:12:22",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章曝光了ARToken PhaaS平台及其针对Microsoft 365的钓鱼工具包，属于攻击基础设施与TTPs分析。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Suspected China-Nexus Hackers Use Fake Indian Tax Filing Utility to Deploy DcRAT",
+          "link": "https://thehackernews.com/2026/07/suspected-china-nexus-hackers-use-fake.html",
+          "summary": "A suspected China-nexus threat activity cluster has been observed targeting Indian taxpayers, tax professionals, and corporate finance teams to deliver a remote access trojan designed to steal sensitive data from compromised hosts.\n\nThe multi-stage campaign, codenamed Operation DragonReturn by Seqrite Labs, involves sending spear-phishing emails impersonating the Income Tax Department of India.",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T10:58:16",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析疑似中国APT组织针对印度税务人员的鱼叉邮件攻击活动，属于对具体攻击组织技战术、攻击链的剖析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Phishers Gain Persistence at EU, Asia Hospitality Orgs",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/phishers-persistence-eu-asia-hospitality-orgs",
+          "summary": "Separate but similar campaigns described by Microsoft and Trend Micro use malicious zip files to spread malware via social engineering and obsfucation, including blockchain abuse.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-30T18:59:46",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 报道钓鱼攻击者通过恶意zip文件和社会工程学获取持久化访问，属于具体攻击活动和TTPs分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "'Cordyceps': Mushrooming Malicious Pull Requests Threaten Developer Workflows",
+          "link": "https://www.darkreading.com/application-security/cordyceps-malicious-pull-requests-developer-workflows",
+          "summary": "The CI/CD workflow weakness affects Microsoft's Azure Sentinel, Google's AI Agent Development Kit, Apache's Doris analytics database, Cloudflare's Workers SDK, and Python Software Foundation's Black.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-23T19:16:42",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析恶意拉取请求（Cordyceps）对CI/CD流程的威胁，属于针对开发者工作流的具体攻击技战术剖析"
+          ],
+          "method": "ai"
+        }
+      ],
+      "": [
+        {
+          "title": "Iran-Linked Hackers Use New Cavern C2 Framework to Target Israeli Organizations",
+          "link": "https://thehackernews.com/2026/07/iran-linked-hackers-use-new-cavern-c2.html",
+          "summary": "An Iranian hacking group affiliated with Iran's Ministry of Intelligence and Security (MOIS) has been wielding a previously undocumented modular command-and-control (C2) framework dubbed Cavern (aka Cav3rn) targeting Israeli organizations.\n\nThe activity, which has primarily singled out IT providers and government sectors, has been attributed to a threat cluster tracked by Check Point Research",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T18:34:26",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析伊朗关联黑客针对以色列组织的攻击活动，披露新型C2框架Cavern，属于APT技战术更新"
+          ],
+          "method": "ai"
+        }
+      ]
+    },
+    "三、安全风险通告": {
+      "安全风险通告": [
+        {
+          "title": "PeopleSoft PeopleTools Pre-Authentication RCE: A PSIGW SSRF Chain That Executes Inside the JVM",
+          "link": "https://www.trendmicro.com/en_us/research/26/f/PeopleTools.html",
+          "summary": "A pre-authentication remote code execution (RCE) chain in Oracle PeopleSoft PeopleTools abuses the Integration Broker's PSIGW gateway to execute code inside the application server's Java virtual machine (JVM), evading behavioral and network sensors.",
+          "source_name": "Trend Micro Research",
+          "published": null,
+          "score": 99,
+          "matched_keywords": [
+            "AI: 披露PeopleSoft PeopleTools预认证RCE漏洞利用链，属于漏洞利用预警"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Beware of the license manager: how a Schneider Electric software vulnerability puts industrial facilities at risk",
+          "link": "https://securelist.com/tr/schneider-electric-cve-2024-2658-vulnerability/120436/",
+          "summary": "Analysis of CVE-2024-2658 as found in Schneider Electric's Floating License Manager. Discover how this FlexNet Publisher vulnerability potentially allows attackers to escalate to NT AUTHORITY\\SYSTEM privileges and expand their foothold; learn how to mitigate the risk.",
+          "source_name": "Kaspersky SecureList",
+          "published": "2026-06-26T13:00:14",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章分析CVE-2024-2658漏洞及其危害，符合安全风险通告分类。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Max severity Adobe ColdFusion flaw now exploited in attacks",
+          "link": "https://www.bleepingcomputer.com/news/security/max-severity-adobe-coldfusion-flaw-now-exploited-in-attacks/",
+          "summary": "Attackers are now exploiting a maximum-severity Adobe ColdFusion vulnerability tracked as CVE-2026-48282, according to vulnerability intelligence company KEVIntel. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-06T13:18:37",
+          "score": 3,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Suspected China-Aligned Hackers Exploit Roundcube Flaws Against Universities",
+          "link": "https://thehackernews.com/2026/07/suspected-china-aligned-hackers-exploit.html",
+          "summary": "A suspected China-aligned threat activity cluster has been observed exploiting Roundcube webmail software belonging to physics and engineering departments of U.S. and Canadian universities as part of a new campaign.\n\nThe activity involves the exploitation of now-patched, critical security flaws in the open-source email solution, such as CVE-2024-42009 (CVSS score: 9.3), to siphon credentials,",
+          "source_name": "The Hacker News",
+          "published": "2026-07-07T09:10:51",
+          "score": 4,
+          "matched_keywords": [
+            "cve-",
+            "exploit",
+            "rce",
+            "cvss"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "CERT/CC Warns of Hidden Admin Backdoor in Tenda Router Firmware",
+          "link": "https://thehackernews.com/2026/07/certcc-warns-of-hidden-admin-backdoor.html",
+          "summary": "Several versions of firmware released by Chinese network device manufacturer Tenda have been found to embed an undocumented authentication backdoor that enables administrative access to the devices' web management interfaces, the CERT Coordination Center (CERT/CC) warned Monday.\n\n\"An attacker can exploit this vulnerability, tracked as CVE-2026-11405, to bypass the password verification process",
+          "source_name": "The Hacker News",
+          "published": "2026-07-07T06:40:47",
+          "score": 3,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "BeyondTrust Patches Critical Auth Bypass Flaws in Remote Support and PRA",
+          "link": "https://thehackernews.com/2026/07/beyondtrust-patches-critical-auth.html",
+          "summary": "BeyondTrust has released updates to address two critical security flaws affecting Remote Support (RS) and Privileged Remote Access (PRA) products that, if successfully exploited, could allow unauthenticated attackers to take control of susceptible devices.\n\nThe vulnerabilities are listed below -\n\n\n  CVE-2026-40138 (CVSS score: 9.2) - A pre-authentication vulnerability exists in the",
+          "source_name": "The Hacker News",
+          "published": "2026-07-07T05:16:51",
+          "score": 4,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit",
+            "cvss"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "16-Year-Old Linux KVM Flaw Lets Guest VMs Escape to Host on Intel and AMD x86 Systems",
+          "link": "https://thehackernews.com/2026/07/16-year-old-linux-kvm-flaw-lets-guest.html",
+          "summary": "A use-after-free bug in Linux's KVM hypervisor can be triggered from a guest virtual machine to corrupt the shadow-page state of the host kernel that runs it.\n\nDubbed 'Januscape' and tracked as CVE-2026-53359, the flaw sits in the shadow MMU code that KVM shares across both Intel and AMD. The public proof-of-concept panics the host; the researcher claims that a separate, unreleased exploit",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T17:37:01",
+          "score": 99,
+          "matched_keywords": [
+            "AI: Linux KVM漏洞CVE-2026-53359披露，包含PoC，属于典型的安全风险通告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Threat Actors Probe Gitea Docker Flaw CVE-2026-20896 13 Days After Disclosure",
+          "link": "https://thehackernews.com/2026/07/threat-actors-probe-gitea-docker-flaw.html",
+          "summary": "Threat actors have been observed attempting to exploit a recently patched critical security flaw in Gitea Docker images, according to Sysdig.\n\nThe vulnerability in question is CVE-2026-20896 (CVSS score: 9.8), a vulnerability that stems from the DevOps platform trusting the \"X-WEBAUTH-USER\" header from any source IP address, effectively allowing an unauthenticated internet client to get elevated",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T16:28:59",
+          "score": 5,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit",
+            "rce",
+            "cvss"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Opera GX Flaw Let Malicious Sites Auto-Install Mods to Steal Data From Visited Pages",
+          "link": "https://thehackernews.com/2026/07/opera-gx-flaw-let-malicious-sites-auto.html",
+          "summary": "Researchers found a flaw in Opera GX, the gaming-focused version of the Opera browser, that let a malicious website silently install a browser add-on and use it to lift specific data from the pages a victim visits.\n\nIn a proof of concept, they reconstructed a signed-in user's full Gmail address from a single visit, with no click. Opera has patched the flaw and says it found no evidence that",
+          "source_name": "The Hacker News",
+          "published": "2026-07-06T07:27:50",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 浏览器漏洞可被恶意网站利用，文章包含PoC和补丁信息，符合安全风险通告特征"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "New \"Bad Epoll\" Linux Kernel Flaw Lets Unprivileged Users Gain Root, Hits Android",
+          "link": "https://thehackernews.com/2026/07/new-bad-epoll-linux-kernel-flaw-lets.html",
+          "summary": "A newly disclosed Linux kernel flaw called Bad Epoll (CVE-2026-46242) lets an ordinary user with no special access take full control of a machine as root. It affects Linux desktops, servers, and Android, and a fix is out.\n\nBad Epoll sits in the same small stretch of kernel code where Anthropic's most powerful AI model, Mythos, recently found a different bug.\n\nThe AI caught one flaw and missed",
+          "source_name": "The Hacker News",
+          "published": "2026-07-03T19:40:01",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章是关于CVE-2026-46242 Linux内核提权漏洞的通告，属于CVE漏洞通告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Ransomware Groups Turn to Citrix Bleed 2, BYOVD, and Supply Chain Credentials",
+          "link": "https://thehackernews.com/2026/07/ransomware-groups-turn-to-citrix-bleed.html",
+          "summary": "Threat actors associated with the Anubis ransomware operation have been observed exploiting the Citrix Bleed 2 (CVE-2025-5777) vulnerability to obtain initial access.\n\n\"Although tactics differ between affiliates, common patterns emerged in tradecraft through use of legitimate Remote Management and Monitoring (RMM) tooling, credential access, and hands-on-keyboard procedures used for lateral",
+          "source_name": "The Hacker News",
+          "published": "2026-07-02T18:30:33",
+          "score": 3,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "AI Agent Exploits Langflow RCE to Automate Database Ransomware Attack",
+          "link": "https://thehackernews.com/2026/07/ai-agent-exploits-langflow-rce-to.html",
+          "summary": "Security firm Sysdig says it has found what it believes is the first ransomware attack run from start to finish by an AI agent.\n\nIts Threat Research Team calls the operator JADEPUFFER and says a large language model handled the whole job: breaking in, stealing credentials, moving deeper into the network, then encrypting and wiping a company's production database.\n\nRansomware has always",
+          "source_name": "The Hacker News",
+          "published": "2026-07-02T09:13:13",
+          "score": 2,
+          "matched_keywords": [
+            "exploit",
+            "rce"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "New ChocoPoC RAT Targets Vulnerability Researchers via Fake PoC Exploit Repos",
+          "link": "https://thehackernews.com/2026/07/new-chocopoc-rat-targets-vulnerability.html",
+          "summary": "Attackers are hiding a data-stealing trojan inside fake exploit code aimed at the people who hunt bugs for a living. The malware, called ChocoPoC, travels in Python proof-of-concept (PoC) repositories on GitHub that claim to exploit hot new CVEs.\n\nRun one, and it quietly lifts your saved passwords, browser cookies, and files, then hands the attacker a shell on your machine. YesWeHack and",
+          "source_name": "The Hacker News",
+          "published": "2026-07-02T07:24:23",
+          "score": 3,
+          "matched_keywords": [
+            "vulnerability",
+            "exploit",
+            "poc"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "SharePoint RCE CVE-2026-45659 Added to CISA KEV After Active Exploitation",
+          "link": "https://thehackernews.com/2026/07/sharepoint-rce-cve-2026-45659-added-to.html",
+          "summary": "The U.S. Cybersecurity and Infrastructure Security Agency (CISA) on Wednesday added a high-severity flaw impacting Microsoft SharePoint Server to its Known Exploited Vulnerabilities (KEV) catalog, citing evidence of active exploitation.\n\nThe vulnerability, tracked as CVE-2026-45659 (CVSS score: 8.8), is a case of remote code execution arising from the deserialization of untrusted data. The issue",
+          "source_name": "The Hacker News",
+          "published": "2026-07-02T05:46:45",
+          "score": 6,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit",
+            "remote code execution",
+            "rce"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Adobe Patches 7 CVSS 10.0 Flaws in ColdFusion and Campaign Classic",
+          "link": "https://thehackernews.com/2026/07/adobe-patches-7-cvss-100-flaws-in.html",
+          "summary": "Adobe has released patches for multiple maximum-severity security flaws impacting Adobe ColdFusion and Adobe Campaign Classic.\n\nThe ColdFusion updates \"resolves critical and important vulnerabilities that could lead to arbitrary code execution, privilege escalation, arbitrary file system read, and security feature bypass,\" Adobe said in an alert released Tuesday.\n\nThe vulnerabilities are listed",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T15:25:46",
+          "score": 3,
+          "matched_keywords": [
+            "privilege escalation",
+            "cvss",
+            "patches for"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Critical Cursor Flaws Could Let Prompt Injection Escape Sandbox and Run Commands",
+          "link": "https://thehackernews.com/2026/07/critical-cursor-flaws-could-let-prompt.html",
+          "summary": "Two flaws in Cursor, an AI code editor, could let a single, ordinary-looking prompt break out of the editor's safety sandbox and run any command on a developer's computer. There is no click to fall for and no approval box to ignore.\n\nCato AI Labs found the pair and named them DuneSlide. They are tracked as CVE-2026-50548 and CVE-2026-50549, both rated 9.8 out of 10 (or 9.3",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T14:42:54",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章披露Cursor两个CVE漏洞（CVE-2026-50548、CVE-2026-50549），可导致沙箱逃逸和命令执行，属于漏洞预警。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Progress Kemp LoadMaster Pre-Auth RCE Flaw Faces Active Exploitation Attempts",
+          "link": "https://thehackernews.com/2026/07/latest-progress-kemp-loadmaster-pre.html",
+          "summary": "A recently disclosed critical security flaw impacting Progress Kemp LoadMaster is seeing active exploitation attempts, according to an advisory from eSentire's Threat Response Unit (TRU).\n\nThe Canadian cybersecurity company said it identified exploitation attempts targeting CVE-2026-8037 (CVSS score: 9.6), an operating system (OS) command injection flaw that could be exploited to achieve",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T13:56:18",
+          "score": 4,
+          "matched_keywords": [
+            "cve-",
+            "exploit",
+            "rce",
+            "cvss"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Citrix Patches Six NetScaler Flaws Allowing File Read and Denial-of-Service",
+          "link": "https://thehackernews.com/2026/07/citrix-patches-six-netscaler-flaws.html",
+          "summary": "Citrix on Tuesday released security updates to address multiple flaws in NetScaler ADC (formerly Citrix ADC) and NetScaler Gateway (formerly Citrix Gateway) that could be exploited by an attacker to facilitate arbitrary file reads or trigger a denial-of-service (DoS) condition.\n\nThe vulnerabilities are listed below -\n\n\n  CVE-2026-8451 (CVSS score: 8.8) - An insufficient input validation",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T03:54:22",
+          "score": 5,
+          "matched_keywords": [
+            "cve-",
+            "exploit",
+            "security update",
+            "cvss",
+            "released security"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "CitrixBleed-ing Again? NetScaler Vulnerability Under Attack",
+          "link": "https://www.darkreading.com/vulnerabilities-threats/citrixbleed-ing-again-netscaler-vulnerability-under-attack",
+          "summary": "Attackers wasted little time targeting the latest memory disclosure flaw in Citrix's NetScaler products, after researchers published a proof-of-concept exploit (PoC).",
+          "source_name": "Dark Reading",
+          "published": "2026-07-06T21:17:42",
+          "score": 3,
+          "matched_keywords": [
+            "vulnerability",
+            "exploit",
+            "poc"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "'Djinn' Stealer Targets Cloud, AI Credentials",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/djinn-stealer-targets-cloud-ai-credentials",
+          "summary": "The infostealer was delivered via CVE-2026-48558, a critical authentication bypass vulnerability in SimpleHelp, targeting credentials linking development and admin environments to wider enterprise systems.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-29T21:29:15",
+          "score": 3,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "authentication bypass"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Vulnerabilities Expose Private Data in Indian Government Systems",
+          "link": "https://www.darkreading.com/vulnerabilities-threats/vulnerabilities-private-data-indian-government-systems",
+          "summary": "One critical vulnerability, among many discovered by a researcher, could have allowed anyone to walk in and take over a national government portal.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-29T21:05:29",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道研究员在印度政府系统中发现的关键漏洞，属于漏洞披露与安全风险通告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Amazon Q VS Extension Flaw Leads to Cloud Credential Theft",
+          "link": "https://www.darkreading.com/cloud-security/amazon-q-vs-extension-flaw-leads-cloud-credential-theft",
+          "summary": "Adversaries could plant a malicious repository that can execute arbitrary code and steal cloud credentials by exploiting the vulnerability, which showcases growing MCP risk.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-29T11:44:42",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 报道Amazon Q VS扩展漏洞导致云凭证窃取，属于漏洞利用预警。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "In Less Than 24 Hours, Attackers Weaponize Cisco CUCM Flaw",
+          "link": "https://www.darkreading.com/cyberattacks-data-breaches/less-than-24-hours-attackers-weaponize-cisco-cucm-flaw",
+          "summary": "The flaw enables server-side request forgery (SSRF) and escalates privileges to root, impacting Cisco Unified CM and Unified CM SME deployments.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-25T21:54:34",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道攻击者在24小时内将Cisco CUCM漏洞武器化，属于漏洞利用预警，符合风险通告特征"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Apple's MacOS Gap Lets Users Disable Security Tools",
+          "link": "https://www.darkreading.com/application-security/apple-macos-security-gap-users-disable-security-tools",
+          "summary": "Attackers can exploit the issue to disable security and integrated browser tools without needing administrator privileges or kernel exploits.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-24T12:00:00",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章披露了macOS中可被利用来禁用安全工具的漏洞利用方法，属于漏洞利用预警类内容。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "DifyTap Bugs Let Attackers 'Wiretap' AI Chat Histories",
+          "link": "https://www.darkreading.com/application-security/difytap-bugs-wiretap-ai-chat-histories",
+          "summary": "Four vulnerabilities allow attackers to exploit Dify, a platform for AI application building and management, to silently access and exfiltrate sensitive data.",
+          "source_name": "Dark Reading",
+          "published": "2026-06-22T21:14:11",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章披露Dify平台多个漏洞可被利用窃取AI对话数据，属于漏洞利用预警"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Verified X ad spreads Mac malware, while ConsentFix steals Microsoft accounts",
+          "link": "https://www.malwarebytes.com/blog/news/2026/07/verified-x-ad-spreads-mac-malware-while-consentfix-steals-microsoft-accounts",
+          "summary": "Two new campaigns show how cybercriminals are increasingly relying on social engineering instead of software exploits to compromise devices and accounts.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-03T13:30:36",
+          "score": 1,
+          "matched_keywords": [
+            "exploit"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Apple’s Hide My Email doesn&#8217;t hide it very well",
+          "link": "https://www.malwarebytes.com/blog/news/2026/07/apples-hide-my-email-doesnt-hide-it-very-well",
+          "summary": "A year ago a researcher found a vulnerability in Apple's Hide My Email feature and now he's tired of waiting for a fix.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-02T16:22:25",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报告了Apple Hide My Email功能中的一个漏洞，属于漏洞披露与修复等待，符合安全风险通告范畴。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Update time: Apple releases security patches for iOS, MacOS Tahoe, Safari",
+          "link": "https://www.malwarebytes.com/blog/news/2026/06/update-time-apple-releases-security-patches-for-ios-macos-tahoe-safari",
+          "summary": "A new Apple update fixes a multitude of browser and browser related vulnerabilities which have been public knowledge for a while",
+          "source_name": "Malwarebytes",
+          "published": "2026-06-30T14:35:45",
+          "score": 4,
+          "matched_keywords": [
+            "security patches",
+            "security patch",
+            "patches for",
+            "safari update"
+          ],
+          "method": "keyword"
+        }
+      ],
+      "三、安全风险通告": [
+        {
+          "title": "New Januscape Linux flaw allows VM escape on Intel, AMD devices",
+          "link": "https://www.bleepingcomputer.com/news/linux/new-januscape-linux-kernel-flaw-allows-vm-escape-on-intel-amd-devices/",
+          "summary": "A 16-year-old Linux kernel vulnerability, dubbed Januscape, allows attackers to escape a virtual machine and execute arbitrary code on the host. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-07-07T12:06:09",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道了一个16年前Linux内核漏洞（CVE），允许虚拟机逃逸，属于漏洞通告"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Chrome needs another whopper update to fix 382 security bugs",
+          "link": "https://www.malwarebytes.com/blog/bugs/2026/07/chrome-needs-another-whopper-update-to-fix-382-security-fixes",
+          "summary": "Google's released a huge update of 382 security fixes, 15 of which were rated as critical. So, it's time to update again!",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-01T11:40:49",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道Google发布Chrome更新修复382个安全漏洞，属于安全补丁公告和漏洞修复通告。"
+          ],
+          "method": "ai"
+        }
+      ],
+      "": [
+        {
+          "title": "Unpatched Flaws Disclosed in Filesystem Bundled Into Millions of Embedded Devices",
+          "link": "https://thehackernews.com/2026/07/unpatched-flaws-disclosed-in-filesystem.html",
+          "summary": "Security firm runZero has disclosed seven vulnerabilities in FatFs, a small filesystem library that lets a device read and write the FAT and exFAT formats used on USB drives and SD cards.\n\nThe flaws matter because FatFs is nearly everywhere. It ships inside the firmware that runs security cameras, drones, industrial controllers, hardware crypto wallets, and other devices built on",
+          "source_name": "The Hacker News",
+          "published": "2026-07-03T20:19:31",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章披露了FatFs文件系统库中的七个漏洞，属于典型的安全漏洞通告与风险预警"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "WinRAR flaw could allow attackers to take control of your computer",
+          "link": "https://www.malwarebytes.com/blog/news/2026/07/winrar-flaw-could-allow-attackers-to-take-control-of-your-computer",
+          "summary": "A new WinRAR update fixes a serious security flaw, but without automatic updates many users could miss the patch.",
+          "source_name": "Malwarebytes",
+          "published": "2026-07-02T12:38:12",
+          "score": 99,
+          "matched_keywords": [
+            "AI: WinRAR漏洞修复公告，涉及严重安全漏洞及补丁更新，符合CVE漏洞通告/补丁公告特征"
+          ],
+          "method": "ai"
+        }
+      ],
+      "漏洞利用预警": [
+        {
+          "title": "Unpatched Argo CD Repo-Server Flaw Could Let Attackers Take Over Kubernetes Clusters",
+          "link": "https://thehackernews.com/2026/07/unpatched-argo-cd-repo-server-flaw.html",
+          "summary": "Argo CD, a widely used tool for deploying software to Kubernetes, has an unpatched flaw in its repo-server component that lets an unauthenticated attacker run code, provided they can reach the component's internal network port.\n\nSynacktiv, which found the bug, says it can lead to a full cluster takeover. There is no fix and no CVE. The firm says it reported the flaw to Argo CD's maintainers in",
+          "source_name": "The Hacker News",
+          "published": "2026-07-01T19:40:06",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章报道Argo CD存在未修补的严重漏洞可导致集群接管，属于漏洞利用预警，且无CVE。"
+          ],
+          "method": "ai"
+        }
+      ]
+    }
+  }
+}

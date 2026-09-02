@@ -7,6 +7,8 @@ node_modules/
 tools/session-manager/dist/
 *.log
 .DS_Store
+__pycache__/
+*.py[cod]
 .idea/
 .local/
 .go-cache/

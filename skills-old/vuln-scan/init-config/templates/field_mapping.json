@@ -1,0 +1,168 @@
+{
+    "fuzz_scan": {
+        "cn_name": "fuzz测试",
+        "value": {
+            "0": "禁用",
+            "1": "启用"
+        }
+    },
+    "conc_module": {
+        "cn_name": "并发选择",
+        "value": {
+            "1": "高",
+            "2": "中",
+            "3": "低"
+        }
+    },
+    "port_type": {
+        "cn_name": "端口扫描策略",
+        "value": {
+            "common": "常用端口",
+            "full": "全局端口",
+            "diy": "自定义端口"
+        }
+    },
+    "asset_mode": {
+        "cn_name": "资产范围",
+        "value": {
+            "0": "全部授权资产",
+            "1": "指定资产"
+        }
+    },
+    "is_versioncomparison_correct": {
+        "cn_name": "版本对比的漏洞审核为正报还是误判",
+        "value": {
+            "0": "误判",
+            "1": "正报"
+        }
+    },
+    "include_unnecessary": {
+        "cn_name": "是否导出未审核、误判、已下架 及 加白漏洞",
+        "value": {
+            "0": "不导出",
+            "1": "导出"
+        }
+    },
+    "export_type": {
+        "cn_name": "导出方式",
+        "value": {
+            "0": "业务维度",
+            "1": "漏洞维度",
+            "2": "责任人维度"
+        }
+    },
+    "is_multi": {
+        "cn_name": "导出表设置",
+        "value": {
+            "0": "单表",
+            "1": "多表"
+        }
+    },
+    "vul_level_flag": {
+        "cn_name": "按漏洞等级拆分",
+        "value": {
+            "0": "否",
+            "1": "是"
+        }
+    },
+    "vul_fix_schema": {
+        "cn_name": "是否导出修复漏洞方案",
+        "value": {
+            "0": "否",
+            "1": "是"
+        }
+    },
+    "vul_proof_report": {
+        "cn_name": "是否导出漏洞举证报告",
+        "value": {
+            "0": "否",
+            "1": "是"
+        }
+    },
+    "fuzz测试": {
+        "en_name": "fuzz_scan",
+        "value": {
+            "禁用": 0,
+            "启用": 1
+        }
+    },
+    "并发选择": {
+        "en_name": "conc_module",
+        "value": {
+            "高": 1,
+            "中": 2,
+            "低": 3
+        }
+    },
+    "端口扫描策略": {
+        "en_name": "port_type",
+        "value": {
+            "常用端口": "common",
+            "全局端口": "full",
+            "自定义端口": "diy"
+        }
+    },
+    "资产范围": {
+        "en_name": "asset_mode",
+        "value": {
+            "全部授权资产": 0,
+            "指定资产": 1
+        }
+    },
+    "版本对比的漏洞审核为正报还是误判": {
+        "en_name": "is_versioncomparison_correct",
+        "value": {
+            "误判": 0,
+            "正报": 1
+        }
+    },
+    "是否导出未审核、误判、已下架 及 加白漏洞": {
+        "en_name": "include_unnecessary",
+        "value": {
+            "不导出": 0,
+            "导出": 1
+        }
+    },
+    "导出方式": {
+        "en_name": "export_type",
+        "value": {
+            "业务维度": 0,
+            "漏洞维度": 1,
+            "责任人维度": 2
+        }
+    },
+    "导出表设置": {
+        "en_name": "is_multi",
+        "value": {
+            "单表": 0,
+            "多表": 1
+        }
+    },
+    "按漏洞等级拆分": {
+        "en_name": "vul_level_flag",
+        "value": {
+            "否": 0,
+            "是": 1
+        }
+    },
+    "是否导出修复漏洞方案": {
+        "en_name": "vul_fix_schema",
+        "value": {
+            "否": 0,
+            "是": 1
+        }
+    },
+    "是否导出漏洞举证报告": {
+        "en_name": "vul_proof_report",
+        "value": {
+            "否": 0,
+            "是": 1
+        }
+    },
+    "自定义端口": {
+        "en_name": "diy_port"
+    },
+    "指定资产": {
+        "en_name": "asset_list"
+    }
+}

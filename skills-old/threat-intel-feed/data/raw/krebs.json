@@ -1,0 +1,30 @@
+[
+  {
+    "id": "https://krebsonsecurity.com/?p=73923",
+    "title": "FBI Seizes NetNut Proxy Platform, Popa Botnet",
+    "summary": "The Federal Bureau of Investigation (FBI) said today it worked with industry partners to seize hundreds of domains associated with NetNut, a sprawling residential proxy service operated by the publicly-traded Israeli company Alarum Technologies [NASDAQ: ALAR]. The action comes roughly two weeks after KrebsOnSecurity published findings from multiple security firms connecting NetNut to the Popa botnet, a collection of at least two million devices that have been compromised by malicious software wi",
+    "link": "https://krebsonsecurity.com/2026/07/fbi-seizes-netnut-proxy-platform-popa-botnet/",
+    "published": "2026-07-02T19:27:33",
+    "source_id": "krebs",
+    "source_name": "Krebs on Security",
+    "tags": [
+      "cybercrime",
+      "investigation"
+    ],
+    "fetched_at": "2026-07-07T20:33:58.627428"
+  },
+  {
+    "id": "https://krebsonsecurity.com/?p=73876",
+    "title": "Scattered Spider Hackers Plead Guilty on Day 1 of Trial",
+    "summary": "Two men pleaded guilty in the United Kingdom this week to criminal charges stemming from an August 2024 cyberattack that crippled Transport for London, the entity responsible for the public transport network in the Greater London area. The duo were key members of a prolific cybercrime group known as Scattered Spider, and their guilty pleas came on the first day of what was expected to be a six-week trial.",
+    "link": "https://krebsonsecurity.com/2026/06/scattered-spider-hackers-plead-guilty-on-day-1-of-trial/",
+    "published": "2026-06-23T16:12:49",
+    "source_id": "krebs",
+    "source_name": "Krebs on Security",
+    "tags": [
+      "cybercrime",
+      "investigation"
+    ],
+    "fetched_at": "2026-07-07T20:33:58.627428"
+  }
+]

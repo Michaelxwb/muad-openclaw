@@ -1,0 +1,152 @@
+[
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/f/tonresolver.html",
+    "title": "TONResolver RAT Abuses TON Blockchain to Target Japan's Hotel Industry",
+    "summary": "In this blog entry, TrendAI™ Research examines a wave of phishing emails observed in May 2026 that targeted Japanese accommodation facilities using Booking.com, detailing the victims, attack techniques used, and characteristics of the malware involved.",
+    "link": "https://www.trendmicro.com/en_us/research/26/f/tonresolver.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.346128"
+  },
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/f/from-langflow-to-monero-inside-cve-2026-33017-cryptominer.html",
+    "title": "From Langflow to Monero: Inside CVE-2026-33017 Cryptominer",
+    "summary": "We tracked a cryptocurrency-mining campaign exploiting CVE-2026-33017, which revealed how threat actors are now scanning exposed AI application infrastructure for their next foothold.",
+    "link": "https://www.trendmicro.com/en_us/research/26/f/from-langflow-to-monero-inside-cve-2026-33017-cryptominer.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.347651"
+  },
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/f/PeopleTools.html",
+    "title": "PeopleSoft PeopleTools Pre-Authentication RCE: A PSIGW SSRF Chain That Executes Inside the JVM",
+    "summary": "A pre-authentication remote code execution (RCE) chain in Oracle PeopleSoft PeopleTools abuses the Integration Broker's PSIGW gateway to execute code inside the application server's Java virtual machine (JVM), evading behavioral and network sensors.",
+    "link": "https://www.trendmicro.com/en_us/research/26/f/PeopleTools.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.348651"
+  },
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/f/claudeai-shared-chat-abused-in-malvertising.html",
+    "title": "Threat Actors Abuse claude.ai Shared Chat for ClickFix Malvertising Campaign",
+    "summary": "Cybercriminals hijacked Google Ads searches for popular AI developer tools to funnel over 2,000 victims toward malicious download pages before quietly moving their operation onto claude.ai's own platform, turning the trusted domain into a delivery mechanism for credential-stealing malware.",
+    "link": "https://www.trendmicro.com/en_us/research/26/f/claudeai-shared-chat-abused-in-malvertising.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.349652"
+  },
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/f/governing-claude-enterprise.html",
+    "title": "Governing Claude Enterprise in Environments Where Inline Controls Can't Go",
+    "summary": "TrendAI™ integrates the Claude Compliance API into TrendAI Vision One™ through two collectors that bring AI-aware visibility and detection to Claude Enterprise usage: one keeps all data inside the environment, while the other feeds TrendAI Vision One™ for deeper correlation and compliance.",
+    "link": "https://www.trendmicro.com/en_us/research/26/f/governing-claude-enterprise.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.351652"
+  },
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/f/pwn2own-genai.html",
+    "title": "GenAI Is Both Hunter and Hunted at Pwn2Own Berlin 2026",
+    "summary": "This year’s Pwn2Own competition in Berlin revealed just how much of the AI stack remains exposed -- and the gap between what these tools promise and what they can withstand point to the fragile security foundations underneath.",
+    "link": "https://www.trendmicro.com/en_us/research/26/f/pwn2own-genai.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.355652"
+  },
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/f/old-winrar-flaw-fuels-attacks-on-ukraine.html",
+    "title": "Old WinRAR Flaw Fuels Attacks on Ukraine: How Unmanaged Software Keeps the Door Open",
+    "summary": "Two separate Russia-aligned campaigns are still exploiting the WinRAR flaw CVE-2025-8088 against Ukrainian organizations nearly a year after it was patched, showing how unmanaged software keeps an exploited entry point open long after the fix ships.",
+    "link": "https://www.trendmicro.com/en_us/research/26/f/old-winrar-flaw-fuels-attacks-on-ukraine.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.356652"
+  },
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/f/pwn2own-berlin-2026.html",
+    "title": "Pwn2Own Berlin 2026: On the Ground With TrendAI™ ZDI's Biggest AI Showdown Yet",
+    "summary": "47 zero-days fell at Pwn2Own Berlin 2026 for US$1,298,250 in payouts. TrendAI™ was on the ground all three days — here's what we saw.",
+    "link": "https://www.trendmicro.com/en_us/research/26/f/pwn2own-berlin-2026.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.357654"
+  },
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/e/smart-contracts-for-command-and-control.html",
+    "title": "Smart Contracts for C&C: How ClearFake Hid in Plain Sight on BSC Testnet",
+    "summary": "TrendAI™ Research analyzed an intrusion where threat actors used the EtherHiding technique to route ClearFake payload delivery through smart contracts on the BNB Smart Chain testnet. The attack chain ended with two simultaneously deployed stealers, SectopRAT and ACRStealer alongside an on-chain execution tracker that confirmed each victim compromise in real time.",
+    "link": "https://www.trendmicro.com/en_us/research/26/e/smart-contracts-for-command-and-control.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.358653"
+  },
+  {
+    "id": "https://www.trendmicro.com/en_us/research/26/e/analyzing-void-dokkaebi-invisibleferret-malware.html",
+    "title": "Analyzing Void Dokkaebi’s Cython-Compiled InvisibleFerret Malware",
+    "summary": "Void Dokkaebi, a North Korea-aligned intrusion set, has updated its information-stealing malware, InvisibleFerret, shifting its delivery format to evade script-based detections.",
+    "link": "https://www.trendmicro.com/en_us/research/26/e/analyzing-void-dokkaebi-invisibleferret-malware.html",
+    "published": null,
+    "source_id": "trendmicro",
+    "source_name": "Trend Micro Research",
+    "tags": [
+      "apt",
+      "malware",
+      "iot"
+    ],
+    "fetched_at": "2026-07-01T21:06:53.361150"
+  }
+]

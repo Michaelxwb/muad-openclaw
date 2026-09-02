@@ -1,0 +1,152 @@
+[
+  {
+    "id": "https://www.crowdstrike.com/?p=926255",
+    "title": "How AI-leading Security Teams Are Building the Agentic SOC",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/how-ai-leading-security-teams-are-building-the-agentic-soc/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.478894"
+  },
+  {
+    "id": "https://www.crowdstrike.com/?p=751675",
+    "title": "Browser Security: Zero-Days Are Only Part of the Problem",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/browser-security-zero-days-are-only-part-of-the-problem/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.478894"
+  },
+  {
+    "id": "https://www.crowdstrike.com/?p=584795",
+    "title": "Falcon Cloud Security June 2026 Release: Updates for Azure and Google Cloud",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/new-in-falcon-cloud-security-expanding-multi-cloud-coverage/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.478894"
+  },
+  {
+    "id": "https://www.crowdstrike.com/?p=296982",
+    "title": "The Identity Problem Hiding in AI Agent Deployments",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/the-identity-problem-hiding-in-ai-agent-deployments/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.479896"
+  },
+  {
+    "id": "https://www.crowdstrike.com/?p=693373",
+    "title": "94% of Organizations Report Cloud Breaches: CrowdStrike State of CDR Survey",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/crowdstrike-state-of-cdr-survey-key-takeaways/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.479896"
+  },
+  {
+    "id": "https://www.crowdstrike.com/?p=929750",
+    "title": "New Abuse of the ClickOnce Technology, Part 2: Stop Threat Actors from Clicking Once and Staying Forever",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/new-abuse-of-the-clickonce-technology-part-two/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.479896"
+  },
+  {
+    "id": "https://www.crowdstrike.com/?p=113321",
+    "title": "New Abuse of the ClickOnce Technology, Part 1: The Inner Workings of ClickOnce Application Deployment",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/new-abuse-of-the-clickonce-technology-part-one/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.479896"
+  },
+  {
+    "id": "https://www.crowdstrike.com/?p=940883",
+    "title": "After Executive Order 14409: Next Steps for Securing AI",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/after-executive-order-14409-next-steps-for-securing-ai/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.479896"
+  },
+  {
+    "id": "https://www.crowdstrike.com/?p=732145",
+    "title": "Falcon Exposure Management Now Available for Third-Party Environments",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/falcon-exposure-management-now-available-for-third-party-environments/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.479896"
+  },
+  {
+    "id": "https://www.crowdstrike.com/?p=518846",
+    "title": "CrowdStrike Announces Continuous Identity for AI Agents",
+    "summary": "",
+    "link": "https://www.crowdstrike.com/en-us/blog/crowdstrike-announces-continuous-identity-for-ai-agents/",
+    "published": null,
+    "source_id": "crowdstrike",
+    "source_name": "CrowdStrike",
+    "tags": [
+      "apt",
+      "edr",
+      "incident-response"
+    ],
+    "fetched_at": "2026-07-07T20:25:17.479896"
+  }
+]

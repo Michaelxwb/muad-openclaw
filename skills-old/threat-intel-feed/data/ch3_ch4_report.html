@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bi-weekly Threat Intelligence Report — Ch.3 & Ch.4</title>
+<style>
+    body { font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.7; }
+    h1 { color: #1a3a5c; border-bottom: 3px solid #1a3a5c; padding-bottom: 12px; font-size: 1.8em; }
+    h2 { color: #2c5f8a; border-bottom: 2px solid #2c5f8a; padding-bottom: 8px; margin-top: 35px; font-size: 1.4em; }
+    h3 { color: #3a7ab5; margin-top: 25px; font-size: 1.15em; }
+    .meta { color: #666; font-size: 0.9em; margin-bottom: 25px; }
+    .article { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 18px 0; }
+    .article h3 { margin-top: 0; font-size: 1.1em; }
+    .article h3 a { color: #3a7ab5; text-decoration: none; }
+    .article h3 a:hover { text-decoration: underline; }
+    .cve-tag { display: inline-block; background: #dc3545; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.8em; margin: 2px 4px 2px 0; font-family: monospace; }
+    .section-label { font-weight: 600; color: #495057; margin-top: 12px; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; font-size: 0.9em; }
+    th, td { border: 1px solid #dee2e6; padding: 10px 14px; text-align: left; }
+    th { background: #f1f3f5; font-weight: 600; color: #495057; }
+    tr:nth-child(even) { background: #fafbfc; }
+    img { max-width: 100%; height: auto; }
+    .highlight-box { background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; padding: 15px; margin: 12px 0; }
+    .info-box { background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 5px; padding: 15px; margin: 12px 0; color: #0c5460; }
+    .footer { margin-top: 50px; padding-top: 25px; border-top: 1px solid #dee2e6; color: #999; font-size: 0.85em; text-align: center; }
+    .toc { background: #f1f3f5; padding: 15px 20px; border-radius: 5px; margin: 20px 0; }
+    .toc a { color: #3a7ab5; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<h1>🔒 Bi-weekly Threat Intelligence Report</h1>
+<p class="meta">
+    <strong>Generated:</strong> July 07, 2026<br>
+    <strong>Chapters:</strong> 3 — Vulnerability Intelligence Summary | 4 — Microsoft Security Bulletin<br>
+    <strong>Source:</strong> Sangfor Security Wiki (<a href="https://sec.sangfor.com.cn/wiki-safe-events">sec.sangfor.com.cn</a>)<br>
+    <strong>Period:</strong> Last 15 days
+</p>
+
+<div class="info-box">
+    <strong>⚠️ Note:</strong> Detailed article content (event descriptions, solutions, embedded charts) requires authentication on the source website. This report includes all publicly visible metadata (titles, CVE IDs, publication dates). For full details including vulnerability analysis tables and charts, please access the linked articles with a Sangfor Community account.
+</div>
+
+<div class="toc">
+    <strong>📑 Table of Contents</strong><br>
+    <a href="#ch3">Chapter 3: Vulnerability Intelligence Summary</a> (9 articles)<br>
+    <a href="#ch4">Chapter 4: Microsoft Security Bulletin</a>
+</div>
+
+<h2 id="ch3">Chapter 3: Vulnerability Intelligence Summary</h2>
+<p>This chapter catalogs vulnerability alerts published on the Sangfor Security Wiki in the past 15 days. Each entry summarizes the publicly visible metadata. For complete event descriptions and mitigation guidance, click through to the original article (login required).</p>
+<h3>3.0 Vulnerability Alert Overview</h3>
+<table>
+<tr><th>#</th><th>Title</th><th>CVE(s)</th><th>Category</th></tr>
+<tr><td>3.1</td><td><a href="https://sec.sangfor.com.cn/wiki-safe-event/NDM1ZmE2MDQtNzM5Yy0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Linux Kernel Dirty Clone Privilege Escalation漏洞(CVE-2026-43503)</a></td><td>CVE-2026-43503</td><td>Privilege Escalation</td></tr>
+<tr><td>3.2</td><td><a href="https://sec.sangfor.com.cn/wiki-safe-event/M2JjNTAwZmEtNzEzMS0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Gogs Directory Traversal漏洞(CVE-2026-52813)</a></td><td>CVE-2026-52813</td><td>Directory Traversal</td></tr>
+<tr><td>3.3</td><td><a href="https://sec.sangfor.com.cn/wiki-safe-event/NDMwODQ3Y2EtNzA3Ni0xMWYxLWFjNzAtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Cisco Unified Communications Manager WebDialer Server-Side Request Forgery漏洞(CVE-2026-20230)</a></td><td>CVE-2026-20230</td><td>SSRF</td></tr>
+<tr><td>3.4</td><td><a href="https://sec.sangfor.com.cn/wiki-safe-event/MDY5ZDc1ODYtNzA2Yi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">FFmpeg MagicYUV PixelSmash DecoderHeap Out-of-Bounds Write漏洞(CVE-2026-8461)</a></td><td>CVE-2026-8461</td><td>Memory Corruption</td></tr>
+<tr><td>3.5</td><td><a href="https://sec.sangfor.com.cn/wiki-safe-event/N2QxNDA1NjYtNmZhZi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Joomla JCE Editor 与 SP Page Builder File Upload漏洞(CVE-2026-48907/CVE-2026-48908)</a></td><td>CVE-2026-48907, CVE-2026-48908</td><td>File Upload</td></tr>
+<tr><td>3.6</td><td><a href="https://sec.sangfor.com.cn/wiki-safe-event/NmZmNDM1ZjAtNmFlYS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Linux Kernel net/sched act_pedit Privilege Escalation漏洞(CVE-2026-46331)</a></td><td>CVE-2026-46331</td><td>Privilege Escalation</td></tr>
+<tr><td>3.7</td><td><a href="https://sec.sangfor.com.cn/wiki-safe-event/OTg5MWIxMzItNjlmZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Splunk Enterprise Pre-AuthenticationRemote Code Execution漏洞(CVE-2026-20253)</a></td><td>CVE-2026-20253</td><td>Remote Code Execution</td></tr>
+<tr><td>3.8</td><td><a href="https://sec.sangfor.com.cn/wiki-safe-event/ZmM1N2EwZTQtNjNkNC0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Google Chrome V8 Out-of-Bounds Read/Write漏洞(CVE-2026-11645)</a></td><td>CVE-2026-11645</td><td>Memory Corruption</td></tr>
+<tr><td>3.9</td><td><a href="https://sec.sangfor.com.cn/wiki-safe-event/OTQ4ZGE2NDAtNjMwNS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Apache Solr Hardcoded Credentials漏洞(CVE-2026-44825)</a></td><td>CVE-2026-44825</td><td>Credential Exposure</td></tr>
+</table>
+
+    <div class="article">
+        <h3>3.1 <a href="https://sec.sangfor.com.cn/wiki-safe-event/NDM1ZmE2MDQtNzM5Yy0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Linux Kernel Dirty Clone Privilege Escalation漏洞(CVE-2026-43503)</a></h3>
+        <p><span class="cve-tag">CVE-2026-43503</span> </p>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/NDM1ZmE2MDQtNzM5Yy0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/NDM1ZmE2MDQtNzM5Yy0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+        <p style="color: #856404; font-size: 0.85em;">⚠️ Full event description and solution details require Sangfor Community login. The title above reflects the publicly visible summary.</p>
+    </div>
+    <div class="article">
+        <h3>3.2 <a href="https://sec.sangfor.com.cn/wiki-safe-event/M2JjNTAwZmEtNzEzMS0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Gogs Directory Traversal漏洞(CVE-2026-52813)</a></h3>
+        <p><span class="cve-tag">CVE-2026-52813</span> </p>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/M2JjNTAwZmEtNzEzMS0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/M2JjNTAwZmEtNzEzMS0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+        <p style="color: #856404; font-size: 0.85em;">⚠️ Full event description and solution details require Sangfor Community login. The title above reflects the publicly visible summary.</p>
+    </div>
+    <div class="article">
+        <h3>3.3 <a href="https://sec.sangfor.com.cn/wiki-safe-event/NDMwODQ3Y2EtNzA3Ni0xMWYxLWFjNzAtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Cisco Unified Communications Manager WebDialer Server-Side Request Forgery漏洞(CVE-2026-20230)</a></h3>
+        <p><span class="cve-tag">CVE-2026-20230</span> </p>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/NDMwODQ3Y2EtNzA3Ni0xMWYxLWFjNzAtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/NDMwODQ3Y2EtNzA3Ni0xMWYxLWFjNzAtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+        <p style="color: #856404; font-size: 0.85em;">⚠️ Full event description and solution details require Sangfor Community login. The title above reflects the publicly visible summary.</p>
+    </div>
+    <div class="article">
+        <h3>3.4 <a href="https://sec.sangfor.com.cn/wiki-safe-event/MDY5ZDc1ODYtNzA2Yi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">FFmpeg MagicYUV PixelSmash DecoderHeap Out-of-Bounds Write漏洞(CVE-2026-8461)</a></h3>
+        <p><span class="cve-tag">CVE-2026-8461</span> </p>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/MDY5ZDc1ODYtNzA2Yi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/MDY5ZDc1ODYtNzA2Yi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+        <p style="color: #856404; font-size: 0.85em;">⚠️ Full event description and solution details require Sangfor Community login. The title above reflects the publicly visible summary.</p>
+    </div>
+    <div class="article">
+        <h3>3.5 <a href="https://sec.sangfor.com.cn/wiki-safe-event/N2QxNDA1NjYtNmZhZi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Joomla JCE Editor 与 SP Page Builder File Upload漏洞(CVE-2026-48907/CVE-2026-48908)</a></h3>
+        <p><span class="cve-tag">CVE-2026-48907</span> <span class="cve-tag">CVE-2026-48908</span> </p>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/N2QxNDA1NjYtNmZhZi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/N2QxNDA1NjYtNmZhZi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+        <p style="color: #856404; font-size: 0.85em;">⚠️ Full event description and solution details require Sangfor Community login. The title above reflects the publicly visible summary.</p>
+    </div>
+    <div class="article">
+        <h3>3.6 <a href="https://sec.sangfor.com.cn/wiki-safe-event/NmZmNDM1ZjAtNmFlYS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Linux Kernel net/sched act_pedit Privilege Escalation漏洞(CVE-2026-46331)</a></h3>
+        <p><span class="cve-tag">CVE-2026-46331</span> </p>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/NmZmNDM1ZjAtNmFlYS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/NmZmNDM1ZjAtNmFlYS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+        <p style="color: #856404; font-size: 0.85em;">⚠️ Full event description and solution details require Sangfor Community login. The title above reflects the publicly visible summary.</p>
+    </div>
+    <div class="article">
+        <h3>3.7 <a href="https://sec.sangfor.com.cn/wiki-safe-event/OTg5MWIxMzItNjlmZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Splunk Enterprise Pre-AuthenticationRemote Code Execution漏洞(CVE-2026-20253)</a></h3>
+        <p><span class="cve-tag">CVE-2026-20253</span> </p>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/OTg5MWIxMzItNjlmZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/OTg5MWIxMzItNjlmZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+        <p style="color: #856404; font-size: 0.85em;">⚠️ Full event description and solution details require Sangfor Community login. The title above reflects the publicly visible summary.</p>
+    </div>
+    <div class="article">
+        <h3>3.8 <a href="https://sec.sangfor.com.cn/wiki-safe-event/ZmM1N2EwZTQtNjNkNC0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Google Chrome V8 Out-of-Bounds Read/Write漏洞(CVE-2026-11645)</a></h3>
+        <p><span class="cve-tag">CVE-2026-11645</span> </p>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/ZmM1N2EwZTQtNjNkNC0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/ZmM1N2EwZTQtNjNkNC0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+        <p style="color: #856404; font-size: 0.85em;">⚠️ Full event description and solution details require Sangfor Community login. The title above reflects the publicly visible summary.</p>
+    </div>
+    <div class="article">
+        <h3>3.9 <a href="https://sec.sangfor.com.cn/wiki-safe-event/OTQ4ZGE2NDAtNjMwNS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Apache Solr Hardcoded Credentials漏洞(CVE-2026-44825)</a></h3>
+        <p><span class="cve-tag">CVE-2026-44825</span> </p>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/OTQ4ZGE2NDAtNjMwNS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/OTQ4ZGE2NDAtNjMwNS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+        <p style="color: #856404; font-size: 0.85em;">⚠️ Full event description and solution details require Sangfor Community login. The title above reflects the publicly visible summary.</p>
+    </div>
+<h2 id="ch4">Chapter 4: Microsoft Security Bulletin</h2>
+<p>Latest Microsoft Patch Tuesday security bulletin covering vulnerability summary, data analysis, and critical vulnerability details.</p>
+
+    <div class="article">
+        <h3><a href="https://sec.sangfor.com.cn/wiki-safe-event/NGM2OWQ4ZTAtNjg5ZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all" target="_blank">Microsoft Patch Tuesday Security Bulletin|6月份</a></h3>
+        
+        <div class="info-box">
+            <strong>📋 Microsoft Patch Tuesday — June 2026</strong><br>
+            This article contains the monthly Microsoft security bulletin with vulnerability summaries, affected product analysis, severity distribution charts, and detailed CVE breakdowns. Due to authentication requirements on the source site, the embedded charts and tables cannot be extracted programmatically.<br><br>
+            <strong>To view the full bulletin:</strong> <a href="https://sec.sangfor.com.cn/wiki-safe-event/NGM2OWQ4ZTAtNjg5ZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all">Open in Sangfor Security Wiki</a> (login required)
+        </div>
+        <p><span class="section-label">▸ Source:</span> <a href="https://sec.sangfor.com.cn/wiki-safe-event/NGM2OWQ4ZTAtNjg5ZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all">https://sec.sangfor.com.cn/wiki-safe-event/NGM2OWQ4ZTAtNjg5ZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all</a></p>
+    </div>
+<div class="footer">
+    <p><strong>Bi-weekly Threat Intelligence Report</strong> — Chapters 3 &amp; 4</p>
+    <p>Auto-generated on July 07, 2026 | Data: Sangfor Security Wiki | Format: HTML (compatible with embedded charts)</p>
+    <p>⚠️ Full article content (descriptions, solutions, charts) requires Sangfor Community authentication.</p>
+</div>
+</body>
+</html>

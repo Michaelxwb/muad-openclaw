@@ -1,0 +1,5 @@
+{
+  "_comment": "策略检查默认配置",
+  "check_types": ["AF", "SIP", "EDR", "STA"],
+  "export_type": 0
+}

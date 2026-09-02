@@ -1,0 +1,77 @@
+[
+  {
+    "id": "https://research.checkpoint.com/?p=33200",
+    "title": "Cavern Manticore: Exposing Iran-Linked Modular C2 Framework",
+    "summary": "Key Points Introduction Since early 2026, Check Point Research (CPR) has tracked a new modular command-and-control framework used by Cavern Manticore, an Iran-nexus APT group primarily targeting Israeli organizations, with a focus on IT providers, and government sectors. Cavern Manticore is an Iran MOIS (Ministry of Intelligence and Security)-linked actor, with links to the OilRig […] The post Cavern Manticore: Exposing Iran-Linked Modular C2 Framework appeared first on Check Point Research .",
+    "link": "https://research.checkpoint.com/2026/cavern-manticore-exposing-iran-linked-modular-c2-framework/",
+    "published": "2026-07-06T12:25:02",
+    "source_id": "checkpoint",
+    "source_name": "Check Point Research",
+    "tags": [
+      "apt",
+      "malware",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:31:07.652535"
+  },
+  {
+    "id": "https://research.checkpoint.com/?p=33276",
+    "title": "6th July – Threat Intelligence Report",
+    "summary": "For the latest discoveries in cyber research for the week of 6th July, please download our Threat Intelligence Bulletin. TOP ATTACKS AND BREACHES River Bank & Trust, a US financial institution, has experienced a ransomware incident after an unauthorized actor accessed the network of parent company River Financial Corporation on June 16. The bank found […] The post 6th July – Threat Intelligence Report appeared first on Check Point Research .",
+    "link": "https://research.checkpoint.com/2026/6th-july-threat-intelligence-report-2/",
+    "published": "2026-07-06T12:01:54",
+    "source_id": "checkpoint",
+    "source_name": "Check Point Research",
+    "tags": [
+      "apt",
+      "malware",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:31:07.652535"
+  },
+  {
+    "id": "https://research.checkpoint.com/?p=33250",
+    "title": "22nd June – Threat Intelligence Report",
+    "summary": "For the latest discoveries in cyber research for the week of 22nd June, please download our Threat Intelligence Bulletin. TOP ATTACKS AND BREACHES Texas Parks and Wildlife Department has been affected by a third-party data breach involving its license system vendor. The incident exposed driver’s license information, passport numbers, emails, phone numbers, and residential addresses for […] The post 22nd June – Threat Intelligence Report appeared first on Check Point Research .",
+    "link": "https://research.checkpoint.com/2026/22nd-june-threat-intelligence-report/",
+    "published": "2026-07-01T11:29:38",
+    "source_id": "checkpoint",
+    "source_name": "Check Point Research",
+    "tags": [
+      "apt",
+      "malware",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:31:07.652535"
+  },
+  {
+    "id": "https://research.checkpoint.com/?p=33225",
+    "title": "Browser-Only Ransomware: From LLM Hallucinations to a Practical Attack Technique",
+    "summary": "Research by: Alexey Bukhteyev Key Takeaways Introduction Over the past several years, large language models have reshaped software development, and malware development has followed the same path. Check Point Research has documented this trend from early experiments showing that AI systems could generate offensive components, to cases of cybercriminals using ChatGPT to create malicious tools, and […] The post Browser-Only Ransomware: From LLM Hallucinations to a Practical Attack Technique appeare",
+    "link": "https://research.checkpoint.com/2026/browser-only-ransomware-from-llm-hallucinations-to-a-practical-attack-technique/",
+    "published": "2026-07-01T10:05:35",
+    "source_id": "checkpoint",
+    "source_name": "Check Point Research",
+    "tags": [
+      "apt",
+      "malware",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:31:07.653537"
+  },
+  {
+    "id": "https://research.checkpoint.com/?p=33195",
+    "title": "29th June – Threat Intelligence Report",
+    "summary": "For the latest discoveries in cyber research for the week of 29th June, please download our Threat Intelligence Bulletin. TOP ATTACKS AND BREACHES Polymarket, a large cryptocurrency-based prediction market, has confirmed a supply chain attack after a third-party frontend vendor breach led to malicious JavaScript being injected into its website. Attackers tricked users into approving fraudulent […] The post 29th June – Threat Intelligence Report appeared first on Check Point Research .",
+    "link": "https://research.checkpoint.com/2026/29th-june-threat-intelligence-report-2/",
+    "published": "2026-06-29T14:06:59",
+    "source_id": "checkpoint",
+    "source_name": "Check Point Research",
+    "tags": [
+      "apt",
+      "malware",
+      "cloud"
+    ],
+    "fetched_at": "2026-07-07T20:31:07.653537"
+  }
+]

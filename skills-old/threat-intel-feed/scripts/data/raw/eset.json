@@ -1,0 +1,62 @@
+[
+  {
+    "id": "https://www.welivesecurity.com/en/videos/month-security-tony-anscombe-june-2026/",
+    "title": "This month in security with Tony Anscombe – June 2026 edition",
+    "summary": "Three-day patching deadlines, exposed fuel-tank systems, scams costing billions of dollars, and social media bans for children all gave Tony plenty to unpack in June 2026",
+    "link": "https://www.welivesecurity.com/en/videos/month-security-tony-anscombe-june-2026/",
+    "published": "2026-06-30T14:39:37",
+    "source_id": "eset",
+    "source_name": "ESET Research",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-01T21:08:05.355323"
+  },
+  {
+    "id": "https://www.welivesecurity.com/en/cybersecurity/inside-inbox-cybercriminals-want-break-email-account/",
+    "title": "Inside the inbox: Why cybercriminals want to break into your email account",
+    "summary": "Your inbox is an identity system all of its own: whoever owns it may own a lot more",
+    "link": "https://www.welivesecurity.com/en/cybersecurity/inside-inbox-cybercriminals-want-break-email-account/",
+    "published": "2026-06-29T08:50:00",
+    "source_id": "eset",
+    "source_name": "ESET Research",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-01T21:08:05.355323"
+  },
+  {
+    "id": "https://www.welivesecurity.com/en/business-security/smb-cyber-readiness-road-resilience-starts-here/",
+    "title": "SMB cyber readiness: the road to resilience starts here",
+    "summary": "Your business may be small, but its attack surface is anything but. Readiness is the first step to resilience.",
+    "link": "https://www.welivesecurity.com/en/business-security/smb-cyber-readiness-road-resilience-starts-here/",
+    "published": "2026-06-26T08:50:00",
+    "source_id": "eset",
+    "source_name": "ESET Research",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-01T21:08:05.355323"
+  },
+  {
+    "id": "https://www.welivesecurity.com/en/eset-research/gamaredon-2025-leveraging-tunnels-workers-dead-drops-new-alliances/",
+    "title": "Gamaredon in 2025: Leveraging tunnels, workers, dead drops, and new alliances",
+    "summary": "ESET Research analyzes Gamaredon’s new toolset and the group’s growing reliance on legitimate online services to hide its C&C infrastructure and exfiltrate stolen data",
+    "link": "https://www.welivesecurity.com/en/eset-research/gamaredon-2025-leveraging-tunnels-workers-dead-drops-new-alliances/",
+    "published": "2026-06-25T08:45:00",
+    "source_id": "eset",
+    "source_name": "ESET Research",
+    "tags": [
+      "apt",
+      "malware",
+      "research"
+    ],
+    "fetched_at": "2026-07-01T21:08:05.355323"
+  }
+]

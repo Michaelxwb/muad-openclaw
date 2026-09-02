@@ -1,0 +1,152 @@
+[
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120643",
+    "title": "Threat landscape for industrial automation systems. Q1 2026",
+    "summary": "This report contains industrial threat statistics for Q1 2026, including industrial threat distribution by type, source, region and industry.",
+    "link": "https://securelist.com/industrial-threat-report-q1-2026/120643/",
+    "published": "2026-07-07T10:00:11",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.759420"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120350",
+    "title": "When checking the URL isn’t enough: a Device Code Phishing attack via a Microsoft website",
+    "summary": "The OAuth 2.0 Device Authorization Grant specification was designed to streamline authentication for Smart TVs, IoT devices, and printers. Today, threat actors are weaponizing it.",
+    "link": "https://securelist.com/microsoft-device-code-phishing-attack/120350/",
+    "published": "2026-07-06T09:00:43",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.759420"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/tr//120292/",
+    "title": "Armored Likho digging a snake pit: inside the covert BusySnake Stealer campaign",
+    "summary": "An inside look at the active Armored Likho APT campaign. The attackers are using spear-phishing, AI-generated loaders, and a new Python-based tool, BusySnake Stealer, to target organizations in Russia, Kazakhstan, and Brazil.",
+    "link": "https://securelist.com/tr/armored-likho-apt-with-busysnake-stealer/120292/",
+    "published": "2026-07-03T10:00:33",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.759420"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120542",
+    "title": "Missed incidents, persistent threats, and response gaps: Insights from compromise assessment projects",
+    "summary": "Kaspersky Compromise Assessment specialists analyze trends from the service's 2025 projects and provide tips on how to enhance your organization's security.",
+    "link": "https://securelist.com/compromise-assessment-findings-2025/120542/",
+    "published": "2026-07-02T09:00:09",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.760426"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/tr//120472/",
+    "title": "The SOC Files: ScreenConnect masked as freeware. An inside look at a large-scale campaign",
+    "summary": "Kaspersky experts have uncovered a malicious network infrastructure for delivering AsyncRAT. The Trojan is dropped via compromised ScreenConnect software. In this post, we break down the infection chain and analyze the C2 infrastructure.",
+    "link": "https://securelist.com/tr/the-soc-files-screenconnect-campaign-with-asyncrat/120472/",
+    "published": "2026-07-01T10:00:51",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.760426"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120484",
+    "title": "OpenClaw: risks for the users and how to mitigate them",
+    "summary": "Researching OpenClaw vulnerabilities, malicious skills, and other security issues with the popular agent, and providing tips on how to mitigate them.",
+    "link": "https://securelist.com/openclaw-security/120484/",
+    "published": "2026-07-01T06:42:48",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.760426"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120251",
+    "title": "ToddyCat: your hidden email assistant. Part 2",
+    "summary": "An in-depth analysis of Umbrij, a new tool used by the ToddyCat APT group to compromise corporate email communications in Gmail. The attack targeted OAuth authorization tokens, allowing threat actors to gain access to Google services.",
+    "link": "https://securelist.com/toddycat-apt-umbrij-tool-and-oauth/120251/",
+    "published": "2026-06-30T10:00:13",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.760426"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120447",
+    "title": "The Gentlemen are knocking: сustom backdoors and evolving tactics",
+    "summary": "Kaspersky researchers analyze incidents related to The Gentlemen RaaS group, disclose their tools and TTPs, and find a new ransomware variant.",
+    "link": "https://securelist.com/the-gentlemen-raas/120447/",
+    "published": "2026-06-29T10:00:35",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.760426"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/tr//120436/",
+    "title": "Beware of the license manager: how a Schneider Electric software vulnerability puts industrial facilities at risk",
+    "summary": "Analysis of CVE-2024-2658 as found in Schneider Electric's Floating License Manager. Discover how this FlexNet Publisher vulnerability potentially allows attackers to escalate to NT AUTHORITY\\SYSTEM privileges and expand their foothold; learn how to mitigate the risk.",
+    "link": "https://securelist.com/tr/schneider-electric-cve-2024-2658-vulnerability/120436/",
+    "published": "2026-06-26T13:00:14",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.760426"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120357",
+    "title": "Inside the 2026 SMB threat landscape: From phishing and scams to fake AI tools",
+    "summary": "Kaspersky researchers analyze the threat landscape for SMBs in 2026: the rise of attacks involving fake AI tools, phishing schemes, and data sold on the dark web.",
+    "link": "https://securelist.com/smb-threat-report-2026/120357/",
+    "published": "2026-06-25T10:00:59",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-07T20:29:57.760426"
+  }
+]

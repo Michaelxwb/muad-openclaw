@@ -1,0 +1,16 @@
+[
+  {
+    "id": "/forums/diary/Why+Ask+Credentials+If+There+Are+Secret+Codes/33118/",
+    "title": "Why Ask Credentials If There Are Secret Codes?",
+    "summary": "This morning, an interesting phishing email hit my mailbox. It targets Metamask[1], a cryptocurrency wallet, available as a browser extension and a mobile app, that lets users store, send, and receive crypto money. It’s pretty popular, so a juicy target for criminals. In February, I already mentioned a campaign against them[2].",
+    "link": ":///forums/diary/Why+Ask+Credentials+If+There+Are+Secret+Codes/33118/",
+    "published": null,
+    "source_id": "sans_isc",
+    "source_name": "SANS ISC",
+    "tags": [
+      "threat-intel",
+      "diary"
+    ],
+    "fetched_at": "2026-07-01T21:12:08.922500"
+  }
+]

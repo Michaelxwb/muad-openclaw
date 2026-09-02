@@ -1,0 +1,188 @@
+{
+  "generated_at": "2026-07-01T11:18:10.142714",
+  "total_articles": 12,
+  "kw_direct": 4,
+  "ai_judged": 8,
+  "stats": {
+    "三、安全风险通告": {
+      "安全风险通告": 4
+    },
+    "未分类": {
+      "待审核": 6
+    },
+    "二、热点安全事件": {
+      "AI对攻防趋势变化": 1,
+      "黑客组织攻击技战术更新": 1
+    }
+  },
+  "categories": {
+    "三、安全风险通告": {
+      "安全风险通告": [
+        {
+          "title": "Nissan discloses employee data breach linked to Oracle zero-day attacks",
+          "link": "https://www.bleepingcomputer.com/news/security/nissan-discloses-employee-data-breach-linked-to-oracle-zero-day-attacks/",
+          "summary": "Nissan is warning that it suffered a data breach affecting current and former employees after threat actors exploited an Oracle PeopleSoft vulnerability in data theft attacks previously linked to the ShinyHunters extortion group. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T20:40:44",
+          "score": 3,
+          "matched_keywords": [
+            "vulnerability",
+            "zero-day",
+            "exploit"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "NAIC says public data stolen in ShinyHunters' PeopleSoft breach",
+          "link": "https://www.bleepingcomputer.com/news/security/naic-says-public-data-stolen-in-shinyhunters-peoplesoft-breach/",
+          "summary": "The National Association of Insurance Commissioners (NAIC) says the ShinyHunters extortion group stole only publicly available data, outdated logs, and configuration files after breaching its systems by exploiting a zero-day vulnerability in an Oracle PeopleSoft server. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T20:30:28",
+          "score": 3,
+          "matched_keywords": [
+            "vulnerability",
+            "zero-day",
+            "exploit"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Critical SimpleHelp flaw exploited to deploy new stealer malware",
+          "link": "https://www.bleepingcomputer.com/news/security/hackers-exploit-critical-simplehelp-flaw-deploy-new-djinn-infostealer-taskweaver-malware/",
+          "summary": "Hackers are exploiting a recently disclosed critical vulnerability (CVE-2026-48558) in SimpleHelp to deploy Djinn Stealer, a previously undocumented cross-platform information stealer targeting Windows, macOS, and Linux. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T14:00:00",
+          "score": 4,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit",
+            "critical vulnerability"
+          ],
+          "method": "keyword"
+        },
+        {
+          "title": "Hackers now exploit critical Oracle E-Business flaw in attacks",
+          "link": "https://www.bleepingcomputer.com/news/security/new-oracle-e-business-suite-flaw-now-exploited-in-attacks/",
+          "summary": "Attackers have begun exploiting a critical vulnerability (CVE-2026-46817) in the Oracle E-Business Suite (EBS) financial application, according to threat intelligence company Defused. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T13:46:17",
+          "score": 4,
+          "matched_keywords": [
+            "vulnerability",
+            "cve-",
+            "exploit",
+            "critical vulnerability"
+          ],
+          "method": "keyword"
+        }
+      ]
+    },
+    "未分类": {
+      "待审核": [
+        {
+          "title": "WhatsApp rolls out usernames to help users hide their phone number",
+          "link": "https://www.bleepingcomputer.com/news/security/whatsapp-rolls-out-usernames-to-help-users-hide-their-phone-number/",
+          "summary": "WhatsApp is finally allowing users to reserve usernames, a privacy feature that lets them hide their phone numbers from people not in their contact list. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T17:48:28",
+          "score": 99,
+          "matched_keywords": [
+            "AI: WhatsApp推出用户名功能属于产品功能更新，非安全政策、事件或漏洞。"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Microsoft extends Windows Server 2022 hotpatching until October 2027",
+          "link": "https://www.bleepingcomputer.com/news/microsoft/microsoft-extends-windows-server-2022-hotpatching-until-october-2027/",
+          "summary": "Microsoft has extended Windows Server 2022 hotpatching until October 2027, one year after the mainstream end date of October 2026. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T17:11:15",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 产品支持生命周期延长，属于一般IT新闻，不涉及安全政策、事件、风险通告或安全通报"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "U.S. offers $10 million for hackers targeting WhatsApp, Signal users",
+          "link": "https://www.bleepingcomputer.com/news/security/us-offers-10-million-for-hackers-targeting-whatsapp-signal-users/",
+          "summary": "The U.S. Department of State is offering up to $10 million for information that helps identify or locate members of the UNC5792 and UNC4221 hacker groups, which are linked to Russia's intelligence and military services. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T15:09:43",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 政府悬赏通缉黑客，属于执法案件，非政策或技战术分析"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Webinar: Why business email compromise attacks keep succeeding",
+          "link": "https://www.bleepingcomputer.com/news/security/webinar-why-business-email-compromise-attacks-keep-succeeding/",
+          "summary": "Business email compromise attacks increasingly rely on convincing impersonation rather than malware, making them harder for employees and traditional email defenses to detect. This webinar explores how behavioral AI can help identify sophisticated email threats and automate response workflows. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T12:14:22",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 该文章为商业网络研讨会推广，介绍行为AI应对BEC攻击，属于行业解决方案/产品介绍，不在给定的安全事件或政策分类中"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "US seizes hundreds of FIFA World Cup illegal streaming domains",
+          "link": "https://www.bleepingcomputer.com/news/security/us-seizes-hundreds-of-fifa-world-cup-illegal-streaming-domains/",
+          "summary": "The U.S. Justice Department's Criminal Division has seized nearly 400 web domains used for illegally streaming matches at the FIFA World Cup. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T11:21:03",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 美国司法部查封世界杯盗版流媒体域名，属于版权执法行动，非网络安全相关政策或安全事件"
+          ],
+          "method": "ai"
+        },
+        {
+          "title": "Data breach exposes up to 14.2 million email logins at six ISPs",
+          "link": "https://www.bleepingcomputer.com/news/security/data-breach-exposes-up-to-142-million-email-logins-at-six-isps/",
+          "summary": "Japanese telecommunications operator KDDI Corporation disclosed a data breach where threat actors gained access to one of its email systems used by five other internet service providers (ISPs) in the country. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-28T14:13:46",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 报道KDDI数据泄露事件，无具体攻击技战术或恶意软件分析，不符合现有分类。"
+          ],
+          "method": "ai"
+        }
+      ]
+    },
+    "二、热点安全事件": {
+      "AI对攻防趋势变化": [
+        {
+          "title": "Agentic AI Has an Identity Problem and Attackers Know It",
+          "link": "https://www.bleepingcomputer.com/news/security/agentic-ai-has-an-identity-problem-and-attackers-know-it/",
+          "summary": "AI agents can access data, trigger workflows, and take action across enterprise systems. Token Security explains why governing these privileged identities is becoming essential for enterprise security. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-29T14:01:11",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章讨论AI Agent身份治理的战略风险，属高屋建瓴的趋势观点而非具体攻击技战术"
+          ],
+          "method": "ai"
+        }
+      ],
+      "黑客组织攻击技战术更新": [
+        {
+          "title": "Clean GitHub repo tricks AI coding agents into running malware",
+          "link": "https://www.bleepingcomputer.com/news/security/clean-github-repo-tricks-ai-coding-agents-into-running-malware/",
+          "summary": "An agentic coding tool tasked with cloning and setting up a seemingly benign GitHub repository could execute a malicious payload that remains invisible to security scanners, AI agents, and human reviewers. [...]",
+          "source_name": "BleepingComputer",
+          "published": "2026-06-27T14:22:36",
+          "score": 99,
+          "matched_keywords": [
+            "AI: 文章阐述攻击者利用AI编码代理执行恶意载荷的具体技战术，归属攻击技战术更新。"
+          ],
+          "method": "ai"
+        }
+      ]
+    }
+  }
+}

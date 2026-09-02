@@ -1,0 +1,81 @@
+{
+  "chapter_3": [
+    {
+      "title_cn": "Linux Kernel Dirty Clone 权限提升漏洞(CVE-2026-43503)",
+      "cves": [
+        "CVE-2026-43503"
+      ],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/NDM1ZmE2MDQtNzM5Yy0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all"
+    },
+    {
+      "title_cn": "Gogs 目录遍历漏洞(CVE-2026-52813)",
+      "cves": [
+        "CVE-2026-52813"
+      ],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/M2JjNTAwZmEtNzEzMS0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all"
+    },
+    {
+      "title_cn": "Cisco Unified Communications Manager WebDialer 服务器端伪造请求漏洞(CVE-2026-20230)",
+      "cves": [
+        "CVE-2026-20230"
+      ],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/NDMwODQ3Y2EtNzA3Ni0xMWYxLWFjNzAtNDI4OGEwYzNiNjAz/1/?category=all"
+    },
+    {
+      "title_cn": "FFmpeg MagicYUV PixelSmash 解码器堆越界写入漏洞(CVE-2026-8461)",
+      "cves": [
+        "CVE-2026-8461"
+      ],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/MDY5ZDc1ODYtNzA2Yi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all"
+    },
+    {
+      "title_cn": "Joomla JCE Editor 与 SP Page Builder 文件上传漏洞(CVE-2026-48907/CVE-2026-48908)",
+      "cves": [
+        "CVE-2026-48907",
+        "CVE-2026-48908"
+      ],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/N2QxNDA1NjYtNmZhZi0xMWYxLWE1YTEtNDI4OGEwYzNiNjAz/1/?category=all"
+    },
+    {
+      "title_cn": "Linux Kernel net/sched act_pedit 权限提升漏洞(CVE-2026-46331)",
+      "cves": [
+        "CVE-2026-46331"
+      ],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/NmZmNDM1ZjAtNmFlYS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all"
+    },
+    {
+      "title_cn": "Splunk Enterprise 预认证远程代码执行漏洞(CVE-2026-20253)",
+      "cves": [
+        "CVE-2026-20253"
+      ],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/OTg5MWIxMzItNjlmZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all"
+    },
+    {
+      "title_cn": "微软补丁日安全通告|6月份",
+      "cves": [],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/NGM2OWQ4ZTAtNjg5ZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all"
+    },
+    {
+      "title_cn": "Google Chrome V8 越界读写漏洞(CVE-2026-11645)",
+      "cves": [
+        "CVE-2026-11645"
+      ],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/ZmM1N2EwZTQtNjNkNC0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all"
+    },
+    {
+      "title_cn": "Apache Solr 硬编码凭据漏洞(CVE-2026-44825)",
+      "cves": [
+        "CVE-2026-44825"
+      ],
+      "url": "https://sec.sangfor.com.cn/wiki-safe-event/OTQ4ZGE2NDAtNjMwNS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all"
+    }
+  ],
+  "chapter_4": {
+    "title_cn": "微软补丁日安全通告|6月份",
+    "cves": [],
+    "url": "https://sec.sangfor.com.cn/wiki-safe-event/NGM2OWQ4ZTAtNjg5ZS0xMWYxLWIzZDYtNDI4OGEwYzNiNjAz/1/?category=all"
+  },
+  "crawl_date": "2026-07-07T15:04:09.832266",
+  "source": "https://sec.sangfor.com.cn/wiki-safe-events",
+  "note": "Detail content requires login. Titles/CVEs are publicly visible."
+}

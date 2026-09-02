@@ -1,0 +1,9 @@
+{
+  "name": "policy-check-mssp",
+  "platforms": ["mssp"],
+  "runtime": "script",
+  "version": "1.1.0",
+  "longTask": false,
+  "entrypoint": "phase1/phase1_trigger.py",
+  "description": "分步骤执行老平台 MSSP 策略检查，支持并发下发多个客户并按客户查询状态、导出 DOCX 或生成风险话术。"
+}

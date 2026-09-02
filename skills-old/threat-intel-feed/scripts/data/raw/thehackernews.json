@@ -1,0 +1,752 @@
+[
+  {
+    "id": "https://thehackernews.com/2026/07/2026-cybersecurity-assessment-gap.html",
+    "title": "2026 Cybersecurity Assessment: The Gap Between Awareness and Resilience",
+    "summary": "Organizations have never had greater awareness of cyber risk. Yet turning that awareness into operational resilience has never been more challenging. The 2026 Bitdefender Cybersecurity Assessment confirms this is the case, as this year's findings reveal a series of surprising contradictions.\n\nHere are a few examples, based on the independent survey of 1,200 IT and cybersecurity professionals",
+    "link": "https://thehackernews.com/2026/07/2026-cybersecurity-assessment-gap.html",
+    "published": "2026-07-01T11:30:00",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.731245"
+  },
+  {
+    "id": "https://thehackernews.com/2026/07/microsoft-accelerates-post-quantum.html",
+    "title": "Microsoft Accelerates Post-Quantum Cryptography Shift to 2029",
+    "summary": "Microsoft on Tuesday said it's accelerating its quantum safe security roadmap, stating technology advances in quantum computing are making it essential to replace existing encryption standards sooner than previously expected.\n\n\"Advances in quantum research and development have shifted the risk horizon,\" Mark Russinovich, chief technology officer of Microsoft Azure, said. \"We believe",
+    "link": "https://thehackernews.com/2026/07/microsoft-accelerates-post-quantum.html",
+    "published": "2026-07-01T10:41:36",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.731245"
+  },
+  {
+    "id": "https://thehackernews.com/2026/07/phantom-squatting-uses-ai-hallucinated.html",
+    "title": "Phantom Squatting Uses AI-Hallucinated Domains for Phishing and Malware",
+    "summary": "Large language models keep inventing web addresses that do not exist. Attackers have started buying those made-up domains before anyone else can, then hosting phishing pages on them to catch traffic that AI tools point their way.\n\nPalo Alto Networks' Unit 42 calls the trick phantom squatting, and its new research shows it is already happening in the wild.\n\nThe reason it matters is",
+    "link": "https://thehackernews.com/2026/07/phantom-squatting-uses-ai-hallucinated.html",
+    "published": "2026-07-01T07:20:51",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.731245"
+  },
+  {
+    "id": "https://thehackernews.com/2026/07/anthropic-restores-claude-fable-5-after.html",
+    "title": "Anthropic Restores Claude Fable 5 After U.S. Lifts Jailbreak-Linked Export Controls",
+    "summary": "Anthropic is putting Claude Fable 5 back online worldwide. On June 30, the U.S. Commerce Department lifted the export controls it had imposed on Fable and its more tightly controlled sibling Mythos 5 about two and a half weeks earlier.\n\nFable 5 returns to users on Wednesday, July 1, across Claude.ai, the Claude Platform, Claude Code, and Claude Cowork.\n\nExport controls restrict who can",
+    "link": "https://thehackernews.com/2026/07/anthropic-restores-claude-fable-5-after.html",
+    "published": "2026-07-01T06:46:17",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.731245"
+  },
+  {
+    "id": "https://thehackernews.com/2026/07/azure-cli-password-spray-hits-at-least.html",
+    "title": "Azure CLI Password Spray Hits at Least 78 Microsoft Accounts in 81M+ Attempts",
+    "summary": "Cybersecurity researchers have warned of a \"massive, ongoing, automated password spray attack\" aimed at Microsoft's Azure command-line interface (CLI), compromising dozens of accounts in the process.\n\nThe activity, per Huntress, originates from an IPv6 address range (2a0a:d683::/32) controlled by internet infrastructure provider LSHIY LLC (AS32167).\n\n\"Between June 12 and June 26, the threat",
+    "link": "https://thehackernews.com/2026/07/azure-cli-password-spray-hits-at-least.html",
+    "published": "2026-07-01T05:46:03",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.731245"
+  },
+  {
+    "id": "https://thehackernews.com/2026/07/researcher-analyzes-3000-live-clickfix.html",
+    "title": "Researcher Analyzes 3,000 Live ClickFix Payloads, Exposing API-Driven Malware Delivery",
+    "summary": "ClickFix, the trick that fools people into running malware by hand, has quietly grown a back office.\n\nNew research shows the malicious commands behind its fake \"prove you're human\" pages are now handed out by API-driven servers that give each visitor the same malware in a different disguise. The same research also turned up a new delivery method built to slip past Windows' script scanning.",
+    "link": "https://thehackernews.com/2026/07/researcher-analyzes-3000-live-clickfix.html",
+    "published": "2026-07-01T05:32:12",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.731245"
+  },
+  {
+    "id": "https://thehackernews.com/2026/07/citrix-patches-six-netscaler-flaws.html",
+    "title": "Citrix Patches Six NetScaler Flaws Allowing File Read and Denial-of-Service",
+    "summary": "Citrix on Tuesday released security updates to address multiple flaws in NetScaler ADC (formerly Citrix ADC) and NetScaler Gateway (formerly Citrix Gateway) that could be exploited by an attacker to facilitate arbitrary file reads or trigger a denial-of-service (DoS) condition.\n\nThe vulnerabilities are listed below -\n\n\n  CVE-2026-8451 (CVSS score: 8.8) - An insufficient input validation",
+    "link": "https://thehackernews.com/2026/07/citrix-patches-six-netscaler-flaws.html",
+    "published": "2026-07-01T03:54:22",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.731245"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/microsoft-warns-poisoned-mcp-tool.html",
+    "title": "Microsoft Warns Poisoned MCP Tool Descriptions Can Make AI Agents Leak Data",
+    "summary": "New Microsoft research shows how attackers can hijack AI agents that act on a user's behalf, using nothing more than a poisoned tool description to make the agent quietly hand over company data to an outsider.\n\nThe trick is that the agent never breaks a rule. Every step looks routine, so in a default setup no alarm may fire.\n\nThe work comes from Microsoft Incident Response and its",
+    "link": "https://thehackernews.com/2026/06/microsoft-warns-poisoned-mcp-tool.html",
+    "published": "2026-06-30T17:46:07",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.731245"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/rustduck-botnet-rebuilds-in-rust-to.html",
+    "title": "RustDuck Botnet Rebuilds in Rust to Hijack Routers and Servers for DDoS",
+    "summary": "A new two-stage malware family called RustDuck is hijacking home routers, IP cameras, Android boxes, and poorly secured servers, then stitching them into a network built to knock websites and online services offline.\n\nResearchers at QiAnXin's XLab have tracked it since February 2026, and say the real story is not how big it is today, but how fast it is changing.\n\nThe end goal is a",
+    "link": "https://thehackernews.com/2026/06/rustduck-botnet-rebuilds-in-rust-to.html",
+    "published": "2026-06-30T17:45:25",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.731245"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/langflow-rce-exploited-to-deploy-monero.html",
+    "title": "Langflow RCE Exploited to Deploy Monero Miner on Exposed AI App Endpoints",
+    "summary": "Threat actors are continuing to exploit a critical Langflow vulnerability as part of fresh attacks designed to deliver a Monero cryptocurrency miner.\n\nThe activity has been found to weaponize CVE-2026-33017 (CVSS score: 9.3), an unauthenticated remote code execution (RCE) vulnerability in Langflow, indicating threat actors are scanning and targeting exposed artificial intelligence (AI)",
+    "link": "https://thehackernews.com/2026/06/langflow-rce-exploited-to-deploy-monero.html",
+    "published": "2026-06-30T15:47:20",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.732439"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/silent-swap-crypto-clipper-uses-fake.html",
+    "title": "Silent Swap Crypto Clipper Uses Fake Google Notes Extension to Replace Wallet Addresses",
+    "summary": "Cybersecurity researchers have flagged an active browser extension campaign that is designed to steal cryptocurrency by stealthily replacing wallet addresses when unsuspecting users initiate a transaction.\n\nThe cryptocurrency clipper activity has been codenamed Silent Swap by McAfee Labs.\n\n\"The campaign is delivered through unsigned installers – observed in both .NET and Golang variants – that",
+    "link": "https://thehackernews.com/2026/06/silent-swap-crypto-clipper-uses-fake.html",
+    "published": "2026-06-30T15:40:18",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.732439"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/guardfall-exposes-open-source-ai-coding.html",
+    "title": "GuardFall Exposes Open-Source AI Coding Agents to Decades-Old Shell Injection Risks",
+    "summary": "The safety check that is supposed to stop an AI coding agent from running a dangerous command can be walked straight past using a shell trick that has been public for decades.\n\nNew research from Adversa AI, which is named the bypass GuardFall, found it works against ten of the eleven popular open-source coding and computer-use agents the firm tested. Only one, \"Continue,\" was built to",
+    "link": "https://thehackernews.com/2026/06/guardfall-exposes-open-source-ai-coding.html",
+    "published": "2026-06-30T14:26:15",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.732439"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/282-ios-apps-found-leaking-llm-api-keys.html",
+    "title": "282 iOS AI Apps Leak API Keys and Open AI Proxy Access in Network Traffic Study",
+    "summary": "Researchers tested 444 AI chatbot apps for iPhone and found that 282 of them, nearly two-thirds, exposed paid AI access through their network traffic.\n\nIn many cases, the path in was visible just by watching what the app sent: a plaintext API key, a reusable token, or a backend server that accepted requests with no key at all.\n\nWhoever grabs it can send model requests on the developer's account,",
+    "link": "https://thehackernews.com/2026/06/282-ios-apps-found-leaking-llm-api-keys.html",
+    "published": "2026-06-30T13:49:34",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.732439"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/what-numbers-say-about-fifa-2026-cyber.html",
+    "title": "What the Numbers Say About FIFA 2026 Cyber Risk",
+    "summary": "The FIFA World Cup 2026 opened on June 11. By that date, according to Check Point Research, the fraud infrastructure targeting it had already been built, staged, and partially deployed. Threat actor activity was pre-planned, months out, across three sectors and at least ten languages.\n\nCheck Point Exposure Management published the FIFA World Cup 2026 Cyber Threat Report this month, covering",
+    "link": "https://thehackernews.com/2026/06/what-numbers-say-about-fifa-2026-cyber.html",
+    "published": "2026-06-30T11:30:00",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.732439"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/attackers-exploit-simplehelp-cve-2026.html",
+    "title": "Attackers Exploit SimpleHelp CVE-2026-48558 to Deploy TaskWeaver and Djinn Stealer",
+    "summary": "An unknown threat actor has been observed exploiting a recently disclosed maximum-severity security flaw in SimpleHelp to deliver two previously unreported malware families, TaskWeaver and Djinn Stealer.\n\nThe intrusion involves the exploitation of CVE-2026-48558 (CVSS score: 10.0), a critical authentication bypass vulnerability impacting the OpenID Connect (OIDC) flow that an unauthenticated",
+    "link": "https://thehackernews.com/2026/06/attackers-exploit-simplehelp-cve-2026.html",
+    "published": "2026-06-30T11:18:47",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.732949"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/airdrop-and-quick-share-flaws-let.html",
+    "title": "AirDrop and Quick Share Flaws Let Nearby Attackers Trigger Crashes and Bypass Checks",
+    "summary": "Two researchers have found six security flaws in AirDrop and Quick Share, the wireless features that beam files between nearby devices with no cables or shared network.\n\nAn attacker within wireless range, with just a laptop and no prior connection, can crash the sharing service on a Mac or iPhone set to receive from anyone, with no tap or prompt.\n\nThe same research found Quick Share flaws that",
+    "link": "https://thehackernews.com/2026/06/airdrop-and-quick-share-flaws-let.html",
+    "published": "2026-06-30T09:27:58",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733009"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/new-bioshocking-attack-tricks-ai.html",
+    "title": "New BioShocking Attack Tricks AI Browsers Into Leaking User Credentials",
+    "summary": "Convince an AI browser that it is playing a game, and it can hand over your login details. That is the finding behind BioShocking, a technique from security firm LayerX that tricked six AI browsers and assistants into copying a user's credentials and sending them to an attacker.\n\nThe targets included OpenAI's ChatGPT Atlas, Perplexity's Comet, and Anthropic's Claude browser extension.\n\nAn",
+    "link": "https://thehackernews.com/2026/06/new-bioshocking-attack-tricks-ai.html",
+    "published": "2026-06-30T08:37:19",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733009"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/progress-kemp-loadmaster-flaw-could-let.html",
+    "title": "Progress Kemp LoadMaster Flaw Could Let Attackers Run Root Commands Pre-Auth",
+    "summary": "A critical vulnerability in Progress Kemp LoadMaster can let an unauthenticated attacker execute arbitrary commands as root on the appliance by sending a crafted request to its API.\n\nThe flaw, tracked as CVE-2026-8037, carries a CVSS score of 9.8 according to ZDI. A patch is available. If you run LoadMaster with the API enabled, update now.\n\nProgress published its advisory on June",
+    "link": "https://thehackernews.com/2026/06/progress-kemp-loadmaster-flaw-could-let.html",
+    "published": "2026-06-30T07:38:07",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733009"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/oracle-e-business-suite-flaw-cve-2026.html",
+    "title": "Oracle E-Business Suite Flaw CVE-2026-46817 Actively Exploited in the Wild",
+    "summary": "A critical security flaw impacting Oracle E-Business Suite has come under active exploitation in the wild, according to Defused Cyber.\n\nThe vulnerability, tracked as CVE-2026-46817 (CVSS score: 9.8), refers to an improper privilege management and authentication flaw in Oracle Payments that could be abused to take over susceptible instances.\n\n\"Easily exploitable vulnerability allows",
+    "link": "https://thehackernews.com/2026/06/oracle-e-business-suite-flaw-cve-2026.html",
+    "published": "2026-06-30T05:04:06",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733009"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/whatsapp-is-finally-getting-usernames.html",
+    "title": "WhatsApp is Finally Getting Usernames to Help Keep Phone Numbers Private",
+    "summary": "WhatsApp on Monday officially announced the start of global reservations of usernames with an aim to protect the privacy of more than three billion users on the messaging platform.\n\nThe optional feature is designed to help users connect with someone on the service through usernames, as opposed to directly sharing their phone numbers. Username reservations will start rolling out starting today,",
+    "link": "https://thehackernews.com/2026/06/whatsapp-is-finally-getting-usernames.html",
+    "published": "2026-06-29T16:09:21",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733009"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/malicious-perplexity-chrome-extension.html",
+    "title": "Malicious Perplexity Chrome Extension Intercepted Searches and Address Bar Input",
+    "summary": "Microsoft has found a malicious Chrome extension that posed as the AI search engine Perplexity and quietly logged what people searched for. It routed every query and every character typed into the address bar through an attacker-controlled server before redirecting users to real results.\n\nMicrosoft says Google removed it from the store after responsible disclosure. The extension was called \"",
+    "link": "https://thehackernews.com/2026/06/malicious-perplexity-chrome-extension.html",
+    "published": "2026-06-29T15:40:00",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733009"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/apple-patches-30-ios-macos-safari-flaws.html",
+    "title": "Apple Patches 30+ iOS, macOS, Safari Flaws, Including AI-Discovered WebKit Bugs",
+    "summary": "Apple on Monday released security updates for iOS, macOS, and the Safari web browser to address over three dozen flaws, including four vulnerabilities in WebKit that were discovered using artificial intelligence (AI) tools like Anthropic Claude and OpenAI Codex Security.\n\nThe WebKit vulnerabilities are listed below -\n\n\n  CVE-2026-43707 - A memory corruption issue that could result in an",
+    "link": "https://thehackernews.com/2026/06/apple-patches-30-ios-macos-safari-flaws.html",
+    "published": "2026-06-29T15:30:00",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/mustang-panda-uses-zoho-workdrive-as.html",
+    "title": "Mustang Panda Uses Zoho WorkDrive as Command Channel in Indian Government Attacks",
+    "summary": "The China-aligned espionage group Mustang Panda is running two campaigns against the Indian government and hydropower targets, deploying new malware and turning a legitimate cloud service into its command channel.\n\nAcronis Threat Research Unit found active compromises inside Indian government networks, including machines used by senior administrative staff, and worked with",
+    "link": "https://thehackernews.com/2026/06/mustang-panda-uses-zoho-workdrive-as.html",
+    "published": "2026-06-29T15:03:40",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/weekly-recap-linux-kernel-flaws-ai.html",
+    "title": "⚡ Weekly Recap: Linux Kernel Flaws, AI Malware Tricks, Turla Backdoor, Infostealers and More",
+    "summary": "This week was a reminder that attackers do not always need big tricks. One small mistake, one old access path, one missed patch, and suddenly the door is open.\n\nThe noise is not all noise, either. Forums are talking, researchers are finding easy cracks, and defenders have more cleanup waiting.\n\nHere’s the full Monday recap.\n\n⚡ Threat of the Week\n\nNew DirtyClone Linux Kernel Flaw Lets Local",
+    "link": "https://thehackernews.com/2026/06/weekly-recap-linux-kernel-flaws-ai.html",
+    "published": "2026-06-29T14:41:07",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/236000-dcloud-uni-app-sites-used-in.html",
+    "title": "236,000 DCloud Uni-App Sites Used in Crypto Scams, Phishing, and Wallet Drainers",
+    "summary": "New findings unearthed by Infoblox show that more than 236,000 websites are using investment scam templates built using a legitimate Chinese open-source, cross-platform application development framework called DCloud Uni-App.\n\nThe templates power bogus cryptocurrency exchanges, multi-language pig-butchering operations, WhatsApp phishing networks, fake gambling platforms, brand-impersonation",
+    "link": "https://thehackernews.com/2026/06/236000-dcloud-uni-app-sites-used-in.html",
+    "published": "2026-06-29T11:57:40",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/why-post-quantum-cryptography-starts.html",
+    "title": "Why Post-Quantum Cryptography Starts With Credentials",
+    "summary": "Today’s encrypted data, such as credentials, may no longer remain confidential in the future because the public-key cryptography protecting it will soon be broken by quantum computers. Although no machine today can break elliptic curve cryptography or RSA, quantum hardware is advancing rapidly and will inevitably change how organizations protect their data. Ciphertext and credentials captured by",
+    "link": "https://thehackernews.com/2026/06/why-post-quantum-cryptography-starts.html",
+    "published": "2026-06-29T11:42:16",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/gamaredon-expands-ukraine-attacks-with.html",
+    "title": "Gamaredon Expands Ukraine Attacks with New Malware and Cloud Service Abuse",
+    "summary": "A Russian advanced persistent threat (APT) group has continued to evolve and expand its malware arsenal as part of its ongoing cyber onslaught against Ukraine throughout 2025.\n\nSlovakian cybersecurity company ESET said it observed 35 distinct spear-phishing campaigns mounted by Gamaredon against new targets, with most of them taking place in the second half of the year. Primary targets of these",
+    "link": "https://thehackernews.com/2026/06/gamaredon-expands-ukraine-attacks-with.html",
+    "published": "2026-06-29T11:40:24",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/microsoft-removes-119-edge-extensions.html",
+    "title": "Microsoft Removes 119 Edge Extensions That Hid Malware in Images and Fonts",
+    "summary": "Microsoft has shut down a long-running malicious extension operation on the Edge Add-ons store that hid its payloads inside ordinary image and font files, then woke up days after install to steal credentials and run ad fraud.\n\nThe company calls it StegoAd, a mash-up of steganography and adware, and ties 119 extensions to a single threat actor it says has been active since at least 2021.",
+    "link": "https://thehackernews.com/2026/06/microsoft-removes-119-edge-extensions.html",
+    "published": "2026-06-29T08:32:31",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/public-poc-released-for-critical.html",
+    "title": "Public PoC Released for Critical libssh2 CVE-2026-55200 Client-Side SSH Flaw",
+    "summary": "A public proof-of-concept is now out for CVE-2026-55200, a critical flaw in libssh2 that lets a malicious or compromised SSH server trigger memory corruption on a connecting client, with possible code execution. No credentials, no user interaction. The bug affects every release up to and including 1.11.1 and carries a CVSS 4.0 score of 9.2.\n\nlibssh2 is a client-side SSH library, not a server.",
+    "link": "https://thehackernews.com/2026/06/public-poc-released-for-critical.html",
+    "published": "2026-06-29T07:06:34",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/hijacked-npm-and-go-packages-use-vs.html",
+    "title": "Hijacked npm and Go Packages Use VS Code Tasks to Deploy Python Infostealer",
+    "summary": "Cybersecurity researchers have uncovered two hijacked npm packages and a cluster of Go packages that are designed to deploy a Python-based information stealer on compromised Windows, Linux, and macOS hosts.\n\n\"This attack avoids the most common npm execution paths through lifecycle scripts, perhaps in an attempt to remain 'compatible' with npm v12's security hardenings,\" JFrog said in a",
+    "link": "https://thehackernews.com/2026/06/hijacked-npm-and-go-packages-use-vs.html",
+    "published": "2026-06-29T05:36:06",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/ukraine-says-russian-intelligence-used.html",
+    "title": "Ukraine Says Russian Intelligence Used Fake Support Texts to Steal Messaging Credentials",
+    "summary": "The Security Service of Ukraine (SSU) said it, together with the U.S. Federal Bureau of Investigation (FBI), uncovered a long-running campaign orchestrated by Russian intelligence services to break into the messaging accounts of government officials, military personnel, politicians, and activists in Ukraine, Europe, and the U.S.\n\nThe systematic cyber attacks aimed at stealing sensitive",
+    "link": "https://thehackernews.com/2026/06/ukraine-says-russian-intelligence-used.html",
+    "published": "2026-06-27T17:27:11",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/openai-limits-gpt-56-rollout-as-sol.html",
+    "title": "OpenAI Previews GPT-5.6 Sol With Restricted Access and Stronger Cyber Safeguards",
+    "summary": "OpenAI on Friday released three versions of GPT-5.6, called Sol, Terra, and Luna, as a limited preview to a small number of companies as part of an ongoing engagement with the U.S. government.\n\nWhile Sol is the latest flagship model and the most powerful, Terra strikes a balance between efficiency and power, and Luna is fine-tuned for speed and affordability.\n\n\"GPT‑5.6 Sol launches with our most",
+    "link": "https://thehackernews.com/2026/06/openai-limits-gpt-56-rollout-as-sol.html",
+    "published": "2026-06-27T12:19:37",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/fbi-warns-russian-intelligence-hackers.html",
+    "title": "FBI Warns Russian Intelligence Hackers Target Signal Backup Recovery Keys",
+    "summary": "The FBI and CISA have updated their March warning about Russian intelligence phishing Signal accounts, and the operators have added a step: they now coax targets into handing over their Signal Backup Recovery Key.\n\nHand it over once, and the attacker can restore the account's backup, read the private and group message history, and take over the account. Worse, the key keeps working.",
+    "link": "https://thehackernews.com/2026/06/fbi-warns-russian-intelligence-hackers.html",
+    "published": "2026-06-26T19:38:29",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.733522"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/new-sharkloader-malware-deploys-cobalt.html",
+    "title": "New SharkLoader Malware Deploys Cobalt Strike in StrikeShark Cyberattacks",
+    "summary": "A newly discovered cyber attack campaign has been observed delivering a previously undocumented malware family called SharkLoader that acts as a loader for deploying Cobalt Strike Beacon on compromised hosts.\n\nKaspersky, which is tracking the activity under the moniker StrikeShark, said the campaign has targeted a diplomatic organization in Indonesia, government organizations in Taiwan,",
+    "link": "https://thehackernews.com/2026/06/new-sharkloader-malware-deploys-cobalt.html",
+    "published": "2026-06-26T18:17:46",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/chinese-speaking-apt-deploys-new.html",
+    "title": "Chinese-Speaking APT Deploys New TinyRCT Backdoor in Southeast Asia Campaign",
+    "summary": "A Chinese-speaking advanced persistent threat (APT) actor has been linked to a new custom backdoor called TinyRCT as part of cyber attacks aimed at government entities and critical infrastructure in Southeast Asia.\n\nThe activity, particularly aimed at state-owned enterprises in the energy and government sectors, has been attributed to a threat actor called CL-STA-1062, which Palo Alto Networks",
+    "link": "https://thehackernews.com/2026/06/chinese-speaking-apt-deploys-new.html",
+    "published": "2026-06-26T16:21:25",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/new-linux-pedit-cow-exploit-enables.html",
+    "title": "New Linux pedit COW Exploit Enables Root Access by Poisoning Cached Binaries",
+    "summary": "A flaw in the Linux kernel's traffic-control subsystem can let a local unprivileged user gain root on affected systems.\n\nCVE-2026-46331, nicknamed \"pedit COW,\" is an out-of-bounds write in the packet-editing action (act_pedit) that corrupts shared page-cache memory. A public, working exploit appeared within a day of the CVE assignment on June 16. Red Hat rates the flaw as",
+    "link": "https://thehackernews.com/2026/06/new-linux-pedit-cow-exploit-enables.html",
+    "published": "2026-06-26T13:57:55",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/amazon-q-developer-flaw-could-let.html",
+    "title": "Amazon Q Developer Flaw Could Let Malicious Repos Run Code via MCP Configs",
+    "summary": "A high-severity flaw in Amazon Q Developer let a malicious repository run commands and steal a developer's cloud credentials. The path was short: a developer opens the repo, trusts the workspace, and Amazon Q does the rest. Amazon has patched it.\n\nTracked as CVE-2026-12957 (CVSS 8.5), the bug sat in how Amazon's AI coding assistant handled Model Context Protocol (MCP) servers.\n\nWiz",
+    "link": "https://thehackernews.com/2026/06/amazon-q-developer-flaw-could-let.html",
+    "published": "2026-06-26T13:53:00",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/cisa-adds-exploited-ptc-windchill-rce.html",
+    "title": "CISA Adds Exploited PTC Windchill RCE Flaw to KEV as Web Shell Attacks Continue",
+    "summary": "The U.S. Cybersecurity and Infrastructure Security Agency (CISA) on Thursday added a critical remote code execution vulnerability impacting PTC Windchill PDMlink and PTC FlexPLM enterprise Product Data Management (PDM) and Product Lifecycle Management (PLM) software to its Known Exploited Vulnerabilities (KEV) catalog, citing evidence of active exploitation.\n\nThe vulnerability in question is",
+    "link": "https://thehackernews.com/2026/06/cisa-adds-exploited-ptc-windchill-rce.html",
+    "published": "2026-06-26T12:31:56",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/new-dirtyclone-linux-kernel-flaw-lets.html",
+    "title": "New DirtyClone Linux Kernel Flaw Lets Local Users Gain Root via Cloned Packets",
+    "summary": "DirtyClone is a new Linux kernel privilege escalation in the DirtyFrag family. JFrog Security Research published a working exploit walkthrough for the flaw on June 25, the first public demonstration for this variant.\n\nTracked as CVE-2026-43503 (CVSS 8.8), it lets a local user corrupt file-backed memory through a cloned network packet and gain root. The patch landed in",
+    "link": "https://thehackernews.com/2026/06/new-dirtyclone-linux-kernel-flaw-lets.html",
+    "published": "2026-06-26T11:51:35",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/guardian-agents-next-layer-of-identity.html",
+    "title": "Guardian Agents: The Next Layer of Identity Governance",
+    "summary": "AI agents are moving through enterprise environments, inheriting permissions, traversing systems, and executing decisions at machine speed with minimal oversight. The identity infrastructure built to govern human access wasn't designed for autonomous actors, and the gap between what enterprises are deploying and what their governance programs actually cover is widening fast. This guide breaks",
+    "link": "https://thehackernews.com/2026/06/guardian-agents-next-layer-of-identity.html",
+    "published": "2026-06-26T11:30:00",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/miasma-malware-targets-npm-packages-and.html",
+    "title": "Miasma Malware Targets npm Packages and GitHub Actions in Supply Chain Attack",
+    "summary": "Cybersecurity researchers have flagged yet another evolution of the supply chain attack linked to the Mini Shai-Hulud, Miasma, and Hades malware family that has compromised a new set of npm packages, even as it has propagated to the Go ecosystem.\n\n\"The latest activity includes malicious npm releases affecting LeoPlatform and RStreams packages, GitHub Actions workflow abuse, and a related Go",
+    "link": "https://thehackernews.com/2026/06/miasma-malware-targets-npm-packages-and.html",
+    "published": "2026-06-26T11:05:45",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/microsoft-warns-of-photo-zip-phishing.html",
+    "title": "Microsoft Warns of Photo ZIP Phishing Campaign Targeting Hotels with Node.js Implant",
+    "summary": "An active phishing campaign has been targeting hotel and other hospitality organizations across Europe and Asia since April 2026, using photo-themed ZIP files to drop a Node.js implant and dig into front-desk machines, Microsoft says.\n\nThe company has not attributed the activity to a known threat actor, and the operators' end goal is still unclear.\n\nThe lure plays to how hotels work.",
+    "link": "https://thehackernews.com/2026/06/microsoft-warns-of-photo-zip-phishing.html",
+    "published": "2026-06-26T09:27:12",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/russia-used-cellebrite-on-jailed.html",
+    "title": "Russia Used Cellebrite on Jailed Activist's iPhone Months After Sales Cutoff",
+    "summary": "Russian authorities used Cellebrite's UFED forensic tools to break into the iPhone of detained opposition activist Andrey Pivovarov in June 2021, three months after Cellebrite said it would stop selling its tools and services to Russia and Belarus.\n\nThe finding, published June 25 by the Citizen Lab, rests on two things that rarely line up: traces on the phone itself and an official Russian",
+    "link": "https://thehackernews.com/2026/06/russia-used-cellebrite-on-jailed.html",
+    "published": "2026-06-26T08:49:35",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/google-details-turlas-new-stockstay.html",
+    "title": "Google Details Turla's New STOCKSTAY Backdoor Used in Ukraine Espionage Attacks",
+    "summary": "The Russian state-sponsored threat actor known as Turla has been attributed to a previously undocumented .NET backdoor called STOCKSTAY that has been deployed against government and military organizations in Ukraine, and entities that have an interest in Italian foreign policy.\n\nDescribing the Windows backdoor as continually developed by the hacking group, Google Threat Intelligence Group (",
+    "link": "https://thehackernews.com/2026/06/google-details-turlas-new-stockstay.html",
+    "published": "2026-06-26T07:15:46",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/chrome-ad-blocker-with-10m-installs.html",
+    "title": "Chrome Ad Blocker with 10M+ Installs Found with Dormant Script Injection Capability",
+    "summary": "An analysis of a popular Google Chrome ad block extension for YouTube has uncovered the ability to execute arbitrary JavaScript code.\n\nAccording to Island, the extension, named Adblock for YouTube, has more than 10 million installs and carries a Featured badge on the Chrome Web Store.\n\nThe extension (ID: cmedhionkhpnakcndndgjdbohmhepckk) description states that it allows users to prevent web",
+    "link": "https://thehackernews.com/2026/06/chrome-ad-blocker-with-10m-installs.html",
+    "published": "2026-06-25T14:12:52",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/threatsday-bulletin-smart-tv-proxyware.html",
+    "title": "ThreatsDay Bulletin: Smart TV Proxyware, 24-Year curl Bug, AI Crime Forums + 13 More Stories",
+    "summary": "It’s dumb out there again.\n\nThis week has the usual smell of prod on fire and nobody wanting to admit who left the door open — old creds still working, trusted apps doing sketchy crap, browser tricks jumping the fence, and “normal” workflows turning into phishing pipes because apparently email was not enough hell already.\n\nThe worst part is how cheap some of it feels. Not elite. Not cinematic.",
+    "link": "https://thehackernews.com/2026/06/threatsday-bulletin-smart-tv-proxyware.html",
+    "published": "2026-06-25T12:24:43",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/surviving-mythos-era-richard-bejtlich.html",
+    "title": "Surviving the Mythos Era: Richard Bejtlich on the Case for NDR",
+    "summary": "Despite the abundance of telemetry at analysts’ disposal, many security operations teams struggle to answer a few basic questions during incident investigation: What happened? What evidence do we have? How do we know we’re seeing it all, in context?\n\nAnswering these questions requires teams to go beyond alerts, the most common basis for initial triage. But investigations (and their outcomes)",
+    "link": "https://thehackernews.com/2026/06/surviving-mythos-era-richard-bejtlich.html",
+    "published": "2026-06-25T11:17:31",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.734540"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/new-gaslight-macos-malware-uses-prompt.html",
+    "title": "New Gaslight macOS Malware Uses Prompt Injection to Disrupt AI-Assisted Analysis",
+    "summary": "A previously undocumented Rust-based macOS implant and information stealer has been found to embed a prompt injection payload designed to trick a malware analyst's artificial intelligence (AI) tools and trick it into aborting or refusing an analysis of the artifact.\n\nThe malware has been codenamed Gaslight owing to this deceptive behavior. It's been assessed with high confidence that the tool is",
+    "link": "https://thehackernews.com/2026/06/new-gaslight-macos-malware-uses-prompt.html",
+    "published": "2026-06-25T09:23:03",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.735538"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/new-mistic-backdoor-linked-to-kongtuke.html",
+    "title": "New Mistic Backdoor Linked to KongTuke in ClickFix and ModeloRAT Campaigns",
+    "summary": "A new, stealthy backdoor named Mistic has been deployed as part of suspected financially motivated attacks aimed at multiple organizations spanning insurance, education, IT, and professional services sectors since April 2026.\n\nAccording to Symantec and Carbon Black's Threat Hunter Team, the backdoor, also tracked as MLTBackdoor, is said to be linked to an initial access broker (IAB) named",
+    "link": "https://thehackernews.com/2026/06/new-mistic-backdoor-linked-to-kongtuke.html",
+    "published": "2026-06-25T08:54:37",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.735538"
+  },
+  {
+    "id": "https://thehackernews.com/2026/06/cisco-catalyst-sd-wan-zero-day-cve-2026.html",
+    "title": "Cisco Catalyst SD-WAN Zero-Day CVE-2026-20245 Exploited to Gain Root Access",
+    "summary": "An unknown threat actor exploited a recently disclosed high-severity security flaw impacting Cisco Catalyst SD-WAN as a zero-day at least two months before it was publicly disclosed, according to new findings from Google-owned Mandiant.\n\nThe vulnerability, tracked as CVE-2026-20245 (CVSS score: 7.8), allows an authenticated, local attacker to execute arbitrary commands with elevated privileges",
+    "link": "https://thehackernews.com/2026/06/cisco-catalyst-sd-wan-zero-day-cve-2026.html",
+    "published": "2026-06-25T05:46:54",
+    "source_id": "thehackernews",
+    "source_name": "The Hacker News",
+    "tags": [
+      "news",
+      "vulnerability",
+      "cybercrime"
+    ],
+    "fetched_at": "2026-07-01T21:13:52.735538"
+  }
+]

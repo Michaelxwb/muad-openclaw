@@ -1,0 +1,25 @@
+{
+  "asset_list": [
+    "697c74549e0acc829a26da04",
+    "697c74549e0acc829a26d9ff",
+    "697c74549e0acc829a26da05",
+    "697c74549e0acc829a26da06",
+    "697c74549e0acc829a26d9fe"
+  ],
+  "asset_mode": 1,
+  "diy_port": [],
+  "fuzz_scan": 0,
+  "task_type": 1,
+  "conc_module": 3,
+  "port_type": "common",
+  "port_alive": [],
+  "is_versioncomparison_correct": 0,
+  "include_unnecessary": 0,
+  "export_type": 0,
+  "is_multi": 0,
+  "vul_level_flag": 1,
+  "export_file": {
+    "vul_fix_schema": 1,
+    "vul_proof_report": 1
+  }
+}

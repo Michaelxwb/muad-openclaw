@@ -1,0 +1,92 @@
+[
+  {
+    "id": "https://kasperskycontenthub.com/securelist/tr//120472/",
+    "title": "The SOC Files: ScreenConnect masked as freeware. An inside look at a large-scale campaign",
+    "summary": "Kaspersky experts have uncovered a malicious network infrastructure for delivering AsyncRAT. The Trojan is dropped via compromised ScreenConnect software. In this post, we break down the infection chain and analyze the C2 infrastructure.",
+    "link": "https://securelist.com/tr/the-soc-files-screenconnect-campaign-with-asyncrat/120472/",
+    "published": "2026-07-01T10:00:51",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-01T21:08:40.612736"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120484",
+    "title": "OpenClaw: risks for agent users and how to mitigate them",
+    "summary": "Researching OpenClaw vulnerabilities, malicious skills and other security issues with the popular agent, and providing tips on how to mitigate them.",
+    "link": "https://securelist.com/openclaw-security/120484/",
+    "published": "2026-07-01T06:42:48",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-01T21:08:40.612736"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120251",
+    "title": "ToddyCat: your hidden email assistant. Part 2",
+    "summary": "An in-depth analysis of Umbrij, a new tool used by the ToddyCat APT group to compromise corporate email communications in Gmail. The attack targeted OAuth authorization tokens, allowing threat actors to gain access to Google services.",
+    "link": "https://securelist.com/toddycat-apt-umbrij-tool-and-oauth/120251/",
+    "published": "2026-06-30T10:00:13",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-01T21:08:40.612736"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120447",
+    "title": "The Gentlemen are knocking: сustom backdoors and evolving tactics",
+    "summary": "Kaspersky researchers analyze incidents related to The Gentlemen RaaS group, disclose their tools and TTPs, and find a new ransomware variant.",
+    "link": "https://securelist.com/the-gentlemen-raas/120447/",
+    "published": "2026-06-29T10:00:35",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-01T21:08:40.613736"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/tr//120436/",
+    "title": "Beware of the license manager: how a Schneider Electric software vulnerability puts industrial facilities at risk",
+    "summary": "Analysis of CVE-2024-2658 as found in Schneider Electric's Floating License Manager. Discover how this FlexNet Publisher vulnerability potentially allows attackers to escalate to NT AUTHORITY\\SYSTEM privileges and expand their foothold; learn how to mitigate the risk.",
+    "link": "https://securelist.com/tr/schneider-electric-cve-2024-2658-vulnerability/120436/",
+    "published": "2026-06-26T13:00:14",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-01T21:08:40.613736"
+  },
+  {
+    "id": "https://kasperskycontenthub.com/securelist/?p=120357",
+    "title": "Inside the 2026 SMB threat landscape: From phishing and scams to fake AI tools",
+    "summary": "Kaspersky researchers analyze the threat landscape for SMBs in 2026: the rise of attacks involving fake AI tools, phishing schemes, and data sold on the dark web.",
+    "link": "https://securelist.com/smb-threat-report-2026/120357/",
+    "published": "2026-06-25T10:00:59",
+    "source_id": "kaspersky",
+    "source_name": "Kaspersky SecureList",
+    "tags": [
+      "apt",
+      "malware",
+      "spam"
+    ],
+    "fetched_at": "2026-07-01T21:08:40.613736"
+  }
+]

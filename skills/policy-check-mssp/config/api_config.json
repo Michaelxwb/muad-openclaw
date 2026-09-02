@@ -1,0 +1,20 @@
+{
+  "_comment": "老 MSSP 策略检查接口集中配置。",
+  "_note": "登录态由 session-manager 提供；所有接口固定走 MSSP 内网 origin，不接受环境变量覆盖。",
+  "origin": "http://soar-inner.sangfor.com.cn:30001",
+  "host_header": "inner.sangfor.com.cn",
+  "referer_path": "/index.html",
+  "required_headers": {
+    "X-CSRFToken": "[REDACTED_SECRET]",
+    "Timezone": "+08:00"
+  },
+  "endpoint_headers": {},
+  "endpoints": {
+    "customer_search": "/gateway/customer-mgr-service/order/v1/user?_method=GET",
+    "device_info": "/order/v1/policy_check/show_device_info",
+    "distribute_task": "/order/v1/policy_check/distribute_task",
+    "task_list": "/gateway/idps/order/v1/tools/task/get_list",
+    "report": "/gateway/idps/order/v1/tools/task/report",
+    "policy_list": "/order/v1/policy_check/policy?_method=GET"
+  }
+}
