@@ -708,7 +708,10 @@ describe("HumanUsersPanel", () => {
     const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
     expect(fileInput).not.toBeNull();
     if (!fileInput) return;
-    expect(fileInput).toHaveAttribute("accept", ".tar.gz,.zip");
+    expect(fileInput).toHaveAttribute(
+      "accept",
+      ".tar.gz,.gz,.zip,application/gzip,application/x-gzip,application/zip",
+    );
     fireEvent.change(fileInput, { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
