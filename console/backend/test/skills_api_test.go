@@ -98,6 +98,60 @@ func TestSkillAPI_ListDetailEffectiveAndPolicies(t *testing.T) {
 	assertStatus(t, rr, http.StatusOK)
 }
 
+func TestSkillAPI_HumanUserListHidesOnlyPurePublicSkills(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	for _, asset := range []repo.SkillAsset{
+		{Name: "public-only", Scope: repo.SkillScopePublic,
+			SourcePath: "/opt/openclaw-skills/public-only", ManifestHash: "sha:public-only"},
+		{Name: "private-only", Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
+			SourcePath: "/workspace/skills/private-only", ManifestHash: "sha256:private-only"},
+		{Name: "conflict", Scope: repo.SkillScopePublic,
+			SourcePath: "/opt/openclaw-skills/conflict", ManifestHash: "sha256:public-conflict"},
+		{Name: "conflict", Scope: repo.SkillScopePrivate, HumanUserID: alice.HumanUserID,
+			SourcePath: "/workspace/skills/conflict", ManifestHash: "sha256:private-conflict"},
+		{Name: "system-only", Scope: repo.SkillScopeSystem,
+			SourcePath: "/opt/system-skills/system-only", ManifestHash: "sha256:system-only"},
+	} {
+		asset.PlatformsJSON = `[]`
+		createSkillAsset(t, e.store, asset)
+	}
+
+	rr := e.do(http.MethodGet, "/api/v1/human-users/"+alice.HumanUserID+"/skills", "")
+	assertStatus(t, rr, http.StatusOK)
+	result := decodeAPIData[struct {
+		Items []struct {
+			Name           string `json:"name"`
+			PrivateSkillID string `json:"privateSkillId"`
+			Conflict       bool   `json:"conflict"`
+		} `json:"items"`
+		Total int `json:"total"`
+	}](t, rr.Body.Bytes())
+	if result.Total != 3 || len(result.Items) != 3 {
+		t.Fatalf("visible Human User Skills = %+v", result)
+	}
+	byName := make(map[string]struct {
+		PrivateSkillID string
+		Conflict       bool
+	}, len(result.Items))
+	for _, skill := range result.Items {
+		byName[skill.Name] = struct {
+			PrivateSkillID string
+			Conflict       bool
+		}{skill.PrivateSkillID, skill.Conflict}
+	}
+	if _, exists := byName["public-only"]; exists {
+		t.Fatalf("pure Public Skill must be hidden: %+v", result.Items)
+	}
+	if byName["private-only"].PrivateSkillID == "" || !byName["conflict"].Conflict {
+		t.Fatalf("Private and conflict Skills must remain visible: %+v", result.Items)
+	}
+	if _, exists := byName["system-only"]; !exists {
+		t.Fatalf("System Skill must remain visible: %+v", result.Items)
+	}
+}
+
 func TestSkillAPI_StatusUpdateAndProtectedSystemSkill(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
