@@ -1,7 +1,35 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { formatConsoleError } from "../../skills/self-skill-upload/scripts/upload-skill.mjs";
+
+test("skill-upload resolves a runtime agent id that starts with a digit", () => {
+  const stateDir = mkdtempSync(join(tmpdir(), "skill-upload-agent-id-"));
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL("../../skills/self-skill-upload/scripts/upload-skill.mjs", import.meta.url)), "report-skill"],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          OPENCLAW_AGENT_ID: "13418-bb540530",
+          OPENCLAW_STATE_DIR: stateDir,
+        },
+      },
+    );
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /skill not found in staging: report-skill/u);
+    assert.doesNotMatch(result.stderr, /cannot resolve agent workspace/u);
+  } finally {
+    rmSync(stateDir, { recursive: true, force: true });
+  }
+});
 
 test("skill-upload formats backend validation detail", () => {
   const formatted = formatConsoleError(JSON.stringify({

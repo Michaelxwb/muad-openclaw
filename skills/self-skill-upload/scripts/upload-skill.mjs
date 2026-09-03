@@ -21,6 +21,7 @@ const CONFIG_PATH = join(STATE_DIR, "openclaw.json");
 const DEFAULT_INSTALLER = "/opt/muad/private-skill-installer.mjs";
 const INSTALLER = process.env.MUAD_INSTALLER || DEFAULT_INSTALLER;
 const SKILL_NAME_RE = /^[a-z][a-z0-9_-]{0,63}$/u;
+const AGENT_ID_RE = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/u;
 // 内部 API 是固定契约路径，不受 consoleInternalURL 前缀影响（与 long-task-state-client
 // 的策略一致），避免带 /internal/v1 前缀的 baseURL 拼出双前缀 404。
 const INGEST_PATH = "/internal/v1/skills/private/ingest";
@@ -45,7 +46,7 @@ const NON_USER_WORKSPACES = new Set(["main", "quarantine", "attestations"]);
 function findAgentWorkspace() {
   // 1) Explicit runtime env, when the session manager sets it.
   const agentId = process.env.OPENCLAW_AGENT_ID;
-  if (agentId && SKILL_NAME_RE.test(agentId)) return agentId;
+  if (agentId && AGENT_ID_RE.test(agentId)) return agentId;
   // 2) Derive from the process cwd: agent tools run inside workspace-<agentId>.
   const fromCwd = agentIdFromCwd();
   if (fromCwd) return fromCwd;
@@ -67,7 +68,7 @@ function agentIdFromCwd() {
   for (let i = segments.length - 1; i >= 0; i--) {
     if (segments[i].startsWith("workspace-")) {
       const id = segments[i].slice("workspace-".length);
-      if (id && !NON_USER_WORKSPACES.has(id) && SKILL_NAME_RE.test(id)) return id;
+      if (id && !NON_USER_WORKSPACES.has(id) && AGENT_ID_RE.test(id)) return id;
     }
   }
   return "";
@@ -77,7 +78,7 @@ function singleSessionAgent() {
   const sessionAgents = readRuntimeConfig().sessionAgentIds;
   if (Array.isArray(sessionAgents) && sessionAgents.length === 1) {
     const id = String(sessionAgents[0]);
-    if (!NON_USER_WORKSPACES.has(id) && SKILL_NAME_RE.test(id)) return id;
+    if (!NON_USER_WORKSPACES.has(id) && AGENT_ID_RE.test(id)) return id;
   }
   return "";
 }
