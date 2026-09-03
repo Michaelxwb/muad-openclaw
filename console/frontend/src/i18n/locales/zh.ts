@@ -652,6 +652,8 @@ const zh = {
     noVisibleSkills: "暂无可见 Skill",
     loadSkillsFailed: "加载用户 Skill 失败",
     skillDisabledToast: "已禁用 Skill",
+    skillEnable: "启用",
+    skillEnabledToast: "已启用 Skill",
     privateOverrideAllowed: "已允许 Private 覆盖",
     policyOperationFailed: "策略操作失败",
     deletePrivateSkillTitle: "删除 Private Skill",

@@ -668,6 +668,8 @@ const en: AppLocale = {
     noVisibleSkills: "No visible Skills",
     loadSkillsFailed: "Failed to load user Skills",
     skillDisabledToast: "Skill disabled",
+    skillEnable: "Enable",
+    skillEnabledToast: "Skill enabled",
     privateOverrideAllowed: "Private override allowed",
     policyOperationFailed: "Policy operation failed",
     deletePrivateSkillTitle: "Delete Private Skill",
