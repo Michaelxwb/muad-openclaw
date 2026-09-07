@@ -101,7 +101,7 @@ export function PublicSkillUploadDialog({
         )}
         <Upload
           aria-label={t("skill.bundleLabel")}
-          accept=".tar.gz,.zip"
+          accept=".tar.gz,.gz,.zip,application/gzip,application/x-gzip,application/zip"
           action=""
           uploadTrigger="custom"
           limit={1}
