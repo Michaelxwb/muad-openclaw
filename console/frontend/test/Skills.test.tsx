@@ -246,7 +246,10 @@ describe("Skills", () => {
     const file = new File(["bundle"], "xdr-public.zip", { type: "application/zip" });
     const input = document.querySelector<HTMLInputElement>('input[type="file"]');
     expect(input).toBeTruthy();
-    expect(input).toHaveAttribute("accept", ".tar.gz,.zip");
+    expect(input).toHaveAttribute(
+      "accept",
+      ".tar.gz,.gz,.zip,application/gzip,application/x-gzip,application/zip",
+    );
     fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
