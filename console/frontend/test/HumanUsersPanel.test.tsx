@@ -36,6 +36,7 @@ const apiMocks = vi.hoisted(() => ({
   uploadPrivateSkill: vi.fn(),
   deletePrivateSkill: vi.fn(),
   createSkillPolicy: vi.fn(),
+  updateSkill: vi.fn(),
 }));
 
 vi.mock("../src/api", async (importOriginal) => {
@@ -286,6 +287,10 @@ beforeEach(() => {
     reason: "console",
     createdBy: "admin",
     createdAt: "2026-07-11T00:00:00Z",
+  });
+  apiMocks.updateSkill.mockResolvedValue({
+    skill: {},
+    affectedPodIds: ["pod-a"],
   });
 });
 
@@ -695,6 +700,63 @@ describe("HumanUsersPanel", () => {
         reason: "console",
       }),
     );
+  });
+
+  it("disables a private Skill by updating the shared Skill status", async () => {
+    apiMocks.listHumanUserSkills.mockResolvedValue({
+      items: [
+        {
+          ...conflictSkill,
+          conflict: false,
+          conflictReason: undefined,
+          effectiveSource: "private",
+          status: "effective",
+          effective: true,
+        },
+      ],
+      total: 1,
+    });
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    await screen.findByText("SOAR Sync");
+    fireEvent.click(screen.getByRole("button", { name: "禁用" }));
+
+    await waitFor(() =>
+      expect(apiMocks.updateSkill).toHaveBeenCalledWith("skill-private-soar", {
+        status: "disabled",
+      }),
+    );
+    expect(apiMocks.createSkillPolicy).not.toHaveBeenCalled();
+  });
+
+  it("enables a disabled private Skill by updating the shared Skill status", async () => {
+    apiMocks.listHumanUserSkills.mockResolvedValue({
+      items: [
+        {
+          ...conflictSkill,
+          conflict: false,
+          conflictReason: undefined,
+          effectiveSource: "private",
+          status: "disabled",
+        },
+      ],
+      total: 1,
+    });
+    renderPanel();
+    await openUserDetail();
+    fireEvent.click(screen.getByRole("tab", { name: "Skill" }));
+
+    await screen.findByText("SOAR Sync");
+    expect(screen.queryByRole("button", { name: "禁用" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "启用" }));
+
+    await waitFor(() =>
+      expect(apiMocks.updateSkill).toHaveBeenCalledWith("skill-private-soar", { status: "active" }),
+    );
+    expect(apiMocks.createSkillPolicy).not.toHaveBeenCalled();
+    expect(apiMocks.deletePrivateSkill).not.toHaveBeenCalled();
   });
 
   it("uploads a private Skill bundle from the user detail dialog", async () => {

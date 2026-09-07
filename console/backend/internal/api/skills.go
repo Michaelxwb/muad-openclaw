@@ -370,12 +370,24 @@ func (s *Server) handleListHumanUserSkills(w http.ResponseWriter, r *http.Reques
 		Query:  strings.TrimSpace(r.URL.Query().Get("q")),
 		Status: strings.TrimSpace(r.URL.Query().Get("status")),
 	}
-	skills, total, err := s.store.ResolveEffectiveSkills(r.PathValue("humanUserId"), filter)
+	skills, _, err := s.store.ResolveEffectiveSkills(r.PathValue("humanUserId"), filter)
 	if err != nil {
 		writeRepoError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": effectiveSkillViews(skills), "total": total})
+	visible := humanUserVisibleSkills(skills)
+	writeJSON(w, http.StatusOK, map[string]any{"items": effectiveSkillViews(visible), "total": len(visible)})
+}
+
+func humanUserVisibleSkills(skills []repo.EffectiveSkill) []repo.EffectiveSkill {
+	visible := make([]repo.EffectiveSkill, 0, len(skills))
+	for _, skill := range skills {
+		if skill.PublicSkillID != "" && skill.PrivateSkillID == "" {
+			continue
+		}
+		visible = append(visible, skill)
+	}
+	return visible
 }
 
 func (s *Server) handleCreateSkillPolicy(w http.ResponseWriter, r *http.Request) {
