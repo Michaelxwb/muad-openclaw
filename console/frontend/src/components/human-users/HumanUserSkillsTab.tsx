@@ -104,6 +104,7 @@ function useHumanUserSkills(humanUserId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [updatingPrivateSkillName, setUpdatingPrivateSkillName] = useState("");
   const mountedRef = useMountedRef();
   const requestRef = useRef(0);
   const foregroundRequestRef = useRef(0);
@@ -159,6 +160,25 @@ function useHumanUserSkills(humanUserId: string) {
     }
   };
 
+  const updatePrivateSkillStatus = async (skill: EffectiveSkill, status: "active" | "disabled") => {
+    if (!skill.privateSkillId) return;
+    setUpdatingPrivateSkillName(skill.name);
+    setError("");
+    setMessage("");
+    try {
+      await api.updateSkill(skill.privateSkillId, { status });
+      if (!mountedRef.current) return;
+      setMessage(
+        status === "active" ? i18n.t("user.skillEnabledToast") : i18n.t("user.skillDisabledToast"),
+      );
+      await refresh();
+    } catch (caught) {
+      if (mountedRef.current) setError(errorMessage(caught, "skill.updateStatusFailed"));
+    } finally {
+      if (mountedRef.current) setUpdatingPrivateSkillName("");
+    }
+  };
+
   const deletePrivate = async (skill: EffectiveSkill) => {
     if (!skill.privateSkillId) return;
     Modal.confirm({
@@ -186,10 +206,12 @@ function useHumanUserSkills(humanUserId: string) {
     loading,
     error,
     message,
+    updatingPrivateSkillName,
     setQuery,
     setStatus,
     refresh,
     createPolicy,
+    updatePrivateSkillStatus,
     deletePrivate,
   };
 }
@@ -288,9 +310,29 @@ function skillColumns(t: TFunction, humanUserId: string, state: HumanUserSkillsS
               {t("user.allowOverride")}
             </Button>
           )}
-          {skill.effective && (
+          {!skill.privateSkillId && skill.effective && (
             <Button size="small" onClick={() => void state.createPolicy(skill.name, "disable")}>
               {t("user.skillDisabled")}
+            </Button>
+          )}
+          {skill.privateSkillId && skill.effective && (
+            <Button
+              size="small"
+              loading={state.updatingPrivateSkillName === skill.name}
+              disabled={state.updatingPrivateSkillName !== ""}
+              onClick={() => void state.updatePrivateSkillStatus(skill, "disabled")}
+            >
+              {t("user.skillDisabled")}
+            </Button>
+          )}
+          {skill.privateSkillId && !skill.conflict && skill.status === "disabled" && (
+            <Button
+              size="small"
+              loading={state.updatingPrivateSkillName === skill.name}
+              disabled={state.updatingPrivateSkillName !== ""}
+              onClick={() => void state.updatePrivateSkillStatus(skill, "active")}
+            >
+              {t("user.skillEnable")}
             </Button>
           )}
           {skill.privateSkillId && (
