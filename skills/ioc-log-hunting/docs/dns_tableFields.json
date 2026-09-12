@@ -1,0 +1,599 @@
+[
+ {
+  "id": 24912739,
+  "fieldName": "v",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "数据版本"
+ },
+ {
+  "id": 24912759,
+  "fieldName": "srcIpTag",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "源资产标签"
+ },
+ {
+  "id": 24912740,
+  "fieldName": "tenant",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(String)",
+  "fieldAlias": "租户ID"
+ },
+ {
+  "id": 24912744,
+  "fieldName": "insertTimestamp",
+  "fieldType": "Int64",
+  "ckFieldType": "Int64",
+  "fieldAlias": "入库时间"
+ },
+ {
+  "id": 24912748,
+  "fieldName": "productType",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "上报设备"
+ },
+ {
+  "id": 24912741,
+  "fieldName": "customer",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "客户ID"
+ },
+ {
+  "id": 24912755,
+  "fieldName": "sessionId",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "会话ID"
+ },
+ {
+  "id": 24912745,
+  "fieldName": "recordTime",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "记录时间"
+ },
+ {
+  "id": 24912756,
+  "fieldName": "srcIp",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "源IP"
+ },
+ {
+  "id": 24912758,
+  "fieldName": "srcMac",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "源MAC"
+ },
+ {
+  "id": 24912746,
+  "fieldName": "uploadTime",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "上传时间"
+ },
+ {
+  "id": 24912754,
+  "fieldName": "uuId",
+  "fieldType": "String",
+  "ckFieldType": "String",
+  "fieldAlias": "日志ID"
+ },
+ {
+  "id": 24912757,
+  "fieldName": "srcPort",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "源端口"
+ },
+ {
+  "id": 24912743,
+  "fieldName": "uploadTimestamp",
+  "fieldType": "Int64",
+  "ckFieldType": "Int64",
+  "fieldAlias": "上传时间"
+ },
+ {
+  "id": 24912749,
+  "fieldName": "productVer",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "上报设备版本"
+ },
+ {
+  "id": 24912761,
+  "fieldName": "srcSubType",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "源资产二级分类"
+ },
+ {
+  "id": 24912795,
+  "fieldName": "aClasses",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "响应类别"
+ },
+ {
+  "id": 24912796,
+  "fieldName": "length",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "包长"
+ },
+ {
+  "id": 24912799,
+  "fieldName": "moduleType",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "安全模块"
+ },
+ {
+  "id": 24912802,
+  "fieldName": "deviceIp",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "采集设备IP"
+ },
+ {
+  "id": 24912770,
+  "fieldName": "dstSubType",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "目的资产二级分类"
+ },
+ {
+  "id": 24912769,
+  "fieldName": "dstType",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "目的资产一级分类"
+ },
+ {
+  "id": 24912781,
+  "fieldName": "z",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "保留位"
+ },
+ {
+  "id": 24912811,
+  "fieldName": "dstIp_v6",
+  "fieldType": "IPv6",
+  "ckFieldType": "IPv6",
+  "fieldAlias": "dstIp_v6"
+ },
+ {
+  "id": 24912767,
+  "fieldName": "dstMac",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "目的MAC"
+ },
+ {
+  "id": 24912766,
+  "fieldName": "dstPort",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "目的端口"
+ },
+ {
+  "id": 24912764,
+  "fieldName": "srcCity",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "源城市"
+ },
+ {
+  "id": 24912810,
+  "fieldName": "dstIp_v4",
+  "fieldType": "IPv4",
+  "ckFieldType": "IPv4",
+  "fieldAlias": "dstIp_v4"
+ },
+ {
+  "id": 24912787,
+  "fieldName": "nsCnt",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "授权资源个数"
+ },
+ {
+  "id": 24912797,
+  "fieldName": "hostIp",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "主机IP"
+ },
+ {
+  "id": 24912812,
+  "fieldName": "hostIp_v4",
+  "fieldType": "Array(IPv4)",
+  "ckFieldType": "Array(IPv4)",
+  "fieldAlias": "hostIp_v4"
+ },
+ {
+  "id": 24912778,
+  "fieldName": "tc",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "截断标志位"
+ },
+ {
+  "id": 24912798,
+  "fieldName": "hostIpValid",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "hostIpValid"
+ },
+ {
+  "id": 24912771,
+  "fieldName": "dstCountry",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "目的国家"
+ },
+ {
+  "id": 24912774,
+  "fieldName": "id",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "标识ID"
+ },
+ {
+  "id": 24912806,
+  "fieldName": "dstAssetId",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "目的资产ID"
+ },
+ {
+  "id": 24912765,
+  "fieldName": "dstIp",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "目的IP"
+ },
+ {
+  "id": 24912776,
+  "fieldName": "opCode",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "查询/响应的类型"
+ },
+ {
+  "id": 24912793,
+  "fieldName": "ttls",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "响应TTL"
+ },
+ {
+  "id": 24912791,
+  "fieldName": "qTypes",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "查询类型"
+ },
+ {
+  "id": 24912805,
+  "fieldName": "srcAssetId",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "源资产ID"
+ },
+ {
+  "id": 24912809,
+  "fieldName": "srcIp_v6",
+  "fieldType": "IPv6",
+  "ckFieldType": "IPv6",
+  "fieldAlias": "srcIp_v6"
+ },
+ {
+  "id": 24912763,
+  "fieldName": "srcProvince",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "源省份"
+ },
+ {
+  "id": 24912782,
+  "fieldName": "ad",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "响应数据校验位"
+ },
+ {
+  "id": 24912813,
+  "fieldName": "hostIp_v6",
+  "fieldType": "Array(IPv6)",
+  "ckFieldType": "Array(IPv6)",
+  "fieldAlias": "hostIp_v6"
+ },
+ {
+  "id": 24912803,
+  "fieldName": "logSampled",
+  "fieldType": "Int32",
+  "ckFieldType": "Nullable(Int32)",
+  "fieldAlias": "日志采样标识"
+ },
+ {
+  "id": 24912804,
+  "fieldName": "logTraceInfo",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "链路跟踪信息"
+ },
+ {
+  "id": 24912784,
+  "fieldName": "rCode",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "返回码"
+ },
+ {
+  "id": 24912815,
+  "fieldName": "_invert_text",
+  "fieldType": "String",
+  "ckFieldType": "String",
+  "fieldAlias": "_invert_text"
+ },
+ {
+  "id": 24912786,
+  "fieldName": "anCnt",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "响应个数"
+ },
+ {
+  "id": 24912800,
+  "fieldName": "logType",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "logType"
+ },
+ {
+  "id": 24912779,
+  "fieldName": "rd",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "期望递归查询"
+ },
+ {
+  "id": 24912775,
+  "fieldName": "qr",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "查询/响应的标志位"
+ },
+ {
+  "id": 24912788,
+  "fieldName": "arCnt",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "额外信息个数"
+ },
+ {
+  "id": 24912790,
+  "fieldName": "qClasses",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "查询协议类"
+ },
+ {
+  "id": 24912794,
+  "fieldName": "aTypes",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "响应类型"
+ },
+ {
+  "id": 24912780,
+  "fieldName": "ra",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "可用递归响应"
+ },
+ {
+  "id": 24912785,
+  "fieldName": "qdCnt",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "请求个数"
+ },
+ {
+  "id": 24912789,
+  "fieldName": "queries",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "查询域名"
+ },
+ {
+  "id": 24912783,
+  "fieldName": "cd",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "禁用检查位"
+ },
+ {
+  "id": 24912814,
+  "fieldName": "cloudTs",
+  "fieldType": "Int64",
+  "ckFieldType": "Nullable(Int64)",
+  "fieldAlias": "云端相对时间"
+ },
+ {
+  "id": 24912801,
+  "fieldName": "manageIp",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "上报设备IP"
+ },
+ {
+  "id": 24912807,
+  "fieldName": "rowLogAlias",
+  "fieldType": "String",
+  "ckFieldType": "String",
+  "fieldAlias": "rowLogAlias"
+ },
+ {
+  "id": 24912808,
+  "fieldName": "srcIp_v4",
+  "fieldType": "IPv4",
+  "ckFieldType": "IPv4",
+  "fieldAlias": "srcIp_v4"
+ },
+ {
+  "id": 24912762,
+  "fieldName": "srcCountry",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "源国家"
+ },
+ {
+  "id": 24912747,
+  "fieldName": "vendor",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "上报设备厂商"
+ },
+ {
+  "id": 24912752,
+  "fieldName": "originProductVer",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "采集设备版本"
+ },
+ {
+  "id": 24912760,
+  "fieldName": "srcType",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "源资产一级分类"
+ },
+ {
+  "id": 24943703,
+  "fieldName": "srcRegionId",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "源资产域ID"
+ },
+ {
+  "id": 24912742,
+  "fieldName": "recordTimestamp",
+  "fieldType": "Timestamp",
+  "ckFieldType": "Int64",
+  "fieldAlias": "记录时间"
+ },
+ {
+  "id": 24912753,
+  "fieldName": "deviceId",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "采集设备ID"
+ },
+ {
+  "id": 24943704,
+  "fieldName": "dstRegionId",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "目的资产域ID"
+ },
+ {
+  "id": 24912750,
+  "fieldName": "manage",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "上报设备ID"
+ },
+ {
+  "id": 24912751,
+  "fieldName": "originProductType",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "采集设备"
+ },
+ {
+  "id": 24988662,
+  "fieldName": "extensions",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": "扩展信息"
+ },
+ {
+  "id": 24912777,
+  "fieldName": "aa",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "授权回答的标志位"
+ },
+ {
+  "id": 24912792,
+  "fieldName": "answers",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "响应"
+ },
+ {
+  "id": 24912773,
+  "fieldName": "dstCity",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "目的城市"
+ },
+ {
+  "id": 24912768,
+  "fieldName": "dstIpTag",
+  "fieldType": "Int32",
+  "ckFieldType": "Int32",
+  "fieldAlias": "目的资产标签"
+ },
+ {
+  "id": 24912772,
+  "fieldName": "dstProvince",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(Nullable(String))",
+  "fieldAlias": "目的省份"
+ },
+ {
+  "id": 25724685,
+  "fieldName": "rawMsg",
+  "fieldType": "String",
+  "ckFieldType": "Nullable(String)",
+  "fieldAlias": ""
+ },
+ {
+  "id": 25991141,
+  "fieldName": "retentionDays",
+  "fieldType": "UInt32",
+  "ckFieldType": "UInt32",
+  "fieldAlias": ""
+ },
+ {
+  "id": 26487460,
+  "fieldName": "devUId",
+  "fieldType": "Int32",
+  "ckFieldType": "Nullable(Int32)",
+  "fieldAlias": ""
+ },
+ {
+  "id": 26487463,
+  "fieldName": "dl_department_mask",
+  "fieldType": "Int32",
+  "ckFieldType": "Nullable(Int32)",
+  "fieldAlias": ""
+ },
+ {
+  "id": -99,
+  "fieldName": "customerName",
+  "fieldType": "String",
+  "ckFieldType": "LowCardinality(String)",
+  "fieldAlias": "客户名称",
+  "show": 0,
+  "select": false
+ }
+]

@@ -1,0 +1,9 @@
+{
+  "name": "telemetry-entity-hunt",
+  "platforms": [],
+  "runtime": "script",
+  "version": "0.1.0",
+  "capabilities": [],
+  "longTask": false,
+  "entrypoint": "scripts/hunt_entity.py"
+}

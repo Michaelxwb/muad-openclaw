@@ -69,6 +69,30 @@ test("S-01 --json reports only the local written result", () => {
   }
 });
 
+test("done raw accepts a long final result and repeated absolute media paths", () => {
+  const fixture = temporaryEvents();
+  try {
+    const text = "推".repeat(2_000);
+    const result = runCLI([
+      "done", "--stage", "event_1", "--text", text, "--raw",
+      "--media", "/workspace/one.png", "--media", "/workspace/two.png",
+    ], fixture.path);
+    assert.equal(result.status, 0, result.stderr);
+    const event = readEvents(fixture.path)[0];
+    assert.equal(event.raw, true);
+    assert.equal(event.text, text);
+    assert.deepEqual(event.media, ["/workspace/one.png", "/workspace/two.png"]);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("stage rejects raw final-result flags", () => {
+  const result = runCLI(["stage", "--stage", "event_1", "--text", "safe", "--raw"]);
+  assert.equal(result.status, 2);
+  assert.equal(result.stderr, "muad-progress: invalid_arguments\n");
+});
+
 test("S-01 skill falls back to the trusted execution environment", () => {
   const fixture = temporaryEvents();
   try {
@@ -178,7 +202,7 @@ test("S-01 --help and --version remain stable for scripts and image self-check",
 
   const version = runCLI(["--version"]);
   assert.equal(version.status, 0, version.stderr);
-  assert.equal(version.stdout, "muad-progress 0.1.0\n");
+  assert.equal(version.stdout, "muad-progress 0.2.0\n");
   assert.equal(version.stderr, "");
 });
 

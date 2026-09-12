@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -47,6 +47,26 @@ test("SkillProgressManager B-02 delivers identical valid events twice", async ()
 
   assert.equal(calls.length, 2);
   assert.equal(calls[0].text, calls[1].text);
+  manager.close();
+});
+
+test("raw done delivers exact text and workspace-scoped media", async (t) => {
+  const root = mkdtempSync(path.join(tmpdir(), "progress-media-"));
+  const media = path.join(root, "ti.png");
+  writeFileSync(media, "image");
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const calls = [];
+  const manager = createManager({ notify: async (input) => { calls.push(input); return { ok: true }; } });
+  const registration = manager.registerBackground(backgroundInput());
+  manager.applyTrustedWorkspace(registration.executionKey, root);
+
+  assert.equal(manager.reportProgress(registration.executionKey, event({
+    type: "done", stage: "event_1", text: "```\n最终文案\n```", raw: true, media: [media],
+  })).accepted, true);
+  await manager.finish(registration.executionKey);
+
+  assert.equal(calls[0].text, "```\n最终文案\n```");
+  assert.deepEqual(calls[0].mediaPaths, [media]);
   manager.close();
 });
 

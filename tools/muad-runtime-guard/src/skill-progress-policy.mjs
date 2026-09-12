@@ -1,9 +1,12 @@
 const MAX_TEXT_CHARACTERS = 1000;
+const MAX_RAW_DONE_TEXT_CHARACTERS = 50_000;
+const MAX_MEDIA_ITEMS = 10;
+const MAX_MEDIA_PATH_CHARACTERS = 2048;
 const MAX_ID_CHARACTERS = 80;
 const MAX_CODE_CHARACTERS = 80;
 const MAX_SKILL_CHARACTERS = 128;
 const EVENT_KEYS = new Set([
-  "type", "skill", "stage", "text", "id", "code", "visibility", "privacy", "ts",
+  "type", "skill", "stage", "text", "id", "code", "visibility", "privacy", "ts", "raw", "media",
 ]);
 const STAGE_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;
 const RFC3339_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
@@ -29,6 +32,7 @@ export function validateProgressEvent(input) {
 }
 
 export function renderProgressText(event, context) {
+  if (event.type === "done" && event.raw === true) return event.text;
   const locale = context.locale === "en" ? "en" : "zh";
   const icon = event.type === "done" ? "✅" : event.type === "error" ? "❌" : "⏳";
   const heading = locale === "en" ? "Progress" : "进度";
@@ -43,11 +47,14 @@ function normalizedEvent(input) {
   if (["skill", "id", "code"].some((key) => input[key] !== undefined && typeof input[key] !== "string")) {
     return undefined;
   }
+  if (input.raw !== undefined && input.raw !== true) return undefined;
+  if (input.media !== undefined && !validMedia(input.media)) return undefined;
   return {
     type: input.type, stage: input.stage, text: input.text,
     visibility: input.visibility, privacy: input.privacy, ts: input.ts,
     ...optionalField(input, "skill"), ...optionalField(input, "id"),
     ...optionalField(input, "code"),
+    ...optionalField(input, "raw"), ...optionalField(input, "media"),
   };
 }
 
@@ -55,13 +62,24 @@ function validEventFields(event) {
   // type="log" 为 CLI 诊断事件（仅落日志），与 progress/done/error 同一 schema。
   if (!["progress", "done", "error", "log"].includes(event.type)) return false;
   if (!STAGE_PATTERN.test(event.stage)) return false;
-  if (event.text.trim() === "" || unicodeLength(event.text) > MAX_TEXT_CHARACTERS) return false;
+  const textLimit = event.type === "done" && event.raw === true
+    ? MAX_RAW_DONE_TEXT_CHARACTERS
+    : MAX_TEXT_CHARACTERS;
+  if (event.text.trim() === "" || unicodeLength(event.text) > textLimit) return false;
   if (event.visibility !== "channel" || event.privacy !== "public") return false;
   if (!RFC3339_PATTERN.test(event.ts) || Number.isNaN(Date.parse(event.ts))) return false;
   if (!validOptional(event.skill, MAX_SKILL_CHARACTERS)) return false;
   if (!validOptional(event.id, MAX_ID_CHARACTERS)) return false;
   if (!validOptional(event.code, MAX_CODE_CHARACTERS)) return false;
-  return event.code === undefined || event.type === "error";
+  if (event.code !== undefined && event.type !== "error") return false;
+  if (event.raw !== undefined && event.type !== "done") return false;
+  return event.media === undefined || event.type === "done";
+}
+
+function validMedia(value) {
+  return Array.isArray(value) && value.length > 0 && value.length <= MAX_MEDIA_ITEMS && value.every((item) =>
+    typeof item === "string" && item.startsWith("/") && item.length <= MAX_MEDIA_PATH_CHARACTERS &&
+    !CONTROL_PATTERN.test(item));
 }
 
 function sensitiveEvent(event) {

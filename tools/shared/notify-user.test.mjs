@@ -78,6 +78,25 @@ test("B-04 keeps multilingual text intact in WeCom and Mattermost argv", async (
   }
 });
 
+test("notifyUser sends media in order before the final text", async () => {
+  const { spawn, calls } = fakeSpawn();
+  const result = await notifyUser({
+    channel: "wecom",
+    peerId: "user-1",
+    text: "```\n最终文案\n```",
+    mediaPaths: ["/workspace/one.png", "/workspace/two.png"],
+    spawn,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(calls.length, 3);
+  assert.deepEqual(calls.map(({ args }) => args.slice(6, 8)), [
+    ["--media", "/workspace/one.png"],
+    ["--media", "/workspace/two.png"],
+    ["--message", "```\n最终文案\n```"],
+  ]);
+});
+
 test("notifyUser rejects empty channel/peerId/text", async () => {
   const { spawn } = fakeSpawn();
   for (const bad of [

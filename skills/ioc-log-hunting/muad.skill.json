@@ -1,0 +1,9 @@
+{
+  "name": "ioc-log-hunting",
+  "platforms": ["mssp"],
+  "runtime": "script",
+  "version": "0.5.0",
+  "capabilities": [],
+  "longTask": false,
+  "entrypoint": "scripts/dns_hunt.py"
+}

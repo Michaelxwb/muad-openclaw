@@ -7,6 +7,7 @@ export function createSkillProgressHooks(options = {}) {
   const manager = requireManager(options.manager);
   const now = typeof options.now === "function" ? options.now : Date.now;
   const log = typeof options.log === "function" ? options.log : () => {};
+  const resolveWorkspace = typeof options.resolveWorkspace === "function" ? options.resolveWorkspace : () => "";
   const ttlMs = positiveInteger(options.ttlMs ?? DEFAULT_TTL_MS);
   const active = new Map();
   // (agentId, sessionKey) -> { skillName, senderId, expiresAt }：dispatch 发生在
@@ -109,6 +110,7 @@ export function createSkillProgressHooks(options = {}) {
       text(turnSenders.get(record.session)?.senderId);
     try {
       manager.applyTrustedSender?.(record.executionKey, senderId);
+      manager.applyTrustedWorkspace?.(record.executionKey, resolveWorkspace(ctx?.agentId));
     } catch {
       // 路由修正失败不影响 exec 注入，保持既有 route。
     }

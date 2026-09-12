@@ -33,13 +33,13 @@ test("S-06 muad-progress self-check requires an executable CLI and validates --v
     progressCliPath: cli,
     execFile: (command, args) => {
       calls.push({ command, args });
-      return "muad-progress 0.1.0\n";
+      return "muad-progress 0.2.0\n";
     },
   }));
   assert.deepEqual(calls, [{ command: cli, args: ["--version"] }]);
   assert.throws(() => validateProgressCLI({
     progressCliPath: join(root, "missing"),
-    progressVersionOutput: "muad-progress 0.1.0",
+    progressVersionOutput: "muad-progress 0.2.0",
   }));
   assert.throws(() => validateProgressCLI({
     progressCliPath: cli,
@@ -58,7 +58,7 @@ test("S-06 image-only self-check validates muad-progress without config or chann
     requiredRuntimePlugins: [],
     dependencies: {
       progressCliPath: cli,
-      progressVersionOutput: "muad-progress 0.1.0",
+    progressVersionOutput: "muad-progress 0.2.0",
     },
   }));
 });
@@ -157,7 +157,7 @@ test("startup self-check skips OpenClaw CLI migration paths", () => {
       dependencies: {
         cliPath: cli,
         progressCliPath: cli,
-        progressVersionOutput: "muad-progress 0.1.0",
+        progressVersionOutput: "muad-progress 0.2.0",
         readFile: () => "{}",
         access: (path, mode) => accessSync(path === POD_SERVICE_TOKEN_FILE ? token : path, mode),
       },

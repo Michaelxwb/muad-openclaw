@@ -18,38 +18,86 @@ EMOJI_PATTERN = re.compile(
     "]"
 )
 
+# 固定的时间窗口描述（format_report 第一参为字符串，不再传分钟整数）
+WIN = "最近120小时"
+
 
 class ParseArgsTest(unittest.TestCase):
-    def test_customer_and_duration_are_required(self):
+    def test_company_ids_are_required(self):
+        # 仅给公司不给时间范围也应失败
         with self.assertRaises(SystemExit):
             run.parse_args([])
         with self.assertRaises(SystemExit):
             run.parse_args(["--company-id", "1001"])
-        with self.assertRaises(SystemExit):
-            run.parse_args(["--minutes", "15"])
 
-    def test_duration_must_be_positive(self):
+    def test_time_range_must_be_provided_either_way(self):
+        # 两者都缺：报错要求时间范围
         with self.assertRaises(SystemExit):
-            run.parse_args(["--company-id", "1001", "--minutes", "0"])
-        with self.assertRaises(SystemExit):
-            run.parse_args(["--company-id", "1001", "--minutes", "-1"])
+            run.parse_args(["--company-id", "1001"])
 
-    def test_explicit_customer_and_duration_are_preserved(self):
+    def test_hours_must_be_positive(self):
+        with self.assertRaises(SystemExit):
+            run.parse_args(["--company-id", "1001", "--hours", "0"])
+        with self.assertRaises(SystemExit):
+            run.parse_args(["--company-id", "1001", "--hours", "-1"])
+
+    def test_explicit_hours_is_preserved(self):
         args = run.parse_args([
             "--company-id", "1001",
             "--company-id", "1002",
-            "--minutes", "15",
+            "--hours", "120",
         ])
         self.assertEqual(args.company_ids, ["1001", "1002"])
-        self.assertEqual(args.minutes, 15)
+        self.assertEqual(args.mode, "hours")
+        self.assertEqual(args.hours, 120)
+        # start/end 由 hours 推导
+        self.assertIsNotNone(args.start)
+        self.assertGreater(args.end, args.start)
+
+    def test_explicit_start_end_are_preserved(self):
+        args = run.parse_args([
+            "--company-id", "1001",
+            "--start", "2026-09-05 00:00",
+            "--end", "2026-09-08 10:19",
+        ])
+        self.assertEqual(args.mode, "range")
+        self.assertIsNotNone(args.start)
+        self.assertGreater(args.end, args.start)
+
+    def test_hours_and_range_are_mutually_exclusive(self):
+        with self.assertRaises(SystemExit):
+            run.parse_args([
+                "--company-id", "1001", "--hours", "120",
+                "--start", "2026-09-05 00:00", "--end", "2026-09-08 10:19",
+            ])
+
+    def test_start_requires_end(self):
+        with self.assertRaises(SystemExit):
+            run.parse_args(["--company-id", "1001", "--start", "2026-09-05 00:00"])
+        with self.assertRaises(SystemExit):
+            run.parse_args(["--company-id", "1001", "--end", "2026-09-08 10:19"])
+
+    def test_end_must_be_after_start(self):
+        with self.assertRaises(SystemExit):
+            run.parse_args([
+                "--company-id", "1001",
+                "--start", "2026-09-08 10:00", "--end", "2026-09-05 00:00",
+            ])
 
     def test_monitor_entry_rejects_alias_as_company_id(self):
         with self.assertRaises(SystemExit):
-            run.parse_args(["--company-id", "卓驭", "--minutes", "15"])
+            run.parse_args(["--company-id", "卓驭", "--hours", "15"])
 
     def test_monitor_entry_has_no_company_keyword_option(self):
         with self.assertRaises(SystemExit):
-            run.parse_args(["--company", "卓驭", "--minutes", "15"])
+            run.parse_args(["--company", "卓驭", "--hours", "15"])
+
+    def test_millisecond_timestamps_accepted(self):
+        args = run.parse_args([
+            "--company-id", "1001",
+            "--start", "1757000000000", "--end", "1757001000000",
+        ])
+        self.assertEqual(args.mode, "range")
 
 
 class EventQueryTest(unittest.TestCase):
@@ -67,7 +115,7 @@ class EventQueryTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "limit"):
             run.fetch_event_table("cookie", 1, 2, company_ids=["1001"], limit=101)
 
-    def test_event_query_sends_only_confirmed_numeric_ids(self):
+    def test_event_query_sends_confirmed_numeric_ids_and_three_statuses(self):
         class Response:
             @staticmethod
             def json():
@@ -77,6 +125,7 @@ class EventQueryTest(unittest.TestCase):
             run.fetch_event_table("cookie", 1, 2, company_ids=["20003309"])
         payload = request.call_args.kwargs["payload"]
         self.assertEqual(payload["company_id"], ["20003309"])
+        self.assertEqual(payload["event_status"], ["inited", "disposal", "suspend"])
         self.assertNotIn("卓驭", str(payload))
 
     def test_confirmed_customer_ids_are_resolved_to_full_platform_names(self):
@@ -114,7 +163,7 @@ class EventQueryTest(unittest.TestCase):
             "company_id": "1001",
         }])
 
-    def test_report_uses_fixed_dense_field_order(self):
+    def _base_row(self, **overrides):
         row = {
             "company": "客户A", "event_name": "事件A", "event_id": "evt-1",
             "host_ip": "10.0.0.1", "hostname": "host-a", "asset_name": "核心服务器",
@@ -124,18 +173,26 @@ class EventQueryTest(unittest.TestCase):
             "device_type": 69, "nges_installed": True,
             "classification": "终端GPT检测生成了对应事件，具有终端GPT对整个事件的研判分析（重点价值推送）",
             "is_gpt": True,
+            "event_status": "disposal",
+            "ioc_value": None, "ioc_grouped": None,
             "pass_titles": ["检测通过", "终端GPT研判通过"], "all_titles": [],
         }
-        report = run.format_report(15, {"客户A": "1001"}, [row], [])
+        row.update(overrides)
+        return row
+
+    def test_report_uses_fixed_dense_field_order(self):
+        row = self._base_row()
+        report = run.format_report(WIN, {"客户A": "1001"}, [row], [])
         self.assertTrue(report.startswith(
-            "MSSP 事件监控结果（最近 15 分钟 · 1 个客户）\n"
+            f"MSSP 事件监控结果（{WIN} · 1 个客户）\n"
             + "=" * 56
         ))
         self.assertIn("监控客户                : 1个（客户A）", report)
         self.assertNotIn("1个（1001）", report)
-        self.assertIn("监控窗口                : 最近15分钟", report)
+        self.assertIn(f"监控窗口                : {WIN}", report)
         self.assertNotIn("｜", report)
         self.assertNotIn("|", report)
+        self.assertNotIn("已按事件ID去重", report)
         self.assertIsNone(EMOJI_PATTERN.search(report))
         self.assertNotIn("查询失败客户", report)
         self.assertNotIn("场景统计", report)
@@ -147,6 +204,11 @@ class EventQueryTest(unittest.TestCase):
             "业务名称                : 核心业务\n业务等级                : 核心\n资产类型",
             report,
         )
+        # 处置状态翻译为中文
+        self.assertIn("处置状态                : 处置中", report)
+        self.assertNotIn("disposal", report)
+        # IOC 为空则不展示 IOC 字段
+        self.assertNotIn("IOC", report)
         self.assertIn("关联告警                :", report)
         self.assertIn("- 检测通过", report)
         self.assertIn("共2条关联告警", report)
@@ -161,24 +223,63 @@ class EventQueryTest(unittest.TestCase):
             report,
         )
 
-    def test_report_omits_related_alarm_field_when_no_alarm_exists(self):
-        row = {
-            "company": "绝味食品股份有限公司", "event_name": "事件A",
-            "event_id": "evt-1", "classification": "杀毒引擎上报事件",
-            "all_titles": [], "pass_titles": [],
+    def test_report_maps_all_three_disposal_statuses_to_chinese(self):
+        cases = {
+            "inited": "未处置",
+            "disposal": "处置中",
+            "suspend": "定期跟进",
         }
-        report = run.format_report(
-            15, {"绝味食品股份有限公司": "1001"}, [row], []
+        for raw, cn in cases.items():
+            row = self._base_row(event_status=raw, pass_titles=[], all_titles=[])
+            report = run.format_report(WIN, {"客户A": "1001"}, [row], [])
+            self.assertIn(f"处置状态                : {cn}", report)
+            self.assertNotIn(raw, report)
+        # 未知返回空 -> 显示 -
+        row = self._base_row(event_status="zzz", pass_titles=[], all_titles=[])
+        report = run.format_report(WIN, {"客户A": "1001"}, [row], [])
+        self.assertIn("处置状态                : -", report)
+
+    def test_report_ioc_grouped_segments_only_present_types(self):
+        row = self._base_row(
+            pass_titles=[], all_titles=[],
+            ioc_grouped={
+                "url": [],
+                "ip": [{"ip": "81.227.43.128"}],
+                "domain": [],
+                "md5": [{
+                    "md5": "ba22e98227337623a5928c9ebdeb1870",
+                    "virus_name": "Worm.Win32.Agent.V4nh",
+                }],
+            },
         )
+        report = run.format_report(WIN, {"客户A": "1001"}, [row], [])
+        self.assertIn("[MD5] Worm.Win32.Agent.V4nh : ba22e98227337623a5928c9ebdeb1870", report)
+        self.assertIn("[IP] 81.227.43.128", report)
+        # 空分类（url/domain）不展示
+        self.assertNotIn("[域名]", report)
+        self.assertNotIn("[URL]", report)
+
+    def test_report_ioc_falls_back_to_ioc_value(self):
+        row = self._base_row(
+            pass_titles=[], all_titles=[],
+            ioc_grouped=None,
+            ioc_value=["ba22e98227337623a5928c9ebdeb1870"],
+        )
+        report = run.format_report(WIN, {"客户A": "1001"}, [row], [])
+        self.assertIn("ba22e98227337623a5928c9ebdeb1870", report)
+
+    def test_report_omits_related_alarm_field_when_no_alarm_exists(self):
+        row = self._base_row(
+            classification="杀毒引擎上报事件",
+            all_titles=[], pass_titles=[], event_status=None,
+        )
+        report = run.format_report(WIN, {"绝味食品股份有限公司": "1001"}, [row], [])
         self.assertNotIn("关联告警", report)
         self.assertIn("事件分类                : 杀毒引擎上报事件", report)
 
     def test_report_separates_multiple_events_only_between_events(self):
-        row = {
-            "company": "客户A", "event_name": "事件A", "event_id": "evt-1",
-            "device_type": 69, "is_nges_src": True, "classification": "杀毒引擎上报事件",
-        }
-        report = run.format_report(15, {"客户A": "1001"}, [row, row], [])
+        row = self._base_row(classification="杀毒引擎上报事件")
+        report = run.format_report(WIN, {"客户A": "1001"}, [row, row], [])
         separator = "-" * 56
         self.assertEqual(report.count("=" * 56), 1)
         self.assertEqual(report.count(separator), 1)
@@ -186,12 +287,12 @@ class EventQueryTest(unittest.TestCase):
         self.assertIn(f"{separator}\n事件 2\n客户", report)
 
     def test_report_only_shows_failed_customers_when_present(self):
-        report = run.format_report(15, {"客户A": "1001"}, [], ["客户A"])
+        report = run.format_report(WIN, {"客户A": "1001"}, [], ["客户A"])
         self.assertIn("查询失败客户            : 客户A", report)
         self.assertIsNone(EMOJI_PATTERN.search(report))
 
     def test_report_omits_failed_customer_line_when_all_queries_succeed(self):
-        report = run.format_report(15, {"客户A": "1001"}, [], [])
+        report = run.format_report(WIN, {"客户A": "1001"}, [], [])
         self.assertNotIn("查询失败客户", report)
         self.assertIn("结论：监控窗口内未发现可推送的新事件。", report)
 

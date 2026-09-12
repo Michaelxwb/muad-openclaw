@@ -7,7 +7,7 @@ import { appendEvent, type Delivery } from "./delivery.js";
 import { normalizeProgressError, ProgressError } from "./errors.js";
 import { validateEvent, type ProgressEvent } from "./protocol.js";
 
-export const MUAD_PROGRESS_VERSION = "0.1.0";
+export const MUAD_PROGRESS_VERSION = "0.2.0";
 
 export type CLIResult = { exitCode: number; stdout: string; stderr: string };
 
@@ -15,7 +15,7 @@ const HELP = `muad-progress reports user-visible skill progress.
 
 Usage:
   muad-progress stage --stage <id> --text <text> [--skill <name>] [--id <id>] [--json]
-  muad-progress done --stage <id> --text <text> [--skill <name>] [--id <id>] [--json]
+  muad-progress done --stage <id> --text <text> [--raw] [--media <path>]... [--skill <name>] [--id <id>] [--json]
   muad-progress error --stage <id> --text <text> [--code <code>] [--id <id>] [--json]
   muad-progress validate --stage <id> --text <text> [--skill <name>] [--id <id>] [--json]
 `;
@@ -72,6 +72,8 @@ function buildEvent(parsed: ParsedArguments, env: NodeJS.ProcessEnv, now: Date):
     ...(skill === undefined ? {} : { skill }),
     ...(parsed.id === undefined ? {} : { id: parsed.id }),
     ...(parsed.code === undefined ? {} : { code: parsed.code }),
+    ...(parsed.rawOutput ? { raw: true as const } : {}),
+    ...(parsed.media.length === 0 ? {} : { media: parsed.media }),
   });
 }
 

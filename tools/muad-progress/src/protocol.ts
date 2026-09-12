@@ -1,6 +1,11 @@
+import { isAbsolute } from "node:path";
+
 import { ProgressError } from "./errors.js";
 
 export const MAX_TEXT_CHARACTERS = 1000;
+export const MAX_RAW_DONE_TEXT_CHARACTERS = 50_000;
+export const MAX_MEDIA_ITEMS = 10;
+export const MAX_MEDIA_PATH_CHARACTERS = 2048;
 export const MAX_ID_CHARACTERS = 80;
 export const MAX_CODE_CHARACTERS = 80;
 export const MAX_SKILL_CHARACTERS = 128;
@@ -8,7 +13,9 @@ export const MAX_SKILL_CHARACTERS = 128;
 const STAGE_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;
 const RFC3339_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const CONTROL_PATTERN = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u;
-const EVENT_KEYS = new Set(["type", "skill", "stage", "text", "id", "code", "visibility", "privacy", "ts"]);
+const EVENT_KEYS = new Set([
+  "type", "skill", "stage", "text", "id", "code", "visibility", "privacy", "ts", "raw", "media",
+]);
 
 const SENSITIVE_PATTERNS: readonly RegExp[] = [
   /\b(?:cookie|set-cookie|authorization|token|secret|password|passwd|pwd|api[_-]?key|access[_-]?key|client[_-]?secret|ak|sk)\b\s*[:=]/iu,
@@ -36,6 +43,8 @@ export type ProgressEvent = {
   skill?: string;
   id?: string;
   code?: string;
+  raw?: true;
+  media?: string[];
 };
 
 export function unicodeLength(value: string): number {
@@ -74,7 +83,23 @@ function readEventFields(record: Record<string, unknown>): ProgressEvent {
     ...optionalString(record, "skill"),
     ...optionalString(record, "id"),
     ...optionalString(record, "code"),
+    ...optionalRaw(record),
+    ...optionalMedia(record),
   };
+}
+
+function optionalRaw(record: Record<string, unknown>): object {
+  if (record.raw === undefined) return {};
+  if (record.raw !== true) fail();
+  return { raw: true as const };
+}
+
+function optionalMedia(record: Record<string, unknown>): object {
+  if (record.media === undefined) return {};
+  if (!Array.isArray(record.media) || record.media.length === 0 || record.media.length > MAX_MEDIA_ITEMS) fail();
+  const media = record.media.map(requireString);
+  if (media.some((value) => !isAbsolute(value) || unicodeLength(value) > MAX_MEDIA_PATH_CHARACTERS || CONTROL_PATTERN.test(value))) fail();
+  return { media };
 }
 
 function optionalString(record: Record<string, unknown>, key: "skill" | "id" | "code"): object {
@@ -92,9 +117,14 @@ function rejectSensitiveFields(event: ProgressEvent): void {
 function validateRequiredFields(event: ProgressEvent): void {
   if (!(["progress", "done", "error", "log"] as const).includes(event.type)) fail();
   if (!STAGE_PATTERN.test(event.stage)) fail();
-  if (event.text.trim() === "" || unicodeLength(event.text) > MAX_TEXT_CHARACTERS) fail();
+  const textLimit = event.type === "done" && event.raw === true
+    ? MAX_RAW_DONE_TEXT_CHARACTERS
+    : MAX_TEXT_CHARACTERS;
+  if (event.text.trim() === "" || unicodeLength(event.text) > textLimit) fail();
   if (event.visibility !== "channel" || event.privacy !== "public") fail();
   if (!RFC3339_PATTERN.test(event.ts) || Number.isNaN(Date.parse(event.ts))) fail();
+  if (event.raw !== undefined && event.type !== "done") fail();
+  if (event.media !== undefined && event.type !== "done") fail();
 }
 
 function validateOptionalFields(event: ProgressEvent): void {

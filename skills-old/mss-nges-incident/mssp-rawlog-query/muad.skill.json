@@ -1,0 +1,9 @@
+{
+  "name": "mssp-rawlog-query",
+  "platforms": ["mssp"],
+  "runtime": "script",
+  "version": "0.2.0",
+  "capabilities": [],
+  "longTask": false,
+  "entrypoint": "scripts/mssp_ch_query.py"
+}

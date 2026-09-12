@@ -3,15 +3,24 @@
 monitor-mssp-events 主脚本。
 
 流程：
-1. 拉取用户明确指定的最近 N 分钟 MSSP 事件表（create_time 毫秒时间戳区间）。
-2. 对每个新增事件，取 event_id，查 alarm_list，取全部告警标题（含"通过xxx"的）。
-3. 汇总资产信息（资产名称/业务名称/业务等级/资产类型/设备覆盖/主机IP）+ 终端GPT判定，输出到 stdout。
+1. 拉取用户明确指定的**时间范围**内、状态为【未处置/处置中/定期跟进】的 MSSP 事件表。
+   时间范围二选一：指定起止（--start/--end）或最近 N 小时（--hours）。
+2. 不做事件去重：范围内查到多少事件就展示多少。
+3. 对每个事件：取 event_id，查 alarm_list 告警标题（含"通过xxx"的）用于分类；
+   从事件表返回值提取 IOC（ioc_grouped/ioc_value），精简分段展示。
+4. 汇总资产信息 + 终端GPT判定，输出到 stdout。
 
 用法：
-  python3 scripts/run.py --company-id <平台返回的数字 company_id> --minutes <positive_minutes>
+  # 指定起止时间（YYYY-MM-DD HH:MM，或毫秒时间戳）
+  python3 scripts/run.py --company-id <数字 company_id> --start "2026-09-04 10:00" --end "2026-09-08 10:00"
+  # 最近 N 小时
+  python3 scripts/run.py --company-id <数字 company_id> --hours 96
 """
 
 import argparse
+import calendar
+import datetime
+import json
 import sys
 import time
 import unicodedata
@@ -22,20 +31,61 @@ import shared
 ASSET_TYPE_MAP = {1: "终端", 2: "服务器"}
 BUSINESS_LEVEL_MAP = {1: "核心", 2: "重要", 3: "一般"}
 
+# 只查询以下处置状态的事件：inited=未处置 / disposal=处置中 / suspend=定期跟进
+QUERY_EVENT_STATUS = ["inited", "disposal", "suspend"]
+
+# 处置状态枚举 -> 中文（展示用，使用者可直接读懂的值）
+EVENT_STATUS_CN = {
+    "inited": "未处置",
+    "disposal": "处置中",
+    "suspend": "定期跟进",
+}
+
+# IOC 分段展示的中文名与顺序（对应 ioc_grouped 的键）
+IOC_SECTIONS = ["url", "ip", "domain", "md5", "sha256", "sha1"]
+IOC_SECTION_CN = {
+    "url": "URL",
+    "ip": "IP",
+    "domain": "域名",
+    "md5": "MD5",
+    "sha256": "SHA256",
+    "sha1": "SHA1",
+}
+
 
 def now_ms() -> int:
     return int(time.time() * 1000)
 
 
-def positive_minutes(value: str) -> int:
-    """解析正整数监控时长，拒绝空值、零和负数。"""
+def positive_hours(value: str) -> int:
+    """解析正整数小时数（最近 N 小时），拒绝空值、零和负数。"""
     try:
-        minutes = int(value)
+        hours = int(value)
     except (TypeError, ValueError) as exc:
-        raise argparse.ArgumentTypeError("监控时长必须是正整数分钟") from exc
-    if minutes <= 0:
-        raise argparse.ArgumentTypeError("监控时长必须大于 0 分钟")
-    return minutes
+        raise argparse.ArgumentTypeError("最近小时数必须是正整数") from exc
+    if hours <= 0:
+        raise argparse.ArgumentTypeError("最近小时数必须大于 0 小时")
+    return hours
+
+
+def parse_dt_ms(value: str) -> int:
+    """把时间入参解析为毫秒时间戳。支持两种格式：
+    - 纯数字：视为毫秒时间戳直接返回
+    - 'YYYY-MM-DD HH:MM[:SS]'：按东八区解析
+    """
+    text = str(value or "").strip()
+    if not text:
+        raise argparse.ArgumentTypeError("不能为空时间")
+    if text.isdigit():
+        return int(text)
+    fmt = "%Y-%m-%d %H:%M:%S" if len(text) >= 19 else "%Y-%m-%d %H:%M"
+    try:
+        dt = datetime.datetime.strptime(text, fmt)
+    except ValueError as exc:
+        allowed = "YYYY-MM-DD HH:MM 或 YYYY-MM-DD HH:MM:SS 或毫秒时间戳"
+        raise argparse.ArgumentTypeError(f"时间格式无法识别，支持: {allowed}") from exc
+    # 按东八区（无时区偏移）解释为 UTC 毫秒
+    return int(calendar.timegm(dt.timetuple()) * 1000)
 
 
 def company_id_value(value: str) -> str:
@@ -79,7 +129,7 @@ def fetch_event_table(cookie: str, start_ms: int, end_ms: int, company_ids=None,
         "handler_name": "",
         "task_name": "",
         "fuzzy_search": "",
-        "event_status": [],
+        "event_status": list(QUERY_EVENT_STATUS),
         "host_ip": "",
         "hostname": "",
         "judgment": [],
@@ -134,6 +184,17 @@ def json_dumps(v) -> str:
         return json.dumps(v, ensure_ascii=False)
     except Exception:
         return str(v)
+
+
+def event_status_cn(val) -> str:
+    """把处置状态枚举值转换为使用者可读的中文；未知/缺失返回空交由上层显示‘-’。
+
+    inited=未处置 / disposal=处置中 / suspend=定期跟进。
+    """
+    if val is None:
+        return ""
+    text = str(val or "").strip()
+    return EVENT_STATUS_CN.get(text, "")
 
 
 def asset_type_cn(val) -> str:
@@ -200,18 +261,48 @@ def get_alarm_info(cookie: str, event_id: str):
 
 
 def parse_args(argv=None):
-    """解析并强制收集客户与监控时长，缺一项则不允许进入业务流程。"""
+    """解析并强制收集：客户 + 时间范围（指定起止 或 最近小时，二选一）。
+
+    时间范围二选一：
+      --start + --end  指定明确起止时间（YYYY-MM-DD HH:MM 或毫秒戳），两者成对出现；
+      --hours          最近 N 小时。
+    两者不得同时给；两者都未给则报错。
+    """
     parser = argparse.ArgumentParser(description="监控指定客户的 MSSP 平台事件")
     parser.add_argument(
-        "--minutes", type=positive_minutes, required=True,
-        help="必填：监控最近 N 分钟，必须是正整数",
+        "--start", type=parse_dt_ms, default=None,
+        help="可选：查询起始（YYYY-MM-DD HH:MM 或毫秒戳），需与 --end 成对",
+    )
+    parser.add_argument(
+        "--end", type=parse_dt_ms, default=None,
+        help="可选：查询结束（YYYY-MM-DD HH:MM 或毫秒戳），需与 --start 成对",
+    )
+    parser.add_argument(
+        "--hours", type=positive_hours, default=None,
+        help="可选：查询最近 N 小时",
     )
     parser.add_argument(
         "--company-id", dest="company_ids", action="append",
         type=company_id_value, required=True,
         help="必填：平台返回的数字 company_id，可重复传入多个客户",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    has_range = (args.start is not None) or (args.end is not None)
+    if has_range:
+        if args.start is None or args.end is None:
+            parser.error("--start 与 --end 必须成对提供")
+        if args.end <= args.start:
+            parser.error("--end 必须晚于 --start")
+        args.mode = "range"
+        if args.hours is not None:
+            parser.error("--hours 与 --start/--end 只能二选一")
+    else:
+        if args.hours is None:
+            parser.error("必须给出时间范围：指定起止(--start/--end) 或 最近小时(--hours)")
+        args.mode = "hours"
+        args.start = now_ms() - args.hours * 3600 * 1000
+        args.end = now_ms()
+    return args
 
 
 def resolve_confirmed_company_ids(cookie: str, company_ids: list) -> dict:
@@ -263,6 +354,67 @@ def format_alarm_lines(row: dict, label_width: int = 24) -> list:
     return lines
 
 
+def _ioc_entries_with_name(grouped) -> list:
+    """针对于带 virus_name 的 md5/文件类：逐条生成 '病毒名 : hash' 紧凑展示。
+    同时兼容 url/ip/domain（多为纯值）。返回 [(中文分段, entries)]，空段不返回。
+    """
+    result = []
+    for key in IOC_SECTIONS:
+        val = grouped.get(key) if isinstance(grouped, dict) else None
+        if val is None:
+            continue
+        items = val if isinstance(val, list) else [val]
+        cn = IOC_SECTION_CN.get(key, key)
+        seg = []
+        for it in items:
+            if isinstance(it, dict):
+                primary = it.get(key) or it.get("value") or it.get("info")
+                text = str(primary or "").strip()
+                if not text:
+                    continue
+                virus = str(it.get("virus_name") or "").strip()
+                seg.append(f"{virus} : {text}" if virus else text)
+            else:
+                text = str(it or "").strip()
+                if text:
+                    seg.append(text)
+        if seg:
+            result.append((cn, seg))
+    return result
+
+
+def fmt_ioc_lines(row: dict, label_width: int = 24) -> list:
+    """IOC 精简分段展示。只展示有内容的分类，例如：
+
+    IOC                    :
+                             [md5] 蠕虫病毒名 : ba22e982...
+
+    优先用 ioc_grouped（结构化带病毒名）；缺 ioc_grouped 时用 ioc_value 兜底（拼接为一段）。
+    无任何 IOC 时省略整个字段。
+    """
+    grouped = row.get("ioc_grouped")
+    segments = _ioc_entries_with_name(grouped)
+    label = "IOC"
+    if not segments:
+        # 兜底：直接展示 ioc_value（字符串或列表）
+        raw = row.get("ioc_value")
+        if raw is None:
+            return []
+        vals = raw if isinstance(raw, list) else [raw]
+        texts = [str(v).strip() for v in vals if str(v or "").strip()]
+        if not texts:
+            return []
+        lines = [f"{label}{' ' * max(1, label_width - display_width(label))}:"]
+        for t in texts:
+            lines.append(" " * (label_width + 2) + f"- {t}")
+        return lines
+    lines = [f"{label}{' ' * max(1, label_width - display_width(label))}:"]
+    for cn, entries in segments:
+        for e in entries:
+            lines.append(" " * (label_width + 2) + f"[{cn}] {e}")
+    return lines
+
+
 def adapter_device_names(asset: dict) -> str:
     """从资产 adapter 字段提取设备覆盖名称。"""
     adapter = asset.get("adapter") if isinstance(asset, dict) else None
@@ -283,14 +435,14 @@ def format_chat_output(report: str) -> str:
     return f"```\n{report}\n```"
 
 
-def format_report(minutes: int, customers: dict, rows: list, failed_customers: list) -> str:
-    """生成固定字段顺序的高密度聊天输出。"""
+def format_report(window: str, customers: dict, rows: list, failed_customers: list) -> str:
+    """生成固定字段顺序的高密度聊天输出。window 为中文时间窗口描述（如‘最近4天’/‘2026-09-04~09-08’）。"""
     customer_names = "、".join(display_value(name) for name in customers)
-    title = f"MSSP 事件监控结果（最近 {minutes} 分钟 · {len(customers)} 个客户）"
+    title = f"MSSP 事件监控结果（{window} · {len(customers)} 个客户）"
     summary = [
         ("监控客户", f"{len(customers)}个（{customer_names}）"),
-        ("监控窗口", f"最近{minutes}分钟"),
-        ("新增事件", f"{len(rows)}个（已按事件ID去重）"),
+        ("监控窗口", window),
+        ("查询事件", f"{len(rows)}个（状态：未处置/处置中/定期跟进）"),
     ]
     if failed_customers:
         failed = "、".join(display_value(name) for name in failed_customers)
@@ -319,19 +471,35 @@ def format_report(minutes: int, customers: dict, rows: list, failed_customers: l
             ("业务等级", row.get("business_level")),
             ("资产类型", row.get("asset_type")),
             ("设备覆盖", row.get("dev_name")),
+            ("处置状态", event_status_cn(row.get("event_status"))),
         ]
         lines.extend(aligned_field(label, value) for label, value in fields)
+        lines.extend(fmt_ioc_lines(row))
         lines.extend(format_alarm_lines(row))
         lines.append(aligned_field("事件分类", row.get("classification")))
     lines.append("结论：以上事件已按佐证数据完整度分类；字段为“-”表示平台本次未返回该信息。")
     return "\n".join(lines)
 
 
+def _fmt_dt(ms: int) -> str:
+    """毫秒转为'YYYY-MM-DD HH:MM'可读时间（东八区，无时区偏移）。"""
+    try:
+        return datetime.datetime.utcfromtimestamp(ms / 1000.0).strftime("%Y-%m-%d %H:%M")
+    except (OverflowError, OSError, ValueError):
+        return str(ms)
+
+
+def window_desc(mode: str, args) -> str:
+    """生成标题/监控窗口用的中文时间范围描述。"""
+    if mode == "range":
+        return f"{_fmt_dt(args.start)} ~ {_fmt_dt(args.end)}"
+    return f"最近{args.hours}小时"
+
+
 def main():
     args = parse_args()
-    minutes = args.minutes
-    start_ms = now_ms() - minutes * 60 * 1000
-    end_ms = now_ms()
+    start_ms = args.start
+    end_ms = args.end
 
     shared.log("正在获取 MSSP 登录态...")
     cookie = shared.get_cookie()
@@ -345,12 +513,10 @@ def main():
         shared.log(str(exc), "ERROR")
         sys.exit(1)
 
-    reminded = shared.load_reminded()
-
     all_rows = []
-    failed_customers = []  # 查询失败的客户（不误报为“无事件”）
+    failed_customers = []  # 查询失败的客户（不误报为“无事件”)
     for cname, cid in customers.items():
-        shared.log(f"[{cname}({cid})] 拉取事件表: 最近 {minutes} 分钟")
+        shared.log(f"[{cname}({cid})] 拉取事件表: {window_desc(args.mode, args)}")
         cids = cid if isinstance(cid, list) else [cid]
         events = fetch_event_table(cookie, start_ms, end_ms, company_ids=cids)
         if events is None:
@@ -360,8 +526,8 @@ def main():
         for ev in events:
             eid = _get(ev, "event_id", "eventId", "id")
             ename = _get(ev, "event_name", "eventName", "name")
-            if not eid or eid in reminded:
-                continue  # 已提醒过，去重
+            if not eid:
+                continue  # 无事件 ID 不在范围内也忽略（非去重，是缺少必需ID）
             host_ip = _get(ev, "host_ip")
             e_company_id = cid
             # 事件分类逻辑：
@@ -371,22 +537,19 @@ def main():
             is_nges_src, device_type, dev_name = shared.get_event_nges(cookie, eid)
             asset_info = shared.get_asset_info(cookie, host_ip, e_company_id)
             if device_type is None:
-                # 事件详情获取失败，无法判断数据源，标记为“详情获取失败”而非误判场景
                 classification = "关键数据缺失，暂无法完成事件分类"
                 is_gpt = False
                 pass_titles = []
                 all_titles = []
                 nges_installed = bool(asset_info.get("nges_installed"))
             elif is_nges_src:
-                # NGES 数据源：查告警“通过”区分 终端GPT / 杀毒引擎
                 is_gpt, pass_titles, all_titles = get_alarm_info(cookie, eid)
-                nges_installed = True  # NGES 设备自身即已覆盖
+                nges_installed = True
                 classification = (
                     "终端GPT检测生成了对应事件，具有终端GPT对整个事件的研判分析（重点价值推送）"
                     if is_gpt else "杀毒引擎上报事件"
                 )
             else:
-                # 非 NGES 数据源：不查告警“通过”，用主机IP查是否被NGES覆盖
                 is_gpt = False
                 pass_titles = []
                 all_titles = []
@@ -407,6 +570,9 @@ def main():
                 "dev_name": adapter_device_names(asset_info) or _get(ev, "dev_name") or dev_name,
                 "host_ip": host_ip,
                 "hostname": _get(asset_info, "hostname") or _get(ev, "hostname", "host_name", "hostName"),
+                "event_status": _get(ev, "event_status"),
+                "ioc_value": ev.get("ioc_value") if isinstance(ev, dict) else None,
+                "ioc_grouped": ev.get("ioc_grouped") if isinstance(ev, dict) else None,
                 "is_gpt": is_gpt,
                 "device_type": device_type,
                 "is_nges_src": is_nges_src,
@@ -416,13 +582,8 @@ def main():
                 "all_titles": all_titles,
             })
 
-    print(format_chat_output(format_report(minutes, customers, all_rows, failed_customers)))
-
-    # 标记本次已提醒
-    now = now_ms()
-    for r in all_rows:
-        reminded[r["event_id"]] = now
-    shared.save_reminded(reminded)
+    desc = window_desc(args.mode, args)
+    print(format_chat_output(format_report(desc, customers, all_rows, failed_customers)))
 
 
 if __name__ == "__main__":

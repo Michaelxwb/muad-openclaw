@@ -1,0 +1,9 @@
+{
+  "name": "mss-event-autoflow",
+  "platforms": ["mssp", "mssw"],
+  "runtime": "agent",
+  "version": "0.1.0",
+  "capabilities": ["monitor-security-events", "mssp-rawlog-query", "gptrawlog-push"],
+  "longTask": true,
+  "entrypoint": ""
+}

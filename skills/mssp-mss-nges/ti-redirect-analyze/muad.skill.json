@@ -1,0 +1,9 @@
+{
+  "name": "ti-redirect-analyze",
+  "platforms": [],
+  "runtime": "script",
+  "version": "0.2.1",
+  "capabilities": ["browser"],
+  "longTask": false,
+  "entrypoint": "scripts/run.py"
+}

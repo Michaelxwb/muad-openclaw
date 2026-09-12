@@ -1,0 +1,8 @@
+{
+  "name": "ioc-context",
+  "platforms": [],
+  "runtime": "script",
+  "version": "0.1.0",
+  "longTask": false,
+  "entrypoint": "scripts/run.mjs"
+}

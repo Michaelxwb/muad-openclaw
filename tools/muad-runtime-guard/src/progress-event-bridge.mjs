@@ -22,9 +22,9 @@ const LF = 0x0A;
 const CR = 0x0D;
 
 export const DEFAULT_PROGRESS_EVENT_LIMITS = Object.freeze({
-  maxLineBytes: 16 * 1024,
-  maxFileBytes: 1024 * 1024,
-  maxReadBytesPerDrain: 64 * 1024,
+  maxLineBytes: 256 * 1024,
+  maxFileBytes: 8 * 1024 * 1024,
+  maxReadBytesPerDrain: 512 * 1024,
   maxEventsPerDrain: 128,
 });
 

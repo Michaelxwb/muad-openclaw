@@ -39,6 +39,7 @@ const plugin = {
     );
     const skillProgressHooks = createSkillProgressHooks({
       manager: skillProgressManager,
+      resolveWorkspace: (agentId) => resolveWorkspace(api, agentId),
       log: (message) => api.logger?.warn?.(message),
     });
     const longTaskManager = installLongTaskManager(

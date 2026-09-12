@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { realpathSync, statSync } from "node:fs";
+import path from "node:path";
 
 import { notifyUser } from "../../shared/notify-user.mjs";
 import { ProgressEventBridge } from "./progress-event-bridge.mjs";
@@ -67,6 +69,14 @@ export class SkillProgressManager {
     return true;
   }
 
+  applyTrustedWorkspace(executionKey, workspace) {
+    const state = this.#executions.get(String(executionKey ?? ""));
+    const root = canonicalDirectory(workspace);
+    if (!state || !root || state.workspace === root) return false;
+    state.workspace = root;
+    return true;
+  }
+
   reportProgress(executionKey, unknownEvent) {
     const state = this.#executions.get(String(executionKey ?? ""));
     if (!state || !state.accepting) return { accepted: false, reason: "execution_finished" };
@@ -78,6 +88,7 @@ export class SkillProgressManager {
       logDiagnostic(this.#log, state, event.stage, "cli", "logged", event.text);
       return { accepted: true };
     }
+    if (!validMediaFiles(event.media, state.workspace)) return this.#drop(state, "report", "media_invalid");
     if (state.pending >= this.#maxPending) return this.#drop(state, "enqueue", "queue_capacity");
     enqueueDelivery(state, event, this.#notify, this.#notifyTimeoutMs, this.#log);
     logDiagnostic(this.#log, state, event.stage, "enqueue", "accepted", "queued");
@@ -148,6 +159,7 @@ function enqueueDelivery(state, event, notify, timeoutMs, log) {
     channel: state.route.channel,
     peerId: state.route.peerId,
     text: renderProgressText(event, state),
+    mediaPaths: event.media ?? [],
   };
   state.tail = state.tail
     .then(() => notifyOutcome(notify, input, timeoutMs))
@@ -220,8 +232,33 @@ function normalizeIdentity(input, identityField) {
 function executionState(executionKey, context, env) {
   return {
     executionKey, ...context, env, accepting: true, pending: 0,
-    tail: Promise.resolve(), finishPromise: undefined,
+    tail: Promise.resolve(), finishPromise: undefined, workspace: "",
   };
+}
+
+function canonicalDirectory(value) {
+  if (typeof value !== "string" || !path.isAbsolute(value)) return "";
+  try {
+    const resolved = realpathSync(value);
+    return statSync(resolved).isDirectory() ? resolved : "";
+  } catch {
+    return "";
+  }
+}
+
+function validMediaFiles(media, workspace) {
+  if (media === undefined) return true;
+  const root = canonicalDirectory(workspace);
+  if (!root) return false;
+  try {
+    return media.every((item) => {
+      const resolved = realpathSync(item);
+      const relative = path.relative(root, resolved);
+      return statSync(resolved).isFile() && relative !== "" && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative);
+    });
+  } catch {
+    return false;
+  }
 }
 
 function matchesExecution(state, input) {

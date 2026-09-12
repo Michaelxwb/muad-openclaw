@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   MAX_CODE_CHARACTERS,
   MAX_ID_CHARACTERS,
+  MAX_RAW_DONE_TEXT_CHARACTERS,
   MAX_TEXT_CHARACTERS,
   ProgressError,
   unicodeLength,
@@ -16,6 +17,24 @@ test("B-01 text uses Unicode code points rather than UTF-16 units", () => {
   assert.doesNotThrow(() => validateEvent(event({ text: "😀".repeat(MAX_TEXT_CHARACTERS) })));
   assertProgressError(
     () => validateEvent(event({ text: "界".repeat(MAX_TEXT_CHARACTERS + 1) })),
+    2,
+    "invalid_event",
+  );
+});
+
+test("raw done uses the final-result limit and accepts media paths", () => {
+  assert.doesNotThrow(() => validateEvent(event({
+    type: "done",
+    text: "完".repeat(MAX_RAW_DONE_TEXT_CHARACTERS),
+    raw: true,
+    media: ["/workspace/ti.png"],
+  })));
+  assertProgressError(
+    () => validateEvent(event({
+      type: "done",
+      text: "完".repeat(MAX_RAW_DONE_TEXT_CHARACTERS + 1),
+      raw: true,
+    })),
     2,
     "invalid_event",
   );

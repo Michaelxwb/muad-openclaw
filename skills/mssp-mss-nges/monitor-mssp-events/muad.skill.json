@@ -2,7 +2,7 @@
   "name": "monitor-mssp-events",
   "platforms": ["mssp"],
   "runtime": "script",
-  "version": "0.1.0",
+  "version": "0.5.2",
   "capabilities": [],
   "longTask": false,
   "entrypoint": "scripts/run.py"

@@ -1,0 +1,9 @@
+{
+  "name": "gptrawlog-push",
+  "platforms": [],
+  "runtime": "script",
+  "version": "0.2.0",
+  "capabilities": [],
+  "longTask": false,
+  "entrypoint": "scripts/parse_gptrawlog.py"
+}

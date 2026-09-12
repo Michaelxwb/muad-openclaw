@@ -1,0 +1,9 @@
+{
+  "name": "mssp-event-push-content",
+  "platforms": ["mssp"],
+  "runtime": "script",
+  "version": "0.1.3",
+  "capabilities": [],
+  "longTask": false,
+  "entrypoint": "scripts/run.py"
+}
