@@ -315,6 +315,14 @@ function renderProviders(output, runtime, thinkingByProvider) {
       // 适配不支持函数调用的内网模型（如 vLLM 未开 --enable-auto-tool-choice）。
       model.compat = { supportsTools: false };
     }
+    if (provider.supportsImages === true) {
+      // OpenClaw: 未声明 input 的模型一律按 text-only 处理——入站图片会被 offload
+      // 成 `[media attached: media://inbound/<id>]` 路径文本，agent 只能靠 exec 兜底
+      // （实测退化到容器内现装 OCR，单轮 8 分钟）。只有显式声明 image 才会把图片
+      // inline 进模型上下文，故此处仅在开启时输出；缺省不写该键，保证存量配置
+      // 逐字节不变、schema 不认识该字段的旧 worker 镜像仍可 apply。
+      model.input = ["text", "image"];
+    }
     providers[provider.id] = compact({
       api: "openai-completions",
       baseUrl: provider.baseUrl,
