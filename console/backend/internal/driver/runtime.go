@@ -164,6 +164,11 @@ type RuntimeProvider struct {
 	// compat.supportsTools:false，模型不再收到 tools/tool_choice。省略字段
 	// 保证旧 worker 镜像（schema 不认识 supportsTools）在默认场景下仍可 apply。
 	SupportsTools *bool `json:"supportsTools,omitempty"`
+	// SupportsImages 标记该模型是否接受图片输入。注意缺省语义与 SupportsTools
+	// **相反**：OpenClaw 对未声明 input 的模型一律按 text-only 处理，因此
+	// nil = 不支持图片（字段不出现），仅当 true 时输出。renderer 据此写出
+	// input:["text","image"]，图片才会 inline 进模型上下文而不是 offload 成路径。
+	SupportsImages *bool `json:"supportsImages,omitempty"`
 	// Thinking 是思考档位（off/minimal/low/medium/high/xhigh/max）。缺省/off
 	// 时字段不输出，与 SupportsTools 的旧 worker 兼容模式一致：旧 worker 镜像
 	// （schema 不认识 thinking）在默认场景下仍可 apply。renderer 会把非空档位

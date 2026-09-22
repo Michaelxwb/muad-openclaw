@@ -172,6 +172,7 @@ type LLMModelConfig struct {
 	LastTestOK         bool
 	LastTestError      string
 	SupportsTools      bool
+	SupportsImages     bool
 	Thinking           string
 	BoundHumanUserID   string
 	BoundHumanUserName string

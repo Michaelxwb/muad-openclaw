@@ -13,6 +13,7 @@ interface ModelDraft {
   model: string;
   apiKeys: string;
   supportsTools: boolean;
+  supportsImages: boolean;
   thinking: ThinkingLevel;
 }
 
@@ -31,6 +32,7 @@ const initialDraft: ModelDraft = {
   model: "deepseek-chat",
   apiKeys: "",
   supportsTools: true,
+  supportsImages: false,
   thinking: "off",
 };
 
@@ -126,7 +128,7 @@ export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: P
             style={{ width: "100%" }}
           />
         </Field>
-        <Field as="div" label={t("model.functionCalls")}>
+        <Field as="div" label={t("model.capabilities")}>
           <Checkbox
             aria-label={t("model.supportFunctionCallsAria")}
             checked={draft.supportsTools}
@@ -138,6 +140,18 @@ export function LLMCreateDialog({ visible, busy, onClose, onCreate, onError }: P
             }
           >
             {t("model.supportFunctionCalls")}
+          </Checkbox>
+          <Checkbox
+            aria-label={t("model.imageInputAria")}
+            checked={draft.supportsImages}
+            onChange={(e) =>
+              setDraft((previous) => ({
+                ...previous,
+                supportsImages: (e.target as HTMLInputElement).checked,
+              }))
+            }
+          >
+            {t("model.imageInput")}
           </Checkbox>
         </Field>
         <div className={styles.full}>
@@ -216,6 +230,7 @@ function modelInputsFromDraft(draft: ModelDraft): LLMModelInput[] | string {
     model,
     apiKey,
     supportsTools: draft.supportsTools,
+    supportsImages: draft.supportsImages,
     thinking,
   }));
 }

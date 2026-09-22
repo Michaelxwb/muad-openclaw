@@ -14,13 +14,14 @@ import (
 )
 
 type llmModelInput struct {
-	DisplayName   string `json:"displayName"`
-	Provider      string `json:"provider"`
-	BaseURL       string `json:"baseUrl"`
-	APIKey        string `json:"apiKey"`
-	Model         string `json:"model"`
-	SupportsTools *bool  `json:"supportsTools"` // 缺省 = 支持工具调用（默认开启）
-	Thinking      string `json:"thinking"`      // 思考档位，缺省 = off
+	DisplayName    string `json:"displayName"`
+	Provider       string `json:"provider"`
+	BaseURL        string `json:"baseUrl"`
+	APIKey         string `json:"apiKey"`
+	Model          string `json:"model"`
+	SupportsTools  *bool  `json:"supportsTools"`  // 缺省 = 支持工具调用（默认开启）
+	SupportsImages *bool  `json:"supportsImages"` // 缺省 = 不支持图片输入（默认关闭，与 supportsTools 相反）
+	Thinking       string `json:"thinking"`       // 思考档位，缺省 = off
 }
 
 type llmModelBatchRequest struct {
@@ -114,9 +115,10 @@ func (s *Server) handleDeleteLLMModel(w http.ResponseWriter, r *http.Request) {
 }
 
 type llmModelUpdateRequest struct {
-	APIKey        string `json:"apiKey"`
-	SupportsTools *bool  `json:"supportsTools"`
-	Thinking      string `json:"thinking"`
+	APIKey         string `json:"apiKey"`
+	SupportsTools  *bool  `json:"supportsTools"`
+	SupportsImages *bool  `json:"supportsImages"`
+	Thinking       string `json:"thinking"`
 }
 
 func (s *Server) handleUpdateLLMModel(w http.ResponseWriter, r *http.Request) {
@@ -136,9 +138,10 @@ func (s *Server) handleUpdateLLMModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	update := repo.LLMModelConfigUpdate{
-		APIKey:        strings.TrimSpace(request.APIKey),
-		SupportsTools: request.SupportsTools,
-		Thinking:      thinking,
+		APIKey:         strings.TrimSpace(request.APIKey),
+		SupportsTools:  request.SupportsTools,
+		SupportsImages: request.SupportsImages,
+		Thinking:       thinking,
 	}
 	model, err := s.store.UpdateLLMModelConfig(modelConfigID, update)
 	if err != nil {
@@ -188,6 +191,12 @@ func (s *Server) prepareLLMModelCreate(input llmModelInput) (repo.LLMModelConfig
 	if input.SupportsTools != nil {
 		supportsTools = *input.SupportsTools
 	}
+	// 支持图片输入默认关闭：渲染器只在显式声明时输出 `input`，未声明时 OpenClaw
+	// 一律按 text-only 处理，因此这里缺省为 false（注意与 supportsTools 相反）。
+	supportsImages := false
+	if input.SupportsImages != nil {
+		supportsImages = *input.SupportsImages
+	}
 	thinking := strings.TrimSpace(input.Thinking)
 	if thinking != "" && !repo.IsValidThinkingLevel(thinking) {
 		return repo.LLMModelConfigCreate{}, errors.New("thinking must be one of off/minimal/low/medium/high/xhigh/max")
@@ -195,7 +204,8 @@ func (s *Server) prepareLLMModelCreate(input llmModelInput) (repo.LLMModelConfig
 	return repo.LLMModelConfigCreate{
 		DisplayName: displayName, Provider: model.Provider, BaseURL: model.BaseURL,
 		APIKey: model.APIKey, Model: model.Model, SupportsTools: supportsTools,
-		Thinking: thinking,
+		SupportsImages: supportsImages,
+		Thinking:       thinking,
 	}, nil
 }
 
@@ -275,6 +285,7 @@ func llmModelView(model repo.LLMModelConfig) map[string]any {
 		"provider": model.Provider, "baseUrl": model.BaseURL, "model": model.Model,
 		"apiKey":             model.APIKey,
 		"supportsTools":      model.SupportsTools,
+		"supportsImages":     model.SupportsImages,
 		"thinking":           llmModelThinkingView(model.Thinking),
 		"lastTestAt":         lastTestAt,
 		"lastTestOK":         model.LastTestOK,
