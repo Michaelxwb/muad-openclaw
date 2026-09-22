@@ -417,12 +417,18 @@ test("exec commands referencing a long-task Skill root are blocked and enqueued"
   assert.equal(submissions[0].originalPrompt, "帮我导一下客户周报");
 });
 
-test("bash blocked via cd-into-root form, unrelated exec passes through", async () => {
+test("bash blocked via cd-into-root form, ordinary probing passes through without enqueue", async () => {
   const { hooks, skillDir, submissions } = setupHooks();
+  const scriptsDir = join(skillDir, "scripts");
+  mkdirSync(scriptsDir, { recursive: true });
+  writeFileSync(join(scriptsDir, "run.py"), "print('report')\n");
+  writeFileSync(join(skillDir, "README.md"), "docs\n");
+
   await hooks.beforeAgentRun({
     runId: "run-2", prompt: "用 xdr-query 查一下", senderId: "wx-1",
   }, context({ runId: "run-2" }));
 
+  // cd 建立基准目录后执行相对脚本路径 —— 真实调用，命中并入队一次。
   const blocked = await hooks.beforeToolCall({
     runId: "run-2",
     toolName: "bash",
@@ -430,6 +436,20 @@ test("bash blocked via cd-into-root form, unrelated exec passes through", async 
   }, context({ runId: "run-2" }));
   assert.equal(blocked.block, true);
   assert.equal(submissions.length, 1);
+  assert.equal(submissions[0].skillName, "xdr-query");
+
+  // 普通探查：列目录 / 读文档一律放行，不入队。
+  for (const command of [
+    "ls scripts/",
+    "ls ./",
+    `ls ${skillDir}`,
+    `cat ${join(skillDir, "README.md")}`,
+  ]) {
+    const probed = await hooks.beforeToolCall({
+      runId: "run-2", toolName: "exec", params: { command },
+    }, context({ runId: "run-2" }));
+    assert.equal(probed, undefined, `probing must pass through: ${command}`);
+  }
 
   // 与任何 long-task root 无关的命令放行，不入队。
   const unrelated = await hooks.beforeToolCall({
@@ -438,7 +458,7 @@ test("bash blocked via cd-into-root form, unrelated exec passes through", async 
     params: { command: "ls -la /tmp" },
   }, context({ runId: "run-2" }));
   assert.equal(unrelated, undefined);
-  assert.equal(submissions.length, 1, "unrelated exec must not enqueue");
+  assert.equal(submissions.length, 1, "probing and unrelated exec must not enqueue");
 });
 
 test("exec after a read-submit re-blocks without double-submitting", async () => {
@@ -468,6 +488,140 @@ test("exec after a read-submit re-blocks without double-submitting", async () =>
 
   assert.equal(blocked.block, true);
   assert.equal(submissions.length, 1, "exec after read must not double-submit");
+});
+
+test("real script invocations still enqueue while ordinary probing never does", async () => {
+  const { hooks, skillDir, submissions } = setupHooks();
+  const scriptsDir = join(skillDir, "scripts");
+  mkdirSync(scriptsDir, { recursive: true });
+  const scriptPath = join(scriptsDir, "run.py");
+  writeFileSync(scriptPath, "print('report')\n");
+  // 无扩展名入口：包装/直接执行时也必须命中。
+  writeFileSync(join(scriptsDir, "run"), "#!/bin/sh\n");
+  mkdirSync(join(skillDir, "_templates"), { recursive: true });
+  // 事故形态：另一个（非长任务）Skill 目录同样带 scripts/，在里面探查绝不能
+  // 被相对 token 拼到长任务 root 上。
+  const otherDir = join(dirname(skillDir), "other-skill");
+  mkdirSync(join(otherDir, "scripts"), { recursive: true });
+  writeFileSync(join(otherDir, "scripts", "run.py"), "print('other')\n");
+
+  await hooks.beforeAgentRun({
+    runId: "run-1", prompt: "帮我导一下客户周报", senderId: "wx-1",
+  }, context({ runId: "run-1" }));
+  const probe = (command, extra = {}) => hooks.beforeToolCall({
+    runId: "run-1", toolName: "bash", params: { command, ...extra },
+  }, context({ runId: "run-1" }));
+
+  // 普通探查：目录 token（含结尾 /）、./、root 本身、读文档/读脚本、无基准的相对
+  // 脚本路径、在别的目录里 cd + ls —— 一律放行。
+  for (const command of [
+    "ls scripts/",
+    "ls scripts",
+    "ls ./",
+    "ls .",
+    `ls ${skillDir}`,
+    `ls ${skillDir}/`,
+    "ls _templates/",
+    `cat ${join(skillDir, "SKILL.md")}`,
+    `cat ${scriptPath}`,
+    "grep -r report scripts/",
+    "find . -name '*.py'",
+    "python3 scripts/run.py",
+    `cd ${otherDir} && ls -la && ls scripts/ && cat scripts/run.py`,
+    `cd ${otherDir} && python3 scripts/run.py`,
+  ]) {
+    assert.equal(await probe(command), undefined, `probing must pass through: ${command}`);
+  }
+  assert.equal(submissions.length, 0, "plain probing must not enqueue");
+
+  // 真实脚本调用：绝对路径、cd 建立基准后的相对路径、显式 workdir 下的相对路径、
+  // 包装形态与无扩展名入口 —— 均命中；首次入队后只 re-block 不重复入队。
+  const absoluteCall = await probe(`python3 ${scriptPath}`);
+  assert.equal(absoluteCall.block, true);
+  assert.equal(submissions.length, 1);
+
+  for (const [command, extra] of [
+    [`cd ${skillDir} && ./scripts/run.py`],
+    [`cd ${skillDir} && ./scripts/run`],
+    [`cd ${skillDir}/scripts && python3 run.py`],
+    ["./scripts/run.py", { workdir: skillDir }],
+    ["python3 run.py", { cwd: scriptsDir }],
+    [`FOO=1 python3 ${scriptPath}`],
+    [`sudo python3 ${scriptPath}`],
+    [`timeout 60 python3 ${scriptPath}`],
+    [`env python3 ${scriptPath}`],
+    [`uv run ${scriptPath}`],
+  ]) {
+    const blocked = await probe(command, extra);
+    assert.equal(blocked?.block, true, `invocation must be blocked: ${command}`);
+  }
+  assert.equal(submissions.length, 1, "re-invocation must not double-submit");
+});
+
+test("multi-segment commands enqueue from the execution segment only", async () => {
+  const { hooks, skillDir, submissions } = setupHooks();
+  const scriptsDir = join(skillDir, "scripts");
+  mkdirSync(scriptsDir, { recursive: true });
+  writeFileSync(join(scriptsDir, "run.py"), "print('report')\n");
+
+  await hooks.beforeAgentRun({
+    runId: "run-1", prompt: "帮我导一下客户周报", senderId: "wx-1",
+  }, context({ runId: "run-1" }));
+
+  // 前半段是探查，后半段是真实执行：应凭执行段命中并入队。
+  const blocked = await hooks.beforeToolCall({
+    runId: "run-1", toolName: "bash",
+    params: { command: `ls ${skillDir} && python3 ${join(scriptsDir, "run.py")}` },
+  }, context({ runId: "run-1" }));
+  assert.equal(blocked.block, true);
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0].skillName, "xdr-query");
+});
+
+test("identical subdirectory names across Skills do not cross-submit", async () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-long-task-multi-"));
+  const workspace = join(root, "workspace-alice");
+  mkdirSync(workspace, { recursive: true });
+  const grants = [];
+  const dirs = {};
+  for (const name of ["skill-a", "skill-b"]) {
+    const dir = join(root, name);
+    const scriptsDir = join(dir, "scripts");
+    mkdirSync(scriptsDir, { recursive: true });
+    writeFileSync(join(dir, "SKILL.md"), `# ${name}\n`);
+    writeFileSync(join(dir, "muad.skill.json"), JSON.stringify({ name, longTask: true }));
+    writeFileSync(join(scriptsDir, "run.py"), "print('report')\n");
+    grants.push({ agentId: "alice", name, rootPath: dir });
+    dirs[name] = { dir, script: join(scriptsDir, "run.py") };
+  }
+  const submissions = [];
+  const manager = {
+    submit(input) {
+      submissions.push(input);
+      return {
+        task: { status: "running", taskId: input.taskId || `task-${submissions.length}` },
+        queuedAhead: 0, queued: 0, active: 1, limit: 2,
+      };
+    },
+  };
+  const hooks = createLongTaskHooks({
+    getConfig: () => ({ longTaskSkillGrants: grants }),
+    manager,
+    resolveWorkspace: () => workspace,
+  });
+
+  await hooks.beforeAgentRun({
+    runId: "run-1", prompt: "跑一下 b 的脚本", senderId: "wx-1",
+  }, context({ runId: "run-1" }));
+
+  // 两个 Skill 都有 scripts/run.py：执行 b 的脚本只能入队 b，绝不串到 a。
+  const blocked = await hooks.beforeToolCall({
+    runId: "run-1", toolName: "exec",
+    params: { command: `python3 ${dirs["skill-b"].script}` },
+  }, context({ runId: "run-1" }));
+  assert.equal(blocked.block, true);
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0].skillName, "skill-b");
 });
 
 function setupHooks(overrides = {}) {
