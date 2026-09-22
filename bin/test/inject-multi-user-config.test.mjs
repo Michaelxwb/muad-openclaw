@@ -370,6 +370,35 @@ test("renderer omits compat when supportsTools is true or absent", () => {
   assert.equal(provider.models[0].compat, undefined);
 });
 
+// S-B01 [unit] 真实边界：renderProviders 真实实现（不 mock 渲染逻辑）。
+// 这是整条链路的修复落点：只有写出 input:["text","image"]，OpenClaw 才会把
+// 图片 inline 进模型上下文，而不是 offload 成 [media attached: ...] 路径文本。
+test("renderer maps supportsImages:true to OpenClaw model input [text,image]", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  const target = runtime.providers.find((p) => p.id === "user-alice-deepseek");
+  target.supportsImages = true;
+  const output = renderOpenClawConfig(runtime, {});
+  const provider = output.models.providers["user-alice-deepseek"];
+  assert.deepEqual(provider.models[0].input, ["text", "image"]);
+});
+
+// E-B03 [unit] 缺省一律不输出 input，保证存量配置与改动前逐字节一致。
+test("renderer omits model input when supportsImages is false or absent", () => {
+  const absent = renderOpenClawConfig(parseRuntimeConfig(fixtureText), {});
+  assert.equal(
+    absent.models.providers["user-alice-deepseek"].models[0].input,
+    undefined,
+  );
+
+  const runtime = parseRuntimeConfig(fixtureText);
+  runtime.providers.find((p) => p.id === "user-alice-deepseek").supportsImages = false;
+  const explicitFalse = renderOpenClawConfig(runtime, {});
+  assert.equal(
+    explicitFalse.models.providers["user-alice-deepseek"].models[0].input,
+    undefined,
+  );
+});
+
 test("renderer writes agent thinkingDefault from the referenced provider's thinking", () => {
   const runtime = parseRuntimeConfig(fixtureText);
   runtime.providers.find((p) => p.id === "user-alice-deepseek").thinking = "high";
