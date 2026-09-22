@@ -9,22 +9,24 @@ import (
 )
 
 type LLMModelConfigCreate struct {
-	DisplayName   string
-	Provider      string
-	BaseURL       string
-	APIKey        string
-	Model         string
-	SupportsTools bool
-	Thinking      string
+	DisplayName    string
+	Provider       string
+	BaseURL        string
+	APIKey         string
+	Model          string
+	SupportsTools  bool
+	SupportsImages bool
+	Thinking       string
 }
 
 // LLMModelConfigUpdate 是模型配置的局部更新载荷。仅允许修改运行时可热加载
-// 的字段（apiKey / supportsTools / thinking）；provider/baseUrl/model 是模型
-// 身份字段，创建后不可变（改了等于换模型，会破坏绑定用户的运行时引用）。
+// 的字段（apiKey / supportsTools / supportsImages / thinking）；provider/baseUrl/model
+// 是模型身份字段，创建后不可变（改了等于换模型，会破坏绑定用户的运行时引用）。
 type LLMModelConfigUpdate struct {
-	APIKey        string
-	SupportsTools *bool
-	Thinking      string
+	APIKey         string
+	SupportsTools  *bool
+	SupportsImages *bool
+	Thinking       string
 }
 
 type LLMModelConfigListFilter struct {
@@ -33,6 +35,7 @@ type LLMModelConfigListFilter struct {
 
 const llmModelColumns = `m.model_config_id, m.display_name, m.provider, m.base_url,
 	m.api_key, m.model, m.last_test_at, m.last_test_ok, m.last_test_error, m.supports_tools,
+	m.supports_images,
 	m.thinking,
 	COALESCE(u.human_user_id, ''), COALESCE(u.display_name, ''),
 	m.created_at, m.updated_at`
@@ -141,17 +144,20 @@ func prepareLLMModelConfig(input LLMModelConfigCreate) (LLMModelConfig, error) {
 		Provider: strings.TrimSpace(input.Provider), BaseURL: strings.TrimSpace(input.BaseURL),
 		APIKey: strings.TrimSpace(input.APIKey),
 		Model:  strings.TrimSpace(input.Model), SupportsTools: input.SupportsTools,
-		Thinking: normalizeThinking(input.Thinking),
-		CreatedAt: now, UpdatedAt: now,
+		SupportsImages: input.SupportsImages,
+		Thinking:       normalizeThinking(input.Thinking),
+		CreatedAt:      now, UpdatedAt: now,
 	}, nil
 }
 
 func insertLLMModelConfig(tx *sql.Tx, model LLMModelConfig) error {
 	_, err := tx.Exec(`INSERT INTO llm_model_configs (
-		model_config_id, display_name, provider, base_url, api_key, model, supports_tools, thinking,
+		model_config_id, display_name, provider, base_url, api_key, model, supports_tools,
+		supports_images, thinking,
 		created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, model.ModelConfigID, model.DisplayName,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, model.ModelConfigID, model.DisplayName,
 		model.Provider, model.BaseURL, model.APIKey, model.Model, boolToInt(model.SupportsTools),
+		boolToInt(model.SupportsImages),
 		model.Thinking,
 		formatTime(model.CreatedAt), formatTime(model.UpdatedAt))
 	if err != nil {
@@ -237,10 +243,10 @@ func collectLLMModelConfigs(rows *sql.Rows) ([]LLMModelConfig, error) {
 func scanLLMModelConfig(sc scanner) (LLMModelConfig, error) {
 	var model LLMModelConfig
 	var createdAt, updatedAt, lastTestAt string
-	var lastTestOK, supportsTools int
+	var lastTestOK, supportsTools, supportsImages int
 	err := sc.Scan(&model.ModelConfigID, &model.DisplayName, &model.Provider, &model.BaseURL,
 		&model.APIKey, &model.Model, &lastTestAt, &lastTestOK, &model.LastTestError,
-		&supportsTools, &model.Thinking, &model.BoundHumanUserID, &model.BoundHumanUserName,
+		&supportsTools, &supportsImages, &model.Thinking, &model.BoundHumanUserID, &model.BoundHumanUserName,
 		&createdAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return LLMModelConfig{}, ErrNotFound
@@ -254,6 +260,7 @@ func scanLLMModelConfig(sc scanner) (LLMModelConfig, error) {
 	}
 	model.LastTestOK = lastTestOK != 0
 	model.SupportsTools = supportsTools != 0
+	model.SupportsImages = supportsImages != 0
 	model.CreatedAt, err = parseRequiredTime(createdAt, "llm_model_configs.created_at")
 	if err != nil {
 		return LLMModelConfig{}, err
@@ -265,9 +272,10 @@ func scanLLMModelConfig(sc scanner) (LLMModelConfig, error) {
 	return model, nil
 }
 
-// UpdateLLMModelConfig 局部更新一个模型配置（apiKey / supportsTools / thinking）。
-// 已绑定用户的模型也可编辑：这三个字段都是运行时热加载字段，改动即时生效、
-// 不破坏绑定关系（与「已绑定不可删」不同，删除才是破坏性的）。
+// UpdateLLMModelConfig 局部更新一个模型配置（apiKey / supportsTools /
+// supportsImages / thinking）。已绑定用户的模型也可编辑：这几个字段都是运行时
+// 热加载字段，改动即时生效、不破坏绑定关系（与「已绑定不可删」不同，删除才是
+// 破坏性的）。
 func (s *Store) UpdateLLMModelConfig(modelConfigID string, update LLMModelConfigUpdate) (LLMModelConfig, error) {
 	modelConfigID = strings.TrimSpace(modelConfigID)
 	if modelConfigID == "" {
@@ -282,6 +290,10 @@ func (s *Store) UpdateLLMModelConfig(modelConfigID string, update LLMModelConfig
 	if update.SupportsTools != nil {
 		sets = append(sets, "supports_tools = ?")
 		args = append(args, boolToInt(*update.SupportsTools))
+	}
+	if update.SupportsImages != nil {
+		sets = append(sets, "supports_images = ?")
+		args = append(args, boolToInt(*update.SupportsImages))
 	}
 	if thinking := strings.TrimSpace(update.Thinking); thinking != "" {
 		sets = append(sets, "thinking = ?")

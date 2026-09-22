@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS llm_model_configs (
 	last_test_ok INTEGER NOT NULL DEFAULT 0 CHECK (last_test_ok IN (0,1)),
 	last_test_error TEXT NOT NULL DEFAULT '',
 	supports_tools INTEGER NOT NULL DEFAULT 1 CHECK (supports_tools IN (0,1)),
+	supports_images INTEGER NOT NULL DEFAULT 0 CHECK (supports_images IN (0,1)),
 	thinking TEXT NOT NULL DEFAULT 'off'
 		CHECK (thinking IN ('off','minimal','low','medium','high','xhigh','max')),
 	created_at TEXT NOT NULL,
@@ -260,6 +261,9 @@ func (s *Store) migrate() error {
 	if err := s.migrateLLMModelSupportsTools(); err != nil {
 		return err
 	}
+	if err := s.migrateLLMModelSupportsImages(); err != nil {
+		return err
+	}
 	if err := s.migrateLLMModelThinking(); err != nil {
 		return err
 	}
@@ -434,6 +438,25 @@ func (s *Store) migrateLLMModelSupportsTools() error {
 		ADD COLUMN supports_tools INTEGER NOT NULL DEFAULT 1
 		CHECK (supports_tools IN (0,1))`); err != nil {
 		return fmt.Errorf("add LLM model supports_tools column: %w", err)
+	}
+	return nil
+}
+
+// migrateLLMModelSupportsImages adds the supports_images column for deployments
+// created before the column existed. Default 0 keeps every existing model on the
+// previous text-only behaviour; no existing row is rewritten.
+func (s *Store) migrateLLMModelSupportsImages() error {
+	exists, err := columnExists(s.db, "llm_model_configs", "supports_images")
+	if err != nil {
+		return fmt.Errorf("inspect LLM model supports_images column: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	if _, err := s.db.Exec(`ALTER TABLE llm_model_configs
+		ADD COLUMN supports_images INTEGER NOT NULL DEFAULT 0
+		CHECK (supports_images IN (0,1))`); err != nil {
+		return fmt.Errorf("add LLM model supports_images column: %w", err)
 	}
 	return nil
 }

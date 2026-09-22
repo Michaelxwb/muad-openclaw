@@ -12,12 +12,13 @@ import (
 )
 
 type modelConfig struct {
-	Provider      string `json:"provider"`
-	BaseURL       string `json:"baseUrl"`
-	APIKey        string `json:"apiKey"`
-	Model         string `json:"model"`
-	SupportsTools bool   `json:"supportsTools"`
-	Thinking      string `json:"thinking"`
+	Provider       string `json:"provider"`
+	BaseURL        string `json:"baseUrl"`
+	APIKey         string `json:"apiKey"`
+	Model          string `json:"model"`
+	SupportsTools  bool   `json:"supportsTools"`
+	SupportsImages bool   `json:"supportsImages"`
+	Thinking       string `json:"thinking"`
 }
 
 func (builder *Builder) buildModels(
@@ -62,7 +63,8 @@ func (builder *Builder) modelFromConfig(stored repo.LLMModelConfig) (modelConfig
 	return modelConfig{
 		Provider: stored.Provider, BaseURL: stored.BaseURL, APIKey: stored.APIKey,
 		Model: stored.Model, SupportsTools: stored.SupportsTools,
-		Thinking: stored.Thinking,
+		SupportsImages: stored.SupportsImages,
+		Thinking:       stored.Thinking,
 	}, nil
 }
 
@@ -86,6 +88,14 @@ func runtimeProvider(scope, owner string, model modelConfig) (driver.RuntimeProv
 	if !model.SupportsTools {
 		disabled := false
 		provider.SupportsTools = &disabled
+	}
+	// SupportsImages 与 SupportsTools **方向相反**：OpenClaw 对未声明 input 的
+	// 模型一律按 text-only 处理，因此只有显式开启时才输出字段（renderer 据此写
+	// input:["text","image"]）；缺省 nil = 不支持图片，字段整体不出现，存量
+	// 配置与旧 worker 镜像均不受影响。
+	if model.SupportsImages {
+		enabled := true
+		provider.SupportsImages = &enabled
 	}
 	return provider, id + "/" + model.Model, nil
 }

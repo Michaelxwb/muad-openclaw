@@ -38,12 +38,14 @@ export function LLMEditDialog({ model, busy, onClose, onSave, onError }: Props) 
   const { t } = useTranslation();
   const [apiKey, setApiKey] = useState("");
   const [supportsTools, setSupportsTools] = useState(true);
+  const [supportsImages, setSupportsImages] = useState(false);
   const [thinking, setThinking] = useState<ThinkingLevel>("off");
 
   useEffect(() => {
     if (!model) return;
     setApiKey(model.apiKey ?? "");
     setSupportsTools(model.supportsTools);
+    setSupportsImages(model.supportsImages);
     setThinking((model.thinking as ThinkingLevel) || "off");
     onError("");
   }, [model, onError]);
@@ -53,6 +55,7 @@ export function LLMEditDialog({ model, busy, onClose, onSave, onError }: Props) 
     const update: LLMModelUpdateInput = {
       apiKey: apiKey.trim(),
       supportsTools,
+      supportsImages,
       thinking,
     };
     if (update.apiKey === "") return onError(i18n.t("model.validationApiKeyRequired"));
@@ -111,13 +114,20 @@ export function LLMEditDialog({ model, busy, onClose, onSave, onError }: Props) 
               style={{ width: "100%" }}
             />
           </Field>
-          <Field as="div" label={t("model.functionCalls")}>
+          <Field as="div" label={t("model.capabilities")}>
             <Checkbox
               aria-label={t("model.supportFunctionCallsAria")}
               checked={supportsTools}
               onChange={(e) => setSupportsTools((e.target as HTMLInputElement).checked)}
             >
               {t("model.supportFunctionCalls")}
+            </Checkbox>
+            <Checkbox
+              aria-label={t("model.imageInputAria")}
+              checked={supportsImages}
+              onChange={(e) => setSupportsImages((e.target as HTMLInputElement).checked)}
+            >
+              {t("model.imageInput")}
             </Checkbox>
           </Field>
         </div>

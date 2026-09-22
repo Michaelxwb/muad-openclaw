@@ -25,7 +25,7 @@ export const MODEL_TABLE_COLUMN_WIDTHS = {
   baseUrl: 220,
   apiKey: 260,
   boundStatus: 150,
-  toolCalls: 90,
+  capabilities: 160,
   thinking: 100,
   testResult: 90,
   actions: 120,
@@ -358,15 +358,29 @@ function ModelTable({
         ),
     },
     {
-      title: t("model.toolCalls"),
+      title: t("model.capabilities"),
       dataIndex: "supportsTools",
-      width: MODEL_TABLE_COLUMN_WIDTHS.toolCalls,
-      render: (_: unknown, model: LLMModelConfig) =>
-        model.supportsTools ? (
-          <Tag color="green">{t("model.toolCallsSupported")}</Tag>
-        ) : (
-          <Tag color="grey">{t("model.toolCallsUnsupported")}</Tag>
-        ),
+      width: MODEL_TABLE_COLUMN_WIDTHS.capabilities,
+      render: (_: unknown, model: LLMModelConfig) => {
+        // 「工具调用」与「文本+图片」是两条独立能力轴（OpenClaw 侧分别落到
+        // compat.supportsTools 与 input），故用 Tag 列表逐项展示而非合并单值。
+        const labels = [
+          ...(model.supportsTools ? [t("model.toolCalls")] : []),
+          ...(model.supportsImages ? [t("model.imageInput")] : []),
+        ];
+        if (labels.length === 0) {
+          return <Tag color="grey">{t("model.toolCallsUnsupported")}</Tag>;
+        }
+        return (
+          <Space spacing={4} wrap>
+            {labels.map((label) => (
+              <Tag color="green" key={label}>
+                {label}
+              </Tag>
+            ))}
+          </Space>
+        );
+      },
     },
     {
       title: t("model.thinking"),

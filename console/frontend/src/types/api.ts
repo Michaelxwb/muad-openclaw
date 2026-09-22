@@ -337,6 +337,7 @@ export interface LLMModelConfig {
   model: string;
   apiKey: string;
   supportsTools: boolean;
+  supportsImages: boolean;
   thinking: string;
   lastTestAt: string;
   lastTestOK: boolean;
@@ -356,12 +357,14 @@ export interface LLMModelInput {
   apiKey: string;
   model: string;
   supportsTools?: boolean;
+  supportsImages?: boolean;
   thinking?: ThinkingLevel;
 }
 
 export interface LLMModelUpdateInput {
   apiKey?: string;
   supportsTools?: boolean;
+  supportsImages?: boolean;
   thinking?: ThinkingLevel;
 }
 
