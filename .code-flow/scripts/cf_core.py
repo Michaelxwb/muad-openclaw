@@ -3,6 +3,7 @@ import fnmatch
 import os
 import re
 import sys
+import time
 
 # --- Config cache (fix #3: avoid re-parsing YAML on every hook call) ---
 
@@ -10,6 +11,12 @@ _config_cache: dict = {}
 _spec_domains_cache: dict = {}
 _effective_mapping_cache: dict = {}
 _ext_set_cache: dict = {}
+
+
+def project_instruction_file(project_root: str, platform: str = "") -> str:
+    """Select the installed platform's instruction file, with legacy fallback."""
+    names = ("CLAUDE.md", "AGENTS.md") if platform in ("claude", "costrict") else ("AGENTS.md", "CLAUDE.md")
+    return next((name for name in names if os.path.isfile(os.path.join(project_root, name))), names[0])
 
 
 def load_config(project_root: str) -> dict:
@@ -46,6 +53,31 @@ def normalize_path(path: str) -> str:
     # a Windows machine into a prompt on macOS/Linux still normalize correctly.
     # On Windows `os.sep == '\\'`, so behavior there is unchanged.
     return path.replace("\\", "/")
+
+
+def effective_project_root(project_root: str, absolute_path: str) -> str:
+    """Resolve the project root that owns an edited file.
+
+    Parallel subagents edit `.code-flow/worktrees/<run>/<TASK>/...`; the nearest
+    `.code-flow` ancestor is that worktree's root, not the session root. Files
+    outside the session root and unresolvable paths fall back to `project_root`.
+    Lexical `abspath` (not `realpath`) keeps caller/returned paths in the same
+    coordinates (macOS /var ↔ /private/var symlink).
+    """
+    root = os.path.abspath(project_root)
+    target = os.path.abspath(absolute_path) if absolute_path else root
+    if target != root and not target.startswith(root + os.sep):
+        return root
+    current = target
+    while True:
+        if os.path.isdir(os.path.join(current, ".code-flow")):
+            return current
+        if current == root:
+            return root
+        parent = os.path.dirname(current)
+        if parent == current:
+            return root
+        current = parent
 
 
 def _spec_path_from_entry(entry) -> str:
@@ -467,7 +499,9 @@ def resolve_quality_loop(config: dict) -> dict:
     """
     if not isinstance(config, dict):
         return {"enabled": False, "post_check": False,
-                "stop_check": False, "correction_capture": False}
+                "stop_check": False, "finish_check": False,
+                "correction_capture": False,
+                "compress_reminder": False}
     cfg = config.get("quality_loop")
     cfg = cfg if isinstance(cfg, dict) else {}
     enabled = cfg.get("enabled") is True
@@ -479,8 +513,31 @@ def resolve_quality_loop(config: dict) -> dict:
         "enabled": enabled,
         "post_check": _sub("post_check"),
         "stop_check": _sub("stop_check"),
+        "finish_check": _sub("finish_check"),
         "correction_capture": _sub("correction_capture"),
+        "compress_reminder": _sub("compress_reminder"),
     }
+
+
+ENFORCEMENT_MODES = frozenset(("required", "warn", "inject"))
+
+
+def resolve_enforcement(config: dict) -> str:
+    """Project-wide Spec Workflow enforcement tier (light-mode ladder).
+
+    required — full fail-closed gates (default; upgraded projects keep it);
+    warn    — gates run but only log/report, never block the session;
+    inject  — routing/injection only; gates and blocks are disabled.
+    Missing or invalid values fail closed to "required".
+    """
+    if not isinstance(config, dict):
+        return "required"
+    workflow = config.get("spec_workflow")
+    workflow = workflow if isinstance(workflow, dict) else {}
+    value = workflow.get("enforcement")
+    if isinstance(value, str) and value in ENFORCEMENT_MODES:
+        return value
+    return "required"
 
 
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*\n?", re.DOTALL)
@@ -640,6 +697,25 @@ def assemble_context(specs: list, heading: str) -> str:
 def _log(msg: str) -> None:
     """Log to stderr (fix #9: don't pollute stdout which is hook output)."""
     print(msg, file=sys.stderr)
+
+
+_PROCESS_START = time.monotonic()
+
+
+def timing_log(name: str) -> None:
+    """Emit process-elapsed ms to stderr only when CF_DEBUG=1 (diagnostics).
+
+    Never touches stdout, so the hook JSON protocol is unaffected; a default
+    run pays one env lookup and no IO.
+    """
+    if os.environ.get("CF_DEBUG") == "1":
+        _log(f"{name}: {int((time.monotonic() - _PROCESS_START) * 1000)}ms")
+
+
+def phase_timing(name: str, started: float) -> None:
+    """Emit a named phase duration to stderr when CF_DEBUG=1."""
+    if os.environ.get("CF_DEBUG") == "1":
+        _log(f"cf_phase {name}: {int((time.monotonic() - started) * 1000)}ms")
 
 
 def ensure_utf8_io() -> None:

@@ -6,7 +6,8 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 ## 输入
 
 - `cf-task-start <file> TASK-001` — 激活指定文件中的单个子任务
-- `cf-task-start <file>` — 激活文件内所有可执行的 draft 子任务
+- `cf-task-start <file>` — 激活文件内所有可执行的 draft 子任务；批次内独立任务默认并行派发子 agent
+- `cf-task-start <file> --serial` — 整文件模式强制串行执行，不建 worktree
 
 其中 `<file>` 为 `.code-flow/tasks/` 下的文件名，可省略日期目录前缀和 `.md` 后缀。
 
@@ -23,8 +24,8 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 读取任务文件，定位 `## TASK-xxx` 段落：
 
 **状态检查**：Status 必须为 `draft`。若为其他状态：
-- `in-progress` → 提示"任务已在进行中，继续编码"（不阻塞，直接跳到步骤 2）
-- `done` → 先执行验收契约检查；全部 verified 才提示"任务已完成"并结束，否则恢复为 `in-progress`，列出缺口并继续补齐测试与证据
+- `in-progress` → 校验现有 marker 的需求目录、TASK-ID 与 Context；匹配且为 active 才继续步骤 2，跳过重复 Start。paused/blocked 先解除原因并调用 resume；marker 缺失或不匹配先 doctor，不能仅改 Markdown。
+- `done` / `verified` → 实现已完成；done 的 E2E 可为 e2e_deferred，转 verify-e2e 终验。发现缺口时报告并显式重新规划修复任务，不直接把终态改成 in-progress。
 - `blocked` → 提示"任务被阻塞"，列出 Notes 中的阻塞原因，结束
 
 **#NOTES 检查**：扫描该子任务段落全文（Description、Checklist 等）
@@ -33,7 +34,7 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 
 **依赖检查**：读取 `Depends` 字段
 - 对每个依赖的 TASK-ID，在同文件中查找其 Status
-- 所有依赖必须为 `done`
+- 所有依赖必须为 `done` 或 `verified`
 - 未满足 → 输出：`前置检查失败：以下依赖未完成\n- TASK-001: in-progress\n- TASK-003: draft`
 
 **验收契约检查**：
@@ -61,13 +62,12 @@ description: Activate a subtask and begin coding. Runs pre-checks (status, #NOTE
 
 在改状态或生产代码前，顺序固定且不得跳步：
 
-1. 调用 `cf_spec_context.py refresh --task-dir ...`，执行 Start Gate；stale/pending/conflict 或依赖未闭合均不得继续。
-2. 重新读取 refresh 后的 Context hash，再调用 `cf_spec_context.py active start`，传 task/context hash 和逐路径确认的 pre-existing ownership；已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。
-3. 调用 `cf_spec_session.py`，只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `_session/task-<name>.md`。禁止重新 catalog 或猜测规则。
-4. 只有前三步全部成功，才用 apply_patch 更新子任务 Status 为 `in-progress`、追加 started log 并更新文件头日期。
-5. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令
-6. 先编写验收测试。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
-7. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败
+1. 调用 `cf_spec_context.py start --task-dir ... --root ... --task ... --task-file ... --json`，由单个进程按 refresh → active start → session 顺序执行 Start Gate；stdin JSON 传入逐路径确认的 `owned_paths`。stale/conflict、依赖未闭合、已有/损坏 marker、未归属 diff 或 hash 不一致立即阻断。禁止先 start 再 refresh，避免 active marker 在编码前自行漂移。前置硬门禁（blocked / #NOTES / 依赖）由 workflow service 在改状态前强制执行。用户已确认内容时，Design/Plan 的 pending 不单独阻止激活；不新增阶段状态门禁。
+2. 从命令返回值读取 refresh 后的 Context hash、active 状态和 session 输出路径；该命令只根据当前 TASK 的 `Spec-Refs`、Source 与 Acceptance Contract 覆盖写入 `.code-flow/specs/_session/task-<name>.md`，禁止重新 catalog 或猜测规则。
+3. Start 返回成功时，workflow service 已通过可恢复事务同步 Status、started log 和 active marker；不要再手动改状态。失败保留原状态，按返回原因恢复。
+4. 在修改任何生产代码前，为每个 Acceptance-Ref 填写测试文件、包含场景 ID 的测试用例名和可单独执行的命令（E2E 只登记，不在本阶段执行）
+5. 先编写验收测试（E2E 只编写并登记）。E2E 测试必须经过契约声明的真实边界，不得用 mock 绕过 Store、Resolver、Builder、Renderer、Browser 等指定组件
+6. 新功能或缺陷修复先执行一次测试并记录 RED：失败命令、失败用例和与预期缺陷对应的失败原因。纯重构或已有行为补测无法 RED 时，记录原因，不得伪造失败。E2E 场景不执行 RED，登记为 e2e_deferred 留给 verify-e2e
 
 RED 证据写入 `Acceptance Evidence`：
 
@@ -85,11 +85,10 @@ RED 证据写入 `Acceptance Evidence`：
 
 ### 3.2 GREEN 与验收证据
 
-1. 执行每个契约中的验收命令，再执行受影响范围的回归测试
-2. 对每个预期结果记录对应的测试断言位置，并指出 fixture/构造路径如何证明关键边界使用真实组件
-3. 将 `Acceptance Contract` 行状态改为 `verified`，将 `Acceptance Evidence` 补齐 GREEN、断言位置和边界证据
-4. 负责该场景的任务验证完成后，将全局 `Acceptance Coverage` 对应行改为 `verified`
-5. 测试文件存在但未被测试框架收集、命令未实际执行、只有场景 ID 没有关键断言，都视为未验证
+1. 执行 functional 验收和受影响范围的回归测试；E2E 只登记场景、断言、真实边界和命令，RED/GREEN 都不在编码阶段执行，统一留给 verify-e2e。
+2. 对每个预期结果记录断言位置与 fixture/构造路径；环境未就绪的错误不得冒充有效 RED，明确记录尚未验证。
+3. 由 runner 写入最新状态和运行历史；不要覆盖原契约、RED 证据或历史失败。functional 必须 verified，已登记的 E2E 在实现阶段允许 e2e_deferred。
+4. 测试未收集、命令未实际执行或缺少关键断言，都不算验证完成。失败重跑必须使旧 verified 失效。
 
 ### 3.5 TASK-bound Spec Session
 
@@ -107,16 +106,18 @@ RED 证据写入 `Acceptance Evidence`：
 
 只有同时满足以下条件才能自动完成：
 - 所有 checklist 项均为 `[x]`
-- 每个 Acceptance-Ref 在契约、证据和全局覆盖表中均为 `verified`，不存在 `planned` / `pending` / `TBD`
+- functional/manual 在契约、证据和覆盖表中均为 `verified`；仅 E2E 可为 `e2e_deferred`，仍不得遗留未登记的 `planned` / `pending` / `TBD`
 - 测试层级未低于 design，关键真实边界没有被 mock 绕过
-- 每个预期结果都有具体断言位置，验收命令和回归测试均已实际通过
+- 每个预期结果都有具体断言位置，functional 验收命令和回归测试均已实际通过；E2E 留到终验执行
 - `manual` 场景已有用户确认和可复核记录
 
-满足后：
-1. 用 apply_patch 更新 Status 为 `done`
-2. 在 `### Log` 追加：`- [<当前日期>] completed (done)`
-3. 更新文件头 `Updated` 日期
-4. 输出：`TASK-xxx 已完成`
+满足后，执行唯一收尾入口：
+
+```bash
+python3 .code-flow/scripts/cf_task_workflow.py finish --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json
+```
+
+该命令先校验完整任务身份与锁定 manifest，再执行 Done Gate（acceptance 场景 + spec verifiers + 全量 validation.yml，含 heavy）；通过后以可恢复事务更新 done、Log、Updated 并清理 marker。只有 `decision=pass` 才输出完成并启动下一 TASK。禁止手动设置 done 或传入自报的 gate_passed 绕过验证。
 
 任一验收条件不满足时保持 `in-progress`，明确列出缺口，不能标记为 `done`。
 
@@ -182,14 +183,100 @@ Spec 同步提示:
   - TASK-004: #NOTES 未解决
   - TASK-005: 依赖 TASK-004 (blocked)
 
-开始执行...
+开始执行（批次内默认并行派发子 agent，预检失败自动回退串行）...
 ```
 
-### 4. 按序执行
+### 4. 执行批次
 
-对每个可激活的子任务，执行单任务模式的步骤 3-4，包括先写验收测试、RED、实现、GREEN 和证据核对（详设已在步骤 2 加载，无需重复读取）。
+对每个批次执行；批次内仅 1 个 TASK、传入 `--serial`、或并行预检失败时，走 4.6 串行回退。
 
-完成一个子任务后，检查是否解锁了新的子任务（依赖已满足），如果是则继续执行。
+#### 4.1 并行预检与 worktree 准备
+
+```bash
+python3 .code-flow/scripts/cf_task_parallel.py prepare --root "$PWD" \
+  --task-file "<任务文件相对路径>" --tasks TASK-001,TASK-003 --json
+```
+
+- 返回 `{"ok": true, "run_id": ..., "worktrees": [...]}` 才可并行；`ok: false` 时打印 `code`/`message` 并回退串行，禁止手工建 worktree/分支。
+- 预检内容：git 仓库、`.code-flow/.gitignore` 含 `worktrees/`、主 worktree 无 active marker、tracked 工作区干净。命令会自动提交仅位于当前需求目录内的流程产物（任务文件等）；需求目录以外存在未提交改动时拒绝并行，提示用户先提交或收起。
+
+#### 4.2 派发子 agent（平台自适应）
+
+若当前平台提供子 agent/Task 派发能力，为本批次每个 TASK 各派发一个子 agent（同一批并发不超过 3，超出时按 TASK 顺序拆成多轮）。子 agent prompt 必须包含 worktree 绝对路径、TASK-ID、任务文件相对路径，并声明以下硬性要求：
+
+1. 进入 worktree：所有命令 `cd <worktree>` 执行，文件读写使用该 worktree 内路径。
+2. 按上文"单任务模式"步骤 1-4 完成该 TASK：`cf_spec_context.py start` → functional RED → 实现 → functional GREEN（E2E 只登记）→ `cf_task_workflow.py finish --root "<worktree>"`。
+3. 平台 hook 注入绑定主工作区；子 agent 必须显式读取 Spec Session（`.code-flow/specs/_session/task-*.md`）与详设章节，不得依赖自动注入。
+4. 完成时在 worktree 内提交全部改动（含任务文件 Checklist/Evidence/Status 更新），提交信息 `cf-task(<TASK-ID>): <标题>`。
+5. 返回摘要：TASK-ID、Status、验收命令及结果、提交 SHA、遗留问题。
+
+标准 worker prompt 模板（替换占位符后派发）：
+
+```
+你在隔离 worktree 中执行 <TASK-ID>：<worktree 绝对路径>。
+1) cd 到 worktree；先读 Spec Session（.code-flow/specs/_session/task-<name>.md）、任务文件的当前 TASK 段落与 design 来源章节；
+2) cf_spec_context.py start → 写验收测试记录 RED → 实现 → GREEN；
+3) 运行 cf_task_workflow.py finish --root "$PWD" --task <TASK-ID> --json；decision=pass 后【再】提交全部改动（含 finish 回写的 Evidence/状态）：git add -A && git commit -m "cf-task(<TASK-ID>): <标题>"；
+4) 返回摘要：TASK-ID、Status、验收命令与结果、commit SHA、遗留问题。
+```
+
+> 提交必须在 finish 之后：finish 通过后会回写 Evidence/状态；collect 默认会自动提交这些回写，但显式提交更清晰。
+
+子 agent 中断（取消/超时）时不要重新 prepare：检查该 worktree 的 `git status`、`git log <base>..HEAD` 与 marker——
+- 无改动且无 marker：直接接管，按单任务模式继续；
+- 有未提交改动或已有提交但未 done：在 worktree 内接管收尾（补实现/测试并 finish），再走 4.3 collect；
+- 已 done 且 marker 已清理：直接进入 4.3。
+
+平台不支持子 agent 时，不建 worktree，直接走 4.6 串行回退。
+
+#### 4.3 收集与校验
+
+```bash
+python3 .code-flow/scripts/cf_task_parallel.py collect --root "$PWD" --run-id <run_id> --json
+```
+
+- 每个任务必须 `ok: true`（改动已提交、Status 为 done/verified、marker 已清理、有提交）。
+- `collect` 在任务 done/verified 且 marker 已清理后，会自动提交 finish 回写的 Evidence/状态（`--no-commit` 关闭并回到严格模式）；finish 之外的未提交改动仍应人工确认。
+- 任一任务失败：停止本批次，不合并；保留 worktree 并列出失败原因。修复后重跑 collect；确认放弃时执行 4.5 cleanup。
+
+#### 4.4 回并主分支
+
+按 TASK-ID 先后顺序逐个回并；先 rebase 再合并，让冲突只在任务自己的 worktree 内解决。
+
+1. 取主工作区当前分支名（主工作区执行 `git rev-parse --abbrev-ref HEAD`，记为 <主分支>），在任务 worktree 内对齐：
+
+```bash
+cd <worktree> && git rebase <主分支>
+```
+
+- rebase 冲突：读取冲突现场 + 本任务详设章节与 Acceptance Contract，合并双方意图（不是二选一）；无法调和（设计要求互斥）→ `git rebase --abort`，保留现场与分支，列出矛盾点叫停交用户决策，不得擅自删除一方实现。
+- rebase 成功后重跑该任务的 functional 验收命令（E2E 留给 verify-e2e）；失败则在 worktree 内修复并提交，再执行 4.3 collect 复核。
+
+2. 回到主工作区合并（此时应无冲突）：
+
+```bash
+git merge --no-ff -m "merge cf-task <TASK-ID>" <branch>
+```
+
+- 仍出现冲突（主区期间有新合并）：按双方意图解决并重跑双方 functional 验收；通过后提交 merge。
+- 状态文件冲突（`spec-context.yml` / 任务 md 的覆盖状态列 / `.acceptance-manifest.json`）按确定性优先级解决：覆盖状态列取并集（两边各自 verified 的行保留 verified）；`spec-context.yml` 取已包含全量规则证据的一侧；manifest 多数情况按行自动合并，冲突时以任务文件为准重建后重跑 functional 场景。解决后必须 `cf_spec_context.py refresh` 收敛 hash，并重跑合并双方的 functional 验收与 `cf_spec_gate --stage code --json`，通过后提交 merge。
+- 合并后验收失败：记录合并前 HEAD 并 `git reset --hard <合并前HEAD>`（分支与 worktree 原样保留），回到 4.2 让对应子 agent 修复后重新 collect / rebase / 合并。
+
+3. 全部任务合并完成后进入 4.5 清理。
+
+- E2E 验收留给 verify-e2e，不在本步骤执行。
+
+#### 4.5 清理
+
+```bash
+python3 .code-flow/scripts/cf_task_parallel.py cleanup --root "$PWD" --run-id <run_id> --json
+```
+
+清理 worktree；已合入的分支自动删除，未合入的保留供排查。worktree 存在未提交改动时 cleanup 会拒绝，先人工确认再决定处理方式。全部批次完成后进入步骤 5。
+
+#### 4.6 串行回退
+
+未启用并行、批次仅 1 个任务或预检失败时，对批次内可激活子任务执行单任务模式步骤 3-4（详设已在步骤 2 加载，无需重复读取），完成一个后再解锁下一个。
 
 ### 5. 输出摘要与文档同步检查
 
@@ -214,3 +301,5 @@ Spec 同步提示:
 
   运行 cf-learn --map 可自动更新导航地图。
 ```
+
+3. 若需求目录已无 `draft` / `in-progress` / `blocked` 子任务，提示：运行 `cf-task-verify-e2e <需求目录>` 执行延迟的 E2E 终验。

@@ -5,16 +5,13 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-import hashlib
 import json
 from pathlib import Path
 import re
 import sys
 from typing import IO, Mapping, Optional, Sequence
 
-import yaml
-
-from cf_spec_context import RuleBinding, SpecContext, context_to_data, load_context
+from cf_spec_context import RuleBinding, SpecContext, context_sha256, load_context
 
 
 @dataclass(frozen=True)
@@ -25,60 +22,8 @@ class SessionProjection:
     truncated: bool
 
 
-def _stable_stage(status: RuleStageStatus) -> dict[str, object]:
-    decision = status.decision
-    return {
-        "status": status.status,
-        # Artifact content hashes and evidence are routine coding progress; keep
-        # only the artifact identity (path) so doc edits do not drift the marker.
-        "refs": [ref.artifact for ref in status.refs],
-        "decision": None if decision is None else {
-            "kind": decision.kind, "reason": decision.reason, "source": decision.source,
-        },
-    }
-
-
-def _stable_rule(rule: RuleBinding) -> dict[str, object]:
-    return {
-        "ref": rule.ref,
-        "text_sha256": rule.text_sha256,
-        "enforcement": rule.enforcement,
-        "verifier_ref": rule.verifier_ref,
-        "stage_status": {stage: _stable_stage(st) for stage, st in rule.stage_status.items()},
-    }
-
-
-def _stable_binding(binding: SpecBinding) -> dict[str, object]:
-    return {
-        "spec_id": binding.spec_id,
-        "path": binding.path,
-        "hashes": {
-            "file_sha256": binding.hashes.file_sha256,
-            "metadata_sha256": binding.hashes.metadata_sha256,
-            "rules_sha256": binding.hashes.rules_sha256,
-        },
-        "enforcement": binding.enforcement,
-        "stages": list(binding.stages),
-        "rules": [_stable_rule(rule) for rule in binding.rules],
-    }
-
-
-def context_sha256(context: SpecContext) -> str:
-    # Hash only the stable core of the context: spec bindings, rule text hashes,
-    # statuses, and decision kind/reason. Volatile fields (updated_at, artifact
-    # content hashes, decision timestamps, evidence) are excluded so routine
-    # doc edits and re-saves during coding do not drift the active marker.
-    # Spec-file drift (hashes.rules_sha256 / text_sha256) and status transitions
-    # still change the hash and require re-activation.
-    data = {
-        "version": context.version,
-        "task": context.task,
-        "enforcement": context.enforcement,
-        "sources": [{"type": item.type, "ref": item.ref} for item in context.sources],
-        "bindings": [_stable_binding(binding) for binding in context.bindings],
-    }
-    payload = yaml.safe_dump(data, sort_keys=True, allow_unicode=True).encode()
-    return hashlib.sha256(payload).hexdigest()
+# context_sha256 is defined next to the identity projection in cf_spec_context
+# and re-exported here for callers that import the session module.
 
 
 def _task_section(text: str, task_id: str) -> str:
@@ -91,7 +36,8 @@ def _task_section(text: str, task_id: str) -> str:
 
 
 def _refs(section: str) -> tuple[str, ...]:
-    match = re.search(r"(?m)^- \*\*Spec-Refs\*\*:\s*(.+)$", section)
+    # [ \t]* 而非 \s*：空 Spec-Refs 不得跨行吞掉下一字段（Acceptance-Refs 等）
+    match = re.search(r"(?m)^- \*\*Spec-Refs\*\*:[ \t]*(.*)$", section)
     if match is None:
         raise ValueError("spec_refs_missing")
     return tuple(item.strip() for item in match.group(1).split(",") if item.strip())
@@ -138,7 +84,7 @@ def project_task_session(
         if len(header + "".join(lines) + candidate + footer) > max_chars:
             break
         lines.append(candidate)
-    truncated = len(lines) < len(refs)
+    truncated = len(lines) < len(refs) or len(header + "".join(lines) + footer) > max_chars
     if truncated:
         footer = "\n> 投影超过预算；完整 Context 保留在需求目录，请拆分 TASK。\n" + footer
     text = (header + "".join(lines) + footer)[:max_chars]
@@ -151,7 +97,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--task", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--budget", type=int, default=4000)
+    parser.add_argument("--budget", type=int, default=12000)
     parser.add_argument("--json", action="store_true")
     return parser
 
