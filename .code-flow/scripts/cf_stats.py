@@ -12,6 +12,7 @@ from cf_core import (
     compress_content,
     estimate_tokens,
     load_config,
+    project_instruction_file,
     non_injectable_specs,
     resolve_quality_loop,
 )
@@ -21,6 +22,7 @@ def _violation_fixed(index: int, events: list) -> bool:
     """修正口径：违规后同会话同文件有后续编辑，且其后无同 check 再违规。
 
     用日志追加顺序判先后（ts 仅秒级精度，同秒事件无法靠时间戳排序）。
+    保留单点查询语义；批量聚合请用 violation_fixed_batch（一次线性扫描）。
     """
     violation = events[index]
     v_data = violation.get("data") or {}
@@ -39,6 +41,37 @@ def _violation_fixed(index: int, events: list) -> bool:
         ):
             return False
     return later_edit
+
+
+def violation_fixed_batch(events: list) -> list[bool]:
+    """Batch twin of _violation_fixed: one reverse pass, identical semantics.
+
+    Segments the timeline per (session, file) at edits: a violation is fixed
+    iff an edit exists after it and no same-check violation exists in a later
+    segment. No slicing, no per-violation rescan: O(n) time.
+    """
+    fixed: dict[int, bool] = {}
+    edit_right: set[tuple[str, str]] = set()
+    current: dict[tuple[str, str], set[str]] = {}
+    later: dict[tuple[str, str], set[str]] = {}
+    for index in range(len(events) - 1, -1, -1):
+        event = events[index]
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("event")
+        data = event.get("data")
+        if not isinstance(data, dict):
+            data = {}
+        key = (str(event.get("sid")), str(data.get("file")))
+        if kind == "edit":
+            later.setdefault(key, set()).update(current.get(key, ()))
+            current[key] = set()
+            edit_right.add(key)
+        elif kind == "violation":
+            check = str(data.get("check_id"))
+            fixed[index] = key in edit_right and check not in later.get(key, ())
+            current.setdefault(key, set()).add(check)
+    return [fixed[index] for index, event in enumerate(events) if isinstance(event, dict) and event.get("event") == "violation"]
 
 
 def quality_loop_summary(project_root: str, config: dict) -> dict:
@@ -61,13 +94,10 @@ def quality_loop_summary(project_root: str, config: dict) -> dict:
         key=lambda item: -item["count"],
     )[:10]
 
-    fixed = sum(
-        1 for i, event in enumerate(events)
-        if event.get("event") == "violation" and _violation_fixed(i, events)
-    )
+    fixed = violation_fixed_batch(events)
     summary["violation_total"] = len(violations)
     summary["fix_rate"] = (
-        f"{round(fixed * 100 / len(violations))}%" if violations else "n/a"
+        f"{round(sum(fixed) * 100 / len(violations))}%" if violations else "n/a"
     )
 
     state = load_check_state(project_root)
@@ -273,7 +303,9 @@ def main() -> None:
     except Exception:
         total_budget = l0_budget + l1_budget
 
-    claude_path = os.path.join(project_root, "CLAUDE.md")
+    platform = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--platform=")), "")
+    instruction_file = project_instruction_file(project_root, platform)
+    claude_path = os.path.join(project_root, instruction_file)
     l0_tokens = 0
     if os.path.exists(claude_path):
         l0_tokens = estimate_tokens(read_text(claude_path))
@@ -374,7 +406,7 @@ def main() -> None:
     workflow_summary = spec_workflow_summary(project_root)
 
     output = {
-        "l0": {"file": "CLAUDE.md", "tokens": l0_tokens, "budget": l0_budget},
+        "l0": {"file": instruction_file, "tokens": l0_tokens, "budget": l0_budget},
         "l1": l1,
         "total_tokens": total_tokens,
         "total_budget": total_budget,
@@ -394,7 +426,7 @@ def main() -> None:
     }
     if audit_mode:
         from cf_scan import build_report
-        scan = build_report(project_root)
+        scan = build_report(project_root, platform)
         output["audit"] = {
             "files": [e for e in scan["files"] if e.get("issues")],
             "review": scan["review"],
@@ -404,7 +436,7 @@ def main() -> None:
         print(json.dumps(output, ensure_ascii=False))
         return
 
-    print("L0 (CLAUDE.md):", f"{l0_tokens} / {l0_budget}")
+    print(f"L0 ({instruction_file}):", f"{l0_tokens} / {l0_budget}")
     for domain, items in l1.items():
         total_domain = sum(i["tokens"] for i in items if i.get("injectable", True))
         print(f"L1 {domain}:", total_domain)

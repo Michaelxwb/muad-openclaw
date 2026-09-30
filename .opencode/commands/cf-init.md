@@ -68,6 +68,7 @@ description: 一键初始化项目规范体系，检测技术栈，生成 spec �
 - Python 后端项目：删除 `TypeScript 类型检查`、`Vue 类型检查`、`ESLint`、`Stylelint`、`前端单元测试`
 - Go/Rust/Java 后端：删除前端 validator；如果没有对应语言 validator，保留文件并在摘要中提示用户补充
 - fullstack / generic：全部保留，除非项目明确没有对应语言文件
+- 全量测试 / e2e 等慢命令（`pytest`、`vitest run`、Playwright 等）标 `heavy: true`：Stop 每轮跳过，任务 finish 自动执行一次，也可 `/cf-validate` 手动执行
 
 若 `.code-flow/validation.yml` 缺失，提示用户重跑 `code-flow init`，不要手工拼装 YAML。
 
@@ -156,18 +157,22 @@ AGENTS.md 的完整内容由适配器模板统一定义，`code-flow init` 已�
 
 ### 6. 生成 OpenCode 插件配置
 
+OpenCode v2 会自动加载 `.opencode/plugins/` 下的插件目录，无需在 `opencode.json` 中声明。
 检查 `opencode.json` 是否存在。如果不存在，创建：
 
 ```json
 {
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": [".opencode/plugins/code-flow"]
+  "$schema": "https://opencode.ai/config.json"
 }
 ```
 
-如果 `opencode.json` 已存在，只合并缺失的 `plugin` 条目，保留用户已有配置。
+如果 `opencode.json` 已存在，只做 v1→v2 迁移，保留用户已有配置：
+- 删除遗留的顶层 `plugin` 键（v1 写法，如 `".opencode/plugins/code-flow"`）；其中非本地的用户条目搬入 `plugins`。
+- 不要向 `plugins` 写入 `.opencode/plugins/code-flow`（自动发现已覆盖，显式声明会导致重复加载或包解析告警）。
 
-确保 `.opencode/plugins/code-flow/` 已存在。OpenCode 通过插件转发 `chat.message` 并注入 specs，不需要生成 Claude/Costrict 风格的 settings 文件。
+确保 `.opencode/plugins/code-flow/` 已存在且为 v2 形态（默认导出 `{ id: "code-flow", setup }`，不依赖 `@opencode/plugin` 包），
+注册 `session.prompt` / `tool.execute.after` / `session.context` hooks + `event.subscribe` 订阅 `session.idle`）。
+OpenCode 通过插件转发用户 prompt 并经 context hook 注入 specs，不需要生成 Claude/Costrict 风格的 settings 文件。
 
 ### 7. 安装 pyyaml
 

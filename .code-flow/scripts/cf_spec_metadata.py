@@ -10,16 +10,18 @@ from pathlib import Path
 import re
 from typing import Mapping, Optional
 
-import yaml
 
 
 ALLOWED_STAGES = frozenset(("prd", "design", "plan", "code", "review"))
 ALLOWED_ENFORCEMENT = frozenset(("required", "advisory"))
 ALLOWED_VERIFIERS = frozenset(("document", "regex", "ast", "command", "test", "manual"))
+ALLOWED_VERIFIER_STAGES = frozenset(("code", "review"))
 _ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _RULE_ID_RE = re.compile(r"^RULE-[a-z0-9]+(?:-[a-z0-9]+)*-\d{3}$")
 _EXPLICIT_RULE_RE = re.compile(r"^\[(RULE-[a-z0-9-]+-\d{3})\]\s+(.+)$")
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|$)", re.DOTALL)
+_FRONTMATTER_OPEN_RE = re.compile(br"---[ \t]*\r?\n")
+_FRONTMATTER_CLOSE_RE = re.compile(br"---[ \t]*(?:\r?\n)?")
 _SECTION_RE = re.compile(r"^##\s+(Rules|Anti-Patterns|Patterns|Examples)\s*$")
 _H2_RE = re.compile(r"^##\s+")
 _BULLET_RE = re.compile(r"^\s*-\s+(.+\S|\S)\s*$")
@@ -51,6 +53,8 @@ class SpecVerifier:
     rule: str
     type: str
     config: Mapping[str, object]
+    stage: str = "code"
+    files: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -61,6 +65,13 @@ class SpecRule:
     enforcement: str
     text_sha256: str
     line: int
+
+
+@dataclass(frozen=True)
+class SpecHeader:
+    id: str
+    stages: tuple[str, ...]
+    enforcement: str
 
 
 @dataclass(frozen=True)
@@ -116,6 +127,11 @@ def _split_frontmatter(content: str, path: str) -> tuple[Mapping[str, object], s
     if not match:
         raise SpecMetadataError(path, "frontmatter", 1, "缺失或未闭合 YAML frontmatter")
     raw = match.group(1)
+    return _parse_frontmatter(raw, path), raw, content[match.end():]
+
+
+def _parse_frontmatter(raw: str, path: str) -> Mapping[str, object]:
+    import yaml
     try:
         loaded = yaml.safe_load(raw) or {}
     except yaml.YAMLError as exc:
@@ -126,7 +142,7 @@ def _split_frontmatter(content: str, path: str) -> tuple[Mapping[str, object], s
         raise SpecMetadataError(path, "frontmatter", 2, "顶层必须是 mapping")
     if not all(isinstance(key, str) for key in loaded):
         raise SpecMetadataError(path, "frontmatter", 2, "所有顶层 key 必须是字符串")
-    return loaded, raw, content[match.end():]
+    return loaded
 
 
 def _required_string(meta: Mapping[str, object], key: str, path: str, raw: str) -> str:
@@ -149,6 +165,46 @@ def _validate_stages(meta: Mapping[str, object], path: str, raw: str) -> tuple[s
     return stages
 
 
+def _spec_header(meta: Mapping[str, object], raw: str, path: str) -> SpecHeader:
+    spec_id = _required_string(meta, "id", path, raw)
+    if not _ID_RE.fullmatch(spec_id):
+        raise SpecMetadataError(path, "id", _field_line(raw, "id"), "必须是 kebab-case")
+    stages = _validate_stages(meta, path, raw)
+    enforcement = _required_string(meta, "enforcement", path, raw)
+    if enforcement not in ALLOWED_ENFORCEMENT:
+        line = _field_line(raw, "enforcement")
+        raise SpecMetadataError(path, "enforcement", line, f"必须是 {sorted(ALLOWED_ENFORCEMENT)}")
+    return SpecHeader(spec_id, stages, enforcement)
+
+
+def _read_frontmatter(path: str) -> str:
+    lines: list[bytes] = []
+    try:
+        with Path(path).open("rb") as source:
+            if not _FRONTMATTER_OPEN_RE.fullmatch(source.readline()):
+                raise SpecMetadataError(path, "frontmatter", 1, "缺失或未闭合 YAML frontmatter")
+            for line in source:
+                if _FRONTMATTER_CLOSE_RE.fullmatch(line):
+                    break
+                lines.append(line)
+            else:
+                raise SpecMetadataError(path, "frontmatter", 1, "缺失或未闭合 YAML frontmatter")
+    except OSError as exc:
+        raise SpecMetadataError(path, "file", 1, f"读取失败: {exc}") from exc
+    raw = b"".join(lines)
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        line = raw[:exc.start].count(b"\n") + 2
+        raise SpecMetadataError(path, "encoding", line, f"必须是 UTF-8: {exc}") from exc
+
+
+def load_spec_header(path: str) -> SpecHeader:
+    """Load only routing fields, stopping at the frontmatter delimiter."""
+    raw = _read_frontmatter(path)
+    return _spec_header(_parse_frontmatter(raw, path), raw, path)
+
+
 def _validate_checks(meta: Mapping[str, object], path: str, raw: str) -> tuple[Mapping[str, object], ...]:
     value = meta.get("checks", [])
     if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
@@ -156,7 +212,26 @@ def _validate_checks(meta: Mapping[str, object], path: str, raw: str) -> tuple[M
     return tuple(value)
 
 
-def _parse_verifiers(meta: Mapping[str, object], path: str, raw: str) -> tuple[SpecVerifier, ...]:
+def _parse_verifier_files(value: object, path: str, raw: str, index: int) -> tuple[str, ...]:
+    line = _verifier_field_line(raw, index, "files")
+    if not isinstance(value, list) or not value:
+        raise SpecMetadataError(path, f"verifiers[{index}].files", line, "必须是非空 glob 字符串数组")
+    files: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise SpecMetadataError(path, f"verifiers[{index}].files", line, "glob 必须是非空字符串")
+        text = item.strip().replace("\\", "/")
+        if text.startswith("/") or re.match(r"^[A-Za-z]:/", text):
+            raise SpecMetadataError(path, f"verifiers[{index}].files", line, f"禁止绝对路径: {item!r}")
+        if ".." in text.split("/"):
+            raise SpecMetadataError(path, f"verifiers[{index}].files", line, f"禁止 .. 跳出仓库: {item!r}")
+        files.append(text)
+    return tuple(files)
+
+
+def _parse_verifiers(
+    meta: Mapping[str, object], path: str, raw: str, stages: tuple[str, ...]
+) -> tuple[SpecVerifier, ...]:
     value = meta.get("verifiers", [])
     if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
         raise SpecMetadataError(path, "verifiers", _field_line(raw, "verifiers"), "必须是 mapping 列表")
@@ -166,6 +241,8 @@ def _parse_verifiers(meta: Mapping[str, object], path: str, raw: str) -> tuple[S
         rule = item.get("rule")
         kind = item.get("type")
         config = item.get("config")
+        explicit_stage = "stage" in item
+        stage = item.get("stage", "code")
         if not isinstance(rule, str) or not _RULE_ID_RE.fullmatch(rule):
             line = _verifier_field_line(raw, index, "rule")
             raise SpecMetadataError(path, f"verifiers[{index}].rule", line, "必须是稳定 RULE ID")
@@ -175,10 +252,17 @@ def _parse_verifiers(meta: Mapping[str, object], path: str, raw: str) -> tuple[S
         if not isinstance(config, dict):
             line = _verifier_field_line(raw, index, "config")
             raise SpecMetadataError(path, f"verifiers[{index}].config", line, "必须是 mapping")
+        if explicit_stage and (not isinstance(stage, str) or stage not in ALLOWED_VERIFIER_STAGES):
+            line = _verifier_field_line(raw, index, "stage")
+            raise SpecMetadataError(path, f"verifiers[{index}].stage", line, f"必须是 {sorted(ALLOWED_VERIFIER_STAGES)} 之一")
+        if explicit_stage and stage not in stages:
+            line = _verifier_field_line(raw, index, "stage")
+            raise SpecMetadataError(path, f"verifiers[{index}].stage", line, f"stage {stage!r} 未在 stages 声明: {', '.join(stages)}")
+        files = _parse_verifier_files(item["files"], path, raw, index) if "files" in item else ()
         if rule in seen:
             raise SpecMetadataError(path, "verifiers", _field_line(raw, "verifiers"), f"重复 verifier: {rule}")
         seen.add(rule)
-        result.append(SpecVerifier(rule=rule, type=kind, config=config))
+        result.append(SpecVerifier(rule=rule, type=kind, config=config, stage=stage, files=files))
     return tuple(result)
 
 
@@ -265,20 +349,13 @@ def _validate_links(
 
 def parse_spec_metadata(content: str, path: str = "<memory>", raw_bytes: Optional[bytes] = None) -> SpecMetadata:
     meta, raw_frontmatter, body = _split_frontmatter(content, path)
-    spec_id = _required_string(meta, "id", path, raw_frontmatter)
-    if not _ID_RE.fullmatch(spec_id):
-        raise SpecMetadataError(path, "id", _field_line(raw_frontmatter, "id"), "必须是 kebab-case")
+    header = _spec_header(meta, raw_frontmatter, path)
     description = _required_string(meta, "description", path, raw_frontmatter)
-    stages = _validate_stages(meta, path, raw_frontmatter)
-    enforcement = _required_string(meta, "enforcement", path, raw_frontmatter)
-    if enforcement not in ALLOWED_ENFORCEMENT:
-        line = _field_line(raw_frontmatter, "enforcement")
-        raise SpecMetadataError(path, "enforcement", line, f"必须是 {sorted(ALLOWED_ENFORCEMENT)}")
     owner = meta.get("owner")
     if owner is not None and (not isinstance(owner, str) or not owner.strip()):
         raise SpecMetadataError(path, "owner", _field_line(raw_frontmatter, "owner"), "必须是非空字符串")
     checks = _validate_checks(meta, path, raw_frontmatter)
-    verifiers = _parse_verifiers(meta, path, raw_frontmatter)
+    verifiers = _parse_verifiers(meta, path, raw_frontmatter, header.stages)
     body_line_offset = raw_frontmatter.count("\n") + 3
     rules = _parse_rules(body, path, body_line_offset)
     _validate_links(rules, verifiers, path, raw_frontmatter)
@@ -289,7 +366,10 @@ def parse_spec_metadata(content: str, path: str = "<memory>", raw_bytes: Optiona
         metadata_sha256=_sha256(_canonical_json(meta, path, "frontmatter", 1)),
         rules_sha256=_sha256(_canonical_json(required_rules, path, "rules", 1)),
     )
-    return SpecMetadata(spec_id, description, stages, enforcement, owner, checks, verifiers, rules, hashes, path)
+    return SpecMetadata(
+        header.id, description, header.stages, header.enforcement,
+        owner, checks, verifiers, rules, hashes, path,
+    )
 
 
 def load_spec_metadata(path: str) -> SpecMetadata:

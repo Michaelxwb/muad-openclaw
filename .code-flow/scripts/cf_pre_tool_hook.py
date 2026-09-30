@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: enforce active Context or inject deterministic path Specs."""
+"""PreToolUse hook: advisory Context/scope guidance on Edit/Write/MultiEdit.
+
+Hot-path policy: never deny the tool; inject context or guidance instead.
+Hard enforcement lives at the checkpoints (start / done / stop), not here.
+"""
 
 import json
 import os
@@ -7,10 +11,22 @@ from pathlib import Path
 import sys
 
 import cf_log
-from cf_core import _log, ensure_utf8_io, normalize_path, resolve_session_id
-from cf_spec_context import load_active_task, load_context
-from cf_spec_resolver import resolve_candidates
+from cf_core import (
+    _log,
+    effective_project_root,
+    ensure_utf8_io,
+    load_config,
+    normalize_path,
+    resolve_enforcement,
+    resolve_session_id,
+    timing_log,
+)
+from cf_session_state import load_session_state, save_session_state
+from cf_spec_context import injection_version, load_active_task, load_context
+from cf_spec_resolver import resolve_candidate_headers
 from cf_spec_router import RouterError, route_prompt
+
+_WARN_TEXT = "⚠ Spec Workflow 校验未通过（warn 模式）：{message} — 建议运行 cf-spec doctor 检查。"
 
 
 def _active_expansion(root: str, relative: str) -> tuple[str, ...]:
@@ -21,13 +37,14 @@ def _active_expansion(root: str, relative: str) -> tuple[str, ...]:
     context = load_context(str(Path(root) / active.task_dir / "spec-context.yml"))
     bound = {item.spec_id for item in context.bindings}
     return tuple(
-        item.spec_id for item in resolve_candidates(root, "code", (relative,))
-        if item.spec_id not in bound and item.metadata.enforcement == "required"
+        item.spec_id for item in resolve_candidate_headers(root, "code", (relative,))
+        if item.spec_id not in bound and item.enforcement == "required"
+        and getattr(item, "scope", "path") != "unmatched"
     )
 
 
-def _deny(reason: str) -> dict[str, object]:
-    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}}
+def _inject(text: str) -> dict[str, object]:
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": text}}
 
 
 def main() -> None:
@@ -41,25 +58,47 @@ def main() -> None:
         file_path = (data.get("tool_input") or {}).get("file_path", "")
         if tool_name not in {"Edit", "Write", "MultiEdit"} or not isinstance(file_path, str) or not file_path:
             return
-        root = os.getcwd()
-        absolute = file_path if os.path.isabs(file_path) else os.path.join(root, file_path)
-        relative = normalize_path(os.path.relpath(absolute, root))
-        expanded = _active_expansion(root, relative)
-        if expanded:
-            reason = f"SPEC_WORKFLOW_BLOCKED: path introduces required Specs {', '.join(expanded)}; refresh Context and Plan first."
-            sys.stdout.write(json.dumps(_deny(reason), ensure_ascii=False))
-            return
+        session_root = os.getcwd()
+        absolute = file_path if os.path.isabs(file_path) else os.path.join(session_root, file_path)
+        # 并行子 agent 在 .code-flow/worktrees/... 内编辑时路由到该 worktree 的上下文
+        root = effective_project_root(session_root, absolute)
         sid = resolve_session_id(data)
-        result = route_prompt(root, (relative,), sid)
-        if result.text:
-            payload = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": result.text}}
-            sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+        config = load_config(root)
+        enforcement = resolve_enforcement(config) if config else "required"
+        relative = normalize_path(os.path.relpath(absolute, root))
+        try:
+            expanded = _active_expansion(root, relative)
+            result = route_prompt(root, (relative,), sid)
+        except RouterError as exc:
+            if enforcement == "required":
+                sys.stdout.write(json.dumps(_inject(f"SPEC_WORKFLOW_BLOCKED [{exc.code}]: {exc}. Run cf-spec doctor before continuing."), ensure_ascii=False))
+            elif enforcement == "warn":
+                sys.stdout.write(json.dumps(_inject(_WARN_TEXT.format(message=str(exc))), ensure_ascii=False))
+            return
+        if expanded:
+            message = f"⚠ 该路径引入未绑定 required Spec：{', '.join(expanded)} — 建议先 refresh Context / Plan 再继续编辑。"
+            sys.stdout.write(json.dumps(_inject(message), ensure_ascii=False))
+            return
+        text = result.text
+        if result.mode == "task" and result.context_sha256:
+            # The projection is already in context from the prompt route unless
+            # the session/task/contract version changed; skip per-edit
+            # re-injection. Same version key as the prompt hook so a TASK
+            # switch re-injects here too.
+            state = load_session_state(root)
+            version = injection_version(root, sid, result.context_sha256)
+            if state.get("injected_version") == version:
+                text = ""
+            else:
+                state["injected_version"] = version
+                save_session_state(root, state)
+        if text:
+            sys.stdout.write(json.dumps(_inject(text), ensure_ascii=False))
         cf_log.append_event(root, "edit_intent", {"file": relative, "tool": tool_name, "specs": list(result.specs)}, sid)
-    except RouterError as exc:
-        sys.stdout.write(json.dumps(_deny(f"SPEC_WORKFLOW_BLOCKED [{exc.code}]: {exc}"), ensure_ascii=False))
     except (json.JSONDecodeError, OSError, ValueError) as exc:
         _log(f"cf_pre_tool_hook error: {exc}")
 
 
 if __name__ == "__main__":
     main()
+    timing_log("cf_pre_tool_hook")

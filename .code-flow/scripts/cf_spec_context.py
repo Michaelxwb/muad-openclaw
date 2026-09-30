@@ -14,12 +14,12 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 from typing import IO, Mapping, Optional, Sequence
-
-import yaml
 
 from cf_spec_metadata import SpecHashes, SpecMetadata, SpecRule, load_spec_metadata
 from cf_spec_resolver import SpecCandidate, resolve_candidates
+from cf_core import phase_timing
 
 
 CONTEXT_VERSION = 1
@@ -28,15 +28,21 @@ STAGE_STATUSES = frozenset(
 )
 DECISION_KINDS = frozenset(("not_applicable", "waived", "manual_verification"))
 _AGENT_IDENTITIES = frozenset(("agent", "assistant", "codex", "claude", "opencode", "costrict"))
+_FILE_HASH_CACHE: dict[str, tuple[int, int, int, str]] = {}
+_PERSISTENT_HASH_CACHE: dict[str, dict[str, object]] = {}
+_PERSISTENT_HASH_PATHS: set[str] = set()
+_MAX_HASH_CACHE_ENTRIES = 4096
 ACTIVE_STATUSES = frozenset(("activating", "active", "paused", "blocked", "completed"))
 DEFAULT_ACTIVE_EXCLUDES = (
     ".code-flow/tasks/*",
     ".code-flow/specs/_session/*",
     ".code-flow/migrations/*",
     ".code-flow/.*state*",
+    ".code-flow/.*cache*",
     ".code-flow/.session-log.jsonl",
     ".code-flow/.active-task.json",
     ".code-flow/.active-task.lock",
+    ".code-flow/worktrees/*",
 )
 
 
@@ -95,6 +101,7 @@ class RuleBinding:
     enforcement: str
     verifier_ref: str
     stage_status: Mapping[str, RuleStageStatus]
+    verifier_stage: str = "code"
 
 
 @dataclass(frozen=True)
@@ -154,6 +161,10 @@ class ActiveBaseline:
     head: Optional[str]
     captured_at: str
     preexisting_changes: Mapping[str, PathSnapshot]
+    # head is frozen at start and never rewritten: task scope is the union of
+    # everything committed since head plus all working-tree changes.
+    # last_seen_head is observation-only (diagnostics), never scope input.
+    last_seen_head: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -208,7 +219,7 @@ def _active_paths(root: str) -> tuple[Path, Path]:
 def _run_git(root: str, arguments: Sequence[str]) -> str:
     try:
         result = subprocess.run(
-            ("git", *arguments), cwd=root, text=True, capture_output=True, check=False
+            ("git", *arguments), cwd=root, text=True, encoding="utf-8", capture_output=True, check=False
         )
     except OSError as exc:
         raise ContextError("git_unavailable", "git", str(exc), root) from exc
@@ -249,25 +260,22 @@ def _git_changes(root: str) -> Mapping[str, str]:
         if len(record) < 4:
             raise ContextError("invalid_git_status", "git.status", record, root)
         code, path = record[:2], record[3:]
-        if "R" in code or "C" in code:
-            raise ContextError("unsupported_git_status", "git.status", code, path)
-        changes[path] = _status_name(code)
         index += 1
+        if "R" in code or "C" in code:
+            # porcelain -z rename/copy emits two records: "XY <new>" then "<old>"
+            if index >= len(records) or not records[index]:
+                raise ContextError("invalid_git_status", "git.status", f"{code} {path}", root)
+            old_path = records[index]
+            index += 1
+            changes[path] = _status_name(code)
+            changes[old_path] = "deleted"
+            continue
+        changes[path] = _status_name(code)
     return changes
 
 
 def _is_excluded(path: str, patterns: Sequence[str]) -> bool:
     return any(fnmatchcase(path, pattern) for pattern in patterns)
-
-
-def _path_hash(root: str, path: str) -> str:
-    target = Path(root) / path
-    digest = hashlib.sha256()
-    if target.is_file():
-        with target.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(65536), b""):
-                digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _active_data(active: ActiveTask) -> dict[str, object]:
@@ -283,6 +291,7 @@ def _active_data(active: ActiveTask) -> dict[str, object]:
         "context_sha256": active.context_sha256,
         "baseline": {
             "head": active.baseline.head,
+            "last_seen_head": active.baseline.last_seen_head,
             "captured_at": active.baseline.captured_at,
             "preexisting_changes": changes,
         },
@@ -293,9 +302,10 @@ def _active_data(active: ActiveTask) -> dict[str, object]:
 
 def _snapshot_from_data(value: object, path: str) -> PathSnapshot:
     data = _mapping(value, "preexisting_changes[]", path)
+    content_hash = data.get("content_sha256")
     return PathSnapshot(
         _string(data.get("status"), "status", path),
-        _string(data.get("content_sha256"), "content_sha256", path),
+        content_hash if isinstance(content_hash, str) else "",
     )
 
 
@@ -316,6 +326,7 @@ def _active_from_data(value: object, path: str) -> ActiveTask:
         head,
         _string(baseline_data.get("captured_at"), "captured_at", path),
         {key: _snapshot_from_data(item, path) for key, item in raw_changes.items()},
+        baseline_data.get("last_seen_head") if isinstance(baseline_data.get("last_seen_head"), str) else None,
     )
     return ActiveTask(
         1,
@@ -348,13 +359,128 @@ def load_active_task(root: str) -> ActiveTask:
         raise ContextError("invalid_active_marker", "active", str(exc), str(marker)) from exc
 
 
+def task_contract_digest(root: str, task_dir: str, task_id: str) -> str:
+    """Digest of the active TASK's acceptance contract (Refs + Contract + Evidence).
+
+    Two TASKs may share one Context hash while owning different scenarios; the
+    digest separates their injection versions so switching TASKs re-injects.
+    Returns "" when the TASK section cannot be located (fail-open to the
+    legacy context-hash-only key rather than crashing the hook hot path).
+    """
+    try:
+        files = sorted((Path(root) / task_dir).glob("*.md"))
+    except OSError:
+        return ""
+    for path in files:
+        if path.name.endswith((".prd.md", ".design.md")):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        start = text.find(f"## {task_id}:")
+        if start == -1:
+            continue
+        end = text.find("\n## TASK-", start)
+        section = text[start:] if end == -1 else text[start:end]
+        chunks: list[str] = []
+        for heading in ("Acceptance-Refs", "Acceptance Contract", "Acceptance Evidence"):
+            index = section.find(heading)
+            if index == -1:
+                chunks.append(f"{heading}:missing")
+                continue
+            end = section.find("\n### ", index)
+            chunks.append(section[index:] if end == -1 else section[index:end])
+        return hashlib.sha256("\n".join(chunks).encode("utf-8")).hexdigest()
+    return ""
+
+
+def injection_version(root: str, session_id: str, context_sha: str) -> str:
+    """Version key for hook injection dedup.
+
+    Covers session + task_dir + task_id + context hash + TASK contract digest,
+    so a TASK switch (or an in-place contract edit) always re-injects while a
+    repeated prompt on the same contract stays suppressed.
+    """
+    try:
+        active = load_active_task(root)
+    except (ContextError, OSError, ValueError):
+        return f"none:{session_id}:{context_sha}"
+    digest = task_contract_digest(root, active.task_dir, active.task_id)
+    raw = "\n".join((session_id, active.task_dir, active.task_id, context_sha, digest))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def resync_active_hash(root: str, task_dir: str, current_sha256: str) -> bool:
+    """Re-sync the active marker's context hash after toolchain-initiated
+    context edits (bind/decision/refresh) so they never surface as
+    unrecoverable active_context_drift. No-op without an active marker or when
+    the hash already matches; never raises on a missing marker."""
+    marker = Path(root) / ".code-flow" / ".active-task.json"
+    if not marker.exists():
+        return False
+    active = load_active_task(root)
+    if active.context_sha256 == current_sha256:
+        return False
+    save_active_task(root, replace(active, context_sha256=current_sha256))
+    return True
+
+
+def _find_root(task_dir: str) -> Optional[str]:
+    """Walk up from a task dir to the project root that owns its marker."""
+    current = Path(task_dir).resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / ".code-flow" / ".active-task.json").exists():
+            return str(candidate)
+    return None
+
+
+def _resync_after_save(args: argparse.Namespace, context_path: Path) -> bool:
+    """Post-save marker re-sync used by CLI commands that persist the context."""
+    root = getattr(args, "root", "") or _find_root(str(context_path.parent)) or ""
+    if not root:
+        return False
+    current = context_sha256(load_context(str(context_path)))
+    return resync_active_hash(root, str(context_path.parent), current)
+
+
+def _lock_stale(lock: Path) -> bool:
+    """A lock is stale when its file is unreadable, carries no valid PID, or the
+    owning process is gone. A lock we cannot prove dead is never deleted (PID
+    reuse is accepted as a rare race)."""
+    try:
+        data = json.loads(lock.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return True
+    pid = data.get("pid")
+    if not isinstance(pid, int) or pid <= 0:
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except (PermissionError, OSError):
+        return False
+    return False
+
+
 def _acquire_active_lock(root: str) -> Path:
     marker, lock = _active_paths(root)
     lock.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        descriptor = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    except FileExistsError as exc:
-        raise ContextError("active_lock_exists", "active.lock", "运行 doctor 检查残留 lock", str(lock)) from exc
+    descriptor = -1
+    for _attempt in range(2):
+        try:
+            descriptor = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            break
+        except FileExistsError:
+            if not _lock_stale(lock):
+                raise ContextError("active_lock_exists", "active.lock", "运行 doctor 检查残留 lock", str(lock)) from None
+            try:
+                lock.unlink()
+            except OSError as exc:
+                raise ContextError("active_lock_exists", "active.lock", f"残留 lock 清理失败: {exc}", str(lock)) from exc
+    else:
+        raise ContextError("active_lock_exists", "active.lock", "残留 lock 无法清理", str(lock))
     with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
         handle.write(json.dumps({"pid": os.getpid(), "marker": str(marker)}))
     return lock
@@ -365,6 +491,42 @@ def _release_active_lock(lock: Path) -> None:
         lock.unlink()
     except FileNotFoundError:
         return
+
+
+def _committed_since(root: str, base_head: Optional[str]) -> Mapping[str, str]:
+    """Paths committed between the frozen baseline head and current HEAD.
+
+    Returns {} when there is no baseline (pre-commit repo) or the range is
+    unresolvable (rewritten/pruned history) — working-tree changes still
+    flow through _business_changes, so scope never goes fully blind.
+    """
+    if not base_head:
+        return {}
+    try:
+        output = _run_git(root, ("diff", "--name-status", "-z", base_head, "HEAD", "--"))
+    except ContextError:
+        return {}
+    names: dict[str, str] = {}
+    tokens = output.split("\0")
+    index = 0
+    while index < len(tokens) and tokens[index]:
+        status, index = tokens[index], index + 1
+        code = status[:1]
+        if code in ("R", "C"):
+            if index + 1 >= len(tokens):
+                break
+            new_path, old_path = tokens[index], tokens[index + 1]
+            index += 2
+            if new_path:
+                names[new_path] = "renamed"
+            if old_path:
+                names[old_path] = "deleted"
+            continue
+        if index >= len(tokens) or not tokens[index]:
+            break
+        names[tokens[index]] = {"M": "modified", "A": "added", "D": "deleted"}.get(code, "changed")
+        index += 1
+    return names
 
 
 def _business_changes(root: str, excludes: Sequence[str]) -> Mapping[str, str]:
@@ -390,10 +552,14 @@ def _new_active(
         raise ContextError("unknown_owned_path", "owned_paths", ", ".join(unknown), root)
     if unowned:
         raise ContextError("unowned_changes", "owned_paths", ", ".join(unowned), root)
+    # content_sha256 was a per-file hash but is never consumed by any gate (only
+    # baseline.head is compared); keep the schema field empty so start never hashes
+    # every uncommitted file.
     snapshots = {
-        path: PathSnapshot(status, _path_hash(root, path)) for path, status in changes.items()
+        path: PathSnapshot(status, "") for path, status in changes.items()
     }
-    baseline = ActiveBaseline(_git_head(root), _now(), snapshots)
+    head = _git_head(root)
+    baseline = ActiveBaseline(head, _now(), snapshots, head)
     return ActiveTask(
         1, task_dir, task_id, "activating", context_sha256, baseline, owned, DEFAULT_ACTIVE_EXCLUDES
     )
@@ -427,8 +593,12 @@ def _transition_active(root: str, expected: Sequence[str], target: str) -> Activ
         active = load_active_task(root)
         if active.status not in expected:
             raise ContextError("invalid_active_transition", "status", f"{active.status} -> {target}", root)
-        if active.baseline.head != _git_head(root):
-            raise ContextError("baseline_head_changed", "baseline.head", "Git HEAD 已变化，请运行 doctor", root)
+        current_head = _git_head(root)
+        if active.baseline.head != current_head:
+            # Mid-task commits are a normal workflow. The baseline head stays
+            # frozen so committed work never drops out of scope; only the
+            # observation field advances for diagnostics.
+            active = replace(active, baseline=replace(active.baseline, last_seen_head=current_head))
         updated = replace(active, status=target)
         save_active_task(root, updated)
         return updated
@@ -450,7 +620,12 @@ def resume_active_task(root: str) -> ActiveTask:
 
 def current_owned_paths(root: str, active: ActiveTask) -> tuple[str, ...]:
     changes = _business_changes(root, active.excluded_paths)
-    return tuple(sorted(set(active.owned_paths).union(changes)))
+    committed = {
+        path: status
+        for path, status in _committed_since(root, active.baseline.head).items()
+        if not _is_excluded(path, active.excluded_paths)
+    }
+    return tuple(sorted(set(active.owned_paths).union(changes).union(committed)))
 
 
 def complete_active_task(root: str, gate_passed: bool) -> ActiveTask:
@@ -466,7 +641,9 @@ def complete_active_task(root: str, gate_passed: bool) -> ActiveTask:
     return completed
 
 
-def doctor_active_task(root: str, expected_context_sha256: str, abandon: bool = False) -> DoctorResult:
+def doctor_active_task(
+    root: str, expected_context_sha256: str, abandon: bool = False, resync: bool = False
+) -> DoctorResult:
     marker, lock = _active_paths(root)
     try:
         active = load_active_task(root)
@@ -476,6 +653,15 @@ def doctor_active_task(root: str, expected_context_sha256: str, abandon: bool = 
         marker.unlink()
         _release_active_lock(lock)
         return DoctorResult("abandoned", replace(active, status="completed"))
+    if resync:
+        # Self-heal: the context file is authoritative and the marker hash is a
+        # cache. Accept the current context when the marker is the only
+        # inconsistency; bind/decision/refresh already re-sync automatically,
+        # so this covers legacy markers and manual context edits.
+        repaired = replace(active, status="active", context_sha256=expected_context_sha256)
+        save_active_task(root, repaired)
+        _release_active_lock(lock)
+        return DoctorResult("resynced", repaired)
     proven = active.context_sha256 == expected_context_sha256
     proven = proven and active.baseline.head == _git_head(root)
     if active.status != "activating" or not proven:
@@ -621,6 +807,7 @@ def _rule_from_data(value: object, path: str) -> RuleBinding:
         _string(data.get("enforcement"), "rules[].enforcement", path),
         _string(data.get("verifier_ref"), "rules[].verifier_ref", path),
         parsed,
+        _string(data.get("verifier_stage", "code"), "rules[].verifier_stage", path),
     )
 
 
@@ -631,6 +818,7 @@ def _rule_data(rule: RuleBinding) -> dict[str, object]:
         "text_sha256": rule.text_sha256,
         "enforcement": rule.enforcement,
         "verifier_ref": rule.verifier_ref,
+        "verifier_stage": rule.verifier_stage,
         "stage_status": {stage: _stage_data(status) for stage, status in rule.stage_status.items()},
     }
 
@@ -690,6 +878,59 @@ def context_to_data(context: SpecContext) -> dict[str, object]:
     }
 
 
+def context_to_identity(context: SpecContext) -> dict[str, object]:
+    """Stable identity projection for marker drift detection.
+
+    Excludes volatile runtime state (`updated_at`, `stage_status` including
+    evidence timestamps) so the active marker only invalidates when the bound
+    rules themselves change (rule/spec text, bindings, sources).
+    """
+    return {
+        "version": context.version,
+        "task": context.task,
+        "enforcement": context.enforcement,
+        "sources": [{"type": item.type, "ref": item.ref} for item in context.sources],
+        "bindings": [
+            {
+                "spec_id": binding.spec_id,
+                "path": binding.path,
+                "status": binding.status,
+                "hashes": {
+                    "file_sha256": binding.hashes.file_sha256,
+                    "metadata_sha256": binding.hashes.metadata_sha256,
+                    "rules_sha256": binding.hashes.rules_sha256,
+                },
+                "selected_by": binding.selected_by,
+                "reason": binding.reason,
+                "enforcement": binding.enforcement,
+                "stages": list(binding.stages),
+                "rules": [
+                    {
+                        "ref": rule.ref,
+                        "summary": rule.summary,
+                        "text_sha256": rule.text_sha256,
+                        "enforcement": rule.enforcement,
+                        "verifier_ref": rule.verifier_ref,
+                    }
+                    for rule in binding.rules
+                ],
+            }
+            for binding in context.bindings
+        ],
+    }
+
+
+def context_sha256(context: SpecContext) -> str:
+    """Deterministic identity hash binding the active marker to the bound rules.
+
+    Computed from the stable identity projection (never volatile runtime state),
+    so evidence timestamps and stage statuses cannot drift the marker.
+    """
+    import yaml
+    data = yaml.safe_dump(context_to_identity(context), sort_keys=True, allow_unicode=True).encode()
+    return hashlib.sha256(data).hexdigest()
+
+
 def new_context(task: str, sources: Sequence[tuple[str, str]]) -> SpecContext:
     if not task.strip():
         raise ContextError("invalid_context", "task", "必须是非空字符串")
@@ -698,6 +939,7 @@ def new_context(task: str, sources: Sequence[tuple[str, str]]) -> SpecContext:
 
 
 def load_context(path: str) -> SpecContext:
+    import yaml
     try:
         loaded = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
@@ -726,6 +968,7 @@ def load_context(path: str) -> SpecContext:
 
 
 def save_context(path: str, context: SpecContext) -> None:
+    import yaml
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     text = yaml.safe_dump(context_to_data(context), sort_keys=False, allow_unicode=True)
@@ -750,7 +993,12 @@ def _binding_from_input(selection: BindingInput) -> SpecBinding:
         }
         verifier = verifier_by_rule.get(rule.ref)
         verifier_ref = f"{candidate.spec_id}#{rule.ref}" if verifier is not None else "advisory:none"
-        rules.append(RuleBinding(rule.ref, rule.text, rule.text_sha256, enforcement, verifier_ref, statuses))
+        rules.append(
+            RuleBinding(
+                rule.ref, rule.text, rule.text_sha256, enforcement, verifier_ref, statuses,
+                verifier.stage if verifier is not None else "code",
+            )
+        )
     return SpecBinding(
         candidate.spec_id,
         candidate.path,
@@ -763,12 +1011,26 @@ def _binding_from_input(selection: BindingInput) -> SpecBinding:
     )
 
 
+def _with_declared_stages(rule: RuleBinding, stages: Sequence[str]) -> RuleBinding:
+    """兼容补齐：绑定旧版本时声明的 stages 缺状态，按声明补 pending。"""
+    missing = [stage for stage in stages if stage not in rule.stage_status]
+    if not missing:
+        return rule
+    statuses = dict(rule.stage_status)
+    for stage in missing:
+        statuses[stage] = RuleStageStatus("pending", (), None, ())
+    return replace(rule, stage_status=statuses)
+
+
 def _rule_from_metadata(spec_id: str, metadata: SpecMetadata, rule: SpecRule) -> RuleBinding:
     enforcement = "advisory" if metadata.enforcement == "advisory" else rule.enforcement
     statuses = {stage: RuleStageStatus("pending", (), None, ()) for stage in metadata.stages}
-    has_verifier = any(item.rule == rule.ref for item in metadata.verifiers)
-    verifier_ref = f"{spec_id}#{rule.ref}" if has_verifier else "advisory:none"
-    return RuleBinding(rule.ref, rule.text, rule.text_sha256, enforcement, verifier_ref, statuses)
+    verifier = next((item for item in metadata.verifiers if item.rule == rule.ref), None)
+    verifier_ref = f"{spec_id}#{rule.ref}" if verifier is not None else "advisory:none"
+    return RuleBinding(
+        rule.ref, rule.text, rule.text_sha256, enforcement, verifier_ref, statuses,
+        verifier.stage if verifier is not None else "code",
+    )
 
 
 def bind_specs(context: SpecContext, selections: Sequence[BindingInput]) -> SpecContext:
@@ -792,6 +1054,8 @@ def bind_specs(context: SpecContext, selections: Sequence[BindingInput]) -> Spec
             )
         bindings[incoming.spec_id] = incoming
     ordered = tuple(bindings[key] for key in sorted(bindings))
+    if ordered == context.bindings:
+        return context
     return replace(context, updated_at=_now(), bindings=ordered)
 
 
@@ -827,7 +1091,57 @@ def _removed_rule(rule: RuleBinding) -> RuleBinding:
 
 def _file_sha256(path: Path) -> str:
     try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
+        stat = path.stat()
+        key = str(path)
+        cached = _FILE_HASH_CACHE.get(key)
+        signature = (stat.st_mtime_ns, stat.st_size, stat.st_ino)
+        if cached is not None and cached[:3] == signature:
+            return cached[3]
+        cache_path = next(
+            (parent / ".artifact-hash-cache.json" for parent in path.parents if parent.name == ".code-flow"),
+            None,
+        )
+        cache_key = str(cache_path) if cache_path is not None else ""
+        if cache_key and cache_key not in _PERSISTENT_HASH_PATHS:
+            try:
+                loaded = json.loads(cache_path.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    _PERSISTENT_HASH_CACHE.update({str(k): v for k, v in loaded.items() if isinstance(v, dict)})
+            except (OSError, ValueError):
+                pass
+            _PERSISTENT_HASH_PATHS.add(cache_key)
+        persistent = _PERSISTENT_HASH_CACHE.get(key)
+        if (
+            isinstance(persistent, dict)
+            and persistent.get("mtime_ns") == stat.st_mtime_ns
+            and persistent.get("size") == stat.st_size
+            and persistent.get("ino") == stat.st_ino
+        ):
+            digest = persistent.get("sha256")
+            if isinstance(digest, str) and digest:
+                _FILE_HASH_CACHE[key] = (signature[0], signature[1], signature[2], digest)
+                return digest
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        _FILE_HASH_CACHE[key] = (signature[0], signature[1], signature[2], digest)
+        if cache_key:
+            _PERSISTENT_HASH_CACHE[key] = {
+                "mtime_ns": stat.st_mtime_ns,
+                "size": stat.st_size,
+                "ino": stat.st_ino,
+                "sha256": digest,
+            }
+            while len(_PERSISTENT_HASH_CACHE) > _MAX_HASH_CACHE_ENTRIES:
+                _PERSISTENT_HASH_CACHE.pop(next(iter(_PERSISTENT_HASH_CACHE)))
+            try:
+                temporary = cache_path.with_suffix(".json.tmp")
+                temporary.write_text(
+                    json.dumps(_PERSISTENT_HASH_CACHE, ensure_ascii=False, sort_keys=True),
+                    encoding="utf-8",
+                )
+                temporary.replace(cache_path)
+            except OSError:
+                pass
+        return digest
     except OSError as exc:
         raise ContextError("artifact_read_error", "artifact", str(exc), str(path)) from exc
 
@@ -838,21 +1152,25 @@ def _refresh_artifacts(
     statuses = dict(rule.stage_status)
     changes: list[DriftChange] = []
     for stage, status in rule.stage_status.items():
-        refs: list[ArtifactRef] = []
         for reference in status.refs:
             path = artifact_root / reference.artifact
             current = _file_sha256(path) if path.is_file() else "missing"
             if current == reference.artifact_sha256:
-                refs.append(reference)
                 continue
-            # Working-document artifacts (design.md / task .md) evolve during align/plan/start.
-            # Re-capture the current hash instead of blocking as stale; spec-file drift is
-            # still caught via rules_sha256/text_sha256 in _refresh_existing_rule.
-            refs.append(replace(reference, artifact_sha256=current))
+            if status.status == "applied" and current != "missing":
+                statuses[stage] = replace(
+                    status,
+                    refs=tuple(
+                        replace(item, artifact_sha256=current) if item is reference else item
+                        for item in status.refs
+                    ),
+                )
+            else:
+                statuses[stage] = replace(status, status="stale")
             changes.append(
-                DriftChange("artifact_rebased", spec_id, rule.ref, reference.artifact_sha256, current, (stage,))
+                DriftChange("artifact_changed", spec_id, rule.ref, reference.artifact_sha256, current, (stage,))
             )
-        statuses[stage] = replace(status, refs=tuple(refs))
+            break
     return replace(rule, stage_status=statuses), tuple(changes)
 
 
@@ -860,14 +1178,15 @@ def _refresh_existing_rule(
     binding: SpecBinding, existing: RuleBinding, current: SpecRule, metadata: SpecMetadata
 ) -> tuple[RuleBinding, Optional[DriftChange]]:
     enforcement = "advisory" if metadata.enforcement == "advisory" else current.enforcement
-    has_verifier = any(item.rule == current.ref for item in metadata.verifiers)
-    verifier_ref = f"{binding.spec_id}#{current.ref}" if has_verifier else "advisory:none"
+    verifier = next((item for item in metadata.verifiers if item.rule == current.ref), None)
+    verifier_ref = f"{binding.spec_id}#{current.ref}" if verifier is not None else "advisory:none"
     updated = replace(
         existing,
         summary=current.text,
         text_sha256=current.text_sha256,
         enforcement=enforcement,
         verifier_ref=verifier_ref,
+        verifier_stage=verifier.stage if verifier is not None else "code",
     )
     if existing.text_sha256 == current.text_sha256:
         return updated, None
@@ -904,6 +1223,7 @@ def _refresh_binding(
             rule, change = _refresh_existing_rule(binding, prior, current, metadata)
             if change is not None:
                 changes.append(change)
+        rule = _with_declared_stages(rule, metadata.stages)
         rule, artifact_changes = _refresh_artifacts(binding.spec_id, rule, artifact_root)
         rules.append(rule)
         changes.extend(artifact_changes)
@@ -915,15 +1235,21 @@ def _refresh_binding(
 
 
 def refresh_context(context: SpecContext, root: str, artifact_root: Optional[str] = None) -> DriftResult:
+    started = time.monotonic()
     specs = Path(root) / ".code-flow" / "specs"
     artifacts = Path(artifact_root) if artifact_root is not None else Path(root)
     bindings: list[SpecBinding] = []
     changes: list[DriftChange] = []
     for binding in context.bindings:
+        phase_started = time.monotonic()
         updated, binding_changes = _refresh_binding(binding, specs, artifacts)
+        phase_timing(f"context.refresh.{binding.spec_id}", phase_started)
         bindings.append(updated)
         changes.extend(binding_changes)
     refreshed = replace(context, updated_at=_now(), bindings=tuple(bindings))
+    phase_timing("context.refresh.total", started)
+    if refreshed.bindings == context.bindings:
+        return DriftResult(context, tuple(changes))
     return DriftResult(refreshed, tuple(changes))
 
 
@@ -998,7 +1324,10 @@ def apply_artifact_ref(
                 statuses = dict(rule.stage_status)
                 current = statuses[stage]
                 refs = _upsert_artifact_ref(current.refs, reference)
-                statuses[stage] = replace(current, status="applied", refs=refs)
+                if current.decision is not None:
+                    statuses[stage] = replace(current, refs=refs)
+                else:
+                    statuses[stage] = replace(current, status="applied", refs=refs)
                 rule = replace(rule, stage_status=statuses)
                 found = True
             rules.append(rule)
@@ -1010,8 +1339,15 @@ def apply_artifact_ref(
 
 def _json_payload(stream: IO[str]) -> Mapping[str, object]:
     try:
-        loaded = json.load(stream)
-    except (json.JSONDecodeError, UnicodeError) as exc:
+        raw = stream.read()
+    except (OSError, UnicodeError) as exc:
+        raise ContextError("invalid_json", "stdin", str(exc)) from exc
+    if not raw.strip():
+        # 空 stdin = 无 payload（例如 active doctor --resync 全参数走 CLI 开关）。
+        return {}
+    try:
+        loaded = json.loads(raw)
+    except json.JSONDecodeError as exc:
         raise ContextError("invalid_json", "stdin", str(exc)) from exc
     return _mapping(loaded, "stdin", "")
 
@@ -1094,6 +1430,7 @@ def _decision_command(args: argparse.Namespace, payload: Mapping[str, object]) -
         payload.get("batch") is True,
     )
     save_context(str(context_path), context)
+    _resync_after_save(args, context_path)
     return {"ok": True, "status": context.bindings[0].rules[0].stage_status[_string(payload.get("stage"), "stage", "")].status}
 
 
@@ -1122,6 +1459,7 @@ def _bind_command(args: argparse.Namespace, payload: Mapping[str, object]) -> di
     context = bind_specs(context, selections)
     context = _apply_payload(context, args.task_dir, payload)
     save_context(str(context_path), context)
+    _resync_after_save(args, context_path)
     applied = sum(
         status.status == "applied"
         for binding in context.bindings
@@ -1132,29 +1470,174 @@ def _bind_command(args: argparse.Namespace, payload: Mapping[str, object]) -> di
 
 
 def _active_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
+    from cf_workflow_service import WorkflowError, locate_task_file
+    from cf_workflow_transaction import recover_transition
+
+    recover_transition(args.root)
+    if args.active_action in ("pause", "resume", "block", "complete"):
+        marker, _ = _active_paths(args.root)
+        if marker.exists():
+            current = load_active_task(args.root)
+            if (current.task_id != args.task or
+                    (Path(args.root) / current.task_dir).resolve() != (Path(args.root) / args.task_dir).resolve()):
+                raise ContextError("active_mismatch", "active", "requested TASK does not match marker", str(marker))
+
+    def _directory() -> str:
+        return args.task_dir if Path(args.task_dir).is_absolute() else str(Path(args.root) / args.task_dir)
+
+    def _reraise(exc: WorkflowError) -> ContextError:
+        return ContextError(exc.code, "workflow", str(exc), args.task_dir)
+
+    task_file = locate_task_file(_directory(), args.task)
     if args.active_action == "start":
         owned = tuple(
             _string(item, "owned_paths[]", "")
             for item in _sequence(payload.get("owned_paths", []), "owned_paths", "")
         )
-        active = start_active_task(
-            args.root, args.task_dir, args.task, args.context_sha256, owned
-        )
-        return {"ok": True, "active": _active_data(active)}
+        if task_file is None:
+            active = start_active_task(
+                args.root, args.task_dir, args.task, args.context_sha256, owned
+            )
+            return {"ok": True, "active": _active_data(active)}
+        from cf_workflow_service import start_task
+
+        try:
+            return start_task(args.root, args.task_dir, str(task_file), args.task, owned)
+        except WorkflowError as exc:
+            raise _reraise(exc) from exc
     if args.active_action == "pause":
         active = pause_active_task(args.root)
     elif args.active_action == "resume":
-        active = resume_active_task(args.root)
+        if task_file is None:
+            active = resume_active_task(args.root)
+        else:
+            from cf_workflow_service import resume_task
+
+            try:
+                return resume_task(args.root, _directory(), str(task_file), args.task)
+            except WorkflowError as exc:
+                raise _reraise(exc) from exc
     elif args.active_action == "block":
-        active = block_active_task(args.root)
+        if task_file is None:
+            active = block_active_task(args.root)
+        else:
+            from cf_workflow_service import block_task
+
+            reason = payload.get("reason", "")
+            try:
+                return block_task(args.root, _directory(), str(task_file), args.task, reason if isinstance(reason, str) else "")
+            except WorkflowError as exc:
+                raise _reraise(exc) from exc
     elif args.active_action == "complete":
-        active = complete_active_task(args.root, payload.get("gate_passed") is True)
+        gate = payload.get("gate_passed") is True
+        if task_file is None:
+            active = complete_active_task(args.root, gate)
+        else:
+            from cf_workflow_service import complete_task
+
+            try:
+                return complete_task(args.root, _directory(), str(task_file), args.task, gate)
+            except WorkflowError as exc:
+                raise _reraise(exc) from exc
     else:
-        result = doctor_active_task(
-            args.root, args.context_sha256, payload.get("abandon") is True
-        )
+        abandon = payload.get("abandon") is True or args.abandon
+        resync = payload.get("resync") is True or args.resync
+        if abandon and resync:
+            raise ContextError("conflicting_recovery", "doctor", "abandon 与 resync 不能同时使用", args.task_dir)
+        result = doctor_active_task(args.root, args.context_sha256, abandon, resync)
         return {"ok": True, "action": result.action, "active": _active_data(result.active)}
     return {"ok": True, "active": _active_data(active)}
+
+
+def _start_command(args: argparse.Namespace, payload: Mapping[str, object]) -> dict[str, object]:
+    """Run refresh, activation and TASK projection in one guarded process.
+
+    Delegates to the unified workflow service: hard preconditions (status,
+    NOTES, depends, marker) are enforced before any state changes, and the
+    Markdown view flips to in-progress in the same call.
+    """
+    from cf_workflow_service import WorkflowError, start_task
+
+    owned = tuple(
+        _string(item, "owned_paths[]", "")
+        for item in _sequence(payload.get("owned_paths", []), "owned_paths", "")
+    )
+    try:
+        return start_task(
+            args.root, args.task_dir, args.task_file, args.task, owned, args.session_output
+        )
+    except WorkflowError as exc:
+        raise ContextError(exc.code, "workflow", str(exc), args.task_dir) from exc
+
+
+def _status_command(args: argparse.Namespace) -> dict[str, object]:
+    """Human-readable Spec Context status: task, marker health, gate, rules."""
+    from cf_spec_gate import result_to_data, validate_stage  # local import avoids module cycle
+
+    context_path = Path(args.task_dir) / "spec-context.yml"
+    context = load_context(str(context_path))
+    gate = validate_stage(context, "code")
+    root = getattr(args, "root", "") or _find_root(args.task_dir) or ""
+    marker: dict[str, object] = {"exists": False}
+    if root:
+        marker_path = Path(root) / ".code-flow" / ".active-task.json"
+        if marker_path.exists():
+            active = load_active_task(root)
+            marker = {
+                "exists": True,
+                "task_id": active.task_id,
+                "status": active.status,
+                "hash_match": active.context_sha256 == context_sha256(context),
+                "baseline_head": active.baseline.head,
+            }
+    bindings = []
+    for binding in context.bindings:
+        rules = []
+        for rule in binding.rules:
+            status = rule.stage_status.get("code")
+            stages = {stage: item.status for stage, item in sorted(rule.stage_status.items())}
+            rules.append(
+                {
+                    "ref": f"{binding.spec_id}#{rule.ref}",
+                    "enforcement": rule.enforcement,
+                    "status": status.status if status else "missing",
+                    "stages": stages,
+                    "verifier": rule.verifier_ref,
+                }
+            )
+        bindings.append({"spec_id": binding.spec_id, "path": binding.path, "status": binding.status, "rules": rules})
+    return {
+        "task": context.task,
+        "context_sha256": context_sha256(context),
+        "gate": result_to_data(gate),
+        "marker": marker,
+        "bindings": bindings,
+    }
+
+
+def _status_text(data: dict[str, object]) -> str:
+    lines = [f"# {data['task']} — Spec Context 状态"]
+    marker = data["marker"]
+    if marker["exists"]:
+        match = "✓ 一致" if marker["hash_match"] else "✗ 漂移"
+        lines.append(f"- TASK {marker['task_id']}（{marker['status']}），marker hash {match}")
+        if not marker["hash_match"]:
+            lines.append("  下一步: 运行 cf-spec refresh 自动重同步 marker hash；仍不一致时用 active doctor --resync（hash 取本命令 --json 的 context_sha256）")
+    else:
+        lines.append("- 无 active TASK（path/catalog 路由模式）")
+    gate = data["gate"]
+    if gate["decision"] == "pass":
+        lines.append("- code Gate: ✓ pass")
+    else:
+        lines.append(f"- code Gate: ✗ block（{len(gate['errors'])} 项）")
+        for issue in gate["errors"]:
+            lines.append(f"  ✗ {issue['message']}")
+    for binding in data["bindings"]:
+        lines.append(f"- {binding['spec_id']}（{binding['path']}）— {binding['status']}")
+        for rule in binding["rules"]:
+            stage_text = " ".join(f"{stage}={value}" for stage, value in rule.get("stages", {}).items())
+            lines.append(f"  {stage_text:<24} {rule['ref']}（{rule['verifier']}）")
+    return "\n".join(lines)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -1176,6 +1659,10 @@ def _parser() -> argparse.ArgumentParser:
     validate = commands.add_parser("validate")
     validate.add_argument("--task-dir", required=True)
     validate.add_argument("--json", action="store_true")
+    status = commands.add_parser("status")
+    status.add_argument("--task-dir", required=True)
+    status.add_argument("--root", default="")
+    status.add_argument("--json", action="store_true")
     for name in ("refresh", "refresh-missing"):
         refresh = commands.add_parser(name)
         refresh.add_argument("--task-dir", required=True)
@@ -1190,6 +1677,16 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--task", required=True)
         command.add_argument("--context-sha256", required=True)
         command.add_argument("--json", action="store_true")
+        if action == "doctor":
+            command.add_argument("--abandon", action="store_true", help="确认放弃无法证明的 marker（需用户确认）")
+            command.add_argument("--resync", action="store_true", help="用 --context-sha256 重新绑定 marker 并恢复 active")
+    start = commands.add_parser("start")
+    start.add_argument("--task-dir", required=True)
+    start.add_argument("--root", required=True)
+    start.add_argument("--task", required=True)
+    start.add_argument("--task-file", required=True)
+    start.add_argument("--session-output", default="")
+    start.add_argument("--json", action="store_true")
     return parser
 
 
@@ -1198,6 +1695,8 @@ def _execute(args: argparse.Namespace, stdin: IO[str]) -> dict[str, object]:
         return _catalog_command(args)
     if args.command == "active":
         return _active_command(args, _json_payload(stdin))
+    if args.command == "start":
+        return _start_command(args, _json_payload(stdin))
     context_path = Path(args.task_dir) / "spec-context.yml"
     if args.command == "decision":
         return _decision_command(args, _json_payload(stdin))
@@ -1213,6 +1712,7 @@ def _execute(args: argparse.Namespace, stdin: IO[str]) -> dict[str, object]:
         result = refresh_context(load_context(str(context_path)), args.root, artifact_root=args.task_dir)
         context, changes = result.context, result.changes
     save_context(str(context_path), context)
+    _resync_after_save(args, context_path)
     return {
         "ok": True,
         "missing": sum(item.status == "missing" for item in context.bindings),
@@ -1222,7 +1722,15 @@ def _execute(args: argparse.Namespace, stdin: IO[str]) -> dict[str, object]:
 
 def main(argv: Optional[Sequence[str]] = None, stdin: IO[str] = sys.stdin, stdout: IO[str] = sys.stdout) -> int:
     try:
-        result = _execute(_parser().parse_args(argv), stdin)
+        args = _parser().parse_args(argv)
+        if args.command == "status":
+            data = _status_command(args)
+            if args.json:
+                stdout.write(json.dumps(data, ensure_ascii=False))
+            else:
+                stdout.write(_status_text(data) + "\n")
+            return 0
+        result = _execute(args, stdin)
         stdout.write(json.dumps(result, ensure_ascii=False))
         return 0
     except ContextError as exc:
