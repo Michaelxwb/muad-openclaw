@@ -1,0 +1,956 @@
+version: 1
+task: runtime-config-file-input
+enforcement: required
+updated_at: '2026-09-30T08:46:00.920982+00:00'
+sources:
+- type: cli
+  ref: bind
+bindings:
+- spec_id: backend-code-quality-performance
+  path: backend/code-quality-performance.md
+  status: active
+  hashes:
+    file_sha256: 5857f623d14c0d6ab000d75a876d82604e21066a756c564342efd6ce647f19e2
+    metadata_sha256: 3784d6210a8773a805267b2f288594223a3e278cf40ede66c4a080c3e8c4cb78
+    rules_sha256: 6c7c06945d56d916d8cbbb9332e5609704af7dac2f5e8583255e73661ab7ad3d
+  selected_by: agent
+  reason: 驱动操作、升级失败处理与测试均在本次范围。
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-quality-001
+    summary: Backend changes must handle errors explicitly, bound remote/runtime calls
+      with context deadlines, and keep `go vet` / `go test` green for touched packages
+      when run in the project validators.
+    text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
+    enforcement: required
+    verifier_ref: backend-code-quality-performance#RULE-backend-quality-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-01
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-backend-write-err-001
+    summary: HTTP 错误响应必须走 `writeErr` / `writeRuntimeFailure` / `writeRepoError` 且只传
+      `errcode` 常量；禁止旧签名 `writeErr(w, r, status, code, msg)` 或传字符串 message。
+    text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+    enforcement: required
+    verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-01
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: table-driven tests
+    text_sha256: 63b77ecd86e891c95de079549157211b9c484265eab0b634a703d5fc136aa8b3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: fake Driver 注入 apply/coordinator 测试
+    text_sha256: 6165390b3a5d64582d231a8df8f34eae4b5ffd41d383ee7e50b7f1a0ea4347cb
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 关键路径先写失败用例再实现
+    text_sha256: 823088b0379f5d42abcb9e6c9951c5978d783ef585a79ea29e9dee3bbfe0872a
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-004
+    summary: 错误响应统一走 `writeErr` / `writeRuntimeFailure` / `writeRepoError`，禁止 handler
+      手写 `json.NewEncoder` 错误响应
+    text_sha256: 703bfa163bf83716299618fccb409898e672b9b1a86c56272d21e3ca53323bff
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-directory-structure
+  path: backend/directory-structure.md
+  status: active
+  hashes:
+    file_sha256: 2caddb6c832d1d9b27cb5e5bd08ceb5713d48400e0eb98305615f6b8f57f1b95
+    metadata_sha256: b4d430c609b9bffa073d78f5e9edb8883e39e931651dd318f3e092d19328fdca
+    rules_sha256: 481308927010c515b2a674c70de925804381e3216982bba0ab64ef779730c0f0
+  selected_by: agent
+  reason: 文件传输 helper 放入 driver，升级编排与配置生成保持分层。
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-directory-001
+    summary: Console backend code must live under `console/backend/` with `cmd/` entrypoints
+      and `internal/` packages; handlers must not own persistence or runtime-driver
+      details.
+    text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
+    enforcement: required
+    verifier_ref: backend-directory-structure#RULE-backend-directory-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-03
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: 新资源：`api` 路由 + `repo` 模型 +（如需）`driver`/`runtimeconfig` 扩展
+    text_sha256: ffd0a9492109b8da27e9d19f2666829f1fb0e829a290835b239902b4e4700010
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: 共享 DTO 放靠近使用方的 package，避免循环依赖
+    text_sha256: 63402fa465295d9cd65e23a7b4e820d15e6345831f78cd5756f1f16fc36c4545
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 资源配额、generation、apply 状态机逻辑集中，不复制到多个 handler
+    text_sha256: b2c46f7367dd0d05644be6bde89e22a3ffd17cf66eb84fe6cfdc25035bfccf7c
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-logging
+  path: backend/logging.md
+  status: active
+  hashes:
+    file_sha256: 105919bf1d68686f6174e1585cc3afa752aa7a412137f17de813d57ec2ae6eda
+    metadata_sha256: 3e2ec4d613ee9f44017234b56b595590d8d8d2ba2beda5e6d1c9e9cf06104ffc
+    rules_sha256: 12f3905dd505354f0f7c4bac6254d8578ab19fd10025d4ab25451e9d2a3c8339
+  selected_by: agent
+  reason: 迁移/回滚错误沿用审计与 apply 诊断，须脱敏。
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-logging-001
+    summary: Logs and audit records must be structured enough to debug, must never
+      include secrets/credentials, and must keep operation audit separate from skill-execution
+      telemetry.
+    text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+    enforcement: required
+    verifier_ref: backend-logging#RULE-backend-logging-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-02
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-backend-redact-001
+    summary: Error strings written to logs, audit details, apply-failure fields, or
+      user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic`
+      (or equivalent redaction) before persistence or emission.
+    text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+    enforcement: required
+    verifier_ref: backend-logging#RULE-backend-redact-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-02
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: handler 入口记录关键 id，apply 流水按 stage 打点
+    text_sha256: c79a6ef9bcaea5daf6590e157b5cb1232553e19bdd981d6749814bf96288f919
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: 用户可见错误 message 与内部 err 分离；内部 err 落库前 Redact
+    text_sha256: c476041772c4562e1de03bcf26b1cec4bcb3da99a9366ace6b21e2a50bdb869e
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: repo 模型注释明确 “already-redacted payload”
+    text_sha256: 2f386a93596aa4a0647173999a82ebceca9f90155d94cc7fa8eb5fcad6276a83
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-platform-rules
+  path: backend/platform-rules.md
+  status: active
+  hashes:
+    file_sha256: 743e94c23968049d341464a3d8db486c494558364ebf7621eeaa044f44d26da9
+    metadata_sha256: 5b13ca308628aec1e8c3502d31a0c6347589a68d596b5ce7201427e82a569b22
+    rules_sha256: 5d12a32233766dc29ce4c8d63fd6096da9cbc9378b45a2880edf4ef54bb99da9
+  selected_by: agent
+  reason: 保留用户隔离、模型绑定、API envelope 与升级 health/rollback。
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-platform-001
+    summary: Control-plane changes must preserve multi-user isolation, mandatory model-pool
+      binding, secret-not-in-image injection, and generation-based runtime apply with
+      health/rollback semantics.
+    text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
+    enforcement: required
+    verifier_ref: backend-platform-rules#RULE-backend-platform-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-03
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-backend-http-envelope-001
+    summary: All Console HTTP handlers must emit responses via `writeJSON` / `writeErr`
+      with stable `code*` constants; do not call `json.NewEncoder` (or ad-hoc maps)
+      in handlers.
+    text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+    enforcement: required
+    verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-01
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-backend-model-pool-001
+    summary: Creating a Human User requires binding an unbound `model_config_id`;
+      already-bound models must fail with a conflict (`ErrLLMModelAlreadyBound` /
+      API conflict). No implicit shared or override model fallback chain.
+    text_sha256: 23c293f00680e409de4b6c712152fa0bc9e812273399c72c135ccdaf9082ee9f
+    enforcement: required
+    verifier_ref: backend-platform-rules#RULE-backend-model-pool-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-03
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: 新平台能力先扩 registry/repo，再暴露 api，最后才动 driver
+    text_sha256: eafb41a91eb99ea17792558908c621c53f131b38106301e23ffca005a2ccc9b3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: repo 层 sentinel error → `errors.go` / handler 映射到 HTTP code
+    text_sha256: bb50fcd3db4cb60eafa2bdb37a36a2820e29285a43855e74c15d366cbc66fa32
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 破坏性 API 变更走显式版本或兼容窗口
+    text_sha256: 9edc8d306a946542dddd02908bc8551bbf827130665af56ce064bf411c9a4343
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-config-and-apply
+  path: runtime/config-and-apply.md
+  status: active
+  hashes:
+    file_sha256: 5eb887d3987869eeefd19895210afefa49a028af4fee1242a71e9a2a59c1be14
+    metadata_sha256: f275035e49c2d53961baf0ae8b9974d6867e3504a48b7128483ec94ab60e72ae
+    rules_sha256: cedb07c8944d42c5c74ebe18b0418eb7bcc2a9f7d87cb5e8b58161a83ba94d45
+  selected_by: agent
+  reason: 文件启动与 stdin 热更新都使用既有校验、generation 和事务语义。
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-config-001
+    summary: Runtime configuration changes must validate against schema, apply through
+      the transactional pipeline (`runtime-config-transaction` / control-plane `runtimeapply`),
+      and preserve rollback or failed-health recovery.
+    text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+    enforcement: required
+    verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-04
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-validate-before-write-001
+    summary: Any renderer/inject path that materializes runtime config must call `validateRuntimeConfig`
+      (or shared schema helper) before atomic write; desired state carries a monotonic
+      `generation`.
+    text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+    enforcement: required
+    verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-04
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-001
+    summary: 控制面构建 desired DTO，Worker 执行 transaction script
+    text_sha256: 969b322dbf270438aaa0869abd0db76afeee170b3edf9baa4a61e607612a5765
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 用 generation 单调递增检测漂移与冲突（generation conflict）
+    text_sha256: 2d27b0f5e2a796b7d7190722ce790f8eb75b1ee6ea0e91d52f524b6a3cdd0b3d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-isolation-and-security
+  path: runtime/isolation-and-security.md
+  status: active
+  hashes:
+    file_sha256: c0d256ae3e0052120abfc554fdd38d6df1fb91c159132ba662ff163e7e8c22ab
+    metadata_sha256: b7fdca81e893c4700e546264dca611c65f0533ca1a698e426a92f5cc773a0ccd
+    rules_sha256: 92c49db785819c7ac008577a80977f3ed8b72ee244db7b0d28e5e3c1918dec63
+  selected_by: agent
+  reason: 完整 DTO 含密钥，挂载权限与原子文件落盘属于本次设计。
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-security-001
+    summary: Channel credentials, LLM keys, platform API keys, and service tokens
+      must be injected at runtime and never baked into images or committed; each Human
+      User must keep isolated agent workspace, browser profile, and session state.
+    text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+    enforcement: required
+    verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-05
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-secret-file-mode-001
+    summary: Files that materialize config, bundles, or secrets on disk must use restrictive
+      modes (`0o600` for written config/bundle material; Pod service token files `0400`
+      at the canonical path validated by image self-check).
+    text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+    enforcement: required
+    verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: runtime-config-file-input.design.md
+          section_id: '3.5'
+          item_id: Q-05
+          artifact_sha256: 42c1bec7b945eb4b124f8358e1404a2f426701106a4b710dc33c4c1ea068f512
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-001
+    summary: inject-env / inject-channels / inject-multi-user-config 作为注入单一入口
+    text_sha256: a7979f71c77a2fa895f00623ff5eab9de188d4f0db0688f72902e7ed677916d9
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 工具策略与浏览器租约集中在 `muad-runtime-guard`
+    text_sha256: 5b6b947009a89327eb4d6efa22b93892225ed01cec5e179360e3ecb522191035
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-003
+    summary: Docker driver 将 service token 以只读方式挂进容器
+    text_sha256: e93f63de52e3b507071dfe3bf56757f8fdd5276d0fed07583970a11789b55e17
+    enforcement: advisory
+    verifier_ref: advisory:none
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
