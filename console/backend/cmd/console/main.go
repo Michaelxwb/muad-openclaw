@@ -200,7 +200,11 @@ func newRuntimeCoordinator(
 	if err != nil {
 		return nil, err
 	}
-	applier, err := runtimeapply.New(drv, runtimeapply.Options{})
+	source, ok := drv.(driver.StartupConfigStore)
+	if !ok {
+		return nil, errors.New("runtime startup storage unavailable")
+	}
+	applier, err := runtimeapply.NewCoordinatorApplier(drv, source, runtimeapply.Options{})
 	if err != nil {
 		return nil, err
 	}

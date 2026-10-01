@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -10,6 +11,83 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestRuntimeFileTask007_S07DockerDirectoryMount(t *testing.T) {
+	spec := fileRuntimeSpec(t, "alice")
+	spec.ServiceToken.UID, spec.ServiceToken.GID = int64(os.Getuid()), int64(os.Getgid())
+	recorder := &dockerCallRecorder{}
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	var startupEnv string
+	captureDockerStartup(t, d, spec, recorder, &startupEnv)
+	if err := d.Create(context.Background(), spec); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(startupEnv, "MUAD_RUNTIME_CONFIG=") || !strings.Contains(startupEnv, "MUAD_RUNTIME_CONFIG_FILE="+RuntimeConfigFilePath) {
+		t.Fatal("invalid file-mode environment")
+	}
+	directory := filepath.Join(d.secretDir, spec.PodID, "runtime-config")
+	if !slices.Contains(findDockerCall(t, recorder.calls, "run"), directory+":"+RuntimeConfigDirectory+":ro") {
+		t.Fatal("Docker did not bind the whole readonly directory")
+	}
+	assertFileMode(t, directory, 0o700)
+	assertFileMode(t, filepath.Join(directory, RuntimeConfigFileName), 0o600)
+	spec.MultiUser.Generation++
+	if err := d.SyncStartupConfig(context.Background(), spec); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(directory, RuntimeConfigFileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := DecodeRuntimeConfig(strings.NewReader(string(raw)))
+	if err != nil || config.Generation != spec.MultiUser.Generation {
+		t.Fatal("startup file did not converge")
+	}
+	if err := d.Remove(context.Background(), spec.PodID, true); err != nil {
+		t.Fatal(err)
+	}
+	for _, call := range recorder.calls {
+		if len(call) > 1 && call[0] == "volume" && call[1] == "rm" {
+			t.Fatal("retained workspace removed")
+		}
+	}
+}
+
+func dockerFileInspection(d *DockerDriver, spec PodSpec, env string) (string, error) {
+	raw, err := json.Marshal([]map[string]any{{"Config": map[string]any{"Env": strings.Split(strings.TrimSpace(env), "\n"), "Image": spec.ImageTag}, "Mounts": []map[string]any{{"Source": d.runtimeConfigDir(spec.PodID), "Destination": RuntimeConfigDirectory, "RW": false}}}})
+	return string(raw), err
+}
+
+func TestRuntimeFileTask007_E04FailedDockerReplacementRestoresSource(t *testing.T) {
+	spec := fileRuntimeSpec(t, "alice")
+	spec.ServiceToken.UID, spec.ServiceToken.GID = int64(os.Getuid()), int64(os.Getgid())
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	recorder := &dockerCallRecorder{}
+	d.runHook = recorder.run
+	ctx := context.Background()
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(d.secretDir, spec.PodID, "runtime-config", RuntimeConfigFileName)
+	previous, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.runHook = func(ctx context.Context, args []string) (string, error) {
+		if args[0] == "run" {
+			return "", errors.New("docker run rejected")
+		}
+		return recorder.run(ctx, args)
+	}
+	spec.MultiUser.Generation++
+	if err := d.ReplaceRuntime(ctx, spec); err == nil {
+		t.Fatal("run failure ignored")
+	}
+	after, err := os.ReadFile(file)
+	if err != nil || string(previous) != string(after) {
+		t.Fatal("failed replacement published candidate startup source")
+	}
+}
 
 type dockerCallRecorder struct {
 	calls        [][]string
@@ -565,5 +643,26 @@ func writeDockerSkillFile(t *testing.T, root, skillName, fileName, body string) 
 	}
 	if err := os.WriteFile(filepath.Join(dir, fileName), []byte(body), 0o600); err != nil {
 		t.Fatalf("write Skill %s: %v", skillName, err)
+	}
+}
+
+func captureDockerStartup(t *testing.T, d *DockerDriver, spec PodSpec, recorder *dockerCallRecorder, startupEnv *string) {
+	t.Helper()
+	d.runHook = func(ctx context.Context, args []string) (string, error) {
+		if args[0] == "inspect" {
+			return dockerFileInspection(d, spec, *startupEnv)
+		}
+		if args[0] == "run" {
+			for i := range args {
+				if args[i] == "--env-file" {
+					raw, err := os.ReadFile(args[i+1])
+					if err != nil {
+						return "", err
+					}
+					*startupEnv = string(raw)
+				}
+			}
+		}
+		return recorder.run(ctx, args)
 	}
 }

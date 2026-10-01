@@ -92,30 +92,51 @@ func validImageTag(value string) bool {
 }
 
 func (s *Server) performPodUpgrade(ctx context.Context, current repo.Pod, imageTag string) (repo.Pod, error) {
+	// The request can wait behind an apply or another lifecycle operation.
+	// Read the record again after acquiring the Pod lock before copying fields.
+	current, err := s.store.GetPod(current.PodID)
+	if err != nil {
+		return repo.Pod{}, err
+	}
+	if current.ImageTag == imageTag {
+		return current, nil
+	}
+	startup, ok := s.drv.(driver.RuntimeStartupDriver)
+	if !ok {
+		return repo.Pod{}, errors.Join(errors.New("runtime startup recovery unavailable"), errUpgradeRollbackFailed)
+	}
+	snapshot, err := startup.SnapshotStartupConfig(ctx, current.PodID)
+	if err != nil {
+		return repo.Pod{}, errors.Join(err, errUpgradeRollbackFailed)
+	}
 	target, err := s.updatePodImage(current, imageTag)
 	if err != nil {
 		return repo.Pod{}, err
 	}
+	return s.applyPodImageUpgrade(ctx, current, target, snapshot)
+}
+
+func (s *Server) applyPodImageUpgrade(ctx context.Context, current, target repo.Pod, snapshot driver.RuntimeStartupSnapshot) (repo.Pod, error) {
 	desired, err := s.buildDesiredPodRuntime(target)
 	if err != nil {
-		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, false, err)
+		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, snapshot, err)
 	}
 	if err := s.store.StartPodConfigApply(target.PodID, target.ConfigGeneration); err != nil {
-		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, false, err)
+		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, snapshot, err)
 	}
 	if err := s.syncSkillsBeforeDirectApply(ctx, target); err != nil {
-		_ = s.store.FailPodConfigApply(target.PodID, target.ConfigGeneration, auditlog.RedactDiagnostic(err.Error()))
-		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, false, err)
+		err = s.failPodUpgradeApply(target, err)
+		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, snapshot, err)
 	}
 	err = s.replacePodRuntime(ctx, desired)
 	if err == nil {
 		err = s.completePodUpgrade(target, desired)
 	}
 	if err != nil {
-		_ = s.store.FailPodConfigApply(target.PodID, target.ConfigGeneration, auditlog.RedactDiagnostic(err.Error()))
-		// 一旦进入 ReplaceRuntime 阶段，运行时就可能已切换；无论失败与否都按
-		// runtimeChanged=true 处理，回滚会原地重建到旧镜像以收敛到确定状态。
-		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, true, err)
+		err = s.failPodUpgradeApply(target, err)
+		// A failed replacement may already have changed the workload; restore
+		// its original image and input mode with a new recovery generation.
+		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, snapshot, err)
 	}
 	return s.store.GetPod(target.PodID)
 }
@@ -133,7 +154,14 @@ func (s *Server) replacePodRuntime(ctx context.Context, desired desiredPodRuntim
 	if err := s.drv.ReplaceRuntime(ctx, desired.spec); err != nil {
 		return err
 	}
-	return waitForPodHealth(ctx, s.drv, desired.spec.PodID, desired.runtime.Config.Generation)
+	if err := waitForPodHealth(ctx, s.drv, desired.spec.PodID, desired.runtime.Config.Generation); err != nil {
+		return err
+	}
+	startup, ok := s.drv.(driver.RuntimeStartupDriver)
+	if !ok {
+		return errors.New("runtime startup recovery unavailable")
+	}
+	return startup.SyncStartupConfig(ctx, desired.spec)
 }
 
 func (s *Server) completePodUpgrade(target repo.Pod, desired desiredPodRuntime) error {
@@ -151,13 +179,13 @@ func (s *Server) completePodUpgrade(target repo.Pod, desired desiredPodRuntime) 
 }
 
 func (s *Server) recoverPodUpgrade(
-	ctx context.Context, original repo.Pod, runtimeChanged bool, cause error,
+	ctx context.Context, original repo.Pod, snapshot driver.RuntimeStartupSnapshot, cause error,
 ) error {
+	recoveryCtx, cancel := podRuntimeOperationContext(ctx)
+	defer cancel()
 	restored, err := s.restorePodImage(original)
-	if err == nil && runtimeChanged {
-		err = s.restorePodRuntime(ctx, restored)
-	} else if err == nil {
-		s.enqueueReconcile(restored.PodID)
+	if err == nil {
+		err = s.restorePodRuntime(recoveryCtx, restored, snapshot)
 	}
 	if err != nil {
 		// 回滚也失败：必须落终态（last_apply_status=failed），否则 restorePodRuntime
@@ -170,9 +198,8 @@ func (s *Server) recoverPodUpgrade(
 				original.PodID, auditlog.RedactDiagnostic(latestErr.Error()))
 			latest = restored
 		}
-		_ = s.store.FailPodConfigApply(latest.PodID, latest.ConfigGeneration,
-			auditlog.RedactDiagnostic(err.Error()))
-		_ = s.store.UpdatePodState(original.PodID, repo.PodStateError)
+		err = s.failPodUpgradeApply(latest, err)
+		err = errors.Join(err, s.store.UpdatePodState(original.PodID, repo.PodStateError))
 		log.Printf("pod_upgrade_rollback_failed pod=%s error=%s", original.PodID, auditlog.RedactDiagnostic(err.Error()))
 		// 回滚本身失败：结果不可信，标记 sentinel 让 handler 上报 50215，
 		// 而不是谎报"已自动回滚"（50205）。
@@ -189,7 +216,7 @@ func (s *Server) restorePodImage(original repo.Pod) (repo.Pod, error) {
 	return s.updatePodImage(latest, original.ImageTag)
 }
 
-func (s *Server) restorePodRuntime(ctx context.Context, restored repo.Pod) error {
+func (s *Server) restorePodRuntime(ctx context.Context, restored repo.Pod, snapshot driver.RuntimeStartupSnapshot) error {
 	desired, err := s.buildDesiredPodRuntime(restored)
 	if err != nil {
 		return err
@@ -198,13 +225,24 @@ func (s *Server) restorePodRuntime(ctx context.Context, restored repo.Pod) error
 		return err
 	}
 	if err := s.syncSkillsBeforeDirectApply(ctx, restored); err != nil {
-		_ = s.store.FailPodConfigApply(restored.PodID, restored.ConfigGeneration, auditlog.RedactDiagnostic(err.Error()))
+		return s.failPodUpgradeApply(restored, err)
+	}
+	startup, ok := s.drv.(driver.RuntimeStartupDriver)
+	if !ok {
+		return errors.New("runtime startup recovery unavailable")
+	}
+	if err := startup.RestoreRuntime(ctx, desired.spec, snapshot); err != nil {
 		return err
 	}
-	if err := s.replacePodRuntime(ctx, desired); err != nil {
+	if err := waitForPodHealth(ctx, s.drv, restored.PodID, restored.ConfigGeneration); err != nil {
 		return err
 	}
 	return s.completePodUpgrade(restored, desired)
+}
+
+func (s *Server) failPodUpgradeApply(pod repo.Pod, cause error) error {
+	return errors.Join(cause, s.store.FailPodConfigApply(pod.PodID, pod.ConfigGeneration,
+		auditlog.RedactDiagnostic(cause.Error())))
 }
 
 func (s *Server) syncSkillsBeforeDirectApply(ctx context.Context, pod repo.Pod) error {

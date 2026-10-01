@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -51,37 +52,49 @@ func orDefault(v, def string) string {
 
 // Create launches a Pod container (detached, no published ports).
 func (d *DockerDriver) Create(ctx context.Context, spec PodSpec) error {
-	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
-		return ErrInvalidPodSpec
-	}
-	if spec.MultiUser.Version != 0 {
-		if err := spec.Validate(); err != nil {
-			return err
-		}
-	}
-	if err := d.ensureStateVolume(ctx, spec.PodID, spec.AdoptState); err != nil {
-		return err
-	}
-	if err := d.ensurePublicSkillsDir(); err != nil {
-		return err
-	}
-	secretPath, err := d.writeServiceToken(spec)
-	if err != nil {
-		return err
-	}
-	envFile, cleanup, err := writeEnvFile(BuildEnv(spec))
+	envFile, secretPath, cleanup, err := d.prepareDockerContainer(ctx, spec, spec.AdoptState)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
-	// 同名残留容器（控制面崩溃窗口/手动创建）会令 docker run --name 永久失败；
-	// 与 Remove 的孤儿容忍对称：创建前先清理同名容器。
 	if err := d.ensureContainerNameFree(ctx, ContainerName(spec.PodID)); err != nil {
 		return err
 	}
-	args := d.createArgs(spec, ContainerName(spec.PodID), envFile, secretPath)
-	_, err = d.run(ctx, args...)
-	return err
+	_, err = d.run(ctx, d.createArgs(spec, ContainerName(spec.PodID), envFile, secretPath)...)
+	if err != nil {
+		return err
+	}
+	return d.saveCreatedStartup(spec)
+}
+
+func (d *DockerDriver) prepareDockerContainer(ctx context.Context, spec PodSpec, adopt bool) (string, string, func(), error) {
+	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
+		return "", "", nil, ErrInvalidPodSpec
+	}
+	if spec.MultiUser.Version != 0 {
+		if err := spec.Validate(); err != nil {
+			return "", "", nil, err
+		}
+	}
+	if err := d.ensureStateVolume(ctx, spec.PodID, adopt); err != nil {
+		return "", "", nil, err
+	}
+	if err := d.ensurePublicSkillsDir(); err != nil {
+		return "", "", nil, err
+	}
+	secretPath, err := d.writeServiceToken(spec)
+	if err != nil {
+		return "", "", nil, err
+	}
+	env, err := d.prepareRuntimeStartup(ctx, spec)
+	if err != nil {
+		return "", "", nil, err
+	}
+	envFile, cleanup, err := writeEnvFile(env)
+	if err != nil {
+		return "", "", nil, errors.Join(err, d.restoreStartupFile(spec))
+	}
+	return envFile, secretPath, cleanup, nil
 }
 
 // ReplaceRuntime recreates the container onto the new image while keeping the
@@ -90,50 +103,101 @@ func (d *DockerDriver) Create(ctx context.Context, spec PodSpec) error {
 // <podID>.new first, then the old container is removed and the new one renamed
 // into place. A failed Create leaves the old container untouched (k8s's
 // in-place upsert has no such gap; the two sides stay symmetric).
-func (d *DockerDriver) ReplaceRuntime(ctx context.Context, spec PodSpec) error {
-	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
-		return ErrInvalidPodSpec
-	}
-	if spec.MultiUser.Version != 0 {
-		if err := spec.Validate(); err != nil {
-			return err
-		}
-	}
-	if err := d.ensureStateVolume(ctx, spec.PodID, true); err != nil {
-		return err
-	}
-	if err := d.ensurePublicSkillsDir(); err != nil {
-		return err
-	}
-	secretPath, err := d.writeServiceToken(spec)
-	if err != nil {
-		return err
-	}
-	envFile, cleanup, err := writeEnvFile(BuildEnv(spec))
+func (d *DockerDriver) ReplaceRuntime(ctx context.Context, spec PodSpec) (resultErr error) {
+	envFile, secretPath, cleanup, err := d.prepareDockerContainer(ctx, spec, true)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
+	defer func() {
+		if resultErr != nil {
+			resultErr = errors.Join(resultErr, d.restoreStartupFile(spec))
+		}
+	}()
+	return d.replacePreparedContainer(ctx, spec, envFile, secretPath)
+}
+
+func (d *DockerDriver) replacePreparedContainer(ctx context.Context, spec PodSpec, envFile, secretPath string) error {
 	name := ContainerName(spec.PodID)
 	newName := name + ".new"
-	// 上次崩溃可能遗留 <podID>.new 容器，先清理避免 docker run 名字冲突。
 	if err := d.ensureContainerNameFree(ctx, newName); err != nil {
 		return err
 	}
-	args := d.createArgs(spec, newName, envFile, secretPath)
-	if _, err = d.run(ctx, args...); err != nil {
-		// Create 失败：旧容器原样保留，返回错误。
+	if _, err := d.run(ctx, d.createArgs(spec, newName, envFile, secretPath)...); err != nil {
 		return err
 	}
-	if _, err = d.run(ctx, "rm", "-f", name); err != nil && !isAbsentErr(err) {
-		_ = d.cleanupTemporaryContainer(ctx, newName)
-		return err
+	if _, err := d.run(ctx, "rm", "-f", name); err != nil && !isAbsentErr(err) {
+		return errors.Join(err, d.cleanupTemporaryContainer(ctx, newName))
 	}
-	if _, err = d.run(ctx, "rename", newName, name); err != nil {
-		_ = d.cleanupTemporaryContainer(ctx, newName)
-		return err
+	if _, err := d.run(ctx, "rename", newName, name); err != nil {
+		return errors.Join(err, d.cleanupTemporaryContainer(ctx, newName))
 	}
 	return nil
+}
+
+func (d *DockerDriver) runtimeConfigDir(podID string) string {
+	return filepath.Join(d.secretDir, podID, "runtime-config")
+}
+
+func (d *DockerDriver) prepareRuntimeStartup(ctx context.Context, spec PodSpec) (map[string]string, error) {
+	if spec.MultiUser.Version == 0 {
+		return BuildEnv(spec), nil
+	}
+	payload, err := BuildRuntimeStartupPayload(spec)
+	if err != nil {
+		return nil, err
+	}
+	if err := d.writeStartupConfig(ctx, spec); err != nil {
+		return nil, err
+	}
+	return payload.Environment, nil
+}
+
+func (d *DockerDriver) SyncStartupConfig(ctx context.Context, spec PodSpec) error {
+	if !podIDPattern.MatchString(spec.PodID) {
+		return ErrInvalidPodSpec
+	}
+	payload, err := BuildRuntimeStartupPayload(spec)
+	if err != nil {
+		return err
+	}
+	snapshot, err := d.SnapshotStartupConfig(ctx, spec.PodID)
+	if err != nil {
+		return err
+	}
+	if snapshot.Mode == RuntimeStartupEnv {
+		return nil
+	}
+	if err := d.writeStartupConfig(ctx, spec); err != nil {
+		return err
+	}
+	snapshot.RuntimeJSON = payload.RuntimeJSON
+	return d.saveStartupRecovery(spec.PodID, snapshot)
+}
+
+func (d *DockerDriver) writeStartupConfig(ctx context.Context, spec PodSpec) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if !podIDPattern.MatchString(spec.PodID) || spec.PodID != spec.MultiUser.PodID {
+		return ErrInvalidPodSpec
+	}
+	return writeRuntimeFile(d.runtimeConfigDir(spec.PodID), spec.MultiUser, int(spec.ServiceToken.UID), int(spec.ServiceToken.GID))
+}
+
+func (d *DockerDriver) restoreStartupFile(spec PodSpec) error {
+	if spec.MultiUser.Version == 0 {
+		return nil
+	}
+	target := filepath.Join(d.runtimeConfigDir(spec.PodID), RuntimeConfigFileName)
+	previous, err := os.ReadFile(target + ".previous")
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read startup rollback: %w", err)
+	}
+	return atomicRuntimeWrite(target, previous, int(spec.ServiceToken.UID), int(spec.ServiceToken.GID))
 }
 
 // cleanupTemporaryContainer removes a mid-replace <podID>.new container,
@@ -289,6 +353,9 @@ func (d *DockerDriver) createArgs(spec PodSpec, containerName, envFile, secretPa
 	}
 	if secretPath != "" {
 		args = append(args, "-v", secretPath+":"+PodServiceTokenPath+":ro")
+	}
+	if spec.MultiUser.Version != 0 {
+		args = append(args, "-v", d.runtimeConfigDir(spec.PodID)+":"+RuntimeConfigDirectory+":ro")
 	}
 	if d.network != "" {
 		args = append(args, "--network", d.network)

@@ -110,19 +110,36 @@ func (s *Server) executePodAction(ctx context.Context, podID, action, state stri
 
 // rebuildPodRuntime 用 DB 中的 Pod spec 重建缺失的 k8s Deployment（接管保留的状态卷）。
 func (s *Server) rebuildPodRuntime(ctx context.Context, podID string) error {
+	startup, ok := s.drv.(driver.RuntimeStartupDriver)
+	if !ok {
+		return errors.New("runtime startup recovery unavailable")
+	}
+	snapshot, err := startup.SnapshotStartupConfig(ctx, podID)
+	if err != nil {
+		return err
+	}
 	pod, err := s.store.GetPod(podID)
 	if err != nil {
 		return err
+	}
+	if snapshot.ImageTag != "" && snapshot.ImageTag != pod.ImageTag {
+		pod, err = s.updatePodImage(pod, snapshot.ImageTag)
+		if err != nil {
+			return err
+		}
 	}
 	desired, err := s.buildDesiredPodRuntime(pod)
 	if err != nil {
 		return err
 	}
 	desired.spec.AdoptState = true
-	if err := s.drv.Create(ctx, desired.spec); err != nil {
+	if err := startup.RestoreRuntime(ctx, desired.spec, snapshot); err != nil {
 		return err
 	}
-	return waitForPodHealth(ctx, s.drv, podID, desired.runtime.Config.Generation)
+	if err := waitForPodHealth(ctx, s.drv, podID, desired.runtime.Config.Generation); err != nil {
+		return err
+	}
+	return startup.SyncStartupConfig(ctx, desired.spec)
 }
 
 func (s *Server) handleApplyPodConfig(w http.ResponseWriter, r *http.Request) {

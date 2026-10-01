@@ -12,12 +12,71 @@ import (
 
 const (
 	RuntimeConfigVersion     = 1
+	RuntimeConfigDirectory   = "/run/muad-config"
+	RuntimeConfigFileName    = "runtime.json"
+	RuntimeConfigFilePath    = RuntimeConfigDirectory + "/" + RuntimeConfigFileName
 	PodServiceTokenPath      = "/run/secrets/muad/pod-service-token"
 	DefaultQuarantineProfile = "quarantine"
 	DefaultQuarantineCDPPort = 18801
 	DefaultRuntimeUID        = 1000
 	DefaultRuntimeGID        = 1000
 )
+
+type RuntimeStartupMode string
+
+const (
+	RuntimeStartupEnv  RuntimeStartupMode = "env"
+	RuntimeStartupFile RuntimeStartupMode = "file"
+)
+
+// RuntimeStartupSnapshot contains sensitive recovery material; never log it.
+type RuntimeStartupSnapshot struct {
+	Mode        RuntimeStartupMode
+	ImageTag    string
+	RuntimeJSON []byte
+	Environment map[string]string
+}
+
+type RuntimeStartupPayload struct {
+	RuntimeJSON []byte
+	Environment map[string]string
+}
+
+// BuildRuntimeStartupPayload validates before serializing the file input.
+func BuildRuntimeStartupPayload(spec PodSpec) (RuntimeStartupPayload, error) {
+	if spec.PodID != spec.MultiUser.PodID {
+		return RuntimeStartupPayload{}, ErrInvalidPodSpec
+	}
+	if err := spec.MultiUser.Validate(); err != nil {
+		return RuntimeStartupPayload{}, err
+	}
+	raw, err := json.Marshal(spec.MultiUser)
+	if err != nil {
+		return RuntimeStartupPayload{}, fmt.Errorf("serialize runtime config: %w", err)
+	}
+	env, err := buildRuntimeFileEnv(spec)
+	if err != nil {
+		return RuntimeStartupPayload{}, err
+	}
+	return RuntimeStartupPayload{RuntimeJSON: raw, Environment: env}, nil
+}
+
+func buildRuntimeFileEnv(spec PodSpec) (map[string]string, error) {
+	env := map[string]string{"MUAD_POD_ID": spec.PodID, "CHANNELS": strings.Join(spec.Channels, ","),
+		"MUAD_RUNTIME_CONFIG_FILE": RuntimeConfigFilePath}
+	if len(spec.ChannelConfigs) > 0 {
+		raw, err := json.Marshal(spec.ChannelConfigs)
+		if err != nil {
+			return nil, fmt.Errorf("serialize channel config: %w", err)
+		}
+		env["CHANNEL_CONFIGS"] = string(raw)
+	}
+	putIf(env, "MUAD_CONSOLE_INTERNAL_URL", spec.MultiUser.ConsoleInternalURL)
+	putIf(env, "OPENCLAW_GATEWAY_TOKEN", spec.GatewayToken)
+	putIf(env, "MUAD_AUTOMATION_URL", spec.AutomationPlatformURL)
+	putIf(env, "MUAD_AUTH_TOKEN", spec.AutomationPlatformToken)
+	return env, nil
+}
 
 var (
 	ErrInvalidPodSpec       = errors.New("driver: invalid Pod spec")

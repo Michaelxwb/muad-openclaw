@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +14,103 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeconfig"
 )
+
+type adoptedRuntimeBuilder struct{ result runtimeconfig.Result }
+
+func (b adoptedRuntimeBuilder) Build(string) (runtimeconfig.Result, error) { return b.result, nil }
+
+type adoptedRuntimeDriver struct{ *fakeDriver }
+
+func (d adoptedRuntimeDriver) ExecStdin(ctx context.Context, id string, input io.Reader, cmd ...string) (string, error) {
+	if strings.HasSuffix(strings.Join(cmd, " "), " commit") {
+		d.appliedHealthGeneration = 7
+	}
+	return d.fakeDriver.ExecStdin(ctx, id, input, cmd...)
+}
+
+func TestAdoptedGeneration_S17CoordinatorPublishesBeforeRestart(t *testing.T) {
+	request := startupSourceRequest(t)
+	config, err := driver.DecodeRuntimeConfig(strings.NewReader(string(request.RuntimeJSON)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := newCoordinatorStore(config.PodID)
+	store.setGeneration(config.PodID, 7)
+	runtime := newFakeDriver(RestartPod)
+	runtime.appliedHealthGeneration = 42
+	source := &testStartupSource{t: t, driver: runtime, mode: RestartPod}
+	applier, err := NewCoordinatorApplier(adoptedRuntimeDriver{runtime}, source, Options{HealthTimeout: time.Second, PollInterval: time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	builder := adoptedRuntimeBuilder{runtimeconfig.Result{Config: config, CanonicalJSON: request.RuntimeJSON}}
+	coordinator, err := NewCoordinator(store, builder, applier, CoordinatorOptions{MaxAttempts: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := coordinator.ReconcileNow(context.Background(), config.PodID); err != nil {
+		t.Fatal(err)
+	}
+	if !source.published || runtime.podRestarts != 1 || store.appliedGeneration(config.PodID) != 7 {
+		t.Fatal("new startup source did not converge before restart")
+	}
+}
+
+func TestStartupSourceReconcile_S14FactoryRequiresAndUsesSource(t *testing.T) {
+	runtime := newFakeDriver(RestartNone)
+	if _, err := NewCoordinatorApplier(runtime, nil, Options{}); err == nil {
+		t.Fatal("missing startup source silently accepted")
+	}
+	source := &testStartupSource{t: t, driver: runtime, mode: RestartNone}
+	applier, err := NewCoordinatorApplier(runtime, source, Options{HealthTimeout: 20 * time.Millisecond, PollInterval: time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := applier.Apply(context.Background(), startupSourceRequest(t)); err != nil {
+		t.Fatal(err)
+	}
+	if !source.published {
+		t.Fatal("production factory omitted source synchronization")
+	}
+}
+
+func TestStartupSourceReconcile_S14FailureThenLatestGeneration(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	executor := newCoordinatorExecutor()
+	executor.applyError = &ApplyError{Stage: StageStartup, Cause: errors.New("startup sync failed")}
+	coordinator := newTestCoordinator(t, store, executor, 2)
+	if err := coordinator.ReconcileNow(context.Background(), "pod-a"); err == nil {
+		t.Fatal("source failure reported success")
+	}
+	if store.appliedGeneration("pod-a") != 0 || store.failedCount("pod-a") != 1 {
+		t.Fatal("failed source marked applied")
+	}
+	executor.applyError = nil
+	store.setGeneration("pod-a", 2)
+	if err := coordinator.ReconcileNow(context.Background(), "pod-a"); err != nil {
+		t.Fatal(err)
+	}
+	if store.appliedGeneration("pod-a") != 2 || fmt.Sprint(executor.generations("pod-a")) != "[1 2]" {
+		t.Fatal("retry used stale generation")
+	}
+}
+
+func TestStartupSourceReconcile_S14CancelledContextDoesNotRun(t *testing.T) {
+	store := newCoordinatorStore("pod-a")
+	coordinator := newTestCoordinator(t, store, newCoordinatorExecutor(), 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	called := false
+	for range 100 {
+		err := coordinator.RunExclusive(ctx, "pod-a", func(context.Context) error { called = true; return ctx.Err() })
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("cancelled context error = %v", err)
+		}
+	}
+	if called {
+		t.Fatal("already cancelled lifecycle operation was executed")
+	}
+}
 
 func TestCoordinatorCoalescesSamePodAndLoadsLatestGeneration(t *testing.T) {
 	store := newCoordinatorStore("pod-a")

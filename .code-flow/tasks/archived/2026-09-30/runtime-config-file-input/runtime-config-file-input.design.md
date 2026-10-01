@@ -71,6 +71,13 @@
 
 | 场景 | 功能 | 层级 | 关键真实边界、输入与可观测结果 |
 |---|---|---|---|
+| S-17 | FEAT-07 | integration | Real Node startup and transaction files plus Coordinator/Applier: retained higher generation eventually converges to new DTO and refreshed credentials; same-instance stale startup remains protected. Supplemental functional coverage; B-03 remains real Worker E2E. |
+| S-16 | FEAT-04/06 | integration | Real Docker recovery arguments and local files with fake external CLI: original image and env/file input restored together; volume/token retained; failures explicit. Supplemental functional coverage; S-04/E-02 remain real Worker E2E. |
+| S-15 | FEAT-05/06 | integration | Real K8s recovery manifest/resource builders with fake external API: snapshot and restore env/file inputs with original image, token and PVC preserved; supplemental functional coverage, E-02 remains real Worker E2E. |
+| S-14 | FEAT-06 | integration | Real Coordinator/applier factory with fake external execution: source failure never completes apply; retried recovery uses current generation under existing Pod lock. Supplemental functional coverage; E-05 remains real Worker E2E. |
+| S-13 | FEAT-06 | integration | Real Applier with fake external Driver: source publication follows validation and health; Pod restart prepares source before restart; failures restore source and runtime. Supplemental functional coverage of API-05/RULE-04/05; E-05 remains real Worker E2E. |
+| S-12 | FEAT-04/06 | integration | 真实本地文件与目录：0700/0600、owner、原子 rename、无效输入及 I/O 失败保留 last-good；补充 API-03 和 RULE-05 的文件 helper 验收 |
+| S-11 | FEAT-03/04/05 | unit | 强类型启动 payload、真实 Go Schema 和 JSON 编解码：file env 无 DTO，错误显式返回，env/file 恢复材料 round-trip；补充既有 API-03/04 契约的可执行验收，不改变行为方案 |
 | S-01 | FEAT-01 | unit | Go grants 构建器：三种 EntryType 输出符合字段约束，复制不别名原 slice；Skill 名称/来源/目录/版本/longTask 保持 |
 | S-02 | FEAT-01 | E2E | Go DTO 生成 → Node Schema → 真实 renderer：精简前后最终配置和指导文件字节一致；无需集群 |
 | S-03 | FEAT-02/03 | E2E | 真实 K8s Secret → Deployment → 非 root Worker 启动：文件可读、env 不含完整 DTO，启动 generation 正确 |
@@ -154,6 +161,10 @@ Docker：配置文件放在驱动管理的每 Pod 私有目录，目录 0700、�
 - Q-04：事务成功前不把新状态认定为 last-good；startup 文件同步失败使流程明确失败或进入可观测恢复，不声称升级完成。健康校验 generation；同名重建不能因旧磁盘高代次而永久停留旧配置。驱动下发 DTO 前调用 Go Validate；Worker 调用共享 Node Schema；应用写出的配置使用 mode 0600、原子替换，K8s 投影注入源权限按 §3.3。验证 S-05/E-01/E-02/E-05/B-03。
 - Q-05：发布产物不含凭证，运行时注入；投影权限与 UID/FSGroup 必须实际验证，保留工作区/浏览器/会话隔离，service-token 固定路径不变。删除重建生成新凭证，旧 token 不复用，磁盘契约刷新后必须能鉴权。验证 S-03/S-04/S-07/S-09/S-10/E-06/B-03。
 
+- Q-06：RULE-backend-database-001 / RULE-backend-no-select-star-001：不新增 SQL 或表结构；保持 repo 边界、参数化与显式列名。TASK-001 承接自动补入的数据库规范。
+
+- Q-07：RULE-runtime-directory-001, RULE-runtime-skill-001, RULE-runtime-skill-layering-001, RULE-runtime-log-injection-001, RULE-runtime-log-prefix-001, RULE-runtime-skill-fail-loud-001：共享启动读取位于 bin，不 fork 上游；保持 Skill 分层、保护、activation/并发/遥测；复用 CLI 模块日志前缀，读取/校验失败 stderr 并非零退出。TASK-002 承接路径自动补入的规范。
+
 ## 4. 部署与运维
 
 ### 4.1 发布路径
@@ -180,6 +191,8 @@ Helm templates/deployment.yaml 创建 Console，不创建 Worker；Role 已含 S
 普通配置刷新通过已有 workload 的 manifest/挂载判断是否已迁移，不根据 imageTag 猜能力。尚未迁移的 K8s Pod 保持原 env 启动契约；必要时更新该既有启动源，不把它转为 file 或删除 key。Docker 尚未迁移的容器环境不变。该过渡行为仅维护已有旧 workload，普通 Create/ReplaceRuntime 仍统一 file；管理员完成新镜像升级才切换输入。
 
 旧 Pod 自动重建、启动与普通 restart 入口需检查当前资源形态：普通新建/升级使用配套新镜像和 file；恢复旧 workload 使用独立恢复入口，按原输入形态重建，不能默默对旧镜像传 file。此约束通过既有错误 envelope 明确反馈，无新前端开关。
+
+补充实现落点（2026-10-01）：升级进入 Pod 互斥后重新加载最新记录；普通 metadata 更新使用同一锁，避免旧快照覆盖。缺失 workload 的 restart 从原资源形态恢复；K8s 从保留启动 Secret 确认模式，Docker 在升级前持久化私有 0600 恢复材料，重建时校验 Pod ID 与 DTO。无可靠材料明确失败，不猜镜像能力。此处细化原恢复要求，不增加普通旧镜像创建。
 
 ### 4.4 手动删除与同名重建升级
 

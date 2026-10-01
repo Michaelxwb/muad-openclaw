@@ -4,9 +4,28 @@ import (
 	"strings"
 	"unicode"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
+
+func configureRuntimeFileDeployment(dep *appsv1.Deployment, name string) {
+	mode := int32(0o440)
+	pod := &dep.Spec.Template.Spec
+	pod.Volumes = append(pod.Volumes, corev1.Volume{Name: "runtime-config", VolumeSource: corev1.VolumeSource{
+		Secret: &corev1.SecretVolumeSource{SecretName: name + "-runtime-config", DefaultMode: &mode,
+			Items: []corev1.KeyToPath{{Key: RuntimeConfigFileName, Path: RuntimeConfigFileName, Mode: &mode}}},
+	}})
+	c := &pod.Containers[0]
+	c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{Name: "runtime-config", MountPath: RuntimeConfigDirectory, ReadOnly: true})
+	c.EnvFrom = nil
+	c.Env = append(c.Env, corev1.EnvVar{Name: "MUAD_RUNTIME_CONFIG_FILE", Value: RuntimeConfigFilePath})
+	for _, key := range []string{"MUAD_POD_ID", "CHANNELS", "CHANNEL_CONFIGS", "MUAD_CONSOLE_INTERNAL_URL", "OPENCLAW_GATEWAY_TOKEN", "MUAD_AUTOMATION_URL", "MUAD_AUTH_TOKEN"} {
+		c.Env = append(c.Env, corev1.EnvVar{Name: key, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: name + "-env"}, Key: key, Optional: ptr(true),
+		}}})
+	}
+}
 
 func serviceTokenVolumes(name string) []corev1.Volume {
 	mode := int32(0o440)

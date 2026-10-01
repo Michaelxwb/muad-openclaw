@@ -29,6 +29,21 @@ type WorkloadBlockedChecker interface {
 	WorkloadBlocked(ctx context.Context, podID string) (bool, error)
 }
 
+// RuntimeStartupDriver separates new file-mode creation from restoration of an
+// existing workload's input mode. Snapshot material contains credentials.
+type RuntimeStartupDriver interface {
+	SnapshotStartupConfig(ctx context.Context, podID string) (RuntimeStartupSnapshot, error)
+	SyncStartupConfig(ctx context.Context, spec PodSpec) error
+	RestoreRuntime(ctx context.Context, spec PodSpec, snapshot RuntimeStartupSnapshot) error
+}
+
+// StartupConfigStore publishes only startup inputs; it never restarts a workload.
+type StartupConfigStore interface {
+	SnapshotStartupConfig(ctx context.Context, podID string) (RuntimeStartupSnapshot, error)
+	SyncRuntimeConfig(ctx context.Context, podID string, config RuntimeConfigV1) error
+	RestoreStartupConfig(ctx context.Context, podID string, snapshot RuntimeStartupSnapshot) error
+}
+
 // Built-in resource defaults are defensive fallbacks only. Deployment defaults
 // should come from config.yaml.
 const (

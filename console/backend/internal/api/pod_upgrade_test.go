@@ -48,3 +48,18 @@ func TestWaitForPodHealthFallsThroughForNonBlockerRuntime(t *testing.T) {
 		t.Fatal("expected timeout error for non-blocked runtime")
 	}
 }
+
+func TestRuntimeFileUpgrade_E03ProbeTimeoutAndCancellation(t *testing.T) {
+	for _, cancelled := range []bool{false, true} {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+		if cancelled {
+			cancel()
+		}
+		started := time.Now()
+		err := waitForPodHealth(ctx, execOnlyRuntime{}, "pod-a", 42)
+		cancel()
+		if err == nil || time.Since(started) > time.Second {
+			t.Fatalf("health deadline not enforced: %v", err)
+		}
+	}
+}

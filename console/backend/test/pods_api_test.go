@@ -4,14 +4,108 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/api"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
+
+func TestRuntimeFileAdoption_E06StateWriteFailureKeepsVolume(t *testing.T) {
+	e := newTestEnv(t)
+	path := filepath.Join(t.TempDir(), "adoption.db")
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if err := api.BootstrapAdmin(store, "root", "pw"); err != nil {
+		t.Fatal(err)
+	}
+	e.store = store
+	e.h = api.NewServer(e.cfg, store, e.cipher, e.drv, e.cache, e.syncer, e.reconcile).Handler()
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
+	assertStatus(t, e.do(http.MethodDelete, "/api/v1/containers/pod-a?deleteState=false", ""), http.StatusOK)
+	db := openSchemaDB(t, path)
+	_, err = db.Exec(`CREATE TRIGGER fail_adoption_state BEFORE UPDATE OF state ON pods WHEN NEW.state = 'running' BEGIN SELECT RAISE(ABORT, 'state write rejected'); END`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := strings.Replace(testPodBody, `"maxUsers":2`, `"maxUsers":2,"adoptState":true,"restoreUsers":true`, 1)
+	rr := e.do(http.MethodPost, "/api/v1/containers", body)
+	if rr.Code < 400 || !e.drv.keepState["pod-a"] {
+		t.Fatalf("failed adoption deleted retained volume: status=%d keep=%v", rr.Code, e.drv.keepState["pod-a"])
+	}
+	user, err := store.GetHumanUser(alice.HumanUserID)
+	if err != nil || user.AgentID != alice.AgentID || user.ModelConfigID != alice.ModelConfigID {
+		t.Fatal("user assets changed")
+	}
+	if _, err := db.Exec(`DROP TRIGGER fail_adoption_state`); err != nil {
+		t.Fatal(err)
+	}
+	createPodThroughAPI(t, e, body)
+}
+
+func TestRuntimeFileAdoption_E06FreshCredentialsAndUsers(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	before, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	assertStatus(t, e.do(http.MethodDelete, "/api/v1/containers/pod-a?deleteState=false", ""), http.StatusOK)
+	body := strings.Replace(testPodBody, `"maxUsers":2`, `"maxUsers":2,"adoptState":true,"restoreUsers":true`, 1)
+	createPodThroughAPI(t, e, body)
+	after, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := e.store.GetHumanUser(alice.HumanUserID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.ServiceTokenFingerprint == before.ServiceTokenFingerprint || user.AgentID != alice.AgentID || user.ModelConfigID != alice.ModelConfigID || user.PodID != "pod-a" {
+		t.Fatal("new instance credentials/user contract violated")
+	}
+	if _, err := e.store.FindPodByServiceTokenFingerprint(before.ServiceTokenFingerprint); !errors.Is(err, repo.ErrNotFound) {
+		t.Fatal("old service credential still accepted")
+	}
+	if len(e.drv.created["pod-a"].MultiUser.Agents) == 0 {
+		t.Fatal("first startup DTO missed restored users")
+	}
+}
+
+func TestRuntimeFileAdoption_E06CreationFailureAndExplicitConsent(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	alice := createTestHumanUser(t, e.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	assertStatus(t, e.do(http.MethodDelete, "/api/v1/containers/pod-a?deleteState=false", ""), http.StatusOK)
+	e.drv.createErr = driver.ErrRetainedState
+	rr := e.do(http.MethodPost, "/api/v1/containers", testPodBody)
+	if !strings.Contains(rr.Body.String(), `"code":40707`) {
+		t.Fatal("missing explicit adoption conflict")
+	}
+	e.drv.createErr = errors.New("worker create rejected")
+	body := strings.Replace(testPodBody, `"maxUsers":2`, `"maxUsers":2,"adoptState":true`, 1)
+	rr = e.do(http.MethodPost, "/api/v1/containers", body)
+	if rr.Code < 400 || !e.drv.keepState["pod-a"] {
+		t.Fatal("creation failure lost retained state")
+	}
+	user, err := e.store.GetHumanUser(alice.HumanUserID)
+	if err != nil || user.AgentID != alice.AgentID || user.ModelConfigID != alice.ModelConfigID {
+		t.Fatal("creation failure lost user/model assets")
+	}
+}
 
 const (
 	testWeComSecret = "test-wecom-secret"

@@ -4,9 +4,11 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -22,6 +24,25 @@ import {
 const fixturePath = fileURLToPath(
   new URL("./fixtures/runtime-v1.json", import.meta.url),
 );
+
+test("S-05 transaction prepare and commit consume stdin despite startup file and env", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-transaction-stdin-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runtime = runtimeForRoot(root), target = join(root, "openclaw.json");
+  writeFileSync(target, JSON.stringify({ gateway: { mode: "local" } }));
+  const file = join(root, "startup.json");
+  writeFileSync(file, "invalid file must not be consumed");
+  for (const mode of ["prepare", "commit"]) {
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL("../runtime-config-transaction.mjs", import.meta.url)), mode], {
+      env: { ...process.env, MUAD_RUNTIME_CONFIG_FILE: file, MUAD_RUNTIME_CONFIG: "invalid env", OPENCLAW_CONFIG_PATH: target },
+      input: JSON.stringify(runtime), encoding: "utf8", timeout: 5000,
+    });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).generation, runtime.generation);
+  }
+  assert.equal(JSON.parse(readFileSync(target, "utf8")).plugins.entries["muad-runtime-guard"].config.generation, runtime.generation);
+});
 
 test("transaction prepares, commits and rolls back an atomic config candidate", () => {
   const root = mkdtempSync(join(tmpdir(), "muad-config-transaction-"));

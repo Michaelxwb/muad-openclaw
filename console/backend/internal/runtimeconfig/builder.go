@@ -252,17 +252,22 @@ func runtimeSkillGrants(
 		grants = append(grants, driver.RuntimeSkillGrant{
 			Name: skill.Name, Source: skill.EffectiveSource, SkillID: effectiveSkillID(skill),
 			Version: skill.Version, EntryType: skill.EntryType,
-			RootPath: runtimeSkillRoot(stateRoot, publicRoot, agentID, skill),
-			LongTask: skill.LongTask,
-			ScriptFiles: append(
-				make([]string, 0, len(skill.ScriptFiles)), skill.ScriptFiles...,
-			),
+			RootPath:    runtimeSkillRoot(stateRoot, publicRoot, agentID, skill),
+			LongTask:    skill.LongTask,
+			ScriptFiles: runtimeSkillScriptFiles(skill),
 		})
 	}
 	slices.SortFunc(grants, func(left, right driver.RuntimeSkillGrant) int {
 		return strings.Compare(left.Name, right.Name)
 	})
 	return grants
+}
+
+func runtimeSkillScriptFiles(skill repo.EffectiveSkill) []string {
+	if skill.EntryType != repo.SkillEntryTraditionalScript {
+		return []string{}
+	}
+	return copyStrings(skill.ScriptFiles)
 }
 
 func runtimeSkillRoot(

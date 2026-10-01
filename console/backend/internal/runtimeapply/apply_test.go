@@ -5,12 +5,146 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	runtimedriver "github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 )
+
+type testStartupSource struct {
+	t                        *testing.T
+	driver                   *fakeDriver
+	mode                     RestartMode
+	published, restored      bool
+	failPublish, failRestore bool
+	cancel                   context.CancelFunc
+}
+
+func (source *testStartupSource) SnapshotStartupConfig(context.Context, string) (runtimedriver.RuntimeStartupSnapshot, error) {
+	if source.driver.validateCalls == 0 || source.driver.committed {
+		source.t.Fatal("snapshot did not follow validate and precede commit")
+	}
+	return runtimedriver.RuntimeStartupSnapshot{Mode: runtimedriver.RuntimeStartupFile, RuntimeJSON: []byte("previous")}, nil
+}
+
+func (source *testStartupSource) SyncRuntimeConfig(ctx context.Context, _ string, config runtimedriver.RuntimeConfigV1) error {
+	if !source.driver.committed || config.Generation != 7 {
+		source.t.Fatal("published uncommitted or wrong generation")
+	}
+	if source.mode == RestartPod {
+		if source.driver.podRestarts != 0 {
+			source.t.Fatal("startup source published after Pod restart")
+		}
+	} else if source.driver.routeVerifyCalls == 0 {
+		source.t.Fatal("startup source published before health")
+	}
+	source.published = true
+	if source.cancel != nil {
+		source.cancel()
+		return ctx.Err()
+	}
+	if source.failPublish {
+		return errors.New("startup publish failed")
+	}
+	return nil
+}
+
+func TestRuntimeStartupSource_S13ValidationRejectsPublication(t *testing.T) {
+	driver := newFakeDriver(RestartPod)
+	driver.failValidate = true
+	source := &testStartupSource{t: t, driver: driver, mode: RestartPod}
+	applier, err := New(driver, Options{StartupSource: source})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = applier.Apply(context.Background(), startupSourceRequest(t))
+	assertApplyStage(t, err, StageValidate)
+	if source.published || driver.committed {
+		t.Fatal("invalid candidate published")
+	}
+}
+
+func TestRuntimeStartupSource_S13CancellationRecovers(t *testing.T) {
+	driver := newFakeDriver(RestartNone)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	source := &testStartupSource{t: t, driver: driver, mode: RestartNone, cancel: cancel}
+	applier, err := New(driver, Options{HealthTimeout: 20 * time.Millisecond, PollInterval: time.Millisecond, StartupSource: source})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = applier.Apply(ctx, startupSourceRequest(t))
+	if !errors.Is(err, context.Canceled) || !source.restored || !driver.rolledBack {
+		t.Fatalf("cancellation recovery: %v", err)
+	}
+}
+
+func (source *testStartupSource) RestoreStartupConfig(ctx context.Context, _ string, snapshot runtimedriver.RuntimeStartupSnapshot) error {
+	if ctx.Err() != nil {
+		source.t.Fatal("recovery reused cancelled context")
+	}
+	if string(snapshot.RuntimeJSON) != "previous" {
+		source.t.Fatal("wrong recovery source")
+	}
+	source.restored = true
+	if source.failRestore {
+		return errors.New("source restore failed")
+	}
+	return nil
+}
+
+func TestRuntimeStartupSource_S13PublishOrder(t *testing.T) {
+	for _, mode := range []RestartMode{RestartNone, RestartGateway, RestartPod} {
+		t.Run(string(mode), func(t *testing.T) {
+			driver := newFakeDriver(mode)
+			source := &testStartupSource{t: t, driver: driver, mode: mode}
+			applier, err := New(driver, Options{HealthTimeout: 20 * time.Millisecond, PollInterval: time.Millisecond, StartupSource: source})
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := startupSourceRequest(t)
+			if _, err := applier.Apply(context.Background(), request); err != nil {
+				t.Fatal(err)
+			}
+			if !source.published || source.restored {
+				t.Fatal("startup source state incorrect")
+			}
+		})
+	}
+}
+
+func TestRuntimeStartupSource_S13SyncFailureRecovery(t *testing.T) {
+	for _, failRestore := range []bool{false, true} {
+		t.Run(fmt.Sprint(failRestore), func(t *testing.T) {
+			driver := newFakeDriver(RestartNone)
+			source := &testStartupSource{t: t, driver: driver, mode: RestartNone, failPublish: true, failRestore: failRestore}
+			applier, err := New(driver, Options{HealthTimeout: 20 * time.Millisecond, PollInterval: time.Millisecond, StartupSource: source})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = applier.Apply(context.Background(), startupSourceRequest(t))
+			var failure *ApplyError
+			if !errors.As(err, &failure) || !source.restored || !driver.rolledBack {
+				t.Fatalf("sync failure did not recover: %v", err)
+			}
+			if (failure.RecoveryError != nil) != failRestore {
+				t.Fatalf("restore failure hidden: %v", failure.RecoveryError)
+			}
+		})
+	}
+}
+
+func startupSourceRequest(t *testing.T) Request {
+	t.Helper()
+	raw, err := os.ReadFile("../../../../bin/test/fixtures/runtime-v1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return Request{PodID: "pod-a", Generation: 7, RuntimeJSON: raw}
+}
 
 func TestApplyGatewayRestartSuccess(t *testing.T) {
 	driver := newFakeDriver(RestartGateway)

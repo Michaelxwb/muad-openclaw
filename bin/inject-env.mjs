@@ -137,6 +137,7 @@ function enabledChannels(config) {
 }
 
 function readOptionalStdin(env) {
+  if (String(env.MUAD_RUNTIME_CONFIG_FILE ?? "").trim()) return "";
   if (String(env.MUAD_RUNTIME_CONFIG ?? "").trim() || process.stdin.isTTY) return "";
   return readFileSync(0, "utf8");
 }

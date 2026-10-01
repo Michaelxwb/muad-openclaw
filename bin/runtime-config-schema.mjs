@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { isAbsolute } from "node:path";
+
 const RUNTIME_VERSION = 1;
 const SERVICE_TOKEN_FILE = "/run/secrets/muad/pod-service-token";
 const ID_PATTERN = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/;
@@ -24,8 +27,8 @@ export function parseRuntimeConfig(input) {
   if (typeof input === "string") {
     try {
       value = JSON.parse(input);
-    } catch (error) {
-      throw new Error(`invalid Runtime DTO JSON: ${error.message}`);
+    } catch {
+      throw new Error("invalid Runtime DTO JSON");
     }
   }
   validateRuntimeConfig(value);
@@ -33,10 +36,28 @@ export function parseRuntimeConfig(input) {
 }
 
 export function readRuntimeConfig({ env = process.env, stdinText = "" } = {}) {
+  const file = String(env.MUAD_RUNTIME_CONFIG_FILE ?? "").trim();
+  if (file) return readRuntimeConfigFile(file);
   const fromEnv = String(env.MUAD_RUNTIME_CONFIG ?? "").trim();
   const source = fromEnv || String(stdinText).trim();
   if (!source) throw new Error("MUAD_RUNTIME_CONFIG or stdin Runtime DTO is required");
   return parseRuntimeConfig(source);
+}
+
+function readRuntimeConfigFile(file) {
+  if (!isAbsolute(file)) throw new Error("MUAD_RUNTIME_CONFIG_FILE must be an absolute path");
+  let text;
+  try {
+    text = readFileSync(file, "utf8");
+  } catch (error) {
+    throw new Error(`cannot read Runtime DTO file ${file}: ${error.code ?? "read failed"}`);
+  }
+  if (!text.trim()) throw new Error(`Runtime DTO file ${file} is empty`);
+  try {
+    return parseRuntimeConfig(text);
+  } catch (error) {
+    throw new Error(`invalid Runtime DTO file ${file}: ${error.message}`);
+  }
 }
 
 export function validateRuntimeConfig(value) {

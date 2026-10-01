@@ -150,6 +150,15 @@ func (d *K8sDriver) ReplaceRuntime(ctx context.Context, spec PodSpec) error {
 	if err := d.UpdateSpec(ctx, spec.PodID, spec); err != nil {
 		return err
 	}
+	if spec.MultiUser.Version != 0 {
+		payload, err := BuildRuntimeStartupPayload(spec)
+		if err != nil {
+			return err
+		}
+		if err := d.upsertRuntimeSecret(ctx, spec.PodID, payload.RuntimeJSON); err != nil {
+			return err
+		}
+	}
 	return d.upsertDeployment(ctx, spec, ContainerName(spec.PodID))
 }
 
@@ -192,12 +201,73 @@ func (d *K8sDriver) ensureStatePVC(ctx context.Context, podID string, adopt bool
 }
 
 func (d *K8sDriver) upsertEnvSecret(ctx context.Context, spec PodSpec) error {
+	return d.writeRuntimeEnvSecret(ctx, spec, false, true)
+}
+
+func (d *K8sDriver) writeRuntimeEnvSecret(ctx context.Context, spec PodSpec, preserveLegacy, publishConfig bool) error {
+	var env map[string]string
+	if spec.MultiUser.Version != 0 {
+		payload, err := BuildRuntimeStartupPayload(spec)
+		if err != nil {
+			return err
+		}
+		env = payload.Environment
+		if publishConfig {
+			if err := d.upsertRuntimeSecret(ctx, spec.PodID, payload.RuntimeJSON); err != nil {
+				return err
+			}
+		}
+	} else {
+		env = BuildEnv(spec)
+	}
 	name := ContainerName(spec.PodID) + "-env"
+	if preserveLegacy {
+		current, err := d.client.CoreV1().Secrets(d.namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		if err == nil {
+			if value := secretValue(current, "MUAD_RUNTIME_CONFIG"); value != "" {
+				env["MUAD_RUNTIME_CONFIG"] = value
+				delete(env, "MUAD_RUNTIME_CONFIG_FILE")
+			}
+		}
+	}
 	sec := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.PodID)},
-		StringData: BuildEnv(spec),
+		StringData: env,
 	}
 	return d.upsertSecret(ctx, sec)
+}
+
+func secretValue(secret *corev1.Secret, key string) string {
+	if value := secret.StringData[key]; value != "" {
+		return value
+	}
+	return string(secret.Data[key])
+}
+
+func (d *K8sDriver) upsertRuntimeSecret(ctx context.Context, podID string, raw []byte) error {
+	return d.upsertSecret(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: ContainerName(podID) + "-runtime-config", Namespace: d.namespace, Labels: d.labels(podID)},
+		StringData: map[string]string{RuntimeConfigFileName: string(raw)},
+	})
+}
+
+func (d *K8sDriver) SyncStartupConfig(ctx context.Context, spec PodSpec) error {
+	if _, err := BuildRuntimeStartupPayload(spec); err != nil {
+		return err
+	}
+	return d.SyncRuntimeConfig(ctx, spec.PodID, spec.MultiUser)
+}
+
+func runtimeFileDeployment(dep *appsv1.Deployment) bool {
+	for _, volume := range dep.Spec.Template.Spec.Volumes {
+		if volume.Name == "runtime-config" && volume.Secret != nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (d *K8sDriver) upsertServiceTokenSecret(ctx context.Context, spec PodSpec) error {
@@ -227,8 +297,8 @@ func (d *K8sDriver) upsertSecret(ctx context.Context, desired *corev1.Secret) er
 	return err
 }
 
-// UpdateSpec rewrites the per-Pod Secrets so the next rollout boots from the
-// latest desired Runtime DTO and service-token material.
+// UpdateSpec refreshes small environment and service-token material.
+// Runtime DTO publication is deferred until apply health succeeds.
 //
 // If the secret already exists, the existing OPENCLAW_GATEWAY_TOKEN is
 // preserved (re-using the caller's gatewayToken would rotate the token and
@@ -250,12 +320,8 @@ func (d *K8sDriver) UpdateSpec(ctx context.Context, podID string, spec PodSpec) 
 	} else if !apierrors.IsNotFound(err) {
 		return err
 	}
-	sec := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(podID)},
-	}
 	spec.GatewayToken = token
-	sec.StringData = BuildEnv(spec)
-	if err := d.upsertSecret(ctx, sec); err != nil {
+	if err := d.writeRuntimeEnvSecret(ctx, spec, true, false); err != nil {
 		return err
 	}
 	return d.upsertServiceTokenSecret(ctx, spec)
@@ -269,10 +335,13 @@ func (d *K8sDriver) UpdateServiceToken(ctx context.Context, podID string, secret
 }
 
 func (d *K8sDriver) upsertDeployment(ctx context.Context, spec PodSpec, name string) error {
-	dep := d.deployment(spec, name)
+	return d.upsertRuntimeDeployment(ctx, d.deployment(spec, name))
+}
+
+func (d *K8sDriver) upsertRuntimeDeployment(ctx context.Context, dep *appsv1.Deployment) error {
 	api := d.client.AppsV1().Deployments(d.namespace)
 	if _, err := api.Create(ctx, dep, metav1.CreateOptions{}); apierrors.IsAlreadyExists(err) {
-		cur, gerr := api.Get(ctx, name, metav1.GetOptions{})
+		cur, gerr := api.Get(ctx, dep.Name, metav1.GetOptions{})
 		if gerr != nil {
 			return gerr
 		}
@@ -286,22 +355,8 @@ func (d *K8sDriver) upsertDeployment(ctx context.Context, spec PodSpec, name str
 
 func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 	runtime := d.runtime.withDefaults()
-	vols := []corev1.Volume{{
-		Name:         "state",
-		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: name + "-state"}},
-	}}
-	mounts := []corev1.VolumeMount{{Name: "state", MountPath: runtime.StateDir}}
-	if spec.ServiceToken.Value != "" {
-		vols = append(vols, serviceTokenVolumes(name)...)
-		mounts = append(mounts, corev1.VolumeMount{
-			Name: "service-token-runtime", MountPath: "/run/secrets/muad", ReadOnly: true,
-		})
-	}
-	if d.publicSkillsConfigured() {
-		vols = append(vols, publicSkillsVolume(d.skillsPVC))
-		mounts = append(mounts, d.publicSkillsVolumeMount())
-	}
-	return &appsv1.Deployment{
+	vols, mounts := d.deploymentVolumes(spec, name)
+	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.PodID)},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: ptr(int32(1)),
@@ -314,16 +369,8 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					AutomountServiceAccountToken: ptr(false),
 					NodeSelector:                 cloneStringMap(d.workerNodeSelector),
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: ptr(true),
-						RunAsUser:    ptr(int64(DefaultRuntimeUID)),
-						RunAsGroup:   ptr(int64(DefaultRuntimeGID)),
-						FSGroup:      ptr(int64(DefaultRuntimeGID)),
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
-					Volumes: vols,
+					SecurityContext:              runtimePodSecurityContext(),
+					Volumes:                      vols,
 					Containers: []corev1.Container{{
 						Name:            "openclaw",
 						Image:           spec.ImageTag,
@@ -348,6 +395,10 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 			},
 		},
 	}
+	if spec.MultiUser.Version != 0 {
+		configureRuntimeFileDeployment(dep, name)
+	}
+	return dep
 }
 
 func cloneStringMap(values map[string]string) map[string]string {
@@ -460,6 +511,9 @@ func (d *K8sDriver) Remove(ctx context.Context, podID string, keepState bool) er
 		return err
 	}
 	if err := d.client.CoreV1().Secrets(d.namespace).Delete(ctx, name+"-service-token", metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err := d.client.CoreV1().Secrets(d.namespace).Delete(ctx, name+"-runtime-config", metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	if keepState {
@@ -674,4 +728,28 @@ func (d *K8sDriver) WorkloadBlocked(ctx context.Context, podID string) (bool, er
 		}
 	}
 	return false, nil
+}
+
+func (d *K8sDriver) deploymentVolumes(spec PodSpec, name string) ([]corev1.Volume, []corev1.VolumeMount) {
+	runtime := d.runtime.withDefaults()
+	vols := []corev1.Volume{{
+		Name:         "state",
+		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: name + "-state"}},
+	}}
+	mounts := []corev1.VolumeMount{{Name: "state", MountPath: runtime.StateDir}}
+	if spec.ServiceToken.Value != "" {
+		vols = append(vols, serviceTokenVolumes(name)...)
+		mounts = append(mounts, corev1.VolumeMount{
+			Name: "service-token-runtime", MountPath: "/run/secrets/muad", ReadOnly: true,
+		})
+	}
+	if d.publicSkillsConfigured() {
+		vols = append(vols, publicSkillsVolume(d.skillsPVC))
+		mounts = append(mounts, d.publicSkillsVolumeMount())
+	}
+	return vols, mounts
+}
+
+func runtimePodSecurityContext() *corev1.PodSecurityContext {
+	return &corev1.PodSecurityContext{RunAsNonRoot: ptr(true), RunAsUser: ptr(int64(DefaultRuntimeUID)), RunAsGroup: ptr(int64(DefaultRuntimeGID)), FSGroup: ptr(int64(DefaultRuntimeGID)), SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}}
 }

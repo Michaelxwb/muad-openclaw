@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -18,6 +19,145 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
+
+func fileRuntimeSpec(t *testing.T, podID string) PodSpec {
+	t.Helper()
+	raw, err := os.ReadFile("../../../../bin/test/fixtures/runtime-v1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := testPodSpec(podID, "worker:file")
+	if err := json.Unmarshal(raw, &spec.MultiUser); err != nil {
+		t.Fatal(err)
+	}
+	spec.MultiUser.PodID = podID
+	return spec
+}
+
+func TestRuntimeFileTask005_B02ResourcesAndIsolation(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	for _, id := range []string{"alice", "bob"} {
+		spec := fileRuntimeSpec(t, id)
+		if err := d.Create(ctx, spec); err != nil {
+			t.Fatal(err)
+		}
+		name := ContainerName(id)
+		sec, err := d.client.CoreV1().Secrets(d.namespace).Get(ctx, name+"-runtime-config", metav1.GetOptions{})
+		if err != nil || sec.StringData[RuntimeConfigFileName] == "" {
+			t.Fatalf("runtime Secret: %v", err)
+		}
+		dep, err := d.client.AppsV1().Deployments(d.namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertRuntimeFileDeployment(t, dep)
+		env, err := d.client.CoreV1().Secrets(d.namespace).Get(ctx, name+"-env", metav1.GetOptions{})
+		if err != nil || env.StringData["MUAD_RUNTIME_CONFIG"] != "" {
+			t.Fatal("file env contains DTO")
+		}
+	}
+	bob, err := d.client.CoreV1().Secrets(d.namespace).Get(ctx, ContainerName("bob")+"-runtime-config", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := fileRuntimeSpec(t, "alice")
+	spec.MultiUser.Generation++
+	if err := d.SyncStartupConfig(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	after, err := d.client.CoreV1().Secrets(d.namespace).Get(ctx, bob.Name, metav1.GetOptions{})
+	if err != nil || after.StringData[RuntimeConfigFileName] != bob.StringData[RuntimeConfigFileName] {
+		t.Fatal("Pod A changed Pod B")
+	}
+}
+
+func assertRuntimeFileDeployment(t *testing.T, dep *appsv1.Deployment) {
+	t.Helper()
+	c := dep.Spec.Template.Spec.Containers[0]
+	if len(c.EnvFrom) != 0 {
+		t.Fatal("file workload imports legacy envFrom")
+	}
+	if !hasVolumeMount(c.VolumeMounts, "runtime-config", RuntimeConfigDirectory) {
+		t.Fatal("missing readonly runtime directory")
+	}
+	for _, mount := range c.VolumeMounts {
+		if mount.Name == "runtime-config" && mount.SubPath != "" {
+			t.Fatal("runtime mount uses subPath")
+		}
+	}
+	for _, volume := range dep.Spec.Template.Spec.Volumes {
+		if volume.Name == "runtime-config" && (volume.Secret == nil || *volume.Secret.DefaultMode != 0o440) {
+			t.Fatal("unsafe Secret permissions")
+		}
+	}
+	if *dep.Spec.Template.Spec.SecurityContext.FSGroup != DefaultRuntimeGID {
+		t.Fatal("non-root cannot read Secret")
+	}
+}
+
+func TestRuntimeFileTask005_B02PartialMigrationRetry(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := fileRuntimeSpec(t, "alice")
+	legacy := spec
+	legacy.MultiUser = RuntimeConfigV1{}
+	if err := d.Create(ctx, legacy); err != nil {
+		t.Fatal(err)
+	}
+	name := ContainerName(spec.PodID)
+	env, err := d.client.CoreV1().Secrets(d.namespace).Get(ctx, name+"-env", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	env.StringData["MUAD_RUNTIME_CONFIG"] = "legacy-runtime-sentinel"
+	if _, err := d.client.CoreV1().Secrets(d.namespace).Update(ctx, env, metav1.UpdateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	fail := true
+	d.client.(*fake.Clientset).PrependReactor("update", "deployments", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		if fail {
+			return true, nil, errors.New("rollout rejected")
+		}
+		return false, nil, nil
+	})
+	if err := d.ReplaceRuntime(ctx, spec); err == nil {
+		t.Fatal("rollout error ignored")
+	}
+	env, err = d.client.CoreV1().Secrets(d.namespace).Get(ctx, name+"-env", metav1.GetOptions{})
+	if err != nil || env.StringData["MUAD_RUNTIME_CONFIG"] != "legacy-runtime-sentinel" {
+		t.Fatal("legacy source lost before migration")
+	}
+	fail = false
+	assertFileMigrationRetryCleanup(t, d, spec)
+}
+
+func assertFileMigrationRetryCleanup(t *testing.T, d *K8sDriver, spec PodSpec) {
+	t.Helper()
+	ctx := context.Background()
+	name := ContainerName(spec.PodID)
+	if err := d.ReplaceRuntime(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := d.SyncStartupConfig(ctx, spec); err != nil {
+			t.Fatal(err)
+		}
+	}
+	env, err := d.client.CoreV1().Secrets(d.namespace).Get(ctx, name+"-env", metav1.GetOptions{})
+	if err != nil || env.StringData["MUAD_RUNTIME_CONFIG"] != "" {
+		t.Fatal("stale env not cleaned")
+	}
+	if err := d.Remove(ctx, spec.PodID, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.client.CoreV1().Secrets(d.namespace).Get(ctx, name+"-runtime-config", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatal("runtime Secret leaked")
+	}
+	if _, err := d.client.CoreV1().PersistentVolumeClaims(d.namespace).Get(ctx, name+"-state", metav1.GetOptions{}); err != nil {
+		t.Fatal("retained workspace deleted")
+	}
+}
 
 // newFakeK8s builds a K8sDriver backed by a fake clientset (no real cluster).
 func newFakeK8s(t *testing.T) *K8sDriver {
