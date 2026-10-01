@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +11,7 @@ import {
   pluginRoots,
 } from "../image-plugin-paths.mjs";
 import { injectStartupConfig } from "../inject-env.mjs";
+import { prepareTransaction, commitTransaction } from "../runtime-config-transaction.mjs";
 import {
   applyStartupContext,
   collectStartupContext,
@@ -20,6 +21,74 @@ const scriptPath = fileURLToPath(new URL("../inject-env.mjs", import.meta.url));
 const fixturePath = fileURLToPath(
   new URL("./fixtures/runtime-v1.json", import.meta.url),
 );
+
+test("S-17 retained high generation converges through stdin transaction and restart", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-adopt-converge-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const configPath = join(root, "openclaw.json"), runtimeFile = join(root, "runtime.json");
+  const old = runtimeForRoot(root); old.generation = 42;
+  injectStartupConfig({ env: startupEnv(old, "old-bot", "old-token"), configPath, writeGuidance: false });
+  const next = runtimeForRoot(root); next.generation = 1;
+  next.channels.configs.wecom.botId = "new-bot";
+  writeFileSync(runtimeFile, JSON.stringify(next));
+  const env = { ...startupEnv(next, "new-bot", "new-token"), MUAD_RUNTIME_CONFIG_FILE: runtimeFile };
+  const adopted = injectStartupConfig({ env, configPath, writeGuidance: false });
+  assert.equal(adopted.preservedGeneration, 42);
+  assert.equal(adopted.config.gateway.auth.token, "new-token");
+  const prepared = prepareTransaction({ runtime: next, configPath });
+  assert.equal(prepared.generation, 1);
+  commitTransaction({ runtime: next, configPath });
+  const restarted = injectStartupConfig({ env, configPath, writeGuidance: false });
+  assert.equal(restarted.skippedStaleRuntime, false);
+  assert.equal(restarted.config.plugins.entries["muad-runtime-guard"].config.generation, 1);
+  assert.equal(restarted.config.channels.wecom.botId, "new-bot");
+  assert.equal(restarted.config.gateway.auth.token, "new-token");
+  const stale = structuredClone(next); stale.generation = 1;
+  const current = structuredClone(next); current.generation = 2;
+  writeFileSync(runtimeFile, JSON.stringify(current));
+  injectStartupConfig({ env, configPath, writeGuidance: false });
+  writeFileSync(runtimeFile, JSON.stringify(stale));
+  assert.equal(injectStartupConfig({ env, configPath, writeGuidance: false }).preservedGeneration, 2);
+});
+
+test("S-05 startup selects file without waiting for an open stdin pipe", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-startup-file-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const runtime = runtimeForRoot(root), file = join(root, "runtime.json");
+  const target = join(root, "openclaw.json");
+  writeFileSync(file, JSON.stringify(runtime));
+  const child = spawn(process.execPath, [scriptPath], {
+    env: { ...process.env, MUAD_RUNTIME_CONFIG_FILE: file, MUAD_RUNTIME_CONFIG: "", OPENCLAW_CONFIG_PATH: target },
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  t.after(() => child.kill());
+  let stderr = "";
+  child.stderr.setEncoding("utf8").on("data", chunk => { stderr += chunk; });
+  const code = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { child.kill(); reject(new Error("file startup blocked on stdin")); }, 2000);
+    child.once("error", error => { clearTimeout(timer); reject(error); });
+    child.once("exit", code => { clearTimeout(timer); resolve(code); });
+  });
+  assert.equal(code, 0, stderr);
+  assert.equal(JSON.parse(readFileSync(target, "utf8")).plugins.entries["muad-runtime-guard"].config.generation, runtime.generation);
+});
+
+test("S-05 startup preserves file then env then stdin priority", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-startup-priority-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const fileRuntime = runtimeForRoot(root), envRuntime = { ...fileRuntime, generation: 8 };
+  const stdinRuntime = { ...fileRuntime, generation: 9 }, file = join(root, "runtime.json");
+  writeFileSync(file, JSON.stringify(fileRuntime));
+  for (const [index, env, expected] of [
+    [0, { MUAD_RUNTIME_CONFIG_FILE: file, MUAD_RUNTIME_CONFIG: JSON.stringify(envRuntime) }, fileRuntime.generation],
+    [1, { MUAD_RUNTIME_CONFIG: JSON.stringify(envRuntime) }, 8], [2, {}, 9],
+  ]) {
+    const target = join(root, `openclaw-${index}.json`);
+    const result = runEntry({ ...process.env, MUAD_RUNTIME_CONFIG_FILE: "", MUAD_RUNTIME_CONFIG: "", ...env, OPENCLAW_CONFIG_PATH: target }, JSON.stringify(stdinRuntime));
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(readFileSync(target, "utf8")).plugins.entries["muad-runtime-guard"].config.generation, expected);
+  }
+});
 
 test("startup context replaces channel credentials and unloads disabled channel plugins", () => {
   const runtime = JSON.parse(readFileSync(fixturePath, "utf8"));

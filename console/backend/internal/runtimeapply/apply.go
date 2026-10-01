@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	runtimedriver "github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 )
 
@@ -33,6 +34,7 @@ const (
 	StageCommit   Stage = "commit"
 	StageRestart  Stage = "restart"
 	StageHealth   Stage = "health"
+	StageStartup  Stage = "startup"
 )
 
 type Driver interface {
@@ -44,6 +46,7 @@ type Driver interface {
 type Options struct {
 	HealthTimeout time.Duration
 	PollInterval  time.Duration
+	StartupSource runtimedriver.StartupConfigStore
 }
 
 type Request struct {
@@ -129,16 +132,81 @@ func (applier *Applier) Apply(ctx context.Context, request Request) (Result, err
 	if err := applier.validate(ctx, request.PodID, prepared.ConfigHash); err != nil {
 		return Result{}, applier.abortFailure(ctx, request.PodID, StageValidate, err)
 	}
-	if err := applier.commit(ctx, request); err != nil {
-		return Result{}, applier.recoverFailure(ctx, request.PodID, mode, StageCommit, err)
+	source, err := applier.prepareStartupSource(ctx, request)
+	if err != nil {
+		return Result{}, applier.abortFailure(ctx, request.PodID, StageStartup, err)
 	}
-	if err := applier.restart(ctx, request.PodID, mode); err != nil {
-		return Result{}, applier.recoverFailure(ctx, request.PodID, mode, StageRestart, err)
-	}
-	if err := applier.waitForHealth(ctx, request.PodID, request.Generation, mode, expectedRoutes); err != nil {
-		return Result{}, applier.recoverFailure(ctx, request.PodID, mode, StageHealth, err)
+	if err := applier.completeApply(ctx, request, mode, expectedRoutes, source); err != nil {
+		return Result{}, err
 	}
 	return Result{ConfigHash: prepared.ConfigHash, RestartMode: mode}, nil
+}
+
+type startupApply struct {
+	store     runtimedriver.StartupConfigStore
+	config    runtimedriver.RuntimeConfigV1
+	snapshot  runtimedriver.RuntimeStartupSnapshot
+	published bool
+}
+
+func (applier *Applier) prepareStartupSource(ctx context.Context, request Request) (*startupApply, error) {
+	state := &startupApply{store: applier.options.StartupSource}
+	if state.store == nil {
+		return state, nil
+	}
+	config, err := runtimedriver.DecodeRuntimeConfig(bytes.NewReader(request.RuntimeJSON))
+	if err != nil {
+		return nil, err
+	}
+	snapshot, err := state.store.SnapshotStartupConfig(ctx, request.PodID)
+	if err != nil {
+		return nil, err
+	}
+	state.config, state.snapshot = config, snapshot
+	return state, nil
+}
+
+func (state *startupApply) publish(ctx context.Context, podID string) error {
+	if state.store == nil {
+		return nil
+	}
+	state.published = true
+	return state.store.SyncRuntimeConfig(ctx, podID, state.config)
+}
+
+func (applier *Applier) completeApply(ctx context.Context, request Request, mode RestartMode, expectedRoutes []gateway.RouteExpectation, source *startupApply) error {
+	if err := applier.commit(ctx, request); err != nil {
+		return applier.recoverStartupFailure(ctx, request.PodID, mode, StageCommit, err, source)
+	}
+	if mode == RestartPod {
+		if err := source.publish(ctx, request.PodID); err != nil {
+			return applier.recoverStartupFailure(ctx, request.PodID, mode, StageStartup, err, source)
+		}
+	}
+	if err := applier.restart(ctx, request.PodID, mode); err != nil {
+		return applier.recoverStartupFailure(ctx, request.PodID, mode, StageRestart, err, source)
+	}
+	if err := applier.waitForHealth(ctx, request.PodID, request.Generation, mode, expectedRoutes); err != nil {
+		return applier.recoverStartupFailure(ctx, request.PodID, mode, StageHealth, err, source)
+	}
+	if mode != RestartPod {
+		if err := source.publish(ctx, request.PodID); err != nil {
+			return applier.recoverStartupFailure(ctx, request.PodID, mode, StageStartup, err, source)
+		}
+	}
+	return nil
+}
+
+func (applier *Applier) recoverStartupFailure(ctx context.Context, podID string, mode RestartMode, stage Stage, cause error, source *startupApply) *ApplyError {
+	recoveryCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), applier.options.HealthTimeout)
+	defer cancel()
+	var sourceError error
+	if source.published {
+		sourceError = source.store.RestoreStartupConfig(recoveryCtx, podID, source.snapshot)
+	}
+	failure := applier.recoverFailure(recoveryCtx, podID, mode, stage, cause)
+	failure.RecoveryError = errors.Join(sourceError, failure.RecoveryError)
+	return failure
 }
 
 func validateRequest(request Request) error {

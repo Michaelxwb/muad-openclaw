@@ -191,21 +191,20 @@ func (s *Server) provisionPod(
 ) error {
 	spec, err := s.buildDesiredPodSpec(pod)
 	if err != nil {
-		_ = s.store.UpdatePodState(pod.PodID, repo.PodStateError)
-		return err
+		return errors.Join(err, s.store.UpdatePodState(pod.PodID, repo.PodStateError))
 	}
 	spec.ServiceToken = tokenSecret(token.plain)
 	spec.AdoptState = adoptState
 	if err := s.drv.Create(r.Context(), spec); err != nil {
 		if errors.Is(err, driver.ErrRetainedState) {
-			_ = s.store.DeletePod(pod.PodID)
+			err = errors.Join(err, s.store.DeletePod(pod.PodID))
 		} else {
-			_ = s.store.UpdatePodState(pod.PodID, repo.PodStateError)
+			err = errors.Join(err, s.store.UpdatePodState(pod.PodID, repo.PodStateError))
 		}
 		return err
 	}
 	if err := s.store.UpdatePodState(pod.PodID, repo.PodStateRunning); err != nil {
-		removeErr := s.drv.Remove(r.Context(), pod.PodID, false)
+		removeErr := s.drv.Remove(r.Context(), pod.PodID, adoptState)
 		deleteErr := s.store.DeletePod(pod.PodID)
 		return errors.Join(err, removeErr, deleteErr)
 	}
@@ -317,7 +316,7 @@ func (s *Server) handlePatchPod(w http.ResponseWriter, r *http.Request) {
 		s.handlePatchPodImageChange(w, r, pod, update)
 		return
 	}
-	if err := s.store.UpdatePod(pod.PodID, update); err != nil {
+	if err := s.updatePodMetadata(r.Context(), pod, update); err != nil {
 		writeRepoError(w, r, err)
 		return
 	}
@@ -356,15 +355,24 @@ func (s *Server) handlePatchPodImageChange(
 }
 
 func (s *Server) updatePodImageViaPatch(ctx context.Context, pod repo.Pod, update repo.PodUpdate) error {
-	err := s.runPodExclusive(ctx, pod.PodID, func(runCtx context.Context) error {
+	return s.runPodExclusive(ctx, pod.PodID, func(runCtx context.Context) error {
 		opCtx, cancel := podRuntimeOperationContext(runCtx)
 		defer cancel()
 		_, upgradeErr := s.performPodUpgrade(opCtx, pod, update.ImageTag)
-		return upgradeErr
+		if upgradeErr != nil {
+			return upgradeErr
+		}
+		return s.mergePodMetadata(pod, update)
 	})
-	if err != nil {
-		return err
-	}
+}
+
+func (s *Server) updatePodMetadata(ctx context.Context, pod repo.Pod, update repo.PodUpdate) error {
+	return s.runPodExclusive(ctx, pod.PodID, func(context.Context) error {
+		return s.mergePodMetadata(pod, update)
+	})
+}
+
+func (s *Server) mergePodMetadata(pod repo.Pod, update repo.PodUpdate) error {
 	if update.DisplayName == pod.DisplayName && update.MaxUsers == pod.MaxUsers {
 		return nil
 	}
@@ -373,8 +381,12 @@ func (s *Server) updatePodImageViaPatch(ctx context.Context, pod repo.Pod, updat
 		return errors.Join(errPodPatchMetadata, err)
 	}
 	nonImage := podUpdateFrom(latest)
-	nonImage.DisplayName = update.DisplayName
-	nonImage.MaxUsers = update.MaxUsers
+	if update.DisplayName != pod.DisplayName {
+		nonImage.DisplayName = update.DisplayName
+	}
+	if update.MaxUsers != pod.MaxUsers {
+		nonImage.MaxUsers = update.MaxUsers
+	}
 	if err := s.store.UpdatePod(pod.PodID, nonImage); err != nil {
 		return errors.Join(errPodPatchMetadata, err)
 	}

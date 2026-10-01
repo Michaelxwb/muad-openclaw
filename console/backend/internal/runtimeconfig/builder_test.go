@@ -1,12 +1,57 @@
 package runtimeconfig
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
+
+func TestRuntimeSkillScriptFiles_S01(t *testing.T) {
+	for _, entryType := range []string{repo.SkillEntryManaged, repo.SkillEntryTraditionalPrompt, repo.SkillEntryTraditionalScript} {
+		t.Run(entryType, func(t *testing.T) {
+			skill := repo.EffectiveSkill{Name: "report", Effective: true,
+				Status: repo.EffectiveSkillStatusEffective, EffectiveSource: repo.SkillScopePrivate,
+				PrivateSkillID: "private-report", Version: "v1", EntryType: entryType,
+				LongTask: true, ScriptFiles: []string{"scripts/report.py"}}
+			grants := runtimeSkillGrants([]repo.EffectiveSkill{skill}, "/state", "/public", "alice")
+			if len(grants) != 1 {
+				t.Fatalf("grants = %+v", grants)
+			}
+			grant := grants[0]
+			if grant.Name != skill.Name || grant.Source != skill.EffectiveSource || grant.SkillID != skill.PrivateSkillID ||
+				grant.Version != skill.Version || grant.EntryType != entryType || !grant.LongTask ||
+				grant.RootPath != "/state/workspace-alice/skills/report" {
+				t.Fatalf("authorization changed: %+v", grant)
+			}
+			if grant.ScriptFiles == nil {
+				t.Fatal("scriptFiles must be a non-nil array")
+			}
+			if entryType == repo.SkillEntryTraditionalScript {
+				if !reflect.DeepEqual(grant.ScriptFiles, skill.ScriptFiles) {
+					t.Fatalf("script allowlist = %v", grant.ScriptFiles)
+				}
+				grant.ScriptFiles[0] = "mutated"
+				if skill.ScriptFiles[0] != "scripts/report.py" {
+					t.Fatal("script allowlist aliases asset metadata")
+				}
+			} else {
+				if len(grant.ScriptFiles) != 0 {
+					t.Fatalf("unused script paths retained: %v", grant.ScriptFiles)
+				}
+				data, err := json.Marshal(grant.ScriptFiles)
+				if err != nil || string(data) != "[]" {
+					t.Fatalf("scriptFiles JSON = %s, err = %v", data, err)
+				}
+			}
+			if skill.ScriptFiles[0] != "scripts/report.py" {
+				t.Fatal("asset metadata changed")
+			}
+		})
+	}
+}
 
 // assemble 必须把 options.MediaMaxMb 透传给 runtime DTO（0 表示未配置）。
 func TestAssembleCarriesMediaMaxMb(t *testing.T) {

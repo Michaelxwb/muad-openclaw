@@ -44,6 +44,15 @@ type CoordinatorOptions struct {
 	BeforeApply         BeforeApplyHook
 }
 
+// NewCoordinatorApplier keeps source publication inside apply's health contract.
+func NewCoordinatorApplier(runtime Driver, source driver.StartupConfigStore, options Options) (*Applier, error) {
+	if source == nil {
+		return nil, errors.New("runtimeapply: startup source is required")
+	}
+	options.StartupSource = source
+	return New(runtime, options)
+}
+
 // errPodNotRunning 表示 Pod 当前不能 apply（stopped/creating 等）：协调器跳过
 // 本次同步——不重试、不写 failed，保留 pending 等 start 后的 enqueueReconcile 收敛。
 var errPodNotRunning = errors.New("runtimeapply: pod is not running")
@@ -93,6 +102,9 @@ func NewCoordinator(
 func (coordinator *Coordinator) RunExclusive(
 	ctx context.Context, podID string, operation func(context.Context) error,
 ) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	podID = strings.TrimSpace(podID)
 	if podID == "" || operation == nil {
 		return errors.New("runtimeapply: Pod operation is required")
@@ -101,6 +113,9 @@ func (coordinator *Coordinator) RunExclusive(
 	select {
 	case lock <- struct{}{}:
 		defer func() { <-lock }()
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		return operation(ctx)
 	case <-ctx.Done():
 		return ctx.Err()

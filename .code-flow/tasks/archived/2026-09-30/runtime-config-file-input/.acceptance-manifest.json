@@ -1,0 +1,1776 @@
+{
+  "schema": 2,
+  "task_file": "runtime-config-file-input.md",
+  "task_sha256": "7de11a8e8ecfe3ee4a5c63bbf323455ec8c63c748b8789936e73b56730ba3c69",
+  "scenarios": [
+    {
+      "id": "S-17",
+      "source": "runtime-config-file-input.design.md#2.5.2 acceptance",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Real Node startup and transaction files plus Coordinator/Applier: new DTO and credentials converge after retained high generation; same-instance stale startup still protected",
+      "owner": "TASK-014",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-c",
+        "import subprocess; subprocess.run([\"node\",\"--test\",\"bin/test/inject-env.test.mjs\"],check=True); subprocess.run([\"go\",\"test\",\"./internal/runtimeapply\",\"-run\",\"TestAdoptedGeneration\",\"-count=1\"],cwd=\"console/backend\",check=True)"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-17",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-17",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "074bb301f6654e54a66609f5635417ef",
+          "executed_at": "2026-09-30T09:55:37.369339+00:00"
+        },
+        {
+          "id": "S-17",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "5cf5559b8a044e1ea00d8e8a51e64ed5",
+          "executed_at": "2026-09-30T09:55:47.291994+00:00"
+        },
+        {
+          "id": "S-17",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-16",
+      "source": "runtime-config-file-input.design.md#2.5.2 acceptance",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Real Docker command builders and local files; external CLI fake: paired image/input recovery, original volume and token, explicit failure",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "-run",
+        "TestRuntimeFileTask011",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-16",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-16",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "384ce35a20244727aaffce7e5c8bf1e5",
+          "executed_at": "2026-09-30T09:46:37.134814+00:00"
+        },
+        {
+          "id": "S-16",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7eb102087f194577b7e351f0e0ca68e4",
+          "executed_at": "2026-09-30T09:46:50.863394+00:00"
+        },
+        {
+          "id": "S-16",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-15",
+      "source": "runtime-config-file-input.design.md#2.5.2 acceptance",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Real K8s manifest and recovery resource builders with fake API: env/file snapshot, source and image restore, token/PVC preserved",
+      "owner": "TASK-010",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "-run",
+        "TestRuntimeFileTask010",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-15",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-15",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "4b54b6a195da42d8b4e7dfd246237630",
+          "executed_at": "2026-09-30T09:43:54.760902+00:00"
+        },
+        {
+          "id": "S-15",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "27bb773d4d4d4582a6e40a583cff1ce4",
+          "executed_at": "2026-09-30T09:44:02.497592+00:00"
+        },
+        {
+          "id": "S-15",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-14",
+      "source": "runtime-config-file-input.design.md#2.5.2 acceptance",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Real Coordinator retry and production applier factory: startup-source failure never completes apply; retry uses current generation",
+      "owner": "TASK-009",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeapply",
+        "-run",
+        "TestStartupSourceReconcile",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-14",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-14",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "f3830032e0014efb88432ea189e1949b",
+          "executed_at": "2026-09-30T09:36:38.708970+00:00"
+        },
+        {
+          "id": "S-14",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "3af57d68abe64880817f0c9f5708e22a",
+          "executed_at": "2026-09-30T09:36:40.058703+00:00"
+        },
+        {
+          "id": "S-14",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-13",
+      "source": "runtime-config-file-input.design.md#2.5.2 acceptance",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Real Applier orchestration: startup publication follows validation and health; restart publication and failure restore are ordered",
+      "owner": "TASK-008",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeapply",
+        "-run",
+        "TestRuntimeStartupSource",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-13",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-13",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "2a5a66e6961d4f4294b1f20e8aa31a8f",
+          "executed_at": "2026-09-30T09:33:50.009427+00:00"
+        },
+        {
+          "id": "S-13",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "4586db0194ec4193b4f0bb324bcdbaf4",
+          "executed_at": "2026-09-30T09:33:51.322578+00:00"
+        },
+        {
+          "id": "S-13",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-12",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "本地真实文件和目录：0700/0600、owner、原子 rename、无效输入及 I/O 失败保留 last-good",
+      "owner": "TASK-006",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "-run",
+        "TestRuntimeFileTask006",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-12",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "258b7138b2654fecbef3af5dbf923a43",
+          "executed_at": "2026-09-30T09:25:42.943085+00:00"
+        },
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "31bcc366f1a640ccb3278a4b636b3855",
+          "executed_at": "2026-09-30T09:25:44.382592+00:00"
+        },
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-11",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "强类型启动 payload、真实 Go Schema 和 JSON 编解码：file env 无 DTO，错误显式返回，env/file 恢复材料 round-trip",
+      "owner": "TASK-004",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "-run",
+        "TestRuntimeFileTask004",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "d7ebd0243fd94bbbbf4ed9eda133430d",
+          "executed_at": "2026-09-30T09:16:53.662814+00:00"
+        },
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-01",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "Go grants 构建器：三种 EntryType 输出符合字段约束，复制不别名原 slice；Skill 名称/来源/目录/版本/longTask 保持",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeconfig",
+        "-run",
+        "TestRuntimeSkillScriptFiles",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "08871316f9c74864b4d53a596055053a",
+          "executed_at": "2026-09-30T09:05:18.454780+00:00"
+        },
+        {
+          "id": "S-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "6bc86fb96c4443cfb37fb9e93dde6f70",
+          "executed_at": "2026-09-30T09:06:25.846002+00:00"
+        },
+        {
+          "id": "S-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "36fe4b795cb542cf94e1924c3d173e1c",
+          "executed_at": "2026-09-30T09:08:50.070664+00:00"
+        },
+        {
+          "id": "S-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-02",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "Go DTO 生成 → Node Schema → 真实 renderer：精简前后最终配置和指导文件字节一致；无需集群",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e",
+        "./test",
+        "-run",
+        "TestRuntimeGrantRenderEquivalence",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-02",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "1220b4ffc42b4d77915b1910c340b729",
+        "executed_at": "2026-09-30T22:49:36.664937+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "08871316f9c74864b4d53a596055053a",
+          "executed_at": "2026-09-30T09:05:18.454780+00:00"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "6bc86fb96c4443cfb37fb9e93dde6f70",
+          "executed_at": "2026-09-30T09:06:25.846002+00:00"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 3,
+          "run_id": "36fe4b795cb542cf94e1924c3d173e1c",
+          "executed_at": "2026-09-30T09:08:50.070664+00:00"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "1220b4ffc42b4d77915b1910c340b729",
+          "executed_at": "2026-09-30T22:49:36.664937+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-01",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 Node 读取：声明 file 但不存在/无权限/空文件/损坏 JSON/Schema 无效 → stderr 可定位错误、非零退出、原 openclaw.json 不被覆盖；不静默回退 env",
+      "owner": "TASK-002",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "bin/test/runtime-config-schema.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "E-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9e4dd28f854c495fad8a64505c038244",
+          "executed_at": "2026-09-30T09:10:35.717967+00:00"
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "c8f0ea4de15e410ba173c247e211db7b",
+          "executed_at": "2026-09-30T09:11:19.749920+00:00"
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "b1b2e6ea2244402e88631d41e93e5f2c",
+          "executed_at": "2026-09-30T09:12:55.069823+00:00"
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-05",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 Node 文件/管道：启动 file 优先 env；无 file 时旧 env 优先 stdin；transaction 的 stdin DTO 不受启动 file/env 干扰；已知 file 时不阻塞读取 stdin",
+      "owner": "TASK-003",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "bin/test/inject-env.test.mjs",
+        "bin/test/runtime-config-transaction.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "cc6a629c1bba4b2fb90d32021285270b",
+          "executed_at": "2026-09-30T09:14:26.422998+00:00"
+        },
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "14175126b59347949c45ed39fc3332e5",
+          "executed_at": "2026-09-30T09:14:27.065647+00:00"
+        },
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-02",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "fake client：旧 env key 已不存在、部分迁移失败、Runtime Secret 已存在时可幂等继续；只清理已成功迁移资源，不误删服务令牌或保留状态",
+      "owner": "TASK-005",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "-run",
+        "TestRuntimeFileTask005",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2905982340f4cc1ad80736b34a6700f",
+          "executed_at": "2026-09-30T09:20:23.053870+00:00"
+        },
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "2015344f78da42478ec7b368a413137a",
+          "executed_at": "2026-09-30T09:20:24.440908+00:00"
+        },
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-07",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "K8s manifest 与本地真实文件权限：生成权限设置正确；原子替换不留半截 JSON；fake client/command runner 覆盖驱动写入与错误路径",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "-run",
+        "TestRuntimeFileTask007",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "a7f26f4ff3fd4f24a7b1af43a50db65e",
+          "executed_at": "2026-09-30T09:29:51.277826+00:00"
+        },
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "882374c0c5294a7f8a9f8b3b2e87d38d",
+          "executed_at": "2026-09-30T09:29:52.700462+00:00"
+        },
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-04",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "fake K8s 写入错误/真实本地磁盘权限错误：失败向上返回，秘密不泄漏；候选写入失败不替换 last-good",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "-run",
+        "TestRuntimeFileTask007",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "E-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "a7f26f4ff3fd4f24a7b1af43a50db65e",
+          "executed_at": "2026-09-30T09:29:51.277826+00:00"
+        },
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "882374c0c5294a7f8a9f8b3b2e87d38d",
+          "executed_at": "2026-09-30T09:29:52.700462+00:00"
+        },
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-03",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "httptest + fake Driver/Store：替换失败、回滚失败、取消/超时明确返回既有失败码并落终态，错误字段脱敏，不伪报 Running",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/api",
+        "./test",
+        "-run",
+        "TestRuntimeFileUpgrade",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "E-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "de648a5646cf49f49b5b71d76437b9a8",
+          "executed_at": "2026-09-30T09:49:40.757739+00:00"
+        },
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "ca43efba5ccc4ef4abd03e254c0faa88",
+          "executed_at": "2026-09-30T09:50:11.710524+00:00"
+        },
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-06",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "httptest＋真实 repo＋fake driver：接管未明确授权返回保留状态冲突；创建/状态写入失败不能删除保留卷或工作空间；用户恢复冲突明确报错；新建生成新服务凭证、旧凭证失效",
+      "owner": "TASK-013",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./test",
+        "-run",
+        "TestRuntimeFileAdoption",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "E-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "a82744ae0ad94b48be9264a61623c7cf",
+          "executed_at": "2026-09-30T09:53:34.725831+00:00"
+        },
+        {
+          "id": "E-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "c7c2d7f2f8f84820a8c99b9d3eb72f5f",
+          "executed_at": "2026-09-30T09:53:57.726339+00:00"
+        },
+        {
+          "id": "E-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-03",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实 K8s Secret → Deployment → 非 root Worker 启动：文件可读、env 不含完整 DTO，启动 generation 正确",
+      "owner": "TASK-015",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileK8sStartup",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-03",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "ee97a884c5294fd58da619b26f02665a",
+          "executed_at": "2026-09-30T10:10:12.932874+00:00"
+        },
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "7fd340750ed344cfb8703b95cad1e98c",
+          "executed_at": "2026-09-30T10:10:13.286560+00:00"
+        },
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-06",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "Console 升级 API → 存储 → 真实 K8s → Worker：旧 env Pod 切换新镜像和文件模式，PVC UID、工作空间与会话哨兵保持，凭证不意外轮换，generation/应用状态/健康收敛",
+      "owner": "TASK-015",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileK8sUpgrade",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-06",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "ee97a884c5294fd58da619b26f02665a",
+          "executed_at": "2026-09-30T10:10:12.932874+00:00"
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "7fd340750ed344cfb8703b95cad1e98c",
+          "executed_at": "2026-09-30T10:10:13.286560+00:00"
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-08",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "新 Console → 真实 K8s/Docker → 配套新 Worker：新建和升级均使用文件；普通流程没有旧镜像/env 分支；新版 loader 的历史 env 读取由 S-05 独立验证",
+      "owner": "TASK-015",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileCreateUpgradeContract",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-08",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "ee97a884c5294fd58da619b26f02665a",
+          "executed_at": "2026-09-30T10:10:12.932874+00:00"
+        },
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "7fd340750ed344cfb8703b95cad1e98c",
+          "executed_at": "2026-09-30T10:10:13.286560+00:00"
+        },
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-09",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实 runtime guard 与隔离工作区：两个用户同名私有 Skill 不串扰；system 优先；传统脚本可执行、审计归属正确、长任务行为不变、模型绑定保持",
+      "owner": "TASK-015",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileSkillIsolation",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-09",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-09",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "ee97a884c5294fd58da619b26f02665a",
+          "executed_at": "2026-09-30T10:10:12.932874+00:00"
+        },
+        {
+          "id": "S-09",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "7fd340750ed344cfb8703b95cad1e98c",
+          "executed_at": "2026-09-30T10:10:13.286560+00:00"
+        },
+        {
+          "id": "S-09",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-02",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "升级 API → 真实 K8s/Docker/Worker：已迁移 Pod 的新镜像 health 失败后恢复先前文件模式镜像及输入资源；首次旧 Pod 迁移失败恢复升级前镜像与 env 输入；保留状态；回滚 generation 单调前移；健康成功才报告恢复",
+      "owner": "TASK-015",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileUpgradeRollback",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "E-02",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "ee97a884c5294fd58da619b26f02665a",
+          "executed_at": "2026-09-30T10:10:12.932874+00:00"
+        },
+        {
+          "id": "E-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "7fd340750ed344cfb8703b95cad1e98c",
+          "executed_at": "2026-09-30T10:10:13.286560+00:00"
+        },
+        {
+          "id": "E-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-05",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实 Worker 与事务管道：Secret 传播延迟/Console 重启/迁移重复执行/配置更新和升级竞争时，启动与 apply generation 不倒退；失败不发布未经健康验证的启动配置",
+      "owner": "TASK-015",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileStartupSourceRecovery",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "E-05",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-05",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "ee97a884c5294fd58da619b26f02665a",
+          "executed_at": "2026-09-30T10:10:12.932874+00:00"
+        },
+        {
+          "id": "E-05",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "7fd340750ed344cfb8703b95cad1e98c",
+          "executed_at": "2026-09-30T10:10:13.286560+00:00"
+        },
+        {
+          "id": "E-05",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-01",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实容器启动：有效合成 DTO 的 UTF-8 bytes >128 KiB、低于平台资源限制；file 模式正常执行入口并健康。固定 10 用户且保留传统脚本，不能只用 managed 冗余路径构造后被精简掉",
+      "owner": "TASK-015",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileLargeDTO",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "B-01",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "ee97a884c5294fd58da619b26f02665a",
+          "executed_at": "2026-09-30T10:10:12.932874+00:00"
+        },
+        {
+          "id": "B-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "7fd340750ed344cfb8703b95cad1e98c",
+          "executed_at": "2026-09-30T10:10:13.286560+00:00"
+        },
+        {
+          "id": "B-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-04",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实 Docker 目录 bind → Worker：文件模式启动正常，重启可读，原子更新后读取新文件",
+      "owner": "TASK-016",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileDockerStartup_S04",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-04",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-04",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "4c1a0b7d6a0246dfad7fc0e4536a8704",
+          "executed_at": "2026-09-30T22:34:07.946192+00:00"
+        },
+        {
+          "id": "S-04",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "b84f74bf6125435da2624b8254685f25",
+          "executed_at": "2026-09-30T22:34:08.321893+00:00"
+        },
+        {
+          "id": "S-04",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-10",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实 Console 删除/创建 API → SQLite → K8s/Docker 卷 → 新 Worker：deleteState=false 后卷与用户数据保留；相同 podId、新镜像、adoptState=true、restoreUsers=true 创建，卷 UID/标识、Agent ID、会话/记忆/私有 Skill 哨兵保持；新 DTO 走文件并健康，用户身份/模型绑定恢复",
+      "owner": "TASK-016",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileRetainedWorkspace_S10",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-10",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "4c1a0b7d6a0246dfad7fc0e4536a8704",
+          "executed_at": "2026-09-30T22:34:07.946192+00:00"
+        },
+        {
+          "id": "S-10",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "b84f74bf6125435da2624b8254685f25",
+          "executed_at": "2026-09-30T22:34:08.321893+00:00"
+        },
+        {
+          "id": "S-10",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-03",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "保留卷 openclaw.json generation 高于新 Pod 记录初始 generation：同名重建后最终应用新 Pod 的通道/模型/文件 DTO 和新 gateway 凭证，不能永久停留旧配置或 token_mismatch；代次收敛与后续容器重启正常",
+      "owner": "TASK-016",
+      "status": "e2e_deferred",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileAdoptedGeneration_B03",
+        "-count=1",
+        "-timeout=45m"
+      ],
+      "cwd": "console/backend",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "B-03",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "4c1a0b7d6a0246dfad7fc0e4536a8704",
+          "executed_at": "2026-09-30T22:34:07.946192+00:00"
+        },
+        {
+          "id": "B-03",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 2,
+          "run_id": "b84f74bf6125435da2624b8254685f25",
+          "executed_at": "2026-09-30T22:34:08.321893+00:00"
+        },
+        {
+          "id": "B-03",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-18",
+      "source": "runtime-config-file-input.design.md#4.3 回滚与热更新",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 HTTP handler、SQLite 与互斥队列；排队前的旧快照不能覆盖最新设置，普通更新与镜像升级同锁",
+      "owner": "TASK-017",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./test",
+        "-run",
+        "TestRuntimeFileConcurrency",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-18",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-18",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "e479166197944648b034190f48491fca",
+          "executed_at": "2026-09-30T22:36:12.051208+00:00"
+        },
+        {
+          "id": "S-18",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "974487eac90749ca818b804be5479d06",
+          "executed_at": "2026-09-30T22:36:17.158170+00:00"
+        },
+        {
+          "id": "S-18",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-19",
+      "source": "runtime-config-file-input.design.md#4.3 回滚与热更新",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 Secret/manifest、本地私有文件、HTTP/SQLite；仅外部 K8s/CLI fake；缺失 workload 从可靠恢复材料重建原 env/file，凭证/卷保留，材料缺失或损坏明确失败",
+      "owner": "TASK-018",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "./test",
+        "-run",
+        "TestRuntimeFileRecovery",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-19",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-19",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "b94580cd8bca42d49f59877d721a880d",
+          "executed_at": "2026-09-30T22:40:23.550566+00:00"
+        },
+        {
+          "id": "S-19",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "bf88ca6aac854022bb9b63d1da4e20e6",
+          "executed_at": "2026-09-30T22:40:25.382053+00:00"
+        },
+        {
+          "id": "S-19",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-20",
+      "source": "runtime-config-file-input.design.md#3.5 规范约束",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "原 driver 全量测试断言保持：仅拆分新增或扩大的函数，挂载/manifest/输入恢复行为不变",
+      "owner": "TASK-019",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-20",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-20",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "be7cbf9e275247388ba3d4c362ae5283",
+          "executed_at": "2026-09-30T22:41:35.528439+00:00"
+        },
+        {
+          "id": "S-20",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "15b47fbf07e0482287e883d6c629d140",
+          "executed_at": "2026-09-30T22:41:37.384185+00:00"
+        },
+        {
+          "id": "S-20",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-21",
+      "source": "runtime-config-file-input.design.md#3.5 规范约束",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "原 Docker 恢复测试断言保留，最后一处 fixture 拆分",
+      "owner": "TASK-020",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/driver",
+        "-run",
+        "TestRuntimeFileTask011",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "evidence": {
+        "id": "S-21",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c2094703596b486cad0fb92f525506f0",
+        "executed_at": "2026-09-30T22:42:46.171301+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c2094703596b486cad0fb92f525506f0",
+          "executed_at": "2026-09-30T22:42:46.171301+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-22",
+      "source": "runtime-config-file-input.design.md#2.5.2 验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 HTTP handler/SQLite 的 Human User GET/PATCH：E2E helper 正确读取 humanUser 包装，prompt 修改实际递增配置代次并更新用户",
+      "owner": "TASK-021",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "-tags=e2e,integration",
+        "./test",
+        "-run",
+        "TestRuntimeFileUserDetailContract",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "cf3c99131d4b483da605d73c5adc420b",
+        "executed_at": "2026-09-30T23:09:27.797926+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ded0b5e1c5ff4e09819fc6148ea0d030",
+          "executed_at": "2026-09-30T23:09:26.072212+00:00"
+        },
+        {
+          "id": "S-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "cf3c99131d4b483da605d73c5adc420b",
+          "executed_at": "2026-09-30T23:09:27.797926+00:00"
+        }
+      ]
+    }
+  ]
+}
