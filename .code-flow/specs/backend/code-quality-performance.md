@@ -13,8 +13,7 @@ verifiers:
     type: regex
     config:
       pattern: 'writeErr\([^)]*"[^")]*"'
-      files:
-        - console/backend/internal/api/**
+      files: 'console/backend/internal/api/**'
       message: "writeErr 只传 errcode 常量，禁止字符串 message（旧签名残留）"
 ---
 

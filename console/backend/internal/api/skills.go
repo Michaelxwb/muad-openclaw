@@ -734,10 +734,16 @@ func (s *Server) privateSkillTarget(
 }
 
 func (s *Server) readPrivateSkillUpload(w http.ResponseWriter, r *http.Request) (skillBundleUpload, bool) {
+	if !setSkillUploadReadDeadline(w, r) {
+		return skillBundleUpload{}, false
+	}
 	return readSkillBundleUpload(w, r, s.cfg.SkillMaxUploadBundleBytes, ".tar.gz", ".zip")
 }
 
 func (s *Server) readPublicSkillUpload(w http.ResponseWriter, r *http.Request) (skillBundleUpload, bool) {
+	if !setSkillUploadReadDeadline(w, r) {
+		return skillBundleUpload{}, false
+	}
 	return readSkillBundleUpload(w, r, s.cfg.SkillMaxUploadBundleBytes, ".tar.gz", ".zip")
 }
 
@@ -813,6 +819,9 @@ func skillBundleFormat(filename string, allowedExts []string) (string, bool) {
 }
 
 func multipartParseCode(err error) int {
+	if isSkillUploadTimeout(err) {
+		return errcode.SkillUploadTimeout
+	}
 	if err != nil && strings.Contains(err.Error(), "request body too large") {
 		return errcode.SkillBundleTooLarge
 	}
@@ -820,6 +829,9 @@ func multipartParseCode(err error) int {
 }
 
 func multipartParseDetail(err error, maxBytes int64, lang langCode) string {
+	if isSkillUploadTimeout(err) {
+		return ""
+	}
 	if lang == langEN {
 		if multipartParseCode(err) == errcode.SkillBundleTooLarge {
 			return fmt.Sprintf("Uploaded multipart body exceeds the limit %s", formatBytes(maxBytes))

@@ -1,363 +1,48 @@
-import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { createSkillPreflightReadHooks } from "./skill-preflight-context.mjs";
 
-import { explicitSkillName } from "./skill-hooks.mjs";
-import { taskIdLine } from "./long-task-manager.mjs";
-
-const READ_PATH_KEYS = ["path", "file_path", "filePath", "file"];
 const TURN_CONTEXT_TTL_MS = 10 * 60_000;
 const KNOWN_CHANNEL_TYPES = new Set(["wecom", "mattermost", "openclaw-weixin", "wechat", "weixin"]);
-const LONG_TASK_SUBMIT_STUB_PREFIX = "_longtask_submit_";
-const SUPPORTED_LOCALES = new Set(["zh", "en"]);
-// 桩文件清扫阈值：超过 24h 未动的桩视为残留（进程崩溃后 stubFiles 内存 map 丢失，
-// 桩文件不会随 agent_end/TTL 清理）。运行中任务的桩 mtime 是新鲜的，不会被误删。
-const STUB_STALE_MS = 24 * 60 * 60 * 1000;
 
-// 桩文件格式（命名常量）：模型读到的是提交协议而非真实 SKILL.md。桩内容=协议头 +
-// 按 locale 渲染的确认文案（模型照抄后即投递，直投型 IM 无需 hook 也能一致）。
-const LONG_TASK_SUBMIT_STUB_FORMAT = (confirmation) => `# Long Task
-
-This Skill runs as a background task. Do not execute the real task in the current conversation, and do not run any tools or scripts for it.
-
-Your reply will be sent to the user exactly as you write it. Output the confirmation below verbatim, keeping the task ID and queue counts, as your complete final reply. Do not add, remove, or rephrase anything:
-
-${confirmation}
-
-Do not output any special marker or machine-readable first line.
-`;
-
-// 确认文案国际化：按 guard config.locale（默认 zh）渲染；deploy 时经 runtime.locale 下发。
-const CONFIRMATION_TEMPLATES = {
-  zh: ({ skillName, taskId, queued, active }) => {
-    const idLine = taskIdLine("zh", taskId);
-    const idLineWithNewline = idLine ? `${idLine}\n` : "";
-    return `任务已提交：${skillName}\n${idLineWithNewline}当前排队：${queued} ｜ 执行中：${active}\n完成后结果会自动推送给你，可继续发消息。`;
-  },
-  en: ({ skillName, taskId, queued, active }) => {
-    const idLine = taskIdLine("en", taskId);
-    const idLineWithNewline = idLine ? `${idLine}\n` : "";
-    return `Task submitted: ${skillName}\n${idLineWithNewline}Queued: ${queued} | Running: ${active}\nResults will be pushed to you when done; keep messaging freely.`;
-  },
-};
-
-export function createLongTaskHooks({
-  getConfig, manager, resolveWorkspace, now = () => Date.now(), log = () => {},
-}) {
-  // 动态读最新 config：长任务 grant 在 skill 上传/reconcile 后会更新 openclaw.json，
-  // 但插件 register 时快照的 config 不会变（reload-plugins 不重跑 register）。每次
-  // hook 触发时读最新，上传长任务 skill 无需重启 pod 即可生效。
+export function createLongTaskHooks({ getConfig, ledger, turns = new Map(), now = () => Date.now(), log = () => {} }) {
   const currentConfig = () => (typeof getConfig === "function" ? getConfig() : getConfig) ?? {};
-  const locale = () => normalizedLocale(currentConfig().locale);
-  const turnContexts = new Map();
-  // runId -> 提交结果快照（task/queued/active/skillName）：read 长任务 SKILL.md 时即入队，
-  // reply_payload_sending 投递前一次性消费；直投型 IM 不消费，由 TTL 过期清理。
-  const submitted = new Map();
-  // runId -> { path, cleanup }：本次 turn 生成的 per-task 提交桩文件，agent_end / TTL 时删除。
-  const stubFiles = new Map();
-  const diag = (message) => log(`[longtask] ${message}`);
-  // 插件启动清扫：崩溃后内存 map 丢失，残留桩文件按前缀 + mtime 过期清理。
-  sweepStaleSubmitStubs(currentConfig(), resolveWorkspace, now(), diag);
-  // 自然语言确定 longtask skill 后，模型绕过 read 直接跑脚本（exec/bash）时：
-  // 用命令里的路径 token 判定是否命中授权 root，命中则 deny（防脚本真的在主会话
-  // 执行出副作用）并同时入队——与 read 拦截行为一致，不依赖模型是否读过 SKILL.md。
-  const interceptShellCommand = (event, ctx, runId) => {
-    const command = shellCommandText(event);
-    const grant = findGrantForCommand(currentConfig(), event, ctx, command);
-    if (!grant) return undefined;
-    if (!submitted.has(runId)) {
-      const turn = turnContexts.get(runId) ?? {};
-      const submit = safeSubmit(() => submitLongTask(manager, grant, event, ctx, {
-        originalPrompt: textValue(turn.prompt) || promptText(event),
-        sessionKey: turn.sessionKey,
-        agentId: turn.agentId,
-        peerId: turn.peerId,
-        locale: locale(),
-      }));
-      if (!submit) {
-        diag(`exec submit failed runId=${runId} skill=${grant.name}; serial execution fallback`);
-        return undefined;
-      }
-      rememberTurn(submitted, runId, { ...submit, skillName: grant.name }, now());
-      diag(`exec blocked runId=${runId} skill=${grant.name} taskId=${submit.task?.taskId ?? ""} cmd=${JSON.stringify(command).slice(0, 120)}`);
-      return { block: true, blockReason: longTaskBlockReason(grant, submit, locale()) };
-    }
-    diag(`exec re-block runId=${runId} skill=${grant.name}`);
-    return { block: true, blockReason: longTaskBlockReason(grant, null, locale()) };
-  };
+  const getTurnContext = ctx => resolveTurn(turns, ctx, now());
+  const reads = ledger ? createSkillPreflightReadHooks({ ledger, getConfig: currentConfig,
+    getTurnContext: (_event, ctx) => getTurnContext(ctx) }) : null;
   return {
-    beforeDispatch: async (event, ctx) => {
-      pruneExpired(turnContexts, now());
-      pruneExpired(submitted, now());
-      pruneExpired(stubFiles, now());
-      const skillName = explicitSkillName(promptText(event));
-      if (!skillName || isLongTaskSession(event, ctx)) return undefined;
-      const agentId = resolveAgentId(event, ctx);
-      const grant = findLongTaskGrant(currentConfig(), agentId, skillName);
-      if (!grant) return undefined;
-      const submit = safeSubmit(() => submitLongTask(manager, grant, event, ctx, {
-        originalPrompt: promptText(event),
-        stripSkillPrefix: true,
-        locale: locale(),
-      }));
-      if (!submit) return { handled: true, text: "Long Task submission failed.", reason: "muad-long-task-submit-failed" };
-      return { handled: true, text: queuedReply(submit, grant.name, locale()), reason: "muad-long-task-submitted" };
-    },
-    beforeAgentRun: async (event, ctx) => {
-      pruneExpired(turnContexts, now());
-      pruneExpired(submitted, now());
-      pruneExpired(stubFiles, now());
+    getTurnContext,
+    beforeDispatch: async () => undefined,
+    beforeAgentRun: async (event, ctx) => rememberTrustedTurn(turns, event, ctx, now()),
+    beforeToolCall: async (event, ctx) => blockForegroundCommand(currentConfig(), event, ctx, log),
+    afterToolCall: async (event, ctx) => {
       if (isLongTaskSession(event, ctx)) return undefined;
-      const runId = textValue(event?.runId) || textValue(ctx?.runId);
-      if (!runId) return undefined;
-      rememberTurn(turnContexts, runId, {
-        prompt: promptText(event),
-        sessionKey: textValue(ctx?.sessionKey) || textValue(event?.sessionKey),
-        agentId: resolveAgentId(event, ctx),
-        peerId: resolvePeerId(event, ctx),
-      }, now());
-      diag(`before_agent_run runId=${runId} prompt=${JSON.stringify(promptText(event)).slice(0, 100)}`);
-      return undefined;
+      return reads?.afterToolCall(event, { ...ctx, runId: event?.runId || ctx?.runId });
     },
-    beforeToolCall: async (event, ctx) => {
-      pruneExpired(turnContexts, now());
-      pruneExpired(submitted, now());
-      pruneExpired(stubFiles, now());
-      if (isLongTaskSession(event, ctx)) return undefined;
-      const runId = textValue(event?.runId) || textValue(ctx?.runId);
-      if (!runId) return undefined;
-      if (event?.toolName === "exec" || event?.toolName === "bash") {
-        return interceptShellCommand(event, ctx, runId);
-      }
-      if (event?.toolName !== "read") return undefined;
-      const read = longTaskRead(currentConfig(), event, ctx);
-      if (!read) return undefined;
-      if (submitted.has(runId)) {
-        // Second read or a revision re-run: keep redirecting to the same per-task
-        // submit stub so real Skill instructions never reach the main session, but
-        // do not re-submit.
-        const record = stubFiles.get(runId);
-        const stubPath = record?.path ||
-          taskSubmitStubPath(stubOutputDir(resolveWorkspace, read.agentId), submitted.get(runId).task?.taskId);
-        diag(`read re-rewrite runId=${runId} -> ${stubPath}`);
-        return rewriteReadTo(event, read, stubPath);
-      }
-      // Reading a long-task SKILL.md is the submit signal (read-to-enqueue): the task
-      // is enqueued here, so the submit stub carries the queue counts and the model
-      // copies the full confirmation verbatim. Every IM — including direct-delivery
-      // ones like Mattermost that bypass outbound hooks — receives the identical
-      // message with task ID and queue counts. The stub lives in the writable
-      // <workspace>/.openclaw/tmp/ (the read-only Skill mount cannot hold runtime
-      // files) until agent_end / TTL.
-      const turn = turnContexts.get(runId) ?? {};
-      const taskId = randomUUID();
-      const originalPrompt = textValue(turn.prompt) || promptText(event);
-      const submit = safeSubmit(() => submitLongTask(manager, read.grant, event, ctx, {
-        taskId,
-        originalPrompt,
-        sessionKey: turn.sessionKey,
-        agentId: turn.agentId,
-        peerId: turn.peerId,
-        locale: locale(),
-      }));
-      if (!submit) {
-        diag(`read submit failed runId=${runId}; serial execution fallback`);
-        return undefined;
-      }
-      const stubPath = writeTaskSubmitStub(
-        stubOutputDir(resolveWorkspace, read.agentId), taskId, queuedReply(submit, read.grant.name, locale()),
-      );
-      if (!stubPath) {
-        // Task is already enqueued; without a stub the model reads the real SKILL.md.
-        // Keep the submitted record so a hook-capable IM still rewrites the reply.
-        rememberTurn(submitted, runId, { ...submit, skillName: read.grant.name }, now());
-        diag(`read rewrite runId=${runId} -> stub write failed; task already enqueued`);
-        return undefined;
-      }
-      rememberTurn(submitted, runId, { ...submit, skillName: read.grant.name }, now());
-      rememberTurn(stubFiles, runId, { path: stubPath, cleanup: () => rmStubFile(stubPath) }, now());
-      diag(`read rewrite runId=${runId} -> ${stubPath}`);
-      return rewriteReadTo(event, read, stubPath);
-    },
-    beforeAgentFinalize: async (event, ctx) => {
-      pruneExpired(turnContexts, now());
-      pruneExpired(submitted, now());
-      pruneExpired(stubFiles, now());
-      if (isLongTaskSession(event, ctx)) return undefined;
-      const runId = textValue(event?.runId) || textValue(ctx?.runId);
-      if (!runId || !submitted.has(runId)) return undefined;
-      // 任务已在 read 时入队（读即入队），模型第一次读桩已照抄完整确认文案。
-      // 不再 revise——revise 重跑会让模型基于记忆转述、丢失排队计数；企微由
-      // reply_payload_sending 在投递前精确覆盖，直投型 IM 保留第一次照抄。
-      diag(`finalize pass-through runId=${runId} taskId=${submitted.get(runId).task?.taskId}`);
-      return undefined;
-    },
-    // 投递前改写：openclaw 在回复真正发到 channel 前触发 reply_payload_sending，
-    // 事件带 runId/payload。按 runId 命中本 turn 的提交记录后，把投递文本替换为
-    // 含任务 ID 的确定性确认文案，一次性消费，防止改写后续普通回复。
-    replyPayloadSending: async (event, ctx) => {
-      pruneExpired(submitted, now());
-      const runId = textValue(event?.runId) || textValue(ctx?.runId);
-      const record = submitted.get(runId);
-      diag(`reply_payload_sending runId=${runId || "(none)"} sessionKey=${textValue(event?.sessionKey) || "(none)"} hit=${Boolean(record)} text=${JSON.stringify(event?.payload?.text).slice(0, 80)}`);
-      if (!runId) return undefined;
-      if (!record || typeof event?.payload?.text !== "string") return undefined;
-      submitted.delete(runId);
-      const confirmation = queuedReply(record, record.skillName, locale());
-      if (event.payload.text === confirmation) return undefined;
-      return { payload: { ...event.payload, text: confirmation } };
-    },
+    beforeAgentFinalize: async () => undefined,
+    replyPayloadSending: async () => undefined,
     agentEnd: async (event, ctx) => {
-      const runId = textValue(event?.runId) || textValue(ctx?.runId);
-      if (!runId) return undefined;
-      turnContexts.delete(runId);
-      forgetTaskSubmitStub(stubFiles, runId);
-      // 不在此删除 submitted：agent_end 先于 reply_payload_sending 触发，
-      // 删了会让投递前改写查不到记录。submitted 由 replyPayloadSending 一次性
-      // 消费，未触发投递时由 TTL 过期清理。
-      diag(`agent_end runId=${runId}`);
+      const turn = getTurnContext({ ...ctx, runId: event?.runId || ctx?.runId });
+      if (turn) { ledger?.clearTurn(turn); turns.delete(turnKey(turn)); }
       return undefined;
     },
   };
 }
 
-function safeSubmit(operation) {
-  try {
-    return operation();
-  } catch {
-    return null;
-  }
+function resolveTurn(turns, ctx, now) {
+  pruneExpired(turns, now);
+  if (!ctx || isLongTaskSession({}, ctx)) return null;
+  const candidates = [...turns.values()].filter(turn =>
+    (!ctx.runId || turn.runId === ctx.runId) && turn.agentId === ctx.agentId && turn.sessionKey === canonicalSession(ctx.sessionKey));
+  return candidates.length === 1 ? { ...candidates[0] } : null;
 }
 
-function longTaskRead(config, event, ctx) {
-  const candidate = readPathCandidate(event);
-  if (!candidate) return null;
-  const target = resolveExistingPath(candidate.value);
-  if (!target) return null;
-  const agentId = resolveAgentId(event, ctx);
-  const grant = findGrantBySkillPath(config, agentId, target);
-  if (!grant || !diskManifestIsLongTask(grant.rootPath, grant.name)) return null;
-  return { agentId, grant, candidate, skillDir: grant.rootPath };
-}
-
-function rewriteReadTo(event, read, stubPath) {
-  return {
-    params: {
-      ...event.params,
-      [read.candidate.key]: stubPath,
-    },
-  };
-}
-
-// 统一提交入口：/skill: 与自然语言共用。taskId 可选（/skill: 由 manager 生成）；
-// stripSkillPrefix 剥离 /skill:<name> 前缀作为 objective；sessionKey/agentId/peerId
-// 优先取 turn 上下文（before_agent_run 已解析），缺省再回落 event/ctx。
-function submitLongTask(manager, grant, event, ctx, options = {}) {
-  const { taskId, stripSkillPrefix = false, originalPrompt, locale = "zh" } = options;
-  return manager.submit({
-    ...(taskId ? { taskId } : {}),
-    skillName: grant.name,
-    skillRoot: grant.rootPath,
-    originalPrompt,
-    objective: stripSkillPrefix ? commandObjective(originalPrompt, grant.name) : originalPrompt,
-    sessionKey: textValue(options.sessionKey) || textValue(ctx?.sessionKey) || textValue(event?.sessionKey),
-    agentId: textValue(options.agentId) || resolveAgentId(event, ctx),
-    peerId: textValue(options.peerId) || resolvePeerId(event, ctx),
-    replyChannel: resolveReplyChannel(event, ctx),
-    locale,
-  });
-}
-
-function queuedReply(submit, skillName, locale = "zh") {
-  const template = CONFIRMATION_TEMPLATES[normalizedLocale(locale)] ?? CONFIRMATION_TEMPLATES.zh;
-  return template({
-    skillName,
-    taskId: submit?.task?.taskId,
-    queued: queueCount(submit),
-    active: activeCount(submit),
-  });
-}
-
-function queueCount(submit) {
-  return Number.isInteger(submit.queued) ? submit.queued : submit.queuedAhead ?? 0;
-}
-
-function activeCount(submit) {
-  return Number.isInteger(submit.active) ? submit.active : submit.task.status === "running" ? 1 : 0;
-}
-
-function normalizedLocale(value) {
-  const locale = textValue(value);
-  return SUPPORTED_LOCALES.has(locale) ? locale : "zh";
-}
-
-// 桩目录 = <workspace>/.openclaw/tmp/：位于 agent workspace 内，OpenClaw 原生
-// read 工具（roots=[workspace, ...skillDirs]）放行，可写（Skill 挂载只读不可写）。
-// SKILL_OUTPUT_DIR 现在位于 <workspace>/skill-outputs/<peerId>/，不受影响。
-function stubOutputDir(resolveWorkspace, agentId) {
-  const workspace = typeof resolveWorkspace === "function" ? resolveWorkspace(agentId) : "";
-  if (!workspace || !path.isAbsolute(workspace)) return "";
-  return path.join(workspace, ".openclaw", "tmp");
-}
-
-function writeTaskSubmitStub(outputsDir, taskId, confirmation) {
-  if (!outputsDir) return "";
-  const stubPath = taskSubmitStubPath(outputsDir, taskId);
-  try {
-    fs.mkdirSync(outputsDir, { recursive: true, mode: 0o700 });
-    fs.writeFileSync(stubPath, LONG_TASK_SUBMIT_STUB_FORMAT(confirmation), { mode: 0o600 });
-    return stubPath;
-  } catch {
-    return "";
-  }
-}
-
-function taskSubmitStubPath(outputsDir, taskId) {
-  return path.join(outputsDir, `${LONG_TASK_SUBMIT_STUB_PREFIX}${taskId}.md`);
-}
-
-function rmStubFile(stubPath) {
-  try {
-    fs.rmSync(stubPath, { force: true });
-  } catch {
-    // best effort cleanup
-  }
-}
-
-function forgetTaskSubmitStub(stubFiles, runId) {
-  const record = stubFiles.get(runId);
-  record?.cleanup?.();
-  stubFiles.delete(runId);
-}
-
-// 启动清扫：遍历所有长任务授权 agent 的 workspace/.openclaw/tmp，删除超过
-// STUB_STALE_MS 未动的 _longtask_submit_*.md 残留（进程崩溃后内存 map 丢失的清理
-// 兜底）；运行中任务的桩 mtime 新鲜，保留。best effort：目录缺失/权限问题直接跳过。
-function sweepStaleSubmitStubs(config, resolveWorkspace, now, diag) {
-  const agents = new Set((config?.longTaskSkillGrants ?? []).map((grant) => grant.agentId));
-  for (const agentId of agents) {
-    const workspace = typeof resolveWorkspace === "function" ? resolveWorkspace(agentId) : "";
-    if (!workspace || !path.isAbsolute(workspace)) continue;
-    const tmpDir = path.join(workspace, ".openclaw", "tmp");
-    let names;
-    try {
-      names = fs.readdirSync(tmpDir);
-    } catch {
-      continue;
-    }
-    for (const name of names) {
-      if (!name.startsWith(LONG_TASK_SUBMIT_STUB_PREFIX) || !name.endsWith(".md")) continue;
-      const file = path.join(tmpDir, name);
-      try {
-        if (now - fs.statSync(file).mtimeMs > STUB_STALE_MS) {
-          fs.rmSync(file, { force: true });
-          diag(`stale submit stub swept: ${name}`);
-        }
-      } catch {
-        // best effort
-      }
-    }
-  }
+function blockForegroundCommand(config, event, ctx, log) {
+  if (isLongTaskSession(event, ctx) || !["exec", "bash"].includes(event?.toolName)) return undefined;
+  const grant = findGrantForCommand(config, event, ctx, shellCommandText(event));
+  if (!grant) return undefined;
+  log(`[muad-runtime-guard][skill-preflight] blocked reason=explicit_submit_required skill=${grant.name}`);
+  return { block: true, blockReason: `${grant.name} 是长任务。先读取 SKILL.md、确定唯一匹配或用户选择并补齐参数，再调用 muad_submit_long_task；当前命令未执行、未提交。` };
 }
 
 function diskManifestIsLongTask(skillDir, expectedName) {
@@ -368,16 +53,6 @@ function diskManifestIsLongTask(skillDir, expectedName) {
   } catch {
     return false;
   }
-}
-
-function findGrantBySkillPath(config, agentId, targetPath) {
-  return (config.longTaskSkillGrants ?? []).find((grant) =>
-    grant.agentId === agentId && isWithin(grant.rootPath, targetPath));
-}
-
-function findLongTaskGrant(config, agentId, skillName) {
-  return (config.longTaskSkillGrants ?? []).find((grant) =>
-    grant.agentId === agentId && grant.name === skillName);
 }
 
 function findGrantForCommand(config, event, ctx, command) {
@@ -503,24 +178,6 @@ function shellCommandText(event) {
   return parts.join("\n");
 }
 
-// exec/bash 被拦时的 blockReason：指引模型不执行脚本，并把规范确认文案带给模型
-// （直投型 IM 不经过 replyPayloadSending 时，模型照抄即一致）。
-function longTaskBlockReason(grant, submit, locale) {
-  const confirmation = submit ? queuedReply(submit, grant.name, locale) : "";
-  const header = normalizedLocale(locale) === "en"
-    ? `${grant.name} is a background long task and has been submitted for async execution. Do not run its scripts or tools in this conversation. Reply to the user with the confirmation below exactly as written:`
-    : `${grant.name} 是后台长任务，已提交异步执行。请勿在当前会话执行它的脚本或工具。请原样回复下面的确认文案：`;
-  return confirmation ? `${header}\n${confirmation}` : header;
-}
-
-function readPathCandidate(event) {
-  for (const key of READ_PATH_KEYS) {
-    const value = event?.params?.[key];
-    if (typeof value === "string" && value.trim()) return { key, value };
-  }
-  return null;
-}
-
 function resolveExistingPath(candidate) {
   try {
     return fs.realpathSync(path.resolve(candidate));
@@ -634,11 +291,6 @@ function promptText(event) {
   return textValue(event?.prompt) || textValue(event?.content) || textValue(event?.text);
 }
 
-function commandObjective(prompt, skillName) {
-  const trimmed = prompt.trim();
-  return trimmed.replace(new RegExp(`^/skill:${skillName}\\s*`, "u"), "").trim() || trimmed;
-}
-
 function rememberTurn(map, runId, value, now) {
   map.set(runId, { ...value, expiresAt: now + TURN_CONTEXT_TTL_MS });
   if (map.size <= 1000) return;
@@ -660,4 +312,26 @@ function pruneExpired(map, now) {
 
 function textValue(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function canonicalSession(value) { return textValue(value).replace(/^session:/u, ""); }
+function turnKey(turn) { return JSON.stringify([turn.agentId, turn.sessionKey, turn.runId]); }
+function hasTrustedDelivery(event, ctx) {
+  return [event?.replyToId, event?.replyTo, event?.senderId, ctx?.senderId].some(value => Boolean(textValue(value)));
+}
+
+function rememberTrustedTurn(turns, event, ctx, now) {
+  pruneExpired(turns, now);
+  if (isLongTaskSession(event, ctx)) return undefined;
+  const runId = textValue(event?.runId) || textValue(ctx?.runId);
+  if (!runId) return undefined;
+  const sessionKey = canonicalSession(ctx?.sessionKey || event?.sessionKey);
+  const agentId = resolveAgentId(event, ctx);
+  const peerId = resolvePeerId(event, ctx);
+  rememberTurn(turns, turnKey({ agentId, sessionKey, runId }), {
+    runId, originalPrompt: promptText(event), sessionKey, agentId, peerId,
+    verifiedPeerId: hasTrustedDelivery(event, ctx) ? peerId : "",
+    replyChannel: resolveReplyChannel(event, ctx),
+  }, now);
+  return undefined;
 }

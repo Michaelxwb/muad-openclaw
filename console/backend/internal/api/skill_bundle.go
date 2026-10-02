@@ -596,13 +596,13 @@ func ensureLongTaskSubmitStub(skillDir, name string, longTask bool) error {
 func longTaskSubmitStub(name string) string {
 	return `# Long Task
 
-This Skill runs as a background task. Do not execute the real task in the current conversation, and do not run any tools or scripts for it.
+This is a preflight guide for the long-task Skill ` + name + `, not an execution receipt.
 
-Reply to the user with one short confirmation in the user's language (for Chinese users, reply in Chinese), for example:
+Read this Skill's actual SKILL.md in the current turn. Reading documentation never submits or starts the task.
+Determine the matching Skill and its required inputs from SKILL.md. A unique match with complete inputs can be submitted directly; multiple candidates require the user's selection. Missing inputs require an immediate question. Do not guess inputs or probe business scripts to fill them.
 
-好的，正在后台为你执行「` + name + `」，完成后结果会自动推送给你，可继续发消息。
-
-Do not output any special marker or machine-readable first line.
+Submit only after preflight through muad_submit_long_task, including skillName, the final objective, selectionBasis, requiredNames and bindings. Do not execute the long-task business scripts in the foreground.
+Only after the tool returns accepted may you tell the user the task was submitted, using the actual taskId. If submission is rejected, explain its reason and ask for missing inputs when needed. Never report background execution before actual acceptance.
 `
 }
 

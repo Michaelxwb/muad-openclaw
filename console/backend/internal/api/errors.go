@@ -190,6 +190,10 @@ var errorCatalog = map[int]errorDef{
 	errcode.SkillBundleEmpty: {http.StatusBadRequest, "Skill 包不能为空", "The Skill bundle must not be empty"},
 	// skill.bundle.unexpected_name
 	errcode.SkillBundleUnexpectedName: {http.StatusBadRequest, "上传的 Skill 名称与期望名称不一致", "The uploaded Skill name does not match the expected name"},
+	// skill.upload.timeout
+	errcode.SkillUploadTimeout: {http.StatusRequestTimeout, "Skill 包上传超时，请检查网络后重试", "Skill bundle upload timed out; check your network and retry"},
+	// internal.skill_upload_deadline
+	errcode.InternalSkillUploadDeadline: {http.StatusInternalServerError, "无法设置 Skill 上传读取期限", "Unable to set the Skill upload read deadline"},
 	// invalid.platform_not_found
 	errcode.InvalidPlatformNotFound: {http.StatusBadRequest, "业务平台不存在", "Platform not found"},
 	// invalid.platform_display_name

@@ -1,12 +1,122 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, statSync, existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setImmediate as tick } from "node:timers/promises";
 import test from "node:test";
+import { spawn as nodeSpawn } from "node:child_process";
+
+test("PreflightS14 rejects initial persistence failures before spawning or allocating slots", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-preflight-write-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const blocked = join(root, "blocked");
+  writeFileSync(blocked, "not a directory");
+  let runs = 0;
+  const manager = new LongTaskManager({ stateFile: join(blocked, "state.jsonl"), runTask: () => { runs++; return new Promise(() => {}); } });
+  assert.throws(() => manager.submit(taskInput("报告")), /state unavailable/u);
+  assert.equal(runs, 0);
+  assert.equal(manager.snapshot().active, 0);
+  assert.equal(manager.snapshot().queued, 0);
+  const closed = new LongTaskManager({ stateFile: join(root, "closed.jsonl") });
+  closed.close();
+  assert.throws(() => closed.submit(taskInput("报告")), /stopped/u);
+});
+
+test("PreflightS14 rejects a write failure between acceptance and process startup", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-preflight-start-write-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const stateFile = join(root, "state.jsonl");
+  let runs = 0;
+  const manager = new LongTaskManager({ stateFile,
+    runTask: () => { runs++; return new Promise(() => {}); },
+    log: (message) => {
+      if (message.includes("long task submitted") && existsSync(stateFile) && statSync(stateFile).isFile()) {
+        rmSync(stateFile);
+        mkdirSync(stateFile);
+      }
+    },
+  });
+  assert.throws(() => manager.submit(taskInput("报告")), /state unavailable/u);
+  assert.equal(runs, 0);
+  assert.equal(manager.snapshot().active, 0);
+  assert.equal(manager.snapshot().queued, 0);
+});
+
+test("PreflightS14 preserves an existing running task when a later submission fails", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-preflight-existing-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const stateFile = join(root, "state.jsonl");
+  let finish;
+  const manager = new LongTaskManager({ limit: 1, stateFile, runTask: () => new Promise((resolve) => { finish = resolve; }) });
+  const original = manager.submit(taskInput("existing"));
+  rmSync(stateFile);
+  mkdirSync(stateFile);
+  assert.throws(() => manager.submit(taskInput("new")), /state unavailable/u);
+  assert.equal(manager.snapshot().active, 1);
+  assert.equal(manager.snapshot().queued, 0);
+  assert.equal(original.task.status, "running");
+  rmSync(stateFile, { recursive: true });
+  finish();
+  await tick();
+  assert.equal(original.task.status, "succeeded");
+});
 
 import { LongTaskManager, spawnOpenClawTask, longTaskMessage, taskIdLine, failureText } from "../src/long-task-manager.mjs";
+
+test("PreflightB03 preserves explicit inputs privately and recovers legacy records", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-preflight-inputs-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const stateFile = join(root, "state.jsonl");
+  const manager = new LongTaskManager({ stateFile, runTask: () => new Promise(() => {}) });
+  const executionInputs = { requiredNames: ["customerId"], bindings: [{ name: "customerId", value: "customer-123", source: "user_message" }] };
+  const submitted = manager.submit({ ...taskInput("最终目标"), originalPrompt: "原请求只给客户名称", executionInputs });
+  assert.deepEqual(submitted.task.executionInputs, executionInputs);
+  executionInputs.bindings[0].value = "mutated";
+  assert.equal(submitted.task.executionInputs.bindings[0].value, "customer-123");
+  const message = longTaskMessage(submitted.task);
+  assert.match(message, /customer-123/u);
+  assert.match(message, /最终目标/u);
+  assert.match(message, /原请求只给客户名称/u);
+  assert.equal(manager.snapshot().pools[0].tasks[0].executionInputs, undefined);
+  const stored = JSON.parse(readFileSync(stateFile, "utf8").trim().split("\n").at(-1));
+  assert.equal(stored.executionInputs.bindings[0].value, "customer-123");
+  assert.equal(statSync(stateFile).mode & 0o777, 0o600);
+  const legacy = { ...stored, taskId: "legacy-task" };
+  delete legacy.executionInputs;
+  writeFileSync(stateFile, JSON.stringify(stored) + "\n" + JSON.stringify(legacy) + "\n");
+  const restored = new LongTaskManager({ stateFile, runTask: () => { throw new Error("must not run interrupted task"); } });
+  assert.equal(restored.snapshot().pools[0].tasks.length, 2);
+  assert.equal(restored.snapshot().pools[0].tasks.every((task) => task.status === "failed"), true);
+  const records = readFileSync(stateFile, "utf8").trim().split("\n").map(JSON.parse);
+  assert.equal(records.findLast((record) => record.taskId === stored.taskId).executionInputs.bindings[0].value, "customer-123");
+});
+
+test("PreflightE06 actual nonzero script fails once without guessing replacement inputs", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-preflight-failure-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const calls = [];
+  const notifications = [];
+  const manager = new LongTaskManager({ stateFile: join(root, "state.jsonl"),
+    notifyFailure: async (task) => notifications.push(task.taskId),
+    runTask: (task) => {
+      calls.push(task);
+      assert.match(longTaskMessage(task), /Do not guess/u);
+      return spawnOpenClawTask(task, { spawn: (_command, _args, options) =>
+        nodeSpawn(process.execPath, ["-e", "process.stderr.write('invalid customer id'); process.exit(7)"], options),
+      });
+    },
+  });
+  const executionInputs = { requiredNames: ["customerId"], bindings: [{ name: "customerId", value: "customer-123", source: "user_message" }] };
+  manager.submit({ ...taskInput("报告"), executionInputs });
+  const deadline = Date.now() + 5000;
+  while (manager.snapshot().active && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(manager.snapshot().active, 0);
+  assert.equal(manager.snapshot().pools[0].tasks[0].status, "failed");
+  assert.equal(calls.length, 1);
+  assert.equal(notifications.length, 1);
+  assert.deepEqual(calls[0].executionInputs, executionInputs);
+});
 
 test("LongTaskManager limits concurrency per agent-user pool and drains FIFO", async () => {
   const runs = [];
@@ -754,3 +864,22 @@ function interruptedStateRecord(taskId, status, childPid) {
     ...(Number.isInteger(childPid) ? { childPid } : {}),
   };
 }
+
+
+test("PreflightS30 background uses resolved bindings without repeating name lookup", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "muad-preflight-resolved-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const manager = new LongTaskManager({ stateFile: join(root, "state.jsonl"), runTask: () => new Promise(() => {}) });
+  const executionInputs = { requiredNames: ["customerId"], bindings: [{ name: "customerId", value: "customer-123", source: "document_resolution" }] };
+  const submitted = manager.submit({ ...taskInput("生成季度报告"), originalPrompt: "生成唯一客户的季度报告", executionInputs });
+  const stored = JSON.parse(readFileSync(join(root, "state.jsonl"), "utf8").trim().split("\n").at(-1));
+  assert.deepEqual(stored.executionInputs, executionInputs);
+  const message = longTaskMessage(submitted.task);
+  assert.match(message, /Resolved bindings are the authoritative execution inputs/u);
+  assert.match(message, /Original user request is historical context/u);
+  assert.match(message, /Do not repeat name-to-ID lookups or other input-resolution steps for parameters already present in bindings/u);
+  assert.match(message, /Execute the documented business invocation directly with these bindings/u);
+  assert.match(message, /customer-123/u);
+  assert.match(message, /生成唯一客户的季度报告/u);
+  assert.match(message, /missing input and stop/u);
+});

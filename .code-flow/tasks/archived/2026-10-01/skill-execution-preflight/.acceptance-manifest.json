@@ -1,0 +1,1749 @@
+{
+  "schema": 2,
+  "task_file": "skill-execution-preflight.md",
+  "task_sha256": "499014c9691b126662bfcd55444745acf36a1217cd563e1f3aaf2fd4c402da84",
+  "scenarios": [
+    {
+      "id": "S-01",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实文档、long-task/audit/progress hooks、真实队列状态文件；外部通知可 spy；read SKILL.md/脚本/引用文件；队列与执行记录不变，脚本哨兵未生成、无进度通知",
+      "owner": "TASK-008",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS01",
+        "tools/muad-runtime-guard/test/skill-preflight-flow.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-02",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "renderer→实际 OpenClaw/模型→新工具→队列→脚本→实际回复；单一适用 Skill、提供完整 customerId；无确认追问，恰好一任务，脚本收到正确 ID",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS02",
+        "tools/muad-runtime-guard/test/skill-preflight-matching.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-02",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-03",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "实际模型多轮对话、读取工具、新提交工具与队列；两个明确候选，首轮列出候选与差异且零任务；用户选择后参数齐全才执行选定 Skill",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS03",
+        "tools/muad-runtime-guard/test/skill-preflight-matching.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-03",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-04",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实 SKILL.md 参数要求、实际模型、多轮会话、队列与脚本；文档要求 customerId，仅给客户名称；首轮提示补 ID，零任务/零业务调用；补 ID 后一次提交",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS04",
+        "tools/muad-runtime-guard/test/skill-preflight-inputs.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-04",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-04",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "S-04",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-05",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "文档定义的转换工具、实际模型与队列；文档允许名称解析 ID；唯一查询结果才可提交，多结果需用户选择，查不到则追问",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS05",
+        "tools/muad-runtime-guard/test/skill-preflight-inputs.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-05",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-06",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实激活 hooks 和提交入口、记录与进度投递捕获；只读说明不登记长任务执行；排队与真实开始分别产生对应状态，不因重复 read 重复审计",
+      "owner": "TASK-008",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS06",
+        "tools/muad-runtime-guard/test/skill-preflight-flow.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-07",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实授权索引、工具上下文、manager、临时状态文件、shared lease；两用户同名 Skill 按各自 root 分离；有效 system 优先；同轮重复工具调用返回同任务；并发不超限",
+      "owner": "TASK-006",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS07",
+        "tools/muad-runtime-guard/test/long-task-tool.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-08",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "实际后台会话、消息构造、脚本、结果投递；用户后续补齐参数；后台收到原请求、最终目标及绑定参数，不丢最新补充，不重复澄清",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS08",
+        "tools/muad-runtime-guard/test/skill-preflight-turns.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-08",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-01",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "生产问题等价真实模型对话、read、队列、季报脚本哨兵；只有季报 Skill，要求安全分析报告；读取季报说明也不得建任务；回复无适用 Skill",
+      "owner": "TASK-013",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightE01",
+        "tools/muad-runtime-guard/test/skill-preflight-boundaries.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-01",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "E-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-02",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "新工具字段校验和真实队列；自报缺参、必填参数没有绑定、值为空、引用不存在；明确拒绝，零入队",
+      "owner": "TASK-006",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightE02",
+        "tools/muad-runtime-guard/test/long-task-tool.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-03",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 exec/bash hooks、命令判定与真实队列；前台执行长任务脚本；block且零提交；ls/cat/grep 等普通查看放行",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightE03",
+        "tools/muad-runtime-guard/test/long-task-hooks.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-04",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实提交入口/队列关闭与 I/O 失败边界；manager不可用或写入失败；不返回已启动，不退化前台执行，诊断脱敏",
+      "owner": "TASK-006",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightE04",
+        "tools/muad-runtime-guard/test/long-task-tool.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-05",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "可信工具上下文、真实 grant/root 解析；伪造 agent/session/peer、越权 Skill、root traversal、读取后撤销授权；拒绝且无其他用户输出",
+      "owner": "TASK-003",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightE05",
+        "tools/muad-runtime-guard/test/long-task-preflight.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-06",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实后台消息构造、非零退出脚本、状态与投递；脚本失败写 stderr/非零；记录失败，不修改客户 ID 自动重试，保留既有输出及错误转发",
+      "owner": "TASK-004",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightE06",
+        "tools/muad-runtime-guard/test/long-task-manager.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-01",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "实际多轮模型会话及队列；“第2个”只关联本会话未取消候选；用户改换目标、取消或切换用户后不能复用旧选择",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightB01",
+        "tools/muad-runtime-guard/test/skill-preflight-turns.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-01",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "B-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-02",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "实际 /skill: 分发与模型预检；/skill:季报但缺 ID；先追问，零任务；/skill:提供完整输入按预检后提交，无额外确认",
+      "owner": "TASK-013",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightB02",
+        "tools/muad-runtime-guard/test/skill-preflight-boundaries.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-02",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "B-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-03",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 manager持久化、重启恢复和执行消息；新任务保持明确输入；旧队列记录无新字段仍可恢复原行为；不承诺已存在的错误任务自动取消",
+      "owner": "TASK-004",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightB03",
+        "tools/muad-runtime-guard/test/long-task-manager.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-04",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实文档与模型、提交入口；明确无参 Skill 可执行；未说明参数或文档矛盾时先澄清并提示完善文档，零提交",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightB04",
+        "tools/muad-runtime-guard/test/skill-preflight-inputs.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-04",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-04",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "B-04",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-05",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "实际 read after hook、版本标识与授权；未读/读取失败/文档更新后沿用旧预检记录，拒绝并要求重新读取；read成功本身零副作用",
+      "owner": "TASK-002",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightB05",
+        "tools/muad-runtime-guard/test/skill-preflight-context.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-09",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "控制面 DTO→schema/transaction→renderer→真实 Worker工具可见性；更新指导规则与配套插件；校验/健康通过后生效；工具在业务 Agent 可见且 main 不可用；失败恢复 last-good",
+      "owner": "TASK-013",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_PREFLIGHT_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS09",
+        "tools/muad-runtime-guard/test/skill-preflight-deployment.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-09",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+        "executed_at": "2026-10-02T03:47:47.980720+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-09",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        },
+        {
+          "id": "S-09",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "422d7d29ff26473f94ca427ca8e0e990",
+          "executed_at": "2026-10-02T03:47:47.980720+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-14",
+      "source": "skill-execution-preflight.design.md#3.5 质量实现与 Spec Compliance 落点",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实LongTaskManager、临时状态文件、受控I/O错误与子进程启动边界；队列关闭或提交写入失败明确返回失败，不运行新任务、不消耗队列槽；存量running任务保留",
+      "owner": "TASK-005",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS14",
+        "tools/muad-runtime-guard/test/long-task-manager.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-14",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-14",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-10",
+      "source": "skill-execution-preflight.design.md#3.4 工具与内部接口",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实工具参数校验、错误契约和输入对象；未知字段、重复绑定、空值、缺必填和非法枚举拒绝；明确无参通过",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS10",
+        "tools/muad-runtime-guard/test/long-task-input.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-11",
+      "source": "skill-execution-preflight.design.md#3.4 工具与内部接口",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实插件注册、hook生命周期与可信工具工厂；上游API边界可 spy；注册准确，业务上下文使用同manager；main/后台不允许提交，logger无敏感输入",
+      "owner": "TASK-009",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS11",
+        "tools/muad-runtime-guard/test/skill-preflight-registration.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-12",
+      "source": "skill-execution-preflight.design.md#3.5 质量实现与 Spec Compliance 落点",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 Go-free DTO fixture、Node schema/renderer、指导输出；唯一/多候选/缺参规则与工具可见性确定性输出；普通Skill机制保留，不恢复废弃工具",
+      "owner": "TASK-010",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS12",
+        "bin/test/skill-preflight-guidance.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-12",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-13",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 fixture文档/脚本和环境参数解析；不调用外部模型；fixture覆盖各匹配/入参场景；环境缺项明确失败，无真实客户投递；脚本输出/哨兵可机器校验",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS13",
+        "tools/muad-runtime-guard/test/skill-preflight-e2e-fixtures.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-13",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-13",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-15",
+      "source": "skill-execution-preflight.design.md#3.3 数据与上下文",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实turn hooks、读取ledger、preflight与临时授权文档；真实发送者与session尾段不同时仅采用服务端事件投递目标；伪造字段/跨用户/跨会话拒绝；同run不同用户隔离",
+      "owner": "TASK-014",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS15",
+        "tools/muad-runtime-guard/test/long-task-preflight.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-15",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-15",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-16",
+      "source": "skill-execution-preflight.design.md#3.5 质量实现与 Spec Compliance 落点",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实插件注册、manager任务索引与shared Skill lease；前台预检零lease；只有真实running后台任务取其可信Skill获取lease并在end释放；伪造后台不获取",
+      "owner": "TASK-015",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS16",
+        "tools/muad-runtime-guard/test/skill-preflight-registration.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-16",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-16",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-17",
+      "source": "skill-execution-preflight.design.md#3.2 架构与执行流程",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实renderer指导输出与fixture配置文档；取消/改换目标/跨会话不得复用旧候选；显式opt-in E2E命令一致，实际IM斜杠与故障恢复准备明确",
+      "owner": "TASK-016",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS17",
+        "bin/test/skill-preflight-guidance.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-17",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-17",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-18",
+      "source": "skill-execution-preflight.design.md#3.4 工具与内部接口",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实提交工具、manager与多session同peer队列；同peer池已有另一sourceSession时相同可信run重试仍只产生一个taskId和一次执行",
+      "owner": "TASK-017",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS18",
+        "tools/muad-runtime-guard/test/long-task-tool.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-18",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-18",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-19",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实renderer输出、终验配置校验和fixture文档；只比较当前用户effective长任务集合，平台protected普通Skill保留；多余长任务拒绝，工具/model缺失明确失败",
+      "owner": "TASK-018",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS19",
+        "tools/muad-runtime-guard/test/skill-preflight-e2e-fixtures.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-19",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-19",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-20",
+      "source": "skill-execution-preflight.design.md#3.4 工具与内部接口",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "实际插件manifest与registerTool声明；contracts.tools必须包含提交工具，保证上游注册可见",
+      "owner": "TASK-019",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS20",
+        "tools/muad-runtime-guard/test/skill-preflight-registration.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-20",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-20",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-21",
+      "source": "skill-execution-preflight.design.md#3.4 工具与内部接口",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实turn/read/preflight接线；Mattermost投递user:前缀与同一会话身份等价，跨用户仍拒绝",
+      "owner": "TASK-019",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS21",
+        "tools/muad-runtime-guard/test/long-task-preflight.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-21",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-22",
+      "source": "skill-execution-preflight.design.md#3.5 质量实现与 Spec Compliance 落点",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "实际API Go AST检查；只放行两个中央封装、handler与伪装helper拒绝",
+      "owner": "TASK-019",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/api",
+        "-run",
+        "TestHTTPEncoder",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-23",
+      "source": "skill-execution-preflight.design.md#3.2 架构与执行流程",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Console实际长任务辅助文档生成；先读真实SKILL.md和预检、accepted后才报提交，不包含旧虚假回执",
+      "owner": "TASK-020",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/api",
+        "-run",
+        "PreflightS23",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-23",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-24",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "实际E2E场景命令配置；允许场景选择真实Worker，独立Agent和workspace，非法argv拒绝",
+      "owner": "TASK-021",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS24",
+        "tools/muad-runtime-guard/test/skill-preflight-e2e-fixtures.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-24",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-25",
+      "source": "skill-execution-preflight.design.md#3.4 工具与内部接口",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "实际插件多次注册、turn/read hooks和提交工具；同Worker共享有界预检状态，跨会话与结束后拒绝",
+      "owner": "TASK-022",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS25",
+        "tools/muad-runtime-guard/test/skill-preflight-registration.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-25",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-26",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "实际Node文件读取和HTTP工具探测；正确使用配置鉴权、空参数不提交，主Agent不可用与业务可用响应可观测",
+      "owner": "TASK-023",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS26",
+        "tools/muad-runtime-guard/test/skill-preflight-e2e-fixtures.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-26",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-26",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-27",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实Skill文档生成不产生矛盾查询授权，实际Console用户响应解包保持Agent隔离校验",
+      "owner": "TASK-024",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS27",
+        "tools/muad-runtime-guard/test/skill-preflight-e2e-fixtures.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-27",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-27",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-28",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "实际终验回复同义表达的追问检查，保留真实队列与业务零执行断言",
+      "owner": "TASK-025",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS28",
+        "tools/muad-runtime-guard/test/skill-preflight-e2e-fixtures.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-28",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-28",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-29",
+      "source": "skill-execution-preflight.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "统一真实候选追问表达检查，接受先选一个与回复选1/2，拒绝纯执行回执",
+      "owner": "TASK-026",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS29",
+        "tools/muad-runtime-guard/test/skill-preflight-e2e-fixtures.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-29",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-29",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-30",
+      "source": "skill-execution-preflight.design.md#3.3 数据与上下文",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "已解析绑定覆盖原始缺参请求，后台禁止重复解析已绑定参数",
+      "owner": "TASK-027",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "PreflightS30",
+        "tools/muad-runtime-guard/test/long-task-manager.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-30",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+        "executed_at": "2026-10-02T03:40:22.141399+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-30",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c39a99ad51b14398a661c9c6b7e772b5",
+          "executed_at": "2026-10-02T03:40:22.141399+00:00"
+        }
+      ]
+    }
+  ]
+}

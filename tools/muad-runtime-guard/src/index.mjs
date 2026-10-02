@@ -6,6 +6,10 @@ import { BindingClient, BindingClientError } from "./binding-client.mjs";
 import { parseGuardConfig } from "./config.mjs";
 import { createCrossUserGuard } from "./cross-user-guard.mjs";
 import { createHealthHandler, latestGuardConfig } from "./health.mjs";
+import { SkillPreflightContext } from "./skill-preflight-context.mjs";
+import { createLongTaskPreflight } from "./long-task-preflight.mjs";
+import { createLongTaskToolFactory } from "./long-task-tool.mjs";
+import { explicitSkillName } from "./skill-hooks.mjs";
 import { createLongTaskHooks } from "./long-task-hooks.mjs";
 import { LongTaskManager } from "./long-task-manager.mjs";
 import { LongTaskStateClient, LongTaskStateClientError } from "./long-task-state-client.mjs";
@@ -52,12 +56,13 @@ const plugin = {
     registerModelConfigDispatch(api, config);
     registerToolPolicies(api, config);
     registerBrowserLeaseHooks(api, config, leaseManager);
-    registerSkillLeaseHooks(api, config, skillLeaseManager);
-    registerLongTaskHooks(api, () => latestGuardConfig(config), longTaskManager);
+    registerSkillLeaseHooks(api, config, skillLeaseManager, longTaskManager);
+    const longTaskHooks = registerLongTaskHooks(api, () => latestGuardConfig(config), longTaskManager);
     registerSkillOutputHooks(api, longTaskManager, skillProgressManager);
     registerSkillProgressHooks(api, skillProgressHooks);
     registerCrossUserGuard(api, config);
-    registerSkillAuditHooks(api, config, createSkillAuditClient(config), skillProgressHooks.activate);
+    registerSkillAuditHooks(api, config, createSkillAuditClient(config), skillProgressHooks.activate, longTaskManager);
+    api.on("after_tool_call", longTaskHooks.afterToolCall, { priority: 900, timeoutMs: 1_000 });
     registerExecFailureLog(api);
     registerReloadPolicy(api);
     const client = createBindingClient(config);
@@ -144,29 +149,55 @@ function registerBrowserLeaseHooks(api, config, leaseManager) {
   api.on("after_tool_call", hooks.after, { priority: 1000, timeoutMs: 1_000 });
 }
 
-function registerSkillLeaseHooks(api, config, leaseManager) {
+function registerSkillLeaseHooks(api, config, leaseManager, manager) {
   const hooks = createSkillLeaseHooks({
     config,
     leaseManager,
     log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
   });
-  api.on("before_agent_run", hooks.before, { priority: -1000, timeoutMs: 35_000 });
+  api.on("before_agent_run", (event, ctx) => skillLeaseBefore(hooks, config, manager, event, ctx),
+    { priority: -1000, timeoutMs: 35_000 });
   api.on("agent_end", hooks.end, { priority: 1000, timeoutMs: 1_000 });
 }
 
+function skillLeaseBefore(hooks, config, manager, event, ctx) {
+  const isBackground = String(ctx?.sessionKey ?? "").includes(":longtask:");
+  if (isBackground) {
+    const task = manager.snapshot().pools.flatMap(pool => pool.tasks).find(item =>
+      item.agentId === ctx?.agentId && item.sessionKey === ctx?.sessionKey && item.status === "running");
+    if (!task) return { outcome: "block", reason: "background task identity unavailable",
+      message: "No trusted running task for this background session.", category: "skill_concurrency" };
+    return hooks.before({ ...event, prompt: `/skill:${task.skillName}` }, ctx);
+  }
+  const name = explicitSkillName(event?.prompt);
+  if (latestGuardConfig(config).longTaskSkillGrants.some(grant =>
+    grant.agentId === ctx?.agentId && grant.name === name)) return { outcome: "pass" };
+  return hooks.before(event, ctx);
+}
+
 function registerLongTaskHooks(api, getConfig, manager) {
-  const hooks = createLongTaskHooks({
-    getConfig,
-    manager,
-    resolveWorkspace: (agentId) => resolveWorkspace(api, agentId),
-    log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
-  });
+  const { ledger, turns } = installSkillPreflightState();
+  const log = message => api.logger?.warn?.(message);
+  const hooks = createLongTaskHooks({ getConfig, ledger, turns, log });
+  const preflight = createLongTaskPreflight({ ledger, getConfig, getTurnContext: hooks.getTurnContext });
+  api.registerTool(createLongTaskToolFactory({ preflight, manager, getConfig, log }), { name: "muad_submit_long_task" });
   api.on("before_dispatch", hooks.beforeDispatch, { priority: -1100, timeoutMs: 1_000 });
   api.on("before_agent_run", hooks.beforeAgentRun, { priority: -900, timeoutMs: 1_000 });
   api.on("before_tool_call", hooks.beforeToolCall, { priority: -900, timeoutMs: 1_000 });
   api.on("before_agent_finalize", hooks.beforeAgentFinalize, { priority: -900, timeoutMs: 1_000 });
   api.on("reply_payload_sending", hooks.replyPayloadSending, { priority: -900, timeoutMs: 1_000 });
   api.on("agent_end", hooks.agentEnd, { priority: 900, timeoutMs: 1_000 });
+  return hooks;
+}
+
+function installSkillPreflightState(globals = globalThis) {
+  const key = Symbol.for("muad.skill.preflight");
+  const current = globals[key];
+  if (current?.turns instanceof Map && typeof current?.ledger?.recordRead === "function" &&
+      typeof current.ledger.check === "function" && typeof current.ledger.clearTurn === "function") return current;
+  const state = { ledger: new SkillPreflightContext(), turns: new Map() };
+  globals[key] = state;
+  return state;
 }
 
 function registerSkillOutputHooks(api, manager, progressManager) {
@@ -196,9 +227,11 @@ function registerCrossUserGuard(api, config) {
   api.on("reply_payload_sending", hooks.replyPayloadSending, { priority: -850, timeoutMs: 1_000 });
 }
 
-function registerSkillAuditHooks(api, config, client, onSkillActivated) {
+function registerSkillAuditHooks(api, config, client, onSkillActivated, manager) {
   const hooks = createSkillAuditHooks({
     config,
+    getConfig: () => latestGuardConfig(config),
+    manager,
     client,
     onSkillActivated,
     log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
