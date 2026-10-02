@@ -30,7 +30,7 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     "before_tool_call", "before_agent_finalize", "reply_payload_sending", "agent_end",
     "resolve_exec_env", "resolve_exec_env", "before_agent_run", "agent_end",
     "before_tool_call", "reply_payload_sending",
-    "before_dispatch", "before_agent_run", "before_tool_call", "after_tool_call",
+    "before_dispatch", "before_agent_run", "before_tool_call", "after_tool_call", "after_tool_call",
   ]);
   assert.deepEqual(registration.hooks[18].options, { priority: -100, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[19].options, { priority: -100, timeoutMs: 1_000 });
@@ -143,6 +143,7 @@ function registerPlugin(t, config) {
       resolveAgentWorkspaceDir: (_config, agentId) => `/state/workspace-${agentId}`,
       resolveAgentDir: (_config, agentId) => `/state/agents/${agentId}/agent`,
     } },
+    registerTool: () => {},
     registerCommand: (command) => { registration.command = command; },
     registerTrustedToolPolicy: (policy) => { registration.policies.push(policy); },
     on: (name, handler, options) => { registration.hooks.push({ name, handler, options }); },

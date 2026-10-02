@@ -172,6 +172,10 @@ type errorLogRecorder struct {
 	body   bytes.Buffer
 }
 
+func (recorder *errorLogRecorder) Unwrap() http.ResponseWriter {
+	return recorder.ResponseWriter
+}
+
 func (recorder *errorLogRecorder) WriteHeader(status int) {
 	recorder.status = status
 	recorder.ResponseWriter.WriteHeader(status)

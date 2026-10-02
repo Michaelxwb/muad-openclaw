@@ -10,12 +10,13 @@ verifiers:
       checklist: Confirm multi-user isolation, model binding, writeJSON/writeErr, secret handling, and runtime apply semantics.
       owner: project-owner
   - rule: RULE-backend-http-envelope-001
-    type: regex
+    type: test
     config:
-      pattern: "json\\.NewEncoder\\("
+      argv: [go, test, ./internal/api, -run, TestHTTPEncoder, -count=1]
+      cwd: console/backend
+      timeout: 120
       files:
-        - console/backend/internal/api/**
-      message: "HTTP 输出必须走 writeJSON/writeErr，禁止 json.NewEncoder"
+        - console/backend/internal/api/*.go
   - rule: RULE-backend-model-pool-001
     type: manual
     config:

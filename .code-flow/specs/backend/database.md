@@ -13,8 +13,7 @@ verifiers:
     type: regex
     config:
       pattern: "SELECT\\s+\\*"
-      files:
-        - console/backend/**
+      files: 'console/backend/**'
       message: "禁止 SELECT *，查询须显式列名"
 ---
 

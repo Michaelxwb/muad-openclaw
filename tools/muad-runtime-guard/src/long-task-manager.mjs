@@ -60,17 +60,18 @@ export class LongTaskManager {
   submit(input) {
     if (this.closed) throw new Error("long task manager stopped");
     const task = this.#newTask(input);
+    this.#record(task, true);
     const pool = this.#pool(task);
     this.#purgeTerminal(pool);
     const queuedAhead = pool.queue.length;
     this.#log(`[muad-runtime-guard] long task submitted taskId=${task.taskId} skill=${task.skillName} queuedAhead=${queuedAhead}`);
     if (pool.active.size < this.limit) {
-      this.#start(pool, task);
+      if (!this.#start(pool, task)) throw new Error("long task state unavailable");
       return { task, queuedAhead: 0, ...poolCounts(pool, this.limit) };
     }
     task.status = "queued";
     pool.queue.push(task);
-    this.#record(task);
+    this.#notifyChange();
     return { task, queuedAhead, ...poolCounts(pool, this.limit) };
   }
 
@@ -162,6 +163,7 @@ export class LongTaskManager {
       skillRoot: textValue(input.skillRoot),
       objective: textValue(input.objective),
       originalPrompt: textValue(input.originalPrompt),
+      ...(input.executionInputs === undefined ? {} : { executionInputs: structuredClone(input.executionInputs) }),
       replyChannel,
       locale: normalizedLocale(textValue(input.locale)),
       status: "queued",
@@ -196,10 +198,21 @@ export class LongTaskManager {
     task.status = "running";
     task.startedAt = this.#now().toISOString();
     task.updatedAt = task.startedAt;
+    try {
+      this.#record(task, true);
+    } catch {
+      task.status = "failed";
+      task.errorCode = "long_task_state_unavailable";
+      task.terminalReason = "long task state unavailable";
+      task.endedAt = this.#now().toISOString();
+      pool.terminal.push(task);
+      this.#record(task);
+      return false;
+    }
     pool.active.set(task.taskId, task);
     this.#registerProgress(task);
     this.#log(`[muad-runtime-guard] long task started taskId=${task.taskId} skill=${task.skillName}`);
-    this.#record(task);
+    this.#notifyChange();
     const running = this.#runTask(task, { timeoutSeconds: this.timeoutSeconds });
     // runTask 同步 spawn 完成后会设置 task.childPid（见 runOpenClawAgent）；再落盘一次，
     // 让 state 记录携带 PID，供下次启动的孤儿检测（childStillRunning）使用。
@@ -207,6 +220,7 @@ export class LongTaskManager {
     void Promise.resolve(running)
       .then(() => this.#finish(pool, task, "succeeded", "", ""))
       .catch((error) => this.#finish(pool, task, "failed", errorMessage(error), errorCode(error)));
+    return true;
   }
 
   #finish(pool, task, status, reason, code) {
@@ -279,13 +293,18 @@ export class LongTaskManager {
     pool.terminal = pool.terminal.filter((task) => Date.parse(task.updatedAt) >= cutoff);
   }
 
-  #record(task) {
+  #record(task, required = false) {
     try {
       ensureStateFile(this.#stateFile);
       // childPid 仅落入 state 文件（供下次启动的孤儿检测），不进 publicTask——
       // console 快照契约保持不变。
       const record = {
         ...publicTask(task),
+        ...(task.executionInputs === undefined ? {} : {
+          executionInputs: task.executionInputs,
+          objective: task.objective,
+          originalPrompt: task.originalPrompt,
+        }),
         ...(Number.isInteger(task.childPid) ? { childPid: task.childPid } : {}),
       };
       appendFileSync(this.#stateFile, `${JSON.stringify(record)}\n`, {
@@ -295,9 +314,10 @@ export class LongTaskManager {
       chmodSync(this.#stateFile, 0o600);
       this.#compactStateWhenDue();
     } catch (error) {
-      this.#log(`[muad-runtime-guard] long task state write failed: ${errorMessage(error)}`);
+      this.#log(`[muad-runtime-guard][longtask-state] write failed taskId=${task.taskId} reason=state_unavailable`);
+      if (required) throw new Error("long task state unavailable", { cause: error });
     }
-    this.#notifyChange();
+    if (!required) this.#notifyChange();
   }
 
   #notifyChange() {
@@ -416,11 +436,26 @@ ${task.objective || "(not provided)"}
 Original user request:
 ${task.originalPrompt || "(not provided)"}
 
+${executionInputMessage(task)}
+
 Read and follow the real Skill instructions at:
 ${path.join(task.skillRoot, "SKILL.md")}
 
 Do not start this task by sending or expanding /skill:${task.skillName}. Execute the Skill instructions directly in this task session, then deliver the final result.
 ${resultPrefix}`;
+}
+
+function executionInputMessage(task) {
+  if (task.executionInputs === undefined) return "";
+  return `Inputs resolved before submission (JSON):
+${JSON.stringify(task.executionInputs)}
+
+Resolved bindings are the authoritative execution inputs, including bindings with source document_resolution.
+Original user request is historical context; it does not mean a bound parameter is still missing.
+Do not repeat name-to-ID lookups or other input-resolution steps for parameters already present in bindings, even when the Skill documents a lookup for requests containing only a name.
+Execute the documented business invocation directly with these bindings.
+Do not guess customer IDs, substitute customer names for IDs, change inputs, or choose another Skill.
+If a required input is still missing or unclear, report the missing input and stop; do not probe alternative values or retry with invented parameters.`;
 }
 
 export class LongTaskRunError extends Error {

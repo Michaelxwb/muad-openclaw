@@ -285,7 +285,7 @@ func TestSkillAPI_PrivateIngestCreatesPendingAsset(t *testing.T) {
 	e.reconcile.podIDs = nil // ignore pod-creation enqueues from setup
 	e.drv.execStdinCalls = nil
 	rr := httptest.NewRecorder()
-	e.h.ServeHTTP(rr, req)
+	e.h.ServeHTTP(&skillDeadlineRecorder{ResponseRecorder: rr}, req)
 	assertStatus(t, rr, http.StatusOK)
 
 	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
@@ -360,7 +360,7 @@ func TestSkillAPI_PrivateIngestRejectsCrossPodAgent(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-b"].ServiceToken.Value)
 	rr := httptest.NewRecorder()
-	e.h.ServeHTTP(rr, req)
+	e.h.ServeHTTP(&skillDeadlineRecorder{ResponseRecorder: rr}, req)
 	assertStatus(t, rr, http.StatusNotFound)
 
 	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
@@ -433,7 +433,7 @@ func ingestPrivateSkill(t *testing.T, e *testEnv, user repo.HumanUser, name stri
 	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
 	rr := httptest.NewRecorder()
-	e.h.ServeHTTP(rr, req)
+	e.h.ServeHTTP(&skillDeadlineRecorder{ResponseRecorder: rr}, req)
 	assertStatus(t, rr, http.StatusOK)
 	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
 		Scope: repo.SkillScopePrivate, HumanUserID: user.HumanUserID,
@@ -459,7 +459,7 @@ func TestSkillAPI_PrivateIngestDoesNotBumpConfigGeneration(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
 	rr := httptest.NewRecorder()
-	e.h.ServeHTTP(rr, req)
+	e.h.ServeHTTP(&skillDeadlineRecorder{ResponseRecorder: rr}, req)
 	assertStatus(t, rr, http.StatusOK)
 
 	// Decoupling: skill ingest syncs files directly and must NOT bump
@@ -490,7 +490,7 @@ func TestSkillAPI_PrivateIngestRejectsInvalidBundle(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
 	rr := httptest.NewRecorder()
-	e.h.ServeHTTP(rr, req)
+	e.h.ServeHTTP(&skillDeadlineRecorder{ResponseRecorder: rr}, req)
 	assertStatus(t, rr, http.StatusBadRequest)
 	assertAPIError(t, rr, errcode.InvalidBundleFormat, "有效的 .tar.gz 或 .zip")
 
@@ -518,7 +518,7 @@ func TestSkillAPI_PrivateIngestRespectsConfiguredMaxSize(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/internal/v1/skills/private/ingest", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+e.drv.created["pod-a"].ServiceToken.Value)
 	rr := httptest.NewRecorder()
-	e.h.ServeHTTP(rr, req)
+	e.h.ServeHTTP(&skillDeadlineRecorder{ResponseRecorder: rr}, req)
 	assertStatus(t, rr, http.StatusBadRequest)
 	assertAPIError(t, rr, errcode.SkillBundleTooLarge, "超过限制")
 	assets, _, err := e.store.ListSkillAssets(repo.SkillAssetListFilter{
@@ -1223,7 +1223,7 @@ func (e *testEnv) privateSkillUploadFileWithOptions(
 	req.Header.Set("Authorization", "Bearer "+e.token)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	rr := httptest.NewRecorder()
-	e.h.ServeHTTP(rr, req)
+	e.h.ServeHTTP(&skillDeadlineRecorder{ResponseRecorder: rr}, req)
 	return rr
 }
 
@@ -1247,7 +1247,7 @@ func (e *testEnv) publicSkillUploadWithPlatforms(
 	req.Header.Set("Authorization", "Bearer "+e.token)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	rr := httptest.NewRecorder()
-	e.h.ServeHTTP(rr, req)
+	e.h.ServeHTTP(&skillDeadlineRecorder{ResponseRecorder: rr}, req)
 	return rr
 }
 
@@ -1366,7 +1366,7 @@ func TestSkillAPI_PublicStorageMessageLocalized(t *testing.T) {
 			req.Header.Set("Accept-Language", lang)
 		}
 		rr := httptest.NewRecorder()
-		e.h.ServeHTTP(rr, req)
+		e.h.ServeHTTP(&skillDeadlineRecorder{ResponseRecorder: rr}, req)
 		var payload struct {
 			Data struct {
 				Message string `json:"message"`

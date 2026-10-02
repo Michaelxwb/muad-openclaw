@@ -1,0 +1,2598 @@
+version: 1
+task: skill-execution-preflight
+enforcement: required
+updated_at: '2026-10-02T03:39:43.090516+00:00'
+sources:
+- type: cli
+  ref: bind
+bindings:
+- spec_id: backend-code-quality-performance
+  path: backend/code-quality-performance.md
+  status: active
+  hashes:
+    file_sha256: 68f485a7e7cf9ea4271267b2803a894f191383e619a0ef4ba396cb0a6af48c84
+    metadata_sha256: a23647305d22b1097cde0cb8baf90de74faaad1b4948883a51b83939008a36f4
+    rules_sha256: 6c7c06945d56d916d8cbbb9332e5609704af7dac2f5e8583255e73661ab7ad3d
+  selected_by: scope:path
+  reason: Git diff matched console/backend/internal/api/audit.go,console/backend/internal/api/errors.go,console/backend/internal/api/server.go,console/backend/internal/api/skill_upload_timeout.go,console/backend/internal/api/skill_upload_timeout_test.go,console/backend/internal/api/skills.go,console/backend/internal/errcode/errcode.go,console/backend/test/skill_upload_deadline_test.go,console/backend/test/skills_api_test.go
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-quality-001
+    summary: Backend changes must handle errors explicitly, bound remote/runtime calls
+      with context deadlines, and keep `go vet` / `go test` green for touched packages
+      when run in the project validators.
+    text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
+    enforcement: required
+    verifier_ref: backend-code-quality-performance#RULE-backend-quality-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-020
+          item_id: TASK-020
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T15:06:51.403724+00:00'
+          source: 确认这 7 项人工验收
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-code-quality-performance#RULE-backend-quality-001
+          executed_at: '2026-10-01T15:07:14.666450+00:00'
+          status: verified
+          rule_text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: d7665ec2de337dc5b578183e51a50bcbcc46fcc57395678bb00c1bfbd6b5735a
+          error_code: null
+          details:
+            source: 确认这 7 项人工验收
+            owner: project-owner
+  - ref: RULE-backend-write-err-001
+    summary: HTTP 错误响应必须走 `writeErr` / `writeRuntimeFailure` / `writeRepoError` 且只传
+      `errcode` 常量；禁止旧签名 `writeErr(w, r, status, code, msg)` 或传字符串 message。
+    text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+    enforcement: required
+    verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-020
+          item_id: TASK-020
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T10:17:44.372580+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: f71781a1201ff755289e2bd0694d639613997ea7126d58d45b5e93af1cba331f
+          result_sha256: 23a03312835e3c6c02e9e265669e511e03380c79e5f4143235b2c840721189ea
+          error_code: null
+          details:
+            checked_files: 39
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T10:24:16.250825+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: 3768685a155fdd61fd4dfc711d944baacab96b85a840bf91fdafeb28648fe3d1
+          result_sha256: b7e3901ebef97240ce4a93e0566bcd653eb79233b5ae8ec930f7778c05928090
+          error_code: null
+          details:
+            checked_files: 41
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T14:49:29.583793+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: eda3aa1688e4699e3c2bea098d0e51451cb3634e3ae65d33c663ea74244540df
+          result_sha256: bafa58d729df2d75dac56a8332eee27548f6bc13468f826b98790fbbdbdcb852
+          error_code: null
+          details:
+            checked_files: 43
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T14:50:13.324000+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: c4130be78bb251111c838a66106c43dde03447c2c274368b3ad02ed7abc70057
+          result_sha256: bafa58d729df2d75dac56a8332eee27548f6bc13468f826b98790fbbdbdcb852
+          error_code: null
+          details:
+            checked_files: 43
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T14:54:16.492157+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: c01d3bf3fe9f8bfba87b2cc3ead9e1169e8fb61c2f79e7774e9fea921adc31f7
+          result_sha256: bafa58d729df2d75dac56a8332eee27548f6bc13468f826b98790fbbdbdcb852
+          error_code: null
+          details:
+            checked_files: 43
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T15:02:12.783615+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: d0258e11bb2cb3d29285de67b1ef1a08828a2b877804963d5ca994c8b9dc4aa6
+          result_sha256: bafa58d729df2d75dac56a8332eee27548f6bc13468f826b98790fbbdbdcb852
+          error_code: null
+          details:
+            checked_files: 43
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T15:07:14.707171+00:00'
+          status: unverified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 2dac64027cdf5138976c655228b33a537886a0f6cdaa8018f64a9e50ebab2b76
+          error_code: file_read_error
+          details:
+            file: build/docker-build/sqlite3
+            error: '''utf-8'' codec can''t decode byte 0xa6 in position 24: invalid
+              start byte'
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T15:09:13.477928+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 4b07560f78b0b3fd76f44e325a6a970913e243843bac77dfc9f35fce4e6afb4a
+          error_code: null
+          details:
+            checked_files: 48
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T15:10:53.279003+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: c5f95c079099c10709d0706cfcd28434f15edae8e17599bb1c8b75f84d869e5c
+          result_sha256: fe2a22f5c0fecfb6bbced497722c0f2fe0c01f65b0a24927c625f05e6d5ff48a
+          error_code: null
+          details:
+            checked_files: 9
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T15:20:53.594845+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: 194e09af35ee9904d2343dd7737955b41589bc2c91b9052ea0fbe71f3706460e
+          result_sha256: fe2a22f5c0fecfb6bbced497722c0f2fe0c01f65b0a24927c625f05e6d5ff48a
+          error_code: null
+          details:
+            checked_files: 9
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-01T15:34:42.538013+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: f7ee626328980e50ce9f3dd5ea496976c2fe220ef579c591460a3da8e44c8737
+          result_sha256: fe2a22f5c0fecfb6bbced497722c0f2fe0c01f65b0a24927c625f05e6d5ff48a
+          error_code: null
+          details:
+            checked_files: 9
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-02T01:38:38.464579+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: fc298e700b0b135fb53ecacc0f0e62f67099025a4df90190c0866d889d49db79
+          result_sha256: fe2a22f5c0fecfb6bbced497722c0f2fe0c01f65b0a24927c625f05e6d5ff48a
+          error_code: null
+          details:
+            checked_files: 9
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: table-driven tests
+    text_sha256: 63b77ecd86e891c95de079549157211b9c484265eab0b634a703d5fc136aa8b3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: fake Driver 注入 apply/coordinator 测试
+    text_sha256: 6165390b3a5d64582d231a8df8f34eae4b5ffd41d383ee7e50b7f1a0ea4347cb
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 关键路径先写失败用例再实现
+    text_sha256: 823088b0379f5d42abcb9e6c9951c5978d783ef585a79ea29e9dee3bbfe0872a
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-004
+    summary: 错误响应统一走 `writeErr` / `writeRuntimeFailure` / `writeRepoError`，禁止 handler
+      手写 `json.NewEncoder` 错误响应
+    text_sha256: 703bfa163bf83716299618fccb409898e672b9b1a86c56272d21e3ca53323bff
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-database
+  path: backend/database.md
+  status: active
+  hashes:
+    file_sha256: edff6afb9b5dbd61f04544457c36a74afc219e5270d4b097322bb0dd01782e2b
+    metadata_sha256: 16a121ab90ca42efe62126aef147f86a9e3f41f78df276abfcd9151662b0f170
+    rules_sha256: a8b78dc27f0a85f8e4a5c00474f9566573663d30cadc120bdeced83fd87b8504
+  selected_by: scope:path
+  reason: Git diff matched console/backend/internal/api/audit.go,console/backend/internal/api/errors.go,console/backend/internal/api/server.go,console/backend/internal/api/skill_upload_timeout.go,console/backend/internal/api/skill_upload_timeout_test.go,console/backend/internal/api/skills.go,console/backend/internal/errcode/errcode.go,console/backend/test/skill_upload_deadline_test.go,console/backend/test/skills_api_test.go
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-database-001
+    summary: All SQL must be parameterized and confined to `internal/repo` (or explicit
+      migration helpers); schema changes must be idempotent or versioned and must
+      not destroy user data silently.
+    text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
+    enforcement: required
+    verifier_ref: backend-database#RULE-backend-database-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-020
+          item_id: TASK-020
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T15:06:51.403724+00:00'
+          source: 确认这 7 项人工验收
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-database#RULE-backend-database-001
+          executed_at: '2026-10-01T15:07:15.209397+00:00'
+          status: verified
+          rule_text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: d7665ec2de337dc5b578183e51a50bcbcc46fcc57395678bb00c1bfbd6b5735a
+          error_code: null
+          details:
+            source: 确认这 7 项人工验收
+            owner: project-owner
+  - ref: RULE-backend-no-select-star-001
+    summary: Queries must list explicit columns; do not use `SELECT *` in production
+      SQL.
+    text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+    enforcement: required
+    verifier_ref: backend-database#RULE-backend-no-select-star-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-020
+          item_id: TASK-020
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T10:17:44.378465+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: f71781a1201ff755289e2bd0694d639613997ea7126d58d45b5e93af1cba331f
+          result_sha256: 23a03312835e3c6c02e9e265669e511e03380c79e5f4143235b2c840721189ea
+          error_code: null
+          details:
+            checked_files: 39
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T10:24:16.256862+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: 3768685a155fdd61fd4dfc711d944baacab96b85a840bf91fdafeb28648fe3d1
+          result_sha256: b7e3901ebef97240ce4a93e0566bcd653eb79233b5ae8ec930f7778c05928090
+          error_code: null
+          details:
+            checked_files: 41
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T14:49:29.590258+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: eda3aa1688e4699e3c2bea098d0e51451cb3634e3ae65d33c663ea74244540df
+          result_sha256: bafa58d729df2d75dac56a8332eee27548f6bc13468f826b98790fbbdbdcb852
+          error_code: null
+          details:
+            checked_files: 43
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T14:50:13.330244+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: c4130be78bb251111c838a66106c43dde03447c2c274368b3ad02ed7abc70057
+          result_sha256: bafa58d729df2d75dac56a8332eee27548f6bc13468f826b98790fbbdbdcb852
+          error_code: null
+          details:
+            checked_files: 43
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T14:54:16.500211+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: c01d3bf3fe9f8bfba87b2cc3ead9e1169e8fb61c2f79e7774e9fea921adc31f7
+          result_sha256: bafa58d729df2d75dac56a8332eee27548f6bc13468f826b98790fbbdbdcb852
+          error_code: null
+          details:
+            checked_files: 43
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T15:02:12.789655+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: d0258e11bb2cb3d29285de67b1ef1a08828a2b877804963d5ca994c8b9dc4aa6
+          result_sha256: bafa58d729df2d75dac56a8332eee27548f6bc13468f826b98790fbbdbdcb852
+          error_code: null
+          details:
+            checked_files: 43
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T15:07:15.223913+00:00'
+          status: unverified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 2dac64027cdf5138976c655228b33a537886a0f6cdaa8018f64a9e50ebab2b76
+          error_code: file_read_error
+          details:
+            file: build/docker-build/sqlite3
+            error: '''utf-8'' codec can''t decode byte 0xa6 in position 24: invalid
+              start byte'
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T15:09:14.227192+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 63e29c22b2c74bd2c44ec2b7e146f48f75ae10064bd38651c4715c1fc5d09e44
+          error_code: null
+          details:
+            checked_files: 188
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T15:10:53.283012+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: c5f95c079099c10709d0706cfcd28434f15edae8e17599bb1c8b75f84d869e5c
+          result_sha256: d1af62463c16b7c8b551814e27abb22530780592a62c107c0bbdea0ee3dcaec9
+          error_code: null
+          details:
+            checked_files: 12
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T15:20:53.598272+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: 194e09af35ee9904d2343dd7737955b41589bc2c91b9052ea0fbe71f3706460e
+          result_sha256: d1af62463c16b7c8b551814e27abb22530780592a62c107c0bbdea0ee3dcaec9
+          error_code: null
+          details:
+            checked_files: 12
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-01T15:34:42.541038+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: f7ee626328980e50ce9f3dd5ea496976c2fe220ef579c591460a3da8e44c8737
+          result_sha256: d1af62463c16b7c8b551814e27abb22530780592a62c107c0bbdea0ee3dcaec9
+          error_code: null
+          details:
+            checked_files: 12
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-02T01:38:38.468657+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: fc298e700b0b135fb53ecacc0f0e62f67099025a4df90190c0866d889d49db79
+          result_sha256: d1af62463c16b7c8b551814e27abb22530780592a62c107c0bbdea0ee3dcaec9
+          error_code: null
+          details:
+            checked_files: 12
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: 模型字段与 API DTO 分离，避免把存储列直接当外部契约
+    text_sha256: 11956eb8e8695d58bf30caa6cf963841f9dd70f8ff267fcb4ed07838e3106777
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: 迁移可重复执行（IF NOT EXISTS / 版本号）
+    text_sha256: 4ca263814b857306a2ac69b7b43cb5cd99d19a01ee2b6916b5af720cefdf7be9
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 共享列清单用 const SQL 片段（如 `humanUserColumns`）避免漂移
+    text_sha256: d206311bb31eb81c54796d71d1336bfa330a978087f9108493a46886f3f239e2
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-directory-structure
+  path: backend/directory-structure.md
+  status: active
+  hashes:
+    file_sha256: 2caddb6c832d1d9b27cb5e5bd08ceb5713d48400e0eb98305615f6b8f57f1b95
+    metadata_sha256: b4d430c609b9bffa073d78f5e9edb8883e39e931651dd318f3e092d19328fdca
+    rules_sha256: 481308927010c515b2a674c70de925804381e3216982bba0ab64ef779730c0f0
+  selected_by: scope:path
+  reason: Git diff matched console/backend/internal/api/audit.go,console/backend/internal/api/errors.go,console/backend/internal/api/server.go,console/backend/internal/api/skill_upload_timeout.go,console/backend/internal/api/skill_upload_timeout_test.go,console/backend/internal/api/skills.go,console/backend/internal/errcode/errcode.go,console/backend/test/skill_upload_deadline_test.go,console/backend/test/skills_api_test.go
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-directory-001
+    summary: Console backend code must live under `console/backend/` with `cmd/` entrypoints
+      and `internal/` packages; handlers must not own persistence or runtime-driver
+      details.
+    text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
+    enforcement: required
+    verifier_ref: backend-directory-structure#RULE-backend-directory-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-020
+          item_id: TASK-020
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T15:06:51.403724+00:00'
+          source: 确认这 7 项人工验收
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-directory-structure#RULE-backend-directory-001
+          executed_at: '2026-10-01T15:07:15.665174+00:00'
+          status: verified
+          rule_text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: d7665ec2de337dc5b578183e51a50bcbcc46fcc57395678bb00c1bfbd6b5735a
+          error_code: null
+          details:
+            source: 确认这 7 项人工验收
+            owner: project-owner
+  - ref: PATTERN-backend-001
+    summary: 新资源：`api` 路由 + `repo` 模型 +（如需）`driver`/`runtimeconfig` 扩展
+    text_sha256: ffd0a9492109b8da27e9d19f2666829f1fb0e829a290835b239902b4e4700010
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: 共享 DTO 放靠近使用方的 package，避免循环依赖
+    text_sha256: 63402fa465295d9cd65e23a7b4e820d15e6345831f78cd5756f1f16fc36c4545
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 资源配额、generation、apply 状态机逻辑集中，不复制到多个 handler
+    text_sha256: b2c46f7367dd0d05644be6bde89e22a3ffd17cf66eb84fe6cfdc25035bfccf7c
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-logging
+  path: backend/logging.md
+  status: active
+  hashes:
+    file_sha256: 105919bf1d68686f6174e1585cc3afa752aa7a412137f17de813d57ec2ae6eda
+    metadata_sha256: 3e2ec4d613ee9f44017234b56b595590d8d8d2ba2beda5e6d1c9e9cf06104ffc
+    rules_sha256: 12f3905dd505354f0f7c4bac6254d8578ab19fd10025d4ab25451e9d2a3c8339
+  selected_by: scope:path
+  reason: Git diff matched console/backend/internal/api/audit.go,console/backend/internal/api/errors.go,console/backend/internal/api/server.go,console/backend/internal/api/skill_upload_timeout.go,console/backend/internal/api/skill_upload_timeout_test.go,console/backend/internal/api/skills.go,console/backend/internal/errcode/errcode.go,console/backend/test/skill_upload_deadline_test.go,console/backend/test/skills_api_test.go
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-logging-001
+    summary: Logs and audit records must be structured enough to debug, must never
+      include secrets/credentials, and must keep operation audit separate from skill-execution
+      telemetry.
+    text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+    enforcement: required
+    verifier_ref: backend-logging#RULE-backend-logging-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-020
+          item_id: TASK-020
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T15:06:51.403724+00:00'
+          source: 确认这 7 项人工验收
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-logging#RULE-backend-logging-001
+          executed_at: '2026-10-01T15:07:16.051291+00:00'
+          status: verified
+          rule_text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: d7665ec2de337dc5b578183e51a50bcbcc46fcc57395678bb00c1bfbd6b5735a
+          error_code: null
+          details:
+            source: 确认这 7 项人工验收
+            owner: project-owner
+  - ref: RULE-backend-redact-001
+    summary: Error strings written to logs, audit details, apply-failure fields, or
+      user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic`
+      (or equivalent redaction) before persistence or emission.
+    text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+    enforcement: required
+    verifier_ref: backend-logging#RULE-backend-redact-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-020
+          item_id: TASK-020
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T15:06:51.403724+00:00'
+          source: 确认这 7 项人工验收
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-logging#RULE-backend-redact-001
+          executed_at: '2026-10-01T15:07:16.051310+00:00'
+          status: verified
+          rule_text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: d7665ec2de337dc5b578183e51a50bcbcc46fcc57395678bb00c1bfbd6b5735a
+          error_code: null
+          details:
+            source: 确认这 7 项人工验收
+            owner: project-owner
+  - ref: PATTERN-backend-001
+    summary: handler 入口记录关键 id，apply 流水按 stage 打点
+    text_sha256: c79a6ef9bcaea5daf6590e157b5cb1232553e19bdd981d6749814bf96288f919
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: 用户可见错误 message 与内部 err 分离；内部 err 落库前 Redact
+    text_sha256: c476041772c4562e1de03bcf26b1cec4bcb3da99a9366ace6b21e2a50bdb869e
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: repo 模型注释明确 “already-redacted payload”
+    text_sha256: 2f386a93596aa4a0647173999a82ebceca9f90155d94cc7fa8eb5fcad6276a83
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-platform-rules
+  path: backend/platform-rules.md
+  status: active
+  hashes:
+    file_sha256: 714ef6dba1f750084c2fa4f268534909d8e0a6c49c611e049356b98a1fb35591
+    metadata_sha256: ecb69e8f95a7f2788a205597ba418180ded9c735218297486655b85c83a3641d
+    rules_sha256: 5d12a32233766dc29ce4c8d63fd6096da9cbc9378b45a2880edf4ef54bb99da9
+  selected_by: scope:path
+  reason: Git diff matched console/backend/internal/api/audit.go,console/backend/internal/api/errors.go,console/backend/internal/api/server.go,console/backend/internal/api/skill_upload_timeout.go,console/backend/internal/api/skill_upload_timeout_test.go,console/backend/internal/api/skills.go,console/backend/internal/errcode/errcode.go,console/backend/test/skill_upload_deadline_test.go,console/backend/test/skills_api_test.go
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-platform-001
+    summary: Control-plane changes must preserve multi-user isolation, mandatory model-pool
+      binding, secret-not-in-image injection, and generation-based runtime apply with
+      health/rollback semantics.
+    text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
+    enforcement: required
+    verifier_ref: backend-platform-rules#RULE-backend-platform-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-020
+          item_id: TASK-020
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T15:06:51.403724+00:00'
+          source: 确认这 7 项人工验收
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-platform-001
+          executed_at: '2026-10-01T15:07:16.509657+00:00'
+          status: verified
+          rule_text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: d7665ec2de337dc5b578183e51a50bcbcc46fcc57395678bb00c1bfbd6b5735a
+          error_code: null
+          details:
+            source: 确认这 7 项人工验收
+            owner: project-owner
+  - ref: RULE-backend-http-envelope-001
+    summary: All Console HTTP handlers must emit responses via `writeJSON` / `writeErr`
+      with stable `code*` constants; do not call `json.NewEncoder` (or ad-hoc maps)
+      in handlers.
+    text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+    enforcement: required
+    verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-019
+          item_id: TASK-019
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T10:17:44.385680+00:00'
+          status: unverified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: f71781a1201ff755289e2bd0694d639613997ea7126d58d45b5e93af1cba331f
+          result_sha256: 166059fea7561e911d7b1c6dd01cc9d731c97d5aa738b28bf810638d1d788e06
+          error_code: regex_violation
+          details:
+            checked_files: 39
+            violations:
+            - check_id: verifier
+              file: console/backend/internal/api/errors.go
+              line_no: 402
+              line: if err := json.NewEncoder(w).Encode(body); err != nil {
+              message: Rule verifier matched forbidden content
+              severity: warn
+            - check_id: verifier
+              file: console/backend/internal/api/server.go
+              line_no: 164
+              line: 'if err := json.NewEncoder(w).Encode(map[string]any{"code": 0,
+                "data": data}); err != nil {'
+              message: Rule verifier matched forbidden content
+              severity: warn
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T10:24:16.259884+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: 3768685a155fdd61fd4dfc711d944baacab96b85a840bf91fdafeb28648fe3d1
+          result_sha256: 10729825bf881d0c9c85855853ddc400186705247ac0eed9be51455cbf70b594
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 1f51cffd2ea3c35c8ccfb4935c8f0661be3973830767b639b97aea981234d1cf
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.295s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T14:49:30.584398+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: eda3aa1688e4699e3c2bea098d0e51451cb3634e3ae65d33c663ea74244540df
+          result_sha256: f1959326bd02cf701a08a3bbffadabadef421dacd5848b6d0c7de7821d830eb7
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 68578012b7cd584d253ecdc885f8d98dff550c46ef946f087fe9d8f5827c4862
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.272s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T14:50:15.766629+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: c4130be78bb251111c838a66106c43dde03447c2c274368b3ad02ed7abc70057
+          result_sha256: ba22384fb012756e33a3cca8eb00c007200c38914f2575cc4b17452e547047b1
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: a2d3adfdf37af62442120987a9a3c86083fd7cf9c287b57e00a7868a5763177c
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.347s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T14:54:19.663464+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: c01d3bf3fe9f8bfba87b2cc3ead9e1169e8fb61c2f79e7774e9fea921adc31f7
+          result_sha256: 3858ab0d4397fd389d1a32d50d9d270c62a691e5e3d45c9ff404f519939abdfb
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: e59f81d58ca19b2fa60ab4327fb5c295a583c4df0cda6ea36b27b43dd0290441
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.528s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T14:55:11.540534+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: c01d3bf3fe9f8bfba87b2cc3ead9e1169e8fb61c2f79e7774e9fea921adc31f7
+          result_sha256: 0857cc8774c265404eebbaede56ee513a12a674239454cdc234b597623e46417
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 9ef4c4db718c61715580bb218377620f4ebf9804c8e61c040f56989d629027f0
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.275s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T15:02:15.889396+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: d0258e11bb2cb3d29285de67b1ef1a08828a2b877804963d5ca994c8b9dc4aa6
+          result_sha256: 09d6c003d8f9bfebcd215ebe3bd56ccaf59328c9327ed61b96019e2207fd2e7c
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: e1abe66d5934fe1e652d5096536afe749aee36d7b82665143ab01ac55f827dd0
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.560s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T15:07:19.426945+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 1715fcf273cfa9fbf154a763878f386b8e93b5e48c5a3b4e16a06e1b6c200d91
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 88326cae682c60404aeb2e4b2c3e683fed30e6a57667ed2e135ba963a9db69e6
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.529s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T15:10:56.122797+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: c5f95c079099c10709d0706cfcd28434f15edae8e17599bb1c8b75f84d869e5c
+          result_sha256: a2760e0640d7af28235371a485765dc761c6593efa439f5e302072d6a12b79c6
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 7cdd287a3efa9d235dd8223950c1b7cfefadf77f1763e82268bbb294a86f81a6
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.324s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T15:12:00.388536+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 43a8f18847670a73f0fbd64e705198a3003c0260acd54784ee8bfb2198527ecf
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: f264ecb3b1def807731a8523a9579af44ed592e95b486f08089e856802525d2e
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.297s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T15:12:05.089785+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 7d136550c3e2b2c2b6749e8e915d7cd520e426accc2b05d43647c8a147634fae
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 28eea48ad0e911f5db6115695b3e60d7b02704367c9ca99248fb566362023805
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.309s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T15:20:58.358932+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: 194e09af35ee9904d2343dd7737955b41589bc2c91b9052ea0fbe71f3706460e
+          result_sha256: 07adbf516a26de20d94bc5cff45cc7eb119dfa2b40b62b48648ca3770c66fe38
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 9c21c6282f4b5f36d97fbd5c173b7ce6fc4a45617ab485faf52919ba9870101a
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              2.249s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T15:21:25.107581+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 26006c04f7cbfe4873bd40c2fc99a2dbdc3afb2b012c9b680a39aed8b82a34d6
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: b41fb8072c0f07ad5f1ee4365312ff83ae8dc92eedd8ab93ab6713d6154ed22c
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.459s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T15:21:43.450484+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 35ca16b54ec922bd0ddf82b077e5b23713e46dcd92ba39da99b397334f751755
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: b0dc951e501bfc2c9bf22736be1edcc6060cc0f3405316ec816e5434cf1af43f
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.476s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-01T15:34:45.530262+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: f7ee626328980e50ce9f3dd5ea496976c2fe220ef579c591460a3da8e44c8737
+          result_sha256: 1342154cf87db1f4cecce83bdd733a3242a914acb796c0851a68b86ee8c03b51
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 67f0961cec73dbd918216381ff669e58f940411d2b59341e86e469c2fda06d33
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.561s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-02T01:15:10.954080+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 37c851a4dde742f71f7860d9d546a434899a109ae0833a93bcae66f30504a007
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: a32569b3084edb5be17017a02ca75da4bbe6973786c87b1f1e45aab632cf3502
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.294s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-02T01:28:36.211359+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 0d200a1b25f0549e0a09dec42660c3179510002deb45d8f26b3babbadb2395f7
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: e70a0933cd5054d794b7190157312779dd941bd3bf0b0f54baef7b26d4dbbcd2
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.555s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-02T01:38:41.331180+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: fc298e700b0b135fb53ecacc0f0e62f67099025a4df90190c0866d889d49db79
+          result_sha256: 69ba851f28c215e94075fbc48273e8656e0a5e2ce4be564fa0b69a741d69f54c
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: acbf8b16f1d522c279b38349d8ad36df39e3ab94e253f9ea963f5e12695d50f7
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.523s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-02T01:39:43.019659+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 10729825bf881d0c9c85855853ddc400186705247ac0eed9be51455cbf70b594
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 1f51cffd2ea3c35c8ccfb4935c8f0661be3973830767b639b97aea981234d1cf
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.295s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-02T03:40:23.782427+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 81a7e6a26b05c28749fe95dea3554adef4b18ee5d2d75e088b5ca8506ebec7ab
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 04087b1bcdc6737ae9c298584d1b6bea37da5ea4d90002befa42417b5adfac7e
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.296s\n"
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-backend-model-pool-001
+    summary: Creating a Human User requires binding an unbound `model_config_id`;
+      already-bound models must fail with a conflict (`ErrLLMModelAlreadyBound` /
+      API conflict). No implicit shared or override model fallback chain.
+    text_sha256: 23c293f00680e409de4b6c712152fa0bc9e812273399c72c135ccdaf9082ee9f
+    enforcement: required
+    verifier_ref: backend-platform-rules#RULE-backend-model-pool-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-020
+          item_id: TASK-020
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T15:06:51.403724+00:00'
+          source: 确认这 7 项人工验收
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-model-pool-001
+          executed_at: '2026-10-01T15:07:19.427147+00:00'
+          status: verified
+          rule_text_sha256: 23c293f00680e409de4b6c712152fa0bc9e812273399c72c135ccdaf9082ee9f
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: d7665ec2de337dc5b578183e51a50bcbcc46fcc57395678bb00c1bfbd6b5735a
+          error_code: null
+          details:
+            source: 确认这 7 项人工验收
+            owner: project-owner
+  - ref: PATTERN-backend-001
+    summary: 新平台能力先扩 registry/repo，再暴露 api，最后才动 driver
+    text_sha256: eafb41a91eb99ea17792558908c621c53f131b38106301e23ffca005a2ccc9b3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: repo 层 sentinel error → `errors.go` / handler 映射到 HTTP code
+    text_sha256: bb50fcd3db4cb60eafa2bdb37a36a2820e29285a43855e74c15d366cbc66fa32
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 破坏性 API 变更走显式版本或兼容窗口
+    text_sha256: 9edc8d306a946542dddd02908bc8551bbf827130665af56ce064bf411c9a4343
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-config-and-apply
+  path: runtime/config-and-apply.md
+  status: active
+  hashes:
+    file_sha256: 5eb887d3987869eeefd19895210afefa49a028af4fee1242a71e9a2a59c1be14
+    metadata_sha256: f275035e49c2d53961baf0ae8b9974d6867e3504a48b7128483ec94ab60e72ae
+    rules_sha256: cedb07c8944d42c5c74ebe18b0418eb7bcc2a9f7d87cb5e8b58161a83ba94d45
+  selected_by: path_mapping
+  reason: Worker 读取与长任务提交分离、系统指导规则、隔离与审计进度触发边界设计
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-config-001
+    summary: Runtime configuration changes must validate against schema, apply through
+      the transactional pipeline (`runtime-config-transaction` / control-plane `runtimeapply`),
+      and preserve rollback or failed-health recovery.
+    text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+    enforcement: required
+    verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-CONFIG
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-010
+          item_id: RULE-runtime-config-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+          executed_at: '2026-10-01T10:08:24.802688+00:00'
+          status: verified
+          rule_text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: RULE-runtime-validate-before-write-001
+    summary: Any renderer/inject path that materializes runtime config must call `validateRuntimeConfig`
+      (or shared schema helper) before atomic write; desired state carries a monotonic
+      `generation`.
+    text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+    enforcement: required
+    verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-WRITE
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-010
+          item_id: RULE-runtime-validate-before-write-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-010
+          item_id: TASK-010
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+          executed_at: '2026-10-01T10:08:24.802836+00:00'
+          status: verified
+          rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: PATTERN-runtime-001
+    summary: 控制面构建 desired DTO，Worker 执行 transaction script
+    text_sha256: 969b322dbf270438aaa0869abd0db76afeee170b3edf9baa4a61e607612a5765
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 用 generation 单调递增检测漂移与冲突（generation conflict）
+    text_sha256: 2d27b0f5e2a796b7d7190722ce790f8eb75b1ee6ea0e91d52f524b6a3cdd0b3d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-directory-structure
+  path: runtime/directory-structure.md
+  status: active
+  hashes:
+    file_sha256: 9d55d53709d88d2907088ca6e1b8f4365924cbdc91e8006471ef33c4c106f1ea
+    metadata_sha256: 7dcafd9e33ee73b9d3b5973436f845d5d11f8bf5fd52d78a946d168e8f5e010f
+    rules_sha256: 1eef557f1ace42806c61e99d746e9d7e6a112e47fb582aa2dc6a18734917df4c
+  selected_by: path_mapping
+  reason: Worker 读取与长任务提交分离、系统指导规则、隔离与审计进度触发边界设计
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-directory-001
+    summary: Worker/runtime assets must live under `bin/`, `tools/`, `skills/`, `seed/`,
+      or image entrypoints; do not vendor or fork OpenClaw upstream source into this
+      repository.
+    text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+    enforcement: required
+    verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-DIR
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-009
+          item_id: RULE-runtime-directory-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-009
+          item_id: TASK-009
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+          executed_at: '2026-10-01T10:08:24.803486+00:00'
+          status: verified
+          rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: PATTERN-runtime-001
+    summary: 控制面改行为 → backend；Worker 内执行 → tools/bin
+    text_sha256: 8b0c2519d72b83bd812f4458edf5989a0735cdfbb1d021cdd6c9a60e3cc25a9c
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: Skill 模板变更同步 `skills/README.md` 与检查器
+    text_sha256: 95cec7580f956caf27d9b80bcba7e545c07e6ef0cfcc710da3bcebe644df4b7f
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-isolation-and-security
+  path: runtime/isolation-and-security.md
+  status: active
+  hashes:
+    file_sha256: c0d256ae3e0052120abfc554fdd38d6df1fb91c159132ba662ff163e7e8c22ab
+    metadata_sha256: b7fdca81e893c4700e546264dca611c65f0533ca1a698e426a92f5cc773a0ccd
+    rules_sha256: 92c49db785819c7ac008577a80977f3ed8b72ee244db7b0d28e5e3c1918dec63
+  selected_by: path_mapping
+  reason: Worker 读取与长任务提交分离、系统指导规则、隔离与审计进度触发边界设计
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-security-001
+    summary: Channel credentials, LLM keys, platform API keys, and service tokens
+      must be injected at runtime and never baked into images or committed; each Human
+      User must keep isolated agent workspace, browser profile, and session state.
+    text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+    enforcement: required
+    verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-SECURITY
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-003
+          item_id: RULE-runtime-security-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-003
+          item_id: TASK-003
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+          executed_at: '2026-10-01T10:08:24.804304+00:00'
+          status: verified
+          rule_text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: RULE-runtime-secret-file-mode-001
+    summary: Files that materialize config, bundles, or secrets on disk must use restrictive
+      modes (`0o600` for written config/bundle material; Pod service token files `0400`
+      at the canonical path validated by image self-check).
+    text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+    enforcement: required
+    verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-FILEMODE
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-004
+          item_id: RULE-runtime-secret-file-mode-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-004
+          item_id: TASK-004
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+          executed_at: '2026-10-01T10:08:24.804315+00:00'
+          status: verified
+          rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: PATTERN-runtime-001
+    summary: inject-env / inject-channels / inject-multi-user-config 作为注入单一入口
+    text_sha256: a7979f71c77a2fa895f00623ff5eab9de188d4f0db0688f72902e7ed677916d9
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 工具策略与浏览器租约集中在 `muad-runtime-guard`
+    text_sha256: 5b6b947009a89327eb4d6efa22b93892225ed01cec5e179360e3ecb522191035
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-003
+    summary: Docker driver 将 service token 以只读方式挂进容器
+    text_sha256: e93f63de52e3b507071dfe3bf56757f8fdd5276d0fed07583970a11789b55e17
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-skill-execution
+  path: runtime/skill-execution.md
+  status: active
+  hashes:
+    file_sha256: 4f0e841689b8309ad1a67186b0a82336bb1b4a6d6396d0aab6d7856a1a51d937
+    metadata_sha256: 03de1fff61c25a9ab8a640b25646b9c439eef210c576573697df99bc09e17340
+    rules_sha256: fbe9d77c7effb79a139340813eb80e706004e53b65fde04ab436f8edaeafaa2f
+  selected_by: path_mapping
+  reason: Worker 读取与长任务提交分离、系统指导规则、隔离与审计进度触发边界设计
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-skill-001
+    summary: Skills must honor system/public/private layering, require explicit activation/policy
+      gates before tools run, emit progress/telemetry without secrets, and respect
+      concurrency/lease limits.
+    text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-SKILL
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-008
+          item_id: RULE-runtime-skill-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-008
+          item_id: TASK-008
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+          executed_at: '2026-10-01T10:08:24.805904+00:00'
+          status: verified
+          rule_text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: RULE-runtime-skill-layering-001
+    summary: Resolution order prefers system (`system_protected`) over public/private;
+      public/private name conflicts must not silently overwrite—override only via
+      explicit allow_override policy.
+    text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-LAYER
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-006
+          item_id: RULE-runtime-skill-layering-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-006
+          item_id: TASK-006
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+          executed_at: '2026-10-01T10:08:24.805912+00:00'
+          status: verified
+          rule_text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: RULE-runtime-log-injection-001
+    summary: Tool/plugin modules must receive logging via an injected `log` callback
+      (default no-op) instead of scattered `console.*`; the openclaw plugin path injects
+      `api.logger?.warn`, the CLI path injects `console.warn`.
+    text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-LOG
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-009
+          item_id: RULE-runtime-log-injection-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-009
+          item_id: TASK-009
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+          executed_at: '2026-10-01T10:08:24.805919+00:00'
+          status: verified
+          rule_text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: RULE-runtime-log-prefix-001
+    summary: Log lines must carry a stable module prefix (`[session-manager]`, `[muad-runtime-guard]`)
+      with `[<module>-<action>]` sub-tags for grep-ability.
+    text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-PREFIX
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-009
+          item_id: RULE-runtime-log-prefix-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-009
+          item_id: TASK-009
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+          executed_at: '2026-10-01T10:08:24.805925+00:00'
+          status: verified
+          rule_text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: RULE-runtime-skill-fail-loud-001
+    summary: Skill scripts must report failures to stderr and exit non-zero (fail
+      loud); stdout is reserved for the machine-readable result. Errors written to
+      stdout break exec-failure log forwarding.
+    text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.design.md
+          section_id: '3.5'
+          item_id: Q-FAIL
+          artifact_sha256: 146d443b3e4032f878f1cf3be66cae85def75fc3568c15ca72e4d36d57c731be
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-005
+          item_id: RULE-runtime-skill-fail-loud-001
+          artifact_sha256: 7c1c9d0174f4d57da47d372f7b70460a407bbb46f9dd98b684925598f9a8c043
+        - artifact: skill-execution-preflight.md
+          section_id: TASK-005
+          item_id: TASK-005
+          artifact_sha256: 5066fcff4f66a3f99f1dfaf6a73e1e766764c01253c55da5b137e4768ff90d0d
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: verified
+        refs: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-01T10:06:16.765201+00:00'
+          source: 人工确认验收
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+          executed_at: '2026-10-01T10:07:47.517133+00:00'
+          status: verified
+          rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+          artifact_sha256: null
+          diff_sha256: head:217afd9f201b03b1c8c8ae4e396dd4a85ec0df45
+          result_sha256: 11ed6f0b500bf2335aa99fdb9369bfebb1ed86b29d96c3eba0223e64632eeed9
+          error_code: null
+          details:
+            source: 人工确认验收
+            owner: project-owner
+  - ref: PATTERN-runtime-001
+    summary: 先 policy/activation gate，再 runner
+    text_sha256: 22fad8cba0a207a4c85636e47ee58891b2eff905817e0faba4910158f86a5ebb
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 长任务用 progress 事件，不堵死主会话
+    text_sha256: 4ddb6175ccb7f84bc0194881aa1a6c0a32469dcb952828e2ee2efe8a35a96aa9
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-003
+    summary: 模板变更放 `skills/_templates`，种子放 `skills/<name>`
+    text_sha256: 9c50296f165ce02990c3ee15a33ffcc84da1a77d5847feb30fc50fd12e0044a2
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-004
+    summary: repo 查询 system/public 时 `ORDER BY CASE scope WHEN 'system' THEN 0 ELSE
+      1 END`
+    text_sha256: 471439c2cf2439af73880de97579916c1d2adceb0bffa375e297618b7fbf458c
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []

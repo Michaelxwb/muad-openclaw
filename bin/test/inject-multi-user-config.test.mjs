@@ -141,7 +141,7 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.equal(output.browser.profiles.quarantine.color, "#6B7280");
   assert.notEqual(output.browser.profiles.alice.color, output.browser.profiles.quarantine.color);
   assert.equal(output.models.providers["user-alice-deepseek"].apiKey, "alice-key");
-  assert.deepEqual(output.tools.alsoAllow, ["browser", "session_get_state"]);
+  assert.deepEqual(output.tools.alsoAllow, ["browser", "muad_submit_long_task", "session_get_state"]);
   assert.deepEqual(output.skills.load.extraDirs, [
     "/opt/openclaw-skills",
   ]);
@@ -260,8 +260,8 @@ Keep this custom rule.
   assert.match(firstGuidance, /Memory persistence/u);
   assert.match(firstGuidance, /before saying it is remembered/u);
   assert.match(firstGuidance, /Never say a fact has been saved/u);
-  assert.match(firstGuidance, /read the exact .*SKILL\.md/iu);
-  assert.match(firstGuidance, /every user turn/iu);
+  assert.match(firstGuidance, /读取其精确 SKILL\.md/u);
+  assert.match(firstGuidance, /本轮必须重新读取/u);
   assert.doesNotMatch(firstGuidance, /muad_use_skill/u);
   assert.doesNotMatch(firstGuidance, /muad_run_skill/u);
   assert.equal(firstGuidance, secondGuidance);

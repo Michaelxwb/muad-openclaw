@@ -6,6 +6,7 @@
     "onStartup": true
   },
   "contracts": {
+    "tools": ["muad_submit_long_task"],
     "trustedToolPolicies": [
       "muad-browser-profile",
       "muad-main-deny",

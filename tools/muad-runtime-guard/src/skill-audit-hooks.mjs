@@ -10,57 +10,66 @@ const TURN_CONTEXT_TTL_MS = 10 * 60_000;
 const READ_PATH_KEYS = ["path", "file_path", "filePath", "file"];
 
 export function createSkillAuditHooks({
-  config, client, now = () => Date.now(), log = () => {}, onSkillActivated = () => {},
+  config, getConfig = () => config, manager, client, now = () => Date.now(),
+  log = () => {}, onSkillActivated = () => {},
 }) {
-  // runId -> { agentId, expiresAt }：before_agent_run 记下 turn 上下文，
-  // 供 before_tool_call 在事件缺失 agentId 时回退。
-  const turnContexts = new Map();
-  // runId -> { skills: Set<skillName>, expiresAt }：同一 turn 对同一 skill 只上报一次。
-  const reported = new Map();
-  const diag = (message) => log(`[skill-audit] ${message}`);
-
+  const state = { getConfig, manager, client, now, onSkillActivated,
+    turns: new Map(), reported: new Map(), diag: message => log(`[skill-audit] ${message}`) };
   return {
-    // 显式 /skill:<name> 或 <skill name="...">：before_dispatch 即可命中 prompt。
-    beforeDispatch: async (event, ctx) => {
-      pruneExpired(turnContexts, now());
-      pruneExpired(reported, now());
-      const skillName = explicitSkillName(promptText(event));
-      if (!skillName || isLongTaskSession(event, ctx)) return undefined;
-      const agentId = resolveAgentId(event, ctx);
-      const match = findDispatchGrant(config, agentId, skillName);
-      if (!match) return undefined;
-      const runId = resolveRunId(event, ctx);
-      if (runId && alreadyReported(reported, runId, skillName)) return undefined;
-      activateProgress(onSkillActivated, activationInput(config, event, ctx, agentId, match.skillName), diag);
-      reportOnce(client, match.grant, agentId, match.skillName, now(), diag);
-      if (runId) rememberReported(reported, runId, skillName, now());
-      return undefined;
-    },
-    // 自然语言触发时模型 mid-turn read SKILL.md：记下 turn 上下文，供 before_tool_call 使用。
-    beforeAgentRun: async (event, ctx) => {
-      pruneExpired(turnContexts, now());
-      if (isLongTaskSession(event, ctx)) return undefined;
-      const runId = resolveRunId(event, ctx);
-      if (!runId) return undefined;
-      rememberTurn(turnContexts, runId, { agentId: resolveAgentId(event, ctx) }, now());
-      return undefined;
-    },
-    // 自然语言触发：read SKILL.md 且路径命中该 agent 的授权 skill root。
-    beforeToolCall: async (event, ctx) => {
-      pruneExpired(turnContexts, now());
-      pruneExpired(reported, now());
-      if (isLongTaskSession(event, ctx)) return undefined;
-      if (event?.toolName !== "read") return undefined;
-      const read = auditRead(config, event, ctx);
-      if (!read) return undefined;
-      const runId = resolveRunId(event, ctx);
-      if (runId && alreadyReported(reported, runId, read.skillName)) return undefined;
-      activateProgress(onSkillActivated, activationInput(config, event, ctx, read.agentId, read.skillName), diag);
-      reportOnce(client, read.grant, read.agentId, read.skillName, now(), diag);
-      if (runId) rememberReported(reported, runId, read.skillName, now());
-      return undefined;
-    },
+    beforeDispatch: async (event, ctx) => auditDispatch(state, event, ctx),
+    beforeAgentRun: async (event, ctx) => auditAgentRun(state, event, ctx),
+    beforeToolCall: async (event, ctx) => auditToolCall(state, event, ctx),
   };
+}
+
+function auditDispatch(state, event, ctx) {
+  pruneExpired(state.reported, state.now());
+  const name = explicitSkillName(promptText(event));
+  if (!name || isLongTaskSession(event, ctx)) return;
+  const config = state.getConfig(), agentId = resolveAgentId(event, ctx);
+  if (isLongTaskSkill(config, agentId, name)) return;
+  const match = findDispatchGrant(config, agentId, name);
+  if (match) auditForeground(state, config, event, ctx, agentId, match);
+}
+
+function auditAgentRun(state, event, ctx) {
+  pruneExpired(state.turns, state.now());
+  if (isLongTaskSession(event, ctx)) return auditBackground(state, event, ctx);
+  const runId = resolveRunId(event, ctx);
+  if (runId) rememberTurn(state.turns, runId, { agentId: resolveAgentId(event, ctx) }, state.now());
+}
+
+function auditToolCall(state, event, ctx) {
+  pruneExpired(state.reported, state.now());
+  if (isLongTaskSession(event, ctx) || event?.toolName !== "read") return;
+  const config = state.getConfig(), read = auditRead(config, event, ctx);
+  if (!read || isLongTaskSkill(config, read.agentId, read.skillName)) return;
+  auditForeground(state, config, event, ctx, read.agentId, read);
+}
+
+function auditForeground(state, config, event, ctx, agentId, match) {
+  const runId = resolveRunId(event, ctx);
+  if (runId && alreadyReported(state.reported, runId, match.skillName)) return;
+  activateProgress(state.onSkillActivated, activationInput(config, event, ctx, agentId, match.skillName), state.diag);
+  reportOnce(state.client, match.grant, agentId, match.skillName, state.now(), state.diag);
+  if (runId) rememberReported(state.reported, runId, match.skillName, state.now());
+}
+
+function auditBackground(state, event, ctx) {
+  const sessionKey = textValue(ctx?.sessionKey) || textValue(event?.sessionKey);
+  const agentId = resolveAgentId(event, ctx);
+  const task = state.manager?.snapshot().pools.flatMap(pool => pool.tasks).find(item =>
+    item.agentId === agentId && item.sessionKey === sessionKey && item.status === "running");
+  if (!task || alreadyReported(state.reported, task.taskId, task.skillName)) return;
+  const config = state.getConfig();
+  const grant = findGrantBySkillPath(config, agentId, resolveExistingPath(path.join(task.skillRoot, "SKILL.md")));
+  if (!grant) return;
+  reportOnce(state.client, grant, agentId, task.skillName, state.now(), state.diag, task.taskId);
+  rememberReported(state.reported, task.taskId, task.skillName, state.now());
+}
+
+function isLongTaskSkill(config, agentId, name) {
+  return (config?.longTaskSkillGrants ?? []).some(grant => grant.agentId === agentId && grant.name === name);
 }
 
 function activateProgress(activate, input, diag) {
@@ -86,11 +95,11 @@ function activationInput(config, event, ctx, agentId, skillName) {
 }
 
 // 上报是 fire-and-forget：失败只记日志，不阻塞 turn（审计不能影响执行）。
-function reportOnce(client, grant, agentId, skillName, now, diag) {
+function reportOnce(client, grant, agentId, skillName, now, diag, executionId = randomUUID()) {
   if (!client || typeof client.report !== "function") return;
   const startedAt = new Date(now).toISOString();
   const request = {
-    executionId: randomUUID(),
+    executionId,
     agentId,
     skillName,
     skillScope: grant.source,

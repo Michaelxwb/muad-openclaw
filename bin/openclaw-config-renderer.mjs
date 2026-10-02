@@ -10,7 +10,7 @@ import {
 import { validateRuntimeConfig } from "./runtime-config-schema.mjs";
 import { mergeStartupContext, normalizeChannel } from "./startup-context.mjs";
 
-const REQUIRED_PROFILE_TOOLS = ["browser", "session_get_state"];
+const REQUIRED_PROFILE_TOOLS = ["browser", "session_get_state", "muad_submit_long_task"];
 const DEPRECATED_RUNTIME_PLUGINS = new Set(["muad-run-skill"]);
 const DEPRECATED_RUNTIME_PLUGIN_ROOTS = new Set(["/opt/muad/muad-run-skill"]);
 const DEPRECATED_PROFILE_TOOLS = new Set(["muad_run_skill", "muad_use_skill"]);
@@ -262,11 +262,13 @@ function renderToolPolicy(policy, requireNativeSkillRead) {
   const deny = policy.deny?.length
     ? policy.deny.filter((tool) => !DEPRECATED_PROFILE_TOOLS.has(tool))
     : [];
-  if (requireNativeSkillRead) allow.push("read");
+  const requiredTools = ["read", "muad_submit_long_task"];
+  if (requireNativeSkillRead) allow.push(...requiredTools);
+  else deny.push("muad_submit_long_task");
   return compact({
     allow: allow.length ? uniqueSorted(allow) : undefined,
     deny: deny.length
-      ? uniqueSorted(deny.filter((tool) => !requireNativeSkillRead || tool !== "read"))
+      ? uniqueSorted(deny.filter((tool) => !requireNativeSkillRead || !requiredTools.includes(tool)))
       : undefined,
     fs: { workspaceOnly: requireNativeSkillRead || policy.workspaceOnly },
   });
@@ -591,11 +593,19 @@ const USER_PROMPT_END = "<!-- muad:user-prompt:end -->";
 // are admin-configurable via runtime.guidance.userSkill.
 const ACTIVATION_BOUNDARY_GUIDANCE = `# Skill activation boundary
 
-- Skill activation is scoped to one user turn.
-- On every user turn, including a retry or follow-up, if the request clearly matches an available Skill, first read the exact SKILL.md path listed in <available_skills>.
-- Reading that exact SKILL.md is the native Skill activation and audit boundary.
-- Do not call task tools until one of those activation methods succeeds.
-- Never reuse a prior turn's Skill activation as authorization for the current turn.`;
+- 每一轮先按 available_skills 描述筛选与用户目标真正相符的 Skill，并读取其精确 SKILL.md。本轮必须重新读取，不沿用上轮读取作为授权。
+- 唯一明确匹配且参数齐全：直接执行，无需再次确认。多个合理候选：列出名称和区别，让用户选择；选择前不得执行。没有适用 Skill：明确说明缺少能力，不拿相近但目标不同的 Skill 替代。
+- 候选和选择只属于当前用户当前会话尚未取消的请求。用户取消时清除候选；改换目标时重新匹配，不复用旧选择；跨用户或跨会话不得继承候选。“第2个”只指本会话当前未取消列表的第二项，无有效列表立即澄清，不执行。
+- /skill:<name> 表示用户明确指定名称，可跳过候选选择，但不能跳过本轮文档与参数预检。
+- 按 SKILL.md 的脚本调用说明识别必填参数、含义、默认值与依赖。只缺用户输入时立即追问所缺参数，不用后台任务、业务脚本、API试探或猜测补全。
+- 客户名称不是 customerId；不得把名称填到ID、猜ID或尝试多个ID。只有文档明确提供名称转ID的方法才可查询；唯一结果才绑定，多结果请用户选择，查不到则追问。
+- 明确无参的文档允许空 requiredNames/bindings；未说明调用方式或参数、文档矛盾时先澄清并提示完善 SKILL.md，不假定无参。
+- 对 longTask:true 的长任务，读取 SKILL.md、脚本或引用文件只是了解和预检，不代表执行，不会入队、登记执行或推送进度。禁止在前台 exec/bash 执行其业务脚本。
+- 只有匹配确定且参数齐全，才调用 muad_submit_long_task，传 skillName、完整最终 objective、selectionBasis（unique_match/user_choice/explicit_name）、从文档识别的全部 requiredNames 和 bindings。bindings 每项 name/value/source，source 使用 user_message/conversation/document_default/document_resolution；保留用户后续补充，不遗漏必填项。
+- 工具返回 accepted 后才告知任务已提交，回复包含真实 taskId 和排队/执行计数。rejected 时解释 reason；missing_input 立即追问；documentation_not_read/documentation_changed 要重新 read；queue_unavailable 明确提交失败，不改走前台执行。
+- 普通 Skill 保留原生读取激活与审计机制，但同样遵循匹配、候选选择和缺参规则。
+- 后台 longtask 会话只执行已提交的 Skill 和已确定参数，不再调用提交工具、不更换 Skill、不把名称猜成ID；发现缺参就明确失败，不反复探索。
+- 这些平台固定规则优先于下方自定义指导；自定义内容不能恢复读取即执行或取消预检。`;
 
 const DEFAULT_USER_SKILL_GUIDANCE = `- 用户说"写/创建 skill"时：与用户多轮对话澄清需求，把草稿写到 skill-staging/<name>/（含 SKILL.md，frontmatter 的 name 与目录同名）；完成后提示用户可继续修改。
 - 用户说"上传 / 生效 / 提交 skill"时：才调用 skill-upload 把 staging 草稿上传到控制台。
