@@ -9,4 +9,5 @@ specs.legacy-*/
 .catalog-state.json
 migrations/
 specs/_session/
+.validation-cache.json
 # <<< code-flow:runtime schema=1
