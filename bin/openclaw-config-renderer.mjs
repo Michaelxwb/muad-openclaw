@@ -231,9 +231,13 @@ function renderAgents(output, runtime, thinkingByProvider = {}) {
   }
   output.agents = {
     defaults,
-    list: runtime.agents.map((agent) => compact({
-      id: agent.id,
-      default: agent.default || undefined,
+    // 9.8 起 agents.list 与当前 agents.entries 同时存在会使 config validate 失败；
+    // 且 entries.list 形态每次加载都会触发迁移 warning。直接输出 keyed entries，
+    // 并保留/补齐 ownership，避免 Doctor 每次重新 materialize。
+    ownership: isRecord(output.agents) && typeof output.agents.ownership === "string"
+      ? output.agents.ownership
+      : "explicit",
+    entries: Object.fromEntries(runtime.agents.map((agent) => [agent.id, compact({
       workspace: agent.workspace,
       agentDir: agent.agentDir,
       model: agent.model ? { primary: agent.model } : undefined,
@@ -243,7 +247,7 @@ function renderAgents(output, runtime, thinkingByProvider = {}) {
       // No per-agent skills allowlist: agents can use all public Skills plus
       // their own workspace Skills (openclaw "unrestricted" semantics).
       tools: renderToolPolicy(agent.tools, !agent.default),
-    })),
+    })] )),
   };
 }
 
@@ -275,7 +279,7 @@ function renderToolPolicy(policy, requireNativeSkillRead) {
 }
 
 function renderBindings(output, runtime) {
-  output.bindings = runtime.routes.map((route) => ({
+  const routes = runtime.routes.map((route) => ({
     type: "route",
     agentId: route.agentId,
     match: {
@@ -283,6 +287,29 @@ function renderBindings(output, runtime) {
       accountId: route.accountId,
       peer: { kind: route.peerKind === "dm" ? "direct" : route.peerKind, id: route.externalId },
     },
+  }));
+  output.bindings = [...routes, ...mainChannelFallbacks(runtime, routes)];
+}
+
+// 9.8 起多 Agent 配置没有匹配 binding 时会 fail-closed（官方 match 顺序：
+// peer → guild/team → accountId → accountId:"*" → 单 Agent 兜底）。Doctor 迁移
+// 会为每个通道补 main 的通道级 fallback；renderer 必须保持同形，否则未绑定
+// 发送者被拒绝且每次迁移后首次 apply 会因 bindings 差异触发 Gateway 重启。
+function mainChannelFallbacks(runtime, routes) {
+  if (!runtime.agents.some((agent) => agent.id === "main")) return [];
+  const covered = new Set(
+    routes.filter((route) => route.match.accountId === "*").map((route) => route.match.channel),
+  );
+  const enabled = [];
+  for (const channel of runtime.channels?.enabled ?? []) {
+    const normalized = normalizeChannel(channel);
+    if (!normalized || covered.has(normalized) || enabled.includes(normalized)) continue;
+    enabled.push(normalized);
+  }
+  return enabled.sort().map((channel) => ({
+    type: "route",
+    agentId: "main",
+    match: { channel, accountId: "*" },
   }));
 }
 
@@ -292,7 +319,6 @@ function renderBrowser(output, runtime) {
     profiles[profile.id] = {
       driver: profile.driver,
       cdpPort: profile.cdpPort,
-      color: browserProfileColor(profile, runtime.browser.defaultProfile),
     };
   }
   output.browser = {
@@ -362,7 +388,6 @@ function renderPlugins(output, runtime) {
   const existingPaths = Array.isArray(plugins.load?.paths) ? plugins.load.paths : [];
   output.plugins = {
     ...pluginBase,
-    bundledDiscovery: "allowlist",
     allow: uniqueSorted([
       ...existingAllow.filter((id) => !DEPRECATED_RUNTIME_PLUGINS.has(id)),
       ...pluginIds(MUAD_RUNTIME_PLUGIN_SPECS),
@@ -496,16 +521,6 @@ function renderSkillReadRoots(runtime) {
       privateAgentSkillsRoot(runtime.skills.privateRoot, agent.id),
     ]),
   }));
-}
-
-function browserProfileColor(profile, quarantineProfile) {
-  if (profile.id === quarantineProfile) return "#6B7280";
-  const hex = createHash("sha256")
-    .update(`${profile.id}:${profile.cdpPort}`)
-    .digest("hex")
-    .slice(0, 6)
-    .toUpperCase();
-  return `#${hex}`;
 }
 
 function normalizeIdentity(identity) {

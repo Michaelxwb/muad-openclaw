@@ -111,7 +111,7 @@
 
 ## TASK-002: Renderer 与通道配置形态适配（9.8 validate 通过）
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `openclaw-runtime-upgrade.design.md#3.1.4 实机预验证结论`, `openclaw-runtime-upgrade.design.md#3.5.2 重启与配置生效`
@@ -124,31 +124,38 @@
 
 ### Checklist
 
-- [ ] `bin/openclaw-config-renderer.mjs`：删除 `browser.profiles.*.color` 与 `plugins.bundledDiscovery`
-- [ ] `bin/channel-config.mjs`：`streaming = { mode: "off" }`（对象）
-- [ ] renderer `agents` 输出改为 `agents.entries`（keyed）并保留 `agents.ownership`；不再写 `agents.list`
-- [ ] renderer/handoff 保留或生成每个启用通道的 `main` fallback 绑定（`match.accountId="*"`）
-- [ ] [S-04][E2E] 模型/agents 渲染变化在候选配置上 validate 通过并选择正确重启协议（真实边界：renderer → 9.8 CLI validate → restartMode）
-- [ ] [B-06][integration] 旧/新版本能力选择与配置/自检（真实边界：版本表、候选配置、自检）
-- [ ] [S-10][integration] 候选配置 validate 通过且无 unrecognized key（真实边界：9.8 `openclaw config validate`）
-- [ ] RULE-runtime-config-001 verifier：候选配置经 schema 校验与事务管线（prepare/validate/commit）且验证回滚/健康语义不被破坏
-- [ ] RULE-runtime-validate-before-write-001 verifier：materialize 前调用 validateRuntimeConfig、0600 原子写、generation 单调
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] `bin/openclaw-config-renderer.mjs`：删除 `browser.profiles.*.color` 与 `plugins.bundledDiscovery`
+- [x] `bin/channel-config.mjs`：`streaming = { mode: "off" }`（对象）
+- [x] renderer `agents` 输出改为 `agents.entries`（keyed）并保留 `agents.ownership`；不再写 `agents.list`
+- [x] renderer/handoff 保留或生成每个启用通道的 `main` fallback 绑定（`match.accountId="*"`）
+- [x] [S-04][E2E] 模型/agents 渲染变化在候选配置上 validate 通过并选择正确重启协议（真实边界：renderer → 9.8 CLI validate → restartMode）；登记为 e2e_deferred，留待终验
+- [x] [B-06][integration] 旧/新版本能力选择与配置/自检（真实边界：版本表、候选配置、自检）
+- [x] [S-10][integration] 候选配置 validate 通过且无 unrecognized key（真实边界：9.8 `openclaw config validate`）
+- [x] RULE-runtime-config-001 verifier：候选配置经 schema 校验与事务管线（prepare/validate/commit）且验证回滚/健康语义不被破坏
+- [x] RULE-runtime-validate-before-write-001 verifier：materialize 前调用 validateRuntimeConfig、0600 原子写、generation 单调
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-04 | E2E | renderer、9.8 CLI validate、重启选择 | 配置 valid、restartMode 正确 | planned | planned | planned |
-| B-06 | integration | 版本能力表、配置/自检 | 旧新版本各自协议正确 | planned | `node --test bin/test/runtime-config-transaction.test.mjs` | planned |
-| S-10 | integration | 9.8 config validate | 无 unrecognized key | planned | `node --test bin/test/runtime-image-self-check.test.mjs` | planned |
+| S-04 | E2E | renderer、9.8 CLI validate、重启选择 | 配置 valid、restartMode 正确 | renderer 候选 → 9.8 CLI（终验执行） | - | e2e_deferred |
+| B-06 | integration | 版本能力表、配置/自检 | 旧新版本各自协议正确 | `bin/test/runtime-config-transaction.test.mjs` | `node --test bin/test/runtime-config-transaction.test.mjs` | verified |
+| S-10 | integration | 9.8 config validate | 无 unrecognized key | `bin/test/inject-multi-user-config.test.mjs` + 9.8 validate | `node --test bin/test/inject-multi-user-config.test.mjs` | verified |
 
 ### Acceptance Evidence
 
-> 待 `cf-task-start` 填写。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| B-06 / S-10 | 7 处新断言失败：agents.entries 缺失、color/bundledDiscovery 仍存在、streaming 为字符串、main fallback 缺失 | `node --test bin/test/inject-multi-user-config.test.mjs` → 24/24；bin 全量 117/117 | `bin/test/inject-multi-user-config.test.mjs`（entries/ownership/fallback/color/bundledDiscovery/streaming 断言） | 真实迁移后配置（pod01 副本）→ 本仓库 renderer → 候选：agents.entries+ownership、无 color/bundledDiscovery、streaming `{mode:"off"}`、bindings 3 路由+2 main fallback → 9.8 `openclaw config validate` = `valid:true` | verified |
+| S-04 | -（E2E 只登记） | pending（终验） | 候选 validate 通过；restartMode=gateway 已在 prepare 输出观测 | `runtime-config-transaction prepare` 输出 `restartMode:"gateway"` | e2e_deferred |
 
 ### Log
 - [2026-10-07] created (draft)
+- [2026-10-07] started；RED：更新/新增 9.8 形态断言后 7 处失败
+- [2026-10-07] 实现 renderer entries/ownership、去 color/bundledDiscovery、main fallback、channel-config streaming 对象；bin 全量 117/117 GREEN
+- [2026-10-07] 集成验证：真实 pod01 迁移后配置经 renderer 生成候选 → 9.8 validate `valid:true`
+- [2026-10-07] completed (done)
 
 ---
 

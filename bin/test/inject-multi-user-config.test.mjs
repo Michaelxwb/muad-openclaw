@@ -6,6 +6,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { applyRuntimeConfig } from "../inject-multi-user-config.mjs";
+import { normalizeMattermostChannelConfig } from "../channel-config.mjs";
 import {
   IMAGE_CHANNEL_PLUGIN_SPECS,
   MUAD_RUNTIME_PLUGIN_SPECS,
@@ -65,8 +66,8 @@ test("Runtime DTO accepts older agent payloads without skill filters", () => {
   const parsed = parseRuntimeConfig(runtime);
   const output = renderOpenClawConfig(parsed, {});
   // No per-agent skills allowlist is rendered (openclaw unrestricted semantics).
-  for (const agent of output.agents.list) {
-    assert.equal(Object.hasOwn(agent, "skills"), false, "agents.list[].skills must be absent");
+  for (const agent of Object.values(output.agents.entries)) {
+    assert.equal(Object.hasOwn(agent, "skills"), false, "agents.entries[].skills must be absent");
   }
 });
 
@@ -76,9 +77,9 @@ test("renderer adds native Skill read access to older business agent policies", 
 
   const output = renderOpenClawConfig(runtime, {});
 
-  assert.equal(output.agents.list[0].tools.deny.includes("read"), true);
-  assert.equal(output.agents.list[1].tools.allow.includes("read"), true);
-  assert.equal(output.agents.list[1].tools.fs.workspaceOnly, true);
+  assert.equal(output.agents.entries.main.tools.deny.includes("read"), true);
+  assert.equal(output.agents.entries.alice.tools.allow.includes("read"), true);
+  assert.equal(output.agents.entries.alice.tools.fs.workspaceOnly, true);
 });
 
 test("Runtime DTO accepts traditional Skill grants without version metadata", () => {
@@ -118,28 +119,43 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   assert.equal(output.channels.wecom.botId, "test-bot");
   assert.equal(output.channels["openclaw-weixin"].enabled, true);
   assert.equal(output.agents.defaults.systemPrompt, undefined);
-  assert.equal(output.agents.list[0].id, "main");
-  assert.equal(output.agents.list[0].default, true);
-  assert.equal(Object.hasOwn(output.agents.list[0], "skills"), false, "no skills allowlist for agent 0");
-  assert.equal(Object.hasOwn(output.agents.list[1], "skills"), false, "no skills allowlist for agent 1");
-  assert.equal(output.agents.list[1].tools.fs.workspaceOnly, true);
-  assert.equal(output.agents.list[1].tools.deny, undefined);
-  assert.equal(output.agents.list[0].tools.deny.includes("muad_use_skill"), false);
-  assert.equal(output.agents.list[0].tools.deny.includes("muad_run_skill"), false);
-  assert.equal(output.agents.list[0].tools.deny.includes("read"), true);
-  assert.equal(output.agents.list[1].tools.allow.includes("read"), true);
-  assert.equal(output.agents.list[1].tools.allow.includes("write"), true);
-  assert.equal(output.agents.list[1].tools.allow.includes("exec"), true);
-  assert.equal(output.agents.list[1].tools.allow.includes("muad_use_skill"), false);
-  assert.equal(output.agents.list[1].tools.allow.includes("muad_run_skill"), false);
+  assert.equal(output.agents.list, undefined, "9.8 rejects legacy agents.list once entries exist");
+  assert.equal(output.agents.ownership, "explicit");
+  assert.deepEqual(Object.keys(output.agents.entries).sort(), ["alice", "main"]);
+  assert.equal(Object.hasOwn(output.agents.entries.main, "default"), false, "default marker is retired");
+  assert.equal(Object.hasOwn(output.agents.entries.main, "skills"), false, "no skills allowlist for main");
+  assert.equal(Object.hasOwn(output.agents.entries.alice, "skills"), false, "no skills allowlist for alice");
+  assert.equal(output.agents.entries.alice.tools.fs.workspaceOnly, true);
+  assert.equal(output.agents.entries.alice.tools.deny, undefined);
+  assert.equal(output.agents.entries.main.tools.deny.includes("muad_use_skill"), false);
+  assert.equal(output.agents.entries.main.tools.deny.includes("muad_run_skill"), false);
+  assert.equal(output.agents.entries.main.tools.deny.includes("read"), true);
+  assert.equal(output.agents.entries.alice.tools.allow.includes("read"), true);
+  assert.equal(output.agents.entries.alice.tools.allow.includes("write"), true);
+  assert.equal(output.agents.entries.alice.tools.allow.includes("exec"), true);
+  assert.equal(output.agents.entries.alice.tools.allow.includes("muad_use_skill"), false);
+  assert.equal(output.agents.entries.alice.tools.allow.includes("muad_run_skill"), false);
   assert.equal(output.bindings[0].match.channel, "openclaw-weixin");
   assert.deepEqual(output.bindings[0].match.peer, { kind: "direct", id: "wx-alice" });
+  // 9.8 多 Agent 无匹配 binding 时 fail-closed；renderer 必须为每个启用通道保留
+  // Doctor 同形的 main 通道级 fallback（match.accountId="*"）。
+  const mainFallbacks = output.bindings.filter(
+    (binding) => binding.agentId === "main" && binding.match.accountId === "*",
+  );
+  assert.deepEqual(
+    mainFallbacks.map((binding) => binding.match.channel).sort(),
+    ["openclaw-weixin", "wecom"],
+  );
+  assert.equal(
+    mainFallbacks.every((binding) => binding.match.peer === undefined),
+    true,
+    "channel-wide fallback must not carry a peer match",
+  );
   assert.deepEqual(output.session.identityLinks.alice, ["openclaw-weixin:wx-alice", "wecom:XuWenBin"]);
   assert.equal(output.browser.defaultProfile, "quarantine");
   assert.equal(output.browser.profiles.alice.cdpPort, 18802);
-  assert.match(output.browser.profiles.alice.color, /^#[0-9A-F]{6}$/u);
-  assert.equal(output.browser.profiles.quarantine.color, "#6B7280");
-  assert.notEqual(output.browser.profiles.alice.color, output.browser.profiles.quarantine.color);
+  assert.equal(Object.hasOwn(output.browser.profiles.alice, "color"), false, "9.8 rejects profile color");
+  assert.equal(Object.hasOwn(output.browser.profiles.quarantine, "color"), false, "9.8 rejects profile color");
   assert.equal(output.models.providers["user-alice-deepseek"].apiKey, "alice-key");
   assert.deepEqual(output.tools.alsoAllow, ["browser", "muad_submit_long_task", "session_get_state"]);
   assert.deepEqual(output.skills.load.extraDirs, [
@@ -154,7 +170,7 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
   );
   assert.equal(output.plugins.entries["muad-run-skill"], undefined);
   assert.equal(output.skills.entries?.["__muad-runtime-skill-state"], undefined);
-  assert.equal(output.plugins.bundledDiscovery, "allowlist");
+  assert.equal(output.plugins.bundledDiscovery, undefined, "9.8 removed bundledDiscovery");
   assert.equal(output.plugins.entries["muad-runtime-guard"].config.generation, 7);
   assert.equal(output.plugins.entries["muad-runtime-guard"].config.maxLongTaskConcurrency, 2);
   assert.deepEqual(output.plugins.entries["muad-runtime-guard"].config.skillReadRoots, [
@@ -192,6 +208,23 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
       ...pluginRoots(IMAGE_CHANNEL_PLUGIN_SPECS),
     ].sort(),
   );
+});
+
+test("mattermost streaming uses the 9.8 object shape in the shared channel config", () => {
+  const normalized = normalizeMattermostChannelConfig({ streaming: "off", botToken: "t" }, false);
+  assert.deepEqual(normalized.streaming, { mode: "off" });
+  assert.equal(normalized.botToken, "t");
+});
+
+test("renderer emits mattermost streaming as an object for the 9.8 plugin schema", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  runtime.channels.enabled = [...runtime.channels.enabled, "mattermost"];
+  runtime.channels.configs.mattermost = {
+    baseUrl: "https://mm.example.com",
+    botToken: "token",
+  };
+  const output = renderOpenClawConfig(runtime, {});
+  assert.deepEqual(output.channels.mattermost.streaming, { mode: "off" });
 });
 
 test("renderer maps runtime mediaMaxMb into agents.defaults and drops stale values", () => {
@@ -405,8 +438,8 @@ test("renderer writes agent thinkingDefault from the referenced provider's think
 
   const output = renderOpenClawConfig(runtime, {});
 
-  const main = output.agents.list.find((agent) => agent.id === "main");
-  const alice = output.agents.list.find((agent) => agent.id === "alice");
+  const main = output.agents.entries.main;
+  const alice = output.agents.entries.alice;
   assert.equal(main.thinkingDefault, "off", "provider without thinking falls back to off");
   assert.equal(alice.thinkingDefault, "high", "alice inherits her provider's thinking");
 });
@@ -414,7 +447,7 @@ test("renderer writes agent thinkingDefault from the referenced provider's think
 test("renderer falls back to off when provider thinking is absent", () => {
   const runtime = parseRuntimeConfig(fixtureText);
   const output = renderOpenClawConfig(runtime, {});
-  for (const agent of output.agents.list) {
+  for (const agent of Object.values(output.agents.entries)) {
     assert.equal(agent.thinkingDefault, "off");
   }
 });

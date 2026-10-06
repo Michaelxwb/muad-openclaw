@@ -33,7 +33,7 @@ test('PreflightS12 validated renderer exposes submit only to business agents and
   runtime.agents[1].tools.deny = ['muad_submit_long_task'];
   const first = renderOpenClawConfig(runtime, { tools: { profile: 'coding' } });
   assert.deepEqual(renderOpenClawConfig(runtime, { tools: { profile: 'coding' } }), first);
-  const alice = first.agents.list.find(a => a.id === 'alice'), main = first.agents.list.find(a => a.id === 'main');
+  const alice = first.agents.entries.alice, main = first.agents.entries.main;
   assert.ok(alice.tools.allow.includes('muad_submit_long_task'));
   assert.equal(alice.tools.deny?.includes('muad_submit_long_task') ?? false, false);
   assert.ok(first.tools.alsoAllow.includes('muad_submit_long_task'));
