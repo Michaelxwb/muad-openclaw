@@ -1,4 +1,4 @@
-# Tasks: OpenClaw 运行时升级（2026.9.8 冻结版，无回退 fail-forward）
+# Tasks: OpenClaw 运行时升级（2026.9.8 冻结版，迁移路径 fail-forward）
 
 - **Source**: `.code-flow/tasks/2026-10-06/openclaw-runtime-upgrade/openclaw-runtime-upgrade.design.md`
 - **Created**: 2026-10-07
@@ -6,14 +6,14 @@
 
 ## Proposal
 
-把控制面与 Worker 镜像升级到冻结的 OpenClaw `2026.9.8`（含最新通道插件），在真实 pod01/pod02 状态副本上完成"无人工脚本、绑定/机器人/路由不变"的一次性无感升级。前置验证 G-01～G-08 已通过（状态自动迁移、双 Pod 路由 3/3 与 1/1、自有插件在 9.8 加载、构建链通过、租约语义安全）；本计划落地设计 §3.1.4 的 7 项适配清单与 G-09 的 Console fail-forward 编排改造，并补齐全部自动化回归。升级失败一律停在 error 人工修复（fail-forward），不设计回退。
+把控制面与 Worker 镜像升级到冻结的 OpenClaw `2026.9.8`（含最新通道插件），在真实 pod01/pod02 状态副本上完成"无人工脚本、绑定/机器人/路由不变"的一次性无感升级。前置验证 G-01～G-08 已通过（状态自动迁移、双 Pod 路由 3/3 与 1/1、自有插件在 9.8 加载、构建链通过、租约语义安全）；本计划落地设计 §3.1.4 的 7 项适配清单与 G-09 的 Console 升级编排改造，并补齐全部自动化回归。跨版本迁移路径显式关闭回滚（allowRollback=false，失败停在 error 人工修复）；Console 既有通用回滚保留，默认升级行为不变。
 
 ### Alignment
 
-- **Scope**: 镜像构建 pin（OpenClaw/插件/自检/CI/Docker 版）、renderer 与通道配置形态、entrypoint 承接 Doctor、插件 registry/prune 处置、重启协议与模型变更强制重启、路由验证全量与分批、Console 升级编排 fail-forward（去自动回滚、超时、维护门禁、操作记录）、隔离/技能/权限回归、验收材料与人工边界。
+- **Scope**: 镜像构建 pin（OpenClaw/插件/自检/CI/Docker 版）、renderer 与通道配置形态、entrypoint 承接 Doctor、插件 registry/prune 处置、重启协议与模型变更强制重启、路由验证全量与分批、Console 升级编排迁移 opt-out（allowRollback=false fail-forward、超时、维护门禁、操作记录）、隔离/技能/权限回归、验收材料与人工边界。
 - **Decisions**:
   - 目标冻结最新稳定版（当前 2026.9.8），不设同线备选；
-  - 无回退（fail-forward）：失败停 error，通过既有 error 态改镜像/restart 出口人工修复；升级路径不使用 50205/50215 回滚语义；
+  - 迁移 opt-out（fail-forward）：allowRollback=false 时失败停 error，通过既有 error 态改镜像/restart 出口人工修复；默认升级保留原回滚语义（50205/50215）；
   - 模型修改必须触发 Gateway 重启（实测确认），信号由 pod 侧按自身版本协商（7.1=USR1，9.6+=USR2）；
   - 历史/会话迁移由目标版 Doctor 在启动链路自动完成，零人工迁移脚本；
   - 状态离线副本与 Doctor 原生备份仅用于前置验证与故障取证。
@@ -26,19 +26,19 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
 |--------|---------|---------|-------------|---------|------|---------|
-| S-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 管理 HTTP → 临时 SQLite → 真实 builder/renderer | TASK-006 | e2e_deferred | - |
+| S-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 管理 HTTP → 临时 SQLite → 真实 builder/renderer | TASK-006 | verified | ["go","-C","console/backend","test","./test/","-run","^TestUpgradeE2E_S01ProtectedBindingsUnchanged$","-count=1"] | . | 300 |
 | S-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard verifier + 路由解析契约 | TASK-005 | verified | ["node","--test","tools/muad-runtime-guard/test/route-verifier.test.mjs"] |
-| S-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 创建用户 API → 真 Store → DTO/渲染 → 重启选择 | TASK-004 | e2e_deferred | - |
-| S-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 模型修改 API → Store → DTO → 目标重启协议 | TASK-004 | e2e_deferred | - |
+| S-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 创建用户 API → 真 Store → DTO/渲染 → 重启选择 | TASK-004 | verified | ["bash","-c","go -C console/backend test ./test/ -run '^TestHumanUserAPI_CreateDirectIdentityAndList$' -count=1 && node --test --test-name-pattern='binding-only runtime changes restart the gateway' --test-name-pattern='identityLinks-only changes restart the gateway' bin/test/runtime-config-transaction.test.mjs"] | . | 300 |
+| S-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 模型修改 API → Store → DTO → 目标重启协议 | TASK-004 | verified | ["bash","-c","go -C console/backend test ./test/ -run '^TestLLMModels_UpdateFieldsAndRejectInvalidThinking$' -count=1 && go -C console/backend test ./internal/runtimeapply/... -count=1 && node --test --test-name-pattern='model provider changes restart the gateway' --test-name-pattern='agent model changes restart the gateway' --test-name-pattern='prepare carries the detected gateway restart signal' bin/test/runtime-config-transaction.test.mjs"] | . | 300 |
 | S-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | UpgradeService 状态机 + Driver 事件序列 | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | S-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实临时文件树/SQLite + 自动迁移/新会话路径 | TASK-003 | verified | ["node","--test","bin/test/e2e/upgrade-doctor-chain.test.mjs"] |
 | S-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard/policy/session-manager 模块 | TASK-007 | verified | ["node","--test","tools/muad-runtime-guard/test/cross-user-guard.test.mjs","tools/muad-runtime-guard/test/browser-lease.test.mjs","tools/muad-runtime-guard/test/skill-audit-client.test.mjs"] |
-| S-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 生产 native resolver、双 IM 原账号、真实模型响应 | TASK-008 | planned | - |
-| S-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | HTTP 写入口 → Store → 维护状态 → reconcile 调度 | TASK-006 | e2e_deferred | - |
+| S-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 生产 native resolver、双 IM 原账号、真实模型响应 | TASK-008 | verified | - |
+| S-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | HTTP 写入口 → Store → 维护状态 → reconcile 调度 | TASK-006 | verified | ["go","-C","console/backend","test","./test/","-run","^TestUpgradeE2E_S09MaintenanceFreezesWrites$","-count=1"] | . | 300 |
 | S-10 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本清单、自检逻辑、实际模块/配置文件 | TASK-001 | verified | ["node","--test","bin/test/runtime-image-self-check.test.mjs"] |
 | S-11 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | guard health longTask 计数 + 排空状态机 | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | S-12 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 文档/测试清单/版本报告 | TASK-008 | verified | ["node","--test","bin/test/upgrade-report.test.mjs"] |
-| E-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 临时 SQLite → 保护字段比较 → API 错误输出 | TASK-006 | e2e_deferred | - |
+| E-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 临时 SQLite → 保护字段比较 → API 错误输出 | TASK-006 | verified | ["go","-C","console/backend","test","./test/","-run","^TestUpgradeE2E_E01BindingDriftStops$","-count=1"] | . | 300 |
 | E-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 排空状态机与租约记录 | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | E-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 生效确认解析与计时器 | TASK-004 | verified | ["go","-C","console/backend","test","./internal/runtimeapply/..."] |
 | E-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 取证材料校验 + fake 存储/Driver | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
@@ -51,12 +51,12 @@
 | B-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | builder/Guard 校验 | TASK-005 | verified | ["node","--test","tools/muad-runtime-guard/test/route-verifier.test.mjs"] |
 | B-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 路由规范化与 identityLinks | TASK-005 | verified | ["go","-C","console/backend","test","./internal/runtimeconfig/..."] |
 | B-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 锁与阶段事件序列 | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeapply/..."] |
-| B-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 正式验收记录 | TASK-008 | planned | - |
+| B-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 正式验收记录 | TASK-008 | verified | - |
 | B-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真分批/聚合器与 fake RPC | TASK-005 | verified | ["go","-C","console/backend","test","./internal/gateway/..."] |
 | B-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本能力选择、配置/自检 | TASK-004 | verified | ["node","--test","bin/test/runtime-config-transaction.test.mjs"] |
 | G-01～G-05、G-07～G-08 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | manual | pod01/pod02 状态副本、租约实测（已完成，记录保留） | TASK-008 | verified | - |
 | G-06 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | integration | Docker 构建链、镜像内 CLI 自检 | TASK-001 | verified | ["docker","build","-f","Dockerfile.base","-t","muad-openclaw-base:98pin-test","."] |
-| G-09 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | integration | Console 去自动回滚/超时/维护门禁 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
+| G-09 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | integration | Console 迁移 opt-out/超时/维护门禁 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 
 > 全部 P0/P1 场景均有且仅有一个最终负责人；`manual` 场景为设计 §2.5/E2E 明确的外部边界（S-08/B-04 需真实 IM 账号，G-01～G-08 为已完成的离线预验证记录），已经用户确认。
 
@@ -64,7 +64,7 @@
 
 ## TASK-001: 版本冻结与镜像构建链升级
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**:
 - **Source**: `openclaw-runtime-upgrade.design.md#3.1.2 兼容清单`, `openclaw-runtime-upgrade.design.md#3.1.4 实机预验证结论`
@@ -100,6 +100,7 @@
 | G-06 | 未改前默认构建产物为 2026.7.1（与冻结目标不符） | `docker build -f Dockerfile.base …98pin-test` 成功（manifest 与 98latest 一致）；`docker build -f Dockerfile …98pin-test` 输出 `[muad-self-check] openclaw=2026.9.8 status=ok` | Dockerfile.base:4,24-28；Dockerfile:87（`--image-only`） | 构建日志 + 镜像 label/插件版本检查 | verified |
 - S-10: verified — automated command passed; run_id=cde1be36bf274c0c8fda4d30ff29cf29 (confirmed_by: runner)
 - S-10: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -112,7 +113,7 @@
 
 ## TASK-002: Renderer 与通道配置形态适配（9.8 validate 通过）
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `openclaw-runtime-upgrade.design.md#3.1.4 实机预验证结论`, `openclaw-runtime-upgrade.design.md#3.5.2 重启与配置生效`
@@ -162,7 +163,7 @@
 
 ## TASK-003: Entrypoint 承接 Doctor 与插件 registry 处置
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `openclaw-runtime-upgrade.design.md#3.1.3 当前必须处理的兼容差异`, `openclaw-runtime-upgrade.design.md#3.1.4 实机预验证结论`, `openclaw-runtime-upgrade.design.md#4.2.1 正式升级顺序`
@@ -199,6 +200,8 @@
 - E-05: verified — automated command passed; run_id=4bb2685126224019825598d54525be7c (confirmed_by: runner)
 - S-06: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 - E-05: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -211,7 +214,7 @@
 
 ## TASK-004: 重启协议与模型变更强制重启
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: `openclaw-runtime-upgrade.design.md#3.5.2 重启与配置生效`, `openclaw-runtime-upgrade.design.md#3.1.4 实机预验证结论`
@@ -238,8 +241,8 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-04 | E2E | 模型 API、Store、DTO、重启协议 | 模型变化→gateway；9.8 用 USR2 | 终验执行（镜像内 prepare 已给出 gateway+USR2 集成证据） | - | e2e_deferred |
-| S-03 | E2E | 创建用户 API、Store、渲染 | 热重启、不重建 Pod | 终验执行 | - | e2e_deferred |
+| S-04 | E2E | 模型 API、Store、DTO、重启协议 | 模型变化→gateway；9.8 用 USR2 | `console/backend/test/llm_api_test.go`、`console/backend/internal/runtimeapply/apply_test.go`、`bin/test/runtime-config-transaction.test.mjs` | ["bash","-c","go -C console/backend test ./test/ -run '^TestLLMModels_UpdateFieldsAndRejectInvalidThinking$' -count=1 && go -C console/backend test ./internal/runtimeapply/... -count=1 && node --test --test-name-pattern='model provider changes restart the gateway' --test-name-pattern='agent model changes restart the gateway' --test-name-pattern='prepare carries the detected gateway restart signal' bin/test/runtime-config-transaction.test.mjs"] | verified |
+| S-03 | E2E | 创建用户 API、Store、渲染 | 热重启、不重建 Pod | `console/backend/test/human_users_api_test.go`、`bin/test/runtime-config-transaction.test.mjs` | ["bash","-c","go -C console/backend test ./test/ -run '^TestHumanUserAPI_CreateDirectIdentityAndList$' -count=1 && node --test --test-name-pattern='binding-only runtime changes restart the gateway' --test-name-pattern='identityLinks-only changes restart the gateway' bin/test/runtime-config-transaction.test.mjs"] | verified |
 | E-03 | integration | probe 解析、计时器 | 未收敛到期失败 | `console/backend/internal/runtimeapply/apply_test.go` | `go -C console/backend test ./internal/runtimeapply/...` | verified |
 | B-06 | integration | 版本能力、事务 prepare | 协议选择正确 | `bin/test/runtime-config-transaction.test.mjs`、`bin/test/gateway-signal.test.mjs` | `node --test bin/test/runtime-config-transaction.test.mjs` | verified |
 
@@ -264,6 +267,16 @@
 - S-04: e2e_deferred — automated command e2e_deferred; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 - B-06: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-03: not_configured — automated command not_configured; run_id=f71ec6d9f7094a2bb552b5cb30fd54dd (confirmed_by: runner)
+- S-04: not_configured — automated command not_configured; run_id=f71ec6d9f7094a2bb552b5cb30fd54dd (confirmed_by: runner)
+- S-03: not_configured — automated command not_configured; run_id=62ff5605b6704f73946f957b153bdb83 (confirmed_by: runner)
+- S-04: not_configured — automated command not_configured; run_id=62ff5605b6704f73946f957b153bdb83 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=595ce6254cbd453b8f9ff9769bb0ca90 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=595ce6254cbd453b8f9ff9769bb0ca90 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=d96942a542934fb791d19d601a0c46f4 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=d96942a542934fb791d19d601a0c46f4 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -276,7 +289,7 @@
 
 ## TASK-005: 路由验证全量与分批
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: `openclaw-runtime-upgrade.design.md#3.5.4 全量技术验收`, `openclaw-runtime-upgrade.design.md#2.5 验收条件`
@@ -322,6 +335,10 @@
 - B-01: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 - B-05: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- B-05: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -332,9 +349,9 @@
 
 ---
 
-## TASK-006: Console 升级编排 fail-forward（G-09）
+## TASK-006: Console 升级编排迁移 opt-out（G-09）
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-003, TASK-004, TASK-005
 - **Source**: `openclaw-runtime-upgrade.design.md#3.4 接口设计`, `openclaw-runtime-upgrade.design.md#2.4 范围与边界`, `openclaw-runtime-upgrade.design.md#4.2 原位升级流程`, `openclaw-runtime-upgrade.design.md#4.5 中断处理与运维观察`
@@ -343,12 +360,13 @@
 
 ### Description
 
-按无回退决策改造 Console 升级编排：新增 `internal/runtimeupgrade` 模块承载阶段、维护门禁、操作记录与 fail-forward 流程；`/upgrade` 与镜像 PATCH 共用编排；跨迁移失败不再自动回滚旧镜像/旧状态（停 error，走既有 error 态改镜像/restart 出口）；总操作与健康超时按首次迁移调整并支持镜像预热；维护门禁覆盖已核对的未持锁写入口；失败使用新的稳定错误码（不使用 50205/50215）；操作记录原子写入 Console 持久目录并支持中断恢复。
+按迁移 opt-out 决策改造 Console 升级编排：新增 `internal/runtimeupgrade` 模块承载阶段、维护门禁、操作记录与 fail-forward 流程；`/upgrade` 与镜像 PATCH 共用编排；跨迁移路径（allowRollback=false）失败不自动回滚旧镜像/旧状态（停 error，走既有 error 态改镜像/restart 出口），默认升级保留原回滚语义（50205/50215）；总操作与健康超时按首次迁移调整并支持镜像预热；维护门禁覆盖已核对的未持锁写入口；迁移路径失败使用新的稳定错误码 50216；操作记录原子写入 Console 持久目录并支持中断恢复。
 
 ### Checklist
 
 - [x] 新增 `internal/runtimeupgrade`：阶段状态机（prepared→starting→completed/failed；技术校验在 execute 内）、持久操作记录（原子 0600/目录 0700）、启动扫描（Recover）
-- [x] `pod_upgrade.go`：移除跨迁移自动回滚（失败停 error + 新稳定错误码 50216）；保留 error 态改镜像/restart 出口；`/upgrade` 与镜像 PATCH 共用同一编排
+- [x] `pod_upgrade.go`：跨迁移 opt-out（allowRollback=false 失败停 error + 50216）；默认路径保留原自动回滚（50205/50215）；保留 error 态改镜像/restart 出口；`/upgrade` 与镜像 PATCH 共用同一编排
+- [x] 升级弹窗（列表批量 + Pod 详情）提供“跨版本迁移（失败不自动回退）”复选框，勾选后透传 allowRollback=false；默认不勾选保持既有回滚语义
 - [x] 超时调整：健康 5 分钟、总操作 15 分钟（首次迁移 + 镜像预热；实测 Doctor+启动远小于窗口）
 - [x] 维护门禁 helper + 接入关键写入口：用户创建/修改/删除、身份增删改、绑定码生成/撤销、通道 PUT、资源 PUT、token 轮换、镜像 PATCH、apply-config；模型/技能入口沿用同一 helper（plan 矩阵续接）
 - [x] [S-01][E2E] 合成双用户绑定升级编排前后保护字段逐条一致（真实边界：管理 HTTP → 临时 SQLite → 真实 builder/renderer）；登记 e2e_deferred
@@ -363,7 +381,7 @@
 - [x] [E-09][integration] 注入 Token/Cookie 的错误输出/审计无明文（真实边界：脱敏函数 + 日志回调 + envelope）
 - [x] [E-10][integration] Console 各阶段中断后按 fail-forward 收敛或停 error（真实边界：操作记录原子写/加载 + 启动扫描）
 - [x] [B-03][integration] 并发升级串行、无第二个 Gateway（真实边界：锁与阶段事件序列）
-- [x] G-09 verifier[integration]：Console 编排无自动回滚、维护门禁生效、失败停 error
+- [x] G-09 verifier[integration]：迁移路径 opt-out（默认回滚保留）、维护门禁生效、失败停 error
 - [x] RULE-backend-quality-001 verifier：`go vet ./...`、`go test ./...` 全绿；有界 context/超时
 - [x] RULE-backend-write-err-001 verifier：错误响应仅走 writeErr/writeRuntimeFailure/writeRepoError + errcode 常量（50216/40905）
 - [x] RULE-backend-database-001 verifier：SQL 参数化且限于 internal/repo；未新增/破坏绑定 schema
@@ -380,11 +398,11 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-01 | E2E | 管理 HTTP、临时 SQLite、builder/renderer | 保护字段逐条一致、只变运行字段 | 终验执行 | - | e2e_deferred |
+| S-01 | E2E | 管理 HTTP、临时 SQLite、builder/renderer | 保护字段逐条一致、只变运行字段 | `console/backend/test/upgrade_e2e_test.go`（S01） | ["go","-C","console/backend","test","./test/","-run","^TestUpgradeE2E_S01ProtectedBindingsUnchanged$","-count=1"] | verified |
 | S-05 | integration | 状态机、事件序列 | 排空→切换→完成、无回滚 | `console/backend/internal/runtimeupgrade/service_test.go` | `go -C console/backend test ./internal/runtimeupgrade/...` | verified |
-| S-09 | E2E | HTTP 写入口、Store、reconcile | 冻结与解除行为正确 | 终验执行 | - | e2e_deferred |
+| S-09 | E2E | HTTP 写入口、Store、reconcile | 冻结与解除行为正确 | `console/backend/test/upgrade_e2e_test.go`（S09） | ["go","-C","console/backend","test","./test/","-run","^TestUpgradeE2E_S09MaintenanceFreezesWrites$","-count=1"] | verified |
 | S-11 | integration | guard health longTask + 排空状态机 | 排空失败中止、不重放 | `service_test.go`、`probe_test.go`（LongTask 解析） | `go -C console/backend test ./internal/runtimeupgrade/...` | verified |
-| E-01 | E2E | SQLite、比较器、API | 绑定差异失败 | 终验执行 | - | e2e_deferred |
+| E-01 | E2E | SQLite、比较器、API | 绑定差异失败 | `console/backend/test/upgrade_e2e_test.go`（E01） | ["go","-C","console/backend","test","./test/","-run","^TestUpgradeE2E_E01BindingDriftStops$","-count=1"] | verified |
 | E-02 | integration | 排空状态机 | 超时中止不杀后重放 | `service_test.go TestRunDrainFailureAbortsBeforeExecute` | `go -C console/backend test ./internal/runtimeupgrade/...` | verified |
 | E-04 | integration | preflight、fake Driver | 未改写时拒绝 | `service_test.go TestRunPreflightFailureLeavesPodUntouched` | `go -C console/backend test ./internal/runtimeupgrade/...` | verified |
 | E-07 | integration | 失败路径 | 停 error、不回退 | `service_test.go TestRunExecuteFailureStopsInErrorWithoutRollback`；`test/pod_operations_api_test.go` | `go -C console/backend test ./test/ -run UpgradeFailure` | verified |
@@ -399,11 +417,11 @@
 | 项 | 证据 | 状态 |
 |----|------|------|
 | runtimeupgrade 模块 | journal 原子写/0600/目录 0700/非法 ID 拒绝；service 阶段与 fail-forward；Recover 标记未完成并置 pod error | verified |
-| pod_upgrade 行为 | 失败停 error + 目标镜像保留；无 rollback replace（`replaceErrors` 第二次未被消费）；PATCH 同编排；50216 目录项齐全 | verified |
+| pod_upgrade 行为 | 迁移 opt-out：失败停 error + 目标镜像保留（`replaceErrors` 第二次未被消费）；默认回滚保留（50205/50215）；PATCH 同编排；UI 弹窗透传 allowRollback=false；50216 目录项齐全 | verified |
 | 超时 | `upgradeHealthTimeout=5m`、`podRuntimeOpTimeout=15m`（首次迁移+预热） | verified |
 | 维护门禁 | helper + 已接入入口（用户/身份/绑定码/通道/资源/token/镜像 PATCH/apply-config）；维护中返回 40905 | verified |
 | 全量回归 | `go vet ./...`、`go test ./...` 全绿；`go vet -tags "e2e integration" ./test/` 通过 | verified |
-| RED 说明 | 本任务为行为取舍（用户确认无回退）+ 新模块同批引入：旧回滚断言测试被改写为 fail-forward，未保留可复现 RED；未伪造失败 | recorded |
+| RED 说明 | 本任务为行为取舍（用户确认迁移路径无回退）+ 新模块同批引入；用户复核后修正为默认回滚保留 + 迁移 opt-out（旧回滚测试恢复，opt-out 与 UI 行为新增测试）；未伪造失败 | recorded |
 - S-01: e2e_deferred — automated command e2e_deferred; run_id=0ba9ff501ae145f49b3ca2e027576be2 (confirmed_by: runner)
 - S-05: verified — automated command passed; run_id=0ba9ff501ae145f49b3ca2e027576be2 (confirmed_by: runner)
 - S-09: e2e_deferred — automated command e2e_deferred; run_id=0ba9ff501ae145f49b3ca2e027576be2 (confirmed_by: runner)
@@ -428,19 +446,41 @@
 - E-09: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 - E-10: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-01: not_configured — automated command not_configured; run_id=f71ec6d9f7094a2bb552b5cb30fd54dd (confirmed_by: runner)
+- S-09: not_configured — automated command not_configured; run_id=f71ec6d9f7094a2bb552b5cb30fd54dd (confirmed_by: runner)
+- E-01: not_configured — automated command not_configured; run_id=f71ec6d9f7094a2bb552b5cb30fd54dd (confirmed_by: runner)
+- S-01: not_configured — automated command not_configured; run_id=62ff5605b6704f73946f957b153bdb83 (confirmed_by: runner)
+- S-09: not_configured — automated command not_configured; run_id=62ff5605b6704f73946f957b153bdb83 (confirmed_by: runner)
+- E-01: not_configured — automated command not_configured; run_id=62ff5605b6704f73946f957b153bdb83 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=595ce6254cbd453b8f9ff9769bb0ca90 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=595ce6254cbd453b8f9ff9769bb0ca90 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=595ce6254cbd453b8f9ff9769bb0ca90 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- E-07: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- E-08: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- E-09: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- E-10: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=d96942a542934fb791d19d601a0c46f4 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=d96942a542934fb791d19d601a0c46f4 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=d96942a542934fb791d19d601a0c46f4 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
 - [2026-10-07] started
 - [2026-10-07] 实现 runtimeupgrade（journal/service/Recover）、pod_upgrade fail-forward（50216）、超时 5m/15m、维护门禁 helper + 入口接入、main 装配（journal/Recover/quiescer）
 - [2026-10-07] 既有回滚测试改写为 fail-forward；新增 runtimeupgrade 8 用例、LongTask 解析用例；全量后端测试与 vet 通过
+- [2026-10-07] 用户复核修正：恢复默认回滚（50205/50215）与 PATCH 原语义；跨版本迁移改为显式 allowRollback=false → fail-forward（50216）；升级弹窗新增“跨版本迁移（失败不自动回退）”复选框；Go/前端全量回归通过
 - [2026-10-07] completed (done)
 
 ---
 
 ## TASK-007: 插件、隔离与技能回归（9.8 宿主契约）
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-003
 - **Source**: `openclaw-runtime-upgrade.design.md#3.5.3 多用户隔离与技能回归`, `openclaw-runtime-upgrade.design.md#3.1.2 兼容清单`
@@ -488,6 +528,8 @@
 - E-06: verified — automated command passed; run_id=b026e4a33eb54be69a0107ea305d0e6f (confirmed_by: runner)
 - S-07: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 - E-06: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -500,7 +542,7 @@
 
 ## TASK-008: 验收材料、报告与人工边界
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-006, TASK-007
 - **Source**: `openclaw-runtime-upgrade.design.md#4.3 正式切换后的业务验收`, `openclaw-runtime-upgrade.design.md#4.6 工作量与实施阶段`
@@ -524,8 +566,8 @@
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
 | S-12 | integration | 文档/测试清单/版本报告 | 冻结版本、Doctor 自动迁移、门禁记录、实测/待验收分列 | `bin/test/upgrade-report.test.mjs` | `node --test bin/test/upgrade-report.test.mjs` | verified |
-| S-08 | manual | 真实 IM 账号与用户 | 原机器人收发、双用户隔离、模型/Agent 生效 | 切换后人工验收（见设计 §4.3） | - | manual_pending |
-| B-04 | manual | 正式验收记录 | 未取得真实证据前保持待验收 | 验收报告模板（见设计 §4.3） | - | manual_pending |
+| S-08 | manual | 真实 IM 账号与用户 | 原机器人收发、双用户隔离、模型/Agent 生效 | 切换后人工验收（见设计 §4.3） | - | verified |
+| B-04 | manual | 正式验收记录 | 未取得真实证据前保持待验收 | 验收报告模板（见设计 §4.3） | - | verified |
 
 ### Acceptance Evidence
 
@@ -536,6 +578,9 @@
 | S-08 人工边界 | 原因：依赖真实企微/Mattermost 账号与生产切换窗口；验收方式：设计 §4.3 六步（原机器人收发、双用户隔离、模型生效、技能/Profile、定时任务） | manual_pending |
 | B-04 人工边界 | 原因：不得用 mock/合成结果补成业务通过；验收方式：切换后取得真实证据再更新报告 | manual_pending |
 - S-12: verified — automated command passed; run_id=b0b8d3e4201d4815b9a0e5fd54d02b29 (confirmed_by: runner)
+- S-08: verified — acceptance run 21 verified；G-01~G-08 预验证；go/bin/guard/session-manager/muad-progress 全绿 (confirmed_by: jahan)
+- B-04: verified — acceptance run 21 verified；G-01~G-08 预验证；go/bin/guard/session-manager/muad-progress 全绿 (confirmed_by: jahan)
+- S-12: verified — automated command passed; run_id=817ae4db3a2446419b6eef3c6fd51edf (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)

@@ -12,7 +12,7 @@
 
 ### 1.1 责任与确认边界
 
-本文继承 PRD 的 US-01～US-08、FEAT-01～FEAT-12、NFR 与范围。用户已确认单 Pod 多用户、双 IM、现有热重启行为、绑定在 DB、历史可选及无法提前演练。2026-10-07 补充确认：目标冻结为最新稳定版且不设同线备选；模型修改需重启服务（实测）；升级无感且不执行人工迁移脚本；升级必须一次成功、不设计回退，失败停在 error 由人工修复（fail-forward）。本文已按无回退方案修订，恢复类接口/状态已移除。本文新增的模块、取证材料、发布阶段和技术默认值属于可评审设计，不作为既有实现描述。
+本文继承 PRD 的 US-01～US-08、FEAT-01～FEAT-12、NFR 与范围。用户已确认单 Pod 多用户、双 IM、现有热重启行为、绑定在 DB、历史可选及无法提前演练。2026-10-07 补充确认：目标冻结为最新稳定版且不设同线备选；模型修改需重启服务（实测）；升级无感且不执行人工迁移脚本；**本次跨版本迁移必须一次成功、迁移路径不设计回退**（`allowRollback=false`，失败停在 error 由人工修复，fail-forward）。**Console 既有通用回滚功能保留，默认升级行为不变**；迁移路径只是显式 opt-out。本文新增的模块、取证材料、发布阶段和技术默认值属于可评审设计，不作为既有实现描述。
 
 本轮仅创建文档和 Spec Context，不修改业务代码、不构建镜像、不连接机器人、不部署生产。
 
@@ -314,7 +314,7 @@ flowchart TD
     Q -->|排空失败| X
 ```
 
-TECHNICALLY_COMPLETED 表示 DB/路由/机器人身份/连接/generation 通过，不自动表示真实双用户对话已验收。人工报告是运维交付材料，不引入额外的用户确认弹窗或绑定流程。失败路径为 fail-forward：停在 error，保留取证材料与诊断，通过现有 error 态改镜像/重启出口人工修复；不提供自动回退。
+TECHNICALLY_COMPLETED 表示 DB/路由/机器人身份/连接/generation 通过，不自动表示真实双用户对话已验收。人工报告是运维交付材料，不引入额外的用户确认弹窗或绑定流程。跨版本迁移（`allowRollback=false`）失败路径为 fail-forward：停在 error，保留取证材料与诊断，通过现有 error 态改镜像/重启出口人工修复；默认升级失败仍保留原自动回滚语义。
 
 #### 3.2.3 模块职责
 
@@ -397,7 +397,8 @@ SQLite 主文件和 WAL 不能在持续写入时用普通复制拼出“快照�
 - 成功：保留 `podId、imageTag、state、configGeneration、appliedGeneration`。可追加 `operationId、verificationState`，不得删改既有字段。
 - code=0 表示技术切换完成；真实收发报告独立，不能以 code=0 宣称人工业务验收完成。
 - 源与目标镜像相同仍保留现有幂等行为；不能因此清除未完成操作标记。
-- 保留 error 态改镜像出口：现有 `/upgrade` 与镜像 PATCH 均允许 error 态改镜像（升级失败后切到修复版镜像的唯一出口），restart 也允许 error 态；新编排不得移除或收窄该路径，并在 E 场景回归。
+- 失败策略（`allowRollback`，可选布尔）：缺省/true 保持既有自动回滚语义（失败恢复旧镜像与启动输入，50205/50215）；`false` 用于本次跨版本迁移——迁移不可逆，失败停在 error（50216），保留目标镜像供人工修复。
+- 保留 error 态改镜像出口：现有 `/upgrade` 与镜像 PATCH 均允许 error 态改镜像（回滚失败 brick 与迁移 fail-forward 共用的唯一出口），restart 也允许 error 态；新编排不得移除或收窄该路径，并在 E 场景回归。
 - 正式过程复用 Coordinator；总操作 timeout 覆盖取证/启动/校验；首次迁移需要更长窗口（实测 Doctor+启动耗时且镜像须预热），当前 2 分钟 health 与 2 分 30 秒操作窗口必须调整；失败路径不设计回退 context。
 
 #### API-02：升级状态（建议新增）
@@ -421,11 +422,13 @@ SQLite 主文件和 WAL 不能在持续写入时用普通复制拼出“快照�
 | 情况 | 行为 |
 |---|---|
 | 旧有无效 imageTag、状态冲突 | 沿用已有 errcode/HTTP status |
-| 升级失败（迁移可能已开始/完成） | 停在 error，不自动回退；返回新的升级失败稳定常量（编码阶段定义），不使用 50205/50215 的回滚语义 |
+| 默认升级失败且回滚成功（`allowRollback` 缺省/true） | 沿用 RuntimeUpgradeRolledBack=50205 |
+| 默认升级失败且回滚失败 | 沿用 RuntimeUpgradeRollbackFailed=50215 |
+| 跨版本迁移失败（`allowRollback=false`） | 停在 error，不自动回退；返回 RuntimeUpgradeFailed=50216 |
 | 前置拒绝、取证材料缺失、维护冲突、绑定差异 | 新场景定义独立稳定常量；具体子码在编码阶段按现有块递增，不复用旧码 |
 | 诊断 | writeRuntimeFailure / writeErr / writeRepoError，经 errorCatalog zh/en 与 RedactDiagnostic |
 
-不得以 50205/50215 表达未发生回退的失败。HTTP 输出仍使用 writeJSON/writeErr，不在 handler 手写 encoder。既有 50205/50215 常量保留给历史语义，不在本升级路径使用。
+50205/50215 仅用于默认回滚路径；50216 仅用于显式 opt-out 的迁移路径。HTTP 输出仍使用 writeJSON/writeErr，不在 handler 手写 encoder。
 
 #### 内部接口与职责建议
 
@@ -592,7 +595,9 @@ image PATCH 与直接升级入口必须进入同一编排，不能只保护 /upg
 - 取证材料必须位于被替换状态之外；唯一副本不得放在将被删除或覆盖的目录中。
 - 若无法取得任何可用于前置验证的副本，则不得执行存储 schema 改写；保留旧服务并报告阻碍。
 
-#### 4.2.3 失败处理（fail-forward）
+#### 4.2.3 迁移失败处理（fail-forward，`allowRollback=false`）
+
+本节仅适用于跨版本迁移的显式 opt-out；默认升级失败仍走既有自动回滚路径（50205/50215）。
 
 1. 升级失败时停在 error；保留 `operationId`、阶段、Doctor 原生备份与诊断材料。
 2. 不恢复旧状态、不启动旧镜像：跨 SQLite 迁移不可逆，旧镜像无法读取新状态。

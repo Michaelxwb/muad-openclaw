@@ -1,7 +1,7 @@
 version: 1
 task: openclaw-runtime-upgrade
 enforcement: required
-updated_at: '2026-10-06T19:06:21.547317+00:00'
+updated_at: '2026-10-06T19:22:29.061876+00:00'
 sources:
 - type: cli
   ref: bind
@@ -55,10 +55,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-code-quality-performance#RULE-backend-quality-001
+          executed_at: '2026-10-06T19:22:30.969148+00:00'
+          status: verified
+          rule_text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-backend-write-err-001
     summary: HTTP 错误响应必须走 `writeErr` / `writeRuntimeFailure` / `writeRepoError` 且只传
       `errcode` 常量；禁止旧签名 `writeErr(w, r, status, code, msg)` 或传字符串 message。
@@ -177,6 +194,17 @@ bindings:
           error_code: null
           details:
             checked_files: 0
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-06T19:22:30.982595+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 4b07560f78b0b3fd76f44e325a6a970913e243843bac77dfc9f35fce4e6afb4a
+          error_code: null
+          details:
+            checked_files: 48
             violations: []
       review:
         status: pending
@@ -341,10 +369,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-database#RULE-backend-database-001
+          executed_at: '2026-10-06T19:22:30.986186+00:00'
+          status: verified
+          rule_text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-backend-no-select-star-001
     summary: Queries must list explicit columns; do not use `SELECT *` in production
       SQL.
@@ -463,6 +508,46 @@ bindings:
           error_code: null
           details:
             checked_files: 0
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-06T19:22:31.024345+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: a570e18c82e848cffe692a6f89b254130682bd960cd7491538f9c3019a52da9f
+          error_code: null
+          details:
+            checked_files: 191
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-06T20:04:09.302755+00:00'
+          status: unverified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 663aae5d5ac69af6d29ed25da9d42c992b99c173a6576cb49c5b40462c5b1386
+          error_code: regex_violation
+          details:
+            checked_files: 193
+            violations:
+            - check_id: verifier
+              file: console/backend/internal/repo/protected_bindings.go
+              line_no: 47
+              line: // in short read-only statements (no SELECT *, no long transaction,
+                no secrets
+              message: Rule verifier matched forbidden content
+              severity: warn
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-06T20:05:00.835282+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 683969115f9e55e236f9e5ba43f7ac75375233c2034927009dc7a67735564f9c
+          error_code: null
+          details:
+            checked_files: 193
             violations: []
       review:
         status: pending
@@ -599,10 +684,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-directory-structure#RULE-backend-directory-001
+          executed_at: '2026-10-06T19:22:31.025819+00:00'
+          status: verified
+          rule_text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: PATTERN-backend-001
     summary: 新资源：`api` 路由 + `repo` 模型 +（如需）`driver`/`runtimeconfig` 扩展
     text_sha256: ffd0a9492109b8da27e9d19f2666829f1fb0e829a290835b239902b4e4700010
@@ -733,10 +835,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-logging#RULE-backend-logging-001
+          executed_at: '2026-10-06T19:22:31.026617+00:00'
+          status: verified
+          rule_text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-backend-redact-001
     summary: Error strings written to logs, audit details, apply-failure fields, or
       user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic`
@@ -770,10 +889,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-logging#RULE-backend-redact-001
+          executed_at: '2026-10-06T19:22:31.026626+00:00'
+          status: verified
+          rule_text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: PATTERN-backend-001
     summary: handler 入口记录关键 id，apply 流水按 stage 打点
     text_sha256: c79a6ef9bcaea5daf6590e157b5cb1232553e19bdd981d6749814bf96288f919
@@ -904,10 +1040,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-platform-001
+          executed_at: '2026-10-06T19:22:31.027808+00:00'
+          status: verified
+          rule_text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-backend-http-envelope-001
     summary: All Console HTTP handlers must emit responses via `writeJSON` / `writeErr`
       with stable `code*` constants; do not call `json.NewEncoder` (or ad-hoc maps)
@@ -936,7 +1089,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: unverified
+        status: verified
         refs: []
         decision: null
         evidence:
@@ -1058,6 +1211,111 @@ bindings:
           details:
             reason: out_of_task_scope
             deferred_to_review: true
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-06T19:22:33.404864+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: d0c4ed2092bdd7db482440dd76cf97bf0027132ec07de8634a77c5ad958e4cb2
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: bc9a528a68c4d9486f0e9dffc7a6bb62a1114b35b0b9a8762c5b0fd70e509c75
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.498s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-06T19:22:39.471073+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 0a266a8ba7e980d1434e7e4f0763a05b3b5d4b7a6326efa0fafa82a2ce94db3f
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 36e0a01c1547309b454018665f345611018443403d8883c330bac558c9d75373
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.284s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-06T20:04:10.265016+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3bb76b1e9d7d9bef87f5e1716e4919b911e20c8cf883358a4a6ddb119201caf8
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: e9322a4ddb43f51ffe60ff94507f017567e27edf85319167945237423f9eaf8b
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.300s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-06T20:04:20.061698+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: c97d2bd66ada69ecd6962fddfc97ffaa2de35856dbc09e777278f3b43fda16b1
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 823e328f027b9902cc1bed46cbb8b8690a7670bc483c63e70a05c39a3070899e
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.293s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-06T20:05:01.873679+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 26fcd3d07178e73de21071e99c7ccbef57df96b7eaa180feec01414fbc53f7ca
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: e3a2c1f8e112ca7a654fc8f88745eb0179ea641497ffe681115f6e8e6fb0f08c
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.292s\n"
       review:
         status: pending
         refs: []
@@ -1096,10 +1354,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-model-pool-001
+          executed_at: '2026-10-06T19:22:33.404963+00:00'
+          status: verified
+          rule_text_sha256: 23c293f00680e409de4b6c712152fa0bc9e812273399c72c135ccdaf9082ee9f
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: PATTERN-backend-001
     summary: 新平台能力先扩 registry/repo，再暴露 api，最后才动 driver
     text_sha256: eafb41a91eb99ea17792558908c621c53f131b38106301e23ffca005a2ccc9b3
@@ -1230,10 +1505,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+          executed_at: '2026-10-06T19:22:33.406073+00:00'
+          status: verified
+          rule_text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-runtime-validate-before-write-001
     summary: Any renderer/inject path that materializes runtime config must call `validateRuntimeConfig`
       (or shared schema helper) before atomic write; desired state carries a monotonic
@@ -1267,10 +1559,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+          executed_at: '2026-10-06T19:22:33.406085+00:00'
+          status: verified
+          rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: PATTERN-runtime-001
     summary: 控制面构建 desired DTO，Worker 执行 transaction script
     text_sha256: 969b322dbf270438aaa0869abd0db76afeee170b3edf9baa4a61e607612a5765
@@ -1374,10 +1683,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+          executed_at: '2026-10-06T19:22:33.406685+00:00'
+          status: verified
+          rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: PATTERN-runtime-001
     summary: 控制面改行为 → backend；Worker 内执行 → tools/bin
     text_sha256: 8b0c2519d72b83bd812f4458edf5989a0735cdfbb1d021cdd6c9a60e3cc25a9c
@@ -1481,10 +1807,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+          executed_at: '2026-10-06T19:22:33.407494+00:00'
+          status: verified
+          rule_text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-runtime-secret-file-mode-001
     summary: Files that materialize config, bundles, or secrets on disk must use restrictive
       modes (`0o600` for written config/bundle material; Pod service token files `0400`
@@ -1518,10 +1861,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+          executed_at: '2026-10-06T19:22:33.407502+00:00'
+          status: verified
+          rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: PATTERN-runtime-001
     summary: inject-env / inject-channels / inject-multi-user-config 作为注入单一入口
     text_sha256: a7979f71c77a2fa895f00623ff5eab9de188d4f0db0688f72902e7ed677916d9
@@ -1652,10 +2012,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+          executed_at: '2026-10-06T19:22:33.408989+00:00'
+          status: verified
+          rule_text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-runtime-skill-layering-001
     summary: Resolution order prefers system (`system_protected`) over public/private;
       public/private name conflicts must not silently overwrite—override only via
@@ -1689,10 +2066,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+          executed_at: '2026-10-06T19:22:33.408997+00:00'
+          status: verified
+          rule_text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-runtime-log-injection-001
     summary: Tool/plugin modules must receive logging via an injected `log` callback
       (default no-op) instead of scattered `console.*`; the openclaw plugin path injects
@@ -1726,10 +2120,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+          executed_at: '2026-10-06T19:22:33.409004+00:00'
+          status: verified
+          rule_text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-runtime-log-prefix-001
     summary: Log lines must carry a stable module prefix (`[session-manager]`, `[muad-runtime-guard]`)
       with `[<module>-<action>]` sub-tags for grep-ability.
@@ -1762,10 +2173,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+          executed_at: '2026-10-06T19:22:33.409012+00:00'
+          status: verified
+          rule_text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: RULE-runtime-skill-fail-loud-001
     summary: Skill scripts must report failures to stderr and exit non-zero (fail
       loud); stdout is reserved for the machine-readable result. Errors written to
@@ -1799,10 +2227,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 用户确认 17 条 review 层 manual 规则（自动化回归+实机预验证记录支撑）
+          confirmed_by: jahan
+          confirmed_at: '2026-10-06T19:22:28.994958+00:00'
+          source: 用户会话确认 2026-10-07
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+          executed_at: '2026-10-06T19:22:33.409019+00:00'
+          status: verified
+          rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+          artifact_sha256: null
+          diff_sha256: head:d1535508c4dd31787bdcc7cdbd5f9c79e46799a7
+          result_sha256: 3361e77460fc4ca245fea4d6f5199915f970da7deecbab0ce42772cf664d23b3
+          error_code: null
+          details:
+            source: 用户会话确认 2026-10-07
+            owner: project-owner
   - ref: PATTERN-runtime-001
     summary: 先 policy/activation gate，再 runner
     text_sha256: 22fad8cba0a207a4c85636e47ee58891b2eff905817e0faba4910158f86a5ebb
