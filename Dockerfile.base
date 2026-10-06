@@ -62,6 +62,8 @@ RUN set -eux; \
     copy_image_plugin '@wecom/wecom-openclaw-plugin' /opt/openclaw-plugins/wecom-openclaw-plugin; \
     copy_image_plugin '@tencent-weixin/openclaw-weixin' /opt/openclaw-plugins/openclaw-weixin; \
     copy_image_plugin '@openclaw/mattermost' /opt/openclaw-plugins/mattermost; \
+    # 清掉安装期缓存（npm 缓存/临时文件），同层删除才真实减少镜像体积
+    rm -rf /home/node/.npm /root/.npm /tmp/* /tmp/.[!.]* 2>/dev/null || true; \
     # 合并基线配置 → 种子
     su node -c "node /opt/muad/seed-config.mjs"; \
     rm -rf /home/node/.openclaw/npm/projects; \

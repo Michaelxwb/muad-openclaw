@@ -1,0 +1,11 @@
+# Runtime image build context (Dockerfile.base / Dockerfile).
+# Local deps/build artifacts and macOS junk must never enter the image.
+**/node_modules
+**/.DS_Store
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/*.log
+**/*.db
+.git
+.gitignore
