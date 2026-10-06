@@ -224,7 +224,7 @@
       "kind": "functional",
       "boundary": "文档/测试清单/版本报告",
       "owner": "TASK-008",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
@@ -232,7 +232,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-12",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "b0b8d3e4201d4815b9a0e5fd54d02b29",
+        "executed_at": "2026-10-06T19:08:32.151561+00:00",
+        "command": [
+          "node",
+          "--test",
+          "bin/test/upgrade-report.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "b0b8d3e4201d4815b9a0e5fd54d02b29",
+          "executed_at": "2026-10-06T19:08:32.151561+00:00",
+          "command": [
+            "node",
+            "--test",
+            "bin/test/upgrade-report.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "E-01",

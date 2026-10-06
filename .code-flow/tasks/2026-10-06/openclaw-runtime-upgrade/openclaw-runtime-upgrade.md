@@ -37,7 +37,7 @@
 | S-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | HTTP 写入口 → Store → 维护状态 → reconcile 调度 | TASK-006 | e2e_deferred | - |
 | S-10 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本清单、自检逻辑、实际模块/配置文件 | TASK-001 | verified | ["node","--test","bin/test/runtime-image-self-check.test.mjs"] |
 | S-11 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | guard health longTask 计数 + 排空状态机 | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
-| S-12 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 文档/测试清单/版本报告 | TASK-008 | planned | ["node","--test","bin/test/upgrade-report.test.mjs"] |
+| S-12 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 文档/测试清单/版本报告 | TASK-008 | verified | ["node","--test","bin/test/upgrade-report.test.mjs"] |
 | E-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 临时 SQLite → 保护字段比较 → API 错误输出 | TASK-006 | e2e_deferred | - |
 | E-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 排空状态机与租约记录 | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | E-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 生效确认解析与计时器 | TASK-004 | verified | ["go","-C","console/backend","test","./internal/runtimeapply/..."] |
@@ -475,7 +475,7 @@
 
 ## TASK-008: 验收材料、报告与人工边界
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-006, TASK-007
 - **Source**: `openclaw-runtime-upgrade.design.md#4.3 正式切换后的业务验收`, `openclaw-runtime-upgrade.design.md#4.6 工作量与实施阶段`
@@ -488,23 +488,32 @@
 
 ### Checklist
 
-- [ ] [S-12][integration] 生成版本/验证/收益报告：FEAT 对应验证、零人工迁移步骤、实测与人工待验收分列（真实边界：文档/测试清单/版本报告）
-- [ ] [S-08][manual] 记录真实 IM 收发/双用户隔离/模型生效的验收步骤与责任人（原因：依赖生产账号，无法提前演练）
-- [ ] [B-04][manual] 业务报告在取得真实证据前保持 `pending_manual`（原因：不得用 mock 补成已通过）
-- [ ] G-01～G-08[manual] 归档预验证记录（pod01/pod02 副本、构建链、租约实测）
-- [ ] 运行验收命令并填写 Acceptance Evidence（manual 场景登记原因/边界/验收方式）
+- [x] [S-12][integration] 生成版本/验证/收益报告：FEAT 对应验证、零人工迁移步骤、实测与人工待验收分列（真实边界：文档/测试清单/版本报告）
+- [x] [S-08][manual] 记录真实 IM 收发/双用户隔离/模型生效的验收步骤与责任人（原因：依赖生产账号，无法提前演练）→ manual_pending
+- [x] [B-04][manual] 业务报告在取得真实证据前保持 `pending_manual`（原因：不得用 mock 补成已通过）→ manual_pending
+- [x] G-01～G-08[manual] 归档预验证记录（pod01/pod02 副本、构建链、租约实测）
+- [x] 运行验收命令并填写 Acceptance Evidence（manual 场景登记原因/边界/验收方式）
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-12 | integration | 文档/测试清单/版本报告 | 记录零人工迁移步骤、区分实测/待验收 | planned | `node --test bin/test/upgrade-report.test.mjs` | planned |
-| S-08 | manual | 真实 IM 账号与用户 | 原机器人收发、双用户隔离 | manual | - | planned |
-| B-04 | manual | 正式验收记录 | 未验收保持 pending | manual | - | planned |
+| S-12 | integration | 文档/测试清单/版本报告 | 冻结版本、Doctor 自动迁移、门禁记录、实测/待验收分列 | `bin/test/upgrade-report.test.mjs` | `node --test bin/test/upgrade-report.test.mjs` | verified |
+| S-08 | manual | 真实 IM 账号与用户 | 原机器人收发、双用户隔离、模型/Agent 生效 | 切换后人工验收（见设计 §4.3） | - | manual_pending |
+| B-04 | manual | 正式验收记录 | 未取得真实证据前保持待验收 | 验收报告模板（见设计 §4.3） | - | manual_pending |
 
 ### Acceptance Evidence
 
-> 待 `cf-task-start` 填写；manual 场景只登记原因/边界/验收方式。
+| 项 | 证据 | 状态 |
+|----|------|------|
+| S-12 报告校验 | `node --test bin/test/upgrade-report.test.mjs` 2/2：冻结版本、entrypoint 自动 Doctor、无人工迁移脚本、G-01~G-09 记录、S-08/B-04 manual 边界 | verified |
+| G-01~G-08 预验证归档 | 设计 §3.1.4/§4.0 + 本任务 Log：pod01/pod02 状态副本迁移、路由 3/3 与 1/1、构建链、SIGUSR2、租约实测 | recorded |
+| S-08 人工边界 | 原因：依赖真实企微/Mattermost 账号与生产切换窗口；验收方式：设计 §4.3 六步（原机器人收发、双用户隔离、模型生效、技能/Profile、定时任务） | manual_pending |
+| B-04 人工边界 | 原因：不得用 mock/合成结果补成业务通过；验收方式：切换后取得真实证据再更新报告 | manual_pending |
+- S-12: verified — automated command passed; run_id=b0b8d3e4201d4815b9a0e5fd54d02b29 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
+- [2026-10-07] started
+- [2026-10-07] 新增 `bin/test/upgrade-report.test.mjs`（2/2）；归档 G-01~G-08 预验证记录；S-08/B-04 登记 manual_pending（原因/边界/验收方式）
+- [2026-10-07] completed (done)
