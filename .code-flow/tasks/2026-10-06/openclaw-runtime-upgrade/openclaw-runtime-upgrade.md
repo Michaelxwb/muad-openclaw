@@ -99,6 +99,7 @@
 | S-10 | FAIL: `OpenClaw image version is pinned exactly` 期望 2026.9.8 实际 2026.7.1；recipe 断言 Dockerfile.base/workflow 仍锁旧版 | `node --test bin/test/*.test.mjs` → 115 pass / 0 fail；self-check 9/9 | `bin/test/runtime-image-self-check.test.mjs:66-70`；`bin/test/runtime-image-recipe.test.mjs:15,151-153` | 镜像内 `openclaw --version`=2026.9.8；base label `io.muad.openclaw.version=2026.9.8`；app base name `ghcr.io/openclaw/openclaw:2026.9.8`；插件 wecom 2026.9.15 / mattermost 2026.9.8 / weixin 2.4.9 | verified |
 | G-06 | 未改前默认构建产物为 2026.7.1（与冻结目标不符） | `docker build -f Dockerfile.base …98pin-test` 成功（manifest 与 98latest 一致）；`docker build -f Dockerfile …98pin-test` 输出 `[muad-self-check] openclaw=2026.9.8 status=ok` | Dockerfile.base:4,24-28；Dockerfile:87（`--image-only`） | 构建日志 + 镜像 label/插件版本检查 | verified |
 - S-10: verified — automated command passed; run_id=cde1be36bf274c0c8fda4d30ff29cf29 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -196,6 +197,8 @@
 | E-05 | - | 只读挂载 Doctor 非零退出（GatewayLockError, exit 1），entrypoint `set -e` 直接退出 | e2e 第二用例 | 真实镜像 + 只读临时状态树 | verified |
 - S-06: verified — automated command passed; run_id=4bb2685126224019825598d54525be7c (confirmed_by: runner)
 - E-05: verified — automated command passed; run_id=4bb2685126224019825598d54525be7c (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -257,6 +260,10 @@
 - S-04: e2e_deferred — automated command e2e_deferred; run_id=efd6af9baace4206992e3f70d2987d34 (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=efd6af9baace4206992e3f70d2987d34 (confirmed_by: runner)
 - B-06: verified — automated command passed; run_id=efd6af9baace4206992e3f70d2987d34 (confirmed_by: runner)
+- S-03: e2e_deferred — automated command e2e_deferred; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-04: e2e_deferred — automated command e2e_deferred; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -311,6 +318,10 @@
 - B-01: verified — automated command passed; run_id=efe1ecbb6dcf418383ffd801e5c6ba6e (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=efe1ecbb6dcf418383ffd801e5c6ba6e (confirmed_by: runner)
 - B-05: verified — automated command passed; run_id=efe1ecbb6dcf418383ffd801e5c6ba6e (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- B-05: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -405,6 +416,18 @@
 - E-09: verified — automated command passed; run_id=0ba9ff501ae145f49b3ca2e027576be2 (confirmed_by: runner)
 - E-10: verified — automated command passed; run_id=0ba9ff501ae145f49b3ca2e027576be2 (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=0ba9ff501ae145f49b3ca2e027576be2 (confirmed_by: runner)
+- S-01: e2e_deferred — automated command e2e_deferred; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-09: e2e_deferred — automated command e2e_deferred; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-01: e2e_deferred — automated command e2e_deferred; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-07: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-08: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-09: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-10: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
@@ -463,6 +486,8 @@
 | E-06 | gateway probe 严格解析回归（含 LongTask 计数） | verified |
 - S-07: verified — automated command passed; run_id=b026e4a33eb54be69a0107ea305d0e6f (confirmed_by: runner)
 - E-06: verified — automated command passed; run_id=b026e4a33eb54be69a0107ea305d0e6f (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=af4642aae97c43ceb9ae36a8de184497 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)

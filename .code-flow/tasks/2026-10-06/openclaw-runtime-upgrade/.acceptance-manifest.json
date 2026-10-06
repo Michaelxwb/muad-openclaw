@@ -14,7 +14,32 @@
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-01",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": null,
+        "cwd": ".",
+        "timeout": 60.0
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        }
+      ]
     },
     {
       "id": "S-02",
@@ -31,7 +56,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "node",
+          "--test",
+          "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "S-03",
@@ -44,7 +106,32 @@
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-03",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": null,
+        "cwd": ".",
+        "timeout": 60.0
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        }
+      ]
     },
     {
       "id": "S-04",
@@ -57,7 +144,32 @@
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-04",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": null,
+        "cwd": ".",
+        "timeout": 60.0
+      },
+      "runs": [
+        {
+          "id": "S-04",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        }
+      ]
     },
     {
       "id": "S-05",
@@ -76,7 +188,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "S-06",
@@ -93,7 +246,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "node",
+          "--test",
+          "bin/test/e2e/upgrade-doctor-chain.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "node",
+            "--test",
+            "bin/test/e2e/upgrade-doctor-chain.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "S-07",
@@ -113,15 +303,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-07",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "b026e4a33eb54be69a0107ea305d0e6f",
-        "executed_at": "2026-10-06T19:05:29.656921+00:00",
+        "revision": 2,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
         "command": [
           "node",
           "--test",
@@ -131,7 +321,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "8f8e526d7b8fad738432e102a1a25f0a169584fae6a255a75441f3e06080925e"
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
       },
       "runs": [
         {
@@ -152,6 +342,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "8f8e526d7b8fad738432e102a1a25f0a169584fae6a255a75441f3e06080925e"
+        },
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/cross-user-guard.test.mjs",
+            "tools/muad-runtime-guard/test/browser-lease.test.mjs",
+            "tools/muad-runtime-guard/test/skill-audit-client.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
         }
       ]
     },
@@ -179,7 +388,32 @@
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-09",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": null,
+        "cwd": ".",
+        "timeout": 60.0
+      },
+      "runs": [
+        {
+          "id": "S-09",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        }
+      ]
     },
     {
       "id": "S-10",
@@ -196,7 +430,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "node",
+          "--test",
+          "bin/test/runtime-image-self-check.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "node",
+            "--test",
+            "bin/test/runtime-image-self-check.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "S-11",
@@ -215,7 +486,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "S-12",
@@ -282,7 +594,32 @@
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-01",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": null,
+        "cwd": ".",
+        "timeout": 60.0
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        }
+      ]
     },
     {
       "id": "E-02",
@@ -301,7 +638,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "E-03",
@@ -320,7 +698,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeapply/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeapply/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "E-04",
@@ -339,7 +758,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "E-05",
@@ -356,7 +816,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "node",
+          "--test",
+          "bin/test/e2e/upgrade-doctor-chain.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "E-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "node",
+            "--test",
+            "bin/test/e2e/upgrade-doctor-chain.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "E-06",
@@ -376,15 +873,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-06",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "b026e4a33eb54be69a0107ea305d0e6f",
-        "executed_at": "2026-10-06T19:05:29.656921+00:00",
+        "revision": 2,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
         "command": [
           "go",
           "-C",
@@ -394,7 +891,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "8f8e526d7b8fad738432e102a1a25f0a169584fae6a255a75441f3e06080925e"
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
       },
       "runs": [
         {
@@ -415,6 +912,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "8f8e526d7b8fad738432e102a1a25f0a169584fae6a255a75441f3e06080925e"
+        },
+        {
+          "id": "E-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/gateway/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
         }
       ]
     },
@@ -435,7 +951,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "E-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "E-08",
@@ -454,7 +1011,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/api/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "E-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "E-09",
@@ -473,7 +1071,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/api/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "E-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "E-10",
@@ -492,7 +1131,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "E-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "B-01",
@@ -509,7 +1189,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "node",
+          "--test",
+          "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "B-02",
@@ -528,7 +1245,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeconfig/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeconfig/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "B-03",
@@ -547,7 +1305,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeapply/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeapply/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "B-04",
@@ -579,7 +1378,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/gateway/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "B-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/gateway/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     },
     {
       "id": "B-06",
@@ -596,7 +1436,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "af4642aae97c43ceb9ae36a8de184497",
+        "executed_at": "2026-10-06T19:09:26.832492+00:00",
+        "command": [
+          "node",
+          "--test",
+          "bin/test/runtime-config-transaction.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+      },
+      "runs": [
+        {
+          "id": "B-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "af4642aae97c43ceb9ae36a8de184497",
+          "executed_at": "2026-10-06T19:09:26.832492+00:00",
+          "command": [
+            "node",
+            "--test",
+            "bin/test/runtime-config-transaction.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5b006a169412f9504979e71e0f7816380c23941c2e095aa5a5ebc3e2baa1f8d7"
+        }
+      ]
     }
   ]
 }
