@@ -299,6 +299,49 @@ test("non-binding runtime changes hot-reload without a gateway restart", () => {
   assert.equal(selectRestartMode(current, next), "none");
 });
 
+test("model provider changes restart the gateway", () => {
+  const current = restartBaseline();
+  current.models = { providers: { "user-alice-deepseek": { apiKey: "old" } } };
+  current.agents = { entries: { main: {}, alice: { model: { primary: "deepseek/v3" } } } };
+  const next = structuredClone(current);
+  next.models.providers["user-alice-deepseek"].apiKey = "new";
+  next.plugins.entries["muad-runtime-guard"].config.generation = 8;
+
+  assert.equal(selectRestartMode(current, next), "gateway");
+});
+
+test("agent model changes restart the gateway", () => {
+  const current = restartBaseline();
+  current.agents = { entries: { main: {}, alice: { model: { primary: "deepseek/v3" } } } };
+  const next = structuredClone(current);
+  next.agents.entries.alice.model.primary = "deepseek/v4";
+  next.plugins.entries["muad-runtime-guard"].config.generation = 8;
+
+  assert.equal(selectRestartMode(current, next), "gateway");
+});
+
+test("non-model agent field changes hot-reload without a gateway restart", () => {
+  const current = restartBaseline();
+  current.agents = { entries: { main: {}, alice: { workspace: "/old", model: { primary: "deepseek/v3" } } } };
+  const next = structuredClone(current);
+  next.agents.entries.alice.workspace = "/new";
+  next.plugins.entries["muad-runtime-guard"].config.generation = 8;
+
+  assert.equal(selectRestartMode(current, next), "none");
+});
+
+test("prepare carries the detected gateway restart signal", () => {
+  const root = mkdtempSync(join(tmpdir(), "muad-config-signal-"));
+  const configPath = join(root, "openclaw.json");
+  writeFileSync(configPath, JSON.stringify(restartBaseline()));
+  const result = prepareTransaction({
+    runtime: runtimeForRoot(root),
+    configPath,
+    gatewaySignal: "USR2",
+  });
+  assert.equal(result.gatewaySignal, "USR2");
+});
+
 test("adding an agent browser profile without new bindings hot-reloads", () => {
   const current = restartBaseline();
   current.browser = {

@@ -14,6 +14,7 @@ import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { defaultConfigPath } from "./inject-multi-user-config.mjs";
+import { detectGatewayRestartSignal } from "./gateway-signal.mjs";
 import {
   canonicalHash,
   canonicalStringify,
@@ -28,16 +29,18 @@ const SAFE_AGENT_ID = /^[A-Za-z0-9._-]+$/u;
 const COMMAND_MAX_BUFFER_BYTES = 4 * 1024 * 1024;
 const SKILL_INVENTORY_TIMEOUT_MS = 15_000;
 
-export function prepareTransaction({ runtime, configPath }) {
+export function prepareTransaction({ runtime, configPath, gatewaySignal }) {
   const current = readConfig(configPath);
   const next = renderOpenClawConfig(runtime, current);
   const candidatePath = `${configPath}${CANDIDATE_SUFFIX}`;
   writeAtomic(candidatePath, `${canonicalStringify(next, 2)}\n`);
-  return {
+  const result = {
     generation: runtime.generation,
     configHash: canonicalHash(next),
     restartMode: selectRestartMode(current, next),
   };
+  if (gatewaySignal) result.gatewaySignal = gatewaySignal;
+  return result;
 }
 
 export function validateCandidate(configPath, runner = spawnSync) {
@@ -286,6 +289,7 @@ export function selectRestartMode(current, next) {
   // 落入 main agent）。其余配置变化（agents/skills/plugins 等）由 watcher
   // 分层热加载，无需重启。
   if (bindingStateChanged(current, next)) return "gateway";
+  if (modelStateChanged(current, next)) return "gateway";
   if (canonicalHash(stripRestartNoop(current)) === canonicalHash(stripRestartNoop(next))) {
     return "none";
   }
@@ -299,6 +303,37 @@ function bindingStateChanged(current, next) {
     canonicalHash(current?.session?.identityLinks ?? {}) !==
       canonicalHash(next?.session?.identityLinks ?? {})
   );
+}
+
+// 模型/Provider 变化必须真实重启：2026-10-07 实测确认仅热加载不生效。
+// 9.8 上游将 agents/models 归为热应用，本项目按实测行为强制 Gateway 重启，
+// 仅比较模型相关字段，避免 agent workspace 等热加载字段误触发重启。
+function modelStateChanged(current, next) {
+  if (
+    canonicalHash(current?.models?.providers ?? {}) !==
+    canonicalHash(next?.models?.providers ?? {})
+  ) {
+    return true;
+  }
+  return (
+    canonicalStringify(agentModelState(current?.agents)) !==
+    canonicalStringify(agentModelState(next?.agents))
+  );
+}
+
+function agentModelState(agents) {
+  const state = { defaults: agents?.defaults?.model ?? null, agents: {} };
+  const entries = agents?.entries;
+  if (entries && typeof entries === "object" && !Array.isArray(entries)) {
+    for (const [id, entry] of Object.entries(entries)) {
+      state.agents[id] = entry?.model ?? null;
+    }
+    return state;
+  }
+  for (const agent of Array.isArray(agents?.list) ? agents.list : []) {
+    if (agent?.id) state.agents[agent.id] = agent?.model ?? null;
+  }
+  return state;
 }
 
 // runtime-guard declares plugins.entries.muad-runtime-guard.config.generation as
@@ -404,6 +439,7 @@ function executeMode(mode, configPath) {
       return prepareTransaction({
         runtime: readRuntimeFromStdin(),
         configPath,
+        gatewaySignal: detectGatewayRestartSignal(),
       });
     case "validate":
       return validateCandidate(configPath);

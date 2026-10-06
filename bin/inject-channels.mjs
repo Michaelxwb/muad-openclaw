@@ -1,5 +1,6 @@
 // Runtime hot-update: reads channel configs + plugin toggles from stdin, writes
-// them to openclaw.json, and signals the gateway to restart (SIGUSR1 to PID 1).
+// them to openclaw.json, and signals the gateway to restart with the signal
+// supported by the running OpenClaw version (USR1 ≤9.5, USR2 9.6+).
 //
 // stdin: JSON object, e.g.:
 //   {
@@ -34,9 +35,11 @@
 //   history (e.g. the agent knowing "this is the 6th conversation" and
 //   carrying the user's profile forward). Other channels' sessions are
 //   untouched.
-// - After writing, we send SIGUSR1 to PID 1 (the openclaw gateway). The
-//   gateway hot reloads config and restarts; without the restart a removed
-//   channel's plugin would still be running on its previous sync buffer.
+// - After writing, we send the version-appropriate restart signal to PID 1
+//   (the openclaw gateway). The gateway hot reloads config and restarts;
+//   without the restart a removed channel's plugin would still be running on
+//   its previous sync buffer. 9.6 moved restarts from SIGUSR1 (debugger) to
+//   SIGUSR2, so the signal is resolved from `openclaw --version`.
 //
 // Exit codes: 0=success, 1=error
 
@@ -49,6 +52,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { detectGatewayRestartSignal } from "./gateway-signal.mjs";
 import {
   IMAGE_CHANNEL_PLUGIN_SPECS,
   ensurePluginLoadPaths,
@@ -203,7 +207,7 @@ try {
 
   // --- restart gateway so the removed plugin actually unloads ---
   try {
-    process.kill(1, "SIGUSR1");
+    process.kill(1, detectGatewayRestartSignal());
   } catch (_) {
     // Best-effort: if we can't signal (e.g. PID 1 isn't openclaw), skip.
   }

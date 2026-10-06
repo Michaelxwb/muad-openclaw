@@ -166,6 +166,41 @@ func TestApplyGatewayRestartSuccess(t *testing.T) {
 	}
 }
 
+func TestApplyGatewayRestartUsesPreparedSignal(t *testing.T) {
+	driver := newFakeDriver(RestartGateway)
+	driver.gatewaySignal = "USR2"
+	applier := newTestApplier(t, driver)
+	if _, err := applier.Apply(context.Background(), testRequest(false)); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if driver.gatewayRestarts != 1 || driver.lastGatewaySignal != "USR2" {
+		t.Fatalf("expected kill -USR2 1, got signal=%q restarts=%d", driver.lastGatewaySignal, driver.gatewayRestarts)
+	}
+}
+
+func TestApplyGatewayRestartDefaultsToUSR1(t *testing.T) {
+	driver := newFakeDriver(RestartGateway)
+	applier := newTestApplier(t, driver)
+	if _, err := applier.Apply(context.Background(), testRequest(false)); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if driver.lastGatewaySignal != "USR1" {
+		t.Fatalf("legacy pods must keep USR1, got %q", driver.lastGatewaySignal)
+	}
+}
+
+func TestApplyRejectsUnknownGatewaySignal(t *testing.T) {
+	driver := newFakeDriver(RestartGateway)
+	driver.gatewaySignal = "USR9"
+	applier := newTestApplier(t, driver)
+	if _, err := applier.Apply(context.Background(), testRequest(false)); err == nil {
+		t.Fatal("unknown gatewaySignal must fail the prepare stage")
+	}
+	if driver.committed || driver.gatewayRestarts != 0 {
+		t.Fatalf("unexpected side effects: %+v", driver)
+	}
+}
+
 func TestApplyRestartNoneSuccess(t *testing.T) {
 	driver := newFakeDriver(RestartNone)
 	applier := newTestApplier(t, driver)
@@ -389,6 +424,8 @@ func TestApplyRestartFailureRestartsRestoredPod(t *testing.T) {
 
 type fakeDriver struct {
 	prepareMode                  RestartMode
+	gatewaySignal                string
+	lastGatewaySignal            string
 	appliedHealthGeneration      int64
 	failValidate                 bool
 	failFirstPodRestart          bool
@@ -425,8 +462,9 @@ func (driver *fakeDriver) Exec(_ context.Context, _ string, cmd ...string) (stri
 	case strings.HasSuffix(joined, " rollback"):
 		driver.rolledBack = true
 		return `{"generation":6}`, nil
-	case joined == "kill -USR1 1":
+	case joined == "kill -USR1 1" || joined == "kill -USR2 1":
 		driver.gatewayRestarts++
+		driver.lastGatewaySignal = strings.TrimSuffix(strings.TrimPrefix(joined, "kill -"), " 1")
 		return `{}`, nil
 	case strings.Contains(joined, "channels status"):
 		return `{"channels":{}}`, nil
@@ -479,7 +517,14 @@ func (driver *fakeDriver) ExecStdin(
 	}
 	joined := strings.Join(cmd, " ")
 	if strings.HasSuffix(joined, " prepare") {
-		return fmt.Sprintf(`{"generation":7,"configHash":"sha256:test","restartMode":%q}`, driver.prepareMode), nil
+		signalField := ""
+		if driver.gatewaySignal != "" {
+			signalField = fmt.Sprintf(`,"gatewaySignal":%q`, driver.gatewaySignal)
+		}
+		return fmt.Sprintf(
+			`{"generation":7,"configHash":"sha256:test","restartMode":%q%s}`,
+			driver.prepareMode, signalField,
+		), nil
 	}
 	if strings.HasSuffix(joined, " commit") {
 		driver.committed = true

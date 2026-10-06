@@ -26,6 +26,14 @@ const (
 	RestartPod     RestartMode = "pod"
 )
 
+// Gateway restart signals: OpenClaw 9.6 moved restarts from SIGUSR1 (now the
+// debugger) to SIGUSR2. The pod-side transaction announces the signal its
+// OpenClaw version supports; legacy pods keep USR1.
+const (
+	gatewaySignalUSR1 = "USR1"
+	gatewaySignalUSR2 = "USR2"
+)
+
 type Stage string
 
 const (
@@ -91,9 +99,10 @@ type Applier struct {
 }
 
 type prepareResult struct {
-	Generation  int64       `json:"generation"`
-	ConfigHash  string      `json:"configHash"`
-	RestartMode RestartMode `json:"restartMode"`
+	Generation    int64       `json:"generation"`
+	ConfigHash    string      `json:"configHash"`
+	RestartMode   RestartMode `json:"restartMode"`
+	GatewaySignal string      `json:"gatewaySignal"`
 }
 
 type rollbackResult struct {
@@ -125,6 +134,10 @@ func (applier *Applier) Apply(ctx context.Context, request Request) (Result, err
 	if err != nil {
 		return Result{}, &ApplyError{Stage: StagePrepare, Cause: err}
 	}
+	signal, err := normalizeGatewaySignal(prepared.GatewaySignal)
+	if err != nil {
+		return Result{}, &ApplyError{Stage: StagePrepare, Cause: err}
+	}
 	mode := prepared.RestartMode
 	if request.ForcePodRestart {
 		mode = RestartPod
@@ -136,7 +149,7 @@ func (applier *Applier) Apply(ctx context.Context, request Request) (Result, err
 	if err != nil {
 		return Result{}, applier.abortFailure(ctx, request.PodID, StageStartup, err)
 	}
-	if err := applier.completeApply(ctx, request, mode, expectedRoutes, source); err != nil {
+	if err := applier.completeApply(ctx, request, mode, expectedRoutes, source, signal); err != nil {
 		return Result{}, err
 	}
 	return Result{ConfigHash: prepared.ConfigHash, RestartMode: mode}, nil
@@ -174,37 +187,37 @@ func (state *startupApply) publish(ctx context.Context, podID string) error {
 	return state.store.SyncRuntimeConfig(ctx, podID, state.config)
 }
 
-func (applier *Applier) completeApply(ctx context.Context, request Request, mode RestartMode, expectedRoutes []gateway.RouteExpectation, source *startupApply) error {
+func (applier *Applier) completeApply(ctx context.Context, request Request, mode RestartMode, expectedRoutes []gateway.RouteExpectation, source *startupApply, signal string) error {
 	if err := applier.commit(ctx, request); err != nil {
-		return applier.recoverStartupFailure(ctx, request.PodID, mode, StageCommit, err, source)
+		return applier.recoverStartupFailure(ctx, request.PodID, mode, StageCommit, err, source, signal)
 	}
 	if mode == RestartPod {
 		if err := source.publish(ctx, request.PodID); err != nil {
-			return applier.recoverStartupFailure(ctx, request.PodID, mode, StageStartup, err, source)
+			return applier.recoverStartupFailure(ctx, request.PodID, mode, StageStartup, err, source, signal)
 		}
 	}
-	if err := applier.restart(ctx, request.PodID, mode); err != nil {
-		return applier.recoverStartupFailure(ctx, request.PodID, mode, StageRestart, err, source)
+	if err := applier.restart(ctx, request.PodID, mode, signal); err != nil {
+		return applier.recoverStartupFailure(ctx, request.PodID, mode, StageRestart, err, source, signal)
 	}
 	if err := applier.waitForHealth(ctx, request.PodID, request.Generation, mode, expectedRoutes); err != nil {
-		return applier.recoverStartupFailure(ctx, request.PodID, mode, StageHealth, err, source)
+		return applier.recoverStartupFailure(ctx, request.PodID, mode, StageHealth, err, source, signal)
 	}
 	if mode != RestartPod {
 		if err := source.publish(ctx, request.PodID); err != nil {
-			return applier.recoverStartupFailure(ctx, request.PodID, mode, StageStartup, err, source)
+			return applier.recoverStartupFailure(ctx, request.PodID, mode, StageStartup, err, source, signal)
 		}
 	}
 	return nil
 }
 
-func (applier *Applier) recoverStartupFailure(ctx context.Context, podID string, mode RestartMode, stage Stage, cause error, source *startupApply) *ApplyError {
+func (applier *Applier) recoverStartupFailure(ctx context.Context, podID string, mode RestartMode, stage Stage, cause error, source *startupApply, signal string) *ApplyError {
 	recoveryCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), applier.options.HealthTimeout)
 	defer cancel()
 	var sourceError error
 	if source.published {
 		sourceError = source.store.RestoreStartupConfig(recoveryCtx, podID, source.snapshot)
 	}
-	failure := applier.recoverFailure(recoveryCtx, podID, mode, stage, cause)
+	failure := applier.recoverFailure(recoveryCtx, podID, mode, stage, cause, signal)
 	failure.RecoveryError = errors.Join(sourceError, failure.RecoveryError)
 	return failure
 }
@@ -238,7 +251,25 @@ func (applier *Applier) prepare(ctx context.Context, request Request) (prepareRe
 	if result.Generation != request.Generation || result.ConfigHash == "" || !validRestartMode(result.RestartMode) {
 		return prepareResult{}, errors.New("invalid prepare result")
 	}
+	if _, err := normalizeGatewaySignal(result.GatewaySignal); err != nil {
+		return prepareResult{}, err
+	}
 	return result, nil
+}
+
+// normalizeGatewaySignal maps the pod-reported restart signal to a supported
+// value. Empty means a legacy pod-side transaction without signal support.
+func normalizeGatewaySignal(signal string) (string, error) {
+	switch strings.TrimSpace(signal) {
+	case "":
+		return gatewaySignalUSR1, nil
+	case gatewaySignalUSR1:
+		return gatewaySignalUSR1, nil
+	case gatewaySignalUSR2:
+		return gatewaySignalUSR2, nil
+	default:
+		return "", fmt.Errorf("unsupported gateway restart signal: %q", signal)
+	}
 }
 
 // validate verifies the staged candidate config is loadable inside the Pod.
@@ -269,7 +300,7 @@ func (applier *Applier) commit(ctx context.Context, request Request) error {
 	return err
 }
 
-func (applier *Applier) restart(ctx context.Context, podID string, mode RestartMode) error {
+func (applier *Applier) restart(ctx context.Context, podID string, mode RestartMode, signal string) error {
 	switch mode {
 	case RestartNone:
 		// 可热加载变更（agents/skills/plugins 等）由 openclaw hybrid watcher
@@ -277,12 +308,14 @@ func (applier *Applier) restart(ctx context.Context, podID string, mode RestartM
 		// config revision 是否 applied 门禁收敛。
 		return nil
 	case RestartGateway:
-		// bindings / session.identityLinks 变更不在 openclaw hybrid watcher 的
+		// bindings / session.identityLinks / 模型变化不在 openclaw hybrid watcher 的
 		// 热加载列表（reload 分类为 noop），channel 插件启动时快照配置对象，
 		// 运行中不会重新读取新 bindings。必须真实重启 gateway（worker 镜像里
 		// gateway 是 PID 1，CLI restart 命令只面向 systemd 服务，容器内无效），
 		// 让插件重新捕获配置，否则绑定后的消息仍按旧路由落入 main agent。
-		_, err := applier.driver.Exec(ctx, podID, "kill", "-USR1", "1")
+		// 信号按 pod 自身版本选择：9.6+ 使用 USR2（USR1 已改为调试用途），
+		// 旧版本继续使用 USR1。
+		_, err := applier.driver.Exec(ctx, podID, "kill", "-"+signal, "1")
 		return err
 	case RestartPod:
 		return applier.driver.Restart(ctx, podID)
@@ -383,13 +416,13 @@ func (applier *Applier) abortFailure(ctx context.Context, podID string, stage St
 }
 
 func (applier *Applier) recoverFailure(
-	ctx context.Context, podID string, mode RestartMode, stage Stage, cause error,
+	ctx context.Context, podID string, mode RestartMode, stage Stage, cause error, signal string,
 ) *ApplyError {
-	recoveryErr := applier.rollback(ctx, podID, mode)
+	recoveryErr := applier.rollback(ctx, podID, mode, signal)
 	return &ApplyError{Stage: stage, Cause: cause, RecoveryError: recoveryErr}
 }
 
-func (applier *Applier) rollback(ctx context.Context, podID string, mode RestartMode) error {
+func (applier *Applier) rollback(ctx context.Context, podID string, mode RestartMode, signal string) error {
 	output, err := applier.transaction(ctx, podID, "rollback")
 	if err != nil {
 		return err
@@ -398,7 +431,7 @@ func (applier *Applier) rollback(ctx context.Context, podID string, mode Restart
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		return fmt.Errorf("decode rollback result: %w", err)
 	}
-	if err := applier.restart(ctx, podID, mode); err != nil {
+	if err := applier.restart(ctx, podID, mode, signal); err != nil {
 		return fmt.Errorf("restart restored config: %w", err)
 	}
 	if err := applier.waitForHealth(ctx, podID, result.Generation, mode, nil); err != nil {

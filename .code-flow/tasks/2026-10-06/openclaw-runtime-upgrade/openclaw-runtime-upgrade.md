@@ -28,9 +28,9 @@
 |--------|---------|---------|-------------|---------|------|---------|
 | S-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 管理 HTTP → 临时 SQLite → 真实 builder/renderer | TASK-006 | planned | - |
 | S-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard verifier + 路由解析契约 | TASK-005 | planned | ["node","--test","tools/muad-runtime-guard/test/route-verifier.test.mjs"] |
-| S-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 创建用户 API → 真 Store → DTO/渲染 → 重启选择 | TASK-004 | planned | - |
-| S-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 模型修改 API → Store → DTO → 目标重启协议 | TASK-004 | planned | - |
-| S-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | UpgradeService 状态机 + Driver 事件序列 | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
+| S-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 创建用户 API → 真 Store → DTO/渲染 → 重启选择 | TASK-004 | e2e_deferred | - |
+| S-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 模型修改 API → Store → DTO → 目标重启协议 | TASK-004 | e2e_deferred | - |
+| S-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | UpgradeService 状态机 + Driver 事件序列 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | S-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实临时文件树/SQLite + 自动迁移/新会话路径 | TASK-003 | verified | ["node","--test","bin/test/e2e/upgrade-doctor-chain.test.mjs"] |
 | S-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard/policy/session-manager 模块 | TASK-007 | planned | ["node","--test","tools/muad-runtime-guard/test/multi-user-isolation.test.mjs"] |
 | S-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 生产 native resolver、双 IM 原账号、真实模型响应 | TASK-008 | planned | - |
@@ -39,24 +39,24 @@
 | S-11 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 任务/租约调度与真实临时任务记录 | TASK-006 | planned | ["node","--test","tools/muad-runtime-guard/test/long-task-drain.test.mjs"] |
 | S-12 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 文档/测试清单/版本报告 | TASK-008 | planned | ["node","--test","bin/test/upgrade-report.test.mjs"] |
 | E-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 临时 SQLite → 保护字段比较 → API 错误输出 | TASK-006 | planned | - |
-| E-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 排空状态机与租约记录 | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
-| E-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 生效确认解析与计时器 | TASK-004 | planned | ["go","test","./internal/runtimeapply/..."] |
-| E-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 取证材料校验 + fake 存储/Driver | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
+| E-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 排空状态机与租约记录 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
+| E-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 生效确认解析与计时器 | TASK-004 | verified | ["go","-C","console/backend","test","./internal/runtimeapply/..."] |
+| E-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 取证材料校验 + fake 存储/Driver | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | E-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实临时状态树与自动迁移失败路径 | TASK-003 | verified | ["node","--test","bin/test/e2e/upgrade-doctor-chain.test.mjs"] |
-| E-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实响应解析与严格验证器 | TASK-007 | planned | ["go","test","./internal/gateway/..."] |
-| E-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 编排失败路径 + 原配置/状态引用 | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
-| E-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 失败终态/错误封装 | TASK-006 | planned | ["go","test","./internal/api/..."] |
-| E-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实脱敏函数、日志回调与错误 envelope | TASK-006 | planned | ["go","test","./internal/api/..."] |
-| E-10 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实操作记录原子写/加载 + fake 外部边界 | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
+| E-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实响应解析与严格验证器 | TASK-007 | planned | ["go","-C","console/backend","test","./internal/gateway/..."] |
+| E-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 编排失败路径 + 原配置/状态引用 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
+| E-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 失败终态/错误封装 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/api/..."] |
+| E-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实脱敏函数、日志回调与错误 envelope | TASK-006 | planned | ["go","-C","console/backend","test","./internal/api/..."] |
+| E-10 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实操作记录原子写/加载 + fake 外部边界 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | B-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | builder/Guard 校验 | TASK-005 | planned | ["node","--test","tools/muad-runtime-guard/test/route-verifier.test.mjs"] |
-| B-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 路由规范化与 identityLinks | TASK-005 | planned | ["go","test","./internal/runtimeconfig/..."] |
-| B-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 锁与阶段事件序列 | TASK-006 | planned | ["go","test","./internal/runtimeapply/..."] |
+| B-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 路由规范化与 identityLinks | TASK-005 | planned | ["go","-C","console/backend","test","./internal/runtimeconfig/..."] |
+| B-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 锁与阶段事件序列 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeapply/..."] |
 | B-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 正式验收记录 | TASK-008 | planned | - |
-| B-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真分批/聚合器与 fake RPC | TASK-005 | planned | ["go","test","./internal/gateway/..."] |
-| B-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本能力选择、配置/自检 | TASK-004 | planned | ["node","--test","bin/test/runtime-config-transaction.test.mjs"] |
+| B-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真分批/聚合器与 fake RPC | TASK-005 | planned | ["go","-C","console/backend","test","./internal/gateway/..."] |
+| B-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本能力选择、配置/自检 | TASK-004 | verified | ["node","--test","bin/test/runtime-config-transaction.test.mjs"] |
 | G-01～G-05、G-07～G-08 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | manual | pod01/pod02 状态副本、租约实测（已完成，记录保留） | TASK-008 | verified | - |
 | G-06 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | integration | Docker 构建链、镜像内 CLI 自检 | TASK-001 | verified | ["docker","build","-f","Dockerfile.base","-t","muad-openclaw-base:98pin-test","."] |
-| G-09 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | integration | Console 去自动回滚/超时/维护门禁 | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
+| G-09 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | integration | Console 去自动回滚/超时/维护门禁 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 
 > 全部 P0/P1 场景均有且仅有一个最终负责人；`manual` 场景为设计 §2.5/E2E 明确的外部边界（S-08/B-04 需真实 IM 账号，G-01～G-08 为已完成的离线预验证记录），已经用户确认。
 
@@ -208,7 +208,7 @@
 
 ## TASK-004: 重启协议与模型变更强制重启
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: `openclaw-runtime-upgrade.design.md#3.5.2 重启与配置生效`, `openclaw-runtime-upgrade.design.md#3.1.4 实机预验证结论`
@@ -221,31 +221,49 @@
 
 ### Checklist
 
-- [ ] `selectRestartMode` 增加模型/Provider 变化检测（providers 与 agents 模型段），命中即 `gateway`
-- [ ] prepare 结果附带 `gatewaySignal`（按 pod 内 OpenClaw 版本：9.6+→USR2，旧版→USR1），`runtimeapply/apply.go` 使用该提示发送对应信号
-- [ ] `inject-channels.mjs`：按版本适配或移除（当前无 Go 调用方），避免 9.6+ 误发 USR1
-- [ ] [S-04][E2E] 模型修改后 apply 选择 Gateway 重启并按版本协议发送信号（真实边界：模型修改 API → Store → DTO → 重启协议）
-- [ ] [S-03][E2E] 新增用户/Agent 热重启路径不重建 Pod（真实边界：创建用户 API → 真 Store → DTO/渲染 → 重启选择）
-- [ ] [E-03][integration] 信号发送成功但 generation/配置未收敛时到期失败（真实边界：生效确认解析与计时器）
-- [ ] [B-06][integration] 旧/新版本选择正确重启协议（真实边界：版本能力选择、事务 prepare）
-- [ ] RULE-backend-quality-001 的触达包 verifier 由 TASK-006 承担；本任务保证 runtimeapply/transaction 改动错误显式处理、有界 context
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] `selectRestartMode` 增加模型/Provider 变化检测（providers 与 agents 模型段），命中即 `gateway`
+- [x] prepare 结果附带 `gatewaySignal`（按 pod 内 OpenClaw 版本：9.6+→USR2，旧版→USR1），`runtimeapply/apply.go` 使用该提示发送对应信号
+- [x] `inject-channels.mjs`：按版本适配或移除（当前无 Go 调用方），避免 9.6+ 误发 USR1
+- [x] [S-04][E2E] 模型修改后 apply 选择 Gateway 重启并按版本协议发送信号（真实边界：模型修改 API → Store → DTO → 重启协议）；登记 e2e_deferred，镜像内集成证据已记录
+- [x] [S-03][E2E] 新增用户/Agent 热重启路径不重建 Pod（真实边界：创建用户 API → 真 Store → DTO/渲染 → 重启选择）；登记 e2e_deferred
+- [x] [E-03][integration] 信号发送成功但 generation/配置未收敛时到期失败（真实边界：生效确认解析与计时器）
+- [x] [B-06][integration] 旧/新版本选择正确重启协议（真实边界：版本能力选择、事务 prepare）
+- [x] RULE-backend-quality-001 的触达包 verifier 由 TASK-006 承担；本任务保证 runtimeapply/transaction 改动错误显式处理、有界 context
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-04 | E2E | 模型 API、Store、DTO、重启协议 | 模型变化→gateway；9.8 用 USR2 | planned | planned | planned |
-| S-03 | E2E | 创建用户 API、Store、渲染 | 热重启、不重建 Pod | planned | planned | planned |
-| E-03 | integration | probe 解析、计时器 | 未收敛到期失败 | planned | `cd console/backend && go test ./internal/runtimeapply/...` | planned |
-| B-06 | integration | 版本能力、事务 prepare | 协议选择正确 | planned | `node --test bin/test/runtime-config-transaction.test.mjs` | planned |
+| S-04 | E2E | 模型 API、Store、DTO、重启协议 | 模型变化→gateway；9.8 用 USR2 | 终验执行（镜像内 prepare 已给出 gateway+USR2 集成证据） | - | e2e_deferred |
+| S-03 | E2E | 创建用户 API、Store、渲染 | 热重启、不重建 Pod | 终验执行 | - | e2e_deferred |
+| E-03 | integration | probe 解析、计时器 | 未收敛到期失败 | `console/backend/internal/runtimeapply/apply_test.go` | `go -C console/backend test ./internal/runtimeapply/...` | verified |
+| B-06 | integration | 版本能力、事务 prepare | 协议选择正确 | `bin/test/runtime-config-transaction.test.mjs`、`bin/test/gateway-signal.test.mjs` | `node --test bin/test/runtime-config-transaction.test.mjs` | verified |
 
 ### Acceptance Evidence
 
-> 待 `cf-task-start` 填写。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| E-03 / B-06 | JS：gateway-signal 模块缺失、模型变更两条断言失败、prepare 信号断言失败（4 fail）；Go：USR2 用例收到 USR1、未知信号未拒绝（2 fail） | JS 20/20；bin 全量 125/125；`go test ./...` 全绿；`go vet` clean | `bin/test/gateway-signal.test.mjs`；`bin/test/runtime-config-transaction.test.mjs`；`console/backend/internal/runtimeapply/apply_test.go`（USR2/default/reject） | 镜像 `98task4`（9.8）内真实事务：模型变更 prepare → `{"restartMode":"gateway","gatewaySignal":"USR2"}`，validate `valid:true`；commit 后幂等 prepare → `none` + USR2 | verified |
+| S-04 | - | 集成证据：模型变更选择 gateway 且信号 USR2（见上） | - | 真实镜像内事务 + 真实 9.8 CLI | e2e_deferred |
+- S-03: e2e_deferred — automated command e2e_deferred; run_id=336aac07629342d397a5e5a2081f9930 (confirmed_by: runner)
+- S-04: e2e_deferred — automated command e2e_deferred; run_id=336aac07629342d397a5e5a2081f9930 (confirmed_by: runner)
+- E-03: failed — automated command failed; run_id=336aac07629342d397a5e5a2081f9930 (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=336aac07629342d397a5e5a2081f9930 (confirmed_by: runner)
+- S-03: e2e_deferred — automated command e2e_deferred; run_id=4b3ba18f24ab44b4a863af797eeb4e8c (confirmed_by: runner)
+- S-04: e2e_deferred — automated command e2e_deferred; run_id=4b3ba18f24ab44b4a863af797eeb4e8c (confirmed_by: runner)
+- E-03: failed — automated command failed; run_id=4b3ba18f24ab44b4a863af797eeb4e8c (confirmed_by: runner)
+- S-03: e2e_deferred — automated command e2e_deferred; run_id=efd6af9baace4206992e3f70d2987d34 (confirmed_by: runner)
+- S-04: e2e_deferred — automated command e2e_deferred; run_id=efd6af9baace4206992e3f70d2987d34 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=efd6af9baace4206992e3f70d2987d34 (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=efd6af9baace4206992e3f70d2987d34 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
+- [2026-10-07] started；RED：JS 4 fail（缺 gateway-signal/模型检测/prepare 信号）、Go 2 fail（USR2 未生效/未知信号未拒绝）
+- [2026-10-07] 实现：gateway-signal 助手（版本映射）、transaction 模型检测+信号输出、inject-channels 版本化信号、apply.go 解析校验并透传（默认 USR1，未知信号 prepare 阶段拒绝）
+- [2026-10-07] 集成发现并修复：gateway-signal.mjs 未加入镜像 COPY 列表（recipe 测试补防回归断言）；镜像内事务实测 gateway+USR2+validate valid
+- [2026-10-07] completed (done)
 
 ---
 
@@ -350,7 +368,7 @@
 | E-08 | integration | 错误封装 | 新稳定错误码 | planned | `cd console/backend && go test ./internal/api/...` | planned |
 | E-09 | integration | 脱敏、审计、envelope | 无明文秘密 | planned | `cd console/backend && go test ./internal/api/...` | planned |
 | E-10 | integration | 操作记录 | 中断恢复 fail-forward | planned | `cd console/backend && go test ./internal/runtimeupgrade/...` | planned |
-| B-03 | integration | 锁、事件序列 | 串行无第二 Gateway | planned | `cd console/backend && go test ./internal/runtimeapply/...` | planned |
+| B-03 | integration | 锁、事件序列 | 串行无第二 Gateway | planned | `go -C console/backend test ./internal/runtimeapply/...` | planned |
 | G-09 | integration | Console 编排 | 无自动回滚、超时/门禁生效 | planned | `cd console/backend && go test ./internal/runtimeupgrade/...` | planned |
 
 ### Acceptance Evidence
