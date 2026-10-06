@@ -286,6 +286,14 @@ pod02（7.1 运行中）以候选镜像执行真实升级：镜像切换与 Doct
 | 验证 | 复现脚本 `oc-upgrade/repro-eperm.sh`：root 属主状态根 → Doctor EPERM；`chown 1000:1000` 后同一状态树 Doctor exit 0；driver 单测断言 initContainer 形状（root/仅 CHOWN/state 挂载） |
 | 影响面 | 仅 k8s driver；docker 命名卷首挂由镜像内容初始化（node 属主），不受影响 |
 
+**同场演练发现②（升级卡死，2026-10-07）**：error 态 Pod 再升级时卡在 `prepared`，UI 请求永不返回、维护门禁一直挂起。
+
+| 项 | 结论 |
+|---|---|
+| 根因 | `WaitForQuiesce` 要求 `status.Healthy`；崩溃循环的 gateway 永不健康 → 排空死循环，仅受 HTTP 请求 ctx 约束（客户端等待则永不超时） |
+| 修复 | ① error 态跳过排空（无在跑任务，且为"error 态改镜像"修复出口必经）② 排空独立 2 分钟上限，超时中止（§4.2"超时不能安全排空时中止"）③ 整个升级脱离请求 ctx、按 15 分钟总预算运行（客户端断开不中断） |
+| 验证 | 新增排空边界测试（error 态立即放行、非排空状态有界退出）；全量后端回归绿 |
+
 ### 3.2 架构设计
 
 #### 3.2.1 组件关系
