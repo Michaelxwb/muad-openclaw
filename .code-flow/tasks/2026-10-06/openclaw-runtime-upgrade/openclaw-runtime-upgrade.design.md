@@ -274,6 +274,18 @@ AccountID 是通道路由维度，不能擅自替换为企微 Bot ID 或 Matterm
 6. 重启协议与模型重启：`apply.go` 信号按版本 USR1/USR2；`selectRestartMode` 将 providers/agents 模型变化纳入 gateway；`inject-channels.mjs`（当前无调用方）处置。
 7. 路由验证：>1000 条需 `gateway/probe.go` 分批聚合；direct/dm 之外身份不得静默过滤（§3.5.4）。
 
+#### 3.1.5 实机演练发现（2026-10-07，pod02 旧→新演练）
+
+pod02（7.1 运行中）以候选镜像执行真实升级：镜像切换与 Doctor 状态迁移成功，随后 Doctor 维护阶段 fail-closed，Pod CrashLoop；Console 按 fail-forward 正确停在 error（50216 语义，保留目标镜像）。根因与修复：
+
+| 项 | 结论 |
+|---|---|
+| 现象 | `openclaw doctor --fix` 非零退出：`EPERM: operation not permitted, fchmod` |
+| 根因 | 状态 PVC 根目录由 provisioner 以 root 创建（`root:<fsGroup> 2777`），kubelet fsGroup 只调整属组；9.8 运行时将状态目录 tighten 到 0700 需要属主身份 → uid 1000 无 CAP_FOWNER → EPERM（strace 实证 `fchmodat(AT_FDCWD, "<state>", 0700) = EPERM`；离线状态副本属主为当前用户，故预验证未暴露） |
+| 修复 | k8s driver 为 Worker Pod 增加 `state-ownership` initContainer：root 运行、`/bin/chown 1000:1000 <StateDir>`、仅保留 CAP_CHOWN（drop ALL + add CHOWN）、无 shell、无特权提升；每次 Pod 启动幂等执行 |
+| 验证 | 复现脚本 `oc-upgrade/repro-eperm.sh`：root 属主状态根 → Doctor EPERM；`chown 1000:1000` 后同一状态树 Doctor exit 0；driver 单测断言 initContainer 形状（root/仅 CHOWN/state 挂载） |
+| 影响面 | 仅 k8s driver；docker 命名卷首挂由镜像内容初始化（node 属主），不受影响 |
+
 ### 3.2 架构设计
 
 #### 3.2.1 组件关系
