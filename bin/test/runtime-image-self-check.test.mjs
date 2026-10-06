@@ -64,8 +64,8 @@ test("S-06 image-only self-check validates muad-progress without config or chann
 });
 
 test("OpenClaw image version is pinned exactly", () => {
-  assert.equal(PINNED_OPENCLAW_VERSION, "2026.7.1");
-  assert.doesNotThrow(() => assertOpenClawVersion("OpenClaw 2026.7.1"));
+  assert.equal(PINNED_OPENCLAW_VERSION, "2026.9.8");
+  assert.doesNotThrow(() => assertOpenClawVersion("OpenClaw 2026.9.8"));
   assert.throws(() => assertOpenClawVersion("OpenClaw 2026.6.11"), /version mismatch/);
 });
 

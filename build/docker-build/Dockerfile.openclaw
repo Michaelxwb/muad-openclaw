@@ -25,7 +25,7 @@
 #   BASE_IMAGE  基础镜像 registry 地址（默认内网仓库，base 镜像由人工中转）
 #   BASE_TAG    基础镜像 tag（默认锁定具体版本，避免 latest 漂移；升级 base 时改这里）
 ARG BASE_IMAGE=docker.sangfor.com/mss-base/muad-openclaw-base
-ARG BASE_TAG=2026.7.1
+ARG BASE_TAG=2026.9.8
 
 FROM ${BASE_IMAGE}:${BASE_TAG}
 

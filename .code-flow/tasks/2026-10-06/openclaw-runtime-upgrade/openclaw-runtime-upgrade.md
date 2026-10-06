@@ -35,7 +35,7 @@
 | S-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard/policy/session-manager 模块 | TASK-007 | planned | ["node","--test","tools/muad-runtime-guard/test/multi-user-isolation.test.mjs"] |
 | S-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 生产 native resolver、双 IM 原账号、真实模型响应 | TASK-008 | planned | - |
 | S-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | HTTP 写入口 → Store → 维护状态 → reconcile 调度 | TASK-006 | planned | - |
-| S-10 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本清单、自检逻辑、实际模块/配置文件 | TASK-001 | planned | ["node","--test","bin/test/runtime-image-self-check.test.mjs"] |
+| S-10 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本清单、自检逻辑、实际模块/配置文件 | TASK-001 | verified | ["node","--test","bin/test/runtime-image-self-check.test.mjs"] |
 | S-11 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 任务/租约调度与真实临时任务记录 | TASK-006 | planned | ["node","--test","tools/muad-runtime-guard/test/long-task-drain.test.mjs"] |
 | S-12 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 文档/测试清单/版本报告 | TASK-008 | planned | ["node","--test","bin/test/upgrade-report.test.mjs"] |
 | E-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 临时 SQLite → 保护字段比较 → API 错误输出 | TASK-006 | planned | - |
@@ -54,7 +54,8 @@
 | B-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 正式验收记录 | TASK-008 | planned | - |
 | B-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真分批/聚合器与 fake RPC | TASK-005 | planned | ["go","test","./internal/gateway/..."] |
 | B-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本能力选择、配置/自检 | TASK-004 | planned | ["node","--test","bin/test/runtime-config-transaction.test.mjs"] |
-| G-01～G-08 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | manual | pod01/pod02 状态副本、构建链、租约实测（已完成，记录保留） | TASK-008 | verified | - |
+| G-01～G-05、G-07～G-08 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | manual | pod01/pod02 状态副本、租约实测（已完成，记录保留） | TASK-008 | verified | - |
+| G-06 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | integration | Docker 构建链、镜像内 CLI 自检 | TASK-001 | verified | ["docker","build","-f","Dockerfile.base","-t","muad-openclaw-base:98pin-test","."] |
 | G-09 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | integration | Console 去自动回滚/超时/维护门禁 | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
 
 > 全部 P0/P1 场景均有且仅有一个最终负责人；`manual` 场景为设计 §2.5/E2E 明确的外部边界（S-08/B-04 需真实 IM 账号，G-01～G-08 为已完成的离线预验证记录），已经用户确认。
@@ -63,7 +64,7 @@
 
 ## TASK-001: 版本冻结与镜像构建链升级
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**:
 - **Source**: `openclaw-runtime-upgrade.design.md#3.1.2 兼容清单`, `openclaw-runtime-upgrade.design.md#3.1.4 实机预验证结论`
@@ -76,27 +77,35 @@
 
 ### Checklist
 
-- [ ] 更新 `Dockerfile.base`：`OPENCLAW_VERSION=2026.9.8`、`WECOM_PLUGIN_VERSION=2026.9.15`、`MATTERMOST_PLUGIN_VERSION=2026.9.8`、`WECHAT_PLUGIN_VERSION=2.4.9`
-- [ ] 更新 `.github/workflows/build-image.yml` 默认值、`build/docker-build/Dockerfile.openclaw` 的 `BASE_TAG`
-- [ ] 更新 `bin/runtime-image-self-check.mjs` 的 `PINNED_OPENCLAW_VERSION` 与 `bin/test/runtime-image-self-check.test.mjs` 断言
-- [ ] [S-10][integration] 断言版本清单一致、自检逻辑对 9.8 通过（真实边界：镜像内实际 CLI `openclaw --version` 与配置/插件检查）
-- [ ] G-06 verifier[integration]：构建候选镜像（base+app），构建期自检输出 `openclaw=2026.9.8 status=ok`；真实边界：Docker 构建链 + 镜像内自检
-- [ ] RULE-runtime-directory-001 verifier：确认版本资产仍只落在 Dockerfile/bin/tools/skills，不 vendor/fork 上游
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 更新 `Dockerfile.base`：`OPENCLAW_VERSION=2026.9.8`、`WECOM_PLUGIN_VERSION=2026.9.15`、`MATTERMOST_PLUGIN_VERSION=2026.9.8`、`WECHAT_PLUGIN_VERSION=2.4.9`
+- [x] 更新 `.github/workflows/build-image.yml` 默认值、`build/docker-build/Dockerfile.openclaw` 的 `BASE_TAG`
+- [x] 更新 `bin/runtime-image-self-check.mjs` 的 `PINNED_OPENCLAW_VERSION` 与 `bin/test/runtime-image-self-check.test.mjs` 断言
+- [x] [S-10][integration] 断言版本清单一致、自检逻辑对 9.8 通过（真实边界：镜像内实际 CLI `openclaw --version` 与配置/插件检查）
+- [x] G-06 verifier[integration]：构建候选镜像（base+app），构建期自检输出 `openclaw=2026.9.8 status=ok`；真实边界：Docker 构建链 + 镜像内自检
+- [x] RULE-runtime-directory-001 verifier：确认版本资产仍只落在 Dockerfile/bin/tools/skills，不 vendor/fork 上游
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-10 | integration | 镜像内自检、实际模块/配置文件 | 版本一致、自检通过、无未启用插件阻断 | planned | `node --test bin/test/runtime-image-self-check.test.mjs` | planned |
-| G-06 | integration | Docker 构建链、镜像内 CLI | 构建成功且 `openclaw=2026.9.8 status=ok` | planned | `docker build -f Dockerfile.base ...` | planned |
+| S-10 | integration | 镜像内自检、实际模块/配置文件 | 版本一致、自检通过、无未启用插件阻断 | `bin/test/runtime-image-self-check.test.mjs`、`bin/test/runtime-image-recipe.test.mjs` | `node --test bin/test/runtime-image-self-check.test.mjs` | verified |
+| G-06 | integration | Docker 构建链、镜像内 CLI | 构建成功且 `openclaw=2026.9.8 status=ok` | 构建日志（base+app） | `docker build -f Dockerfile.base -t muad-openclaw-base:98pin-test .` | verified |
 
 ### Acceptance Evidence
 
-> 待 `cf-task-start` 填写。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-10 | FAIL: `OpenClaw image version is pinned exactly` 期望 2026.9.8 实际 2026.7.1；recipe 断言 Dockerfile.base/workflow 仍锁旧版 | `node --test bin/test/*.test.mjs` → 115 pass / 0 fail；self-check 9/9 | `bin/test/runtime-image-self-check.test.mjs:66-70`；`bin/test/runtime-image-recipe.test.mjs:15,151-153` | 镜像内 `openclaw --version`=2026.9.8；base label `io.muad.openclaw.version=2026.9.8`；app base name `ghcr.io/openclaw/openclaw:2026.9.8`；插件 wecom 2026.9.15 / mattermost 2026.9.8 / weixin 2.4.9 | verified |
+| G-06 | 未改前默认构建产物为 2026.7.1（与冻结目标不符） | `docker build -f Dockerfile.base …98pin-test` 成功（manifest 与 98latest 一致）；`docker build -f Dockerfile …98pin-test` 输出 `[muad-self-check] openclaw=2026.9.8 status=ok` | Dockerfile.base:4,24-28；Dockerfile:87（`--image-only`） | 构建日志 + 镜像 label/插件版本检查 | verified |
+- S-10: verified — automated command passed; run_id=cde1be36bf274c0c8fda4d30ff29cf29 (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
+- [2026-10-07] started；pin 变更 TDD：先更新断言取 RED（self-check + recipe 共 3 处失败），后改 5 处 pin → bin 全量 115/115 GREEN
+- [2026-10-07] G-06 验证：默认参数构建 base+app 成功，构建期自检 `openclaw=2026.9.8 status=ok`
+- [2026-10-07] started
+- [2026-10-07] completed (done)
 
 ---
 

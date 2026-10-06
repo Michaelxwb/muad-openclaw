@@ -86,10 +86,21 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: verified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-06T18:22:27.031467+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: 95228e83f647cb1bfe696bdcba202f5aa894f926030d9aa55e367cae2eaeb410
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
@@ -284,10 +295,21 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: verified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-06T18:22:27.032932+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: 95228e83f647cb1bfe696bdcba202f5aa894f926030d9aa55e367cae2eaeb410
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
@@ -760,10 +782,21 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: unverified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-06T18:22:27.035849+00:00'
+          status: unverified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: 95228e83f647cb1bfe696bdcba202f5aa894f926030d9aa55e367cae2eaeb410
+          result_sha256: af3dc8226a5c0d131d240b46baf7642c736ac06602062bbfafaec2c25afa83a5
+          error_code: deferred_to_review
+          details:
+            reason: out_of_task_scope
+            deferred_to_review: true
       review:
         status: pending
         refs: []

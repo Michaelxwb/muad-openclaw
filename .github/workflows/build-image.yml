@@ -9,7 +9,7 @@ on:
     inputs:
       openclaw_version:
         description: 'openclaw 基础镜像版本（ghcr.io/openclaw/openclaw:<tag>）'
-        default: '2026.7.1'
+        default: '2026.9.8'
       base_tag:
         description: '基础镜像 tag（默认 latest；不存在则自动构建）'
         default: 'latest'
@@ -70,7 +70,7 @@ jobs:
           push: true
           tags: ${{ steps.base.outputs.base_image }}:${{ steps.base.outputs.base_tag }}
           build-args: |
-            OPENCLAW_VERSION=${{ inputs.openclaw_version || '2026.7.1' }}
+            OPENCLAW_VERSION=${{ inputs.openclaw_version || '2026.9.8' }}
 
       - name: Image metadata（tag → 镜像标签）
         id: meta

@@ -8,7 +8,7 @@ import {
   MUAD_RUNTIME_PLUGIN_SPECS,
 } from "./image-plugin-paths.mjs";
 
-export const PINNED_OPENCLAW_VERSION = "2026.7.1";
+export const PINNED_OPENCLAW_VERSION = "2026.9.8";
 export const POD_SERVICE_TOKEN_FILE = "/run/secrets/muad/pod-service-token";
 export const SESSION_MANAGER_CLI = "/usr/local/bin/session-manager";
 export const MUAD_PROGRESS_CLI = "/usr/local/bin/muad-progress";

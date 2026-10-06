@@ -10,7 +10,7 @@ test("worker image pins OpenClaw and records the base version", () => {
   const app = read("Dockerfile");
   const workflow = read(".github/workflows/build-image.yml");
   // Base image pins openclaw version
-  assert.match(base, /^ARG OPENCLAW_VERSION=2026\.7\.1$/mu);
+  assert.match(base, /^ARG OPENCLAW_VERSION=2026\.9\.8$/mu);
   assert.match(base, /io\.muad\.openclaw\.version="\$\{OPENCLAW_VERSION\}"/u);
   assert.match(base, /io\.muad\.image\.role="base"/u);
   // App image references base with BASE_IMAGE and BASE_TAG
@@ -24,7 +24,7 @@ test("worker image pins OpenClaw and records the base version", () => {
   // CI still passes openclaw version through
   assert.match(
     workflow,
-    /OPENCLAW_VERSION=\$\{\{ inputs\.openclaw_version \|\| '2026\.7\.1' \}\}/u,
+    /OPENCLAW_VERSION=\$\{\{ inputs\.openclaw_version \|\| '2026\.9\.8' \}\}/u,
   );
   assert.doesNotMatch(workflow, /OPENCLAW_VERSION=.*latest/u);
 });
@@ -155,7 +155,9 @@ test("base image contains OpenClaw, Chromium/Playwright, channel plugins, and se
   // WeChat plugin
   assert.match(base, /openclaw plugins install.*openclaw-weixin/u);
   // Mattermost plugin
-  assert.match(base, /^ARG MATTERMOST_PLUGIN_VERSION=2026\.7\.1$/mu);
+  assert.match(base, /^ARG MATTERMOST_PLUGIN_VERSION=2026\.9\.8$/mu);
+  assert.match(base, /^ARG WECOM_PLUGIN_VERSION=2026\.9\.15$/mu);
+  assert.match(base, /^ARG WECHAT_PLUGIN_VERSION=2\.4\.9$/mu);
   assert.match(base, /openclaw plugins install.*@openclaw\/mattermost/u);
   assert.match(base, /\/opt\/openclaw-plugins\/wecom-openclaw-plugin/u);
   assert.match(base, /\/opt\/openclaw-plugins\/openclaw-weixin/u);

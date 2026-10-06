@@ -1,0 +1,492 @@
+{
+  "schema": 2,
+  "task_file": "openclaw-runtime-upgrade.md",
+  "task_sha256": "7db973a0b7465b218d8ab404695d5ab67427ff42b533855d95d988733402b153",
+  "scenarios": [
+    {
+      "id": "S-01",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "管理 HTTP → 临时 SQLite → 真实 builder/renderer",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": null,
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-02",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 Guard verifier + 路由解析契约",
+      "owner": "TASK-005",
+      "status": "planned",
+      "command": [
+        "node",
+        "--test",
+        "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-03",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "创建用户 API → 真 Store → DTO/渲染 → 重启选择",
+      "owner": "TASK-004",
+      "status": "planned",
+      "command": null,
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-04",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "模型修改 API → Store → DTO → 目标重启协议",
+      "owner": "TASK-004",
+      "status": "planned",
+      "command": null,
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-05",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "UpgradeService 状态机 + Driver 事件序列",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeupgrade/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-06",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实临时文件树/SQLite + 自动迁移/新会话路径",
+      "owner": "TASK-003",
+      "status": "planned",
+      "command": [
+        "node",
+        "--test",
+        "bin/test/upgrade-doctor-chain.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-07",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 Guard/policy/session-manager 模块",
+      "owner": "TASK-007",
+      "status": "planned",
+      "command": [
+        "node",
+        "--test",
+        "tools/muad-runtime-guard/test/multi-user-isolation.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-08",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "manual",
+      "kind": "manual",
+      "boundary": "生产 native resolver、双 IM 原账号、真实模型响应",
+      "owner": "TASK-008",
+      "status": "planned",
+      "command": null,
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-09",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "HTTP 写入口 → Store → 维护状态 → reconcile 调度",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": null,
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-10",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "版本清单、自检逻辑、实际模块/配置文件",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "bin/test/runtime-image-self-check.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "cde1be36bf274c0c8fda4d30ff29cf29",
+        "executed_at": "2026-10-06T18:22:26.960055+00:00",
+        "command": [
+          "node",
+          "--test",
+          "bin/test/runtime-image-self-check.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "5d54bdf8e7d364540325d9cf225cf55ab1ee8381f49e80ea35bff63578173517"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "cde1be36bf274c0c8fda4d30ff29cf29",
+          "executed_at": "2026-10-06T18:22:26.960055+00:00",
+          "command": [
+            "node",
+            "--test",
+            "bin/test/runtime-image-self-check.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "5d54bdf8e7d364540325d9cf225cf55ab1ee8381f49e80ea35bff63578173517"
+        }
+      ]
+    },
+    {
+      "id": "S-11",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "任务/租约调度与真实临时任务记录",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "node",
+        "--test",
+        "tools/muad-runtime-guard/test/long-task-drain.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "S-12",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "文档/测试清单/版本报告",
+      "owner": "TASK-008",
+      "status": "planned",
+      "command": [
+        "node",
+        "--test",
+        "bin/test/upgrade-report.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-01",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "临时 SQLite → 保护字段比较 → API 错误输出",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": null,
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-02",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "排空状态机与租约记录",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeupgrade/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-03",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "生效确认解析与计时器",
+      "owner": "TASK-004",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeapply/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-04",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "取证材料校验 + fake 存储/Driver",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeupgrade/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-05",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实临时状态树与自动迁移失败路径",
+      "owner": "TASK-003",
+      "status": "planned",
+      "command": [
+        "node",
+        "--test",
+        "bin/test/upgrade-doctor-chain.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-06",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实响应解析与严格验证器",
+      "owner": "TASK-007",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/gateway/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-07",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "编排失败路径 + 原配置/状态引用",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeupgrade/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-08",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "失败终态/错误封装",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/api/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-09",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实脱敏函数、日志回调与错误 envelope",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/api/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "E-10",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实操作记录原子写/加载 + fake 外部边界",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeupgrade/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-01",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "builder/Guard 校验",
+      "owner": "TASK-005",
+      "status": "planned",
+      "command": [
+        "node",
+        "--test",
+        "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-02",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "路由规范化与 identityLinks",
+      "owner": "TASK-005",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeconfig/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-03",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "锁与阶段事件序列",
+      "owner": "TASK-006",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/runtimeapply/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-04",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "manual",
+      "kind": "manual",
+      "boundary": "正式验收记录",
+      "owner": "TASK-008",
+      "status": "planned",
+      "command": null,
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-05",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真分批/聚合器与 fake RPC",
+      "owner": "TASK-005",
+      "status": "planned",
+      "command": [
+        "go",
+        "test",
+        "./internal/gateway/..."
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    },
+    {
+      "id": "B-06",
+      "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "版本能力选择、配置/自检",
+      "owner": "TASK-004",
+      "status": "planned",
+      "command": [
+        "node",
+        "--test",
+        "bin/test/runtime-config-transaction.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": []
+    }
+  ]
+}
