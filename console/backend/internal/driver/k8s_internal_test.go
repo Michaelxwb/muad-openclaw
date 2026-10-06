@@ -236,9 +236,7 @@ func TestK8s_CreateProvisionsAll(t *testing.T) {
 		c.StartupProbe.FailureThreshold < 60 {
 		t.Fatalf("startup probe = %+v, want long TCP startup window", c.StartupProbe)
 	}
-	if len(dep.Spec.Template.Spec.InitContainers) != 0 {
-		t.Fatalf("init containers = %d, want 0", len(dep.Spec.Template.Spec.InitContainers))
-	}
+	assertStateOwnershipInitContainer(t, dep.Spec.Template.Spec.InitContainers, "img:1")
 	if !hasVolumeMount(c.VolumeMounts, "service-token-runtime", "/run/secrets/muad") {
 		t.Fatal("main container is missing read-only service-token runtime mount")
 	}
@@ -287,6 +285,41 @@ func assertWorkerContainerSecurity(t *testing.T, security *corev1.SecurityContex
 	if security.Capabilities == nil || len(security.Capabilities.Drop) != 1 ||
 		security.Capabilities.Drop[0] != "ALL" {
 		t.Fatalf("container capabilities = %+v, want drop ALL", security.Capabilities)
+	}
+}
+
+// assertStateOwnershipInitContainer pins the state PVC ownership fix: the root
+// init container must chown the state dir to the runtime user with only
+// CAP_CHOWN and no shell, so 9.8 Doctor can tighten the directory (EPERM fix).
+func assertStateOwnershipInitContainer(t *testing.T, containers []corev1.Container, image string) {
+	t.Helper()
+	if len(containers) != 1 {
+		t.Fatalf("init containers = %d, want 1 (state-ownership)", len(containers))
+	}
+	init := containers[0]
+	if init.Name != "state-ownership" || init.Image != image {
+		t.Fatalf("init container = %q image=%q, want state-ownership %q", init.Name, init.Image, image)
+	}
+	ownership := strconv.Itoa(DefaultRuntimeUID) + ":" + strconv.Itoa(DefaultRuntimeGID)
+	if len(init.Command) != 3 || init.Command[0] != "/bin/chown" ||
+		init.Command[1] != ownership || init.Command[2] != "/home/node/.openclaw" {
+		t.Fatalf("init command = %v, want /bin/chown %s /home/node/.openclaw", init.Command, ownership)
+	}
+	security := init.SecurityContext
+	if security == nil || security.RunAsUser == nil || *security.RunAsUser != 0 ||
+		security.RunAsGroup == nil || *security.RunAsGroup != 0 ||
+		security.RunAsNonRoot == nil || *security.RunAsNonRoot ||
+		security.AllowPrivilegeEscalation == nil || *security.AllowPrivilegeEscalation {
+		t.Fatalf("init security context = %+v, want root without privilege escalation", security)
+	}
+	if security.Capabilities == nil || len(security.Capabilities.Drop) != 1 ||
+		security.Capabilities.Drop[0] != "ALL" ||
+		len(security.Capabilities.Add) != 1 || security.Capabilities.Add[0] != "CHOWN" {
+		t.Fatalf("init capabilities = %+v, want drop ALL + add CHOWN", security.Capabilities)
+	}
+	if len(init.VolumeMounts) != 1 || init.VolumeMounts[0].Name != "state" ||
+		init.VolumeMounts[0].MountPath != "/home/node/.openclaw" {
+		t.Fatalf("init mounts = %+v, want state at /home/node/.openclaw", init.VolumeMounts)
 	}
 }
 

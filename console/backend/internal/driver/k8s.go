@@ -370,6 +370,7 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 					AutomountServiceAccountToken: ptr(false),
 					NodeSelector:                 cloneStringMap(d.workerNodeSelector),
 					SecurityContext:              runtimePodSecurityContext(),
+					InitContainers:               []corev1.Container{stateOwnershipInitContainer(spec.ImageTag, runtime.StateDir)},
 					Volumes:                      vols,
 					Containers: []corev1.Container{{
 						Name:            "openclaw",
@@ -752,4 +753,28 @@ func (d *K8sDriver) deploymentVolumes(spec PodSpec, name string) ([]corev1.Volum
 
 func runtimePodSecurityContext() *corev1.PodSecurityContext {
 	return &corev1.PodSecurityContext{RunAsNonRoot: ptr(true), RunAsUser: ptr(int64(DefaultRuntimeUID)), RunAsGroup: ptr(int64(DefaultRuntimeGID)), FSGroup: ptr(int64(DefaultRuntimeGID)), SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}}
+}
+
+// stateOwnershipInitContainer hands the state PVC root to the runtime user.
+// The provisioner creates the volume root as root:<fsGroup> (2777) and kubelet
+// only adjusts the group, so the runtime (uid 1000) cannot tighten the state
+// directory to 0700 — the 9.8 Doctor fails closed with `EPERM ... fchmod`
+// (reproduced 2026-10-07, pod02 rehearsal). A minimal root init container
+// performs the single, idempotent chown on every Pod start: CAP_CHOWN only,
+// no shell, no privilege escalation.
+func stateOwnershipInitContainer(imageTag, stateDir string) corev1.Container {
+	return corev1.Container{
+		Name:            "state-ownership",
+		Image:           imageTag,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Command:         []string{"/bin/chown", fmt.Sprintf("%d:%d", DefaultRuntimeUID, DefaultRuntimeGID), stateDir},
+		SecurityContext: &corev1.SecurityContext{
+			RunAsNonRoot:             ptr(false),
+			RunAsUser:                ptr(int64(0)),
+			RunAsGroup:               ptr(int64(0)),
+			AllowPrivilegeEscalation: ptr(false),
+			Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}, Add: []corev1.Capability{"CHOWN"}},
+		},
+		VolumeMounts: []corev1.VolumeMount{{Name: "state", MountPath: stateDir}},
+	}
 }
