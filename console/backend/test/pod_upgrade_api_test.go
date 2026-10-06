@@ -65,7 +65,7 @@ func runtimeUpgradeEnv(t *testing.T, mode driver.RuntimeStartupMode) (*testEnv, 
 	return e, d
 }
 
-func TestRuntimeFileUpgrade_FailureStopsForward(t *testing.T) {
+func TestRuntimeFileUpgrade_E03InputAndGenerationRecovery(t *testing.T) {
 	for _, mode := range []driver.RuntimeStartupMode{driver.RuntimeStartupEnv, driver.RuntimeStartupFile} {
 		t.Run(string(mode), func(t *testing.T) {
 			e, d := runtimeUpgradeEnv(t, mode)
@@ -73,24 +73,17 @@ func TestRuntimeFileUpgrade_FailureStopsForward(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			d.replaceErrors = []error{errors.New("api_key=private-upgrade-key")}
+			d.replaceErrors = []error{errors.New("api_key=private-upgrade-key"), nil}
 			rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/upgrade", `{"imageTag":"img:bad"}`)
-			if !strings.Contains(rr.Body.String(), `"code":50216`) {
-				t.Fatalf("fail-forward code missing: %s", rr.Body.String())
-			}
-			// 无回退：不得恢复旧启动输入。
-			if len(d.restored) != 0 {
-				t.Fatalf("no rollback may restore startup input: %+v", d.restored)
+			if !strings.Contains(rr.Body.String(), `"code":50205`) || len(d.restored) != 1 || d.restored[0].Mode != mode {
+				t.Fatalf("original input not restored: %s", rr.Body.String())
 			}
 			after, err := e.store.GetPod("pod-a")
 			if err != nil {
 				t.Fatal(err)
 			}
-			if after.State != repo.PodStateError || after.LastApplyStatus != repo.ApplyStatusFailed {
-				t.Fatalf("pod must stop in error: %+v", after)
-			}
-			if after.ImageTag != "img:bad" || after.ConfigGeneration <= before.ConfigGeneration {
-				t.Fatalf("target image must be kept: %+v", after)
+			if after.ConfigGeneration <= before.ConfigGeneration || after.AppliedGeneration != after.ConfigGeneration || after.State != repo.PodStateRunning {
+				t.Fatal("recovery did not converge")
 			}
 			if strings.Contains(after.LastApplyError+rr.Body.String(), "private-upgrade-key") {
 				t.Fatal("secret exposed")
@@ -108,6 +101,7 @@ func TestRuntimeFileUpgrade_E03HealthAndRecoveryFailures(t *testing.T) {
 func assertUpgradeFailure(t *testing.T, scenario string) {
 	t.Helper()
 	e, d := runtimeUpgradeEnv(t, driver.RuntimeStartupEnv)
+	wantCode := "50205"
 	switch scenario {
 	case "health":
 		d.unhealthyUpgrade = true
@@ -116,27 +110,29 @@ func assertUpgradeFailure(t *testing.T, scenario string) {
 	case "restore":
 		d.replaceErrors = []error{errors.New("upgrade failed")}
 		d.restoreErr = errors.New("token=private-rollback-token")
+		wantCode = "50215"
 	case "recovery-health":
 		d.unhealthyUpgrade = true
 		d.unhealthyRecovery = true
+		wantCode = "50215"
 	case "cancel":
-		d.replaceErrors = []error{context.Canceled}
+		d.replaceErrors = []error{context.Canceled, nil}
 	case "timeout":
-		d.replaceErrors = []error{context.DeadlineExceeded}
+		d.replaceErrors = []error{context.DeadlineExceeded, nil}
 	}
 	rr := e.do(http.MethodPost, "/api/v1/containers/pod-a/upgrade", `{"imageTag":"img:bad"}`)
-	if !strings.Contains(rr.Body.String(), `"code":50216`) {
-		t.Fatalf("fail-forward response missing: %s", rr.Body.String())
-	}
-	if len(d.restored) != 0 {
-		t.Fatal("fail-forward must never restore startup input")
+	if !strings.Contains(rr.Body.String(), `"code":`+wantCode) {
+		t.Fatalf("incorrect recovery response %s", rr.Body.String())
 	}
 	pod, err := e.store.GetPod("pod-a")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pod.State != repo.PodStateError || pod.LastApplyStatus != repo.ApplyStatusFailed {
-		t.Fatalf("pod must stop in terminal error state: %+v", pod)
+	if wantCode == "50215" && (pod.State != repo.PodStateError || pod.LastApplyStatus != repo.ApplyStatusFailed) {
+		t.Fatal("failed recovery lacks terminal error state")
+	}
+	if wantCode == "50205" && (pod.State != repo.PodStateRunning || pod.AppliedGeneration != pod.ConfigGeneration) {
+		t.Fatal("successful recovery not healthy")
 	}
 	if strings.Contains(pod.LastApplyError+rr.Body.String(), "private-rollback-token") {
 		t.Fatal("failure secret exposed")

@@ -341,7 +341,7 @@ func TestPodAPI_PatchImageTagPerformsUpgrade(t *testing.T) {
 	}
 }
 
-func TestPodAPI_PatchImageTagFailureStopsForward(t *testing.T) {
+func TestPodAPI_PatchImageTagFailureRollsBack(t *testing.T) {
 	e := newTestEnv(t)
 	createPodThroughAPI(t, e, testPodBody)
 	e.drv.replaceErrors = []error{errors.New("simulated replace failure"), nil}
@@ -350,20 +350,12 @@ func TestPodAPI_PatchImageTagFailureStopsForward(t *testing.T) {
 	if rr.Code != http.StatusBadGateway {
 		t.Fatalf("failed image patch status = %d body=%s", rr.Code, rr.Body.String())
 	}
-	if !strings.Contains(rr.Body.String(), `"code":50216`) {
-		t.Fatalf("response = %s, want fail-forward code 50216", rr.Body.String())
-	}
 	pod, err := e.store.GetPod("pod-a")
 	if err != nil {
 		t.Fatalf("GetPod: %v", err)
 	}
-	// 镜像 PATCH 与 /upgrade 同一编排：失败不回退，保留目标镜像并停 error。
-	if pod.ImageTag != "img:bad" || pod.State != repo.PodStateError {
-		t.Fatalf("image patch must keep target and stop in error: %+v", pod)
-	}
-	if len(e.drv.replaced) != 0 || len(e.drv.replaceErrors) != 1 {
-		t.Fatalf("no rollback replace may run: replaced=%d unconsumed=%d",
-			len(e.drv.replaced), len(e.drv.replaceErrors))
+	if pod.ImageTag != "img:test" || e.drv.created["pod-a"].ImageTag != "img:test" {
+		t.Fatalf("image patch did not roll back: pod=%+v runtime=%+v", pod, e.drv.created["pod-a"])
 	}
 	assertErrorHidesDiagnostic(t, rr.Body.String(), "simulated replace failure")
 }

@@ -348,8 +348,8 @@ func (s *Server) handlePatchPodImageChange(
 		return
 	}
 	if err != nil {
-		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_failed")
-		writeRuntimeFailure(w, r, err, errcode.RuntimeUpgradeFailed)
+		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_rolled_back")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeImageChangeRolledBack)
 		return
 	}
 	s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade")
@@ -359,7 +359,7 @@ func (s *Server) handlePatchPodImageChange(
 
 func (s *Server) updatePodImageViaPatch(ctx context.Context, pod repo.Pod, update repo.PodUpdate) error {
 	return s.runPodUpgradeOperation(ctx, pod.PodID, pod.ImageTag, update.ImageTag, func(runCtx context.Context) error {
-		_, upgradeErr := s.performPodUpgrade(runCtx, pod, update.ImageTag)
+		_, upgradeErr := s.performPodUpgrade(runCtx, pod, update.ImageTag, true)
 		if upgradeErr != nil {
 			return upgradeErr
 		}

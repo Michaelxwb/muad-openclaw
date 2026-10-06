@@ -22,6 +22,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeupgrade"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/skillsync"
 )
 
@@ -36,8 +37,11 @@ type fakeDriver struct {
 	createErrors []error
 	// replaced records every ReplaceRuntime invocation (in-place upgrade);
 	// replaceErrors, when non-empty, is a queue of per-call errors.
-	replaced          []driver.PodSpec
-	replaceErrors     []error
+	replaced []driver.PodSpec
+	// onReplace runs before a replacement; E2E tests use it to simulate
+	// protected-binding drift or to hold the switch in flight.
+	onReplace     func()
+	replaceErrors []error
 	listErr           error
 	removeErr         error
 	restartErrors     map[string]error
@@ -131,6 +135,9 @@ func (f *fakeDriver) Create(_ context.Context, spec driver.PodSpec) error {
 	return nil
 }
 func (f *fakeDriver) ReplaceRuntime(_ context.Context, spec driver.PodSpec) error {
+	if f.onReplace != nil {
+		f.onReplace()
+	}
 	if len(f.replaceErrors) > 0 {
 		err := f.replaceErrors[0]
 		f.replaceErrors = f.replaceErrors[1:]
@@ -477,9 +484,15 @@ func newTestEnv(t *testing.T) *testEnv {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	waker := &fakeCleanupWaker{}
-	h := api.NewServer(cfg, store, cipher, drv, cache, syncer, reconcile).
-		WithCleanupWaker(waker).
-		Handler()
+	server := api.NewServer(cfg, store, cipher, drv, cache, syncer, reconcile)
+	// Wire the one-way upgrade service (journal + maintenance gate) so API E2E
+	// tests exercise the same fail-forward orchestration as production.
+	if journal, err := runtimeupgrade.NewJournal(t.TempDir()); err == nil {
+		if service, err := runtimeupgrade.NewService(journal, reconcile); err == nil {
+			server = server.WithUpgradeService(service)
+		}
+	}
+	h := server.WithCleanupWaker(waker).Handler()
 	return &testEnv{
 		h: h, cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache, reconcile: reconcile,
 		waker: waker, syncer: syncer, token: login(t, h), skillsDir: skillsDir,
