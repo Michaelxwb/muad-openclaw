@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "task_file": "openclaw-runtime-upgrade.md",
-  "task_sha256": "e27357283245207891346b363e9f23c298030d6db996fbb7d1aa6ec762d1f424",
+  "task_sha256": "460815da1259697465ed1267128ea0010eb02fe412110016469aed7e5efddf69",
   "scenarios": [
     {
       "id": "S-01",
@@ -10,11 +10,36 @@
       "kind": "e2e",
       "boundary": "管理 HTTP → 临时 SQLite → 真实 builder/renderer",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "e2e_deferred",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-01",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": null,
+        "cwd": ".",
+        "timeout": 60.0
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        }
+      ]
     },
     {
       "id": "S-02",
@@ -31,44 +56,7 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": [],
-      "revision": 1,
-      "evidence": {
-        "id": "S-02",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
-        "executed_at": "2026-10-06T18:48:57.401021+00:00",
-        "command": [
-          "node",
-          "--test",
-          "tools/muad-runtime-guard/test/route-verifier.test.mjs"
-        ],
-        "cwd": ".",
-        "timeout": 60.0,
-        "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
-      },
-      "runs": [
-        {
-          "id": "S-02",
-          "kind": "functional",
-          "status": "passed",
-          "exit_code": 0,
-          "revision": 1,
-          "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
-          "executed_at": "2026-10-06T18:48:57.401021+00:00",
-          "command": [
-            "node",
-            "--test",
-            "tools/muad-runtime-guard/test/route-verifier.test.mjs"
-          ],
-          "cwd": ".",
-          "timeout": 60.0,
-          "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
-        }
-      ]
+      "depends_on": []
     },
     {
       "id": "S-03",
@@ -81,32 +69,7 @@
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": [],
-      "revision": 1,
-      "evidence": {
-        "id": "S-03",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "efd6af9baace4206992e3f70d2987d34",
-        "executed_at": "2026-10-06T18:44:26.762036+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
-      },
-      "runs": [
-        {
-          "id": "S-03",
-          "kind": "e2e",
-          "status": "e2e_deferred",
-          "revision": 1,
-          "run_id": "efd6af9baace4206992e3f70d2987d34",
-          "executed_at": "2026-10-06T18:44:26.762036+00:00",
-          "command": null,
-          "cwd": ".",
-          "timeout": 60.0
-        }
-      ]
+      "depends_on": []
     },
     {
       "id": "S-04",
@@ -119,32 +82,7 @@
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": [],
-      "revision": 1,
-      "evidence": {
-        "id": "S-04",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "efd6af9baace4206992e3f70d2987d34",
-        "executed_at": "2026-10-06T18:44:26.762036+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
-      },
-      "runs": [
-        {
-          "id": "S-04",
-          "kind": "e2e",
-          "status": "e2e_deferred",
-          "revision": 1,
-          "run_id": "efd6af9baace4206992e3f70d2987d34",
-          "executed_at": "2026-10-06T18:44:26.762036+00:00",
-          "command": null,
-          "cwd": ".",
-          "timeout": 60.0
-        }
-      ]
+      "depends_on": []
     },
     {
       "id": "S-05",
@@ -153,7 +91,7 @@
       "kind": "functional",
       "boundary": "UpgradeService 状态机 + Driver 事件序列",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -163,7 +101,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+      },
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+        }
+      ]
     },
     {
       "id": "S-06",
@@ -219,11 +198,36 @@
       "kind": "e2e",
       "boundary": "HTTP 写入口 → Store → 维护状态 → reconcile 调度",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "e2e_deferred",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-09",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": null,
+        "cwd": ".",
+        "timeout": 60.0
+      },
+      "runs": [
+        {
+          "id": "S-09",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        }
+      ]
     },
     {
       "id": "S-10",
@@ -247,17 +251,60 @@
       "source": "openclaw-runtime-upgrade.design.md#2.5 验收条件",
       "level": "integration",
       "kind": "functional",
-      "boundary": "任务/租约调度与真实临时任务记录",
+      "boundary": "guard health longTask 计数 + 排空状态机",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "node",
-        "--test",
-        "tools/muad-runtime-guard/test/long-task-drain.test.mjs"
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "./internal/runtimeupgrade/..."
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+      },
+      "runs": [
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+        }
+      ]
     },
     {
       "id": "S-12",
@@ -283,11 +330,36 @@
       "kind": "e2e",
       "boundary": "临时 SQLite → 保护字段比较 → API 错误输出",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "e2e_deferred",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-01",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": null,
+        "cwd": ".",
+        "timeout": 60.0
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        }
+      ]
     },
     {
       "id": "E-02",
@@ -296,7 +368,7 @@
       "kind": "functional",
       "boundary": "排空状态机与租约记录",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -306,7 +378,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+        }
+      ]
     },
     {
       "id": "E-03",
@@ -325,48 +438,7 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": [],
-      "revision": 1,
-      "evidence": {
-        "id": "E-03",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "efd6af9baace4206992e3f70d2987d34",
-        "executed_at": "2026-10-06T18:44:26.762036+00:00",
-        "command": [
-          "go",
-          "-C",
-          "console/backend",
-          "test",
-          "./internal/runtimeapply/..."
-        ],
-        "cwd": ".",
-        "timeout": 60.0,
-        "fingerprint": "30dbf2e2eba214144135a4fa599aae830d0062e148fa1460dc77cdc4ffd1bbcc"
-      },
-      "runs": [
-        {
-          "id": "E-03",
-          "kind": "functional",
-          "status": "passed",
-          "exit_code": 0,
-          "revision": 1,
-          "run_id": "efd6af9baace4206992e3f70d2987d34",
-          "executed_at": "2026-10-06T18:44:26.762036+00:00",
-          "command": [
-            "go",
-            "-C",
-            "console/backend",
-            "test",
-            "./internal/runtimeapply/..."
-          ],
-          "cwd": ".",
-          "timeout": 60.0,
-          "fingerprint": "30dbf2e2eba214144135a4fa599aae830d0062e148fa1460dc77cdc4ffd1bbcc"
-        }
-      ]
+      "depends_on": []
     },
     {
       "id": "E-04",
@@ -375,7 +447,7 @@
       "kind": "functional",
       "boundary": "取证材料校验 + fake 存储/Driver",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -385,7 +457,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+        }
+      ]
     },
     {
       "id": "E-05",
@@ -430,7 +543,7 @@
       "kind": "functional",
       "boundary": "编排失败路径 + 原配置/状态引用",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -440,7 +553,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+      },
+      "runs": [
+        {
+          "id": "E-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+        }
+      ]
     },
     {
       "id": "E-08",
@@ -449,7 +603,7 @@
       "kind": "functional",
       "boundary": "失败终态/错误封装",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -459,7 +613,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/api/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+      },
+      "runs": [
+        {
+          "id": "E-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+        }
+      ]
     },
     {
       "id": "E-09",
@@ -468,7 +663,7 @@
       "kind": "functional",
       "boundary": "真实脱敏函数、日志回调与错误 envelope",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -478,7 +673,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/api/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+      },
+      "runs": [
+        {
+          "id": "E-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+        }
+      ]
     },
     {
       "id": "E-10",
@@ -487,7 +723,7 @@
       "kind": "functional",
       "boundary": "真实操作记录原子写/加载 + fake 外部边界",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -497,7 +733,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeupgrade/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+      },
+      "runs": [
+        {
+          "id": "E-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeupgrade/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+        }
+      ]
     },
     {
       "id": "B-01",
@@ -514,44 +791,7 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": [],
-      "revision": 1,
-      "evidence": {
-        "id": "B-01",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
-        "executed_at": "2026-10-06T18:48:57.401021+00:00",
-        "command": [
-          "node",
-          "--test",
-          "tools/muad-runtime-guard/test/route-verifier.test.mjs"
-        ],
-        "cwd": ".",
-        "timeout": 60.0,
-        "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
-      },
-      "runs": [
-        {
-          "id": "B-01",
-          "kind": "functional",
-          "status": "passed",
-          "exit_code": 0,
-          "revision": 1,
-          "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
-          "executed_at": "2026-10-06T18:48:57.401021+00:00",
-          "command": [
-            "node",
-            "--test",
-            "tools/muad-runtime-guard/test/route-verifier.test.mjs"
-          ],
-          "cwd": ".",
-          "timeout": 60.0,
-          "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
-        }
-      ]
+      "depends_on": []
     },
     {
       "id": "B-02",
@@ -570,48 +810,7 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": [],
-      "revision": 1,
-      "evidence": {
-        "id": "B-02",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
-        "executed_at": "2026-10-06T18:48:57.401021+00:00",
-        "command": [
-          "go",
-          "-C",
-          "console/backend",
-          "test",
-          "./internal/runtimeconfig/..."
-        ],
-        "cwd": ".",
-        "timeout": 60.0,
-        "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
-      },
-      "runs": [
-        {
-          "id": "B-02",
-          "kind": "functional",
-          "status": "passed",
-          "exit_code": 0,
-          "revision": 1,
-          "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
-          "executed_at": "2026-10-06T18:48:57.401021+00:00",
-          "command": [
-            "go",
-            "-C",
-            "console/backend",
-            "test",
-            "./internal/runtimeconfig/..."
-          ],
-          "cwd": ".",
-          "timeout": 60.0,
-          "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
-        }
-      ]
+      "depends_on": []
     },
     {
       "id": "B-03",
@@ -620,7 +819,7 @@
       "kind": "functional",
       "boundary": "锁与阶段事件序列",
       "owner": "TASK-006",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -630,7 +829,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+        "executed_at": "2026-10-06T19:01:54.078675+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeapply/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "0ba9ff501ae145f49b3ca2e027576be2",
+          "executed_at": "2026-10-06T19:01:54.078675+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeapply/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a0069d7b957a3a33f4e2c64f2ffd1b566c48da8a8c172b05a92c5284b66ddc09"
+        }
+      ]
     },
     {
       "id": "B-04",
@@ -662,48 +902,7 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": [],
-      "revision": 1,
-      "evidence": {
-        "id": "B-05",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
-        "executed_at": "2026-10-06T18:48:57.401021+00:00",
-        "command": [
-          "go",
-          "-C",
-          "console/backend",
-          "test",
-          "./internal/gateway/..."
-        ],
-        "cwd": ".",
-        "timeout": 60.0,
-        "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
-      },
-      "runs": [
-        {
-          "id": "B-05",
-          "kind": "functional",
-          "status": "passed",
-          "exit_code": 0,
-          "revision": 1,
-          "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
-          "executed_at": "2026-10-06T18:48:57.401021+00:00",
-          "command": [
-            "go",
-            "-C",
-            "console/backend",
-            "test",
-            "./internal/gateway/..."
-          ],
-          "cwd": ".",
-          "timeout": 60.0,
-          "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
-        }
-      ]
+      "depends_on": []
     },
     {
       "id": "B-06",
@@ -720,44 +919,7 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": [],
-      "revision": 1,
-      "evidence": {
-        "id": "B-06",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "efd6af9baace4206992e3f70d2987d34",
-        "executed_at": "2026-10-06T18:44:26.762036+00:00",
-        "command": [
-          "node",
-          "--test",
-          "bin/test/runtime-config-transaction.test.mjs"
-        ],
-        "cwd": ".",
-        "timeout": 60.0,
-        "fingerprint": "30dbf2e2eba214144135a4fa599aae830d0062e148fa1460dc77cdc4ffd1bbcc"
-      },
-      "runs": [
-        {
-          "id": "B-06",
-          "kind": "functional",
-          "status": "passed",
-          "exit_code": 0,
-          "revision": 1,
-          "run_id": "efd6af9baace4206992e3f70d2987d34",
-          "executed_at": "2026-10-06T18:44:26.762036+00:00",
-          "command": [
-            "node",
-            "--test",
-            "bin/test/runtime-config-transaction.test.mjs"
-          ],
-          "cwd": ".",
-          "timeout": 60.0,
-          "fingerprint": "30dbf2e2eba214144135a4fa599aae830d0062e148fa1460dc77cdc4ffd1bbcc"
-        }
-      ]
+      "depends_on": []
     }
   ]
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -66,7 +67,7 @@ func TestRuntimeFileCreateUpgradeContract_S08(t *testing.T) {
 	}
 }
 
-func TestRuntimeFileUpgradeRollback_E02(t *testing.T) {
+func TestRuntimeFileUpgradeFailForward_E02(t *testing.T) {
 	for _, kind := range []string{"k8s", "docker"} {
 		for _, legacy := range []bool{false, true} {
 			t.Run(kind+"/"+map[bool]string{false: "file", true: "env"}[legacy], func(t *testing.T) {
@@ -79,19 +80,23 @@ func TestRuntimeFileUpgradeRollback_E02(t *testing.T) {
 					h.forceLegacy()
 					h.waitConverged()
 				}
-				before := h.pod()
 				snapshot := h.snapshot()
 				volume := h.volumeIdentity()
-				result := h.request(http.MethodPost, "/containers/"+h.podID+"/upgrade", map[string]string{"imageTag": requireE2EEnv(t, "MUAD_E2E_UNHEALTHY_IMAGE")})
-				if result.Code != 50205 {
-					t.Fatalf("real rollback not confirmed: code %d", result.Code)
+				target := requireE2EEnv(t, "MUAD_E2E_UNHEALTHY_IMAGE")
+				result := h.request(http.MethodPost, "/containers/"+h.podID+"/upgrade", map[string]string{"imageTag": target})
+				// 一次性升级失败停在 error：不自动回退，保留目标镜像与状态供人工修复。
+				if result.Code != 50216 {
+					t.Fatalf("fail-forward not reported: code %d", result.Code)
 				}
-				after := h.waitConverged()
-				if after.ImageTag != before.ImageTag || after.ConfigGeneration <= before.ConfigGeneration || h.snapshot().Mode != snapshot.Mode || h.volumeIdentity() != volume {
-					t.Fatal("real rollback image/input/generation/state mismatch")
+				after := h.pod()
+				if after.State != repo.PodStateError || after.ImageTag != target {
+					t.Fatalf("pod must stop in error on the target image: %+v", after)
 				}
-				if h.snapshot().Environment["OPENCLAW_GATEWAY_TOKEN"] != snapshot.Environment["OPENCLAW_GATEWAY_TOKEN"] || !strings.Contains(h.stateSentinel(false), "retained-e2e-state") {
-					t.Fatal("rollback credential/state changed")
+				if h.volumeIdentity() != volume {
+					t.Fatal("fail-forward must not restore or replace the state volume")
+				}
+				if h.snapshot().Mode != snapshot.Mode {
+					t.Fatal("fail-forward must not restore startup input")
 				}
 			})
 		}

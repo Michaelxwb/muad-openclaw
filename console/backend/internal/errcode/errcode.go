@@ -110,6 +110,9 @@ const (
 	ConflictExists         = 40902
 	ConflictGeneration     = 40903
 	ConflictStateOperation = 40904
+	// ConflictPodUpgradeInProgress rejects writes to a Pod whose one-way
+	// runtime upgrade is in flight (fail-forward maintenance gate).
+	ConflictPodUpgradeInProgress = 40905
 	// 429xx — 限流
 	RateLimitedLogin   = 42901
 	RateLimitedBinding = 42902
@@ -163,6 +166,10 @@ const (
 	RuntimeTokenRotation             = 50213
 	RuntimeApplyFailed               = 50214
 	RuntimeUpgradeRollbackFailed     = 50215
+	// RuntimeUpgradeFailed reports a one-way upgrade that stopped in error.
+	// No rollback is attempted: the pod keeps the target image and waits for
+	// operator repair (fail-forward).
+	RuntimeUpgradeFailed = 50216
 	// 503xx — 依赖不可用
 	UnavailableBindingCodeService     = 50301
 	UnavailableRuntimeReconciler      = 50302
@@ -187,12 +194,12 @@ var AllCodes = []int{
 	40601, 40602, 40603, 40604, 40605, 40606, 40607,
 	40701, 40702, 40703, 40704, 40705, 40706, 40707, 40708, 40709, 40710, 40711,
 	40801, 40802,
-	40901, 40902, 40903, 40904,
+	40901, 40902, 40903, 40904, 40905,
 	42901, 42902,
 	50001, 50002, 50003, 50004, 50006, 50007, 50008, 50009, 50010,
 	50011, 50012, 50013, 50014, 50015, 50016, 50017, 50018, 50019, 50020,
 	50021, 50022, 50023, 50024, 50025, 50026, 50027, 50028, 50029, 50030, 50031, 50032, 50033, 50034,
 	50201, 50202, 50203, 50204, 50205, 50206, 50207, 50208, 50209, 50210,
-	50211, 50212, 50213, 50214, 50215,
+	50211, 50212, 50213, 50214, 50215, 50216,
 	50301, 50302, 50303, 50304,
 }

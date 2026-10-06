@@ -20,6 +20,9 @@ func (s *Server) handleCreateIdentity(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, r, err)
 		return
 	}
+	if s.blockIfUpgradeInProgress(w, r, user.PodID) {
+		return
+	}
 	pod, err := s.store.GetPod(user.PodID)
 	if err != nil {
 		writeRepoError(w, r, err)
@@ -54,6 +57,9 @@ func (s *Server) handlePatchIdentity(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(identity.HumanUserID)
 	if err != nil {
 		writeRepoError(w, r, err)
+		return
+	}
+	if s.blockIfUpgradeInProgress(w, r, user.PodID) {
 		return
 	}
 	var request patchIdentityRequest
@@ -92,6 +98,9 @@ func (s *Server) handleDeleteIdentity(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(identity.HumanUserID)
 	if err != nil {
 		writeRepoError(w, r, err)
+		return
+	}
+	if s.blockIfUpgradeInProgress(w, r, user.PodID) {
 		return
 	}
 	if err := s.store.DeleteIdentity(identity.IdentityID); err != nil {

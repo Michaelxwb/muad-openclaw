@@ -208,6 +208,9 @@ func (s *Server) handleSetPodResources(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, r, err)
 		return
 	}
+	if s.blockIfUpgradeInProgress(w, r, pod.PodID) {
+		return
+	}
 	var request podResourceRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
 		writeErr(w, r, errcode.InvalidResourceLimits)

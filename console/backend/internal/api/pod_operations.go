@@ -148,6 +148,9 @@ func (s *Server) handleApplyPodConfig(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, r, err)
 		return
 	}
+	if s.blockIfUpgradeInProgress(w, r, pod.PodID) {
+		return
+	}
 	if pod.State != repo.PodStateRunning && pod.State != repo.PodStateUnhealthy {
 		writeErr(w, r, errcode.ConflictPodRunningApply)
 		return

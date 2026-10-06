@@ -283,6 +283,9 @@ func (s *Server) handlePatchPod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pod := summary.Pod
+	if s.blockIfUpgradeInProgress(w, r, pod.PodID) {
+		return
+	}
 	var request patchPodRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
 		writeErr(w, r, errcode.InvalidRequestBody)
@@ -345,8 +348,8 @@ func (s *Server) handlePatchPodImageChange(
 		return
 	}
 	if err != nil {
-		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_rolled_back")
-		writeRuntimeFailure(w, r, err, errcode.RuntimeImageChangeRolledBack)
+		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_failed")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeUpgradeFailed)
 		return
 	}
 	s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade")
@@ -355,10 +358,8 @@ func (s *Server) handlePatchPodImageChange(
 }
 
 func (s *Server) updatePodImageViaPatch(ctx context.Context, pod repo.Pod, update repo.PodUpdate) error {
-	return s.runPodExclusive(ctx, pod.PodID, func(runCtx context.Context) error {
-		opCtx, cancel := podRuntimeOperationContext(runCtx)
-		defer cancel()
-		_, upgradeErr := s.performPodUpgrade(opCtx, pod, update.ImageTag)
+	return s.runPodUpgradeOperation(ctx, pod.PodID, pod.ImageTag, update.ImageTag, func(runCtx context.Context) error {
+		_, upgradeErr := s.performPodUpgrade(runCtx, pod, update.ImageTag)
 		if upgradeErr != nil {
 			return upgradeErr
 		}

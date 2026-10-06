@@ -32,6 +32,9 @@ func (s *Server) handleCreateBindingCode(w http.ResponseWriter, r *http.Request)
 		writeRepoError(w, r, err)
 		return
 	}
+	if s.blockIfUpgradeInProgress(w, r, user.PodID) {
+		return
+	}
 	pod, err := s.store.GetPod(user.PodID)
 	if err != nil {
 		writeRepoError(w, r, err)
@@ -96,6 +99,9 @@ func (s *Server) handleListBindingCodes(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleRevokeBindingCode(w http.ResponseWriter, r *http.Request) {
 	record, ok := s.bindingCodeForPath(w, r)
 	if !ok {
+		return
+	}
+	if s.blockIfUpgradeInProgress(w, r, record.PodID) {
 		return
 	}
 	if err := s.store.RevokeBindingCode(record.BindingCodeID); err != nil {

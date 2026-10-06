@@ -24,6 +24,9 @@ type serviceTokenMaterial struct {
 
 func (s *Server) handleRotatePodServiceToken(w http.ResponseWriter, r *http.Request) {
 	podID := r.PathValue("podId")
+	if s.blockIfUpgradeInProgress(w, r, podID) {
+		return
+	}
 	var fingerprint string
 	err := s.runPodExclusive(r.Context(), podID, func(ctx context.Context) error {
 		// Compensation must not use a client-cancelled context.

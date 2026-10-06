@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -16,8 +17,11 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/config"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeupgrade"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/skillsync"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/web"
 )
@@ -34,6 +38,7 @@ type Server struct {
 	reconcile      ReconcileEnqueuer
 	reconcileNow   ReconcileRunner
 	operations     PodOperationRunner
+	upgradeSvc     *runtimeupgrade.Service
 	cleanupWaker   CleanupWaker
 	skillUploadMu  sync.Mutex
 	bindingLimiter *bindingAttemptLimiter
@@ -89,6 +94,52 @@ func NewServer(
 		server.operations, _ = enqueuers[0].(PodOperationRunner)
 	}
 	return server
+}
+
+// WithUpgradeService wires the one-way upgrade journal/maintenance gate.
+func (s *Server) WithUpgradeService(service *runtimeupgrade.Service) *Server {
+	s.upgradeSvc = service
+	return s
+}
+
+// upgradeInProgress reports whether the pod's one-way runtime upgrade holds the
+// maintenance freeze.
+func (s *Server) upgradeInProgress(podID string) bool {
+	return s.upgradeSvc != nil && s.upgradeSvc.Maintenance(podID)
+}
+
+// blockIfUpgradeInProgress freezes pod-scoped writes while a one-way upgrade is
+// in flight. Returns true when the request must stop.
+func (s *Server) blockIfUpgradeInProgress(w http.ResponseWriter, r *http.Request, podID string) bool {
+	if !s.upgradeInProgress(podID) {
+		return false
+	}
+	writeErr(w, r, errcode.ConflictPodUpgradeInProgress)
+	return true
+}
+
+// WaitForQuiesce drains in-flight skills, long tasks and browser leases before
+// the old runtime is stopped. It polls the real guard health RPC and is bounded
+// by ctx; a drain failure aborts the upgrade before any state is rewritten.
+func (s *Server) WaitForQuiesce(ctx context.Context, podID string) error {
+	interval := 500 * time.Millisecond
+	for {
+		status := gateway.Probe(ctx, s.drv, podID)
+		drained := status.Healthy &&
+			status.SkillActive+status.SkillQueued == 0 &&
+			status.LongTaskActive+status.LongTaskQueued == 0 &&
+			status.BrowserActive+status.BrowserQueued == 0
+		if drained {
+			return nil
+		}
+		timer := time.NewTimer(interval)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return fmt.Errorf("drain in-flight work for %s: %w", podID, ctx.Err())
+		case <-timer.C:
+		}
+	}
 }
 
 // WithCleanupWaker wires the background cleaner so delete endpoints can wake it

@@ -36,6 +36,8 @@ type Status struct {
 	SkillQueued         int
 	BrowserActive       int
 	BrowserQueued       int
+	LongTaskActive      int
+	LongTaskQueued      int
 	ConfigRevisionHash  string
 	AppliedConfigHash   string
 	ConfigGeneration    int64
@@ -153,6 +155,8 @@ func mergeRuntimeHealthResult(status *Status, out string, err error) {
 	status.SkillQueued = health.Skill.Queued
 	status.BrowserActive = health.Browser.Active
 	status.BrowserQueued = health.Browser.Queued
+	status.LongTaskActive = health.LongTask.Active
+	status.LongTaskQueued = health.LongTask.Queued
 }
 
 // mergeConfigRevisionResult merges the config.get RPC output.
@@ -274,6 +278,10 @@ type runtimeHealthJSON struct {
 		Active int `json:"active"`
 		Queued int `json:"queued"`
 	} `json:"browser"`
+	LongTask struct {
+		Active int `json:"active"`
+		Queued int `json:"queued"`
+	} `json:"longTask"`
 }
 
 type configGetJSON struct {

@@ -24,6 +24,9 @@ func (s *Server) handleCreateHumanUser(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, r, err)
 		return
 	}
+	if s.blockIfUpgradeInProgress(w, r, pod.PodID) {
+		return
+	}
 	var request createHumanUserRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
 		writeErr(w, r, errcode.InvalidHumanUserRequest)
@@ -252,6 +255,9 @@ func (s *Server) handlePatchHumanUser(w http.ResponseWriter, r *http.Request) {
 		writeRepoError(w, r, err)
 		return
 	}
+	if s.blockIfUpgradeInProgress(w, r, user.PodID) {
+		return
+	}
 	var request patchHumanUserRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
 		writeErr(w, r, errcode.InvalidRequestBody)
@@ -413,6 +419,9 @@ func (s *Server) handleDeleteHumanUser(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetHumanUser(r.PathValue("humanUserId"))
 	if err != nil {
 		writeRepoError(w, r, err)
+		return
+	}
+	if s.blockIfUpgradeInProgress(w, r, user.PodID) {
 		return
 	}
 	// An unbound user (its Pod was deleted) has no runtime to exec cleanup

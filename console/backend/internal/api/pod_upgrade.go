@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -14,18 +13,18 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeupgrade"
 )
 
 const (
-	upgradeHealthTimeout = 2 * time.Minute
-	podRuntimeOpTimeout  = upgradeHealthTimeout + 30*time.Second
+	// One-way upgrade windows. The first 9.8 switch includes image pull,
+	// Doctor state migration and gateway startup, so the legacy 2m health /
+	// 2m30s operation bounds are too tight (design §3.4 API-01). The target
+	// image must be pre-warmed on the node.
+	upgradeHealthTimeout = 5 * time.Minute
+	podRuntimeOpTimeout  = 15 * time.Minute
 	upgradePollInterval  = 500 * time.Millisecond
 )
-
-// errUpgradeRollbackFailed marks a failed upgrade whose rollback also failed.
-// The API reports it as RuntimeUpgradeRollbackFailed (50215) instead of
-// claiming a successful automatic rollback.
-var errUpgradeRollbackFailed = errors.New("pod upgrade rollback failed")
 
 type upgradeRequest struct {
 	ImageTag string `json:"imageTag"`
@@ -43,7 +42,8 @@ func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.ImageTag = strings.TrimSpace(request.ImageTag)
-	// error 态放行：改镜像是升级回滚失败 brick 后唯一的可靠恢复路径。
+	// error 态放行：改镜像是一次性升级失败后切到修复版镜像的唯一出口
+	// （fail-forward，不自动回退）。
 	if pod.State != repo.PodStateRunning && pod.State != repo.PodStateUnhealthy &&
 		pod.State != repo.PodStateError {
 		writeErr(w, r, errcode.ConflictPodRunningUpgrade)
@@ -53,26 +53,23 @@ func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 		s.writePodDetail(w, r, pod.PodID, http.StatusOK)
 		return
 	}
-	var upgraded repo.Pod
-	err = s.runPodExclusive(r.Context(), pod.PodID, func(ctx context.Context) error {
-		opCtx, cancel := podRuntimeOperationContext(ctx)
-		defer cancel()
-		var upgradeErr error
-		upgraded, upgradeErr = s.performPodUpgrade(opCtx, pod, request.ImageTag)
+	execute := func(ctx context.Context) error {
+		_, upgradeErr := s.performPodUpgrade(ctx, pod, request.ImageTag)
 		return upgradeErr
-	})
+	}
+	err = s.runPodUpgradeOperation(r.Context(), pod.PodID, pod.ImageTag, request.ImageTag, execute)
 	if errors.Is(err, errRuntimeCoordinatorUnavailable) {
 		writeErr(w, r, errcode.UnavailableRuntimeCoordinator)
 		return
 	}
 	if err != nil {
-		if errors.Is(err, errUpgradeRollbackFailed) {
-			s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_rollback_failed")
-			writeRuntimeFailure(w, r, err, errcode.RuntimeUpgradeRollbackFailed)
-			return
-		}
-		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_rolled_back")
-		writeRuntimeFailure(w, r, err, errcode.RuntimeUpgradeRolledBack)
+		s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade_failed")
+		writeRuntimeFailure(w, r, err, errcode.RuntimeUpgradeFailed)
+		return
+	}
+	upgraded, err := s.store.GetPod(pod.PodID)
+	if err != nil {
+		writeRepoError(w, r, err)
 		return
 	}
 	s.auditPodMutation(r, auditlog.ActionPodUpdate, pod.PodID, "upgrade")
@@ -84,6 +81,31 @@ func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 
 func podRuntimeOperationContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.WithoutCancel(ctx), podRuntimeOpTimeout)
+}
+
+// runPodUpgradeOperation funnels every one-way image switch (direct upgrade and
+// image PATCH) through the same journaled fail-forward orchestration.
+func (s *Server) runPodUpgradeOperation(
+	ctx context.Context, podID, sourceImage, targetImage string, execute func(context.Context) error,
+) error {
+	if s.upgradeSvc != nil {
+		_, err := s.upgradeSvc.Run(ctx, runtimeupgrade.Request{
+			PodID:       podID,
+			SourceImage: sourceImage,
+			TargetImage: targetImage,
+			Execute: func(runCtx context.Context) error {
+				opCtx, cancel := podRuntimeOperationContext(runCtx)
+				defer cancel()
+				return execute(opCtx)
+			},
+		})
+		return err
+	}
+	return s.runPodExclusive(ctx, podID, func(runCtx context.Context) error {
+		opCtx, cancel := podRuntimeOperationContext(runCtx)
+		defer cancel()
+		return execute(opCtx)
+	})
 }
 
 func validImageTag(value string) bool {
@@ -101,44 +123,46 @@ func (s *Server) performPodUpgrade(ctx context.Context, current repo.Pod, imageT
 	if current.ImageTag == imageTag {
 		return current, nil
 	}
-	startup, ok := s.drv.(driver.RuntimeStartupDriver)
-	if !ok {
-		return repo.Pod{}, errors.Join(errors.New("runtime startup recovery unavailable"), errUpgradeRollbackFailed)
-	}
-	snapshot, err := startup.SnapshotStartupConfig(ctx, current.PodID)
-	if err != nil {
-		return repo.Pod{}, errors.Join(err, errUpgradeRollbackFailed)
-	}
 	target, err := s.updatePodImage(current, imageTag)
 	if err != nil {
 		return repo.Pod{}, err
 	}
-	return s.applyPodImageUpgrade(ctx, current, target, snapshot)
-}
-
-func (s *Server) applyPodImageUpgrade(ctx context.Context, current, target repo.Pod, snapshot driver.RuntimeStartupSnapshot) (repo.Pod, error) {
-	desired, err := s.buildDesiredPodRuntime(target)
-	if err != nil {
-		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, snapshot, err)
-	}
-	if err := s.store.StartPodConfigApply(target.PodID, target.ConfigGeneration); err != nil {
-		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, snapshot, err)
-	}
-	if err := s.syncSkillsBeforeDirectApply(ctx, target); err != nil {
-		err = s.failPodUpgradeApply(target, err)
-		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, snapshot, err)
-	}
-	err = s.replacePodRuntime(ctx, desired)
-	if err == nil {
-		err = s.completePodUpgrade(target, desired)
-	}
-	if err != nil {
-		err = s.failPodUpgradeApply(target, err)
-		// A failed replacement may already have changed the workload; restore
-		// its original image and input mode with a new recovery generation.
-		return repo.Pod{}, s.recoverPodUpgrade(ctx, current, snapshot, err)
+	if err := s.applyPodImageUpgrade(ctx, target); err != nil {
+		return repo.Pod{}, s.failPodUpgradeForward(target, err)
 	}
 	return s.store.GetPod(target.PodID)
+}
+
+func (s *Server) applyPodImageUpgrade(ctx context.Context, target repo.Pod) error {
+	desired, err := s.buildDesiredPodRuntime(target)
+	if err != nil {
+		return err
+	}
+	if err := s.store.StartPodConfigApply(target.PodID, target.ConfigGeneration); err != nil {
+		return err
+	}
+	if err := s.syncSkillsBeforeDirectApply(ctx, target); err != nil {
+		return err
+	}
+	if err := s.replacePodRuntime(ctx, desired); err != nil {
+		return err
+	}
+	return s.completePodUpgrade(target, desired)
+}
+
+// failPodUpgradeForward keeps the target image: cross-version state migration
+// is irreversible, so the pod stops in error for operator repair instead of
+// being rolled back to an image that can no longer read its state.
+func (s *Server) failPodUpgradeForward(target repo.Pod, cause error) error {
+	if err := s.store.FailPodConfigApply(
+		target.PodID, target.ConfigGeneration, auditlog.RedactDiagnostic(cause.Error()),
+	); err != nil {
+		cause = errors.Join(cause, err)
+	}
+	if err := s.store.UpdatePodState(target.PodID, repo.PodStateError); err != nil {
+		cause = errors.Join(cause, err)
+	}
+	return cause
 }
 
 func (s *Server) updatePodImage(current repo.Pod, imageTag string) (repo.Pod, error) {
@@ -178,73 +202,6 @@ func (s *Server) completePodUpgrade(target repo.Pod, desired desiredPodRuntime) 
 	return s.store.UpdatePodState(target.PodID, repo.PodStateRunning)
 }
 
-func (s *Server) recoverPodUpgrade(
-	ctx context.Context, original repo.Pod, snapshot driver.RuntimeStartupSnapshot, cause error,
-) error {
-	recoveryCtx, cancel := podRuntimeOperationContext(ctx)
-	defer cancel()
-	restored, err := s.restorePodImage(original)
-	if err == nil {
-		err = s.restorePodRuntime(recoveryCtx, restored, snapshot)
-	}
-	if err != nil {
-		// 回滚也失败：必须落终态（last_apply_status=failed），否则 restorePodRuntime
-		// 里的 StartPodConfigApply 会把状态留在 applying，UI 永远显示"应用中"且无操作
-		// 出口。restorePodImage 已把 config_generation 前移，FailPodConfigApply 带
-		// `config_generation = ?` guard，必须用当前最新 generation 才会命中而不是空操作。
-		latest, latestErr := s.store.GetPod(original.PodID)
-		if latestErr != nil {
-			log.Printf("pod_upgrade_rollback_failed_get_pod pod=%s error=%s",
-				original.PodID, auditlog.RedactDiagnostic(latestErr.Error()))
-			latest = restored
-		}
-		err = s.failPodUpgradeApply(latest, err)
-		err = errors.Join(err, s.store.UpdatePodState(original.PodID, repo.PodStateError))
-		log.Printf("pod_upgrade_rollback_failed pod=%s error=%s", original.PodID, auditlog.RedactDiagnostic(err.Error()))
-		// 回滚本身失败：结果不可信，标记 sentinel 让 handler 上报 50215，
-		// 而不是谎报"已自动回滚"（50205）。
-		return errors.Join(cause, err, errUpgradeRollbackFailed)
-	}
-	return cause
-}
-
-func (s *Server) restorePodImage(original repo.Pod) (repo.Pod, error) {
-	latest, err := s.store.GetPod(original.PodID)
-	if err != nil {
-		return repo.Pod{}, err
-	}
-	return s.updatePodImage(latest, original.ImageTag)
-}
-
-func (s *Server) restorePodRuntime(ctx context.Context, restored repo.Pod, snapshot driver.RuntimeStartupSnapshot) error {
-	desired, err := s.buildDesiredPodRuntime(restored)
-	if err != nil {
-		return err
-	}
-	if err := s.store.StartPodConfigApply(restored.PodID, restored.ConfigGeneration); err != nil {
-		return err
-	}
-	if err := s.syncSkillsBeforeDirectApply(ctx, restored); err != nil {
-		return s.failPodUpgradeApply(restored, err)
-	}
-	startup, ok := s.drv.(driver.RuntimeStartupDriver)
-	if !ok {
-		return errors.New("runtime startup recovery unavailable")
-	}
-	if err := startup.RestoreRuntime(ctx, desired.spec, snapshot); err != nil {
-		return err
-	}
-	if err := waitForPodHealth(ctx, s.drv, restored.PodID, restored.ConfigGeneration); err != nil {
-		return err
-	}
-	return s.completePodUpgrade(restored, desired)
-}
-
-func (s *Server) failPodUpgradeApply(pod repo.Pod, cause error) error {
-	return errors.Join(cause, s.store.FailPodConfigApply(pod.PodID, pod.ConfigGeneration,
-		auditlog.RedactDiagnostic(cause.Error())))
-}
-
 func (s *Server) syncSkillsBeforeDirectApply(ctx context.Context, pod repo.Pod) error {
 	if !pod.SkillsPending {
 		return nil
@@ -274,7 +231,7 @@ func probeUntilReady(ctx context.Context, runtime gateway.Execer, podID string, 
 	defer cancel()
 	for {
 		// 镜像拉取失败（ErrImagePull/ImagePullBackOff 等）是终态：等多久都不会 Ready，
-		// 立即失败触发回滚，而不是轮询到 upgradeHealthTimeout。
+		// 立即失败触发 fail-forward，而不是轮询到 upgradeHealthTimeout。
 		if checker, ok := runtime.(driver.WorkloadBlockedChecker); ok {
 			if blocked, err := checker.WorkloadBlocked(probeCtx, podID); err == nil && blocked {
 				return fmt.Errorf("Pod %s image pull failed (workload blocked)", podID)

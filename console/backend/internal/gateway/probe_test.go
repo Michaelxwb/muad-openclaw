@@ -231,9 +231,19 @@ func TestProbe_ChannelsFailureReturnsUnhealthy(t *testing.T) {
 	}
 }
 
+// TASK-006: quiesce 依赖真实 guard health 的 longTask 计数。
+func TestProbe_ParsesLongTaskCounts(t *testing.T) {
+	ex := probeExecerWithDefaults(map[string]string{
+		"openclaw gateway call muad.runtime.health --json": `{"ok":true,"generation":7,"skill":{"active":0,"queued":0},"browser":{"active":0,"queued":0},"longTask":{"active":2,"queued":1}}`,
+	}, nil)
+	status := Probe(context.Background(), ex, "pod-a")
+	if status.LongTaskActive != 2 || status.LongTaskQueued != 1 {
+		t.Fatalf("long task counts = %d/%d, want 2/1", status.LongTaskActive, status.LongTaskQueued)
+	}
+}
+
 // ProbeWithConfigRevision 并发合并三个 CLI 输出。
-func TestProbeWithConfigRevision_MergesAllThree(t *testing.T) {
-	ex := probeExecerWithDefaults(nil, nil)
+func TestProbeWithConfigRevision_MergesAllThree(t *testing.T) {	ex := probeExecerWithDefaults(nil, nil)
 	status := ProbeWithConfigRevision(context.Background(), ex, "pod-a")
 	if !status.Healthy || !status.RuntimeGuardHealthy || status.RuntimeGeneration != 7 {
 		t.Fatalf("base health fields = %+v", status)

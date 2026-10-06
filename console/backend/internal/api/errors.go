@@ -242,6 +242,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.ConflictGeneration: {http.StatusConflict, "配置代冲突，请刷新后重试", "Configuration generation conflict"},
 	// conflict.state_operation
 	errcode.ConflictStateOperation: {http.StatusConflict, "当前资源状态不允许该操作", "Resource state does not allow this operation"},
+	// conflict.pod_upgrade_in_progress
+	errcode.ConflictPodUpgradeInProgress: {http.StatusConflict, "Pod 正在执行一次性运行时升级，相关写入已冻结", "Pod runtime upgrade is in progress; writes are frozen"},
 	// rate_limited.login
 	errcode.RateLimitedLogin: {http.StatusTooManyRequests, "登录尝试过于频繁，请稍后再试", "Too many login attempts, please try again later"},
 	// rate_limited.binding
@@ -340,6 +342,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.RuntimeApplyFailed: {http.StatusBadGateway, "绑定已保存，但运行时配置应用失败", "Binding saved but runtime config apply failed"},
 	// runtime.upgrade_rollback_failed
 	errcode.RuntimeUpgradeRollbackFailed: {http.StatusBadGateway, "Pod 升级失败，且自动回滚也未成功", "Pod upgrade failed and automatic rollback did not succeed"},
+	// runtime.upgrade_failed
+	errcode.RuntimeUpgradeFailed: {http.StatusBadGateway, "Pod 升级失败，已停在 error 等待人工修复（不自动回退）", "Pod upgrade failed and stopped in error for manual repair (no rollback)"},
 	// unavailable.binding_code_service
 	errcode.UnavailableBindingCodeService: {http.StatusServiceUnavailable, "绑定码服务暂不可用", "Binding code service is temporarily unavailable"},
 	// unavailable.runtime_reconciler

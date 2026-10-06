@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeapply"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeconfig"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/runtimeupgrade"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/skillsync"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/usercleanup"
 )
@@ -150,12 +152,37 @@ func newHTTPServer(
 	deps *dependencies, cache *monitor.Cache, coordinator *runtimeapply.Coordinator,
 	cleaner *usercleanup.Cleaner,
 ) *http.Server {
+	server := api.NewServer(
+		deps.cfg, deps.store, deps.cipher, deps.driver, cache, deps.skillSyncer, coordinator,
+	)
+	// One-way upgrade journal + maintenance gate. A missing journal disables
+	// journaling but the fail-forward upgrade path still works.
+	journalDir := filepath.Join(filepath.Dir(deps.cfg.DBPath), "runtime-upgrades")
+	if journal, err := runtimeupgrade.NewJournal(journalDir); err != nil {
+		log.Printf("[console] upgrade journal unavailable: %v", err)
+	} else if service, err := runtimeupgrade.NewService(
+		journal, coordinator,
+		runtimeupgrade.WithQuiescer(runtimeupgrade.QuiescerFunc(server.WaitForQuiesce)),
+		runtimeupgrade.WithPodErrorMarker(func(podID string) error {
+			return deps.store.UpdatePodState(podID, repo.PodStateError)
+		}),
+	); err != nil {
+		log.Printf("[console] upgrade service unavailable: %v", err)
+	} else {
+		if recovered, err := service.Recover(context.Background()); err != nil {
+			log.Printf("[console] upgrade recovery scan failed: %v", err)
+		} else if len(recovered) > 0 {
+			log.Printf(
+				"[console] recovered %d unfinished upgrade(s); pods stopped in error (no rollback)",
+				len(recovered),
+			)
+		}
+		server = server.WithUpgradeService(service)
+	}
 	return &http.Server{
-		Addr: deps.cfg.ListenAddr,
-		Handler: api.NewServer(
-			deps.cfg, deps.store, deps.cipher, deps.driver, cache, deps.skillSyncer, coordinator,
-		).WithCleanupWaker(cleaner).Handler(),
-		ReadHeaderTimeout: 10 * time.Second,
+		Addr:               deps.cfg.ListenAddr,
+		Handler:            server.WithCleanupWaker(cleaner).Handler(),
+		ReadHeaderTimeout:  10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      3 * time.Minute,
 		IdleTimeout:       60 * time.Second,
