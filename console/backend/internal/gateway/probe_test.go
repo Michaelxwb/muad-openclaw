@@ -2,7 +2,9 @@ package gateway
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -55,6 +57,96 @@ func TestVerifyRoutes_EmptyRoutesAreImmediatelyOK(t *testing.T) {
 	result, err := VerifyRoutes(context.Background(), ex, "pod-a", 7, nil)
 	if err != nil || !result.OK || result.Generation != 7 {
 		t.Fatalf("empty routes result = %+v, %v; want OK with matching generation", result, err)
+	}
+}
+
+// verifyRoutesRecorder 记录每个 verify-routes RPC 的批大小，并可让指定批次失败。
+type verifyRoutesRecorder struct {
+	mu          sync.Mutex
+	batchSizes  []int
+	failBatch   int
+	failureMode string // "rpc" | "deterministic"
+}
+
+func (ex *verifyRoutesRecorder) Exec(_ context.Context, _ string, cmd ...string) (string, error) {
+	params := ""
+	for i, item := range cmd {
+		if item == "--params" && i+1 < len(cmd) {
+			params = cmd[i+1]
+		}
+	}
+	var payload struct {
+		Generation int64             `json:"generation"`
+		Routes     []RouteExpectation `json:"routes"`
+	}
+	if err := json.Unmarshal([]byte(params), &payload); err != nil {
+		return "", err
+	}
+	ex.mu.Lock()
+	ex.batchSizes = append(ex.batchSizes, len(payload.Routes))
+	batch := len(ex.batchSizes)
+	fail := ex.failBatch == batch
+	mode := ex.failureMode
+	ex.mu.Unlock()
+	if fail && mode == "rpc" {
+		return "", errors.New("exec failed: connection refused")
+	}
+	if fail && mode == "deterministic" {
+		return fmt.Sprintf(
+			`{"ok":false,"generation":%d,"checked":%d,"failed":1,"error":"agent_mismatch"}`,
+			payload.Generation, len(payload.Routes),
+		), nil
+	}
+	return fmt.Sprintf(
+		`{"ok":true,"generation":%d,"checked":%d,"failed":0}`,
+		payload.Generation, len(payload.Routes),
+	), nil
+}
+
+func makeProbeRoutes(count int) []RouteExpectation {
+	routes := make([]RouteExpectation, 0, count)
+	for i := 0; i < count; i++ {
+		routes = append(routes, RouteExpectation{
+			AgentID: "alice", Channel: "mattermost", AccountID: "default",
+			PeerKind: "direct", ExternalID: fmt.Sprintf("mm-user-%d", i),
+		})
+	}
+	return routes
+}
+
+func TestVerifyRoutes_BatchesAboveSingleCallLimit(t *testing.T) {
+	ex := &verifyRoutesRecorder{}
+	result, err := VerifyRoutes(context.Background(), ex, "pod-a", 7, makeProbeRoutes(1001))
+	if err != nil {
+		t.Fatalf("VerifyRoutes: %v", err)
+	}
+	if len(ex.batchSizes) != 2 || ex.batchSizes[0] != 1000 || ex.batchSizes[1] != 1 {
+		t.Fatalf("batch sizes = %v, want [1000 1]", ex.batchSizes)
+	}
+	if !result.OK || result.Checked != 1001 || result.Failed != 0 || result.Generation != 7 {
+		t.Fatalf("aggregated result = %+v, want 1001 checked without truncation", result)
+	}
+}
+
+func TestVerifyRoutes_BatchRPCFailureIsUnknown(t *testing.T) {
+	ex := &verifyRoutesRecorder{failBatch: 2, failureMode: "rpc"}
+	_, err := VerifyRoutes(context.Background(), ex, "pod-a", 7, makeProbeRoutes(1001))
+	if !errors.Is(err, ErrRouteVerificationRPC) {
+		t.Fatalf("second-batch RPC failure error = %v, want ErrRouteVerificationRPC", err)
+	}
+}
+
+func TestVerifyRoutes_AggregatesDeterministicFailures(t *testing.T) {
+	ex := &verifyRoutesRecorder{failBatch: 1, failureMode: "deterministic"}
+	result, err := VerifyRoutes(context.Background(), ex, "pod-a", 7, makeProbeRoutes(1001))
+	if err != nil {
+		t.Fatalf("deterministic failures must not be RPC errors: %v", err)
+	}
+	if result.OK || result.Checked != 1001 || result.Failed != 1 {
+		t.Fatalf("aggregated result = %+v, want OK=false checked=1001 failed=1", result)
+	}
+	if len(ex.batchSizes) != 2 {
+		t.Fatalf("batch sizes = %v, want two batches", ex.batchSizes)
 	}
 }
 

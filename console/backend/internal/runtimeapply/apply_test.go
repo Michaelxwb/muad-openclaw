@@ -201,6 +201,29 @@ func TestApplyRejectsUnknownGatewaySignal(t *testing.T) {
 	}
 }
 
+func TestApplyRejectsUnsupportedPeerKindRoutes(t *testing.T) {
+	driver := newFakeDriver(RestartNone)
+	applier := newTestApplier(t, driver)
+	request := testRequest(false)
+	request.RuntimeJSON = []byte(`{
+		"podId":"pod-a",
+		"generation":7,
+		"routes":[{
+			"agentId":"alice",
+			"channel":"mattermost",
+			"accountId":"default",
+			"peerKind":"group",
+			"externalId":"group-1"
+		}]
+	}`)
+	if _, err := applier.Apply(context.Background(), request); err == nil {
+		t.Fatal("unsupported peer kind must fail closed instead of being silently skipped")
+	}
+	if driver.committed {
+		t.Fatal("unsupported peer kind must not commit the config")
+	}
+}
+
 func TestApplyRestartNoneSuccess(t *testing.T) {
 	driver := newFakeDriver(RestartNone)
 	applier := newTestApplier(t, driver)

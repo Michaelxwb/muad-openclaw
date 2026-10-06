@@ -1,7 +1,7 @@
 version: 1
 task: openclaw-runtime-upgrade
 enforcement: required
-updated_at: '2026-10-06T18:36:43.506242+00:00'
+updated_at: '2026-10-06T18:45:24.131158+00:00'
 sources:
 - type: cli
   ref: bind
@@ -46,7 +46,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-quality-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -82,7 +82,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-write-err-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -129,6 +129,17 @@ bindings:
           rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
           artifact_sha256: null
           diff_sha256: fc502d74322e0c675e6a99d54e4efc15ef2142ad9d440f69f9571d7720c82888
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-06T18:48:57.479407+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: 77e5f97edf39055dd02245f2eb1e42558be6cab93cffb588d962fffdcd49ee34
           result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
           error_code: null
           details:
@@ -288,7 +299,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-database-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -324,7 +335,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-no-select-star-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -375,6 +386,17 @@ bindings:
           error_code: null
           details:
             checked_files: 2
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-06T18:48:57.481639+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: 77e5f97edf39055dd02245f2eb1e42558be6cab93cffb588d962fffdcd49ee34
+          result_sha256: 666dcdbe766fc716509bd2d8f74197638a5d2b1c3851b97f0cc6dc3dce733d2c
+          error_code: null
+          details:
+            checked_files: 4
             violations: []
       review:
         status: pending
@@ -502,7 +524,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-directory-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -636,7 +658,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-logging-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -673,7 +695,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-redact-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -807,7 +829,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-platform-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -844,7 +866,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-http-envelope-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -906,6 +928,27 @@ bindings:
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
               0.356s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-06T18:48:58.506415+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: 77e5f97edf39055dd02245f2eb1e42558be6cab93cffb588d962fffdcd49ee34
+          result_sha256: a96d8660d9153ddbfa3ac0faf38fdad33da67cc74d881b9b40d0de360a4b684f
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 068f75f89ea6743178db79d930414fbc49587d88e777a8731288a8e56b1b3db3
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.348s\n"
       review:
         status: pending
         refs: []
@@ -935,7 +978,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-006
           item_id: RULE-backend-model-pool-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1069,7 +1112,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-002
           item_id: RULE-runtime-config-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1106,7 +1149,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-002
           item_id: RULE-runtime-validate-before-write-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1213,7 +1256,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-001
           item_id: RULE-runtime-directory-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1320,7 +1363,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-007
           item_id: RULE-runtime-security-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1357,7 +1400,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-003
           item_id: RULE-runtime-secret-file-mode-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1491,7 +1534,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-007
           item_id: RULE-runtime-skill-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1528,7 +1571,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-007
           item_id: RULE-runtime-skill-layering-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1565,7 +1608,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-007
           item_id: RULE-runtime-log-injection-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1601,7 +1644,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-007
           item_id: RULE-runtime-log-prefix-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:
@@ -1638,7 +1681,7 @@ bindings:
         - artifact: openclaw-runtime-upgrade.md
           section_id: TASK-007
           item_id: RULE-runtime-skill-fail-loud-001
-          artifact_sha256: c9e966a428cc1dc5b6f75e17253dcef81c5112ad99c7b6dc0ac6d00e2ea58bb6
+          artifact_sha256: 6b595191c4c5b8bf4e9c61aec1681a6038f6378e786cd15392e6555e9c004e65
         decision: null
         evidence: []
       code:

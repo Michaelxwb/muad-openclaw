@@ -23,7 +23,7 @@
       "kind": "functional",
       "boundary": "真实 Guard verifier + 路由解析契约",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
@@ -31,7 +31,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
+        "executed_at": "2026-10-06T18:48:57.401021+00:00",
+        "command": [
+          "node",
+          "--test",
+          "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
+          "executed_at": "2026-10-06T18:48:57.401021+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
+        }
+      ]
     },
     {
       "id": "S-03",
@@ -469,7 +506,7 @@
       "kind": "functional",
       "boundary": "builder/Guard 校验",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
@@ -477,7 +514,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
+        "executed_at": "2026-10-06T18:48:57.401021+00:00",
+        "command": [
+          "node",
+          "--test",
+          "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
+          "executed_at": "2026-10-06T18:48:57.401021+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/route-verifier.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
+        }
+      ]
     },
     {
       "id": "B-02",
@@ -486,7 +560,7 @@
       "kind": "functional",
       "boundary": "路由规范化与 identityLinks",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -496,7 +570,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
+        "executed_at": "2026-10-06T18:48:57.401021+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/runtimeconfig/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
+          "executed_at": "2026-10-06T18:48:57.401021+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/runtimeconfig/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
+        }
+      ]
     },
     {
       "id": "B-03",
@@ -537,7 +652,7 @@
       "kind": "functional",
       "boundary": "真分批/聚合器与 fake RPC",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -547,7 +662,48 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
+        "executed_at": "2026-10-06T18:48:57.401021+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/gateway/..."
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
+      },
+      "runs": [
+        {
+          "id": "B-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "efe1ecbb6dcf418383ffd801e5c6ba6e",
+          "executed_at": "2026-10-06T18:48:57.401021+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/gateway/..."
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "0e83ce13e307b9ccaec8f7fd284048179601d209b24a92719fc532d7498329e6"
+        }
+      ]
     },
     {
       "id": "B-06",

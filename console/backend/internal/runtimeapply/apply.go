@@ -467,17 +467,32 @@ func expectedDirectRoutes(raw []byte) ([]gateway.RouteExpectation, error) {
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return nil, fmt.Errorf("decode runtime routes: %w", err)
 	}
-	return filterDirectRoutes(payload.Routes), nil
+	return selectVerifiableRoutes(payload.Routes)
 }
 
-func filterDirectRoutes(routes []gateway.RouteExpectation) []gateway.RouteExpectation {
+// selectVerifiableRoutes keeps every route the runtime verifier can prove
+// (direct/dm today). Unsupported or unknown peer kinds fail closed instead of
+// being silently dropped, so a full-route verification can never hide an
+// existing binding.
+func selectVerifiableRoutes(routes []gateway.RouteExpectation) ([]gateway.RouteExpectation, error) {
 	expected := make([]gateway.RouteExpectation, 0, len(routes))
 	for _, route := range routes {
-		if route.PeerKind == "direct" || route.PeerKind == "dm" {
+		switch route.PeerKind {
+		case "direct", "dm":
 			expected = append(expected, route)
+		case "group", "channel":
+			return nil, fmt.Errorf(
+				"route verification does not support peer kind %q (channel=%s)",
+				route.PeerKind, route.Channel,
+			)
+		default:
+			return nil, fmt.Errorf(
+				"route verification received unknown peer kind %q (channel=%s)",
+				route.PeerKind, route.Channel,
+			)
 		}
 	}
-	return expected
+	return expected, nil
 }
 
 func healthFailureCode(

@@ -27,7 +27,7 @@
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
 |--------|---------|---------|-------------|---------|------|---------|
 | S-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 管理 HTTP → 临时 SQLite → 真实 builder/renderer | TASK-006 | planned | - |
-| S-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard verifier + 路由解析契约 | TASK-005 | planned | ["node","--test","tools/muad-runtime-guard/test/route-verifier.test.mjs"] |
+| S-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard verifier + 路由解析契约 | TASK-005 | verified | ["node","--test","tools/muad-runtime-guard/test/route-verifier.test.mjs"] |
 | S-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 创建用户 API → 真 Store → DTO/渲染 → 重启选择 | TASK-004 | e2e_deferred | - |
 | S-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 模型修改 API → Store → DTO → 目标重启协议 | TASK-004 | e2e_deferred | - |
 | S-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | UpgradeService 状态机 + Driver 事件序列 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
@@ -48,11 +48,11 @@
 | E-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 失败终态/错误封装 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/api/..."] |
 | E-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实脱敏函数、日志回调与错误 envelope | TASK-006 | planned | ["go","-C","console/backend","test","./internal/api/..."] |
 | E-10 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实操作记录原子写/加载 + fake 外部边界 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
-| B-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | builder/Guard 校验 | TASK-005 | planned | ["node","--test","tools/muad-runtime-guard/test/route-verifier.test.mjs"] |
-| B-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 路由规范化与 identityLinks | TASK-005 | planned | ["go","-C","console/backend","test","./internal/runtimeconfig/..."] |
+| B-01 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | builder/Guard 校验 | TASK-005 | verified | ["node","--test","tools/muad-runtime-guard/test/route-verifier.test.mjs"] |
+| B-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 路由规范化与 identityLinks | TASK-005 | verified | ["go","-C","console/backend","test","./internal/runtimeconfig/..."] |
 | B-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 锁与阶段事件序列 | TASK-006 | planned | ["go","-C","console/backend","test","./internal/runtimeapply/..."] |
 | B-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 正式验收记录 | TASK-008 | planned | - |
-| B-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真分批/聚合器与 fake RPC | TASK-005 | planned | ["go","-C","console/backend","test","./internal/gateway/..."] |
+| B-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真分批/聚合器与 fake RPC | TASK-005 | verified | ["go","-C","console/backend","test","./internal/gateway/..."] |
 | B-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本能力选择、配置/自检 | TASK-004 | verified | ["node","--test","bin/test/runtime-config-transaction.test.mjs"] |
 | G-01～G-05、G-07～G-08 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | manual | pod01/pod02 状态副本、租约实测（已完成，记录保留） | TASK-008 | verified | - |
 | G-06 | openclaw-runtime-upgrade.design.md#4.0 可行性前置门禁 | integration | Docker 构建链、镜像内 CLI 自检 | TASK-001 | verified | ["docker","build","-f","Dockerfile.base","-t","muad-openclaw-base:98pin-test","."] |
@@ -269,7 +269,7 @@
 
 ## TASK-005: 路由验证全量与分批
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: `openclaw-runtime-upgrade.design.md#3.5.4 全量技术验收`, `openclaw-runtime-upgrade.design.md#2.5 验收条件`
@@ -282,30 +282,42 @@
 
 ### Checklist
 
-- [ ] `gateway/probe.go` 实现 ≤1000 分批聚合（同 generation、checked/failed 求和、RPC 错→Unknown）
-- [ ] `runtimeapply/apply.go` 期望集口径：全量 active 路由；非 direct/dm 不得静默过滤（fail-closed 或扩展 verifier）
-- [ ] `route-verifier.mjs`/`binding-context.mjs`：dm 路由标记识别与 peerKind 对应校验
-- [ ] [S-02][integration] 双用户/双通道/不同 accountId 全量严格聚合（真实边界：真实 Guard verifier + 路由解析契约）
-- [ ] [B-05][integration] 1000/1001 条合成路由分批聚合、checked 精确合计（真实边界：真分批/聚合器与 fake RPC）
-- [ ] [B-01][integration] 0 有效路由、禁用身份、未知 sender 不进入业务 Agent（真实边界：builder/Guard 校验）
-- [ ] [B-02][integration] default account、双账号、同用户双通道语义保持（真实边界：路由规范化与 identityLinks）
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] `gateway/probe.go` 实现 ≤1000 分批聚合（同 generation、checked/failed 求和、RPC 错→Unknown）
+- [x] `runtimeapply/apply.go` 期望集口径：全量 active 路由；非 direct/dm 不得静默过滤（fail-closed 或扩展 verifier）
+- [x] `route-verifier.mjs`/`binding-context.mjs`：dm 路由标记识别与 peerKind 对应校验（现有实现已支持 dm→direct 映射；口径由后端 fail-closed 保证）
+- [x] [S-02][integration] 双用户/双通道/不同 accountId 全量严格聚合（真实边界：真实 Guard verifier + 路由解析契约）
+- [x] [B-05][integration] 1000/1001 条合成路由分批聚合、checked 精确合计（真实边界：真分批/聚合器与 fake RPC）
+- [x] [B-01][integration] 0 有效路由、禁用身份、未知 sender 不进入业务 Agent（真实边界：builder/Guard 校验）
+- [x] [B-02][integration] default account、双账号、同用户双通道语义保持（真实边界：路由规范化与 identityLinks）
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-02 | integration | Guard verifier、路由解析 | 全部命中原 Agent、无 default 兜底 | planned | `node --test tools/muad-runtime-guard/test/route-verifier.test.mjs` | planned |
-| B-05 | integration | 分批/聚合器、RPC | 1000/1001 完整分批、checked 合计 | planned | `cd console/backend && go test ./internal/gateway/...` | planned |
-| B-01 | integration | builder/Guard | 0 路由不虚报、禁用不放行 | planned | `node --test tools/muad-runtime-guard/test/route-verifier.test.mjs` | planned |
-| B-02 | integration | routes/identityLinks | 账号与通道语义保持 | planned | `cd console/backend && go test ./internal/runtimeconfig/...` | planned |
+| S-02 | integration | Guard verifier、路由解析 | 全部命中原 Agent、无 default 兜底 | `tools/muad-runtime-guard/test/route-verifier.test.mjs` | `node --test tools/muad-runtime-guard/test/route-verifier.test.mjs` | verified |
+| B-05 | integration | 分批/聚合器、RPC | 1000/1001 完整分批、checked 合计 | `console/backend/internal/gateway/probe_test.go` | `go -C console/backend test ./internal/gateway/...` | verified |
+| B-01 | integration | builder/Guard | 0 路由不虚报、禁用不放行 | `tools/muad-runtime-guard/test/route-verifier.test.mjs`、`apply_test.go`（fail-closed） | `node --test tools/muad-runtime-guard/test/route-verifier.test.mjs` | verified |
+| B-02 | integration | routes/identityLinks | 账号与通道语义保持 | `console/backend/internal/runtimeconfig` | `go -C console/backend test ./internal/runtimeconfig/...` | verified |
 
 ### Acceptance Evidence
 
-> 待 `cf-task-start` 填写。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| B-05 | 单次调用批大小 `[1001]`、第二批 RPC 失败未生效、聚合仅一批（3 处失败） | `go -C console/backend test ./internal/gateway/...` 全绿 | `console/backend/internal/gateway/probe_test.go`（batching/RPC unknown/deterministic 聚合） | 真实 VerifyRoutes 分批逻辑 + fake RPC 记录每批 payload 大小（1000+1，无截断） | verified |
+| B-01 | `TestApplyRejectsUnsupportedPeerKindRoutes` 失败（group 被静默过滤后仍 commit） | `go -C console/backend test ./internal/runtimeapply/...` 全绿 | `console/backend/internal/runtimeapply/apply_test.go`；`apply.go selectVerifiableRoutes` | 非 direct/dm 直接 fail-closed（prepare 阶段拒绝，不 commit） | verified |
+| S-02 / B-02 | - | route-verifier 与 runtimeconfig 测试全绿；镜像链路真实 3/3 路由（TASK-003 记录） | `tools/muad-runtime-guard/test/route-verifier.test.mjs` | 真实 verifier 模块 + 真实 routes/identityLinks 渲染契约 | verified |
+- S-02: verified — automated command passed; run_id=efe1ecbb6dcf418383ffd801e5c6ba6e (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=efe1ecbb6dcf418383ffd801e5c6ba6e (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=efe1ecbb6dcf418383ffd801e5c6ba6e (confirmed_by: runner)
+- B-05: verified — automated command passed; run_id=efe1ecbb6dcf418383ffd801e5c6ba6e (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
+- [2026-10-07] started；RED：分批 3 处失败、apply fail-closed 1 处失败
+- [2026-10-07] 实现：probe.go ≤1000 分批聚合（RPC 错仍 Unknown、checked/failed 求和）；apply.go selectVerifiableRoutes 对 group/channel/未知 peerKind fail-closed
+- [2026-10-07] GREEN：go 全量测试通过（gateway/runtimeapply 含新用例）；route-verifier 测试通过
+- [2026-10-07] completed (done)
 
 ---
 

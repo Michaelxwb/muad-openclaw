@@ -201,6 +201,11 @@ type RouteVerificationFailure struct {
 	MatchedBy       string `json:"matchedBy"`
 }
 
+// maxRoutesPerVerification is the runtime verifier's single-RPC limit; larger
+// expected sets are split into bounded batches and aggregated without
+// truncation.
+const maxRoutesPerVerification = 1000
+
 // VerifyRoutes asks the runtime gateway to resolve the expected direct routes.
 // It distinguishes two outcomes:
 //   - RPC/decode failures are wrapped with ErrRouteVerificationRPC — the route
@@ -214,6 +219,32 @@ func VerifyRoutes(
 	if len(routes) == 0 {
 		return RouteVerification{OK: true, Generation: generation}, nil
 	}
+	aggregate := RouteVerification{OK: true}
+	for start := 0; start < len(routes); start += maxRoutesPerVerification {
+		end := start + maxRoutesPerVerification
+		if end > len(routes) {
+			end = len(routes)
+		}
+		result, err := verifyRouteBatch(ctx, ex, podID, generation, routes[start:end])
+		if err != nil {
+			return RouteVerification{}, err
+		}
+		aggregate.OK = aggregate.OK && result.OK
+		aggregate.Checked += result.Checked
+		aggregate.Failed += result.Failed
+		aggregate.Failures = append(aggregate.Failures, result.Failures...)
+		aggregate.Generation = result.Generation
+		if result.Error != "" {
+			aggregate.Error = result.Error
+		}
+	}
+	return aggregate, nil
+}
+
+func verifyRouteBatch(
+	ctx context.Context, ex Execer, podID string, generation int64,
+	routes []RouteExpectation,
+) (RouteVerification, error) {
 	payload, err := json.Marshal(map[string]any{"generation": generation, "routes": routes})
 	if err != nil {
 		return RouteVerification{}, fmt.Errorf("%w: %v", ErrRouteVerificationRPC, err)
