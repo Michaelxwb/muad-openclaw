@@ -106,6 +106,7 @@
 - [2026-10-07] created (draft)
 - [2026-10-07] started；pin 变更 TDD：先更新断言取 RED（self-check + recipe 共 3 处失败），后改 5 处 pin → bin 全量 115/115 GREEN
 - [2026-10-07] G-06 验证：默认参数构建 base+app 成功，构建期自检 `openclaw=2026.9.8 status=ok`
+- [2026-10-07] 镜像瘦身：根 `.dockerignore`（.DS_Store/__pycache__/*.log/*.db/node_modules 排除）+ base 同层清理 npm/临时缓存；重建 base+app：app 7.06GB → 6.92GB，自检 ok、session-manager 102/102、muad-progress 22/22；`98verify`=`98task4`=`1a9cfa5c9f70`
 - [2026-10-07] started
 - [2026-10-07] completed (done)
 
