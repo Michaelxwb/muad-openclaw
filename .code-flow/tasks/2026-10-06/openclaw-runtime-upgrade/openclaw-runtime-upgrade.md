@@ -475,6 +475,7 @@
 - [2026-10-07] 既有回滚测试改写为 fail-forward；新增 runtimeupgrade 8 用例、LongTask 解析用例；全量后端测试与 vet 通过
 - [2026-10-07] 用户复核修正：恢复默认回滚（50205/50215）与 PATCH 原语义；跨版本迁移改为显式 allowRollback=false → fail-forward（50216）；升级弹窗新增“跨版本迁移（失败不自动回退）”复选框；Go/前端全量回归通过
 - [2026-10-07] completed (done)
+- [2026-10-07] 实机演练（pod02 旧→新）发现并修复：状态 PVC 根目录 root 属主 → 9.8 Doctor tighten 0700 EPERM（fail-closed 生效、fail-forward 正确停 error 保留目标镜像）；k8s driver 新增 state-ownership initContainer（root + 仅 CAP_CHOWN，幂等 chown 1000:1000，无 shell/无特权提升）；strace 复现 + chown 后 Doctor exit 0（repro-eperm.sh）；driver 单测 + 全量后端回归绿
 
 ---
 
