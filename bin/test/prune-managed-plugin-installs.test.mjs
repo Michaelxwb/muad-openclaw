@@ -84,6 +84,37 @@ test("rehomes image-managed plugin install records and prunes recovered npm proj
   }
 });
 
+test("9.8 state without installed_plugin_index leaves npm projects to Doctor", () => {
+  const stateDir = mkdtempSync(join(tmpdir(), "muad-prune-98-"));
+  try {
+    // 9.8 removed installed_plugin_index; plugin registry/install state is owned
+    // by `openclaw doctor --fix`. prune must not touch npm projects in that shape.
+    mkdirSync(join(stateDir, "state"), { recursive: true });
+    const db = new sqlite.DatabaseSync(join(stateDir, "state", "openclaw.sqlite"));
+    db.exec("CREATE TABLE schema_meta (id TEXT PRIMARY KEY)");
+    db.close();
+
+    const projectDir = join(stateDir, "npm", "projects", "mm");
+    writePluginManifest(projectDir, "@openclaw", "mattermost", "mattermost");
+
+    const result = pruneManagedPluginInstalls({
+      stateDir,
+      pluginSpecs: [{ id: "mattermost", root: join(stateDir, "image", "mattermost") }],
+    });
+
+    assert.equal(result.changed, false);
+    assert.deepEqual(result.removedRecords, []);
+    assert.deepEqual(result.removedProjects, []);
+    assert.equal(
+      existsSync(projectDir),
+      true,
+      "9.8 npm projects are repaired by Doctor registry refresh, not by muad prune",
+    );
+  } finally {
+    rmSync(stateDir, { recursive: true, force: true });
+  }
+});
+
 test("CLI pruning entrypoint exits cleanly and reports pruned plugins", () => {
   const stateDir = mkdtempSync(join(tmpdir(), "muad-prune-plugin-cli-"));
   try {

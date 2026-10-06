@@ -31,7 +31,7 @@
 | S-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 创建用户 API → 真 Store → DTO/渲染 → 重启选择 | TASK-004 | planned | - |
 | S-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 模型修改 API → Store → DTO → 目标重启协议 | TASK-004 | planned | - |
 | S-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | UpgradeService 状态机 + Driver 事件序列 | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
-| S-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实临时文件树/SQLite + 自动迁移/新会话路径 | TASK-003 | planned | ["node","--test","bin/test/upgrade-doctor-chain.test.mjs"] |
+| S-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实临时文件树/SQLite + 自动迁移/新会话路径 | TASK-003 | verified | ["node","--test","bin/test/e2e/upgrade-doctor-chain.test.mjs"] |
 | S-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard/policy/session-manager 模块 | TASK-007 | planned | ["node","--test","tools/muad-runtime-guard/test/multi-user-isolation.test.mjs"] |
 | S-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 生产 native resolver、双 IM 原账号、真实模型响应 | TASK-008 | planned | - |
 | S-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | HTTP 写入口 → Store → 维护状态 → reconcile 调度 | TASK-006 | planned | - |
@@ -42,7 +42,7 @@
 | E-02 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 排空状态机与租约记录 | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
 | E-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 生效确认解析与计时器 | TASK-004 | planned | ["go","test","./internal/runtimeapply/..."] |
 | E-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 取证材料校验 + fake 存储/Driver | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
-| E-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实临时状态树与自动迁移失败路径 | TASK-003 | planned | ["node","--test","bin/test/upgrade-doctor-chain.test.mjs"] |
+| E-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实临时状态树与自动迁移失败路径 | TASK-003 | verified | ["node","--test","bin/test/e2e/upgrade-doctor-chain.test.mjs"] |
 | E-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实响应解析与严格验证器 | TASK-007 | planned | ["go","test","./internal/gateway/..."] |
 | E-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 编排失败路径 + 原配置/状态引用 | TASK-006 | planned | ["go","test","./internal/runtimeupgrade/..."] |
 | E-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 失败终态/错误封装 | TASK-006 | planned | ["go","test","./internal/api/..."] |
@@ -161,7 +161,7 @@
 
 ## TASK-003: Entrypoint 承接 Doctor 与插件 registry 处置
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `openclaw-runtime-upgrade.design.md#3.1.3 当前必须处理的兼容差异`, `openclaw-runtime-upgrade.design.md#3.1.4 实机预验证结论`, `openclaw-runtime-upgrade.design.md#4.2.1 正式升级顺序`
@@ -174,26 +174,35 @@
 
 ### Checklist
 
-- [ ] `entrypoint.sh` 在启动 Gateway 前执行 `openclaw doctor --fix --non-interactive`，失败退出（非零）
-- [ ] prune/registry：核对 7.1 状态与 9.8 状态两条路径；9.8 下以 Doctor registry 刷新为准，确保不再依赖 `installed_plugin_index`
-- [ ] [S-06][integration] 历史自动兼容/自动新会话、全程无人工迁移脚本（真实边界：真实临时文件树/SQLite + Doctor 链路）
-- [ ] [E-05][integration] 自动迁移失败停 error 且不把“手工脚本”当出口（真实边界：临时状态树与失败路径）
-- [ ] RULE-runtime-secret-file-mode-001 verifier：检查 entrypoint/迁移产物权限（config/bundle 0600，Pod token 0400 规范路径）
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] `entrypoint.sh` 在启动 Gateway 前执行 `openclaw doctor --fix --non-interactive`，失败退出（非零）
+- [x] prune/registry：核对 7.1 状态与 9.8 状态两条路径；9.8 下以 Doctor registry 刷新为准，确保不再依赖 `installed_plugin_index`
+- [x] [S-06][integration] 历史自动兼容/自动新会话、全程无人工迁移脚本（真实边界：真实临时文件树/SQLite + Doctor 链路）
+- [x] [E-05][integration] 自动迁移失败停 error 且不把“手工脚本”当出口（真实边界：临时状态树与失败路径）
+- [x] RULE-runtime-secret-file-mode-001 verifier：检查 entrypoint/迁移产物权限（config/bundle 0600，Pod token 0400 规范路径）
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-06 | integration | 真实状态树/SQLite、Doctor | 自动迁移成功、零人工脚本 | planned | `node --test bin/test/upgrade-doctor-chain.test.mjs` | planned |
-| E-05 | integration | 自动迁移失败路径 | fail-closed、停 error | planned | `node --test bin/test/upgrade-doctor-chain.test.mjs` | planned |
+| S-06 | integration | 真实状态树/SQLite、Doctor | 自动迁移成功、零人工脚本 | `bin/test/e2e/upgrade-doctor-chain.test.mjs` | `node --test bin/test/e2e/upgrade-doctor-chain.test.mjs` | verified |
+| E-05 | integration | 自动迁移失败路径 | fail-closed、停 error | `bin/test/e2e/upgrade-doctor-chain.test.mjs`（只读卷失败路径） | `node --test bin/test/e2e/upgrade-doctor-chain.test.mjs` | verified |
 
 ### Acceptance Evidence
 
-> 待 `cf-task-start` 填写。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-06 | recipe 测试断言 entrypoint 必须含 Doctor 且位于 gateway 前 → 失败；prune 9.8 形态测试 → 失败（会误删 npm 项目） | `bin` 全量 118/118；`node --test bin/test/e2e/upgrade-doctor-chain.test.mjs` 2/2 | `bin/test/runtime-image-recipe.test.mjs`（doctor 顺序 + fail-closed）；`bin/test/prune-managed-plugin-installs.test.mjs`（9.8 no-op） | 真实 9.8 镜像 Doctor：合成 7.1 状态 → `openclaw-agent.sqlite` session_nodes≥1；本仓库镜像 `98task3` 完整链路：inject→prune→self-check→Doctor（自动备份）→gateway，路由 3/3、transaction validate `valid:true` | verified |
+| E-05 | - | 只读挂载 Doctor 非零退出（GatewayLockError, exit 1），entrypoint `set -e` 直接退出 | e2e 第二用例 | 真实镜像 + 只读临时状态树 | verified |
+- S-06: verified — automated command passed; run_id=4bb2685126224019825598d54525be7c (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=4bb2685126224019825598d54525be7c (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
+- [2026-10-07] started；RED：recipe Doctor 顺序断言失败、prune 9.8 用例失败
+- [2026-10-07] 实现：entrypoint 增 Doctor（fail-closed）；prune 在无 installed_plugin_index 时整体 no-op（交由 Doctor registry 刷新）
+- [2026-10-07] GREEN：bin 118/118；e2e 真实 Doctor 2/2；镜像 `98task3` 端到端链路 + 路由 3/3 + validate valid
+- [2026-10-07] completed (done)
 
 ---
 

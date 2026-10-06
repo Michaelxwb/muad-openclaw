@@ -16,6 +16,12 @@ export function pruneManagedPluginInstalls({
 
   const projectsDir = join(stateDir, "npm", "projects");
   const updatedRecords = rehomeInstalledPluginIndexRecords(stateDir, targets, dependencies);
+  if (!updatedRecords.available) {
+    // 9.8 replaced installed_plugin_index with the persisted plugin registry;
+    // image plugin resolution and npm drift repair are owned by
+    // `openclaw doctor --fix`. Leave npm projects untouched in that shape.
+    return { changed: false, removedRecords: [], removedProjects: [] };
+  }
   const removedProjects = uniqueSorted([
     ...pruneRecordNpmProjects(
       projectsDir,
@@ -31,16 +37,16 @@ export function pruneManagedPluginInstalls({
 
 function rehomeInstalledPluginIndexRecords(stateDir, targets, dependencies) {
   const dbPath = join(stateDir, "state", "openclaw.sqlite");
-  if (!existsSync(dbPath)) return { ids: [], previousInstallPaths: [] };
+  if (!existsSync(dbPath)) return { available: false, ids: [], previousInstallPaths: [] };
   const sqlite = dependencies.sqlite ?? loadSqlite();
-  if (!sqlite?.DatabaseSync) return { ids: [], previousInstallPaths: [] };
+  if (!sqlite?.DatabaseSync) return { available: false, ids: [], previousInstallPaths: [] };
 
   const db = new sqlite.DatabaseSync(dbPath);
   try {
     const table = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
       .get("installed_plugin_index");
-    if (!table) return { ids: [], previousInstallPaths: [] };
+    if (!table) return { available: false, ids: [], previousInstallPaths: [] };
 
     const row = db
       .prepare("SELECT install_records_json FROM installed_plugin_index WHERE index_key = ?")
@@ -56,12 +62,12 @@ function rehomeInstalledPluginIndexRecords(stateDir, targets, dependencies) {
       records[id] = nextRecord;
       updated.push(id);
     }
-    if (updated.length === 0) return { ids: [], previousInstallPaths };
+    if (updated.length === 0) return { available: true, ids: [], previousInstallPaths };
 
     db.prepare(
       "UPDATE installed_plugin_index SET install_records_json = ?, updated_at_ms = ? WHERE index_key = ?",
     ).run(JSON.stringify(records), Date.now(), INSTALLED_PLUGIN_INDEX_KEY);
-    return { ids: updated, previousInstallPaths };
+    return { available: true, ids: updated, previousInstallPaths };
   } finally {
     db.close();
   }

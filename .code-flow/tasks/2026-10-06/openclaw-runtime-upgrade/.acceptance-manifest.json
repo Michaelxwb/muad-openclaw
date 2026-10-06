@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "task_file": "openclaw-runtime-upgrade.md",
-  "task_sha256": "7db973a0b7465b218d8ab404695d5ab67427ff42b533855d95d988733402b153",
+  "task_sha256": "6e5c41a06a3e2e338c23d9e5a1bf98b1ab7b7a159032925af98074a20aeb90de",
   "scenarios": [
     {
       "id": "S-01",
@@ -83,15 +83,52 @@
       "kind": "functional",
       "boundary": "真实临时文件树/SQLite + 自动迁移/新会话路径",
       "owner": "TASK-003",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
-        "bin/test/upgrade-doctor-chain.test.mjs"
+        "bin/test/e2e/upgrade-doctor-chain.test.mjs"
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "4bb2685126224019825598d54525be7c",
+        "executed_at": "2026-10-06T18:35:56.636780+00:00",
+        "command": [
+          "node",
+          "--test",
+          "bin/test/e2e/upgrade-doctor-chain.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "0191d76dddcb19f63744ce25ae492586596452f4587e986a8b4142ed53ab17f1"
+      },
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "4bb2685126224019825598d54525be7c",
+          "executed_at": "2026-10-06T18:35:56.636780+00:00",
+          "command": [
+            "node",
+            "--test",
+            "bin/test/e2e/upgrade-doctor-chain.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "0191d76dddcb19f63744ce25ae492586596452f4587e986a8b4142ed53ab17f1"
+        }
+      ]
     },
     {
       "id": "S-07",
@@ -151,44 +188,7 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": [],
-      "revision": 1,
-      "evidence": {
-        "id": "S-10",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "cde1be36bf274c0c8fda4d30ff29cf29",
-        "executed_at": "2026-10-06T18:22:26.960055+00:00",
-        "command": [
-          "node",
-          "--test",
-          "bin/test/runtime-image-self-check.test.mjs"
-        ],
-        "cwd": ".",
-        "timeout": 60.0,
-        "fingerprint": "5d54bdf8e7d364540325d9cf225cf55ab1ee8381f49e80ea35bff63578173517"
-      },
-      "runs": [
-        {
-          "id": "S-10",
-          "kind": "functional",
-          "status": "passed",
-          "exit_code": 0,
-          "revision": 1,
-          "run_id": "cde1be36bf274c0c8fda4d30ff29cf29",
-          "executed_at": "2026-10-06T18:22:26.960055+00:00",
-          "command": [
-            "node",
-            "--test",
-            "bin/test/runtime-image-self-check.test.mjs"
-          ],
-          "cwd": ".",
-          "timeout": 60.0,
-          "fingerprint": "5d54bdf8e7d364540325d9cf225cf55ab1ee8381f49e80ea35bff63578173517"
-        }
-      ]
+      "depends_on": []
     },
     {
       "id": "S-11",
@@ -295,15 +295,52 @@
       "kind": "functional",
       "boundary": "真实临时状态树与自动迁移失败路径",
       "owner": "TASK-003",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
-        "bin/test/upgrade-doctor-chain.test.mjs"
+        "bin/test/e2e/upgrade-doctor-chain.test.mjs"
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "4bb2685126224019825598d54525be7c",
+        "executed_at": "2026-10-06T18:35:56.636780+00:00",
+        "command": [
+          "node",
+          "--test",
+          "bin/test/e2e/upgrade-doctor-chain.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "0191d76dddcb19f63744ce25ae492586596452f4587e986a8b4142ed53ab17f1"
+      },
+      "runs": [
+        {
+          "id": "E-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "4bb2685126224019825598d54525be7c",
+          "executed_at": "2026-10-06T18:35:56.636780+00:00",
+          "command": [
+            "node",
+            "--test",
+            "bin/test/e2e/upgrade-doctor-chain.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "0191d76dddcb19f63744ce25ae492586596452f4587e986a8b4142ed53ab17f1"
+        }
+      ]
     },
     {
       "id": "E-06",

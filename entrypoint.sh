@@ -19,6 +19,12 @@ node /opt/muad/inject-env.mjs
 node /opt/muad/prune-managed-plugin-installs.mjs
 node /opt/muad/runtime-image-self-check.mjs --skip-openclaw-cli
 
+# ④ 目标版本状态迁移：官方容器入口会在启动 Gateway 前执行 Doctor；本项目覆盖了
+#    ENTRYPOINT，必须显式承接，否则会话/配置迁移不会自动发生。fail-closed：无法
+#    安全修复挂载状态时退出，由控制面停在 error（不自动回退）。
+echo "[muad] pod=${POD_ID} 执行 Doctor 自动迁移（fail-closed）"
+openclaw doctor --fix --non-interactive
+
 # ⑥ 定时任务：用 openclaw 原生 cron——用户在企微让 bot 设定时任务，agent 自建并自动绑定该会话为投递目标。
 # 无需外置 scheduler / 手动写 target（已验证 agent 的 cron 工具不撞 scope 门控）。
 

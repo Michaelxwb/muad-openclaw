@@ -166,6 +166,14 @@ test("base image contains OpenClaw, Chromium/Playwright, channel plugins, and se
   assert.match(base, /rm -rf "\$target\/node_modules\/\$\{package_path\}"/u);
   assert.match(base, /rm -rf \/home\/node\/\.openclaw\/npm\/projects/u);
   assert.match(entrypoint, /node \/opt\/muad\/prune-managed-plugin-installs\.mjs/u);
+  // 9.8: the custom entrypoint must explicitly run Doctor before the Gateway
+  // (the official image entrypoint does this; overriding ENTRYPOINT bypasses it)
+  // and stay fail-closed so the control plane can stop in error.
+  const doctorIndex = entrypoint.indexOf("openclaw doctor --fix --non-interactive");
+  const gatewayIndex = entrypoint.indexOf("exec openclaw gateway");
+  assert.ok(doctorIndex >= 0, "entrypoint must run Doctor for automatic migrations");
+  assert.ok(gatewayIndex > doctorIndex, "Doctor must run before the Gateway starts");
+  assert.doesNotMatch(entrypoint, /openclaw doctor[^\n]*\|\|\s*true/u, "Doctor must fail closed");
   // Baseline seed
   assert.match(base, /seed-config\.mjs/u);
   assert.match(base, /\/opt\/openclaw-seed/u);
