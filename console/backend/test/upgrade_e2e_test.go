@@ -1,10 +1,12 @@
 package test
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
@@ -141,5 +143,36 @@ func TestUpgradeRollback_DefaultBehaviorKept(t *testing.T) {
 	pod, err := e.store.GetPod("pod-a")
 	if err != nil || pod.State != repo.PodStateRunning || pod.ImageTag != "img:test" {
 		t.Fatalf("rollback did not converge: %+v err=%v", pod, err)
+	}
+}
+
+// 排空边界（2026-10-07 pod02 演练修正）：error 态 Pod 没有可排空的任务，
+// drain 必须立即放行——这是"error 态改镜像"修复出口的必经路径。
+func TestUpgradeDrain_SkipsForErrorPod(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	if err := e.store.UpdatePodState("pod-a", repo.PodStateError); err != nil {
+		t.Fatalf("set pod error: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	start := time.Now()
+	if err := e.server.WaitForQuiesce(ctx, "pod-a"); err != nil {
+		t.Fatalf("error-state drain must be skipped: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("error-state drain skip took %s, want immediate", elapsed)
+	}
+}
+
+// 无法排空时必须有界退出（不允许无限等待）：fake 探活返回非零在飞任务，
+// 排空在 ctx 到期时返回错误。
+func TestUpgradeDrain_BoundedWhenNotDrained(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+	ctx, cancel := context.WithTimeout(context.Background(), 700*time.Millisecond)
+	defer cancel()
+	if err := e.server.WaitForQuiesce(ctx, "pod-a"); err == nil {
+		t.Fatal("expected bounded drain failure while tasks are in flight")
 	}
 }

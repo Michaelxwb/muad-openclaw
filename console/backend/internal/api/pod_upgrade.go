@@ -127,7 +127,11 @@ func (s *Server) runPodUpgradeOperation(
 	ctx context.Context, podID, sourceImage, targetImage string, execute func(context.Context) error,
 ) error {
 	if s.upgradeSvc != nil {
-		_, err := s.upgradeSvc.Run(ctx, runtimeupgrade.Request{
+		// 一次性升级整体以脱离请求的 15 分钟预算运行：客户端断开不中断升级，
+		// 排空/切换也不会无限等待（排空另有更短的独立上限）。
+		runCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), podRuntimeOpTimeout)
+		defer cancel()
+		_, err := s.upgradeSvc.Run(runCtx, runtimeupgrade.Request{
 			PodID:       podID,
 			SourceImage: sourceImage,
 			TargetImage: targetImage,

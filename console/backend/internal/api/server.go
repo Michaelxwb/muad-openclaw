@@ -118,13 +118,27 @@ func (s *Server) blockIfUpgradeInProgress(w http.ResponseWriter, r *http.Request
 	return true
 }
 
+// upgradeDrainTimeout bounds the pre-switch drain: in-flight work that cannot
+// be quiesced within the window aborts the upgrade before anything is rewritten
+// (design §4.2: 超时不能安全排空时中止). The HTTP request context alone is not
+// a bound — the UI keeps the request open while it waits.
+const upgradeDrainTimeout = 2 * time.Minute
+
 // WaitForQuiesce drains in-flight skills, long tasks and browser leases before
 // the old runtime is stopped. It polls the real guard health RPC and is bounded
 // by ctx; a drain failure aborts the upgrade before any state is rewritten.
 func (s *Server) WaitForQuiesce(ctx context.Context, podID string) error {
+	// error 态 Pod 的运行时已经崩溃（例如失败升级停在 error），没有在跑的
+	// 任务可排空；这是"error 态改镜像"修复出口的必经路径，必须放行而不是
+	// 等待一个永远不会健康的 gateway（2026-10-07 pod02 演练实证）。
+	if pod, err := s.store.GetPod(podID); err == nil && pod.State == repo.PodStateError {
+		return nil
+	}
+	drainCtx, cancel := context.WithTimeout(ctx, upgradeDrainTimeout)
+	defer cancel()
 	interval := 500 * time.Millisecond
 	for {
-		status := gateway.Probe(ctx, s.drv, podID)
+		status := gateway.Probe(drainCtx, s.drv, podID)
 		drained := status.Healthy &&
 			status.SkillActive+status.SkillQueued == 0 &&
 			status.LongTaskActive+status.LongTaskQueued == 0 &&
@@ -134,9 +148,9 @@ func (s *Server) WaitForQuiesce(ctx context.Context, podID string) error {
 		}
 		timer := time.NewTimer(interval)
 		select {
-		case <-ctx.Done():
+		case <-drainCtx.Done():
 			timer.Stop()
-			return fmt.Errorf("drain in-flight work for %s: %w", podID, ctx.Err())
+			return fmt.Errorf("drain in-flight work for %s: %w", podID, drainCtx.Err())
 		case <-timer.C:
 		}
 	}

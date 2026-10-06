@@ -411,6 +411,7 @@ func (f *fakeDriver) EnsurePublicSkillsStorage(context.Context) (driver.PublicSk
 
 type testEnv struct {
 	h         http.Handler
+	server    *api.Server
 	cfg       *config.Config
 	store     *repo.Store
 	cipher    *crypto.Cipher
@@ -494,8 +495,8 @@ func newTestEnv(t *testing.T) *testEnv {
 	}
 	h := server.WithCleanupWaker(waker).Handler()
 	return &testEnv{
-		h: h, cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache, reconcile: reconcile,
-		waker: waker, syncer: syncer, token: login(t, h), skillsDir: skillsDir,
+		h: h, server: server, cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache,
+		reconcile: reconcile, waker: waker, syncer: syncer, token: login(t, h), skillsDir: skillsDir,
 	}
 }
 
