@@ -176,4 +176,23 @@ describe("PodDetail", () => {
     await waitFor(() => expect(apiMocks.deletePod).toHaveBeenCalledWith("pod-a", true));
     expect(onDeleted).toHaveBeenCalledOnce();
   });
+
+  it("透传跨版本迁移 opt-out（allowRollback=false）到升级 API", async () => {
+    apiMocks.upgrade.mockResolvedValue({
+      podId: "pod-a",
+      imageTag: "img:new",
+      state: "running",
+      configGeneration: 3,
+      appliedGeneration: 3,
+    });
+    render(<PodDetail podId="pod-a" onBack={vi.fn()} onDeleted={vi.fn()} />);
+    await screen.findByText("Pod A");
+    fireEvent.click(screen.getByRole("button", { name: "升级" }));
+    const input = await screen.findByLabelText("升级镜像 tag");
+    fireEvent.change(input, { target: { value: "img:new" } });
+    fireEvent.click(screen.getByLabelText("跨版本迁移（失败不自动回退）"));
+    fireEvent.click(screen.getByRole("button", { name: "confirm" }));
+
+    await waitFor(() => expect(apiMocks.upgrade).toHaveBeenCalledWith("pod-a", "img:new", false));
+  });
 });

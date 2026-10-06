@@ -228,8 +228,13 @@ export const api = {
       "GET",
       withQuery(`/containers/${segment(podId)}/qrcode`, { force: force || undefined }),
     ),
-  upgrade: (podId: string, imageTag: string) =>
-    request<PodUpgradeResult>("POST", `/containers/${segment(podId)}/upgrade`, { imageTag }),
+  // allowRollback=false 用于跨版本迁移（失败停在 error、不自动回退）；
+  // 缺省不传该字段，保持既有自动回滚语义。
+  upgrade: (podId: string, imageTag: string, allowRollback?: boolean) =>
+    request<PodUpgradeResult>("POST", `/containers/${segment(podId)}/upgrade`, {
+      imageTag,
+      allowRollback,
+    }),
   reloadSkills: (podIds: string[]) =>
     request<SkillReloadResult>("POST", "/skills/reload", { podIds }),
   applySkills: () => request<SkillReloadResult>("POST", "/skills/reload", {}),

@@ -377,6 +377,8 @@ const zh = {
     upgradeBatch: "批量升级 {{count}} 个 Pod",
     upgradeCompleted: "Pod 升级完成",
     upgradeConfirm: "确认升级",
+    upgradeCrossVersion: "跨版本迁移（失败不自动回退）",
+    upgradeCrossVersionHint: "迁移不可逆：失败将停在 error 等待人工修复，不会自动回滚旧镜像。",
     upgraded: "已升级 {{count}} 个 Pod",
     upgradeImageTagAria: "升级镜像 tag",
     upgradePartial: "升级完成：{{succeeded}} 成功，{{failed}} 失败",

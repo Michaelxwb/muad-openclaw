@@ -386,6 +386,9 @@ const en: AppLocale = {
     upgradeBatch: "Batch upgrade {{count}} Pod(s)",
     upgradeCompleted: "Pod upgrade completed",
     upgradeConfirm: "Confirm upgrade",
+    upgradeCrossVersion: "Cross-version migration (no auto-rollback on failure)",
+    upgradeCrossVersionHint:
+      "The migration is irreversible: on failure the Pod stops in error for manual repair instead of rolling back to the old image.",
     upgraded: "Upgraded {{count}} Pod(s)",
     upgradeImageTagAria: "Upgrade image tag",
     upgradePartial: "Upgrade complete: {{succeeded}} succeeded, {{failed}} failed",

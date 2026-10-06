@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Input, Modal, RadioGroup } from "@douyinfe/semi-ui";
+import { Button, Checkbox, Input, Modal, RadioGroup } from "@douyinfe/semi-ui";
 import QRCode from "qrcode";
 import { api } from "../../api";
 import type { Pod } from "../../api";
@@ -15,7 +15,7 @@ interface Props {
   pod: Pod;
   active: ActionDialog;
   onClose: () => void;
-  onUpgrade: (tag: string) => Promise<boolean>;
+  onUpgrade: (tag: string, allowRollback?: boolean) => Promise<boolean>;
   onDelete: (deleteState: boolean) => Promise<boolean>;
 }
 
@@ -57,17 +57,22 @@ function UpgradeDialog({
   pod: Pod;
   visible: boolean;
   onClose: () => void;
-  onUpgrade: (tag: string) => Promise<boolean>;
+  onUpgrade: (tag: string, allowRollback?: boolean) => Promise<boolean>;
 }) {
   const [imageTag, setImageTag] = useState(pod.imageTag);
+  const [crossVersion, setCrossVersion] = useState(false);
   useEffect(() => {
-    if (visible) setImageTag(pod.imageTag);
+    if (visible) {
+      setImageTag(pod.imageTag);
+      setCrossVersion(false);
+    }
   }, [pod.imageTag, visible]);
   const { t } = useTranslation();
   const confirm = async () => {
     const tag = imageTag.trim();
     if (!tag) return;
-    if (await onUpgrade(tag)) onClose();
+    // 跨版本迁移显式关闭自动回滚（allowRollback=false）；默认不传，保持既有回滚语义。
+    if (await onUpgrade(tag, crossVersion ? false : undefined)) onClose();
   };
   return (
     <Modal
@@ -79,6 +84,18 @@ function UpgradeDialog({
       okButtonProps={{ disabled: !imageTag.trim() }}
     >
       <Input aria-label={t("pod.upgradeImageTagAria")} value={imageTag} onChange={setImageTag} />
+      <div className={styles.upgradeOptions}>
+        <Checkbox
+          aria-label={t("pod.upgradeCrossVersion")}
+          checked={crossVersion}
+          onChange={(event) => setCrossVersion((event.target as HTMLInputElement).checked)}
+        >
+          {t("pod.upgradeCrossVersion")}
+        </Checkbox>
+        {crossVersion && (
+          <div className={styles.upgradeWarning}>{t("pod.upgradeCrossVersionHint")}</div>
+        )}
+      </div>
     </Modal>
   );
 }

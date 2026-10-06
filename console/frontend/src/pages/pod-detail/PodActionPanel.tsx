@@ -26,8 +26,12 @@ export function PodActionPanel({ pod, onChanged, onDeleted }: Props) {
     runner.run(action, () => api.action(pod.podId, action), t("pod.actionCompleted", { action }));
   const apply = () =>
     runner.run("apply", () => api.applyPodConfig(pod.podId), t("pod.applyQueued"));
-  const upgrade = (imageTag: string) =>
-    runner.run("upgrade", () => api.upgrade(pod.podId, imageTag), t("pod.upgradeCompleted"));
+  const upgrade = (imageTag: string, allowRollback?: boolean) =>
+    runner.run(
+      "upgrade",
+      () => api.upgrade(pod.podId, imageTag, allowRollback),
+      t("pod.upgradeCompleted"),
+    );
   const remove = async (deleteState: boolean) => {
     const success = await runner.run(
       "delete",

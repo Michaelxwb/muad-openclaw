@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Input, Modal, Toast } from "@douyinfe/semi-ui";
+import { Checkbox, Input, Modal, Toast } from "@douyinfe/semi-ui";
 import { api } from "../../api";
 import { FeedbackBanner } from "../../components/ConsolePage";
 import styles from "../Containers.module.css";
@@ -14,11 +14,13 @@ interface Props {
 export function PodUpgradeDialog({ podIds, onClose, onDone }: Props) {
   const { t } = useTranslation();
   const [imageTag, setImageTag] = useState("");
+  const [crossVersion, setCrossVersion] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     if (podIds.length > 0) {
       setImageTag("");
+      setCrossVersion(false);
       setError("");
     }
   }, [podIds]);
@@ -27,7 +29,12 @@ export function PodUpgradeDialog({ podIds, onClose, onDone }: Props) {
     if (!tag || podIds.length === 0) return;
     setBusy(true);
     setError("");
-    const results = await Promise.allSettled(podIds.map((podId) => api.upgrade(podId, tag)));
+    // 跨版本迁移显式关闭自动回滚（allowRollback=false，失败停在 error）；
+    // 默认不传该字段，保持既有自动回滚语义。
+    const allowRollback = crossVersion ? false : undefined;
+    const results = await Promise.allSettled(
+      podIds.map((podId) => api.upgrade(podId, tag, allowRollback)),
+    );
     const failed = results.filter((result) => result.status === "rejected").length;
     setBusy(false);
     if (failed > 0)
@@ -61,6 +68,18 @@ export function PodUpgradeDialog({ podIds, onClose, onDone }: Props) {
           placeholder="muad-openclaw:local"
         />
       </label>
+      <div className={styles.upgradeOptions}>
+        <Checkbox
+          aria-label={t("pod.upgradeCrossVersion")}
+          checked={crossVersion}
+          onChange={(event) => setCrossVersion((event.target as HTMLInputElement).checked)}
+        >
+          {t("pod.upgradeCrossVersion")}
+        </Checkbox>
+        {crossVersion && (
+          <div className={styles.upgradeWarning}>{t("pod.upgradeCrossVersionHint")}</div>
+        )}
+      </div>
     </Modal>
   );
 }
