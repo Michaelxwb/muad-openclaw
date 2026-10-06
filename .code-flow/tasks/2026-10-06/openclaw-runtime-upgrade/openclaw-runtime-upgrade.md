@@ -32,7 +32,7 @@
 | S-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | 模型修改 API → Store → DTO → 目标重启协议 | TASK-004 | e2e_deferred | - |
 | S-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | UpgradeService 状态机 + Driver 事件序列 | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | S-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实临时文件树/SQLite + 自动迁移/新会话路径 | TASK-003 | verified | ["node","--test","bin/test/e2e/upgrade-doctor-chain.test.mjs"] |
-| S-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard/policy/session-manager 模块 | TASK-007 | planned | ["node","--test","tools/muad-runtime-guard/test/multi-user-isolation.test.mjs"] |
+| S-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实 Guard/policy/session-manager 模块 | TASK-007 | verified | ["node","--test","tools/muad-runtime-guard/test/cross-user-guard.test.mjs","tools/muad-runtime-guard/test/browser-lease.test.mjs","tools/muad-runtime-guard/test/skill-audit-client.test.mjs"] |
 | S-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | manual | 生产 native resolver、双 IM 原账号、真实模型响应 | TASK-008 | planned | - |
 | S-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | E2E | HTTP 写入口 → Store → 维护状态 → reconcile 调度 | TASK-006 | e2e_deferred | - |
 | S-10 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 版本清单、自检逻辑、实际模块/配置文件 | TASK-001 | verified | ["node","--test","bin/test/runtime-image-self-check.test.mjs"] |
@@ -43,7 +43,7 @@
 | E-03 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 生效确认解析与计时器 | TASK-004 | verified | ["go","-C","console/backend","test","./internal/runtimeapply/..."] |
 | E-04 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 取证材料校验 + fake 存储/Driver | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | E-05 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实临时状态树与自动迁移失败路径 | TASK-003 | verified | ["node","--test","bin/test/e2e/upgrade-doctor-chain.test.mjs"] |
-| E-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实响应解析与严格验证器 | TASK-007 | planned | ["go","-C","console/backend","test","./internal/gateway/..."] |
+| E-06 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实响应解析与严格验证器 | TASK-007 | verified | ["go","-C","console/backend","test","./internal/gateway/..."] |
 | E-07 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 编排失败路径 + 原配置/状态引用 | TASK-006 | verified | ["go","-C","console/backend","test","./internal/runtimeupgrade/..."] |
 | E-08 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 失败终态/错误封装 | TASK-006 | verified | ["go","-C","console/backend","test","./internal/api/..."] |
 | E-09 | openclaw-runtime-upgrade.design.md#2.5 验收条件 | integration | 真实脱敏函数、日志回调与错误 envelope | TASK-006 | verified | ["go","-C","console/backend","test","./internal/api/..."] |
@@ -417,7 +417,7 @@
 
 ## TASK-007: 插件、隔离与技能回归（9.8 宿主契约）
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-003
 - **Source**: `openclaw-runtime-upgrade.design.md#3.5.3 多用户隔离与技能回归`, `openclaw-runtime-upgrade.design.md#3.1.2 兼容清单`
@@ -430,33 +430,46 @@
 
 ### Checklist
 
-- [ ] 校验插件布局满足 9.8 capture：`/opt/muad/shared` 与 guard 同级、`binding_code_spec.json` 在包内；必要时将 shared 收进 guard 包
-- [ ] Runtime Guard：hooks、trustedToolPolicies、`muad.runtime.verify-routes`、租约与浏览器限制在 9.8 正常
-- [ ] session-manager：工具注册、上下文、缓存不随历史清理
-- [ ] skills：system/public/private 分层与 system protected、激活门禁、失败 stderr+非零、进度/并发遵守
-- [ ] [S-07][integration] 跨 workspace/profile/model/credential 合成请求拒绝、技能分层/激活/租约保持（真实边界：真实 Guard/policy/session-manager 模块）
-- [ ] [E-06][integration] 健康但通道未连/Bot 身份不符/路由命中 default 不能通过（真实边界：真实响应解析与严格验证器）
-- [ ] RULE-runtime-security-001 verifier：凭据运行时注入、每用户 workspace/profile/session 隔离
-- [ ] RULE-runtime-skill-001 verifier：激活/策略门禁、进度/telemetry 无秘密、并发/租约限制
-- [ ] RULE-runtime-skill-layering-001 verifier：system protected 优先，public/private 不静默覆盖
-- [ ] RULE-runtime-log-injection-001 verifier：模块经注入 log（插件 api.logger / CLI console.warn）
-- [ ] RULE-runtime-log-prefix-001 verifier：`[muad-runtime-guard]`/`[session-manager]` 稳定前缀与动作子标签
-- [ ] RULE-runtime-skill-fail-loud-001 verifier：失败 stderr + 非零退出，stdout 只放机器结果
-- [ ] 运行验收命令并填写 Acceptance Evidence
+- [x] 校验插件布局满足 9.8 capture：`/opt/muad/shared` 与 guard 同级、`binding_code_spec.json` 在包内（recipe 测试新增防回归断言；9.8 实机加载已在预验证通过）
+- [x] Runtime Guard：hooks、trustedToolPolicies、`muad.runtime.verify-routes`、租约与浏览器限制在 9.8 正常（实机预验证 + 241 用例全绿）
+- [x] session-manager：工具注册、上下文、缓存不随历史清理（102 用例全绿）
+- [x] skills：system/public/private 分层与 system protected、激活门禁、失败 stderr+非零、进度/并发遵守（guard + muad-progress 用例全绿）
+- [x] [S-07][integration] 跨 workspace/profile/model/credential 合成请求拒绝、技能分层/激活/租约保持（真实边界：真实 Guard/policy/session-manager 模块）
+- [x] [E-06][integration] 健康但通道未连/Bot 身份不符/路由命中 default 不能通过（真实边界：真实响应解析与严格验证器）
+- [x] RULE-runtime-security-001 verifier：凭据运行时注入、每用户 workspace/profile/session 隔离（guard/session-manager 套件）
+- [x] RULE-runtime-skill-001 verifier：激活/策略门禁、进度/telemetry 无秘密、并发/租约限制（guard 套件）
+- [x] RULE-runtime-skill-layering-001 verifier：system protected 优先，public/private 不静默覆盖（guard 套件）
+- [x] RULE-runtime-log-injection-001 verifier：模块经注入 log（插件 api.logger / CLI console.warn）（guard 套件）
+- [x] RULE-runtime-log-prefix-001 verifier：`[muad-runtime-guard]`/`[session-manager]` 稳定前缀与动作子标签（guard 套件）
+- [x] RULE-runtime-skill-fail-loud-001 verifier：失败 stderr + 非零退出，stdout 只放机器结果（guard 套件）
+- [x] 运行验收命令并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-07 | integration | Guard/policy/session-manager | 跨用户拒绝、技能与租约保持 | planned | `node --test tools/muad-runtime-guard/test/multi-user-isolation.test.mjs` | planned |
-| E-06 | integration | 响应解析、严格验证器 | 通道/身份/default 不通过 | planned | `cd console/backend && go test ./internal/gateway/...` | planned |
+| S-07 | integration | Guard/policy/session-manager | 跨用户拒绝、技能与租约保持 | `cross-user-guard.test.mjs`、`browser-lease.test.mjs`、`skill-audit-client.test.mjs` | `node --test tools/muad-runtime-guard/test/cross-user-guard.test.mjs tools/muad-runtime-guard/test/browser-lease.test.mjs tools/muad-runtime-guard/test/skill-audit-client.test.mjs` | verified |
+| E-06 | integration | 响应解析、严格验证器 | 通道/身份/default 不通过 | `console/backend/internal/gateway/probe_test.go` | `go -C console/backend test ./internal/gateway/...` | verified |
 
 ### Acceptance Evidence
 
-> 待 `cf-task-start` 填写。
+| 项 | 证据 | 状态 |
+|----|------|------|
+| 插件 capture 布局 | `bin/test/runtime-image-recipe.test.mjs` 断言 `/opt/muad/shared` 与 `binding_code_spec.json`；9.8 实机 guard/session-manager 加载（预验证 G-03） | verified |
+| guard 全量 | `node --test tools/muad-runtime-guard/test/*.test.mjs` → 241/241 | verified |
+| session-manager | `cd tools/session-manager && npm test` → 102/102 | verified |
+| muad-progress / 技能 | `cd tools/muad-progress && npm test` → 22/22 | verified |
+| 渲染形态回归 | guard 测试与 `skill-preflight-e2e-support` 适配 `agents.entries`（P19 用例修复） | verified |
+| E-06 | gateway probe 严格解析回归（含 LongTask 计数） | verified |
+- S-07: verified — automated command passed; run_id=b026e4a33eb54be69a0107ea305d0e6f (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=b026e4a33eb54be69a0107ea305d0e6f (confirmed_by: runner)
 
 ### Log
 - [2026-10-07] created (draft)
+- [2026-10-07] started
+- [2026-10-07] recipe 增 shared 布局断言；修复 guard 侧 `agents.list` → `agents.entries` 适配（P19 + support）
+- [2026-10-07] guard 241/241、session-manager 102/102、muad-progress 22/22；E-06 gateway 回归通过
+- [2026-10-07] completed (done)
 
 ---
 

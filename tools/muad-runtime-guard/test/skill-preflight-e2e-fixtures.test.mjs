@@ -129,8 +129,8 @@ test('PreflightS19 actual renderer protected ordinary Skills do not invalidate t
   assert.ok(config.plugins.entries['muad-runtime-guard'].config.skillAuditGrants.some(grant =>
     grant.agentId === 'alice' && grant.name === 'web-tools-guide' && grant.source === 'system'));
   assert.throws(() => validateScenarioAgent(config, { ...fixture, skills: [] }));
-  const noTool = structuredClone(config); noTool.agents.list[1].tools.allow = ['read'];
+  const noTool = structuredClone(config); noTool.agents.entries.alice.tools.allow = ['read'];
   assert.throws(() => validateScenarioAgent(noTool, fixture), /muad_submit_long_task/);
-  const noModel = structuredClone(config); delete noModel.agents.list[1].model;
+  const noModel = structuredClone(config); delete noModel.agents.entries.alice.model;
   assert.throws(() => validateScenarioAgent(noModel, fixture), /model/);
 });

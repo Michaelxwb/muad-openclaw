@@ -49,6 +49,7 @@ test("worker image builds session-manager and installs all runtime plugins and C
     "image-plugin-paths.mjs",
     "channel-config.mjs",
     "gateway-signal.mjs",
+    "/opt/muad/shared",
   ])
     assert.equal(
       app.includes(expected),

@@ -103,7 +103,9 @@ export function registerPreflightE2E(name, fn) {
 }
 
 export function validateScenarioAgent(config, fixture) {
-  const agent = config.agents.list.find(item => item.id === fixture.agentId);
+  const entries = config.agents?.entries;
+  const agent = entries?.[fixture.agentId] ??
+    config.agents?.list?.find(item => item.id === fixture.agentId);
   assert.ok(agent && agent.model, 'actual business Agent/model configuration');
   const grants = config.plugins.entries['muad-runtime-guard'].config.longTaskSkillGrants;
   const names = grants.filter(grant => grant.agentId === fixture.agentId).map(grant => grant.name);
