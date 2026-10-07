@@ -51,11 +51,13 @@ runtime:
 # 只限制上传的压缩包本身；解压后的内容不做大小限制。
 maxSkillUploadBundleSize: 5m
 
-# 媒体投递大小上限（MiB，env: CONSOLE_MEDIA_MAX_MB）。整数值；0/不配置 = 使用
-# openclaw 默认 5MB outbound 上限（超过的 MEDIA 附件会被丢弃）。渲染为
-# openclaw agents.defaults.mediaMaxMb，对所有 agent 生效；企微直投另受其 20MB 文件上限约束。
+# 媒体投递大小上限（MiB，env: CONSOLE_MEDIA_MAX_MB）。整数值；0/不配置 = openclaw
+# 默认（9.8 为 20MB）outbound 上限，超过的附件会被丢弃。渲染为 openclaw
+# agents.defaults.mediaMaxMb，对所有 agent 生效。各通道平台上限需单独考虑：
+# 企微 20MB（不受此值影响，超过仍会被平台拒绝）、Mattermost 默认 100MB。
+# 需要投递大产物（如 30MiB 周报）时上调，例如 64。
 # 提示：改此值不会自动触发重新下发，需触发一次 Pod apply（如改动任一 Pod 配置）或重启 console。
-# mediaMaxMb: 20
+# mediaMaxMb: 64
 
 # Docker driver（仅 runtime.driver=docker 时生效）
 docker:
