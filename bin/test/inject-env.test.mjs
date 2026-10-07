@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   IMAGE_PLUGIN_SPECS,
+  NPM_TRUSTED_CHANNEL_PLUGIN_IDS,
   pluginRoots,
 } from "../image-plugin-paths.mjs";
 import { injectStartupConfig } from "../inject-env.mjs";
@@ -120,10 +121,10 @@ test("startup context replaces channel credentials and unloads disabled channel 
     "openclaw-weixin",
     "session-manager",
   ]);
+  // 9.8 信任模型：mattermost 必须走 npm 可信安装（entrypoint 负责），不得以镜像路径加载
   assert.deepEqual(
     output.plugins.load.paths,
     [
-      "/opt/openclaw-plugins/mattermost",
       "/opt/openclaw-plugins/openclaw-weixin",
       "/opt/openclaw-plugins/wecom-openclaw-plugin",
     ],
@@ -183,7 +184,7 @@ test("startup context renders Mattermost for Muad binding guard DMs", () => {
   ]);
   assert.equal(
     output.plugins.load.paths.includes("/opt/openclaw-plugins/mattermost"),
-    true,
+    false,
   );
 });
 
@@ -333,7 +334,14 @@ test("startup preserves a newer persisted runtime generation", () => {
   assert.notEqual(migrated.channels.wecom.botId, "stale-runtime-bot");
   assert.deepEqual(
     migrated.plugins.load.paths,
-    ["/legacy/plugin-path", ...pluginRoots(IMAGE_PLUGIN_SPECS)].sort(),
+    [
+      "/legacy/plugin-path",
+      ...pluginRoots(
+        IMAGE_PLUGIN_SPECS.filter(
+          (spec) => !NPM_TRUSTED_CHANNEL_PLUGIN_IDS.includes(spec.id),
+        ),
+      ),
+    ].sort(),
   );
   // 即使整体保留旧配置，gateway token 也必须刷新为 env 的当前派生 token
   // （删除→重建接管旧 PVC 时旧 token 已随旧 pod 销毁，不刷新则 apply 探测 token_mismatch）。

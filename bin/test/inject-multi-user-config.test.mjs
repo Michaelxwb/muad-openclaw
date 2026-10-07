@@ -10,6 +10,7 @@ import { normalizeMattermostChannelConfig } from "../channel-config.mjs";
 import {
   IMAGE_CHANNEL_PLUGIN_SPECS,
   MUAD_RUNTIME_PLUGIN_SPECS,
+  NPM_TRUSTED_CHANNEL_PLUGIN_IDS,
   pluginRoots,
 } from "../image-plugin-paths.mjs";
 import { canonicalHash, renderOpenClawConfig } from "../openclaw-config-renderer.mjs";
@@ -205,8 +206,17 @@ test("renderer produces strict routes, isolated profiles, providers and plugin e
     [
       "/opt/muad/channel",
       ...pluginRoots(MUAD_RUNTIME_PLUGIN_SPECS),
-      ...pluginRoots(IMAGE_CHANNEL_PLUGIN_SPECS),
+      ...pluginRoots(
+        IMAGE_CHANNEL_PLUGIN_SPECS.filter(
+          (spec) => !NPM_TRUSTED_CHANNEL_PLUGIN_IDS.includes(spec.id),
+        ),
+      ),
     ].sort(),
+  );
+  // 9.8 信任模型：mattermost 不得走镜像路径加载（必须 npm 可信安装）
+  assert.equal(
+    output.plugins.load.paths.includes("/opt/openclaw-plugins/mattermost"),
+    false,
   );
 });
 

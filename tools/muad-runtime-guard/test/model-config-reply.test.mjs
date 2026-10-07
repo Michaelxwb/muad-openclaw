@@ -102,6 +102,65 @@ test("model state checks provider and model references", () => {
   assert.equal(state.providers.get("pod-default").has("deepseek-chat"), true);
 });
 
+test("9.8 agents.entries shape resolves agent models (pod02 rehearsal regression)", () => {
+  const state = resolveModelState({
+    agents: {
+      entries: {
+        alice: { model: { primary: "user-alice-deepseek/deepseek-flash" } },
+      },
+    },
+    models: {
+      providers: { "user-alice-deepseek": { models: [{ id: "deepseek-flash" }] } },
+    },
+  });
+
+  assert.equal(state.agents.get("alice"), "user-alice-deepseek/deepseek-flash");
+  assert.equal(state.providers.get("user-alice-deepseek").has("deepseek-flash"), true);
+});
+
+test("9.8 entries shape passes dispatch for a valid business agent", () => {
+  const handler = createModelConfigDispatch({
+    mainAgentId: "main",
+    config: {
+      agents: {
+        entries: {
+          alice: { model: { primary: "user-alice-deepseek/deepseek-flash" } },
+          main: { model: { primary: "user-main-deepseek/deepseek-flash" } },
+        },
+      },
+      models: {
+        providers: { "user-alice-deepseek": { models: [{ id: "deepseek-flash" }] } },
+      },
+    },
+  });
+
+  assert.equal(
+    handler(
+      { content: "hello", sessionKey: "session:agent:alice:wecom:direct:alice" },
+      {},
+    ),
+    undefined,
+  );
+});
+
+test("9.8 entries shape fails closed when the agent entry lacks a model", () => {
+  const rejected = [];
+  const handler = createModelConfigDispatch({
+    mainAgentId: "main",
+    config: {
+      agents: { entries: { alice: { workspace: "/w" } } },
+      models: { providers: {} },
+    },
+    onInvalid: (event) => rejected.push(event),
+  });
+
+  assert.equal(
+    handler({ content: "hello" }, { agentId: "alice" })?.reason,
+    "muad-model-config-unavailable",
+  );
+  assert.deepEqual(rejected, [{ agentId: "alice", reason: "agent_model_missing" }]);
+});
+
 test("standard reply does not echo secrets or internal model details", () => {
   const handler = createModelConfigDispatch({
     mainAgentId: "main",

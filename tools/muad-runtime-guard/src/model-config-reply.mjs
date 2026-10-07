@@ -18,10 +18,19 @@ export function createModelConfigDispatch({ mainAgentId, config, onInvalid }) {
 
 export function resolveModelState(config) {
   const agents = new Map();
+  // 9.8 形态：agents.entries 是 { agentId: { model: { primary } } } 对象；
+  // 7.x 兼容：agents.list 是 [{ id, model: { primary } }] 数组。
+  if (isRecord(config?.agents?.entries)) {
+    for (const [agentId, agent] of Object.entries(config.agents.entries)) {
+      const id = String(agentId ?? "").trim();
+      if (!id || !isRecord(agent)) continue;
+      agents.set(id, String(agent.model?.primary ?? "").trim());
+    }
+  }
   for (const agent of recordArray(config?.agents?.list)) {
     const id = String(agent.id ?? "").trim();
-    const primary = String(agent.model?.primary ?? "").trim();
-    if (id) agents.set(id, primary);
+    if (!id || agents.has(id)) continue;
+    agents.set(id, String(agent.model?.primary ?? "").trim());
   }
   const providers = new Map();
   const source = isRecord(config?.models?.providers) ? config.models.providers : {};

@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { mkdtempSync } from "node:fs";
 import {
   IMAGE_CHANNEL_PLUGIN_SPECS,
+  NPM_TRUSTED_CHANNEL_PLUGIN_IDS,
   pluginRoots,
 } from "../image-plugin-paths.mjs";
 
@@ -78,9 +79,14 @@ test("inject-channels atomically updates config and wipes removed channel sessio
   });
   assert.equal(config.plugins.entries["openclaw-weixin"].enabled, false);
   assert.equal(config.plugins.entries.mattermost.enabled, true);
+  // 9.8 信任模型：mattermost 必须走 npm 可信安装，不得以镜像路径加载
   assert.deepEqual(
     config.plugins.load.paths,
-    pluginRoots(IMAGE_CHANNEL_PLUGIN_SPECS).sort(),
+    pluginRoots(
+      IMAGE_CHANNEL_PLUGIN_SPECS.filter(
+        (spec) => !NPM_TRUSTED_CHANNEL_PLUGIN_IDS.includes(spec.id),
+      ),
+    ).sort(),
   );
 
   const sessions = JSON.parse(

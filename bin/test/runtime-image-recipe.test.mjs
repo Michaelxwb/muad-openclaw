@@ -176,6 +176,11 @@ test("base image contains OpenClaw, Chromium/Playwright, channel plugins, and se
   assert.ok(doctorIndex >= 0, "entrypoint must run Doctor for automatic migrations");
   assert.ok(gatewayIndex > doctorIndex, "Doctor must run before the Gateway starts");
   assert.doesNotMatch(entrypoint, /openclaw doctor[^\n]*\|\|\s*true/u, "Doctor must fail closed");
+  // 9.8 信任模型：entrypoint 必须在 Gateway 之前确保 mattermost 为可信 npm 安装
+  const mattermostIndex = entrypoint.indexOf("ensure_trusted_mattermost");
+  assert.ok(mattermostIndex >= 0, "entrypoint must ensure trusted mattermost install");
+  assert.ok(gatewayIndex > mattermostIndex, "mattermost trust repair must run before the Gateway");
+  assert.match(entrypoint, /openclaw plugins install "@openclaw\/mattermost@\$\{version\}"/u);
   // Baseline seed
   assert.match(base, /seed-config\.mjs/u);
   assert.match(base, /\/opt\/openclaw-seed/u);

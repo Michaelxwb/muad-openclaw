@@ -4,6 +4,8 @@ import { basename, dirname, join } from "node:path";
 import {
   IMAGE_CHANNEL_PLUGIN_SPECS,
   MUAD_RUNTIME_PLUGIN_SPECS,
+  NPM_TRUSTED_CHANNEL_PLUGIN_IDS,
+  NPM_TRUSTED_CHANNEL_PLUGIN_SPECS,
   pluginIds,
   pluginRoots,
 } from "./image-plugin-paths.mjs";
@@ -13,6 +15,9 @@ import { mergeStartupContext, normalizeChannel } from "./startup-context.mjs";
 const REQUIRED_PROFILE_TOOLS = ["browser", "session_get_state", "muad_submit_long_task"];
 const DEPRECATED_RUNTIME_PLUGINS = new Set(["muad-run-skill"]);
 const DEPRECATED_RUNTIME_PLUGIN_ROOTS = new Set(["/opt/muad/muad-run-skill"]);
+// 9.8 通道入口队列仅对 trusted-official 插件开放：mattermost 走 npm 可信安装
+// （entrypoint 负责），不得以镜像路径加载。
+const NPM_TRUSTED_ROOTS = new Set(pluginRoots(NPM_TRUSTED_CHANNEL_PLUGIN_SPECS));
 const DEPRECATED_PROFILE_TOOLS = new Set(["muad_run_skill", "muad_use_skill"]);
 
 export function renderOpenClawConfig(runtime, baseline = {}) {
@@ -395,9 +400,16 @@ function renderPlugins(output, runtime) {
     load: {
       ...(isRecord(plugins.load) ? plugins.load : {}),
       paths: uniqueSorted([
-        ...existingPaths.filter((root) => !DEPRECATED_RUNTIME_PLUGIN_ROOTS.has(root)),
+        ...existingPaths.filter(
+          (root) =>
+            !DEPRECATED_RUNTIME_PLUGIN_ROOTS.has(root) && !NPM_TRUSTED_ROOTS.has(root),
+        ),
         ...pluginRoots(MUAD_RUNTIME_PLUGIN_SPECS),
-        ...pluginRoots(IMAGE_CHANNEL_PLUGIN_SPECS),
+        ...pluginRoots(
+          IMAGE_CHANNEL_PLUGIN_SPECS.filter(
+            (spec) => !NPM_TRUSTED_CHANNEL_PLUGIN_IDS.includes(spec.id),
+          ),
+        ),
       ]),
     },
     entries: {
