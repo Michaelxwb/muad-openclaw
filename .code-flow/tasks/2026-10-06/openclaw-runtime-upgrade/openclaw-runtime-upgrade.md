@@ -478,6 +478,7 @@
 - [2026-10-07] completed (done)
 - [2026-10-07] 实机演练（pod02 旧→新）发现并修复：状态 PVC 根目录 root 属主 → 9.8 Doctor tighten 0700 EPERM（fail-closed 生效、fail-forward 正确停 error 保留目标镜像）；k8s driver 新增 state-ownership initContainer（root + 仅 CAP_CHOWN，幂等 chown 1000:1000，无 shell/无特权提升）；strace 复现 + chown 后 Doctor exit 0（repro-eperm.sh）；driver 单测 + 全量后端回归绿
 - [2026-10-07] 演练修复②：error 态 Pod 升级卡死在排空（WaitForQuiesce 等待永不健康的 gateway，仅受请求 ctx 约束）；修复为 error 态跳过排空 + 排空 2 分钟独立上限 + 总操作脱离请求 ctx/15 分钟预算；新增 drain 边界测试；全量回归绿
+- [2026-10-07] pod02 修复后升级成功：op-5af331c18 completed、DB applied、initContainer 生效、WeCom 连接成功、DB 校验通过；观察：9.8 稳态内存 ~1.05GiB（旧 ~630MiB，来源为上游运行时增大 + 辅助进程），CPU 启动尖峰后回落
 
 ---
 
