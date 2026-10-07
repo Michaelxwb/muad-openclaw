@@ -134,10 +134,7 @@ TASK-002:
 所有 `#NOTES` 讨论完毕后：
 
 1. 再次扫描文件，确认无残留 `#NOTES` 标记
-2. 如果子任务之前因 `#NOTES` 被标记为 `blocked`：
-   - 扫描 `### Log`，查找 `blocked` 记录中的原状态
-   - 用 Edit 恢复原状态
-   - 在 `### Log` 追加：`- [<当前日期>] unblocked (all #NOTES resolved, restored to <原状态>)`
+2. 如果子任务之前因 `#NOTES` 被标记为 `blocked`，清除当前阻塞条目后调用 `code-flow task resume --root "$PWD" --task-dir "<需求目录>" --task TASK-001 --json`。命令检查依赖和残留 Notes，同步 marker 与任务状态；不得从历史 Log 猜测状态后只改 Markdown。失败保留 blocked 并报告原因。
 3. 更新文件头 `Updated` 日期
 
 ### 6. 输出摘要
@@ -237,3 +234,13 @@ TASK-002:
 文件已更新，所有 #NOTES 标记已清除。
 可执行 /cf-task:plan .code-flow/tasks/2026-04-06/user-auth.design.md 拆解任务。
 ```
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow task resume --help
+```
+
+<!-- code-flow:runtime-commands end -->

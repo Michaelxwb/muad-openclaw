@@ -8,6 +8,8 @@
 - `/cf-task:plan` — 交互式选择（从 `docs/` 目录列出候选）
 - `/cf-task:plan <设计文档路径> --explore` — 仅输出分析报告，不生成文件
 - `/cf-task:plan <设计文档路径> --quick` — 跳过缺口分析，直接拆解（保持原有行为）
+- `/cf-task:plan <设计文档路径> --draft` — 仅生成任务草案，必须经过 `--verify-plan` 后才能启动
+- `/cf-task:plan <任务文件> --verify-plan` — 执行完整 Acceptance Coverage 与 Spec Rule 门禁
 - `/cf-task:plan <.design.md 路径>` — 从 cf-task:align 产出的设计简报拆解（自动跳过缺口分析）
 
 ## 执行步骤
@@ -56,6 +58,17 @@ Read 设计文档后，**先扫描文档结构**，建立章节索引表：
 ```
 
 此索引用于后续步骤中精确记录每个子任务的来源章节。
+
+### 2.4.1. Draft / Verify Plan 模式
+
+`--draft` 只生成任务结构、依赖、Source 和初步验收映射，产物状态必须保持 `draft`，不得直接进入 `start`。用户确认拆分后执行 `--verify-plan`，完成全部场景覆盖、唯一 Rule owner、verifier、测试层级和真实边界校验；默认模式仍执行完整校验。
+
+`--verify-plan` 的执行命令为：
+
+```bash
+code-flow acceptance manifest \
+  --verify-plan --task-dir <需求目录> --task-file <任务文件>
+```
 
 ### 2.5. Explore 模式（--explore）
 
@@ -201,12 +214,19 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 ## Acceptance Coverage
 
-| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 |
-|--------|---------|---------|-------------|---------|------|
-| S-01 | xxx.design.md#2.5 验收条件 | E2E | API → Store → Renderer | TASK-001 | planned |
-| E-01 | xxx.design.md#2.5 验收条件 | integration | Service → Store | TASK-001 | planned |
+| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
+|--------|---------|---------|-------------|---------|------|---------|
+| S-01 | xxx.design.md#2.5 验收条件 | E2E | API → Store → Renderer | TASK-001 | planned | - |
+| E-01 | xxx.design.md#2.5 验收条件 | integration | Service → Store | TASK-001 | planned | ["python3","-m","pytest","-q","tests/test_e01.py"] |
 
 > 本表必须覆盖 design 中全部 P0/P1 场景，以及 RULE/高影响 RISK 映射的场景；存在缺口时不生成可启动任务。
+>
+> **执行命令列（functional 必填）**：`unit/integration` 场景必须登记可单独执行
+> 的命令，argv JSON 数组最稳（含空格/引号路径不拆参）；也可写 shell 词串。
+> `E2E`/`manual` 场景可写 `-`（延期/人工确认，不需要命令）。Manifest 锁定后
+> 该列与测试层级、边界、负责人一同不可静默修改；未登记命令的 functional 场景
+> 会在 Done Gate 阻断执行验收。命令也可只写在 TASK 段 `Acceptance Contract` 的
+> 执行命令列，manifest 会按场景 ID 回退读取。
 
 ---
 
@@ -225,7 +245,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 ### Checklist
 - [ ] <具体实现步骤1>
 - [ ] <具体实现步骤2>
-- [ ] [S-01][E2E] 修改生产代码前，按 API → Store → Renderer 真实边界编写验收测试并记录 RED
+- [ ] [S-01][E2E] 编写 E2E 验收测试并登记可单独执行的命令（真实边界：API → Store → Renderer）；不在编码期执行 RED/GREEN，统一留给 verify-e2e
 - [ ] [S-01] 断言 <最终可观测结果 1> 与 <最终可观测结果 2>
 - [ ] [E-01][integration] 覆盖 <异常输入> 与 <可观测失败行为>
 - [ ] 运行验收命令并填写 Acceptance Evidence
@@ -239,7 +259,7 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 ### Acceptance Evidence
 
-> `cf-task-start` 在编码期填写 RED/GREEN 结果、每个关键断言的位置和真实组件证据；全部状态 verified 后任务才可 done。
+> `cf-task-start` 在编码期填写 functional 的 RED/GREEN 结果、每个关键断言的位置和真实组件证据；manual 场景只登记原因/边界/验收方式，人工确认与 E2E 执行统一留给 verify-e2e。全部 functional 状态 verified 后任务才可 done。全量套件/构建/E2E 类 verifier 建议显式标 `stage: review`，由需求终验统一执行；超预算的 verifier 会被 Done Gate 自动延后。
 
 ### Log
 - [<当前日期>] created (draft)
@@ -295,8 +315,35 @@ TASK-002: <标题> [P1]
 写入后用 `bind --stage plan` 的 `applications` 将每条 required Rule 指向任务文件内唯一 TASK item，并执行：
 
 ```bash
-python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage plan --artifact <任务文件> --json
+code-flow spec gate --task-dir <需求目录> --stage plan --artifact <任务文件> --json
 ```
+
+通过 Plan Gate 后，锁定验收基线：
+
+```bash
+code-flow acceptance manifest \
+  --task-file <任务文件> \
+  --output <需求目录>/.acceptance-manifest.json
+```
+
+Manifest 锁定场景 ID、来源、测试层级、真实边界和责任 TASK。编码阶段不得静默修改这些字段；如发生范围变化，必须重新执行 plan 验证。
+
+验收类型按测试层级归类：
+- `unit/integration` → `functional`（Done Gate 自动执行）
+- `E2E` → `e2e`（延迟至所有任务完成后，需 `--include-e2e` 显式执行）
+- `manual` → `manual`（用户手动验证，永不自动执行）
+
+E2E 场景依赖外部环境（数据库、API、浏览器），在编码阶段默认跳过（状态 `e2e_deferred`），不阻断 Done Gate。所有子任务完成后，执行：
+
+```bash
+code-flow acceptance run \
+  --manifest <需求目录>/.acceptance-manifest.json \
+  --root . \
+  --include-e2e \
+  --write-evidence
+```
+
+不得为了提速降低 design 指定的 E2E 层级。
 
 只有 Context Plan 状态与任务结构校验都 `decision=pass` 才输出 Start 下一步；缺唯一 owner、`verifier_ref`、测试层级或真实边界时必须回到拆解修复。
 
@@ -321,3 +368,15 @@ python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage pla
   - 添加批注: /cf-task:note auth-module TASK-001 "批注内容"
   - 开始编码: /cf-task:start auth-module
 ```
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow spec gate --help
+code-flow acceptance manifest --help
+code-flow acceptance run --manifest "<需求目录>/.acceptance-manifest.json" --root "$PWD" --write-evidence
+```
+
+<!-- code-flow:runtime-commands end -->

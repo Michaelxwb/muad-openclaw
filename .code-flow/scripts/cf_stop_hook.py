@@ -24,7 +24,7 @@ import time
 from typing import Optional
 
 import cf_log
-from cf_exec_base import build_argv, remaining_seconds, run_command, execution_session
+from cf_exec_base import build_argv, hash_worktree_paths, remaining_seconds, run_command, execution_session, worktree_fingerprint
 from cf_spec_context import load_active_task
 from cf_task_runtime import run_done_gate
 from cf_acceptance_evidence import line_status, scenario_line
@@ -147,6 +147,8 @@ def _subsection(section: str, heading: str) -> str:
 
 
 def _acceptance_gap(task_id: str, section: str, coverage: str) -> str:
+    from cf_acceptance_manifest import _kind
+
     status = re.search(r"(?m)^- \*\*Status\*\*: ([^\n]+)", section)
     # done = implementation finished; verified = E2E/final acceptance closed.
     # Both enter the same contract checks; anything else is still in flight.
@@ -169,7 +171,9 @@ def _acceptance_gap(task_id: str, section: str, coverage: str) -> str:
         coverage_rows = [line for line in coverage.splitlines() if scenario_line(line, scenario)]
         cells = coverage_rows[0].strip().strip("|").split("|") if coverage_rows else []
         task_status = status.group(1).strip()
-        row_kind = cells[2].strip().lower() if len(cells) >= 3 else ""
+        # Reuse the manifest's level parser so annotated levels (`E2E（Playwright）`,
+        # `manual(chrome)`) behave the same in both gates.
+        row_kind = _kind(cells[2]) if len(cells) >= 3 else ""
         if task_status == "done" and row_kind == "e2e":
             allowed = {"verified", "e2e_deferred"}
         elif task_status == "done" and row_kind == "manual":
@@ -232,6 +236,21 @@ def _validator_argv(root: str, validator: dict, matched: list, strict: bool) -> 
     return argv
 
 
+def _tool_missing(detail: str) -> bool:
+    """Recognize 'tool not installed' output so template validators (mypy, npx …)
+    do not block projects that have not installed the optional tool yet."""
+    lowered = detail.lower()
+    markers = (
+        "no module named",
+        "modulenotfounderror",
+        "command not found",
+        "is not recognized as an internal or external command",
+        "could not determine executable to run",
+        "not found in $path",
+    )
+    return any(marker in lowered for marker in markers)
+
+
 def _validator_result(root: str, validator: dict, argv: list, sid: str,
                       deadline: float, strict: bool) -> tuple[list, bool]:
     try:
@@ -250,9 +269,15 @@ def _validator_result(root: str, validator: dict, argv: list, sid: str,
     detail = (f"超时（>{timeout:.0f}s），未完成" if timed_out else
               (str(outcome.get("stdout", "")) + str(outcome.get("stderr", ""))).strip()[-400:])
     if outcome["status"] == "spawn_error":
+        if validator.get("skip_if_missing") is True:
+            cf_log.degrade(root, "stop_check", f"{validator.get('name')}:tool_missing", sid)
+            return [], False
         cf_log.degrade(root, "stop_check", f"{validator.get('name')}:{outcome['stderr']}", sid)
         if not strict:
             return [], False
+    elif not passed and not timed_out and validator.get("skip_if_missing") is True and _tool_missing(detail):
+        cf_log.degrade(root, "stop_check", f"{validator.get('name')}:tool_missing", sid)
+        return [], False
     cf_log.append_event(root, "stop_check",
                         {"trigger": validator.get("trigger", ""),
                          "cmd": str(validator.get("command", ""))[:120], "passed": passed}, sid)
@@ -260,19 +285,8 @@ def _validator_result(root: str, validator: dict, argv: list, sid: str,
 
 
 def _hash_paths(project_root: str, paths: list) -> Optional[list]:
-    """批量计算工作区文件内容哈希（git hash-object --stdin-paths，单进程）。"""
-    if not paths:
-        return []
-    completed = subprocess.run(
-        ("git", "-C", project_root, "hash-object", "--stdin-paths"),
-        input="\n".join(paths) + "\n", text=True, capture_output=True,
-    )
-    if completed.returncode != 0:
-        return None
-    hashes = completed.stdout.splitlines()
-    if len(hashes) != len(paths):
-        return None
-    return [(path, sha.strip()) for path, sha in zip(paths, hashes)]
+    """Batch-hash worktree file contents (single git hash-object process)."""
+    return hash_worktree_paths(project_root, paths)
 
 
 def _tree_fingerprint(project_root: str, validators: list) -> str:
@@ -282,56 +296,12 @@ def _tree_fingerprint(project_root: str, validators: list) -> str:
     只纳入命中任一 validator trigger 的路径（构建/测试产物不使缓存失效）。
     同一内容在提交前后得到相同指纹；返回 "" 表示无法判定（禁用缓存）。
     """
-    from cf_spec_context import _run_git
-
     triggers = [str(item.get("trigger", "")) for item in validators if isinstance(item, dict)]
-    try:
-        tree = _run_git(project_root, ("ls-tree", "-r", "HEAD"))
-        status = _run_git(project_root, ("status", "--porcelain", "--untracked-files=all"))
-    except (OSError, ValueError):
-        return ""
-    contents: dict[str, str] = {}
-    for line in tree.splitlines():
-        meta, _, path = line.partition("\t")
-        fields = meta.split()
-        if path and len(fields) >= 3 and not path.startswith(".code-flow/"):
-            contents[path] = fields[2]
-    changed: list[str] = []
-    deleted: list[str] = []
-    untracked: list[str] = []
-    for line in status.splitlines():
-        code, path = line[:2], line[3:].strip()
-        if " -> " in path:
-            path = path.split(" -> ", 1)[1].strip()
-        if not path or path.startswith(".code-flow/"):
-            continue
-        if path.startswith('"'):
-            return ""  # 引号转义路径：保守禁用缓存
-        if code.strip() == "??":
-            untracked.append(path)
-        elif "D" in code:
-            contents.pop(path, None)
-            deleted.append(path)
-        else:
-            changed.append(path)
-    for path in untracked:
-        if not triggers or any(trigger_matches(trigger, path) for trigger in triggers):
-            changed.append(path)
-    hashed = _hash_paths(project_root, changed)
-    if hashed is None:
-        return ""
-    for path, sha in hashed:
-        contents[path] = sha
-    digest = hashlib.sha256()
-    for path in sorted(contents):
-        digest.update(path.encode())
-        digest.update(b"\0")
-        digest.update(contents[path].encode())
-        digest.update(b"\n")
-    for path in sorted(deleted):
-        digest.update(f"deleted:{path}".encode())
-        digest.update(b"\n")
-    return digest.hexdigest()
+    if triggers:
+        untracked_filter = lambda path: any(trigger_matches(trigger, path) for trigger in triggers)
+    else:
+        untracked_filter = None
+    return worktree_fingerprint(project_root, untracked_filter)
 
 
 def _validation_cache_path(project_root: str) -> Path:
@@ -432,86 +402,87 @@ def _reason_text(failures: list, truncated: bool) -> str:
     return "\n".join(lines)
 
 
+def _active_stop_scope(root: str, sid: str, enforcement: str, deadline: float) -> tuple[list[str], dict[str, str]]:
+    try:
+        active = load_active_task(root)
+        remaining = deadline - time.monotonic()
+        done = run_done_gate(root, os.path.join(root, active.task_dir), cheap=True,
+                             budget=min(GATE_BUDGET_SECONDS, max(remaining, 0.01)))
+    except (OSError, ValueError) as exc:
+        if enforcement == "required":
+            return [], {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"}
+        cf_log.append_event(root, "stop_check", {"gate": "invalid_active_nonfatal", "error": str(exc)}, sid)
+        return [], {}
+    if done.decision != "pass":
+        reason = done.message or "当前 TASK required Spec verifier/Evidence 未通过；修复或重新对齐后再 Done。"
+        if any(item.get("error_code") == "verifier_budget_exhausted" for item in done.evidence):
+            reason += "（验证预算不足，部分 verifier 未运行，请拆分 TASK 或减少验证命令）"
+        if enforcement == "required":
+            return [], {"decision": "block", "reason": reason}
+        cf_log.append_event(root, "stop_check", {"gate": "blocked_nonfatal", "reason": reason}, sid)
+    return list(done.files), {}
+
+
+def _stop_feedback(root: str, sid: str, files: list[str], enforcement: str, deadline: float) -> dict[str, str]:
+    if not files:
+        return {}
+    acceptance_failures = task_acceptance_failures(root, files)
+    validators = _stop_validators(root)
+    failures, truncated, _reused = run_validators(root, validators, files, sid, deadline=deadline) if validators else ([], False, 0)
+    failures = acceptance_failures + failures
+    if not failures:
+        return {}
+    if enforcement == "warn":
+        cf_log.append_event(root, "stop_check", {"failures": [item["name"] for item in failures], "nonfatal": True}, sid)
+        return {}
+    return {"decision": "block", "reason": _reason_text(failures, truncated)}
+
+
+def build_stop_result(project_root: str, sid: str) -> dict[str, str]:
+    enforcement = "required"
+    try:
+        config = load_config(project_root)
+        if not config:
+            return {}
+        enforcement = resolve_enforcement(config)
+        if enforcement == "inject":
+            return {}
+        deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
+        active = os.path.exists(os.path.join(project_root, ".code-flow/.active-task.json"))
+        files, payload = _active_stop_scope(project_root, sid, enforcement, deadline) if active else ([], {})
+        if not payload and resolve_quality_loop(config)["stop_check"]:
+            if not active:
+                files = _root_scoped_files(project_root, session_edited_files(project_root, sid))
+            payload = _stop_feedback(project_root, sid, files, enforcement, deadline)
+        return payload
+    except Exception as exc:
+        _log(f"cf_stop_hook error: {exc}")
+        return {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: {exc}"} if enforcement == "required" else {}
+
+
+def process_stop(data: dict[str, object], project_root: str) -> None:
+    try:
+        if data.get("stop_hook_active"):
+            return
+        payload = build_stop_result(project_root, resolve_session_id(data))
+        if payload:
+            sys.stdout.write(json.dumps(payload, ensure_ascii=False))
+    except Exception as exc:
+        _log(f"cf_stop_hook error: {exc}")
+        sys.stdout.write(json.dumps({"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: {exc}"}, ensure_ascii=False))
+
+
 def _main() -> None:
     try:
         ensure_utf8_io()
         if sys.stdin.isatty():
-            # 手动运行且未用管道喂事件：hook 协议要求 stdin JSON，直接退出避免永久阻塞
-            print("cf_stop_hook: 缺少 stdin 事件（手动运行？），跳过。", file=sys.stderr)
+            _log("cf_stop_hook.py: missing stdin event")
             return
         raw = sys.stdin.read()
-        if not raw.strip():
-            return
-        data = json.loads(raw)
-        if data.get("stop_hook_active"):
-            return  # 已因本 hook 续跑过一轮，避免循环
-        project_root = os.getcwd()
-        sid = resolve_session_id(data)
-        config = load_config(project_root)
-        if not config:
-            return
-        enforcement = resolve_enforcement(config)
-        if enforcement == "inject":
-            return  # 轻量模式：只注入不门禁，停止会话不受限
-        marker = os.path.join(project_root, ".code-flow", ".active-task.json")
-        has_active = os.path.exists(marker)
-        files = []
-        # Single entry deadline constrains the whole chain (Done + validators),
-        # so long checks end as `incomplete` instead of being killed by the
-        # host without a verdict.
-        deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
-        if has_active:
-            try:
-                active = load_active_task(project_root)
-                task_dir = os.path.join(project_root, active.task_dir)
-                gate_remaining = deadline - time.monotonic()
-                done = run_done_gate(project_root, task_dir, cheap=True, budget=min(GATE_BUDGET_SECONDS, max(gate_remaining, 0.01)))
-            except (OSError, ValueError) as exc:
-                if enforcement == "required":
-                    payload = {"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: active task is invalid: {exc}"}
-                    sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-                    return
-                cf_log.append_event(project_root, "stop_check", {"gate": "invalid_active_nonfatal", "error": str(exc)}, sid)
-                files = []
-            else:
-                if done.decision != "pass":
-                    reason = done.message or "当前 TASK required Spec verifier/Evidence 未通过；修复或重新对齐后再 Done。"
-                    if any(item.get("error_code") == "verifier_budget_exhausted" for item in done.evidence):
-                        reason += "（验证预算不足，部分 verifier 未运行，请拆分 TASK 或减少验证命令）"
-                    if enforcement == "required":
-                        payload = {"decision": "block", "reason": reason}
-                        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-                        return
-                    cf_log.append_event(project_root, "stop_check", {"gate": "blocked_nonfatal", "reason": reason}, sid)
-                files = list(done.files)
-        if not resolve_quality_loop(config)["stop_check"]:
-            return
-        if not has_active:
-            files = _root_scoped_files(project_root, session_edited_files(project_root, sid))
-        if not files:
-            return
-        acceptance_failures = task_acceptance_failures(project_root, files)
-        validators = _stop_validators(project_root)
-        failures, truncated, _reused = run_validators(
-            project_root, validators, files, sid, deadline=deadline
-        ) if validators else ([], False, 0)
-        failures = acceptance_failures + failures
-        if not failures:
-            return  # 全过或无 validation.yml 且无验收缺口时静默
-        if enforcement == "warn":
-            cf_log.append_event(
-                project_root, "stop_check",
-                {"failures": [item["name"] for item in failures], "nonfatal": True},
-                sid,
-            )
-            return
-        payload = {"decision": "block", "reason": _reason_text(failures, truncated)}
-        sys.stdout.write(json.dumps(payload, ensure_ascii=False))
-    except Exception as exc:
-        _log(f"cf_stop_hook error: {exc}")
-        if locals().get("enforcement") == "required":
-            sys.stdout.write(json.dumps({"decision": "block", "reason": f"SPEC_WORKFLOW_BLOCKED: {exc}"}, ensure_ascii=False))
-        return
+        if raw.strip():
+            process_stop(json.loads(raw), os.getcwd())
+    except (json.JSONDecodeError, OSError, ValueError) as exc:
+        _log(f"cf_stop_hook.py bad_stdin_json: {exc}")
 
 
 def main() -> None:

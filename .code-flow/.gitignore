@@ -10,4 +10,14 @@ specs.legacy-*/
 migrations/
 specs/_session/
 .validation-cache.json
+.session-state.json
+.task-projection-state.json
+backups/
+.debug.log
+sessions/
+worktrees/
+.artifact-hash-cache.json
+.runtime-install.json
+.runtime-migration.lock/
+.verifier-cache.json
 # <<< code-flow:runtime schema=1

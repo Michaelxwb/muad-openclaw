@@ -64,6 +64,7 @@
 - Python 后端项目：删除 `TypeScript 类型检查`、`Vue 类型检查`、`ESLint`、`Stylelint`、`前端单元测试`
 - Go/Rust/Java 后端：删除前端 validator；如果没有对应语言 validator，保留文件并在摘要中提示用户补充
 - fullstack / generic：全部保留，除非项目明确没有对应语言文件
+- 全量测试 / e2e 等慢命令（`pytest`、`vitest run`、Playwright 等）标 `heavy: true`：Stop 每轮跳过，任务 finish 自动执行一次，也可 `/cf-validate` 手动执行
 
 若 `.code-flow/validation.yml` 缺失，提示用户重跑 `code-flow init`，不要手工拼装 YAML。
 
@@ -152,9 +153,7 @@ CLAUDE.md 的完整内容由适配器模板统一定义，`code-flow init` 已�
 
 ### 6. 生成 .costrict/settings.local.json Hook 配置
 
-检查 `.costrict/settings.local.json` 是否存在。如果不存在，按当前适配器模板创建，必须包含 `PreToolUse`、`PostToolUse`、`UserPromptSubmit`、`Stop` 四类 hook，并使用 guarded project root 定位脚本路径。
-
-如果文件已存在，只合并缺失的 hook 事件、matcher 或 command，保留用户已有 permissions、settings 和自定义 hooks，不得整文件覆盖。
+执行 `code-flow init --platform=costrict`，由适配器模板统一生成/合并 `PreToolUse`、`PostToolUse`、`UserPromptSubmit`、`Stop` 四类 Hook，保留用户已有 permissions、settings 和自定义 hooks，不得整文件覆盖。不得手工拼装受管理 Hook；旧安装或清单校验失败时通过 `code-flow migrate --runtime --dry-run` / `--apply` 修复。
 
 ### 7. 安装 pyyaml
 

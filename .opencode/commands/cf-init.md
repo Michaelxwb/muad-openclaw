@@ -8,11 +8,11 @@ description: 一键初始化项目规范体系，检测技术栈，生成 spec �
 
 ## 输入
 
-- `/project:cf-init` — 自动检测技术栈
-- `/project:cf-init frontend` — 强制前端项目
-- `/project:cf-init backend` — 强制后端项目
-- `/project:cf-init fullstack` — 强制全栈项目
-- `/project:cf-init --skip-learn` — 跳过自动扫描，仅生成/修补模板
+- `/cf-init` — 自动检测技术栈
+- `/cf-init frontend` — 强制前端项目
+- `/cf-init backend` — 强制后端项目
+- `/cf-init fullstack` — 强制全栈项目
+- `/cf-init --skip-learn` — 跳过自动扫描，仅生成/修补模板
 
 ## 执行步骤
 
@@ -171,8 +171,8 @@ OpenCode v2 会自动加载 `.opencode/plugins/` 下的插件目录，无需在 
 - 不要向 `plugins` 写入 `.opencode/plugins/code-flow`（自动发现已覆盖，显式声明会导致重复加载或包解析告警）。
 
 确保 `.opencode/plugins/code-flow/` 已存在且为 v2 形态（默认导出 `{ id: "code-flow", setup }`，不依赖 `@opencode/plugin` 包），
-注册 `session.prompt` / `tool.execute.after` / `session.context` hooks + `event.subscribe` 订阅 `session.idle`）。
-OpenCode 通过插件转发用户 prompt 并经 context hook 注入 specs，不需要生成 Claude/Costrict 风格的 settings 文件。
+注册 `session.prompt` / `tool.execute.before` / `tool.execute.after` / `session.context` hooks，并通过 `event.subscribe` 订阅 `session.idle` 和 `session.deleted`。
+插件直接调用原生 RPC 入口 `cf_opencode_event.py`，使用 OpenCode 的 sessionID、input.path 和 input.patchText，经 context hook 注入 specs。
 
 ### 7. 安装 pyyaml
 

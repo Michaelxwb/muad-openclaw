@@ -202,12 +202,19 @@ AI 从设计文档中识别关键缺口，输出结构化分析并与用户交�
 
 ## Acceptance Coverage
 
-| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 |
-|--------|---------|---------|-------------|---------|------|
-| S-01 | xxx.design.md#2.5 验收条件 | E2E | API → Store → Renderer | TASK-001 | planned |
-| E-01 | xxx.design.md#2.5 验收条件 | integration | Service → Store | TASK-001 | planned |
+| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
+|--------|---------|---------|-------------|---------|------|---------|
+| S-01 | xxx.design.md#2.5 验收条件 | E2E | API → Store → Renderer | TASK-001 | planned | - |
+| E-01 | xxx.design.md#2.5 验收条件 | integration | Service → Store | TASK-001 | planned | ["python3","-m","pytest","-q","tests/test_e01.py"] |
 
 > 本表必须覆盖 design 中全部 P0/P1 场景，以及 RULE/高影响 RISK 映射的场景；存在缺口时不生成可启动任务。
+>
+> **执行命令列（functional 必填）**：`unit/integration` 场景必须登记可单独执行
+> 的命令，argv JSON 数组最稳（含空格/引号路径不拆参）；也可写 shell 词串。
+> `E2E`/`manual` 场景可写 `-`（延期/人工确认，不需要命令）。Manifest 锁定后
+> 该列与测试层级、边界、负责人一同不可静默修改；未登记命令的 functional 场景
+> 会在 Done Gate 阻断执行验收。命令也可只写在 TASK 段 `Acceptance Contract` 的
+> 执行命令列，manifest 会按场景 ID 回退读取。
 
 ---
 
@@ -296,7 +303,7 @@ TASK-002: <标题> [P1]
 写入后用 `bind --stage plan` 的 `applications` 将每条 required Rule 指向任务文件内唯一 TASK item，并执行：
 
 ```bash
-python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage plan --artifact <任务文件> --json
+code-flow spec gate --task-dir <需求目录> --stage plan --artifact <任务文件> --json
 ```
 
 只有 Context Plan 状态与任务结构校验都 `decision=pass` 才输出 Start 下一步；缺唯一 owner、`verifier_ref`、测试层级或真实边界时必须回到拆解修复。
@@ -322,3 +329,13 @@ python3 .code-flow/scripts/cf_spec_gate.py --task-dir <需求目录> --stage pla
   - 添加批注: cf-task-note auth-module TASK-001 "批注内容"
   - 开始编码: cf-task-start auth-module
 ```
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow spec gate --help
+```
+
+<!-- code-flow:runtime-commands end -->
