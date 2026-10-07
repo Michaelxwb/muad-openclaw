@@ -21,12 +21,20 @@ test("worker image pins OpenClaw and records the base version", () => {
     app,
     /# ── 最终镜像 ──[\s\S]*?FROM \$\{BASE_IMAGE\}:\$\{BASE_TAG\}\n\nLABEL io\.muad\.image\.role="app"/u,
   );
-  // CI still passes openclaw version through
+  // CI still passes openclaw version through（resolve 步骤归一，build-arg 只用归一后的输出）
   assert.match(
     workflow,
-    /OPENCLAW_VERSION=\$\{\{ inputs\.openclaw_version \|\| '2026\.9\.8' \}\}/u,
+    /OPENCLAW_VERSION="\$\{\{ inputs\.openclaw_version \|\| '2026\.9\.8' \}\}"/u,
+  );
+  assert.match(
+    workflow,
+    /OPENCLAW_VERSION=\$\{\{ steps\.base\.outputs\.openclaw_version \}\}/u,
   );
   assert.doesNotMatch(workflow, /OPENCLAW_VERSION=.*latest/u);
+  // base tag 必须与 openclaw 版本绑定：留空即跟随 openclaw_version，latest 直接拒绝，
+  // 否则会静默复用旧版本 base，产出 app 与 base 版本不一致的镜像。
+  assert.match(workflow, /TAG="\$\{\{ inputs\.base_tag \|\| inputs\.openclaw_version/u);
+  assert.match(workflow, /inputs\.base_tag \}\}" = "latest"[\s\S]{0,400}?::error::/u);
 });
 
 test("worker image builds session-manager and installs all runtime plugins and CLI", () => {
@@ -137,6 +145,31 @@ test("S-06 Qianliu recipe carries prebuilt muad-progress dist through cache into
   assert.match(app, /chown -R node:node[^;]*\/opt\/muad\/muad-progress/u);
   assert.doesNotMatch(app, /(?:RUN|&&|;)\s+npm (?:ci|install)\b/u);
   assert.doesNotMatch(app, /COPY tools\/muad-progress\/(?:node_modules|test)(?:\s|$)/u);
+});
+
+test("外网与内网 app Dockerfile 的 /opt/muad 脚本集合一致", () => {
+  const external = read("Dockerfile");
+  const qianliu = read("build/docker-build/Dockerfile.openclaw");
+  // bin/runtime-config-transaction.mjs 与 bin/inject-channels.mjs 都在运行时 import
+  // ./gateway-signal.mjs，任一 Dockerfile 漏 COPY 都会让镜像内配置事务在 import 期直接崩。
+  for (const expected of [
+    "inject-env.mjs",
+    "inject-multi-user-config.mjs",
+    "openclaw-config-renderer.mjs",
+    "runtime-config-schema.mjs",
+    "runtime-config-transaction.mjs",
+    "runtime-image-self-check.mjs",
+    "startup-context.mjs",
+    "private-skill-installer.mjs",
+    "image-plugin-paths.mjs",
+    "channel-config.mjs",
+    "prune-managed-plugin-installs.mjs",
+    "gateway-signal.mjs",
+    "inject-channels.mjs",
+  ]) {
+    assert.equal(external.includes(expected), true, `Dockerfile missing ${expected}`);
+    assert.equal(qianliu.includes(expected), true, `Qianliu Dockerfile missing ${expected}`);
+  }
 });
 
 test("base image contains OpenClaw, Chromium/Playwright, channel plugins, and seed", () => {
