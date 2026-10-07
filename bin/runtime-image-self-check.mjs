@@ -6,6 +6,7 @@ import {
   IMAGE_CHANNEL_PLUGIN_SPECS,
   IMAGE_PLUGIN_SPECS,
   MUAD_RUNTIME_PLUGIN_SPECS,
+  NPM_TRUSTED_CHANNEL_PLUGIN_IDS,
 } from "./image-plugin-paths.mjs";
 
 export const PINNED_OPENCLAW_VERSION = "2026.9.8";
@@ -15,7 +16,12 @@ export const MUAD_PROGRESS_CLI = "/usr/local/bin/muad-progress";
 export const MUAD_PROGRESS_VERSION = "0.1.0";
 export const IMAGE_PLUGINS = IMAGE_PLUGIN_SPECS;
 export const REQUIRED_RUNTIME_PLUGINS = MUAD_RUNTIME_PLUGIN_SPECS;
-export const IMAGE_CHANNEL_PLUGINS = IMAGE_CHANNEL_PLUGIN_SPECS;
+// 9.8 信任模型：npm 可信安装的通道插件（mattermost）不以镜像路径加载，配置自检
+// 不得要求其出现在 load.paths；其镜像副本仍由 validatePluginArtifacts 校验
+// （entrypoint 从镜像内 manifest 读取版本做 npm 安装）。
+export const IMAGE_CHANNEL_PLUGINS = IMAGE_CHANNEL_PLUGIN_SPECS.filter(
+  (spec) => !NPM_TRUSTED_CHANNEL_PLUGIN_IDS.includes(spec.id),
+);
 
 export function assertOpenClawVersion(output, expected = PINNED_OPENCLAW_VERSION) {
   const version = String(output ?? "").trim();

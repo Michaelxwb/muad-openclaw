@@ -93,6 +93,16 @@ test("runtime plugins are packaged for offline startup", () => {
   );
 });
 
+test("npm-trusted mattermost is not required in load.paths (9.8 trust model)", () => {
+  const specs = imageSpecs();
+  const config = runtimeConfig(specs);
+  assert.equal(
+    config.plugins.load.paths.includes("/opt/openclaw-plugins/mattermost"),
+    false,
+  );
+  assert.doesNotThrow(() => validateRuntimePluginConfig(config, specs, IMAGE_CHANNEL_PLUGINS));
+});
+
 test("runtime assembly requires explicit allow, load path, entries, CLI, and readable token", () => {
   const root = mkdtempSync(join(tmpdir(), "muad-image-check-"));
   const cli = join(root, "session-manager");
