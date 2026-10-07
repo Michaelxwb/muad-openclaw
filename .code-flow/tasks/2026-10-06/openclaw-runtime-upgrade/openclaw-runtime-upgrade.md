@@ -541,6 +541,7 @@
 - [2026-10-07] recipe 增 shared 布局断言；修复 guard 侧 `agents.list` → `agents.entries` 适配（P19 + support）
 - [2026-10-07] guard 241/241、session-manager 102/102、muad-progress 22/22；E-06 gateway 回归通过
 - [2026-10-07] completed (done)
+- [2026-10-07] 演练发现：`998af3c` 误删 `report-customer-weekly` 的 `longTask: true` → 长任务授权(grants)为空 → `skill_not_authorized`（pod01 mattermost 实测）；已恢复标记（28a0609）并通过 console API 重传 skill；pod01/pod02 已同步（镜像内 manifest + 配置 grants 生效）；生产需在控制台重传修复后的 skill
 
 ---
 
