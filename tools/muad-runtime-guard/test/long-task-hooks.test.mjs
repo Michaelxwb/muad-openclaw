@@ -66,3 +66,14 @@ test('background sessions may run their selected script and never enqueue recurs
   assert.equal(await f.hooks.beforeToolCall({ toolName: 'bash', params: { command: `python3 ${f.script}` } }, { ...f.ctx, sessionKey: 'agent:alice:longtask:task' }), undefined);
   assert.equal(f.started.length, 0);
 });
+
+
+test('MSSW retains the conversation target instead of the sender ID', async t => {
+  const f = setup(t);
+  const target = 'mssw:v1:7b7d';
+  const ctx = { ...f.ctx, sessionKey: 'agent:alice:mssw:direct:' + target };
+  await f.hooks.beforeAgentRun({ prompt: '查询', senderId: 'alice', channel: 'mssw' }, ctx);
+  const turn = f.hooks.getTurnContext(ctx);
+  assert.equal(turn.peerId, target);
+  assert.equal(turn.replyChannel, 'mssw');
+});

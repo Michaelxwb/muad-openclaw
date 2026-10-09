@@ -13,9 +13,11 @@ const CHANNEL_PLUGINS = {
   wecom: "wecom-openclaw-plugin",
   "openclaw-weixin": "openclaw-weixin",
   mattermost: "mattermost",
+  mssw: "mssw-channel",
 };
 
 const CHANNEL_RUNTIME_FIELDS = {
+  mssw: ["baseUrl", "botToken"],
   wecom: ["botId", "secret"],
   mattermost: [
     "botId",

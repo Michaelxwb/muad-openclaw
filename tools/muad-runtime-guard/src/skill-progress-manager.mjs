@@ -60,6 +60,7 @@ export class SkillProgressManager {
   // channelContext.sender.id 来自入站消息（非模型可控），是可信的收件人来源。
   applyTrustedSender(executionKey, senderId) {
     const state = this.#executions.get(String(executionKey ?? ""));
+    if (state?.route.channel === "mssw") return false;
     const peerId = text(senderId);
     if (!state || !validPeerId(peerId) || state.route.peerId === peerId) return false;
     state.route = { ...state.route, peerId };
@@ -192,7 +193,7 @@ function normalizeForeground(input) {
   const senderId = text(input.senderId);
   return { ok: true, context: {
     ...base.context, kind: "foreground", sessionKey: text(input.sessionKey),
-    route: { channel: match[2], peerId: validPeerId(senderId) ? senderId : match[3] },
+    route: { channel: match[2], peerId: match[2] === "mssw" ? match[3] : validPeerId(senderId) ? senderId : match[3] },
   } };
 }
 

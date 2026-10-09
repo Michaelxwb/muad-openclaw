@@ -69,6 +69,7 @@ COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plu
     /opt/muad/muad-runtime-guard/
 COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
 COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
+COPY tools/mssw-channel /opt/muad/mssw-channel
 COPY tools/shared /opt/muad/shared
 COPY skills /opt/openclaw-skills
 COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh

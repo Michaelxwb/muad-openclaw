@@ -330,3 +330,20 @@ async function waitFor(predicate, timeoutMs = 500) {
     await new Promise((resolve) => setTimeout(resolve, 1));
   }
 }
+
+
+test("MSSW progress retains its encoded conversation target", async () => {
+  const calls = [];
+  const manager = createManager({ notify: async input => { calls.push(input); return { ok: true }; } });
+  const target = "mssw:v1:7b7d";
+  const registration = manager.registerForeground({
+    runId: "mssw-run", agentId: "alice", senderId: "alice",
+    sessionKey: "agent:alice:mssw:direct:" + target, skillName: "report-skill", locale: "zh",
+  });
+  assert.equal(registration.registered, true);
+  assert.equal(manager.applyTrustedSender(registration.executionKey, "alice"), false);
+  manager.reportProgress(registration.executionKey, event());
+  await manager.finish(registration.executionKey);
+  assert.equal(calls[0].peerId, target);
+  manager.close();
+});

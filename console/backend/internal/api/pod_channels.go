@@ -46,8 +46,8 @@ func (s *Server) normalizeChannelSettings(
 		if !driver.IsValidChannel(channel) {
 			return nil, nil, newInputValidationError(
 				errcode.InvalidChannelConfig,
-				fmt.Sprintf("channels 包含不支持的通道 %q，目前支持 wecom、wechat、mattermost", channel),
-				fmt.Sprintf("channels contains unsupported channel %q; supported channels are wecom, wechat, mattermost", channel),
+				fmt.Sprintf("channels 包含不支持的通道 %q，目前支持 wecom、wechat、mattermost、mssw", channel),
+				fmt.Sprintf("channels contains unsupported channel %q; supported channels are wecom, wechat, mattermost, mssw", channel),
 			)
 		}
 		if _, exists := seen[channel]; exists {
@@ -137,6 +137,16 @@ func validateChannelInput(channel string, config channelConfigInput) error {
 			"channelConfigs.wechat must not include botId, secret, baseUrl, or botToken",
 		)
 	}
+	if channel == driver.ChannelMSSW {
+		if config.BaseURL == "" || config.BotToken == "" {
+			return newInputValidationError(errcode.InvalidChannelConfig,
+				"MSSW 通道需要后端地址和服务令牌", "MSSW requires a backend URL and service token")
+		}
+		if err := validateHTTPURL(config.BaseURL); err != nil {
+			return err
+		}
+	}
+
 	if channel == driver.ChannelMattermost {
 		if config.BaseURL == "" || config.BotToken == "" {
 			return newInputValidationError(

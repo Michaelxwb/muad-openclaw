@@ -3,7 +3,7 @@ import path from "node:path";
 import { createSkillPreflightReadHooks } from "./skill-preflight-context.mjs";
 
 const TURN_CONTEXT_TTL_MS = 10 * 60_000;
-const KNOWN_CHANNEL_TYPES = new Set(["wecom", "mattermost", "openclaw-weixin", "wechat", "weixin"]);
+const KNOWN_CHANNEL_TYPES = new Set(["wecom", "mattermost", "openclaw-weixin", "wechat", "weixin", "mssw"]);
 
 export function createLongTaskHooks({ getConfig, ledger, turns = new Map(), now = () => Date.now(), log = () => {} }) {
   const currentConfig = () => (typeof getConfig === "function" ? getConfig() : getConfig) ?? {};
@@ -207,6 +207,9 @@ function resolveAgentId(event, ctx) {
 function resolvePeerId(event, ctx) {
   const session = parseSessionKey(textValue(ctx?.sessionKey) || textValue(event?.sessionKey));
   const replyChannel = resolveReplyChannel(event, ctx);
+  if (replyChannel === "mssw") {
+    return /^mssw:v1:[0-9a-f]+$/u.test(session.peerId) ? session.peerId : "";
+  }
   const candidates = [
     event?.replyToId,
     event?.replyTo,
@@ -261,7 +264,7 @@ function parseSessionKey(value) {
   const normalized = sessionKey.startsWith("session:") ? sessionKey.slice("session:".length) : sessionKey;
   const parts = normalized.split(":");
   if (parts[0] !== "agent" || !parts[1]) return { agentId: "", rest: "", peerId: "" };
-  return { agentId: parts[1], rest: parts.slice(2).join(":"), peerId: parts.at(-1) ?? "" };
+  return { agentId: parts[1], rest: parts.slice(2).join(":"), peerId: parts[2] === "mssw" ? parts.slice(4).join(":") : parts.at(-1) ?? "" };
 }
 
 function normalizePeerId(value, replyChannel) {

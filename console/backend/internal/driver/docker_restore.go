@@ -64,7 +64,7 @@ func (d *DockerDriver) inspectedStartupConfig(podID string, inspection dockerSta
 		}
 		mounted := false
 		for _, mount := range inspection.Mounts {
-			if mount.Destination == RuntimeConfigDirectory && mount.Source == d.runtimeConfigDir(podID) && !mount.RW {
+			if mount.Destination == RuntimeConfigDirectory && sameDockerHostPath(mount.Source, d.runtimeConfigDir(podID)) && !mount.RW {
 				mounted = true
 			}
 		}
@@ -177,4 +177,9 @@ func (d *DockerDriver) RestoreRuntime(ctx context.Context, spec PodSpec, snapsho
 	snapshot.ImageTag = spec.ImageTag
 	snapshot.Environment = env
 	return d.saveStartupRecovery(spec.PodID, snapshot)
+}
+
+// Docker Desktop exposes shared macOS paths below /host_mnt.
+func sameDockerHostPath(actual, expected string) bool {
+	return actual == expected || (strings.HasPrefix(actual, "/host_mnt/") && strings.TrimPrefix(actual, "/host_mnt") == expected)
 }
