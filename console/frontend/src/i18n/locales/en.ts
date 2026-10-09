@@ -120,6 +120,7 @@ const en: AppLocale = {
     inProgress: "In progress",
   },
   channel: {
+    mssw: "MSSW Platform",
     wecom: "WeCom",
     wechat: "WeChat",
     mattermost: "Mattermost",
@@ -128,12 +129,14 @@ const en: AppLocale = {
       wechat: "No credentials needed; tap Scan in the list after creating to authorize sign-in",
     },
     placeholder: {
+      msswUrl: "e.g. http://mssw-backend:8765",
       secret: "WeCom secret",
       botToken: "The full token shown when the token is created",
       keepSecret: "Leave empty to keep the current secret",
       mattermostUrl: "https://mattermost.example.com",
     },
     field: {
+      msswUrl: "MSSW backend URL",
       botId: "Bot ID",
       secret: "Secret",
       botToken: "Bot token",

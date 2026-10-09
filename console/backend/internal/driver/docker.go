@@ -35,9 +35,13 @@ const (
 
 // NewDockerDriver builds a DockerDriver.
 func NewDockerDriver(network, skillsDir string, runtime RuntimeOptions) *DockerDriver {
+	secretDir := strings.TrimSpace(os.Getenv("CONSOLE_DOCKER_SECRET_DIR"))
+	if secretDir == "" {
+		secretDir = defaultDockerSecretDir
+	}
 	return &DockerDriver{
 		network: network, skillsDir: skillsDir, runtime: runtime.withDefaults(),
-		secretDir: defaultDockerSecretDir,
+		secretDir: secretDir,
 	}
 }
 

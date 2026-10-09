@@ -123,6 +123,7 @@ test("startup context replaces channel credentials and unloads disabled channel 
   assert.deepEqual(
     output.plugins.load.paths,
     [
+      "/opt/muad/mssw-channel",
       "/opt/openclaw-plugins/mattermost",
       "/opt/openclaw-plugins/openclaw-weixin",
       "/opt/openclaw-plugins/wecom-openclaw-plugin",

@@ -116,6 +116,7 @@ const zh = {
     inProgress: "执行中",
   },
   channel: {
+    mssw: "MSSW 平台直连",
     wecom: "企业微信",
     wechat: "微信",
     mattermost: "Mattermost",
@@ -124,12 +125,14 @@ const zh = {
       wechat: "无需凭证，创建后在列表点击「扫码」授权登录",
     },
     placeholder: {
+      msswUrl: "例如 http://mssw-backend:8765",
       secret: "企业微信 secret",
       botToken: "创建令牌时显示的完整 token",
       keepSecret: "留空则保持当前 secret",
       mattermostUrl: "https://mattermost.example.com",
     },
     field: {
+      msswUrl: "MSSW 后端地址",
       botId: "Bot ID",
       secret: "Secret",
       botToken: "机器人令牌",

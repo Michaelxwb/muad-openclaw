@@ -4,6 +4,7 @@ export const MUAD_RUNTIME_PLUGIN_SPECS = Object.freeze([
 ]);
 
 export const IMAGE_CHANNEL_PLUGIN_SPECS = Object.freeze([
+  plugin("mssw-channel", "/opt/muad/mssw-channel", "index.mjs"),
   plugin("wecom-openclaw-plugin", "/opt/openclaw-plugins/wecom-openclaw-plugin", "dist/index.js"),
   plugin("openclaw-weixin", "/opt/openclaw-plugins/openclaw-weixin", "dist/index.js"),
   plugin("mattermost", "/opt/openclaw-plugins/mattermost", "dist/index.js"),

@@ -1,4 +1,4 @@
-export type Channel = "wecom" | "wechat" | "mattermost";
+export type Channel = "wecom" | "wechat" | "mattermost" | "mssw";
 
 export type PodState =
   "creating" | "running" | "stopped" | "unhealthy" | "error" | "deleting" | "missing";

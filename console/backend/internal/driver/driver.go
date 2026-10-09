@@ -209,6 +209,7 @@ const (
 	ChannelWeCom      = "wecom"      // 企业微信
 	ChannelWeChat     = "wechat"     // 微信
 	ChannelMattermost = "mattermost" // Mattermost
+	ChannelMSSW       = "mssw"       // MSSW 平台直连
 	DefaultChannel    = ChannelWeCom
 )
 
@@ -217,6 +218,7 @@ const (
 	OpenClawChannelWeCom      = "wecom"
 	OpenClawChannelWeChat     = "openclaw-weixin"
 	OpenClawChannelMattermost = "mattermost"
+	OpenClawChannelMSSW       = "mssw"
 )
 
 // Non-bundled plugin IDs installed in the worker image.
@@ -224,6 +226,7 @@ const (
 	PluginWeCom      = "wecom-openclaw-plugin"
 	PluginWeChat     = "openclaw-weixin"
 	PluginMattermost = "mattermost"
+	PluginMSSW       = "mssw-channel"
 )
 
 // validChannels is the set of accepted channel identifiers.
@@ -231,6 +234,7 @@ var validChannels = map[string]bool{
 	ChannelWeCom:      true,
 	ChannelWeChat:     true,
 	ChannelMattermost: true,
+	ChannelMSSW:       true,
 }
 
 // IsValidChannel reports whether c is a supported channel.
@@ -243,6 +247,7 @@ var pluginForChannel = map[string]string{
 	ChannelWeCom:      PluginWeCom,
 	ChannelWeChat:     PluginWeChat,
 	ChannelMattermost: PluginMattermost,
+	ChannelMSSW:       PluginMSSW,
 }
 
 // OpenClawChannelFor maps muad's external channel id to openclaw's channel id.
@@ -254,6 +259,8 @@ func OpenClawChannelFor(channel string) string {
 		return OpenClawChannelWeChat
 	case ChannelMattermost:
 		return OpenClawChannelMattermost
+	case ChannelMSSW:
+		return OpenClawChannelMSSW
 	default:
 		return channel
 	}

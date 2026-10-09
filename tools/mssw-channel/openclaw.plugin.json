@@ -1,0 +1,20 @@
+{
+  "id": "mssw-channel",
+  "name": "MSSW 平台直连",
+  "description": "Native MSSW ingress, durable reply delivery and conversation routing.",
+  "channels": ["mssw"],
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "channelConfigs": {
+    "mssw": {
+      "label": "MSSW 平台直连",
+      "schema": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    }
+  }
+}

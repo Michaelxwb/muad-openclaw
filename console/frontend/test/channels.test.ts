@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { channelMeta } from "../src/channels";
+import { CHANNEL_DEFS, channelMeta } from "../src/channels";
 
 describe("channelMeta", () => {
   it("returns known channel metadata", () => {
@@ -23,4 +23,12 @@ describe("channelMeta", () => {
     expect(meta.label).toBe("未知通道");
     expect(meta.icon).toBe("?");
   });
+});
+
+it("MSSW exposes its backend URL and service token as required credentials", () => {
+  const def = CHANNEL_DEFS.find((item) => item.id === "mssw");
+  expect(def?.credentialFields.map((field) => [field.key, field.required])).toEqual([
+    ["baseUrl", true],
+    ["botToken", true],
+  ]);
 });

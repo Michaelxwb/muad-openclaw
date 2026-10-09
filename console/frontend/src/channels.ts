@@ -80,6 +80,27 @@ export const CHANNEL_DEFS: ChannelDef[] = [
       },
     ],
   },
+  {
+    id: "mssw",
+    label: "channel.mssw",
+    icon: "MSSW",
+    credentialFields: [
+      {
+        key: "baseUrl",
+        label: "channel.field.msswUrl",
+        type: "text",
+        required: true,
+        placeholder: "channel.placeholder.msswUrl",
+      },
+      {
+        key: "botToken",
+        label: "channel.field.botToken",
+        type: "password",
+        required: true,
+        placeholder: "channel.placeholder.botToken",
+      },
+    ],
+  },
 ];
 
 // --- Legacy helpers — kept for migration compatibility ---
