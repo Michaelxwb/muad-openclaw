@@ -334,6 +334,12 @@ registerLongTaskControlE2E(
       await runLocalCommand(fault.restoreCommand);
     }
     await eventually(async () => Boolean(await scenario.task(task.taskId)), 60_000);
+    // 冻结期间能力探测会暂时标记"不可取消"：恢复后等 Console 重新确认能力再收尾，
+    // 否则收尾取消会被 41003（unsupported）拒绝（与 E-05 同因）。
+    await eventually(async () => {
+      const data = await scenario.listTasks({ podId: scenario.environment.podId, page: 1, pageSize: 50, q: task.taskId });
+      return (data.items ?? []).some(item => item.taskId === task.taskId && item.canCancel === true);
+    }, 180_000);
     await cancelAndSettle(scenario, task.taskId);
   },
 );

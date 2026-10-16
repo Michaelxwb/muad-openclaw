@@ -2,7 +2,7 @@
 
 - **Source**: long-task-control.backend.design.md, long-task-control.frontend.design.md（均为 v1.0，已批准）
 - **Created**: 2026-10-15
-- **Updated**: 2026-10-15
+- **Updated**: 2026-10-16
 - **Plan Authorization**: 用户明确指示“定稿，开始拆分任务”；本文件落实该任务拆解指令。各任务初始为 draft，未记录代码或测试已完成。
 
 ## Proposal
@@ -58,16 +58,16 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 命令 | 工作目录 | 超时 |
 |---|---|---|---|---|---|---|---|---|
-| S-01 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 真实模型、Worker 工具、队列及脚本哨兵：唯一适用且完整输入，无额外确认，恰好执行一次 | TASK-024 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS01","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"] | . | 3600 |
-| S-02 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 真实模型及 IM 入站：多个合理候选先列差异，选择前零执行，用户选择后仅执行所选 Skill | TASK-024 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS02","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"] | . | 3600 |
-| S-03 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 使用本次截图等价请求，真实读取其他长任务文档后访问 company_label 测试接口；无关 Skill 零任务、零业务、零进度；不得接触真实客户业务 | TASK-024 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS03","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"] | . | 3600 |
+| S-01 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 真实模型、Worker 工具、队列及脚本哨兵：唯一适用且完整输入，无额外确认，恰好执行一次 | TASK-024 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS01","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"] | . | 3600 |
+| S-02 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 真实模型及 IM 入站：多个合理候选先列差异，选择前零执行，用户选择后仅执行所选 Skill | TASK-024 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS02","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"] | . | 3600 |
+| S-03 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 使用本次截图等价请求，真实读取其他长任务文档后访问 company_label 测试接口；无关 Skill 零任务、零业务、零进度；不得接触真实客户业务 | TASK-024 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS03","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"] | . | 3600 |
 | S-04 | long-task-control.backend.design.md#2.5 验收条件 | integration | 真实 guard、临时 Skill 文件和 Shell 解析：默认工作目录相对路径、cd、包装器、find -exec 被拒绝；普通 read/cat/ls/grep 查看通过；全程零提交 | TASK-004 | verified | ["node","--test","--test-name-pattern","LongTaskControlS04","tools/muad-runtime-guard/test/long-task-hooks.test.mjs"] | . | 120 |
-| S-05 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 浏览器 → Console API → 真实 Worker 队列 → SQLite → 列表：取消排队任务后哨兵从未执行，最终 cancelled，排队数减少 | TASK-025 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS05","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
-| S-06 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 真实固定版本 Gateway、模型、长时间脚本及其子进程、收件观察器：终止后进程停止、业务计数不再增长、资源清理、无新结果投递，列表 cancelled | TASK-025 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS06","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
-| S-07 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 同用户另一个任务及另一用户真实任务继续运行；主会话可用；终止任务清理后执行槽恰好释放一次，下一项按原顺序启动 | TASK-025 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS07","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
-| S-08 | long-task-control.backend.design.md#2.5 验收条件 | E2E | Console 配置 → DTO/schema → generation 事务 → Worker health：能力与指导成功应用；故障健康检查触发回滚，无模型绑定或 Skill 分层改变 | TASK-026 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS08","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"] | . | 3600 |
+| S-05 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 浏览器 → Console API → 真实 Worker 队列 → SQLite → 列表：取消排队任务后哨兵从未执行，最终 cancelled，排队数减少 | TASK-025 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS05","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
+| S-06 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 真实固定版本 Gateway、模型、长时间脚本及其子进程、收件观察器：终止后进程停止、业务计数不再增长、资源清理、无新结果投递，列表 cancelled | TASK-025 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS06","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
+| S-07 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 同用户另一个任务及另一用户真实任务继续运行；主会话可用；终止任务清理后执行槽恰好释放一次，下一项按原顺序启动 | TASK-025 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS07","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
+| S-08 | long-task-control.backend.design.md#2.5 验收条件 | E2E | Console 配置 → DTO/schema → generation 事务 → Worker health：能力与指导成功应用；故障健康检查触发回滚，无模型绑定或 Skill 分层改变 | TASK-026 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS08","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"] | . | 3600 |
 | S-09 | long-task-control.frontend.design.md#2.4 验收条件 | integration | Testing Library、真实 hook 与 API 封装、HTTP 边界 stub：仅可取消 queued/running 有操作，cancelling 不可重复点击；succeeded/failed/cancelled 无重试按钮；关闭终止确认框不发请求 | TASK-021 | verified | ["npx","vitest","run","test/LongTasks.test.tsx","-t","LongTaskControlS09"] | console/frontend | 120 |
-| S-10 | long-task-control.frontend.design.md#2.4 验收条件 | E2E | 真实浏览器、后端及 Worker：中英文切换后按钮/状态/错误/确认文案正确，按取消状态筛选、分页和正常后台轮询不闪表格 spinner | TASK-026 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS10","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"] | . | 3600 |
+| S-10 | long-task-control.frontend.design.md#2.4 验收条件 | E2E | 真实浏览器、后端及 Worker：中英文切换后按钮/状态/错误/确认文案正确，按取消状态筛选、分页和正常后台轮询不闪表格 spinner | TASK-026 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS10","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"] | . | 3600 |
 | S-11 | long-task-control.backend.design.md#3.2 架构设计 | integration | 固定 OpenClaw 2026.7.1 已安装分发物的公开接口、真实可销毁本地子进程和归属句柄：记录取消方法/返回语义，拒绝将 CLI 退出当运行停止；不依赖 2026.7.2 或修改上游 | TASK-001 | verified | ["env","MUAD_LONG_TASK_CONTRACT=1","node","--test","--test-name-pattern","LongTaskControlS11","tools/muad-runtime-guard/test/long-task-cancel-contract.test.mjs"] | . | 120 |
 | S-12 | long-task-control.backend.design.md#3.2 架构设计 | integration | 真实包清单/锁文件、隔离依赖安装及镜像复制布局：所选 Shell AST 解析器在 Worker 插件实际路径可加载，缺失依赖明确失败 | TASK-002 | verified | ["node","--test","--test-name-pattern","LongTaskControlS12","tools/muad-runtime-guard/test/long-task-command-package.test.mjs"] | . | 120 |
 | S-13 | long-task-control.backend.design.md#3.2 架构设计 | integration | 真实 Shell AST 解析模块、临时脚本与 symlink：分辨管道/包装器/子命令及 find/awk 执行行为，普通查看不误判，解析不确定返回显式结果 | TASK-003 | verified | ["node","--test","--test-name-pattern","LongTaskControlS13","tools/muad-runtime-guard/test/long-task-command-policy.test.mjs"] | . | 120 |
@@ -86,16 +86,16 @@
 | S-26 | long-task-control.frontend.design.md#3.3 组件设计 | integration | Testing Library 真实 Semi 操作组件：queued 直接取消、running 确认后回调、关闭确认不提交；取消中禁用，所有终态无重试，键盘标签可达 | TASK-020 | verified | ["npx","vitest","run","test/LongTaskActions.test.tsx","-t","LongTaskControlS26"] | console/frontend | 120 |
 | S-27 | long-task-control.frontend.design.md#3.8 可访问性与国际化 | integration | 真实 i18n 资源与 Semi 上下文：中英文状态/操作/确认/错误键成对存在，语言切换更新列及按钮，无页面重复 ConfigProvider | TASK-022 | verified | ["npx","vitest","run","test/LongTasks.i18n.test.tsx","-t","LongTaskControlS27"] | console/frontend | 120 |
 | S-28 | long-task-control.backend.design.md#2.5 验收条件 | integration | 真实隔离 fixture 生成器、执行哨兵、结果观察断言及本地文件：伪造/缺失进程停止、缺失真实收件证据或未就绪环境不能验收成功；测试数据不含真实凭证 | TASK-023 | verified | ["node","--test","--test-name-pattern","LongTaskControlS28","tools/muad-runtime-guard/test/long-task-control-e2e-fixtures.test.mjs"] | . | 120 |
-| E-01 | long-task-control.backend.design.md#2.5 验收条件 | E2E | Worker 不可达、RPC 超时或停止未确认：显示失败或终止中并保留诊断；不得伪报 cancelled、提前释放槽位或启动重试任务 | TASK-025 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE01","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
-| E-02 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 旧 Worker、缺失取消能力或重启后运行归属不可证明：返回明确不支持/无法确认，保留实际可知状态，不按历史 PID 盲杀 | TASK-025 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE02","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
+| E-01 | long-task-control.backend.design.md#2.5 验收条件 | E2E | Worker 不可达、RPC 超时或停止未确认：显示失败或终止中并保留诊断；不得伪报 cancelled、提前释放槽位或启动重试任务 | TASK-025 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE01","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
+| E-02 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 旧 Worker、缺失取消能力或重启后运行归属不可证明：返回明确不支持/无法确认，保留实际可知状态，不按历史 PID 盲杀 | TASK-025 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE02","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
 | E-03 | long-task-control.backend.design.md#2.5 验收条件 | integration | httptest → 真实 Store → fake Driver：未登录、伪造 Pod/Agent、越界 taskId、畸形请求均被拒绝且零运行调用；错误包络和审计脱敏正确 | TASK-017 | verified | ["go","test","./test","-run","TestLongTaskControlE03","-count=1"] | console/backend | 120 |
 | E-04 | long-task-control.backend.design.md#2.5 验收条件 | integration | 真实 manager 和状态文件：取消记录写入失败时明确报错，不接受取消成功；隔离清理错误，不改写为成功 | TASK-010 | verified | ["node","--test","--test-name-pattern","LongTaskControlE04","tools/muad-runtime-guard/test/long-task-cancel-manager.test.mjs"] | . | 120 |
-| E-05 | long-task-control.frontend.design.md#2.4 验收条件 | E2E | 实际 Worker 不可达或不支持取消，UI 显示明确原因而非成功；刷新不覆盖较新操作状态；权限失效回登录；不出现任务重试按钮 | TASK-026 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE05","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"] | . | 3600 |
-| E-06 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 真实模型与隔离 Worker：无适用 Skill、仅缺用户必填输入、显式名称与本轮请求不一致时说明或追问；未完成预检前零入队、零业务脚本执行 | TASK-024 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE06","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"] | . | 3600 |
+| E-05 | long-task-control.frontend.design.md#2.4 验收条件 | E2E | 实际 Worker 不可达或不支持取消，UI 显示明确原因而非成功；刷新不覆盖较新操作状态；权限失效回登录；不出现任务重试按钮 | TASK-026 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE05","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"] | . | 3600 |
+| E-06 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 真实模型与隔离 Worker：无适用 Skill、仅缺用户必填输入、显式名称与本轮请求不一致时说明或追问；未完成预检前零入队、零业务脚本执行 | TASK-024 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE06","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"] | . | 3600 |
 | B-01 | long-task-control.backend.design.md#2.5 验收条件 | integration | 可控执行屏障与真实 manager：queued 转 running、spawn 尚未发生及自然完成时请求取消，验证线性化规则和无双终态 | TASK-010 | verified | ["node","--test","--test-name-pattern","LongTaskControlB01","tools/muad-runtime-guard/test/long-task-cancel-manager.test.mjs"] | . | 120 |
 | B-02 | long-task-control.backend.design.md#2.5 验收条件 | integration | 相同取消请求多次、RPC 返回丢失后重复请求：无重复终止、无重复终态通知、无重复释放资源 | TASK-010 | verified | ["node","--test","--test-name-pattern","LongTaskControlB02","tools/muad-runtime-guard/test/long-task-cancel-manager.test.mjs"] | . | 120 |
 | B-03 | long-task-control.backend.design.md#2.5 验收条件 | integration | 真实 SQLite：重复及乱序快照、旧四状态记录、迁移重复执行，已取消/已完成状态不回退、不被自动改 failed，历史记录和索引保留 | TASK-008 | verified | ["go","test","./test","-run","TestLongTaskControlB03","-count=1"] | console/backend | 120 |
-| B-04 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 固定版本 Worker 重启时存在任务：取消墓碑保留，取消中的任务不恢复执行；孤儿运行只有归属证明且确认停止后才 cancelled | TASK-025 | e2e_deferred | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlB04","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
+| B-04 | long-task-control.backend.design.md#2.5 验收条件 | E2E | 固定版本 Worker 重启时存在任务：取消墓碑保留，取消中的任务不恢复执行；孤儿运行只有归属证明且确认停止后才 cancelled | TASK-025 | verified | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlB04","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"] | . | 3600 |
 
 ## 规则与风险追溯
 
@@ -160,7 +160,7 @@
 
 ## TASK-001: 核对固定版本取消接口与运行归属契约
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: 
 - **Source**: long-task-control.backend.design.md#3.2 架构设计, long-task-control.backend.design.md#5. 风险与依赖
@@ -199,7 +199,7 @@ GREEN: 已执行 Contract 原命令，1 pass / 0 skip。断言位于 `long-task-
 - [2026-10-15] completed (done)
 ## TASK-002: 打包 Shell 解析依赖与 Worker 加载校验
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: 
 - **Source**: long-task-control.backend.design.md#3.2 架构设计, long-task-control.backend.design.md#3.5 质量实现方案
@@ -238,7 +238,7 @@ S-12 GREEN: 已执行 Contract 原命令，1 pass / 0 fail。实现：`package.j
 - [2026-10-15] completed (done)
 ## TASK-003: 实现 Shell AST 命令与路径判定
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: long-task-control.backend.design.md#3.2 架构设计
@@ -277,7 +277,7 @@ S-13 GREEN: 已执行 Contract 原命令，4 pass / 0 fail。实现 `long-task-c
 - [2026-10-15] completed (done)
 ## TASK-004: 接入可信工作目录与前台零提交拦截
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-003
 - **Source**: long-task-control.backend.design.md#3.2 架构设计
@@ -316,7 +316,7 @@ S-04 GREEN: 已执行 Contract 原命令，1 pass / 0 fail；全量 guard 套件
 - [2026-10-15] completed (done)
 ## TASK-005: 收紧触发指导与可信显式名称检查
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: 
 - **Source**: long-task-control.backend.design.md#3.2 架构设计, long-task-control.backend.design.md#3.5 质量实现方案
@@ -366,7 +366,7 @@ RULE-runtime-skill-layering-001 局部证据: 同 Agent 同名 grant 被 DTO sch
 - [2026-10-15] completed (done)
 ## TASK-006: 扩充运行时取消状态与可靠持久化
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: long-task-control.backend.design.md#3.3 数据设计
@@ -408,7 +408,7 @@ RULE-runtime-secret-file-mode-001 局部证据: 状态 JSONL 与其临时收敛�
 - [2026-10-15] completed (done)
 ## TASK-007: 迁移 SQLite 任务状态约束与取消字段
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: 
 - **Source**: long-task-control.backend.design.md#3.3 数据设计, long-task-control.backend.design.md#4. 部署与运维
@@ -453,7 +453,7 @@ RULE-backend-no-select-star-001 局部证据: 本需求 repo/迁移 SQL 全部�
 - [2026-10-15] completed (done)
 ## TASK-008: 实现任务镜像修订与终态合并
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-007
 - **Source**: long-task-control.backend.design.md#3.3 数据设计
@@ -492,7 +492,7 @@ B-03 GREEN: 已执行 Contract 原命令，2 pass / 0 fail；`go build ./...`、
 - [2026-10-15] completed (done)
 ## TASK-009: 实现目标运行取消适配器
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001, TASK-006
 - **Source**: long-task-control.backend.design.md#3.2 架构设计
@@ -532,7 +532,7 @@ S-17 GREEN: 已执行 Contract 原命令，5 pass / 0 fail；guard 全量 256 pa
 - [2026-10-15] completed (done)
 ## TASK-010: 实现队列取消与完成竞争仲裁
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-006, TASK-009
 - **Source**: long-task-control.backend.design.md#3.2 架构设计, long-task-control.backend.design.md#3.3 数据设计
@@ -575,7 +575,7 @@ GREEN: 已执行三个 Contract 原命令，3 pass / 0 fail；guard 全量 259 p
 - [2026-10-15] completed (done)
 ## TASK-011: 取消期间关闭新工具并精确清理租约
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-010
 - **Source**: long-task-control.backend.design.md#3.2 架构设计, long-task-control.backend.design.md#3.5 质量实现方案
@@ -617,7 +617,7 @@ RULE-runtime-skill-001 局部证据: 门禁拒绝取消中任务的新调用、�
 - [2026-10-15] completed (done)
 ## TASK-012: 停止取消任务的新进度与待发队列
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-010
 - **Source**: long-task-control.backend.design.md#3.2 架构设计
@@ -656,7 +656,7 @@ S-19 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；guard 全量 264 pa
 - [2026-10-15] completed (done)
 ## TASK-013: 将长任务结果投递纳入取消仲裁
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-009, TASK-010, TASK-012
 - **Source**: long-task-control.backend.design.md#3.2 架构设计, long-task-control.backend.design.md#3.5 质量实现方案
@@ -697,7 +697,7 @@ S-20 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；guard 全量 267 pa
 - [2026-10-15] completed (done)
 ## TASK-014: 注册内部取消 RPC 与 Worker 能力
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-010, TASK-011, TASK-013
 - **Source**: long-task-control.backend.design.md#3.4 接口设计, long-task-control.backend.design.md#3.5 质量实现方案
@@ -745,7 +745,7 @@ RULE 局部证据说明: 资产均在 tools/ + bin/（不引入上游副本）�
 - [2026-10-15] completed (done)
 ## TASK-015: 封装 Go Gateway 取消调用与超时
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: long-task-control.backend.design.md#3.4 接口设计, long-task-control.backend.design.md#3.5 质量实现方案
@@ -790,7 +790,7 @@ S-22 GREEN: 已执行 Contract 原命令，全部分组通过；`go build ./...`
 - [2026-10-15] completed (done)
 ## TASK-016: 定义取消 API 错误码与响应契约
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: 
 - **Source**: long-task-control.backend.design.md#3.4 接口设计, long-task-control.backend.design.md#3.5 质量实现方案
@@ -834,7 +834,7 @@ S-23 GREEN: 已执行 Contract 原命令，全部通过；`go build ./...`、`go
 - [2026-10-15] completed (done)
 ## TASK-017: 接入控制台取消路由、鉴权与操作审计
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-008, TASK-015, TASK-016
 - **Source**: long-task-control.backend.design.md#3.4 接口设计, long-task-control.backend.design.md#3.3 数据设计
@@ -878,7 +878,7 @@ RULE 局部证据说明: 操作审计只写任务归属与稳定状态/错误码
 - [2026-10-15] completed (done)
 ## TASK-018: 扩充快照、列表状态和按 Pod 能力缓存
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-008, TASK-014, TASK-017
 - **Source**: long-task-control.backend.design.md#3.4 接口设计, long-task-control.backend.design.md#3.5 质量实现方案
@@ -922,7 +922,7 @@ RULE 局部证据说明: 两个独占模型用户的任务/池按归属隔离（
 - [2026-10-15] completed (done)
 ## TASK-019: 补齐前端取消 DTO 与统一 API 客户端
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-016
 - **Source**: long-task-control.frontend.design.md#3.4 组件接口契约, long-task-control.frontend.design.md#3.5 状态与数据流
@@ -969,7 +969,7 @@ RULE 局部证据说明: HTTP 只经统一客户端且取消 DTO 单点定义/re
 - [2026-10-15] completed (done)
 ## TASK-020: 实现任务行取消与终止操作组件
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-019, TASK-022
 - **Source**: long-task-control.frontend.design.md#3.3 组件设计, long-task-control.frontend.design.md#3.4 组件接口契约, long-task-control.frontend.design.md#3.6 UI 状态
@@ -1013,7 +1013,7 @@ RULE 局部证据说明: 组件纯展示、typed props、稳定 taskId、CSS Mod
 - [2026-10-15] completed (done)
 ## TASK-021: 接入动作 Hook、列表刷新与状态竞争
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-018, TASK-019, TASK-020
 - **Source**: long-task-control.frontend.design.md#3.5 状态与数据流, long-task-control.frontend.design.md#3.6 UI 状态
@@ -1055,7 +1055,7 @@ S-09 GREEN: 已执行 Contract 原命令，4 pass / 0 fail；`npx tsc --noEmit`�
 - [2026-10-15] completed (done)
 ## TASK-022: 补齐中英文取消状态与交互文案
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: 
 - **Source**: long-task-control.frontend.design.md#3.8 可访问性与国际化, long-task-control.frontend.design.md#3.6 UI 状态
@@ -1097,7 +1097,7 @@ RULE 局部证据说明: 新 key 全部经 t() 使用（页面既有 `t(\\`statu
 - [2026-10-15] completed (done)
 ## TASK-023: 准备隔离长任务与真实 E2E 观察工具
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001, TASK-005, TASK-014, TASK-018, TASK-021
 - **Source**: long-task-control.backend.design.md#2.5 验收条件, long-task-control.frontend.design.md#2.4 验收条件
@@ -1139,7 +1139,7 @@ S-28 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；guard 全量 `npm t
 - [2026-10-15] completed (done)
 ## TASK-024: 登记真实模型触发策略与截图场景回归
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-004, TASK-005, TASK-023
 - **Source**: long-task-control.backend.design.md#2.5 验收条件, long-task-control.backend.design.md#3.2 架构设计
@@ -1164,10 +1164,10 @@ S-28 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；guard 全量 `npm t
 
 | 场景/规则 | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |---|---|---|---|---|---|---|
-| S-01 | E2E | 真实模型、Worker 工具、队列及脚本哨兵：唯一适用且完整输入，无额外确认，恰好执行一次 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs / LongTaskControlS01 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS01","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| S-02 | E2E | 真实模型及 IM 入站：多个合理候选先列差异，选择前零执行，用户选择后仅执行所选 Skill | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs / LongTaskControlS02 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS02","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| S-03 | E2E | 使用本次截图等价请求，真实读取其他长任务文档后访问 company_label 测试接口；无关 Skill 零任务、零业务、零进度；不得接触真实客户业务 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs / LongTaskControlS03 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS03","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| E-06 | E2E | 真实模型与隔离 Worker：无适用 Skill、仅缺用户必填输入、显式名称与本轮请求不一致时说明或追问；未完成预检前零入队、零业务脚本执行 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs / LongTaskControlE06 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE06","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"]（cwd=.） | e2e_deferred |
+| S-01 | E2E | 真实模型、Worker 工具、队列及脚本哨兵：唯一适用且完整输入，无额外确认，恰好执行一次 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs / LongTaskControlS01 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS01","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"]（cwd=.） | verified |
+| S-02 | E2E | 真实模型及 IM 入站：多个合理候选先列差异，选择前零执行，用户选择后仅执行所选 Skill | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs / LongTaskControlS02 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS02","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"]（cwd=.） | verified |
+| S-03 | E2E | 使用本次截图等价请求，真实读取其他长任务文档后访问 company_label 测试接口；无关 Skill 零任务、零业务、零进度；不得接触真实客户业务 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs / LongTaskControlS03 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS03","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"]（cwd=.） | verified |
+| E-06 | E2E | 真实模型与隔离 Worker：无适用 Skill、仅缺用户必填输入、显式名称与本轮请求不一致时说明或追问；未完成预检前零入队、零业务脚本执行 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs / LongTaskControlE06 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE06","tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"]（cwd=.） | verified |
 
 ### Acceptance Evidence
 
@@ -1178,6 +1178,22 @@ TASK-024 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 - S-02: e2e_deferred — automated command e2e_deferred; run_id=33b2a8e697924b9d95648b7981ffbf17 (confirmed_by: runner)
 - S-03: e2e_deferred — automated command e2e_deferred; run_id=33b2a8e697924b9d95648b7981ffbf17 (confirmed_by: runner)
 - E-06: e2e_deferred — automated command e2e_deferred; run_id=33b2a8e697924b9d95648b7981ffbf17 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- S-02: failed — automated command failed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- S-03: failed — automated command failed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- S-03: failed — automated command failed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
 
 ### Log
 
@@ -1188,7 +1204,7 @@ TASK-024 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 - [2026-10-15] completed (done)
 ## TASK-025: 登记真实排队取消、运行终止与隔离恢复回归
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-011, TASK-012, TASK-013, TASK-023
 - **Source**: long-task-control.backend.design.md#2.5 验收条件, long-task-control.backend.design.md#4. 部署与运维
@@ -1215,12 +1231,12 @@ TASK-024 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 
 | 场景/规则 | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |---|---|---|---|---|---|---|
-| S-05 | E2E | 浏览器 → Console API → 真实 Worker 队列 → SQLite → 列表：取消排队任务后哨兵从未执行，最终 cancelled，排队数减少 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlS05 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS05","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| S-06 | E2E | 真实固定版本 Gateway、模型、长时间脚本及其子进程、收件观察器：终止后进程停止、业务计数不再增长、资源清理、无新结果投递，列表 cancelled | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlS06 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS06","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| S-07 | E2E | 同用户另一个任务及另一用户真实任务继续运行；主会话可用；终止任务清理后执行槽恰好释放一次，下一项按原顺序启动 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlS07 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS07","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| E-01 | E2E | Worker 不可达、RPC 超时或停止未确认：显示失败或终止中并保留诊断；不得伪报 cancelled、提前释放槽位或启动重试任务 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlE01 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE01","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| E-02 | E2E | 旧 Worker、缺失取消能力或重启后运行归属不可证明：返回明确不支持/无法确认，保留实际可知状态，不按历史 PID 盲杀 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlE02 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE02","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| B-04 | E2E | 固定版本 Worker 重启时存在任务：取消墓碑保留，取消中的任务不恢复执行；孤儿运行只有归属证明且确认停止后才 cancelled | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlB04 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlB04","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | e2e_deferred |
+| S-05 | E2E | 浏览器 → Console API → 真实 Worker 队列 → SQLite → 列表：取消排队任务后哨兵从未执行，最终 cancelled，排队数减少 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlS05 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS05","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | verified |
+| S-06 | E2E | 真实固定版本 Gateway、模型、长时间脚本及其子进程、收件观察器：终止后进程停止、业务计数不再增长、资源清理、无新结果投递，列表 cancelled | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlS06 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS06","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | verified |
+| S-07 | E2E | 同用户另一个任务及另一用户真实任务继续运行；主会话可用；终止任务清理后执行槽恰好释放一次，下一项按原顺序启动 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlS07 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS07","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | verified |
+| E-01 | E2E | Worker 不可达、RPC 超时或停止未确认：显示失败或终止中并保留诊断；不得伪报 cancelled、提前释放槽位或启动重试任务 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlE01 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE01","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | verified |
+| E-02 | E2E | 旧 Worker、缺失取消能力或重启后运行归属不可证明：返回明确不支持/无法确认，保留实际可知状态，不按历史 PID 盲杀 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlE02 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE02","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | verified |
+| B-04 | E2E | 固定版本 Worker 重启时存在任务：取消墓碑保留，取消中的任务不恢复执行；孤儿运行只有归属证明且确认停止后才 cancelled | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs / LongTaskControlB04 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlB04","tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"]（cwd=.） | verified |
 
 ### Acceptance Evidence
 
@@ -1233,6 +1249,30 @@ TASK-025 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 - E-01: e2e_deferred — automated command e2e_deferred; run_id=e107d000dce641a7b72c602231c9b5c6 (confirmed_by: runner)
 - E-02: e2e_deferred — automated command e2e_deferred; run_id=e107d000dce641a7b72c602231c9b5c6 (confirmed_by: runner)
 - B-04: e2e_deferred — automated command e2e_deferred; run_id=e107d000dce641a7b72c602231c9b5c6 (confirmed_by: runner)
+- S-05: failed — automated command failed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- S-06: failed — automated command failed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- S-07: failed — automated command failed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- E-01: failed — automated command failed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- S-06: failed — automated command failed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- S-07: failed — automated command failed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
 
 ### Log
 
@@ -1243,7 +1283,7 @@ TASK-025 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 - [2026-10-15] completed (done)
 ## TASK-026: 登记真实浏览器、配置应用与兼容发布验收
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-005, TASK-018, TASK-021, TASK-022, TASK-023
 - **Source**: long-task-control.frontend.design.md#2.4 验收条件, long-task-control.backend.design.md#4. 部署与运维
@@ -1267,9 +1307,9 @@ TASK-025 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 
 | 场景/规则 | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |---|---|---|---|---|---|---|
-| S-08 | E2E | Console 配置 → DTO/schema → generation 事务 → Worker health：能力与指导成功应用；故障健康检查触发回滚，无模型绑定或 Skill 分层改变 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs / LongTaskControlS08 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS08","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| S-10 | E2E | 真实浏览器、后端及 Worker：中英文切换后按钮/状态/错误/确认文案正确，按取消状态筛选、分页和正常后台轮询不闪表格 spinner | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs / LongTaskControlS10 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS10","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"]（cwd=.） | e2e_deferred |
-| E-05 | E2E | 实际 Worker 不可达或不支持取消，UI 显示明确原因而非成功；刷新不覆盖较新操作状态；权限失效回登录；不出现任务重试按钮 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs / LongTaskControlE05 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE05","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"]（cwd=.） | e2e_deferred |
+| S-08 | E2E | Console 配置 → DTO/schema → generation 事务 → Worker health：能力与指导成功应用；故障健康检查触发回滚，无模型绑定或 Skill 分层改变 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs / LongTaskControlS08 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS08","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"]（cwd=.） | verified |
+| S-10 | E2E | 真实浏览器、后端及 Worker：中英文切换后按钮/状态/错误/确认文案正确，按取消状态筛选、分页和正常后台轮询不闪表格 spinner | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs / LongTaskControlS10 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlS10","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"]（cwd=.） | verified |
+| E-05 | E2E | 实际 Worker 不可达或不支持取消，UI 显示明确原因而非成功；刷新不覆盖较新操作状态；权限失效回登录；不出现任务重试按钮 | 按来源场景完整断言；拒绝零匹配/假停止/错误终态 | tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs / LongTaskControlE05 | ["env","MUAD_LONG_TASK_CONTROL_E2E=1","node","--test","--test-name-pattern","LongTaskControlE05","tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"]（cwd=.） | verified |
 
 ### Acceptance Evidence
 
@@ -1280,6 +1320,18 @@ TASK-026 为 E2E 登记项，编码期记录用例/命令与环境契约与浏�
 - S-08: e2e_deferred — automated command e2e_deferred; run_id=7c462a0e13bd4263a80ae21504a9f3b5 (confirmed_by: runner)
 - S-10: e2e_deferred — automated command e2e_deferred; run_id=7c462a0e13bd4263a80ae21504a9f3b5 (confirmed_by: runner)
 - E-05: e2e_deferred — automated command e2e_deferred; run_id=7c462a0e13bd4263a80ae21504a9f3b5 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- S-10: failed — automated command failed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=ed3b0f4953474fe381a7e650b9e11a28 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- S-10: failed — automated command failed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=121cd427343c4fe1ac0da8edbefa78c8 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- S-10: failed — automated command failed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- E-05: failed — automated command failed; run_id=6b22d826fb8a43588f7ece2d9d559c62 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
 
 ### Log
 
