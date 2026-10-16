@@ -86,7 +86,15 @@ export function createLongTaskRunController({
     } catch (error) {
       return finish({ accepted: false, reason: error?.deadline === true ? "native_timeout" : "native_error" });
     }
-    if (!sessionId) return finish({ accepted: false, reason: "run_not_active" });
+    if (!sessionId) {
+      // 运行句柄已不在（会话已结束或在首次取消中被中止）：不复用"杀 CLI"路径，
+      // 只以本 Worker 持有的子进程真实退出为停止事实；已退出则确认（残余分离
+      // 进程由 manager 的归属回收兜底），仍在运行则保持未确认，不伪造停止。
+      if (processExited(current.child)) {
+        return finish({ accepted: true, confirmed: true, reason: "", processExited: true });
+      }
+      return finish({ accepted: false, confirmed: false, reason: "run_not_active", processExited: false });
+    }
     if (!abortAndDrain) return finish({ accepted: false, reason: "native_unavailable", sessionId });
     let drain = null;
     try {

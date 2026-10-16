@@ -129,6 +129,21 @@ test('LongTaskControlS17 treats a missing active handle as indeterminate, not st
   assert.equal(alive(child.pid), true);
 });
 
+test('LongTaskControlS17 missing handle with an exited owned process confirms the real stop', async t => {
+  // 首次取消中止会话后，运行退出触发对账；此时句柄已不在，必须以自有子进程的
+  // 真实退出作为停止事实（不得复用杀 CLI 路径，也不得伪造停止）。
+  const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30)'], { detached: true, stdio: 'ignore' });
+  t.after(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already gone */ } });
+  await once(child, 'exit');
+  const stub = nativeStub({ resolve: () => undefined, drain: () => { throw new Error('must not drain'); } });
+  const controller = createLongTaskRunController({ native: stub.native, workerId: 'worker-a' });
+  const binding = controller.bind({ taskId: 'task-6b', agentId: 'alice' }, { child, detached: true });
+  const result = await controller.cancel(binding);
+  assert.deepEqual([result.accepted, result.confirmed, result.reason], [true, true, '']);
+  assert.equal(result.processExited, true);
+  assert.equal(stub.calls.abort.length, 0);
+});
+
 test('LongTaskControlS17 uses an already-exited owned process as auxiliary evidence', async t => {
   const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30)'], { detached: true, stdio: 'ignore' });
   t.after(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already gone */ } });
