@@ -189,6 +189,8 @@
 S-11 RED: N/A，现有 2026.7.1 公开能力契约补测，不修改生产行为，未伪造失败。
 GREEN: 已执行 Contract 原命令，1 pass / 0 skip。断言位于 `long-task-cancel-contract.test.mjs` 的 verifyContract：公开导出/固定版本、真实 detached 子进程 close、错误句柄、其他会话隔离、drain 超时、未知运行。fixture 在无网络临时容器中创建并清理自己的进程及 SDK 注册表句柄；来源及能力边界见 `tools/muad-runtime-guard/long-task-cancel-contract.md`，未运行或宣称真实模型 E2E。
 - S-11: verified — automated command passed; run_id=5156c349860b451191a5d8fe47b867aa (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -228,6 +230,8 @@ GREEN: 已执行 Contract 原命令，1 pass / 0 skip。断言位于 `long-task-
 S-12 RED: 已执行 Contract 原命令；`manifest.dependencies['bash-parser']` 为 undefined，缺失锁定的生产解析依赖，测试失败（1 fail）。测试断言覆盖隔离插件目录中依赖缺失的明确失败、真实 npm ci 和解析加载及 Docker 复制路径。
 S-12 GREEN: 已执行 Contract 原命令，1 pass / 0 fail。实现：`package.json` 固定 `bash-parser@0.5.0`（MIT，Node v24.17.0 实测加载），`package-lock.json` 锁定全部传递依赖；Dockerfile 新增 `runtime-guard-deps` 阶段（`npm ci --omit=dev --ignore-scripts`）并复制 `node_modules` 至 `/opt/muad/muad-runtime-guard/node_modules`。断言位于 `long-task-command-package.test.mjs`：manifest 锁定版本、隔离插件路径依赖缺失 MODULE_NOT_FOUND、真实 npm ci 后解析 `cd scripts && env X=1 python run.py` 为 Script 且 resolve 落在插件 node_modules、Dockerfile 两条复制布局正则。真实边界：真实包清单/锁文件、临时插件目录 npm ci、Dockerfile 文本；本次未构建镜像。RED 后修正测试内 Dockerfile 相对路径深度以到达布局断言。
 - S-12: verified — automated command passed; run_id=1840eaf4208a4bffa52cb8c796fb454c (confirmed_by: runner)
+- S-12: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-12: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -267,6 +271,8 @@ S-12 GREEN: 已执行 Contract 原命令，1 pass / 0 fail。实现：`package.j
 S-13 RED: 已执行 Contract 原命令；`../src/long-task-command-policy.mjs` 尚未实现（ERR_MODULE_NOT_FOUND），4 个行为用例全部失败（1 fail）。
 S-13 GREEN: 已执行 Contract 原命令，4 pass / 0 fail。实现 `long-task-command-policy.mjs`（真实 bash-parser AST）：`analyzeShellCommand` 解析 cd/管道/包装器/命令替换/`-c` 嵌套/find -exec/awk system/sed e 命令并做 realpath 解析；`matchAuthorizedExecution` 与授权根比对并返回显式依据（execution / indeterminate）。断言位置：`long-task-command-policy.test.mjs` 四个用例分别覆盖（1）cwd、cd、赋值前缀、env/timeout/sudo 包装、`bash -c` 嵌套、`$()`/反引号替换、subshell、if 体；（2）find -exec/-execdir/覆盖根范围/固定脚本/直接 `{}`、awk system、sed e、stdin 重定向、cat|bash；（3）symlink 双向 realpath 与普通查看（ls/cat/grep/find/awk/sed/管道/`-c`）不误判；（4）解析不确定（未闭合引号）与动态/缺失操作数的显式结果。真实边界：真实 bash-parser、临时脚本与真实 symlink、真实 fs.realpath。RED 后按契约补充 find -exec 固定脚本与直接 `{}` 两组断言，重新执行仍全绿。
 - S-13: verified — automated command passed; run_id=20fa5421324847a2839279d04f203d9d (confirmed_by: runner)
+- S-13: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-13: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -306,6 +312,8 @@ S-13 GREEN: 已执行 Contract 原命令，4 pass / 0 fail。实现 `long-task-c
 S-04 RED: 已执行 Contract 原命令；默认工作目录相对脚本 `python3 skills/report/scripts/run.py` 未被拦截（beforeToolCall 返回 undefined），复现设计描述的漏拦缺陷（1 fail）。
 S-04 GREEN: 已执行 Contract 原命令，1 pass / 0 fail；全量 guard 套件 247 pass / 0 fail / 1 既有 skip。实现：`long-task-hooks.mjs` 改用 `long-task-command-policy.mjs` 分析命令，`findGrantForCommand` 使用可信默认 CWD（新增 `resolveDefaultCwd` 注入，`index.mjs` 接 `resolveAgentWorkspaceDir`）并按原生语义处理显式 workdir（相对值落在默认 CWD 上）；删除旧正则拆段实现，读取路径不变。断言位置：`long-task-hooks.test.mjs` 的 LongTaskControlS04 用例：相对脚本、cd 变体、env/timeout 包装、find -exec、`bash -c` 嵌套均拒绝且零入队/零提交；ls/cat/grep/find（无 exec）/缺失目标/仅提及均放行；既有 PreflightE03 用例保持通过。真实边界：真实 guard、临时 Skill 文件与 workspace、真实 Shell AST 解析。
 - S-04: verified — automated command passed; run_id=30fd5d5e57b1404bae7433e8d57f7ae7 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -355,6 +363,8 @@ RULE-runtime-validate-before-write-001 局部证据: renderOpenClawConfig/readRu
 RULE-runtime-skill-layering-001 局部证据: 同 Agent 同名 grant 被 DTO schema 拒绝（不静默双绑/覆盖）；system 精确 name/rootPath 透传，public/private 仅目录 grant 且不进入可执行 longTask 授权；system protected 与 allow_override 的完整语义在控制面并由 S-08 终验，原人工确认保留。
 跨任务修正: TASK-002 引入运行依赖后 `bin/runtime-image-self-check.mjs` 的 offline-safe 校验会拒绝镜像构建；本次回归修正为“构建期已打包 node_modules 时允许 dependencies，peerDependencies 仍拒绝”，并补 bin 单测用例；镜像内自检与运行验证留待 TASK-026 发布检查。
 - S-14: verified — automated command passed; run_id=8d7a500cb47e4d049100beb9abe01c55 (confirmed_by: runner)
+- S-14: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-14: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -398,6 +408,8 @@ S-15 RED（顺序说明：本任务实现先行，RED 以回放实现前状态�
 S-15 GREEN: 已执行 Contract 原命令，4 pass / 0 fail；guard 全量 251 pass / 0 fail / 1 既有 skip。实现：新增 `long-task-cancel-state.mjs`（状态词汇 queued/running/cancelling/cancelled/succeeded/failed；`normalizeTaskRecord` 兼容旧记录 revision=0/空取消字段；`nextTaskRecord` 每次落盘严格递增 revision；`requestTaskCancellation`/`confirmTaskCancellation` 校验合法迁移并写入 cancelRequestedAt/By 与 cancelledAt；`recoverInterruptedRecord` 保留 cancelling 墓碑；0600 JSONL 追加/原子收敛/容错读取，写失败显式抛错）；`long-task-manager.mjs` 接入模块：恢复时 queued/running→failed（revision 递增、孤儿诊断保留）、cancelling 墓碑保留且零重跑，快照新增 stateRevision/cancelRequestedAt/cancelRequestedBy/cancelledAt。断言位置：`long-task-cancel-state.test.mjs` 四个用例：revision 0→1→2→3 单调与取消请求可靠落盘、写失败显式且不伪造取消、旧记录恢复/墓碑/原子收敛、manager 连续两次重启零重跑。
 RULE-runtime-secret-file-mode-001 局部证据: 状态 JSONL 与其临时收敛文件均 stat 0600（三个用例断言）；服务 token 0400 断言仍在 bin/test/runtime-image-self-check.test.mjs 覆盖，本次未改动相关代码；原人工确认保留项目负责人。
 - S-15: verified — automated command passed; run_id=a31caac6e77d469e954f345cadedb9e1 (confirmed_by: runner)
+- S-15: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-15: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -443,6 +455,8 @@ S-16 GREEN: 已执行 Contract 原命令，2 pass / 0 fail；`go build ./...`、
 RULE-backend-database-001 局部证据: 迁移与全部长任务 SQL 在 repo 内执行，事务包裹、显式列复制、保数据与索引，失败回滚用例通过；Upsert/List/计数全部参数化，无拼接用户输入；原人工确认保留。
 RULE-backend-no-select-star-001 局部证据: 本需求 repo/迁移 SQL 全部显式列（longTaskColumns、INSERT/UPDATE 列表、COUNT/PRAGMA），无 SELECT *；code-stage regex 校验随 Done Gate 执行，实际数据侧由 TestLongTaskControlS16 断言。
 - S-16: verified — automated command passed; run_id=9d7ab88ae19f496bb3506115d2c4de1b (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -482,6 +496,8 @@ RULE-backend-no-select-star-001 局部证据: 本需求 repo/迁移 SQL 全部�
 B-03 RED: 已执行 Contract 原命令，2 用例失败：succeeded 终态被迟到的 running/queued 快照改写成 failed（terminal_reason=status_regressed: failed -> queued），复现设计缺陷。
 B-03 GREEN: 已执行 Contract 原命令，2 pass / 0 fail；`go build ./...`、`go vet ./internal/repo ./test` 通过；后端全量 `go test ./...` 12 包全绿。实现：`long_tasks.go` 新增 `mergeLongTaskTaskTx`/`observeLongTaskTaskTx`——终态（cancelled/succeeded/failed）永不被快照改写；低于现有 state_revision 的旧格式/乱序快照不采纳状态与计数；同 revision 幂等且仅在合法前进时整体更新；被跳过的快照只推进 last_seen_at，删除 status_regressed→failed 的旧转换。断言位置：`console/backend/test/long_tasks_test.go` 两个用例：完整取消链 queued→running→cancelling→cancelled、重复快照幂等、终态抗回退（含旧 rev=0 快照）、乱序快照不拉回、cancelling 单向门不回退且不伪 failed、旧 Worker rev0 合法前进兼容；旧四状态库两次 Open 后历史行/终态/三个索引保留。
 - B-03: verified — automated command passed; run_id=7918cb5480624fc2b62917b7f532a86a (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -522,6 +538,8 @@ S-17 RED: 已执行 Contract 原命令；`../src/long-task-run-controller.mjs` �
 S-17 GREEN: 已执行 Contract 原命令，5 pass / 0 fail；guard 全量 256 pass / 0 fail / 1 既有 skip。实现：新增 `long-task-run-controller.mjs`——`bind` 校验 taskId↔sessionKey↔owned child 严格对应，`cancel` 只接受本 controller 注册的 binding（未知/伪造/跨 Worker 一律 unknown_run 且零信号）；真实 sessionId 只在取消时由 `resolveActiveEmbeddedRunSessionId` 按可信 sessionKey 解析；`abortAndDrainAgentHarnessRun` 固定 `forceClear:false`，aborted（接受）≠ drained（原生清理）≠ 进程已退出；drained 后等真实退出，未退出只对本 Worker detached 进程组补发 SIGKILL 并继续等 exit，drain 超时/forceCleared/退出未确认均不确认停止；所有原生调用有界超时。`long-task-manager.mjs`：CLI 以 detached 自有进程组启动并 onChild 绑定句柄，`#finish` 释放绑定，watchdog 超时同时清自有进程组。断言位置：`long-task-run-controller.test.mjs` 五个用例（abort 接受≠退出、drained 后真实组退出确认含孙进程、未知/伪造/跨 Worker 拒绝零信号、无活跃句柄 run_not_active、既退出进程辅助证据）。真实边界：真实 detached 本地子进程与进程组、真实 signal/exit 事件；原生取消依赖按 TASK-001 契约以可控 stub 注入。
 接口接线要求（回到设计的缺口记录）: 生产取消（TASK-014）必须让 abort/drain 在持有该运行注册表的进程内调用；跨进程不一致时不得宣称停止，最终由 S-06/E-02/B-04 E2E 验证。
 - S-17: verified — automated command passed; run_id=c5d1c17f2a38457883d3cc1ac6605c5a (confirmed_by: runner)
+- S-17: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-17: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -565,6 +583,12 @@ GREEN: 已执行三个 Contract 原命令，3 pass / 0 fail；guard 全量 259 p
 - E-04: verified — automated command passed; run_id=93cd05783a6c48fa93b6cf6ba98730d9 (confirmed_by: runner)
 - B-01: verified — automated command passed; run_id=93cd05783a6c48fa93b6cf6ba98730d9 (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=93cd05783a6c48fa93b6cf6ba98730d9 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -607,6 +631,8 @@ S-18 RED: 已执行 Contract 原命令；`manager.taskStatus is not a function`�
 S-18 GREEN: 已执行 Contract 原命令，2 pass / 0 fail；guard 全量 261 pass / 0 fail / 1 既有 skip。实现：`long-task-hooks.mjs` 新增取消门禁——目标后台会话在 cancelling/cancelled 时拒绝新工具调用（只按 taskId 作用到该会话，主会话/同 Agent 其他任务/其他用户不受影响）；`long-task-manager.mjs` 新增 `taskStatus(taskId)` 与 `releaseTaskResources(task)` 注入：自然完成走一次性 fire-and-forget，取消收尾中 await 清理、失败保持 cancelling（cleanup_failed，占槽不放）；`skill-lease.mjs`/`browser-lease.mjs` 新增 `releaseSession(sessionKey)`（只释放本进程持有的该会话租约，未持有 no-op、可重复）；`index.mjs` 接线门禁与资源释放。断言位置：`long-task-cancel-resources.test.mjs` 两个用例：真实 shared Skill/browser 租约（临时队列目录）——取消未确认时槽位占用、下一任务未启动、零租约释放，门禁只拦目标任务；确认后仅目标任务租约各释放一次、下一任务启动、其他用户/其他任务租约保留、重复取消不重复释放；清理失败保持 cancelling 且不释放槽位与绑定。真实边界：真实 LongTaskManager、真实 shared-lease-queue 文件锁租约、真实 hooks 门禁；原生取消依赖可控 stub。
 RULE-runtime-skill-001 局部证据: 门禁拒绝取消中任务的新调用、取消中占槽、停止确认后仅释放目标任务资源且幂等；S-06/S-07 的真实停止与跨用户隔离仍由 E2E 终验；原人工确认保留。
 - S-18: verified — automated command passed; run_id=20deb92c594c4ddeb6905cef6b44e704 (confirmed_by: runner)
+- S-18: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-18: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -646,6 +672,8 @@ RULE-runtime-skill-001 局部证据: 门禁拒绝取消中任务的新调用、�
 S-19 RED: 已执行 Contract 原命令；`manager.cancel is not a function`（取消语义与接线未实现），1 fail；正常 finish 用例保持通过（既有行为）。
 S-19 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；guard 全量 264 pass / 0 fail / 1 既有 skip。实现：`skill-progress-manager.mjs` 新增 `cancel(executionKey)`——立即置非接受态并拒绝迟到事件（reason=execution_cancelled，区分正常 finish 的 execution_finished），真正发送前检查取消标记并丢弃未发起队列（dropped 计数 + 可解释日志），在途发送保留原 delivered/failed 语义；与 finish 共享同一终态结算（最多一次、互斥），不发送额外成功/失败消息（取消通知由投递仲裁统一处理）；取消时调用真实进度桥 `finish`（收尾 drain + 关闭定时器与事件文件）。`long-task-manager.mjs` 取消收尾改走 `#finishProgress(task, { cancelled: true })` → `progress.cancel`（无 cancel 的旧桩回退 finish）。断言位置：`long-task-cancel-progress.test.mjs` 三用例：真实进度桥文件事件投递后在途占位、取消后迟到拒绝、未发起队列全部丢弃、事件文件随取消清理、重复取消零新消息；接线用例断言任务取消路由到 progress.cancel 而非 finish；正常 finish 仍完整投递队列。真实边界：真实 SkillProgressManager、真实 ProgressEventBridge（文件+调度器）；通知发送边界以可控 notify 注入。
 - S-19: verified — automated command passed; run_id=6f99347376404ba2a8b3b8f8df0efad0 (confirmed_by: runner)
+- S-19: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-19: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -687,6 +715,8 @@ S-19 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；guard 全量 264 pa
 S-20 RED: 已执行 Contract 原命令；`../src/long-task-delivery.mjs` 尚未实现（ERR_MODULE_NOT_FOUND），1 fail；仲裁用例保持通过（既有行为）。
 S-20 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；guard 全量 267 pass / 0 fail（含真实 CLI fixture E2E），复跑一次稳定。真实 CLI 契约核对（本地 2026.7.1 镜像）：`openclaw agent --json`（无 --deliver）输出 `result.payloads[]`；`openclaw message send` 支持 `--media <path-or-url>`。实现：新增 `long-task-delivery.mjs`（`parseAgentResultPayloads` 解析 stdout envelope，容忍尾随行式诊断、envelope 非法显式失败；`createResultDelivery` 按段顺序投递文本与附件，media 兼容字符串/对象），`notify-user.mjs` 支持 `--media`（text/media 至少其一），`long-task-manager.mjs`：子 CLI 去掉 `--deliver`、stdout 改为持续消费 + 有界缓冲（超限按不可解析显式失败 fail loud，非零退出仍失败传播）、`spawnOpenClawTask` 返回解析结果、`#finish` 临界区唯一裁定投递许可（取消已提交/迟到完成一律不新发成功结果与通用失败通知；许可发起即视为在途）。契约同步更新：`long-task-manager.test.mjs` spawn 用例改为“stdout 必须被消费且无 --deliver”；进度 E2E fixture 改为新 CLI 契约（agent 输出 JSON、最终结果经 message send 投递一次）。断言位置：`long-task-cancel-delivery.test.mjs` 三用例：2MB 行式诊断 + 多段/附件结果解析、输出超限与空输出边界、取消后迟到成功/失败均不投递不外发、正常失败仍通知一次、段序与 --media 参数形状。真实边界：真实 spawn 管道流与真实 notifyUser CLI argv；通知投递以可控 stub 断言。
 - S-20: verified — automated command passed; run_id=cd2fda545309413a9e1226af5c038ae7 (confirmed_by: runner)
+- S-20: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-20: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -735,6 +765,8 @@ S-21 RED: 已执行 Contract 原命令；`../src/long-task-cancel-rpc.mjs` 尚�
 S-21 GREEN: 已执行 Contract 原命令，1 pass / 0 fail；guard 全量 268 pass / 0 fail / 1 既有 skip。实现：新增 `long-task-cancel-rpc.mjs`——`muad.long-task.cancel` 以 operator.write 注册；`validateCancelRequest` 仅接受 {taskId,requestedBy} 两个有界字符串（其余/超长/控制字符拒绝）；`loadNativeCancelRuntime` 经 `openclaw/plugin-sdk/agent-harness-runtime`（含 agent-core 进程树信号）动态加载，缺失/导出不全明确不可用；`createLongTaskCancelHandler` 在能力未就绪时拒绝且不触碰 manager，就绪时经真实 manager 执行并回传 outcome/status/revision；能力 holder 存于 `muad.longtask.cancel` 共享符号。`index.mjs` 装配：register 时安装 holder + 注册 RPC + 异步加载成功后创建运行控制器注入共享 manager（`attachRunController`）并上报能力，失败仅记警告。`health.mjs` 新增 `longTaskCancel {available, version}`，仅在能力可用且 manager 支持 cancelTask/taskStatus 时为 true；不改变 health.ok。manager 取消日志去除 requestedBy（仅 ID/状态/原因）。断言位置：`long-task-cancel-registration.test.mjs`——真实插件 register 全流程（host API spy）：RPC scope、工具目录仅 muad_submit_long_task、10 类畸形/伪造请求拒绝且零 manager 调用、链不完整 cancel_unavailable + health false、注入完整链后真实取消成功 + health {true,1}、重复取消原样回传、日志前缀且不含请求身份；`loadNativeCancelRuntime` 三态（可用/sdk 缺失/导出不全）。真实边界：真实插件 register/hooks/manager 与真实 health 输出；host API 与原生 importer 以契约桩注入。
 RULE 局部证据说明: 资产均在 tools/ + bin/（不引入上游副本）；RPC 无模型入口、畸形/越权身份拒绝、日志无凭证或请求原文；日志经注入 log→api.logger.warn 且带稳定 `[muad-runtime-guard][longtask-cancel]` 前缀。原人工确认保留；跨用户越权完整语义由 S-07/E-03 终验。
 - S-21: verified — automated command passed; run_id=2cd224b44fea422badc106d7a9c44589 (confirmed_by: runner)
+- S-21: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-21: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -780,6 +812,8 @@ S-22 RED: 已执行 Contract 原命令；`CancelLongTask`/`LongTaskCancelResult`
 S-22 GREEN: 已执行 Contract 原命令，全部分组通过；`go build ./...`、`go vet ./internal/gateway` 通过；后端全量 `go test ./...` 12 包全绿。实现：新增 `long_task_cancel.go`（`CancelLongTask` 经既有 Execer 单一 argv 调用 `openclaw gateway call muad.long-task.cancel --params <JSON> --json`，参数用结构体序列化保证确定顺序与精确还原；无 deadline 时自动包 bounds；包络映射为稳定结果/错误：cancel_requested/cancelled 结果、already_terminal 原样回传实际状态、not_found→ErrLongTaskCancelNotFound、cancel_unavailable/unknown method→ErrLongTaskCancelUnsupported、invalid_request→ErrLongTaskCancelRejected、传输失败/畸形响应→ErrLongTaskCancelRPC 且以 `%w: %w` 保留原错误链）；新增 `long_task_capabilities.go`（按 Pod 并发安全缓存 Update/Lookup/Invalidate，TTL 过期与未知一律 ok=false 保守不可取消，纯内存无逐行 RPC）。断言位置：`long_task_cancel_test.go` 四组——单 argv+JSON 精确载荷+有界 deadline+恶意输入不越界；九个包络/错误分支逐一映射且原错误链保留；caller deadline 可中断且诊断含 cause；能力缓存未知/已知不支持/过期/失效语义。真实边界：真实 Go 适配器与 fake Driver（Execer）断言 argv；context deadline 真实生效。
 补充说明: health probe 的字段合并与缓存 `Update` 接线属于 TASK-018（`probe.go` 在该任务 Owned Files）；本任务交付缓存与适配器 API，列表/探活集成由 TASK-018 的 TestLongTaskControlS24 断言。原人工确认保留。
 - S-22: verified — automated command passed; run_id=14c23b340c35477ab469858d97dce95f (confirmed_by: runner)
+- S-22: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-22: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -824,6 +858,8 @@ S-23 RED: 已执行 Contract 原命令；`errcode.NotFoundLongTask`/`ConflictLon
 S-23 GREEN: 已执行 Contract 原命令，全部通过；`go build ./...`、`go vet ./internal/api ./internal/errcode` 通过；后端全量 `go test ./...` 12 包全绿（含既有 TestErrorCatalogCoversAllCodes 与 TestHTTPEncoder 守卫）。实现：`errcode.go` 新增 410xx Long Task 取消块（404 不存在/409 归属冲突/503 旧 Worker 无能力/409 归属无法证明/503 RPC 不可用/500 取消记录持久化失败），全部登记进 AllCodes 且不复用旧子码；`errors.go` 同步 errorCatalog 中英文与 HTTP status，新增 `writeLongTaskCancelResult`（cancel_requested→202 且 status 保持 cancelling；cancelled/already_terminal→200 原样回传实际状态；统一走 writeJSON 成功包络 `{code:0,data:{taskId,outcome,status,stateRevision}}`）。断言位置：`long_task_cancel_contract_test.go`——六个子码的 HTTP status/双语/writeErr 端到端（含 requestId 包络）+ AllCodes 唯一性 + 旧通用码保留；202 仅 cancel_requested、终态绝不用 202、already_terminal 不改写终态。真实边界：真实 errcode/errorCatalog/writeJSON/writeErr 与 httptest。
 说明: 成功包络采用平台统一 writeJSON 形状 `{code:0,data}`（与全站既有响应一致，RULE-backend-http-envelope-001 为准）；设计示例中的 `message:"success"` 未额外引入以避免破坏既有包络契约。原人工确认保留。
 - S-23: verified — automated command passed; run_id=997b79d7a787435586ac024bbebbb01a (confirmed_by: runner)
+- S-23: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-23: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -868,6 +904,8 @@ E-03 RED（回放实现前状态：隐藏 handler 实现）：Contract 原命令
 E-03 GREEN: 已执行 Contract 原命令，通过；`go build ./...`、`go vet ./...` 通过；后端全量 `go test ./...` 12 包全绿；S-22 增补 state_unavailable 映射用例后重跑通过。实现：新增 `internal/api/long_task_cancel.go`（API-01 handler：严格空体/空对象契约，其余体 400；taskId 从可信 Store `GetLongTaskTask` 解析归属，终态任务本地回传 already_terminal 零运行调用；能力缓存未知/过期/不支持一律 503 不兜底；经 `gateway.CancelLongTask` + 15s 有界 ctx 调 Driver.Exec；worker 四类结果分别映射 404/409/503/500 稳定码；失败绝不改 Store）；`internal/api/routes.go` 注册 `POST /api/v1/long-tasks/{taskId}/cancel`（受保护路由，未登录 401）；`internal/api/server.go` 新增按 Pod 能力缓存字段 + `LongTaskCapabilities()` 供 probe 接线与测试；`internal/repo/long_tasks.go` 新增 `GetLongTaskTask`；`internal/audit` 新增 `long_task.cancel` 动作；`internal/gateway/long_task_cancel.go` 增补 `ErrLongTaskCancelStateFailed`。测试桩：fakeDriver 增补 cancel 可配置响应与调用记录；testEnv 保留 Server 指针（供能力种子与 TASK-018 接线）。断言位置：`console/backend/test/long_task_cancel_api_test.go`——401/400（含伪造 Pod/Agent 载荷）/404/能力未知/终态零运行调用与 Store 不被改写；202 仅 cancel_requested、argv 单载荷 JSON 且 requestedBy 来自登录身份、伪造字段不泄漏；旧 Worker/持久化失败/RPC 失败映射与 `token=[redacted]` 脱敏；审计条目 actor/target/状态齐全且不含伪造字段与凭证。真实边界：httptest → 真实 Store → fake Driver；审计经真实 auditlog.Record。
 RULE 局部证据说明: 操作审计只写任务归属与稳定状态/错误码（与 Skill telemetry 分离、无请求原文/命令/凭证）；fake Driver 错误中的 `token=super-secret-xyz` 在响应 detail 中被 RedactDiagnostic 脱敏（`token=[redacted]`），审计 payload 同样不含该值。原人工确认保留；更广的日志链路脱敏由既有 audit 测试与终验覆盖。
 - E-03: verified — automated command passed; run_id=77ec3f5636b141c3b8ade65c09e51a2a (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -912,6 +950,8 @@ S-24 RED（回放实现前状态：临时回退快照 DTO 新增字段）：Cont
 S-24 GREEN: 已执行 Contract 原命令，通过；`go build ./...`、`go vet ./...` 通过；后端全量 `go test ./...` 12 包全绿（含 S-22 复跑）。实现：`internal/api/long_tasks_push.go` 快照 DTO 增补 `stateRevision/cancelRequestedAt/cancelRequestedBy/cancelledAt` 并纳入映射（旧四状态快照无字段仍兼容）；`internal/api/long_tasks.go` 列表 DTO 增补取消字段与 `canCancel`/`cancelUnavailableReason`（状态×能力缓存判定：cancelling/终态→task_not_cancellable，未知能力→capability_unknown，已知不支持→worker_unsupported；查询纯内存无逐行 RPC），状态筛选扩到六状态；`internal/gateway/probe.go` 解析 guard health 的 `longTaskCancel{available,version}` 并合并进 Status；`internal/collector` 新增 `WithLongTaskCapabilities` 在每次探活后更新共享能力缓存；`cmd/console/main.go` 与 `internal/api/server.go`（`WithLongTaskCapabilities`）把同一缓存注入 collector（写）与 API（读）。断言位置：`console/backend/test/long_task_cancel_list_test.go`——新旧快照端点解码、cancelling/cancelled/running/succeeded 筛选、cancelling 占槽（池运行数=快照 active 含取消中）、字段还原（revision/cancelRequestedBy/cancelledAt）、能力未知不可取消与能力可用后 queued/running 可操作、按 humanUserId 隔离不串扰、列表零运行调用、双用户独占模型绑定保持且重复绑定被 `ErrLLMModelAlreadyBound` 拒绝。真实边界：真实内网端点严格解码 → 真实 Store → 真实列表/能力缓存。
 RULE 局部证据说明: 两个独占模型用户的任务/池按归属隔离（过滤器仅返回本用户），列表/取消不创建或改绑用户、不引入共享模型回退，已绑定模型冲突断言保留；apply/generation/health/rollback 路径未改动，S-08 终验覆盖。原人工确认保留。
 - S-24: verified — automated command passed; run_id=5dbc16bbf61143ebab4221dcf1763480 (confirmed_by: runner)
+- S-24: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-24: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -959,6 +999,8 @@ S-25 GREEN: 已执行 Contract 原命令，4 pass / 0 fail；`npx tsc --noEmit`�
 RULE 局部证据说明: HTTP 只经统一客户端且取消 DTO 单点定义/re-export（tsc 通过即证明调用方无副本类型需求）；401 语义与 202 解包符合原规则；原人工确认保留。
 - S-25: verified — automated command passed; run_id=8e2b388670094f1996df844707864933 (confirmed_by: runner)
 - S-25: verified — automated command passed; run_id=fe47158742fa49eeaf7545fe02886568 (confirmed_by: runner)
+- S-25: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-25: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -1003,6 +1045,8 @@ S-26 RED: 已执行 Contract 原命令；`Failed to resolve import "../src/pages
 S-26 GREEN: 已执行 Contract 原命令，5 pass / 0 fail；`npx tsc --noEmit`、`npx eslint src/ test/`、`npx prettier --check` 通过；前端全量 `npx vitest run` 22 文件 180 用例全绿。实现：新增 `pages/long-tasks/LongTaskActions.tsx`（CMP-01：typed props `task/busy/onCancel`，纯展示无 HTTP；queued 直接上抛；running 经真实 Semi Popconfirm（标题+含 Skill 与任务 ID 的说明+已完成外部操作不撤回）确认后上抛；cancelling 禁用展示；终态（含 failed/cancelled）返回 null 无任何取消/重试入口；能力缺失 disabled + Tooltip 可读原因映射 capability_unknown/worker_unsupported/task_not_cancellable）；`LongTasks.module.css` 增补 `.taskAction/.taskActionWrap`（主题 token、CSS Modules）。断言位置：`test/LongTaskActions.test.tsx` 五用例——queued 直取消携带稳定 taskId；running 确认文案与确认后回调；关闭确认 aria-expanded 回落且零请求；cancelling 禁用与三种终态零按钮零“重试”文案；能力缺失禁用 + hover 显示原因 + busy 禁用。真实边界：Testing Library 渲染真实 Semi Button/Popconfirm/Tooltip；组件不做网络（用例仅以 onCancel spy 断言事件上抛）。
 RULE 局部证据说明: 组件纯展示、typed props、稳定 taskId、CSS Modules 与事件上抛；沿用 Semi 组件且不重复挂 ConfigProvider（全局壳在 main.tsx，S-27 用例同时断言页面无 per-page Provider）。原人工确认保留；S-09/E-05 终验覆盖交互集成与真实浏览器。
 - S-26: verified — automated command passed; run_id=830b762033074260a9516e13e0d6f905 (confirmed_by: runner)
+- S-26: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-26: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -1045,6 +1089,8 @@ S-09 RED: 已执行 Contract 原命令；`Unable to find role="button" and name 
 S-09 GREEN: 已执行 Contract 原命令，4 pass / 0 fail；`npx tsc --noEmit`、`npx eslint src/ test/`、`npx prettier --check` 通过；前端全量 `npx vitest run` 24 文件 184 用例全绿（含既有 LongTasks 5 用例与 S-27 复跑）。实现：新增 `pages/long-tasks/useLongTaskActions.ts`（busy 集合按 taskId 在途去重、try/catch/finally、useMountedRef 卸载保护、202→“已接受”文案不冒充已取消、already_terminal→实际状态、失败→可读错误，成败各一次列表刷新且不自动重提）；`LongTasks.tsx` 接入 hook（反馈合并进 FeedbackBanner）、表格末列渲染 LongTaskActions（稳定 taskId、busy 对应行）、状态筛选补 cancelling/cancelled 两项；cancelling 行占槽使 pools 持续活跃 → 既有 5s 后台轮询继续收敛且不置全表 loading（沿用 refresh(true) 语义）。断言位置：`test/LongTasks.test.tsx` 新增 4 用例——仅 queued/running 有操作且 cancelling 禁用、三种终态零按钮零“重试”；排队取消单次请求 + 202 已接受文案 + 二次刷新；关闭确认零请求、失败可见错误且无重试；旧列表响应（乱序先发后到）不得把已取消回退为运行中（dataRequestRef 序号丢弃）。
 附带修正: S-27 用例因新增操作列出现第二处“终止中/Terminating”（状态标签+禁用按钮，均为正确展示）改为多元素断言，复跑通过。原人工确认保留；终验 npm run check 覆盖。
 - S-09: verified — automated command passed; run_id=e55f7c6fad0b44d6b6bd8034ae6ece37 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -1087,6 +1133,8 @@ S-27 RED: 已执行 Contract 原命令；3 用例全部失败（`Unable to find 
 S-27 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；`npx tsc --noEmit`、`npx eslint src/ test/`、`npx prettier --check` 通过；前端全量 `npx vitest run` 22 文件 175 用例全绿。实现：`i18n/locales/zh.ts` 与 `en.ts` 成对新增 `status.cancelling`（终止中/Terminating）、`status.cancelled`（已取消/Cancelled）及 `longTasks` 取消交互键——`cancelQueued`、`terminate`、`terminateTitle`、`terminateContent`（含 {{skill}}/{{taskId}} 与“已完成外部操作不撤回”说明）、`cancelRequested`、`cancelledNotice`、`cancelUnavailableUnknown/Unsupported/Status`（能力与状态原因，不硬编码）、`cancelFailed`。断言位置：`test/LongTasks.i18n.test.tsx`——必需新键中英成对且 `status`/`longTasks` 子树键集完全一致；真实 LongTasks 页面渲染 cancelling/cancelled 行后语言切换 `终止中/已取消 ↔ Terminating/Cancelled`、按钮 `全部 ↔ All` 随 t 更新；页面源码无 ConfigProvider、main.tsx 保留全局壳。真实边界：真实 i18n 资源与切换、真实页面 + Semi 组件；api 仅 mock HTTP 边界。
 RULE 局部证据说明: 新 key 全部经 t() 使用（页面既有 `t(\\`status.${status}\\`)` 与列/按钮定义），无硬编码状态/确认/原因文案；语言切换实时更新既有列与按钮。原人工确认保留；更广的 S-10 浏览器终验覆盖。
 - S-27: verified — automated command passed; run_id=ae80f12abbb34b7997f24cde39ddf874 (confirmed_by: runner)
+- S-27: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-27: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -1129,6 +1177,8 @@ S-28 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；guard 全量 `npm t
 断言位置：`test/long-task-control-e2e-fixtures.test.mjs` 三用例——①真实运行哨兵：生成文件权限 0600/0700、内容凭据扫描（`api_key/password/Bearer` 模式零匹配）、`node --check` 语法、真实 spawn 后 pid/childPid 落盘、进程存活时 `assertProcessStopped` 失败（伪造停止不通过）、SIGKILL 进程组后通过、删除 pid 文件报 `missing real process stop evidence`、未执行技能零行、已执行技能计数不再增长；②收件证据必须真实且恰好一次（缺失/重复/他人 peer 全部失败）；③未就绪环境与缺 case 明确失败（缺 env 变量、文件缺失、isolated=false、缺 case、相对路径、非隔离用户、workerExec 覆盖为空时本地执行）。
 真实边界：真实子进程（spawn + 子进程 + SIGKILL 进程组）、真实毫秒级业务计数文件、真实本地文件权限；不 mock 上述任一边界。原 manual/人工确认保留；真实模型/Worker/浏览器终验覆盖见 doc 登记的三个 E2E 文件（由 TASK-024/025/026 登记）。
 - S-28: verified — automated command passed; run_id=a71c2b83a2364a64a6f0a6e643fc5dfa (confirmed_by: runner)
+- S-28: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-28: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -1154,10 +1204,10 @@ S-28 GREEN: 已执行 Contract 原命令，3 pass / 0 fail；guard 全量 `npm t
 ### Checklist
 - [x] 分别准备唯一匹配、多候选、截图等价参考+company_label 请求和无适用/缺参/显式名称不一致场景。
 - [x] 断言真实 read/tool 调用、队列、脚本哨兵和目标接口调用，避免仅用回复文字判断；不得 fake 模型、跳过读取断言或放宽零执行要求。
-- [ ] [S-01][E2E] 编写并登记独立用例：真实模型、Worker 工具、队列及脚本哨兵：唯一适用且完整输入，无额外确认，恰好执行一次；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [S-02][E2E] 编写并登记独立用例：真实模型及 IM 入站：多个合理候选先列差异，选择前零执行，用户选择后仅执行所选 Skill；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [S-03][E2E] 编写并登记独立用例：使用本次截图等价请求，真实读取其他长任务文档后访问 company_label 测试接口；无关 Skill 零任务、零业务、零进度；不得接触真实客户业务；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [E-06][E2E] 编写并登记独立用例：真实模型与隔离 Worker：无适用 Skill、仅缺用户必填输入、显式名称与本轮请求不一致时说明或追问；未完成预检前零入队、零业务脚本执行；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [S-01][E2E] 编写并登记独立用例：真实模型、Worker 工具、队列及脚本哨兵：唯一适用且完整输入，无额外确认，恰好执行一次；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [S-02][E2E] 编写并登记独立用例：真实模型及 IM 入站：多个合理候选先列差异，选择前零执行，用户选择后仅执行所选 Skill；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [S-03][E2E] 编写并登记独立用例：使用本次截图等价请求，真实读取其他长任务文档后访问 company_label 测试接口；无关 Skill 零任务、零业务、零进度；不得接触真实客户业务；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [E-06][E2E] 编写并登记独立用例：真实模型与隔离 Worker：无适用 Skill、仅缺用户必填输入、显式名称与本轮请求不一致时说明或追问；未完成预检前零入队、零业务脚本执行；编码期不执行 RED/GREEN，统一留给 verify-e2e。
 - [x] 登记本任务具体测试/断言位置、命令结果及真实组件证据；保持无关任务和其他用户运行不受影响。
 
 ### Acceptance Contract
@@ -1194,6 +1244,30 @@ TASK-024 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 - S-02: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
 - S-03: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
 - E-06: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- S-03: failed — automated command failed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-03: failed — automated command failed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -1219,12 +1293,12 @@ TASK-024 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 ### Checklist
 - [x] 覆盖排队取消、运行脚本/子进程停止、同 Agent/跨用户继续运行、Worker/RPC 故障、旧 Worker/归属未知及取消中重启。
 - [x] 同时观察真实浏览器操作、固定版本 Gateway/模型、进程、业务计数、租约、Store 和实际收件端；已在途消息按设计边界记录，不弱化停止及无新投递断言。
-- [ ] [S-05][E2E] 编写并登记独立用例：浏览器 → Console API → 真实 Worker 队列 → SQLite → 列表：取消排队任务后哨兵从未执行，最终 cancelled，排队数减少；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [S-06][E2E] 编写并登记独立用例：真实固定版本 Gateway、模型、长时间脚本及其子进程、收件观察器：终止后进程停止、业务计数不再增长、资源清理、无新结果投递，列表 cancelled；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [S-07][E2E] 编写并登记独立用例：同用户另一个任务及另一用户真实任务继续运行；主会话可用；终止任务清理后执行槽恰好释放一次，下一项按原顺序启动；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [E-01][E2E] 编写并登记独立用例：Worker 不可达、RPC 超时或停止未确认：显示失败或终止中并保留诊断；不得伪报 cancelled、提前释放槽位或启动重试任务；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [E-02][E2E] 编写并登记独立用例：旧 Worker、缺失取消能力或重启后运行归属不可证明：返回明确不支持/无法确认，保留实际可知状态，不按历史 PID 盲杀；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [B-04][E2E] 编写并登记独立用例：固定版本 Worker 重启时存在任务：取消墓碑保留，取消中的任务不恢复执行；孤儿运行只有归属证明且确认停止后才 cancelled；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [S-05][E2E] 编写并登记独立用例：浏览器 → Console API → 真实 Worker 队列 → SQLite → 列表：取消排队任务后哨兵从未执行，最终 cancelled，排队数减少；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [S-06][E2E] 编写并登记独立用例：真实固定版本 Gateway、模型、长时间脚本及其子进程、收件观察器：终止后进程停止、业务计数不再增长、资源清理、无新结果投递，列表 cancelled；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [S-07][E2E] 编写并登记独立用例：同用户另一个任务及另一用户真实任务继续运行；主会话可用；终止任务清理后执行槽恰好释放一次，下一项按原顺序启动；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [E-01][E2E] 编写并登记独立用例：Worker 不可达、RPC 超时或停止未确认：显示失败或终止中并保留诊断；不得伪报 cancelled、提前释放槽位或启动重试任务；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [E-02][E2E] 编写并登记独立用例：旧 Worker、缺失取消能力或重启后运行归属不可证明：返回明确不支持/无法确认，保留实际可知状态，不按历史 PID 盲杀；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [B-04][E2E] 编写并登记独立用例：固定版本 Worker 重启时存在任务：取消墓碑保留，取消中的任务不恢复执行；孤儿运行只有归属证明且确认停止后才 cancelled；编码期不执行 RED/GREEN，统一留给 verify-e2e。
 - [x] 登记本任务具体测试/断言位置、命令结果及真实组件证据；保持无关任务和其他用户运行不受影响。
 
 ### Acceptance Contract
@@ -1273,6 +1347,42 @@ TASK-025 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 - E-01: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
 - B-04: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- S-07: failed — automated command failed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- S-07: failed — automated command failed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-07: failed — automated command failed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
@@ -1298,9 +1408,9 @@ TASK-025 为 E2E 登记项，编码期记录用例/命令与环境契约，不�
 ### Checklist
 - [x] 浏览器验证中英切换、筛选分页、取消中刷新、故障提示、401 回登录和无重试入口；使用实际后端/Worker，不以 HTTP stub 冒充 E2E。
 - [x] 实际 DTO/generation/apply/health 故障回滚确认取消能力与指导，保留模型绑定和 Skill 分层；形成明确终验与兼容检查步骤，本任务编码期仅登记不发布。
-- [ ] [S-08][E2E] 编写并登记独立用例：Console 配置 → DTO/schema → generation 事务 → Worker health：能力与指导成功应用；故障健康检查触发回滚，无模型绑定或 Skill 分层改变；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [S-10][E2E] 编写并登记独立用例：真实浏览器、后端及 Worker：中英文切换后按钮/状态/错误/确认文案正确，按取消状态筛选、分页和正常后台轮询不闪表格 spinner；编码期不执行 RED/GREEN，统一留给 verify-e2e。
-- [ ] [E-05][E2E] 编写并登记独立用例：实际 Worker 不可达或不支持取消，UI 显示明确原因而非成功；刷新不覆盖较新操作状态；权限失效回登录；不出现任务重试按钮；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [S-08][E2E] 编写并登记独立用例：Console 配置 → DTO/schema → generation 事务 → Worker health：能力与指导成功应用；故障健康检查触发回滚，无模型绑定或 Skill 分层改变；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [S-10][E2E] 编写并登记独立用例：真实浏览器、后端及 Worker：中英文切换后按钮/状态/错误/确认文案正确，按取消状态筛选、分页和正常后台轮询不闪表格 spinner；编码期不执行 RED/GREEN，统一留给 verify-e2e。
+- [x] [E-05][E2E] 编写并登记独立用例：实际 Worker 不可达或不支持取消，UI 显示明确原因而非成功；刷新不覆盖较新操作状态；权限失效回登录；不出现任务重试按钮；编码期不执行 RED/GREEN，统一留给 verify-e2e。
 - [x] 登记本任务具体测试/断言位置、命令结果及真实组件证据；保持无关任务和其他用户运行不受影响。
 
 ### Acceptance Contract
@@ -1332,6 +1442,24 @@ TASK-026 为 E2E 登记项，编码期记录用例/命令与环境契约与浏�
 - S-08: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
 - S-10: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
 - E-05: verified — automated command passed; run_id=f7acf2576e5f49298a48e30daf5487c1 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- S-10: failed — automated command failed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=5afc3c7b442245c79ad4fd716bca5dca (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=db490b84c89b41639152d05f721944d7 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=80980387d99e4fa28ae09de9b3ae25ab (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=93659341a65c45109c29c4d7ea03c3bd (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-10: failed — automated command failed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=0f7440ed9f6f4004aeede2f31e757c22 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=e05903b19df4483d86b1ff14cc0cad52 (confirmed_by: runner)
 
 ### Log
 
