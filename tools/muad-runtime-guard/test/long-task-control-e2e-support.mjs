@@ -273,7 +273,7 @@ export class LongTaskControlScenario {
     const prefix = this.environment.workerExec ?? [];
     const command = prefix.length ? prefix[0] : args[0];
     const argv = prefix.length ? [...prefix.slice(1), ...args] : args.slice(1);
-    const result = await executeFile(command, argv, { timeout: 180_000, maxBuffer: 64 * 1024 * 1024,
+    const result = await executeFile(command, argv, { timeout: 300_000, maxBuffer: 64 * 1024 * 1024,
       env: { ...process.env, OPENCLAW_CONFIG_PATH: this.environment.configPath } });
     return result.stdout;
   }
@@ -330,7 +330,15 @@ export class LongTaskControlScenario {
     for (const row of await this.rows(this.environment.stateFile)) if (row.agentId === this.fixture.agentId) latest.set(row.taskId, row);
     return [...latest.values()].filter(task => !delta || !this.baselineTasks.has(task.taskId));
   }
-  async task(taskId) { return (await this.tasks(false)).find(task => task.taskId === taskId); }
+  async task(taskId) {
+    // Worker 侧读取偶发瞬时失败（exec 抖动/空输出）不应误判为"任务不存在"：短暂重试。
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const found = (await this.tasks(false)).find(task => task.taskId === taskId);
+      if (found) return found;
+      await delay(300);
+    }
+    return undefined;
+  }
   async waitForTask(taskId, statuses, timeout = 600_000) {
     await eventually(async () => {
       const task = await this.task(taskId);

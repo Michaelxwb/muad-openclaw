@@ -24,6 +24,9 @@ const DEFAULT_STATE_COMPACT_EVERY = 100;
 const SKILL_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;
 // 子 CLI 输出的结果 JSON 上限：持续消费避免管道阻塞，超出即视为不可解析（fail loud）。
 const MAX_RESULT_BYTES = 4 * 1024 * 1024;
+// 取消对账：未确认停止的 cancelling 任务按固定节奏重试停止确认（占槽 + 有界重试，不伪造）。
+const CANCEL_RECONCILE_INTERVAL_MS = 20_000;
+const CANCEL_RECONCILE_MAX_ATTEMPTS = 30;
 const defaultResultDelivery = createResultDelivery();
 
 export class LongTaskManager {
@@ -38,9 +41,12 @@ export class LongTaskManager {
   #progressManager;
   #progressExecutions = new Map();
   #runController = null;
+  #runControllers = [];
   #releaseTaskResources = null;
   #releasedTaskIds = new Set();
   #deliverResult = null;
+  #cancelReconcileTimer = null;
+  #cancelReconcileAttempts = new Map();
 
   constructor(options) {
     this.limit = positiveInteger(options?.limit) ? options.limit : 2;
@@ -59,6 +65,7 @@ export class LongTaskManager {
     this.#log = options?.log ?? (() => {});
     this.#notifyFailure = options?.notifyFailure ?? defaultNotifyFailure;
     this.#runController = isRunController(options?.runController) ? options.runController : null;
+    if (this.#runController) this.#runControllers.push(this.#runController);
     this.#releaseTaskResources = typeof options?.releaseTaskResources === "function"
       ? options.releaseTaskResources
       : null;
@@ -68,7 +75,43 @@ export class LongTaskManager {
     this.updateProgressManager(options?.progressManager);
     this.shared = true;
     this.closed = false;
+    const reconcileInterval = options?.cancelReconcileIntervalMs;
+    this.cancelReconcileIntervalMs = Number.isInteger(reconcileInterval) && reconcileInterval >= 0
+      ? reconcileInterval
+      : CANCEL_RECONCILE_INTERVAL_MS;
+    const reconcileAttempts = options?.cancelReconcileMaxAttempts;
+    this.cancelReconcileMaxAttempts = positiveInteger(reconcileAttempts)
+      ? reconcileAttempts
+      : CANCEL_RECONCILE_MAX_ATTEMPTS;
     this.#loadInterruptedTasks();
+    this.#startCancelReconcile();
+  }
+
+  // 有界对账重试：cancelling 任务按固定节奏重试停止确认（run 句柄缺失时以真实 childPid
+  // 退出 + 归属 sweep 判定），每次尝试自身有界，超过次数上限后保持墓碑不再重试。
+  #startCancelReconcile() {
+    if (this.cancelReconcileIntervalMs <= 0) return;
+    this.#cancelReconcileTimer = setInterval(() => {
+      void this.#reconcileCancellingTasks();
+    }, this.cancelReconcileIntervalMs);
+    this.#cancelReconcileTimer.unref?.();
+  }
+
+  async #reconcileCancellingTasks() {
+    if (this.closed) return;
+    for (const pool of this.#pools.values()) {
+      for (const task of [...pool.active.values()]) {
+        if (task.status !== "cancelling") continue;
+        const attempts = (this.#cancelReconcileAttempts.get(task.taskId) ?? 0) + 1;
+        this.#cancelReconcileAttempts.set(task.taskId, attempts);
+        if (attempts > this.cancelReconcileMaxAttempts) continue;
+        try {
+          await this.#confirmRunStop(pool, task, task.runBinding);
+        } catch (error) {
+          this.#log(`[muad-runtime-guard][longtask-cancel] reconcile retry failed taskId=${task.taskId} reason=${errorMessage(error)}`);
+        }
+      }
+    }
   }
 
   submit(input) {
@@ -150,8 +193,33 @@ export class LongTaskManager {
 
   // 运行控制器可能在异步加载原生运行环境后注入；只接受结构完整的 controller。
   attachRunController(controller) {
-    if (isRunController(controller)) this.#runController = controller;
-    return this.#runController;
+    if (!isRunController(controller)) return this.#runController;
+    // 保留历史控制器：插件（重）装载会注入新实例，已绑定任务的运行句柄仍在旧实例
+    // 注册表中；取消/释放必须能定位到持有该绑定的控制器，否则会误判 unknown run。
+    if (!this.#runControllers.includes(controller)) this.#runControllers.push(controller);
+    this.#runController = controller;
+    return controller;
+  }
+
+  // 定位持有该任务运行绑定的控制器（跨插件重载）；没有持有者时返回 null，
+  // 调用方按"句柄不可用"走真实进程退出兜底，不得误用无关控制器。
+  #resolveRunController(taskId) {
+    return this.#runControllers.find(item => {
+      try {
+        return typeof item.lookup === "function" && Boolean(item.lookup(textValue(taskId)));
+      } catch {
+        return false;
+      }
+    }) ?? null;
+  }
+
+  #releaseRunBinding(taskId) {
+    const controller = this.#resolveRunController(taskId) ?? this.#runController;
+    try {
+      controller?.release?.(taskId);
+    } catch {
+      // 释放失败不改变任务终态；绑定归属已由控制器自持。
+    }
   }
 
   // 终态精确资源清理：每个任务至多调用一次，只传目标任务身份；注入回调异常仅记日志，
@@ -213,7 +281,7 @@ export class LongTaskManager {
     }
     Object.assign(task, record);
     pool.queue = pool.queue.filter((item) => item.taskId !== task.taskId);
-    this.#runController?.release?.(task.taskId);
+    this.#releaseRunBinding(task.taskId);
     pool.terminal.push(task);
     this.#log(`[muad-runtime-guard][longtask-cancel] queued task cancelled taskId=${task.taskId}`);
     this.#notifyChange();
@@ -245,12 +313,26 @@ export class LongTaskManager {
   // 停止确认：只有运行控制器确认（drained 且自有进程真实退出）才清理并进入 cancelled；
   // 未确认保持 cancelling（占槽），供有界对账重试，不伪造已取消。
   async #confirmRunStop(pool, task, binding) {
-    const controller = this.#runController;
-    if (!controller || typeof controller.cancel !== "function" || !binding) {
-      return {
-        ok: true, outcome: "cancel_requested", status: "cancelling",
-        stateRevision: task.stateRevision, detail: "run_controller_unavailable",
-      };
+    const controller = binding ? this.#resolveRunController(binding.taskId) : null;    if (!controller || typeof controller.cancel !== "function" || !binding) {
+      // 无可用运行句柄（提交回合未经本进程托管运行、原生句柄缺失等）：以本进程 spawn
+      // 时记录的真实 childPid 与归属 sweep 作为停止事实；无法证明则保持未确认，
+      // 不杀 CLI 冒名取消、不伪造停止。
+      const pid = Number(task.childPid);
+      const hasRecordedChild = Number.isInteger(pid) && pid > 0;
+      if (!hasRecordedChild || childStillRunning(pid)) {
+        return {
+          ok: true, outcome: "cancel_requested", status: "cancelling",
+          stateRevision: task.stateRevision, detail: "run_handle_unavailable",
+        };
+      }
+      const sweep = await this.#sweepTaskProcesses(task);
+      if (!sweep.ok) {
+        return {
+          ok: true, outcome: "cancel_requested", status: "cancelling",
+          stateRevision: task.stateRevision, detail: "process_stop_unconfirmed",
+        };
+      }
+      return this.#finalizeCancelled(pool, task);
     }
     let result;
     try {
@@ -328,7 +410,7 @@ export class LongTaskManager {
     }
     Object.assign(task, record);
     pool.active.delete(task.taskId);
-    this.#runController?.release?.(task.taskId);
+    this.#releaseRunBinding(task.taskId);
     pool.terminal.push(task);
     this.#log(`[muad-runtime-guard] long task cancelled taskId=${task.taskId} skill=${task.skillName}`);
     this.#drain(pool);
@@ -381,6 +463,10 @@ export class LongTaskManager {
 
   close() {
     this.closed = true;
+    if (this.#cancelReconcileTimer) {
+      clearInterval(this.#cancelReconcileTimer);
+      this.#cancelReconcileTimer = null;
+    }
   }
 
   #newTask(input) {
@@ -499,7 +585,7 @@ export class LongTaskManager {
       this.#initiateResultDelivery(task, resultPayloads);
     }
     pool.active.delete(task.taskId);
-    this.#runController?.release?.(task.taskId);
+    this.#releaseRunBinding(task.taskId);
     const endedAt = this.#now().toISOString();
     task.status = status;
     task.endedAt = endedAt;

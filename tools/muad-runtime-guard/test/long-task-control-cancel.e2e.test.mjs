@@ -276,7 +276,8 @@ registerLongTaskControlE2E(
     const response = await scenario.cancelTask(taskA.taskId);
     assert.equal(response.body?.code, 0);
     await scenario.waitForTask(taskA.taskId, ['cancelled'], 600_000);
-    await scenario.assertProcessStopped({ timeoutMs: 60_000 });
+    // 停止判据只针对被终止任务（customer-123）；sibling（customer-124）按场景要求继续运行。
+    await scenario.assertProcessStopped({ timeoutMs: 60_000, customerId: 'customer-123' });
     await eventually(async () => (await scenario.business('alternate-long-task')).length > growthB, 60_000);
     const siblingAfterCancel = await scenario.task(taskB.taskId);
     assert.ok(['running', 'cancelling', 'succeeded'].includes(siblingAfterCancel.status),
