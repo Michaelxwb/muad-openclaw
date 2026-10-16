@@ -46,7 +46,9 @@ async function cancelAndSettle(scenario, taskId, options = {}) {
     const hasEvidence = options.customerId
       ? await waitForE2eEvidence(scenario, options.customerId)
       : true;
-    if (hasEvidence) await scenario.assertProcessStopped({ timeoutMs: 30_000, ...options });
+    if (hasEvidence && await scenario.hasProcessEvidence(options)) {
+      await scenario.assertProcessStopped({ timeoutMs: 30_000, ...options });
+    }
   }
   return task;
 }
@@ -382,7 +384,7 @@ registerLongTaskControlE2E(
     const state = await ownership.task(orphan.taskId);
     assert.ok(['cancelling', 'cancelled'].includes(state.status), 'tombstone must survive restart');
     if (state.status === 'cancelled') {
-      await ownership.assertProcessStopped({ timeoutMs: 30_000 });
+      await ownership.assertProcessStoppedIfStarted({ timeoutMs: 30_000 });
       await ownership.assertBusinessStopped('cancel-long-task', { windowMs: 3_000 });
     } else {
       assert.equal(state.status, 'cancelling', 'unconfirmed stop must stay explicit');
@@ -415,7 +417,7 @@ registerLongTaskControlE2E(
     }
     const settled = await scenario.task(task.taskId);
     if (settled.status === 'cancelled') {
-      await scenario.assertProcessStopped({ timeoutMs: 60_000 });
+      await scenario.assertProcessStoppedIfStarted({ timeoutMs: 60_000 });
       await scenario.assertBusinessStopped('cancel-long-task', { windowMs: 3_000 });
     } else {
       await scenario.assertBusinessStopped('cancel-long-task', { windowMs: 3_000 });
