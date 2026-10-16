@@ -10,7 +10,7 @@
       "kind": "e2e",
       "boundary": "真实模型、Worker 工具、队列及脚本哨兵：唯一适用且完整输入，无额外确认，恰好执行一次",
       "owner": "TASK-024",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -23,14 +23,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "S-01",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "33b2a8e697924b9d95648b7981ffbf17",
-        "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -40,6 +41,42 @@
           "revision": 1,
           "run_id": "33b2a8e697924b9d95648b7981ffbf17",
           "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        },
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -50,7 +87,7 @@
       "kind": "e2e",
       "boundary": "真实模型及 IM 入站：多个合理候选先列差异，选择前零执行，用户选择后仅执行所选 Skill",
       "owner": "TASK-024",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -63,14 +100,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "S-02",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "33b2a8e697924b9d95648b7981ffbf17",
-        "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -80,6 +118,43 @@
           "revision": 1,
           "run_id": "33b2a8e697924b9d95648b7981ffbf17",
           "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS02 multiple plausible candidates list differences first and execute only the chosen skill (180713.829ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 180761.014375\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS02 multiple plausible candidates list differences first and execute only the chosen skill (180713.829ms)\n  Error: agent CLI failed (exit=?): Command failed: kubectl exec -n muad muad-oc-pod03-85f85f7579-v9p9c -c openclaw -- openclaw agent --agent longtask-s02 --session-key agent:longtask-s02:wecom:direct:e2e-longtask-s02-r1 --message-file /home/node/.openclaw/workspace-longtask-s02/skills-evidence/request-bc320dca-efc7-49ce-b537-6a78a3419de3.txt --reply-channel wecom --reply-to e2e-longtask-s02 --json --timeout 240\n  \n      at LongTaskControlScenario.turn (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:320:15)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs:61:19)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)",
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -90,7 +165,7 @@
       "kind": "e2e",
       "boundary": "使用本次截图等价请求，真实读取其他长任务文档后访问 company_label 测试接口；无关 Skill 零任务、零业务、零进度；不得接触真实客户业务",
       "owner": "TASK-024",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -103,14 +178,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "S-03",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "33b2a8e697924b9d95648b7981ffbf17",
-        "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -120,6 +196,44 @@
           "revision": 1,
           "run_id": "33b2a8e697924b9d95648b7981ffbf17",
           "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        },
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS03 screenshot-equivalent request reads reference docs, hits company_label once and never runs unrelated skills (134739.773458ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 134794.610166\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS03 screenshot-equivalent request reads reference docs, hits company_label once and never runs unrelated skills (134739.773458ms)\n  Error: real Worker/model/IM boundary did not satisfy the expected state before timeout\n      at eventually (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:430:9)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs:95:5)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)",
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS03 screenshot-equivalent request reads reference docs, hits company_label once and never runs unrelated skills (128477.317708ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 128525.802666\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS03 screenshot-equivalent request reads reference docs, hits company_label once and never runs unrelated skills (128477.317708ms)\n  Error: real Worker/model/IM boundary did not satisfy the expected state before timeout\n      at eventually (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:430:9)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs:95:5)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)",
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -170,7 +284,7 @@
       "kind": "e2e",
       "boundary": "浏览器 → Console API → 真实 Worker 队列 → SQLite → 列表：取消排队任务后哨兵从未执行，最终 cancelled，排队数减少",
       "owner": "TASK-025",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -183,14 +297,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "S-05",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "e107d000dce641a7b72c602231c9b5c6",
-        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -200,6 +315,43 @@
           "revision": 1,
           "run_id": "e107d000dce641a7b72c602231c9b5c6",
           "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        },
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS05 cancelling a queued task never executes its sentinel and the queue shrinks (634438.295875ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 634505.436958\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS05 cancelling a queued task never executes its sentinel and the queue shrinks (634438.295875ms)\n  Error: real Worker/model/IM boundary did not satisfy the expected state before timeout\n      at eventually (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:430:9)\n      at async LongTaskControlScenario.waitForTask (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:335:5)\n      at async cancelAndSettle (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs:42:3)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs:212:5)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)",
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -210,7 +362,7 @@
       "kind": "e2e",
       "boundary": "真实固定版本 Gateway、模型、长时间脚本及其子进程、收件观察器：终止后进程停止、业务计数不再增长、资源清理、无新结果投递，列表 cancelled",
       "owner": "TASK-025",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -223,14 +375,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "S-06",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "e107d000dce641a7b72c602231c9b5c6",
-        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -240,6 +393,44 @@
           "revision": 1,
           "run_id": "e107d000dce641a7b72c602231c9b5c6",
           "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS06 terminating a running task stops real processes, business growth and further delivery (616194.0795ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 616262.157458\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS06 terminating a running task stops real processes, business growth and further delivery (616194.0795ms)\n  Error: real Worker/model/IM boundary did not satisfy the expected state before timeout\n      at eventually (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:430:9)\n      at async LongTaskControlScenario.waitForTask (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:335:5)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs:233:5)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)",
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS06 terminating a running task stops real processes, business growth and further delivery (68744.629541ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 68808.719417\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS06 terminating a running task stops real processes, business growth and further delivery (68744.629541ms)\n  Error: real Worker/model/IM boundary did not satisfy the expected state before timeout\n      at eventually (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:430:9)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs:227:5)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)",
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -250,7 +441,7 @@
       "kind": "e2e",
       "boundary": "同用户另一个任务及另一用户真实任务继续运行；主会话可用；终止任务清理后执行槽恰好释放一次，下一项按原顺序启动",
       "owner": "TASK-025",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -263,14 +454,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "S-07",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "e107d000dce641a7b72c602231c9b5c6",
-        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -280,6 +472,44 @@
           "revision": 1,
           "run_id": "e107d000dce641a7b72c602231c9b5c6",
           "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        },
+        {
+          "id": "S-07",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS07 other same-user and cross-user tasks keep running and the slot releases exactly once (630924.711125ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 630994.077417\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS07 other same-user and cross-user tasks keep running and the slot releases exactly once (630924.711125ms)\n  Error: real Worker/model/IM boundary did not satisfy the expected state before timeout\n      at eventually (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:430:9)\n      at async LongTaskControlScenario.waitForTask (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:335:5)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs:278:5)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)",
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "S-07",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "S-07",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS07 other same-user and cross-user tasks keep running and the slot releases exactly once (43710.723417ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 43751.986625\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS07 other same-user and cross-user tasks keep running and the slot releases exactly once (43710.723417ms)\n  AssertionError [ERR_ASSERTION]: missing real process stop evidence: no recorded task pid\n      at assertProcessStopped (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:83:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs:279:5)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: '==',\n    diff: 'simple'\n  }",
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "S-07",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -290,7 +520,7 @@
       "kind": "e2e",
       "boundary": "Console 配置 → DTO/schema → generation 事务 → Worker health：能力与指导成功应用；故障健康检查触发回滚，无模型绑定或 Skill 分层改变",
       "owner": "TASK-026",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -303,14 +533,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "S-08",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
-        "executed_at": "2026-10-15T11:42:14.285397+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -320,6 +551,42 @@
           "revision": 1,
           "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
           "executed_at": "2026-10-15T11:42:14.285397+00:00"
+        },
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -371,7 +638,7 @@
       "kind": "e2e",
       "boundary": "真实浏览器、后端及 Worker：中英文切换后按钮/状态/错误/确认文案正确，按取消状态筛选、分页和正常后台轮询不闪表格 spinner",
       "owner": "TASK-026",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -384,14 +651,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "S-10",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
-        "executed_at": "2026-10-15T11:42:14.285397+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -401,6 +669,45 @@
           "revision": 1,
           "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
           "executed_at": "2026-10-15T11:42:14.285397+00:00"
+        },
+        {
+          "id": "S-10",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS10 real browser switches languages, terminates via confirm, filters and polls without spinner flicker (93630.953125ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 93673.850125\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS10 real browser switches languages, terminates via confirm, filters and polls without spinner flicker (93630.953125ms)\n  Error: Command failed: node /Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10.json /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10-result.json\n  file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:138\n    if (!clicked) throw new Error(`row action ${label} not found for ${taskId}`);\n                        ^\n  \n  Error: row action 终止任务 not found for 0e8fa25b2c20d26a6500db80505057497f6238905ba1bfb81a4017c6cbc5b480\n      at clickRowAction (file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:138:23)\n      at async file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:398:5\n  \n  Node.js v24.17.0\n  \n      at genericNodeError (node:internal/errors:985:15)\n      at wrappedFn (node:internal/errors:539:14)\n      at ChildProcess.exithandler (node:child_process:417:12)\n      at ChildProcess.emit (node:events:509:28)\n      at maybeClose (node:internal/child_process:1124:16)\n      at ChildProcess._handle.onexit (node:internal/child_process:306:5) {\n    code: 1,\n    killed: false,\n    signal: null,\n    cmd: 'node /Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10.json /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10-result.json',\n    stdout: '',\n    stderr: 'file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:138\\n  if (!clicked) throw new Error(`row action ${label} not found for ${taskId}`);\\n                      ^\\n\\nError: row action 终止任务 not found for 0e8fa25b2c20d26a6500db80505057497f6238905ba1bfb81a4017c6cbc5b480\\n    at clickRowAction (file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:138:23)\\n    at async file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:398:5\\n\\nNode.js v24.17.0\\n'\n  }",
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "S-10",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS10 real browser switches languages, terminates via confirm, filters and polls without spinner flicker (43251.908667ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 43296.252459\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS10 real browser switches languages, terminates via confirm, filters and polls without spinner flicker (43251.908667ms)\n  Error: Command failed: node /Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10.json /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10-result.json\n  file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:205\n    if (!clicked) throw new Error('pagination next page control not found');\n                        ^\n  \n  Error: pagination next page control not found\n      at clickNextPage (file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:205:23)\n      at async file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:407:3\n  \n  Node.js v24.17.0\n  \n      at genericNodeError (node:internal/errors:985:15)\n      at wrappedFn (node:internal/errors:539:14)\n      at ChildProcess.exithandler (node:child_process:417:12)\n      at ChildProcess.emit (node:events:509:28)\n      at maybeClose (node:internal/child_process:1124:16)\n      at ChildProcess._handle.onexit (node:internal/child_process:306:5) {\n    code: 1,\n    killed: false,\n    signal: null,\n    cmd: 'node /Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10.json /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10-result.json',\n    stdout: '',\n    stderr: \"file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:205\\n  if (!clicked) throw new Error('pagination next page control not found');\\n                      ^\\n\\nError: pagination next page control not found\\n    at clickNextPage (file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:205:23)\\n    at async file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:407:3\\n\\nNode.js v24.17.0\\n\"\n  }",
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "S-10",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlS10 real browser switches languages, terminates via confirm, filters and polls without spinner flicker (39355.448667ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 39399.652\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlS10 real browser switches languages, terminates via confirm, filters and polls without spinner flicker (39355.448667ms)\n  Error: Command failed: node /Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10.json /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10-result.json\n  file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:152\n    if (!clicked) throw new Error(`row action ${label} not found for ${taskId}`);\n                        ^\n  \n  Error: row action 终止任务 not found for 9681be133227d38d999e3c874d5bbc799cd3509e1c09140d239dc7932f8cc629\n      at clickRowAction (file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:152:23)\n      at async file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:395:5\n  \n  Node.js v24.17.0\n  \n      at genericNodeError (node:internal/errors:985:15)\n      at wrappedFn (node:internal/errors:539:14)\n      at ChildProcess.exithandler (node:child_process:417:12)\n      at ChildProcess.emit (node:events:509:28)\n      at maybeClose (node:internal/child_process:1124:16)\n      at ChildProcess._handle.onexit (node:internal/child_process:306:5) {\n    code: 1,\n    killed: false,\n    signal: null,\n    cmd: 'node /Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10.json /var/folders/81/t8x84frn1v15nx7w6647r9sr0000gn/T/muad-ltc-browser/browser-S10-result.json',\n    stdout: '',\n    stderr: 'file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:152\\n  if (!clicked) throw new Error(`row action ${label} not found for ${taskId}`);\\n                      ^\\n\\nError: row action 终止任务 not found for 9681be133227d38d999e3c874d5bbc799cd3509e1c09140d239dc7932f8cc629\\n    at clickRowAction (file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:152:23)\\n    at async file:///Users/jahan/workspace/muad-openclaw/.ltc-staging/browser/executor.mjs:395:5\\n\\nNode.js v24.17.0\\n'\n  }",
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "S-10",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -1149,7 +1456,7 @@
       "kind": "e2e",
       "boundary": "Worker 不可达、RPC 超时或停止未确认：显示失败或终止中并保留诊断；不得伪报 cancelled、提前释放槽位或启动重试任务",
       "owner": "TASK-025",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -1162,14 +1469,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "E-01",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "e107d000dce641a7b72c602231c9b5c6",
-        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -1179,6 +1487,43 @@
           "revision": 1,
           "run_id": "e107d000dce641a7b72c602231c9b5c6",
           "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        },
+        {
+          "id": "E-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "E-01",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "[cleanup] cancel rejected for 6aa25deb783efcaef42166a19726d205e07fdc1e2b5b67e8475d853449342d96: 41003\n✖ LongTaskControlE01 unreachable worker or unconfirmed stop never fakes cancelled, releases slots or retries (620808.615ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 620863.424416\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlE01 unreachable worker or unconfirmed stop never fakes cancelled, releases slots or retries (620808.615ms)\n  Error: real Worker/model/IM boundary did not satisfy the expected state before timeout\n      at eventually (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:430:9)\n      at async LongTaskControlScenario.waitForTask (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:335:5)\n      at async cancelAndSettle (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs:42:3)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs:337:5)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)",
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "E-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "E-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -1189,7 +1534,7 @@
       "kind": "e2e",
       "boundary": "旧 Worker、缺失取消能力或重启后运行归属不可证明：返回明确不支持/无法确认，保留实际可知状态，不按历史 PID 盲杀",
       "owner": "TASK-025",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -1202,14 +1547,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "E-02",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "e107d000dce641a7b72c602231c9b5c6",
-        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -1219,6 +1565,42 @@
           "revision": 1,
           "run_id": "e107d000dce641a7b72c602231c9b5c6",
           "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        },
+        {
+          "id": "E-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "E-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "E-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "E-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -1310,7 +1692,7 @@
       "kind": "e2e",
       "boundary": "实际 Worker 不可达或不支持取消，UI 显示明确原因而非成功；刷新不覆盖较新操作状态；权限失效回登录；不出现任务重试按钮",
       "owner": "TASK-026",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -1323,14 +1705,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "E-05",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
-        "executed_at": "2026-10-15T11:42:14.285397+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -1340,6 +1723,43 @@
           "revision": 1,
           "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
           "executed_at": "2026-10-15T11:42:14.285397+00:00"
+        },
+        {
+          "id": "E-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "E-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "E-05",
+          "kind": "e2e",
+          "status": "failed",
+          "exit_code": 1,
+          "output": "✖ LongTaskControlE05 unreachable worker shows readable failure, survives refresh, and expired auth returns to login (658455.551084ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 658523.316416\n\n✖ failing tests:\n\ntest at tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:237:55\n✖ LongTaskControlE05 unreachable worker shows readable failure, survives refresh, and expired auth returns to login (658455.551084ms)\n  Error: real Worker/model/IM boundary did not satisfy the expected state before timeout\n      at eventually (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:430:9)\n      at async LongTaskControlScenario.waitForTask (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-e2e-support.mjs:335:5)\n      at async cancelAndSettle (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs:62:3)\n      at async TestContext.<anonymous> (file:///Users/jahan/workspace/muad-openclaw/tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs:267:5)\n      at async Test.run (node:internal/test_runner/test:1313:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)",
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "E-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -1350,7 +1770,7 @@
       "kind": "e2e",
       "boundary": "真实模型与隔离 Worker：无适用 Skill、仅缺用户必填输入、显式名称与本轮请求不一致时说明或追问；未完成预检前零入队、零业务脚本执行",
       "owner": "TASK-024",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -1363,14 +1783,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "E-06",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "33b2a8e697924b9d95648b7981ffbf17",
-        "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -1380,6 +1801,42 @@
           "revision": 1,
           "run_id": "33b2a8e697924b9d95648b7981ffbf17",
           "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        },
+        {
+          "id": "E-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "E-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "E-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "E-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     },
@@ -1511,7 +1968,7 @@
       "kind": "e2e",
       "boundary": "固定版本 Worker 重启时存在任务：取消墓碑保留，取消中的任务不恢复执行；孤儿运行只有归属证明且确认停止后才 cancelled",
       "owner": "TASK-025",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "env",
         "MUAD_LONG_TASK_CONTROL_E2E=1",
@@ -1524,14 +1981,15 @@
       "cwd": ".",
       "timeout": 3600.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 5,
       "evidence": {
         "id": "B-04",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "e107d000dce641a7b72c602231c9b5c6",
-        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 5,
+        "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+        "executed_at": "2026-10-16T10:25:25.050972+00:00"
       },
       "runs": [
         {
@@ -1541,6 +1999,42 @@
           "revision": 1,
           "run_id": "e107d000dce641a7b72c602231c9b5c6",
           "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        },
+        {
+          "id": "B-04",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "ed3b0f4953474fe381a7e650b9e11a28",
+          "executed_at": "2026-10-16T09:03:28.303438+00:00"
+        },
+        {
+          "id": "B-04",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "121cd427343c4fe1ac0da8edbefa78c8",
+          "executed_at": "2026-10-16T09:40:28.618564+00:00"
+        },
+        {
+          "id": "B-04",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "6b22d826fb8a43588f7ece2d9d559c62",
+          "executed_at": "2026-10-16T10:10:05.334969+00:00"
+        },
+        {
+          "id": "B-04",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 5,
+          "run_id": "f7acf2576e5f49298a48e30daf5487c1",
+          "executed_at": "2026-10-16T10:25:25.050972+00:00"
         }
       ]
     }
