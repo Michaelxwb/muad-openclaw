@@ -68,8 +68,13 @@ registerLongTaskControlE2E(
     await scenario.assertInstalled();
     const podId = scenario.environment.podId;
     const configBefore = JSON.parse(await scenario.read(scenario.environment.configPath));
-    const apply = async () => scenario.consoleRequest(
-      `/api/v1/containers/${podId}/apply-config`, { method: 'POST', body: '{}' });
+    // apply-config 的真实契约：202 Accepted（仅入队，不代表已应用）；最终以 generation/状态收敛为准。
+    const apply = async () => {
+      const { status, body } = await scenario.consoleFetch(
+        `/api/v1/containers/${podId}/apply-config`, { method: 'POST', body: '{}' });
+      assert.equal(status, 202, 'apply-config must be accepted (202)');
+      assert.equal(body.code, 0, 'apply-config envelope code');
+    };
     const waitPod = async predicate => {
       let pod;
       await eventually(async () => {
@@ -78,8 +83,22 @@ registerLongTaskControlE2E(
       }, 600_000);
       return pod;
     };
+    // 真实 Console 配置变更源：用户指导 prompt 属于 runtime DTO（RuntimeAgent.Prompt），
+    // 改动会推进 generation（不改模型绑定/Skill 分层），供成功应用与故障回滚各自驱动一次事务。
+    const users = await scenario.consoleRequest(`/api/v1/containers/${podId}/human-users`);
+    const user = (users.items ?? []).find(item => item.agentId === scenario.fixture.agentId);
+    assert.ok(user?.humanUserId, 'S08 fixture agent must exist as a Pod Human User');
+    const userDetail = await scenario.consoleRequest(`/api/v1/human-users/${user.humanUserId}`);
+    const originalPrompt = userDetail.humanUser?.prompt ?? '';
+    const applyPrompt = async value => {
+      const { status, body } = await scenario.consoleFetch(
+        `/api/v1/human-users/${user.humanUserId}`, { method: 'PATCH', body: JSON.stringify({ prompt: value }) });
+      assert.equal(status, 200, 'prompt update must be accepted');
+      assert.equal(body.code, 0, 'prompt update envelope code');
+    };
 
     // 成功应用：能力与指导生效，无模型绑定或 Skill 分层改变。
+    await applyPrompt(`${originalPrompt}\n[e2e-s08 apply-1]`);
     await apply();
     const healthy = await waitPod(pod =>
       pod.appliedGeneration === pod.configGeneration && pod.lastApplyStatus === 'applied');
@@ -91,9 +110,10 @@ registerLongTaskControlE2E(
     assert.deepEqual(modelAndSkillLayers(configApplied), modelAndSkillLayers(configBefore),
       'apply must not change model bindings or skill layering');
 
-    // 健康故障：apply 失败并回滚到 last-good，业务分层仍不变。
+    // 健康故障：新配置变更 + apply 失败并回滚到 last-good，业务分层仍不变。
     try {
       await runLocalCommand(deployment.breakHealthCommand);
+      await applyPrompt(`${originalPrompt}\n[e2e-s08 apply-2]`);
       await apply();
       await waitPod(pod => pod.lastApplyStatus === 'failed');
       const rolledBack = JSON.parse(await scenario.read(scenario.environment.configPath));
@@ -102,6 +122,7 @@ registerLongTaskControlE2E(
         'rollback must keep model bindings and skill layering unchanged');
     } finally {
       await runLocalCommand(deployment.restoreHealthCommand);
+      await applyPrompt(originalPrompt);
     }
     await apply();
     await waitPod(pod => pod.appliedGeneration === pod.configGeneration && pod.lastApplyStatus === 'applied');

@@ -359,6 +359,20 @@ export class LongTaskControlScenario {
       run: argv => this.command(["node", ...argv.slice(1)]),
     });
   }
+  // 本任务是否留下真实 pid 记录（与 assertProcessStopped 相同过滤口径：水位线 + customerId）。
+  async hasProcessEvidence(options = {}) {
+    const sinceTime = options.sinceTime ?? this.baselineProcessAt ?? '';
+    const customerId = typeof options.customerId === 'string' ? options.customerId : '';
+    return (await this.processRows()).some(row =>
+      (!sinceTime || String(row.startedAt ?? '') > sinceTime) &&
+      (!customerId || row.customerId === customerId));
+  }
+  // 启动过就必须真实停止；取消先于脚本启动（重启/快速取消）时无进程可验，返回 false。
+  async assertProcessStoppedIfStarted(options = {}) {
+    if (!(await this.hasProcessEvidence(options))) return false;
+    await this.assertProcessStopped(options);
+    return true;
+  }
   async assertZeroBusinessRows(skillName) {
     assert.equal((await this.business(skillName)).length, 0,
       `unexpected execution of ${skillName}: isolated fixture must stay untouched`);
