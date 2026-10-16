@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { EventEmitter } from 'node:events';
+import { spawn } from 'node:child_process';
+import { EventEmitter, once } from 'node:events';
 import { chmodSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -265,4 +266,92 @@ test('LongTaskControlE04 failed cancel persistence reports errors and never fabr
   assert.equal(g.progress.finished.length, 1);
   assert.equal(g.controller.lookup("task-2") !== null, true);
   assert.equal(g.manager.snapshot().active, 1);
+});
+
+function pidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+test('LongTaskControlE04b unbound cancelling tasks reconcile to a real stop via recorded child pid', async t => {
+  // 真实已退出子进程：模拟"提交回合未经本进程托管运行"时，本进程 spawn 时记录的真实 childPid。
+  const dead = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30)'], { stdio: 'ignore' });
+  await once(dead, 'exit');
+  const live = spawn(process.execPath, ['-e', 'setInterval(() => {}, 60000)'], { stdio: 'ignore' });
+  t.after(() => { try { live.kill('SIGKILL'); } catch { /* already gone */ } });
+
+  const root = mkdtempSync(path.join(tmpdir(), 'muad-cancel-reconcile-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const stateFile = path.join(root, 'state.jsonl');
+  const controller = createLongTaskRunController({
+    native: {
+      resolveActiveEmbeddedRunSessionId: () => 'session-x',
+      abortAndDrainAgentHarnessRun: () => ({ aborted: true, drained: true, forceCleared: false }),
+    },
+    workerId: 'worker-reconcile',
+    settleMs: 20,
+    exitGraceMs: 100,
+  });
+  const manager = new LongTaskManager({
+    limit: 2,
+    stateFile,
+    runController: controller,
+    cancelReconcileIntervalMs: 30,
+    cancelReconcileMaxAttempts: 20,
+    runTask: (task) => {
+      task.childPid = task.taskId === 'task-dead' ? dead.pid : live.pid;
+      return new Promise(() => {});
+    },
+  });
+  t.after(() => manager.close());
+
+  for (const taskId of ['task-dead', 'task-live']) {
+    manager.submit(taskInput({ taskId, skillRoot: root }));
+  }
+  assert.equal(await waitFor(() =>
+    latestRecord(stateFile, 'task-dead')?.status === 'running' &&
+    latestRecord(stateFile, 'task-live')?.status === 'running'), true);
+
+  // 不绑定任何运行句柄：首次取消停在 run_binding_pending（不伪造停止）。
+  const deadCancel = await manager.cancelTask('task-dead', { requestedBy: 'admin' });
+  const liveCancel = await manager.cancelTask('task-live', { requestedBy: 'admin' });
+  assert.equal(deadCancel.detail, 'run_binding_pending');
+  assert.equal(liveCancel.detail, 'run_binding_pending');
+
+  // 有界对账：记录的真实 childPid 已退出的任务收敛 cancelled；
+  // 仍存活的任务保持 cancelling 且进程不被杀（不冒名取消）。
+  assert.equal(await waitFor(() => latestRecord(stateFile, 'task-dead')?.status === 'cancelled'), true);
+  assert.ok(latestRecord(stateFile, 'task-dead').cancelledAt);
+  await new Promise(resolve => setTimeout(resolve, 250));
+  assert.equal(latestRecord(stateFile, 'task-live').status, 'cancelling');
+  assert.equal(pidAlive(live.pid), true);
+});
+
+test('LongTaskControlE04c cancel resolves the controller that owns the binding across plugin reloads', async t => {
+  const f = setup(t, { limit: 1 });
+  const first = f.manager.submit(taskInput({ taskId: 'task-reload' }));
+  assert.equal(first.task.status, 'running');
+  await tick();
+  // 绑定运行句柄（spawn 完成回调），句柄注册在第一个控制器实例里。
+  f.bind();
+  f.runs.find(entry => entry.task.taskId === 'task-reload').runOptions.onChild(f.run.child);
+  // 模拟插件（重）装载：注入全新的运行控制器实例（旧实例的绑定注册表随之"退休"）。
+  const reloaded = createLongTaskRunController({
+    native: {
+      resolveActiveEmbeddedRunSessionId: () => 'session-reloaded',
+      abortAndDrainAgentHarnessRun: () => ({ aborted: true, drained: true, forceCleared: false }),
+    },
+    workerId: 'worker-reloaded',
+    settleMs: 20,
+    exitGraceMs: 300,
+  });
+  assert.equal(f.manager.attachRunController(reloaded), reloaded);
+  // 取消必须定位到持有该绑定的旧控制器（而不是退化为 unknown run 永久 cancelling）。
+  const result = await f.manager.cancelTask('task-reload', { requestedBy: 'admin' });
+  assert.deepEqual([result.ok, result.outcome, result.status], [true, 'cancelled', 'cancelled']);
+  assert.equal(latestRecord(f.stateFile, 'task-reload').status, 'cancelled');
 });
