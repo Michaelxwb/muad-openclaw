@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import {
@@ -27,28 +28,43 @@ async function runBrowserObservations(scenario, name, payload) {
   const command = scenario.fixture.browserCommand;
   assert.ok(Array.isArray(command) && command.length > 0,
     'real browser verification command required (HTTP stubs are not acceptable)');
-  const scenarioFile = path.join(scenario.fixture.evidenceRoot, `browser-${name}.json`);
-  const resultFile = path.join(scenario.fixture.evidenceRoot, `browser-${name}-result.json`);
-  writeFileSync(scenarioFile, JSON.stringify(payload), { mode: 0o600 });
+  // 浏览器执行器在测试机本地运行：场景/结果文件写本地受控目录（含 0600），
+  // Worker 上不存在测试机路径不能在远端写文件。
+  const workDir = scenario.fixture.browserWorkDir
+    ?? process.env.MUAD_LTC_BROWSER_WORKDIR
+    ?? path.join(os.tmpdir(), 'muad-ltc-browser');
+  mkdirSync(workDir, { recursive: true, mode: 0o700 });
+  const scenarioFile = path.join(workDir, `browser-${name}.json`);
+  const resultFile = path.join(workDir, `browser-${name}-result.json`);
+  writeFileSync(scenarioFile, JSON.stringify({
+    ...payload,
+    uiURL: scenario.fixture.uiURL ?? payload.uiURL ?? scenario.environment.consoleURL,
+  }), { mode: 0o600 });
   await executeFile(command[0], [...command.slice(1), scenarioFile, resultFile], { encoding: 'utf8', timeout: 900_000 });
   assert.ok(existsSync(resultFile), 'browser verification must produce real observations');
   return JSON.parse(readFileSync(resultFile, 'utf8'));
 }
 
-async function submitRunningSentinel(scenario, prompt) {
-  await scenario.turn(prompt);
-  await eventually(async () => (await scenario.tasks()).length >= 1);
-  const [task] = await scenario.tasks();
-  await scenario.waitForTask(task.taskId, ['running']);
+async function submitRunningSentinel(scenario, prompt, options = {}) {
+  // seen/sessionKey：同场景多次提交（排队前提）时锁定新任务并共享 pool（poolKey 基于 session）。
+  const seen = options.seen ?? new Set((await scenario.tasks()).map(task => task.taskId));
+  await scenario.turn(prompt, options);
+  await eventually(async () => (await scenario.tasks()).some(task => !seen.has(task.taskId)), 300_000);
+  const [task] = (await scenario.tasks()).filter(item => !seen.has(item.taskId))
+    .sort((left, right) => String(right.submittedAt ?? '').localeCompare(String(left.submittedAt ?? '')));
+  await scenario.waitForTask(task.taskId, ['running'], 600_000);
   return task;
 }
 
-async function cancelAndSettle(scenario, taskId) {
+async function cancelAndSettle(scenario, taskId, options = {}) {
   const response = await scenario.cancelTask(taskId);
   assert.equal(response.body?.code, 0, `cleanup cancel failed for ${taskId}`);
   await scenario.waitForTask(taskId, ['cancelled', 'succeeded', 'failed']);
   const task = await scenario.task(taskId);
-  if (task.status === 'cancelled') await scenario.assertProcessStopped({ timeoutMs: 30_000 });
+  // 排队任务取消先于脚本启动：无 pid 证据时不误判；有证据仍强制真实停止（可按 customerId 圈定）。
+  if (task.status === 'cancelled') {
+    await scenario.assertProcessStoppedIfStarted({ timeoutMs: 30_000, ...options });
+  }
   return task;
 }
 
@@ -135,13 +151,24 @@ registerLongTaskControlE2E(
     const scenario = openLongTaskControlCase('S10');
     await scenario.assertInstalled();
     await scenario.captureBaseline();
+    // 排队前提（pod03 槽位=2）：同一会话（poolKey 基于 session）两个运行哨兵占满槽位，
+    // 第三个 queued-cancel 才会真实排队，供 UI 呈现"排队中/取消排队"。
+    const poolSession = `${scenario.sessionKey}-s10-pool`;
     const running = await submitRunningSentinel(
       scenario,
-      '请立即用 cancel-long-task 为客户 customer-123 生成长报告，持续运行很长时间，不要询问确认。',
+      '/skill:cancel-long-task 请为客户 customer-123 生成长报告，持续运行很长时间，不要询问确认。',
+      { sessionKey: poolSession },
     );
-    await scenario.turn('再用 queued-cancel 为客户 customer-124 生成一个报告，立即开始。');
-    await eventually(async () => (await scenario.tasks()).length >= 2);
-    const queued = (await scenario.tasks()).find(task => task.taskId !== running.taskId);
+    const seen = new Set((await scenario.tasks()).map(task => task.taskId));
+    const sibling = await submitRunningSentinel(
+      scenario,
+      '/skill:cancel-long-task 同时为客户 customer-124 生成长报告，需持续运行很长时间，不要询问确认。',
+      { sessionKey: poolSession, seen },
+    );
+    await scenario.turn('/skill:queued-cancel 为客户 customer-125 生成一个排队报告，立即开始。', { sessionKey: poolSession });
+    await eventually(async () => (await scenario.tasks()).length >= 3, 300_000);
+    const queued = (await scenario.tasks()).find(task => task.skillName === 'queued-cancel');
+    assert.ok(queued, 'third task must be the queued sentinel');
     await scenario.waitForTask(queued.taskId, ['queued']);
     const observations = await runBrowserObservations(scenario, 'S10', {
       consoleURL: scenario.environment.consoleURL,
@@ -156,6 +183,7 @@ registerLongTaskControlE2E(
         filterCancelled: true,
         pagination: true,
         backgroundRefreshNoSpinner: true,
+        cancelQueuedTask: queued.taskId,
         terminateViaUI: running.taskId,
       },
     });
@@ -176,12 +204,18 @@ registerLongTaskControlE2E(
     // 浏览器发起的终止必须以真实停止收敛，且无新结果投递。
     assert.equal(observations.terminateRequested, true, 'browser must issue the terminate request via UI');
     assert.equal(observations.terminateDisabledDuringStop, true, 'cancelling rows must be disabled');
-    const delivered = (await scenario.deliveries()).length;
+    // 收尾顺序：先终止同池 sibling（同技能同 skillRoot，避免其存活进程干扰停止判据），
+    // 再确认 UI 终止的任务真实停止；投递增量只针对被终止任务（其他任务的合理投递不在此断言内）。
+    const deliveredForRunning = (await scenario.deliveries())
+      .filter(row => String(row.text ?? '').includes(running.taskId)).length;
+    await cancelAndSettle(scenario, sibling.taskId, { customerId: 'customer-124' });
     await scenario.waitForTask(running.taskId, ['cancelled'], 600_000);
-    await scenario.assertProcessStopped({ timeoutMs: 60_000 });
+    await scenario.assertProcessStopped({ timeoutMs: 60_000, customerId: 'customer-123' });
     await scenario.assertBusinessStopped('cancel-long-task', { windowMs: 3_000 });
     await delay(3_000);
-    assert.equal((await scenario.deliveries()).length, delivered, 'no new result delivery after UI termination');
+    assert.equal((await scenario.deliveries())
+      .filter(row => String(row.text ?? '').includes(running.taskId)).length, deliveredForRunning,
+    'no new result delivery after UI termination');
     await cancelAndSettle(scenario, queued.taskId);
     await scenario.assertZeroBusinessRows('queued-cancel');
   },
@@ -224,6 +258,12 @@ registerLongTaskControlE2E(
       await runLocalCommand(deployment.restoreHealthCommand);
     }
     await eventually(async () => (await scenario.task(task.taskId)).status === 'running', 120_000);
+    // 冻结期间能力探测会暂时标记"不可取消"：恢复后等 Console 重新确认能力再收尾，
+    // 否则收尾取消会被 41003（unsupported）拒绝（这不是任务状态问题）。
+    await eventually(async () => {
+      const data = await scenario.listTasks({ podId: scenario.environment.podId, page: 1, pageSize: 50, q: task.taskId });
+      return (data.items ?? []).some(item => item.taskId === task.taskId && item.canCancel === true);
+    }, 180_000);
     await cancelAndSettle(scenario, task.taskId);
   },
 );
