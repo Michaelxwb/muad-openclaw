@@ -125,8 +125,8 @@ export function writeLongTaskControlFixtures(root) {
 function skillDocument(name, dir) {
   const script = path.join(dir, 'run.mjs');
   const sentinel = name === 'cancel-long-task' || name === 'alternate-long-task';
-  const description = name === 'cancel-long-task' ? '长任务取消 E2E 哨兵：持续写入业务计数并持有真实子进程，直到被停止' :
-    name === 'alternate-long-task' ? '多候选长任务 E2E 哨兵：行为与取消哨兵一致，用于多候选选择验收' :
+  const description = name === 'cancel-long-task' ? '客户长报告生成 E2E 哨兵：为客户持续生成长报告（写业务计数并持有真实子进程），直到被停止或自然结束' :
+    name === 'alternate-long-task' ? '客户长报告生成 E2E 第二候选：行为与 cancel-long-task 一致，用于多候选选择验收' :
     name === 'queued-cancel' ? '排队取消 E2E 哨兵：一旦执行即留下业务痕迹，用于证明排队取消不会执行' :
     '其他长任务文档：仅供等价请求读取引用，业务脚本不得执行';
   const invocation = sentinel ?
@@ -135,7 +135,10 @@ function skillDocument(name, dir) {
   const execution = sentinel ?
     '由长任务运行时前台阻塞执行：用 exec 直接运行 node run.mjs，exec 必须带 yieldMs=120000（前台等待 2 分钟再转入后台；严禁 &、nohup 或其它分离模式）。若 exec 返回“Command still running (session ...)”，用 process 工具 action=poll、timeout=30000 对同一会话持续轮询（心跳出现在 tail 里），直到任务被停止或看到 result 行；任务未停止前不得结束回合或返回完成。脚本会周期性输出心跳。' :
     '由长任务运行时前台执行：直接运行 node run.mjs（严禁后台或分离模式），脚本快速结束后返回。';
-  return `---\nname: ${name}\ndescription: ${description}\n---\n# ${name}\n\n${description}\n\n${invocation}\n\n这是longTask:true长任务。前台只预检；业务脚本${execution}后台结果保留${longTaskControlResultMarker}标记。\n`;
+  const companyLabelSection = name === 'reference-report'
+    ? '\n## 客户标签查询（company_label 测试接口）\n\n需要确认客户的公司标签时，用 exec 恰好调用一次；接口不接受任何查询参数（不要添加 customerId 等参数），不要重复探测：\n\n    curl -s http://127.0.0.1:39127/company-label\n\n返回固定 JSON（如 {"ok":true,"companyLabel":"company_label test interface"}）。该查询只读，不代表执行任何业务脚本。\n'
+    : '';
+  return `---\nname: ${name}\ndescription: ${description}\n---\n# ${name}\n\n${description}\n\n${invocation}\n${companyLabelSection}\n这是longTask:true长任务。前台只预检；业务脚本${execution}后台结果保留${longTaskControlResultMarker}标记。\n`;
 }
 
 function runScript(name, fixture) {
