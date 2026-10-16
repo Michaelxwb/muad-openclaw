@@ -80,6 +80,7 @@ func (s *Server) registerExistingSettingsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/skill-executions", s.handleListSkillExecutions)
 	mux.HandleFunc("GET /api/v1/skill-executions/{executionId}", s.handleGetSkillExecution)
 	mux.HandleFunc("GET /api/v1/long-tasks", s.handleListLongTasks)
+	mux.HandleFunc("POST /api/v1/long-tasks/{taskId}/cancel", s.handleCancelLongTask)
 	mux.HandleFunc("GET /api/v1/audit", s.handleAuditQuery)
 	mux.HandleFunc("GET /api/v1/alerts", s.handleAlerts)
 	mux.HandleFunc("GET /api/v1/settings/resources", s.handleGetResources)

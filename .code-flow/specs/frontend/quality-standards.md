@@ -13,9 +13,7 @@ verifiers:
     type: regex
     config:
       pattern: "\\bfetch\\("
-      files:
-        - console/frontend/src/components/**
-        - console/frontend/src/pages/**
+      files: "console/frontend/src/[cp]*/*"
       message: "HTTP 必须经 api.ts，禁止在 pages/components 裸 fetch"
   - rule: RULE-frontend-i18n-001
     type: manual

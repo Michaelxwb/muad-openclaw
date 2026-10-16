@@ -38,6 +38,14 @@ COPY tools/muad-progress/test ./test
 COPY skills /skills
 RUN npm test
 
+# ── runtime guard（锁定生产解析依赖） ──
+FROM ${BASE_IMAGE}:${BASE_TAG} AS runtime-guard-deps
+
+USER root
+WORKDIR /build/runtime-guard
+COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+
 # ── 最终镜像 ──
 ARG BASE_IMAGE
 ARG BASE_TAG
@@ -68,6 +76,7 @@ COPY tools/muad-progress/package.json /opt/muad/muad-progress/
 COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plugin.json \
     /opt/muad/muad-runtime-guard/
 COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
+COPY --from=runtime-guard-deps /build/runtime-guard/node_modules /opt/muad/muad-runtime-guard/node_modules
 COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
 COPY tools/shared /opt/muad/shared
 COPY skills /opt/openclaw-skills

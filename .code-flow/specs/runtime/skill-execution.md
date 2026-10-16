@@ -84,6 +84,12 @@ def _die(message):
 - 长任务用 progress 事件，不堵死主会话
 - 模板变更放 `skills/_templates`，种子放 `skills/<name>`
 - repo 查询 system/public 时 `ORDER BY CASE scope WHEN 'system' THEN 0 ELSE 1 END`
+- 匹配/授权来源以可信入站消息为准：`explicit_name` 只认本轮用户明确命令（`/skill:<name>` 或展开的 skill 标记），runtime preflight 复核，模型自报即拒（`explicit_name_untrusted`）；“参考”文档不授权执行被参考 Skill
+- 取消运行语义：`aborted`（接受）≠ `drained`（原生清理）≠ 进程已退出；只有真实退出才确认停止，只对本 Worker detached 进程组补发终止（best-effort，不作为停止证据），禁止 `forceClear`
+- 取消后关闭目标任务会话的新工具调用；终态只释放目标任务租约（`releaseSession`，幂等，未持有 no-op），取消中占槽不提前释放
+- 进度桥取消语义：拒绝迟到事件（`execution_cancelled`）、丢弃未发起队列、在途发送保留可解释边界、终态结算最多一次且不发送成功/失败类消息
+- 结果投递由 manager 仲裁：子 CLI 不再 `--deliver`（stdout 持续消费 + 有界缓冲解析 `result.payloads`）；取消已提交的任务不新发成功结果或通用失败通知，许可发起即视为在途
+- 内部取消 RPC 仅 `operator.write`（绝不注册为模型工具）；能力只在取消链完整（manager 可取消 + 原生 abort/drain 可用）时上报，缺失明确不可用、不危险兜底
 
 ## Avoid
 - 禁止 system skill 被用户卸载或静默覆盖

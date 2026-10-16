@@ -50,6 +50,7 @@ const (
 	ActionRuntimeGuardBind         Action = "runtime_guard.bind"
 	ActionRuntimeGuardReject       Action = "runtime_guard.reject"
 	ActionPodServiceTokenRotate    Action = "pod_service_token.rotate"
+	ActionLongTaskCancel           Action = "long_task.cancel"
 )
 
 var validActions = map[Action]struct{}{
@@ -65,6 +66,7 @@ var validActions = map[Action]struct{}{
 	ActionSessionResolveFail: {}, ActionPodConfigApply: {}, ActionPodConfigSuccess: {},
 	ActionPodConfigFail: {}, ActionRuntimeGuardBind: {}, ActionRuntimeGuardReject: {},
 	ActionPodServiceTokenRotate: {},
+	ActionLongTaskCancel:        {},
 }
 
 // Metadata deliberately exposes no free-form secret-bearing field.

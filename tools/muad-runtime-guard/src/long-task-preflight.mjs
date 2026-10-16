@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { explicitSkillName } from "./skill-hooks.mjs";
 import { validateLongTaskInput } from "./long-task-input.mjs";
 
 export function createLongTaskPreflight({ ledger, getConfig, getTurnContext = (ctx) => ctx }) {
@@ -10,6 +11,12 @@ export function createLongTaskPreflight({ ledger, getConfig, getTurnContext = (c
       const config = getConfig();
       const turn = trustedTurn(config, getTurnContext(toolContext));
       if (!turn) return rejected("context_unavailable");
+      // explicit_name 跳过候选选择，必须核对可信入站命令里的明确指定（如 /skill:<name>），
+      // 不接受模型自报；其余匹配方式仍由语义判断并保留既有门禁。
+      if (validated.input.selectionBasis === "explicit_name" &&
+          explicitSkillName(turn.originalPrompt) !== validated.input.skillName) {
+        return rejected("explicit_name_untrusted");
+      }
       const grant = (config.longTaskSkillGrants ?? []).find((item) =>
         item.agentId === turn.agentId && item.name === validated.input.skillName);
       if (!validGrant(grant)) return rejected("skill_not_authorized");

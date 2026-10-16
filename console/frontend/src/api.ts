@@ -34,6 +34,7 @@ import type {
   LLMModelTestResult,
   LLMModelUpdateInput,
   LongTaskListResult,
+  LongTaskCancelResult,
   LongTaskQuery,
   PageResult,
   PatchHumanUserInput,
@@ -460,6 +461,8 @@ export const api = {
         status: query.status,
       }),
     ),
+  cancelLongTask: (taskId: string) =>
+    request<LongTaskCancelResult>("POST", `/long-tasks/${encodeURIComponent(taskId)}/cancel`, {}),
   getResources: () => request<GlobalResourceConfig>("GET", "/settings/resources"),
   getAgentGuidance: () => request<AgentGuidance>("GET", "/settings/agent-guidance"),
   setAgentGuidance: (input: AgentGuidanceInput) =>

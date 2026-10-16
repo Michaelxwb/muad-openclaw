@@ -9,7 +9,8 @@ import { SkillPreflightContext } from '../src/skill-preflight-context.mjs';
 
 function setup(t) {
   const root = mkdtempSync(path.join(tmpdir(), 'muad-preflight-hooks-'));
-  const skillDir = path.join(root, 'report'); mkdirSync(path.join(skillDir, 'scripts'), { recursive: true });
+  const workspace = path.join(root, 'workspace-alice'); mkdirSync(workspace, { recursive: true });
+  const skillDir = path.join(workspace, 'skills/report'); mkdirSync(path.join(skillDir, 'scripts'), { recursive: true });
   const script = path.join(skillDir, 'scripts/run.py'); writeFileSync(script, "print('report')\n");
   writeFileSync(path.join(skillDir, 'scripts/run'), '#!/bin/sh\n');
   writeFileSync(path.join(skillDir, 'SKILL.md'), '# Real instructions\n');
@@ -19,9 +20,10 @@ function setup(t) {
   const ledger = new SkillPreflightContext();
   const ctx = { runId: 'run-1', agentId: 'alice', sessionKey: 'agent:alice:wecom:direct:a' };
   const config = { longTaskSkillGrants: [{ agentId: 'alice', name: 'report', rootPath: skillDir }] };
-  const hooks = createLongTaskHooks({ getConfig: () => config, manager, ledger });
+  const hooks = createLongTaskHooks({ getConfig: () => config, manager, ledger,
+    resolveDefaultCwd: turn => (turn?.agentId === 'alice' ? workspace : '') });
   t.after(() => { manager.close(); rmSync(root, { recursive: true, force: true }); });
-  return { root, hooks, skillDir, script, manager, started, ledger, ctx };
+  return { root, workspace, hooks, skillDir, script, manager, started, ledger, ctx };
 }
 
 test('PreflightE03 blocks actual script commands without submission and allows document inspection', async t => {
@@ -59,6 +61,32 @@ test('PreflightE03 read and slash remain preflight, successful reads alone updat
   await f.hooks.agentEnd({}, f.ctx);
   assert.equal(f.ledger.check({ ...f.ctx, skillName: 'report', rootPath: f.skillDir }).ok, false);
   assert.equal(f.started.length, 0);
+});
+
+test('LongTaskControlS04 blocks default-workdir relative scripts, wrappers and find -exec with zero submission', async t => {
+  const f = setup(t);
+  await f.hooks.beforeAgentRun({ prompt: '生成报告', senderId: 'a' }, f.ctx);
+  for (const command of [
+    'python3 skills/report/scripts/run.py',
+    'cd skills/report && ./scripts/run.py',
+    'cd skills/report/scripts && python3 run.py',
+    'env FOO=1 python3 skills/report/scripts/run.py',
+    'timeout 60 bash skills/report/scripts/run',
+    `find skills/report -name "*.py" -exec python3 {} \\;`,
+    'bash -c "cd skills/report && python3 scripts/run.py"',
+  ]) {
+    const result = await f.hooks.beforeToolCall({ toolName: 'bash', params: { command } }, f.ctx);
+    assert.equal(result?.block, true, command);
+    assert.match(result.blockReason, /muad_submit_long_task/);
+  }
+  for (const command of [
+    'ls skills/report', 'cat skills/report/scripts/run.py', 'grep -n report skills/report/scripts/run.py',
+    'find skills/report -name "*.py"', 'python3 skills/other/tool.py', 'echo skills/report/scripts/run.py',
+  ]) {
+    assert.equal(await f.hooks.beforeToolCall({ toolName: 'exec', params: { command } }, f.ctx), undefined, command);
+  }
+  assert.equal(f.started.length, 0);
+  assert.equal(f.manager.snapshot().active + f.manager.snapshot().queued, 0);
 });
 
 test('background sessions may run their selected script and never enqueue recursively', async t => {

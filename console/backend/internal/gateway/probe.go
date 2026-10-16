@@ -50,6 +50,10 @@ type Status struct {
 	// Unlike a deterministic RouteVerified=false, the route state is unknown and
 	// health waits should keep polling instead of treating it as a failure.
 	RouteUnknown bool
+	// LongTaskCancelAvailable/Version 来自 guard health 的取消能力上报：只有
+	// 取消链完整（manager 可取消 + 原生 abort/drain 可用）才为 true。
+	LongTaskCancelAvailable bool
+	LongTaskCancelVersion   int
 }
 
 // Execer runs a command inside a Pod (satisfied by each RuntimeDriver).
@@ -153,6 +157,8 @@ func mergeRuntimeHealthResult(status *Status, out string, err error) {
 	status.SkillQueued = health.Skill.Queued
 	status.BrowserActive = health.Browser.Active
 	status.BrowserQueued = health.Browser.Queued
+	status.LongTaskCancelAvailable = health.LongTaskCancel.Available
+	status.LongTaskCancelVersion = health.LongTaskCancel.Version
 }
 
 // mergeConfigRevisionResult merges the config.get RPC output.
@@ -243,6 +249,10 @@ type runtimeHealthJSON struct {
 		Active int `json:"active"`
 		Queued int `json:"queued"`
 	} `json:"browser"`
+	LongTaskCancel struct {
+		Available bool `json:"available"`
+		Version   int  `json:"version"`
+	} `json:"longTaskCancel"`
 }
 
 type configGetJSON struct {

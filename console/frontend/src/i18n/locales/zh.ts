@@ -113,6 +113,8 @@ const zh = {
     succeeded: "成功",
     failed: "失败",
     queued: "排队中",
+    cancelling: "终止中",
+    cancelled: "已取消",
     inProgress: "执行中",
   },
   channel: {
@@ -536,6 +538,17 @@ const zh = {
     endedAt: "结束时间",
     updatedAt: "更新时间",
     terminal: "结束原因",
+    cancelQueued: "取消排队",
+    terminate: "终止任务",
+    terminateTitle: "终止该任务？",
+    terminateContent:
+      "将终止 {{skill}}（任务 {{taskId}}）。已完成的外部操作与已发送的消息不会撤回。",
+    cancelRequested: "终止请求已接受，等待停止确认",
+    cancelledNotice: "任务已取消",
+    cancelUnavailableUnknown: "暂无法确认 Worker 取消能力，请稍后重试",
+    cancelUnavailableUnsupported: "当前 Worker 不支持任务取消，请升级运行时",
+    cancelUnavailableStatus: "当前状态不可取消",
+    cancelFailed: "终止任务失败，请稍后重试",
   },
   user: {
     statusAll: "全部状态",

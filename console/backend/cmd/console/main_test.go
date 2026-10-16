@@ -11,7 +11,7 @@ import (
 func TestNewHTTPServerSetsTimeouts(t *testing.T) {
 	server := newHTTPServer(&dependencies{
 		cfg: &config.Config{ListenAddr: ":0"},
-	}, monitor.NewCache(), nil, nil)
+	}, monitor.NewCache(), nil, nil, nil)
 	if server.ReadHeaderTimeout != 10*time.Second {
 		t.Fatalf("ReadHeaderTimeout = %s", server.ReadHeaderTimeout)
 	}

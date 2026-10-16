@@ -43,6 +43,10 @@ type longTaskTaskJSON struct {
 	SkillName      string `json:"skillName"`
 	SkillRoot      string `json:"skillRoot"`
 	Status         string `json:"status"`
+	StateRevision  int64  `json:"stateRevision"`
+	CancelReqAt    string `json:"cancelRequestedAt"`
+	CancelReqBy    string `json:"cancelRequestedBy"`
+	CancelledAt    string `json:"cancelledAt"`
 	SourceSessKey  string `json:"sourceSessionKey"`
 	SubmittedAt    string `json:"submittedAt"`
 	StartedAt      string `json:"startedAt"`
@@ -107,26 +111,44 @@ func longTaskTaskFromJSON(
 ) repo.LongTaskTask {
 	agentID := firstNonEmpty(task.AgentID, pool.AgentID)
 	return repo.LongTaskTask{
-		TaskID:         task.TaskID,
-		PodID:          podID,
-		HumanUserID:    userIDs[agentID],
-		PoolKey:        firstNonEmpty(task.PoolKey, pool.PoolKey, pool.SessionKey),
-		PoolQueued:     pool.Queued,
-		PoolRunning:    pool.Active,
-		PoolLimit:      pool.Limit,
-		AgentID:        agentID,
-		PeerID:         firstNonEmpty(task.PeerID, pool.PeerID),
-		SkillName:      task.SkillName,
-		SkillRoot:      task.SkillRoot,
-		Status:         strings.TrimSpace(task.Status),
-		SubmittedAt:    parseRuntimeTime(task.SubmittedAt),
-		StartedAt:      parseRuntimeTime(task.StartedAt),
-		EndedAt:        parseRuntimeTime(task.EndedAt),
-		TerminalReason: task.TerminalReason,
-		ErrorCode:      task.ErrorCode,
-		UpdatedAt:      parseRuntimeTime(task.UpdatedAt),
-		LastSeenAt:     time.Now().UTC(),
+		TaskID:            task.TaskID,
+		PodID:             podID,
+		HumanUserID:       userIDs[agentID],
+		PoolKey:           firstNonEmpty(task.PoolKey, pool.PoolKey, pool.SessionKey),
+		PoolQueued:        pool.Queued,
+		PoolRunning:       pool.Active,
+		PoolLimit:         pool.Limit,
+		AgentID:           agentID,
+		PeerID:            firstNonEmpty(task.PeerID, pool.PeerID),
+		SkillName:         task.SkillName,
+		SkillRoot:         task.SkillRoot,
+		Status:            strings.TrimSpace(task.Status),
+		StateRevision:     nonNegativeInt(task.StateRevision),
+		CancelRequestedAt: parseRuntimeTime(task.CancelReqAt),
+		CancelRequestedBy: strings.TrimSpace(task.CancelReqBy),
+		CancelledAt:       parseRuntimeTime(task.CancelledAt),
+		SubmittedAt:       parseRuntimeTime(task.SubmittedAt),
+		StartedAt:         parseRuntimeTime(task.StartedAt),
+		EndedAt:           parseRuntimeTime(task.EndedAt),
+		TerminalReason:    task.TerminalReason,
+		ErrorCode:         task.ErrorCode,
+		UpdatedAt:         parseRuntimeTime(task.UpdatedAt),
+		LastSeenAt:        time.Now().UTC(),
 	}
+}
+
+func maxInt64(value, floor int64) int64 {
+	if value < floor {
+		return floor
+	}
+	return value
+}
+
+func nonNegativeInt(value int64) int {
+	if value < 0 {
+		return 0
+	}
+	return int(value)
 }
 
 func firstNonEmpty(values ...string) string {

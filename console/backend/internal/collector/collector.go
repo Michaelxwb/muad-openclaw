@@ -30,12 +30,13 @@ const (
 
 // Collector samples runtime state on an interval.
 type Collector struct {
-	drv      driver.RuntimeDriver
-	source   PodSource
-	cache    *monitor.Cache
-	defaults driver.ResourceSpec
-	interval time.Duration
-	workers  int
+	drv          driver.RuntimeDriver
+	source       PodSource
+	cache        *monitor.Cache
+	defaults     driver.ResourceSpec
+	interval     time.Duration
+	workers      int
+	capabilities *gateway.LongTaskCapabilityCache
 }
 
 // PodSource provides the control-plane state included in each snapshot.
@@ -50,6 +51,13 @@ func New(drv driver.RuntimeDriver, source PodSource, cache *monitor.Cache, defau
 		drv: drv, source: source, cache: cache, defaults: defaults,
 		interval: interval, workers: defaultWorkers,
 	}
+}
+
+// WithLongTaskCapabilities wires the per-Pod cancel capability cache: every probe
+// cycle publishes the guard health capability here (read-only for list/cancel paths).
+func (c *Collector) WithLongTaskCapabilities(cache *gateway.LongTaskCapabilityCache) *Collector {
+	c.capabilities = cache
+	return c
 }
 
 // Run collects immediately, then every interval until ctx is cancelled.
@@ -121,7 +129,14 @@ func (c *Collector) probeRunningPods(ctx context.Context, snaps map[string]monit
 			defer func() { <-sem }()
 			pctx, cancel := context.WithTimeout(ctx, probeTimeout)
 			defer cancel()
-			mergeGatewayStatus(&base, gateway.Probe(pctx, c.drv, id))
+			status := gateway.Probe(pctx, c.drv, id)
+			mergeGatewayStatus(&base, status)
+			if c.capabilities != nil {
+				c.capabilities.Update(id, gateway.LongTaskCancelCapability{
+					Available: status.LongTaskCancelAvailable,
+					Version:   status.LongTaskCancelVersion,
+				})
+			}
 			mu.Lock()
 			results[id] = base
 			mu.Unlock()

@@ -313,7 +313,10 @@ test("spawnOpenClawTask uses isolated session and independent reply channel", as
       const child = new EventEmitter();
       child.stdout = new EventEmitter();
       child.stderr = new EventEmitter();
-      queueMicrotask(() => child.emit("exit", 0));
+      queueMicrotask(() => {
+        child.stdout.emit("data", JSON.stringify({ result: { payloads: [{ text: "ok" }] } }));
+        child.emit("exit", 0);
+      });
       return child;
     },
   });
@@ -326,7 +329,7 @@ test("spawnOpenClawTask uses isolated session and independent reply channel", as
     "agent:alice:longtask:task-1",
   );
   assert.match(calls[0].args[calls[0].args.indexOf("--message-file") + 1], /message\.txt$/u);
-  assert.equal(calls[0].args.includes("--deliver"), true);
+  assert.equal(calls[0].args.includes("--deliver"), false);
   assert.equal(calls[0].args[calls[0].args.indexOf("--reply-channel") + 1], "openclaw-weixin");
   assert.equal(calls[0].args[calls[0].args.indexOf("--reply-to") + 1], "wx-1");
   assert.equal(calls[0].args.includes("--json"), true);
@@ -524,19 +527,29 @@ test("LongTaskManager logs submit/start/finish through the injected log", async 
   assert.equal(logs.some((msg) => msg.includes("long task succeeded") && msg.includes("xdr-query")), true);
 });
 
-test("spawnOpenClawTask spawns with stdout ignored so an unconsumed pipe cannot deadlock", async () => {
+test("spawnOpenClawTask drains stdout for the result and never passes --deliver", async () => {
   const calls = [];
-  await spawnOpenClawTask(spawnTask(), {
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  const settled = await spawnOpenClawTask(spawnTask(), {
     spawn: (command, args, options) => {
-      calls.push({ command, options });
-      const child = new EventEmitter();
-      child.stdout = new EventEmitter();
-      child.stderr = new EventEmitter();
-      queueMicrotask(() => child.emit("exit", 0));
+      calls.push({ command, args, options });
+      const filler = `${"x".repeat(199_999)}\n`;
+      queueMicrotask(() => {
+        for (let index = 0; index < 10; index += 1) {
+          assert.ok(child.stdout.listenerCount("data") > 0, "stdout must be consumed while the child runs");
+          child.stdout.emit("data", filler);
+        }
+        child.stdout.emit("data", JSON.stringify({ result: { payloads: [{ text: "done" }] } }));
+        child.emit("exit", 0);
+      });
       return child;
     },
   });
-  assert.deepEqual(calls[0].options.stdio, ["ignore", "ignore", "pipe"]);
+  assert.deepEqual(calls[0].options.stdio, ["ignore", "pipe", "pipe"]);
+  assert.equal(calls[0].args.includes("--deliver"), false);
+  assert.deepEqual(settled.payloads, [{ text: "done", media: [] }]);
 });
 
 test("spawnOpenClawTask watchdog kills a never-exiting child and rejects with a timeout error", async () => {

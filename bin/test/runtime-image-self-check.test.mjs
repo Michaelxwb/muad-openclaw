@@ -91,6 +91,20 @@ test("runtime plugins are packaged for offline startup", () => {
     ),
     /runtime npm install/u,
   );
+
+  // 声明 dependencies 但没有随镜像打包的 node_modules 时仍拒绝离线启动。
+  assert.throws(
+    () => validateRuntimePluginsOfflineSafe(
+      [{ id: "bad", root: "/bad", manifest: "unused", entry: "unused" }],
+      { readFile: () => JSON.stringify({ dependencies: { "bash-parser": "0.5.0" } }), hasBundledModules: () => false },
+    ),
+    /runtime npm install/u,
+  );
+  // 构建期已打包 node_modules 的插件允许声明 dependencies（guard runtime-guard-deps 阶段）。
+  assert.doesNotThrow(() => validateRuntimePluginsOfflineSafe(
+    [{ id: "bundled", root: "/bundled", manifest: "unused", entry: "unused" }],
+    { readFile: () => JSON.stringify({ dependencies: { "bash-parser": "0.5.0" } }), hasBundledModules: () => true },
+  ));
 });
 
 test("runtime assembly requires explicit allow, load path, entries, CLI, and readable token", () => {

@@ -52,6 +52,18 @@ export class SharedBrowserLeaseManager {
     return true;
   }
 
+  // 取消/终态清理：只释放本进程持有的、属于该后台会话的租约（key 内包含 sessionKey）；
+  // 未持有的 key 一律 no-op，可安全重复调用。
+  async releaseSession(sessionKey) {
+    const session = typeof sessionKey === "string" ? sessionKey.trim() : "";
+    if (!session) return 0;
+    let released = 0;
+    for (const key of [...this.#releases.keys()]) {
+      if (key.includes(session) && await this.release(key)) released += 1;
+    }
+    return released;
+  }
+
   snapshot() {
     return this.#queue.snapshot();
   }

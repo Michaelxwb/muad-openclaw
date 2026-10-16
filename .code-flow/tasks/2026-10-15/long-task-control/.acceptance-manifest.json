@@ -1,0 +1,1548 @@
+{
+  "schema": 2,
+  "task_file": "long-task-control.md",
+  "task_sha256": "e8ba5a80af6bbaa2be3d6b3506e8cec989d0b1d1a349d8184a3f98f865591ad9",
+  "scenarios": [
+    {
+      "id": "S-01",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实模型、Worker 工具、队列及脚本哨兵：唯一适用且完整输入，无额外确认，恰好执行一次",
+      "owner": "TASK-024",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS01",
+        "tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-01",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "33b2a8e697924b9d95648b7981ffbf17",
+        "executed_at": "2026-10-15T11:41:58.996715+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "33b2a8e697924b9d95648b7981ffbf17",
+          "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-02",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实模型及 IM 入站：多个合理候选先列差异，选择前零执行，用户选择后仅执行所选 Skill",
+      "owner": "TASK-024",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS02",
+        "tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-02",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "33b2a8e697924b9d95648b7981ffbf17",
+        "executed_at": "2026-10-15T11:41:58.996715+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "33b2a8e697924b9d95648b7981ffbf17",
+          "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-03",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "使用本次截图等价请求，真实读取其他长任务文档后访问 company_label 测试接口；无关 Skill 零任务、零业务、零进度；不得接触真实客户业务",
+      "owner": "TASK-024",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS03",
+        "tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-03",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "33b2a8e697924b9d95648b7981ffbf17",
+        "executed_at": "2026-10-15T11:41:58.996715+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "33b2a8e697924b9d95648b7981ffbf17",
+          "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-04",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 guard、临时 Skill 文件和 Shell 解析：默认工作目录相对路径、cd、包装器、find -exec 被拒绝；普通 read/cat/ls/grep 查看通过；全程零提交",
+      "owner": "TASK-004",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS04",
+        "tools/muad-runtime-guard/test/long-task-hooks.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "30fd5d5e57b1404bae7433e8d57f7ae7",
+        "executed_at": "2026-10-15T09:04:42.177592+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "30fd5d5e57b1404bae7433e8d57f7ae7",
+          "executed_at": "2026-10-15T09:04:42.177592+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-05",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "浏览器 → Console API → 真实 Worker 队列 → SQLite → 列表：取消排队任务后哨兵从未执行，最终 cancelled，排队数减少",
+      "owner": "TASK-025",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS05",
+        "tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-05",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "e107d000dce641a7b72c602231c9b5c6",
+        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "e107d000dce641a7b72c602231c9b5c6",
+          "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-06",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实固定版本 Gateway、模型、长时间脚本及其子进程、收件观察器：终止后进程停止、业务计数不再增长、资源清理、无新结果投递，列表 cancelled",
+      "owner": "TASK-025",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS06",
+        "tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-06",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "e107d000dce641a7b72c602231c9b5c6",
+        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "e107d000dce641a7b72c602231c9b5c6",
+          "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-07",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "同用户另一个任务及另一用户真实任务继续运行；主会话可用；终止任务清理后执行槽恰好释放一次，下一项按原顺序启动",
+      "owner": "TASK-025",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS07",
+        "tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-07",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "e107d000dce641a7b72c602231c9b5c6",
+        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-07",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "e107d000dce641a7b72c602231c9b5c6",
+          "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-08",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "Console 配置 → DTO/schema → generation 事务 → Worker health：能力与指导成功应用；故障健康检查触发回滚，无模型绑定或 Skill 分层改变",
+      "owner": "TASK-026",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS08",
+        "tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-08",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
+        "executed_at": "2026-10-15T11:42:14.285397+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
+          "executed_at": "2026-10-15T11:42:14.285397+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-09",
+      "source": "long-task-control.frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Testing Library、真实 hook 与 API 封装、HTTP 边界 stub：仅可取消 queued/running 有操作，cancelling 不可重复点击；succeeded/failed/cancelled 无重试按钮；关闭终止确认框不发请求",
+      "owner": "TASK-021",
+      "status": "verified",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "test/LongTasks.test.tsx",
+        "-t",
+        "LongTaskControlS09"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "e55f7c6fad0b44d6b6bd8034ae6ece37",
+        "executed_at": "2026-10-15T11:31:34.186403+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "e55f7c6fad0b44d6b6bd8034ae6ece37",
+          "executed_at": "2026-10-15T11:31:34.186403+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-10",
+      "source": "long-task-control.frontend.design.md#2.4 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实浏览器、后端及 Worker：中英文切换后按钮/状态/错误/确认文案正确，按取消状态筛选、分页和正常后台轮询不闪表格 spinner",
+      "owner": "TASK-026",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS10",
+        "tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-10",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
+        "executed_at": "2026-10-15T11:42:14.285397+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
+          "executed_at": "2026-10-15T11:42:14.285397+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-11",
+      "source": "long-task-control.backend.design.md#3.2 架构设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "固定 OpenClaw 2026.7.1 已安装分发物的公开接口、真实可销毁本地子进程和归属句柄：记录取消方法/返回语义，拒绝将 CLI 退出当运行停止；不依赖 2026.7.2 或修改上游",
+      "owner": "TASK-001",
+      "status": "verified",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTRACT=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS11",
+        "tools/muad-runtime-guard/test/long-task-cancel-contract.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "5156c349860b451191a5d8fe47b867aa",
+        "executed_at": "2026-10-15T08:24:41.644225+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "5156c349860b451191a5d8fe47b867aa",
+          "executed_at": "2026-10-15T08:24:41.644225+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-12",
+      "source": "long-task-control.backend.design.md#3.2 架构设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实包清单/锁文件、隔离依赖安装及镜像复制布局：所选 Shell AST 解析器在 Worker 插件实际路径可加载，缺失依赖明确失败",
+      "owner": "TASK-002",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS12",
+        "tools/muad-runtime-guard/test/long-task-command-package.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-12",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "1840eaf4208a4bffa52cb8c796fb454c",
+        "executed_at": "2026-10-15T08:48:52.746931+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "1840eaf4208a4bffa52cb8c796fb454c",
+          "executed_at": "2026-10-15T08:48:52.746931+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-13",
+      "source": "long-task-control.backend.design.md#3.2 架构设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 Shell AST 解析模块、临时脚本与 symlink：分辨管道/包装器/子命令及 find/awk 执行行为，普通查看不误判，解析不确定返回显式结果",
+      "owner": "TASK-003",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS13",
+        "tools/muad-runtime-guard/test/long-task-command-policy.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-13",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "20fa5421324847a2839279d04f203d9d",
+        "executed_at": "2026-10-15T08:59:06.408990+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-13",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "20fa5421324847a2839279d04f203d9d",
+          "executed_at": "2026-10-15T08:59:06.408990+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-14",
+      "source": "long-task-control.backend.design.md#3.2 架构设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 renderer/preflight 与可信入站上下文：唯一自动、多候选选择、参考不授权；explicit_name 不接受模型伪造，现有授权和文档读取门禁保留",
+      "owner": "TASK-005",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS14",
+        "bin/test/long-task-control-guidance.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-14",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "8d7a500cb47e4d049100beb9abe01c55",
+        "executed_at": "2026-10-15T09:15:02.279237+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-14",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "8d7a500cb47e4d049100beb9abe01c55",
+          "executed_at": "2026-10-15T09:15:02.279237+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-15",
+      "source": "long-task-control.backend.design.md#3.3 数据设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实任务状态模块、0600 临时 JSONL 及恢复读取：revision 单调、取消请求可靠保存，旧记录兼容、写入失败显式且不伪造取消",
+      "owner": "TASK-006",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS15",
+        "tools/muad-runtime-guard/test/long-task-cancel-state.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-15",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "a31caac6e77d469e954f345cadedb9e1",
+        "executed_at": "2026-10-15T09:22:01.033583+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-15",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "a31caac6e77d469e954f345cadedb9e1",
+          "executed_at": "2026-10-15T09:22:01.033583+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-16",
+      "source": "long-task-control.backend.design.md#3.3 数据设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 SQLite 旧表及 repo 迁移：新增状态/取消字段后行数、内容及索引保留，迁移可重复、失败事务回滚",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/repo",
+        "-run",
+        "TestLongTaskControlS16",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-16",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "9d7ab88ae19f496bb3506115d2c4de1b",
+        "executed_at": "2026-10-15T09:29:02.522817+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-16",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d7ab88ae19f496bb3506115d2c4de1b",
+          "executed_at": "2026-10-15T09:29:02.522817+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-17",
+      "source": "long-task-control.backend.design.md#3.2 架构设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实执行适配器、可控原生取消依赖、真实本地子进程：taskId/session/run 严格对应，abort 接受不等于已退出，不以杀 CLI 替代取消 Gateway",
+      "owner": "TASK-009",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS17",
+        "tools/muad-runtime-guard/test/long-task-run-controller.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-17",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c5d1c17f2a38457883d3cc1ac6605c5a",
+        "executed_at": "2026-10-15T09:50:03.731997+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-17",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c5d1c17f2a38457883d3cc1ac6605c5a",
+          "executed_at": "2026-10-15T09:50:03.731997+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-18",
+      "source": "long-task-control.backend.design.md#3.2 架构设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 manager、shared Skill/browser lease 和临时进度桥：取消期间不释放槽，确认停止后仅清理目标任务资源，下一任务启动且不重复释放",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS18",
+        "tools/muad-runtime-guard/test/long-task-cancel-resources.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-18",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "20deb92c594c4ddeb6905cef6b44e704",
+        "executed_at": "2026-10-15T10:06:00.791001+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-18",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "20deb92c594c4ddeb6905cef6b44e704",
+          "executed_at": "2026-10-15T10:06:00.791001+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-19",
+      "source": "long-task-control.backend.design.md#3.2 架构设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 SkillProgressManager 与进度桥、可控通知发送边界：取消后拒绝迟到事件，丢弃未发起队列；在途记录可解释，终态消息最多一次",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS19",
+        "tools/muad-runtime-guard/test/long-task-cancel-progress.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-19",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "6f99347376404ba2a8b3b8f8df0efad0",
+        "executed_at": "2026-10-15T10:11:11.315772+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-19",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "6f99347376404ba2a8b3b8f8df0efad0",
+          "executed_at": "2026-10-15T10:11:11.315772+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-20",
+      "source": "long-task-control.backend.design.md#3.2 架构设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实结果解析和管理器投递控制、可控子进程流与通知边界：持续消费输出、保留附件/多段结果，取消与投递许可互斥且不再直接 --deliver",
+      "owner": "TASK-013",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS20",
+        "tools/muad-runtime-guard/test/long-task-cancel-delivery.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-20",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "cd2fda545309413a9e1226af5c038ae7",
+        "executed_at": "2026-10-15T10:43:15.375738+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-20",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "cd2fda545309413a9e1226af5c038ae7",
+          "executed_at": "2026-10-15T10:43:15.375738+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-21",
+      "source": "long-task-control.backend.design.md#3.4 接口设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实插件 register/hooks/manager 与 host API spy：内部取消 RPC 仅 operator.write，绝不暴露为模型工具；身份不可信拒绝，能力仅在取消链完整时报告",
+      "owner": "TASK-014",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS21",
+        "tools/muad-runtime-guard/test/long-task-cancel-registration.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-21",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "2cd224b44fea422badc106d7a9c44589",
+        "executed_at": "2026-10-15T10:48:02.142349+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "2cd224b44fea422badc106d7a9c44589",
+          "executed_at": "2026-10-15T10:48:02.142349+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-22",
+      "source": "long-task-control.backend.design.md#3.4 接口设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 Go Gateway 适配器与 fake Driver：argv/JSON 安全传递、context 超时、RPC 包络校验；不支持与未知停止明确区分",
+      "owner": "TASK-015",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/gateway",
+        "-run",
+        "TestLongTaskControlS22",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "14c23b340c35477ab469858d97dce95f",
+        "executed_at": "2026-10-15T10:52:23.422773+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "14c23b340c35477ab469858d97dce95f",
+          "executed_at": "2026-10-15T10:52:23.422773+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-23",
+      "source": "long-task-control.backend.design.md#3.4 接口设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 errcode/errorCatalog/writeJSON/writeErr：取消场景稳定子码、中英文与 HTTP status 一致，202 仅表达已接受，包络兼容守卫",
+      "owner": "TASK-016",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./internal/api",
+        "-run",
+        "TestLongTaskControlS23",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-23",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "997b79d7a787435586ac024bbebbb01a",
+        "executed_at": "2026-10-15T10:56:52.030966+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "997b79d7a787435586ac024bbebbb01a",
+          "executed_at": "2026-10-15T10:56:52.030966+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-24",
+      "source": "long-task-control.backend.design.md#3.4 接口设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实快照解码、Store、列表 DTO 与 Pod 能力缓存：兼容旧四状态，cancelling 占槽、cancelled 可筛选、能力未知不可取消；不同独占模型用户归属不串扰",
+      "owner": "TASK-018",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./test",
+        "-run",
+        "TestLongTaskControlS24",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-24",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "5dbc16bbf61143ebab4221dcf1763480",
+        "executed_at": "2026-10-15T11:15:52.192135+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "5dbc16bbf61143ebab4221dcf1763480",
+          "executed_at": "2026-10-15T11:15:52.192135+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-25",
+      "source": "long-task-control.frontend.design.md#3.5 状态与数据流",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 api.ts 客户端与 HTTP stub：cancel 请求路径/认证/语言正确、code 解包、202/终态结果类型、安全错误和 401 清 token 事件",
+      "owner": "TASK-019",
+      "status": "verified",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "test/api.test.ts",
+        "-t",
+        "LongTaskControlS25"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-25",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "fe47158742fa49eeaf7545fe02886568",
+        "executed_at": "2026-10-15T11:19:32.547748+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "8e2b388670094f1996df844707864933",
+          "executed_at": "2026-10-15T11:18:47.190213+00:00"
+        },
+        {
+          "id": "S-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "fe47158742fa49eeaf7545fe02886568",
+          "executed_at": "2026-10-15T11:19:32.547748+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-26",
+      "source": "long-task-control.frontend.design.md#3.3 组件设计",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Testing Library 真实 Semi 操作组件：queued 直接取消、running 确认后回调、关闭确认不提交；取消中禁用，所有终态无重试，键盘标签可达",
+      "owner": "TASK-020",
+      "status": "verified",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "test/LongTaskActions.test.tsx",
+        "-t",
+        "LongTaskControlS26"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-26",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "830b762033074260a9516e13e0d6f905",
+        "executed_at": "2026-10-15T11:27:05.324639+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-26",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "830b762033074260a9516e13e0d6f905",
+          "executed_at": "2026-10-15T11:27:05.324639+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-27",
+      "source": "long-task-control.frontend.design.md#3.8 可访问性与国际化",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 i18n 资源与 Semi 上下文：中英文状态/操作/确认/错误键成对存在，语言切换更新列及按钮，无页面重复 ConfigProvider",
+      "owner": "TASK-022",
+      "status": "verified",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "test/LongTasks.i18n.test.tsx",
+        "-t",
+        "LongTaskControlS27"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-27",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ae80f12abbb34b7997f24cde39ddf874",
+        "executed_at": "2026-10-15T11:23:54.104158+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-27",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ae80f12abbb34b7997f24cde39ddf874",
+          "executed_at": "2026-10-15T11:23:54.104158+00:00"
+        }
+      ]
+    },
+    {
+      "id": "S-28",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实隔离 fixture 生成器、执行哨兵、结果观察断言及本地文件：伪造/缺失进程停止、缺失真实收件证据或未就绪环境不能验收成功；测试数据不含真实凭证",
+      "owner": "TASK-023",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlS28",
+        "tools/muad-runtime-guard/test/long-task-control-e2e-fixtures.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-28",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "a71c2b83a2364a64a6f0a6e643fc5dfa",
+        "executed_at": "2026-10-15T11:37:35.991352+00:00"
+      },
+      "runs": [
+        {
+          "id": "S-28",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "a71c2b83a2364a64a6f0a6e643fc5dfa",
+          "executed_at": "2026-10-15T11:37:35.991352+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-01",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "Worker 不可达、RPC 超时或停止未确认：显示失败或终止中并保留诊断；不得伪报 cancelled、提前释放槽位或启动重试任务",
+      "owner": "TASK-025",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlE01",
+        "tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-01",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "e107d000dce641a7b72c602231c9b5c6",
+        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "e107d000dce641a7b72c602231c9b5c6",
+          "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-02",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "旧 Worker、缺失取消能力或重启后运行归属不可证明：返回明确不支持/无法确认，保留实际可知状态，不按历史 PID 盲杀",
+      "owner": "TASK-025",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlE02",
+        "tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-02",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "e107d000dce641a7b72c602231c9b5c6",
+        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "e107d000dce641a7b72c602231c9b5c6",
+          "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-03",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "httptest → 真实 Store → fake Driver：未登录、伪造 Pod/Agent、越界 taskId、畸形请求均被拒绝且零运行调用；错误包络和审计脱敏正确",
+      "owner": "TASK-017",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./test",
+        "-run",
+        "TestLongTaskControlE03",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "77ec3f5636b141c3b8ade65c09e51a2a",
+        "executed_at": "2026-10-15T11:04:50.114816+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "77ec3f5636b141c3b8ade65c09e51a2a",
+          "executed_at": "2026-10-15T11:04:50.114816+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-04",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 manager 和状态文件：取消记录写入失败时明确报错，不接受取消成功；隔离清理错误，不改写为成功",
+      "owner": "TASK-010",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlE04",
+        "tools/muad-runtime-guard/test/long-task-cancel-manager.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "93cd05783a6c48fa93b6cf6ba98730d9",
+        "executed_at": "2026-10-15T09:57:52.943544+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "93cd05783a6c48fa93b6cf6ba98730d9",
+          "executed_at": "2026-10-15T09:57:52.943544+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-05",
+      "source": "long-task-control.frontend.design.md#2.4 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "实际 Worker 不可达或不支持取消，UI 显示明确原因而非成功；刷新不覆盖较新操作状态；权限失效回登录；不出现任务重试按钮",
+      "owner": "TASK-026",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlE05",
+        "tools/muad-runtime-guard/test/long-task-control-ui-deployment.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-05",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
+        "executed_at": "2026-10-15T11:42:14.285397+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-05",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "7c462a0e13bd4263a80ae21504a9f3b5",
+          "executed_at": "2026-10-15T11:42:14.285397+00:00"
+        }
+      ]
+    },
+    {
+      "id": "E-06",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "真实模型与隔离 Worker：无适用 Skill、仅缺用户必填输入、显式名称与本轮请求不一致时说明或追问；未完成预检前零入队、零业务脚本执行",
+      "owner": "TASK-024",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlE06",
+        "tools/muad-runtime-guard/test/long-task-control-matching.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-06",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "33b2a8e697924b9d95648b7981ffbf17",
+        "executed_at": "2026-10-15T11:41:58.996715+00:00"
+      },
+      "runs": [
+        {
+          "id": "E-06",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "33b2a8e697924b9d95648b7981ffbf17",
+          "executed_at": "2026-10-15T11:41:58.996715+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-01",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "可控执行屏障与真实 manager：queued 转 running、spawn 尚未发生及自然完成时请求取消，验证线性化规则和无双终态",
+      "owner": "TASK-010",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlB01",
+        "tools/muad-runtime-guard/test/long-task-cancel-manager.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "93cd05783a6c48fa93b6cf6ba98730d9",
+        "executed_at": "2026-10-15T09:57:52.943544+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "93cd05783a6c48fa93b6cf6ba98730d9",
+          "executed_at": "2026-10-15T09:57:52.943544+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-02",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "相同取消请求多次、RPC 返回丢失后重复请求：无重复终止、无重复终态通知、无重复释放资源",
+      "owner": "TASK-010",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlB02",
+        "tools/muad-runtime-guard/test/long-task-cancel-manager.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "93cd05783a6c48fa93b6cf6ba98730d9",
+        "executed_at": "2026-10-15T09:57:52.943544+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "93cd05783a6c48fa93b6cf6ba98730d9",
+          "executed_at": "2026-10-15T09:57:52.943544+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-03",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "真实 SQLite：重复及乱序快照、旧四状态记录、迁移重复执行，已取消/已完成状态不回退、不被自动改 failed，历史记录和索引保留",
+      "owner": "TASK-008",
+      "status": "verified",
+      "command": [
+        "go",
+        "test",
+        "./test",
+        "-run",
+        "TestLongTaskControlB03",
+        "-count=1"
+      ],
+      "cwd": "console/backend",
+      "timeout": 120.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "7918cb5480624fc2b62917b7f532a86a",
+        "executed_at": "2026-10-15T09:32:28.933118+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7918cb5480624fc2b62917b7f532a86a",
+          "executed_at": "2026-10-15T09:32:28.933118+00:00"
+        }
+      ]
+    },
+    {
+      "id": "B-04",
+      "source": "long-task-control.backend.design.md#2.5 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "固定版本 Worker 重启时存在任务：取消墓碑保留，取消中的任务不恢复执行；孤儿运行只有归属证明且确认停止后才 cancelled",
+      "owner": "TASK-025",
+      "status": "e2e_deferred",
+      "command": [
+        "env",
+        "MUAD_LONG_TASK_CONTROL_E2E=1",
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "LongTaskControlB04",
+        "tools/muad-runtime-guard/test/long-task-control-cancel.e2e.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 3600.0,
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-04",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "e107d000dce641a7b72c602231c9b5c6",
+        "executed_at": "2026-10-15T11:42:12.305255+00:00"
+      },
+      "runs": [
+        {
+          "id": "B-04",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "e107d000dce641a7b72c602231c9b5c6",
+          "executed_at": "2026-10-15T11:42:12.305255+00:00"
+        }
+      ]
+    }
+  ]
+}

@@ -8,7 +8,7 @@
 
 ## Architecture
 
-- Base image: OpenClaw `2026.6.10` + Chromium/Playwright
+- Base image: OpenClaw `2026.7.1` + Chromium/Playwright
 - Control scripts: `bin/*.mjs`（配置渲染、事务 apply、自检、安装）
 - Plugins/tools: `tools/muad-run-skill`、`muad-runtime-guard`、`session-manager`、`muad-progress` 等
 - Skill seeds/templates: `skills/`
@@ -28,6 +28,8 @@
 | `bin/runtime-image-self-check.mjs` | 镜像自检 |
 | `tools/muad-run-skill/` | Skill 激活、执行、进度、telemetry |
 | `tools/muad-runtime-guard/` | 绑定、工具策略、浏览器租约 |
+| `tools/muad-runtime-guard/src/long-task-command-policy.mjs` | 长任务前台命令判定（Shell AST：cd/包装器/find -exec/awk/sed） |
+| `tools/muad-runtime-guard/src/long-task-cancel-state.mjs` | 长任务取消状态（0600 JSONL、单调 revision、取消墓碑） |
 | `tools/session-manager/` | 业务平台会话/凭证解析 |
 | `tools/muad-progress/` | 进度 CLI（Go） |
 | `skills/` | system skill 种子与开发模板 |

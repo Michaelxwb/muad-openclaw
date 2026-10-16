@@ -242,6 +242,18 @@ var errorCatalog = map[int]errorDef{
 	errcode.ConflictGeneration: {http.StatusConflict, "配置代冲突，请刷新后重试", "Configuration generation conflict"},
 	// conflict.state_operation
 	errcode.ConflictStateOperation: {http.StatusConflict, "当前资源状态不允许该操作", "Resource state does not allow this operation"},
+	// not_found.long_task
+	errcode.NotFoundLongTask: {http.StatusNotFound, "任务不存在或已被清理", "Long task not found"},
+	// conflict.long_task_ownership
+	errcode.ConflictLongTaskOwnership: {http.StatusConflict, "任务归属不匹配或请求冲突", "Long task ownership conflict"},
+	// long_task.cancel_unsupported
+	errcode.LongTaskCancelUnsupported: {http.StatusServiceUnavailable, "当前 Worker 不支持任务取消，请升级运行时", "This Worker does not support task cancellation; upgrade the runtime"},
+	// conflict.long_task_run_unverifiable
+	errcode.LongTaskRunUnverifiable: {http.StatusConflict, "无法确认该运行的真实归属，未执行终止", "The run's ownership cannot be verified; cancellation was not performed"},
+	// long_task.cancel_unavailable
+	errcode.LongTaskCancelUnavailable: {http.StatusServiceUnavailable, "Worker 取消服务暂不可用，请稍后重试", "Task cancellation service is temporarily unavailable"},
+	// internal.long_task_cancel_state
+	errcode.LongTaskCancelStateFailed: {http.StatusInternalServerError, "取消记录保存失败，任务未被标记为已取消", "Failed to persist the cancellation; the task was not marked cancelled"},
 	// rate_limited.login
 	errcode.RateLimitedLogin: {http.StatusTooManyRequests, "登录尝试过于频繁，请稍后再试", "Too many login attempts, please try again later"},
 	// rate_limited.binding
@@ -402,6 +414,22 @@ func writeErrorEnvelope(w http.ResponseWriter, r *http.Request, status int, body
 	if err := json.NewEncoder(w).Encode(body); err != nil {
 		log.Printf("api_error_encode_failed status=%d error=%v", status, err)
 	}
+}
+
+// writeLongTaskCancelResult 写入取消接口的稳定成功包络（API-01）：
+// outcome=cancel_requested → 202，仅表达已接受（status 保持 cancelling，不代表已停止）；
+// cancelled / already_terminal → 200，原样回传实际状态，绝不把终态改写为已取消。
+func writeLongTaskCancelResult(w http.ResponseWriter, taskID, outcome, status string, stateRevision int64) {
+	code := http.StatusOK
+	if outcome == "cancel_requested" {
+		code = http.StatusAccepted
+	}
+	writeJSON(w, code, map[string]any{
+		"taskId":        taskID,
+		"outcome":       outcome,
+		"status":        status,
+		"stateRevision": stateRevision,
+	})
 }
 
 func renderError(def errorDef, lang langCode) string {

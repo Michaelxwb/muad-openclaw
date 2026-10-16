@@ -24,6 +24,7 @@
 | `console/backend/internal/api/` | HTTP 路由、handler、错误码 |
 | `console/backend/internal/errcode/` | 稳定错误码常量 + `AllCodes`（前后端契约） |
 | `console/backend/internal/repo/` | 持久化、schema、查询 |
+| `console/backend/internal/repo/long_task_migrations.go` | 长任务状态/取消字段迁移（单事务重建 CHECK、行数校验、回滚） |
 | `console/backend/internal/driver/` | RuntimeDriver（docker/k8s） |
 | `console/backend/internal/runtimeconfig/` | 多用户 runtime 配置构建 |
 | `console/backend/internal/runtimeapply/` | 配置事务 apply + 健康/回滚 |

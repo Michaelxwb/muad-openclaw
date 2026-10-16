@@ -10,18 +10,25 @@ if (!logFile) {
 }
 
 if (args[0] === "message" && args[1] === "send") {
-  runProgressDelivery();
-} else if (args[0] === "agent" && args.includes("--deliver")) {
-  runFinalDelivery();
+  runMessageSend();
+} else if (args[0] === "agent") {
+  runFinalResult();
 } else {
   console.error("unsupported openclaw test invocation");
   process.exit(2);
 }
 
-function runProgressDelivery() {
+// 进度与最终结果都经共享 message send 通道投递（子 CLI 不再 native --deliver）：
+// 最终结果由 manager 投递，message 等于约定终稿时记为 final。
+function runMessageSend() {
   const target = argumentValue("--target");
   const channel = argumentValue("--channel");
   const message = argumentValue("--message");
+  const media = argumentValue("--media");
+  if (!media && message === process.env.OPENCLAW_TEST_FINAL_TEXT) {
+    record({ kind: "final", channel, target, message, at: Date.now() });
+    process.exit(0);
+  }
   const fails = target === "foreground-owner";
   record({ kind: "progress-start", channel, target, message, at: Date.now() });
   setTimeout(() => {
@@ -31,7 +38,8 @@ function runProgressDelivery() {
   }, fails ? 120 : 5);
 }
 
-function runFinalDelivery() {
+// openclaw agent --json：等待释放文件后把多段结果写成 stdout JSON（无 --deliver）。
+function runFinalResult() {
   const deadline = Date.now() + 5_000;
   const timer = setInterval(() => {
     if (!existsSync(process.env.OPENCLAW_TEST_RELEASE_FILE ?? "")) {
@@ -41,13 +49,8 @@ function runFinalDelivery() {
       process.exit(124);
     }
     clearInterval(timer);
-    record({
-      kind: "final",
-      channel: argumentValue("--reply-channel"),
-      target: argumentValue("--reply-to"),
-      message: process.env.OPENCLAW_TEST_FINAL_TEXT,
-      at: Date.now(),
-    });
+    const payloads = [{ text: process.env.OPENCLAW_TEST_FINAL_TEXT ?? "" }];
+    process.stdout.write(`${JSON.stringify({ result: { payloads } })}\n`);
     process.exit(0);
   }, 10);
 }

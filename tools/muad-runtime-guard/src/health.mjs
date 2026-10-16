@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 
 import { parseGuardConfig } from "./config.mjs";
+import { cancelCapabilityOf } from "./long-task-cancel-rpc.mjs";
 
 export const RUNTIME_GUARD_VERSION = 2;
 
@@ -10,6 +11,7 @@ export function runtimeHealth(config, globals = globalThis) {
   const browserQueue = globals[Symbol.for("muad.browser.lease")];
   const skillQueue = globals[Symbol.for("muad.skill.lease")];
   const longTaskQueue = globals[Symbol.for("muad.longtask.manager")];
+  const cancelCapability = cancelCapabilityOf(globals);
   const sessionManagerLoaded = sessionManager?.loaded === true;
   const browser = queueSnapshot(browserQueue, config.maxBrowserConcurrency);
   const skill = queueSnapshot(skillQueue, config.maxSkillConcurrency);
@@ -17,6 +19,14 @@ export function runtimeHealth(config, globals = globalThis) {
   const browserGuardLoaded = browserQueue && typeof browserQueue.snapshot === "function";
   const skillGuardLoaded = skillQueue && typeof skillQueue.snapshot === "function";
   const longTaskGuardLoaded = longTaskQueue && typeof longTaskQueue.snapshot === "function";
+  // 取消能力只在链路完整（manager 支持取消 + 原生 abort/drain 可用）时报告；
+  // 缺失时明确 available=false，不推断 canCancel=true，也不影响整体健康。
+  const longTaskCancel = {
+    available: cancelCapability?.available === true &&
+      typeof longTaskQueue?.cancelTask === "function" &&
+      typeof longTaskQueue?.taskStatus === "function",
+    version: Number.isInteger(cancelCapability?.version) ? cancelCapability.version : 0,
+  };
   return {
     ok: config.valid && sessionManagerLoaded && Boolean(browserGuardLoaded) &&
       Boolean(skillGuardLoaded) && Boolean(longTaskGuardLoaded),
@@ -30,6 +40,7 @@ export function runtimeHealth(config, globals = globalThis) {
     browser,
     skill,
     longTask,
+    longTaskCancel,
   };
 }
 

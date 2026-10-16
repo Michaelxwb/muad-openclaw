@@ -460,3 +460,89 @@ describe("request contract", () => {
     await expect(api.me()).rejects.toThrow("服务端返回了无效数据");
   });
 });
+
+describe("Long task cancel API", () => {
+  it("LongTaskControlS25 posts the cancel path with auth, language, empty body and unwraps 202", async () => {
+    token.set("console-token");
+    const fetchMock = stubResponse(
+      { taskId: "task-1", outcome: "cancel_requested", status: "cancelling", stateRevision: 3 },
+      202,
+    );
+    const result = await api.cancelLongTask("task-1");
+    expect(result).toEqual({
+      taskId: "task-1",
+      outcome: "cancel_requested",
+      status: "cancelling",
+      stateRevision: 3,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/long-tasks/task-1/cancel",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer console-token",
+          "Accept-Language": expect.any(String),
+        }),
+      }),
+    );
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.body === undefined || init.body === "{}").toBe(true);
+  });
+
+  it("LongTaskControlS25 unwraps cancelled and already-terminal actual status", async () => {
+    stubResponse({ taskId: "task-2", outcome: "cancelled", status: "cancelled", stateRevision: 4 });
+    const cancelled = await api.cancelLongTask("task-2");
+    expect(cancelled.outcome).toBe("cancelled");
+    expect(cancelled.status).toBe("cancelled");
+
+    vi.unstubAllGlobals();
+    stubResponse({
+      taskId: "task-3",
+      outcome: "already_terminal",
+      status: "succeeded",
+      stateRevision: 5,
+    });
+    const terminal = await api.cancelLongTask("task-3");
+    expect(terminal.outcome).toBe("already_terminal");
+    expect(terminal.status).toBe("succeeded");
+  });
+
+  it("LongTaskControlS25 surfaces stable cancel errors and encodes the taskId segment", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: 41003,
+          message: "当前 Worker 不支持任务取消，请升级运行时",
+          requestId: "req-1",
+        }),
+        { status: 503, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(api.cancelLongTask("task/weird id")).rejects.toMatchObject({
+      status: 503,
+      code: 41003,
+      requestId: "req-1",
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/long-tasks/task%2Fweird%20id/cancel");
+  });
+
+  it("LongTaskControlS25 clears the token and emits the unauthorized event on 401", async () => {
+    token.set("expired-token");
+    const listener = vi.fn();
+    window.addEventListener(UNAUTHORIZED_EVENT, listener, { once: true });
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ code: 40102, message: "unauthorized" }), { status: 401 }),
+        ),
+    );
+
+    await expect(api.cancelLongTask("task-1")).rejects.toMatchObject({ status: 401, code: 40101 });
+    expect(token.get()).toBeNull();
+    expect(listener).toHaveBeenCalledOnce();
+  });
+});

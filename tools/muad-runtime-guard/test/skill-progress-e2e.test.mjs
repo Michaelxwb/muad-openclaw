@@ -26,7 +26,7 @@ const cliPath = path.join(cliRoot, "dist", "cli.js");
 const executableFixture = fileURLToPath(new URL("./fixtures/openclaw-progress-test.mjs", import.meta.url));
 const finalText = "完整最终报告：共处理 128 条记录";
 
-test("S-04 B-03 progress stays isolated across two users and native final is delivered once", async (t) => {
+test("S-04 B-03 progress stays isolated across two users and the final result is delivered exactly once", async (t) => {
   buildCli();
   const harness = createHarness(t);
   const executions = await startExecutions(harness);
