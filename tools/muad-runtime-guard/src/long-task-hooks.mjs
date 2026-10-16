@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
+import { analyzeShellCommand, matchAuthorizedExecution } from "./long-task-command-policy.mjs";
 import { createSkillPreflightReadHooks } from "./skill-preflight-context.mjs";
 
 const TURN_CONTEXT_TTL_MS = 10 * 60_000;
 const KNOWN_CHANNEL_TYPES = new Set(["wecom", "mattermost", "openclaw-weixin", "wechat", "weixin"]);
 
-export function createLongTaskHooks({ getConfig, ledger, turns = new Map(), now = () => Date.now(), log = () => {} }) {
+export function createLongTaskHooks({ getConfig, ledger, turns = new Map(), now = () => Date.now(), log = () => {},
+  resolveDefaultCwd = () => "", resolveTaskStatus = () => "" }) {
   const currentConfig = () => (typeof getConfig === "function" ? getConfig() : getConfig) ?? {};
   const getTurnContext = ctx => resolveTurn(turns, ctx, now());
   const reads = ledger ? createSkillPreflightReadHooks({ ledger, getConfig: currentConfig,
@@ -14,7 +16,12 @@ export function createLongTaskHooks({ getConfig, ledger, turns = new Map(), now 
     getTurnContext,
     beforeDispatch: async () => undefined,
     beforeAgentRun: async (event, ctx) => rememberTrustedTurn(turns, event, ctx, now()),
-    beforeToolCall: async (event, ctx) => blockForegroundCommand(currentConfig(), event, ctx, log),
+    beforeToolCall: async (event, ctx) => {
+      const gated = blockCancelledTaskToolCall(resolveTaskStatus, event, ctx, log);
+      if (gated) return gated;
+      return blockForegroundCommand(
+        { config: currentConfig(), resolveDefaultCwd }, event, ctx, log);
+    },
     afterToolCall: async (event, ctx) => {
       if (isLongTaskSession(event, ctx)) return undefined;
       return reads?.afterToolCall(event, { ...ctx, runId: event?.runId || ctx?.runId });
@@ -37,12 +44,36 @@ function resolveTurn(turns, ctx, now) {
   return candidates.length === 1 ? { ...candidates[0] } : null;
 }
 
-function blockForegroundCommand(config, event, ctx, log) {
+function blockForegroundCommand(options, event, ctx, log) {
   if (isLongTaskSession(event, ctx) || !["exec", "bash"].includes(event?.toolName)) return undefined;
-  const grant = findGrantForCommand(config, event, ctx, shellCommandText(event));
+  const grant = findGrantForCommand(options, event, ctx, shellCommandText(event));
   if (!grant) return undefined;
   log(`[muad-runtime-guard][skill-preflight] blocked reason=explicit_submit_required skill=${grant.name}`);
   return { block: true, blockReason: `${grant.name} 是长任务。先读取 SKILL.md、确定唯一匹配或用户选择并补齐参数，再调用 muad_submit_long_task；当前命令未执行、未提交。` };
+}
+
+// 取消流程门禁：目标任务进入 cancelling/cancelled 后关闭其后台会话的新工具调用。
+// 只作用于该 taskId 对应的后台会话，不影响主会话、同 Agent 其他任务或其他用户。
+function blockCancelledTaskToolCall(resolveTaskStatus, event, ctx, log) {
+  const taskId = longTaskIdForSession(ctx, event);
+  if (!taskId) return undefined;
+  let status = "";
+  try {
+    status = textValue(resolveTaskStatus(taskId));
+  } catch {
+    // 状态查询失败不阻断正常长任务工具调用（失败开放，交由取消流程自身诊断）。
+    return undefined;
+  }
+  if (status !== "cancelling" && status !== "cancelled") return undefined;
+  log(`[muad-runtime-guard][longtask-cancel] blocked tool=${textValue(event?.toolName) || "unknown"} taskId=${taskId} status=${status}`);
+  return { block: true, blockReason: "任务已进入终止流程，不再接受新的工具调用。" };
+}
+
+function longTaskIdForSession(ctx, event) {
+  const sessionKey = textValue(ctx?.sessionKey) || textValue(event?.sessionKey);
+  const { rest } = parseSessionKey(sessionKey);
+  if (!rest.startsWith("longtask:")) return "";
+  return rest.slice("longtask:".length).split(":")[0] ?? "";
 }
 
 function diskManifestIsLongTask(skillDir, expectedName) {
@@ -55,114 +86,45 @@ function diskManifestIsLongTask(skillDir, expectedName) {
   }
 }
 
-function findGrantForCommand(config, event, ctx, command) {
+// 命令判定统一走 Shell AST 模块：先按可信生效工作目录分析，再逐个授权根比对。
+// 分析只做一次，能力/归属校验保持原样（manifest + agentId 匹配）。
+function findGrantForCommand({ config, resolveDefaultCwd }, event, ctx, command) {
   const agentId = resolveAgentId(event, ctx);
-  const cwd = commandWorkingDir(event);
+  const workdir = commandWorkingDir(event, defaultWorkingDir(resolveDefaultCwd, { ...(ctx ?? {}), agentId }, event));
+  const analysis = analyzeShellCommand(command, { cwd: workdir });
   return (config.longTaskSkillGrants ?? []).find((grant) =>
     grant.agentId === agentId &&
     diskManifestIsLongTask(grant.rootPath, grant.name) &&
-    commandReferencesSkill(command, grant, cwd));
+    matchAuthorizedExecution(analysis, { rootPath: grant.rootPath }).decision === "block");
 }
 
-// 命令的初始 CWD：取 exec 参数里的 cwd/workdir 绝对路径；缺省返回 ""，此时相对
-// token 只有在命令内 cd 到绝对路径后才可解析。
-function commandWorkingDir(event) {
+// 命令生效的初始工作目录：显式 workdir 按原生语义处理——绝对路径直接使用，相对
+// 路径落在可信默认 CWD 上；两者都无法解析时返回 ""，由分析模块按未知处理。
+function commandWorkingDir(event, defaultCwd) {
   const params = event?.params;
-  if (!params || typeof params !== "object") return "";
-  for (const key of ["cwd", "workdir", "workingDir"]) {
-    if (typeof params[key] === "string" && path.isAbsolute(params[key])) return params[key];
-  }
-  return "";
-}
-
-// exec/bash 命令是自由文本，无法像 read 那样用 realpath 直接命中，这里用「命令里
-// 的路径 token」近似。曾经的误报：相对 token 无条件按 root 拼接且允许命中目录，
-// 于是 ls scripts/、ls ./ 这类对别的目录的普通探查被拼成 root 自身而命中。
-//
-// 命中需同时满足（只收紧这三点，包装形态 sudo/timeout/FOO=1/uv run/无扩展名入口
-// 不做首 token 白名单，避免漏拦让脚本真的在主会话跑起来）：
-//   1. 段首不是 ls/cat/grep/find 等纯读取工具（读脚本不算执行）。
-//   2. 路径 token realpath 后落在 grant root 内，且是「文件」（目录不算）。
-//   3. 相对 token 以命令自身生效的 CWD 为基准（exec 显式 workdir，或复合命令里
-//      cd 推进的目标）；两者都没有时相对 token 无法解析，直接跳过，不按 root 拼接。
-function commandReferencesSkill(command, grant, cwd) {
-  if (typeof command !== "string" || !command.trim()) return false;
-  const root = grant?.rootPath;
-  if (!root || !path.isAbsolute(root)) return false;
-  for (const segment of commandSegments(command)) {
-    if (isReadOnlySegment(segment.tokens)) continue;
-    const baseDir = segmentBaseDir(segment.cwd, cwd);
-    for (const token of segment.tokens) {
-      if (!isPathCandidate(token)) continue;
-      let absolute;
-      if (path.isAbsolute(token)) absolute = token;
-      else if (baseDir) absolute = path.resolve(baseDir, token);
-      else continue;
-      const resolved = resolveExistingPath(absolute);
-      if (resolved && isFile(resolved) && isWithin(root, resolved)) return true;
+  if (params && typeof params === "object") {
+    for (const key of ["cwd", "workdir", "workingDir"]) {
+      const value = params[key];
+      if (typeof value !== "string" || !value.trim()) continue;
+      if (path.isAbsolute(value)) return path.resolve(value);
+      return defaultCwd ? path.resolve(defaultCwd, value) : "";
     }
   }
-  return false;
+  return defaultCwd || "";
 }
 
-// 段生效的绝对基准目录：段内 cd 到绝对路径优先；cd 相对目标叠在 exec workdir 上；
-// 没有 workdir 又没 cd 到绝对路径时返回 ""（相对 token 不可解析）。
-function segmentBaseDir(segmentCwd, execCwd) {
-  if (path.isAbsolute(segmentCwd)) return segmentCwd;
-  if (!path.isAbsolute(execCwd)) return "";
-  return path.resolve(execCwd, segmentCwd || ".");
-}
-
-// 复合命令按 ; && || | 与换行切段，段内按空白/引号切 token；每段解析出该段生效的
-// 基准目录（cd 目标），供相对路径解析使用。拆段而非整体拒绝，是为了让
-// `cd <root> && ./run.py` 这类形态能凭 cd 建立的基准命中。
-function commandSegments(command) {
-  const segments = [];
-  let cwd = ".";
-  for (const raw of command.split(/\s*(?:;|&&|\|\||\||\n)\s*/u)) {
-    const tokens = raw.match(/[^\s"'`<>()=]+/gu) ?? [];
-    if (tokens.length === 0) continue;
-    if (firstTokenName(tokens[0]) === "cd") {
-      const target = tokens[1];
-      if (target && !target.startsWith("-")) cwd = path.isAbsolute(target) ? target : path.join(cwd, target);
-      continue;
-    }
-    segments.push({ tokens, cwd });
-  }
-  return segments;
-}
-
-// 纯读取/列目录工具：段首是这些时整段跳过，避免 ls scripts/、cat <root>/x.py 命中。
-// 只做黑名单不做「解释器白名单」：sudo/timeout/env/FOO=1/uv run 等包装形态与
-// 无扩展名入口都必须仍能命中。
-const READ_ONLY_TOOLS = new Set([
-  "ls", "cat", "head", "tail", "less", "more", "grep", "egrep", "rg", "find",
-  "stat", "file", "wc", "du", "tree", "sed", "awk", "echo", "printf",
-]);
-
-function isReadOnlySegment(tokens) {
-  return READ_ONLY_TOOLS.has(firstTokenName(tokens[0]));
-}
-
-function firstTokenName(token) {
-  return String(token ?? "").split("/").pop().toLowerCase().replace(/\.exe$/u, "");
-}
-
-// 路径形态的 token：绝对路径、含 / 的相对路径、脚本扩展名。
-function isPathCandidate(token) {
-  return Boolean(token) && (path.isAbsolute(token) || token.includes("/") ||
-    /\.(?:py|sh|js|mjs|cjs|ts|go|rb|pl|bat|cmd|ps1)$/iu.test(token));
-}
-
-function isFile(target) {
+// 默认 CWD 来自注入的可信 resolver（Agent workspace）；异常或非绝对路径视为未知。
+function defaultWorkingDir(resolveDefaultCwd, ctx, event) {
   try {
-    return fs.statSync(target).isFile();
+    const value = typeof resolveDefaultCwd === "function" ? resolveDefaultCwd(ctx, event) : "";
+    return typeof value === "string" && path.isAbsolute(value) ? path.resolve(value) : "";
   } catch {
-    return false;
+    return "";
   }
 }
 
-// 与 cross-user-guard 一致的 exec 参数形态：command/script/cmd + commands 数组。
+// exec/bash 命令判定由 long-task-command-policy.mjs（Shell AST）完成；本模块只负责
+// 取可信工作目录、定位授权 grant 并生成拒绝理由。
 function shellCommandText(event) {
   const params = event?.params;
   if (!params || typeof params !== "object") return "";
@@ -176,22 +138,6 @@ function shellCommandText(event) {
     }
   }
   return parts.join("\n");
-}
-
-function resolveExistingPath(candidate) {
-  try {
-    return fs.realpathSync(path.resolve(candidate));
-  } catch {
-    return "";
-  }
-}
-
-function isWithin(root, target) {
-  const realRoot = resolveExistingPath(root);
-  if (!realRoot || !target) return false;
-  const relative = path.relative(realRoot, target);
-  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." &&
-    !path.isAbsolute(relative));
 }
 
 function isLongTaskSession(event, ctx) {

@@ -16,6 +16,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/config"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	consolelog "github.com/Michaelxwb/muad-openclaw/console/backend/internal/logging"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
@@ -54,6 +55,7 @@ func run() error {
 		log.Printf("[console] daily file logging enabled directory=%s", deps.cfg.LogDir)
 	}
 	cache := monitor.NewCache()
+	longTaskCapabilities := gateway.NewLongTaskCapabilityCache(0)
 	coordinator, err := newRuntimeCoordinator(
 		deps.cfg, deps.store, deps.cipher, deps.driver, deps.skillSyncer,
 	)
@@ -66,8 +68,8 @@ func run() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	startBackground(ctx, deps, cache, coordinator, cleaner)
-	srv := newHTTPServer(deps, cache, coordinator, cleaner)
+	startBackground(ctx, deps, cache, coordinator, cleaner, longTaskCapabilities)
+	srv := newHTTPServer(deps, cache, coordinator, cleaner, longTaskCapabilities)
 	serveErr := serve(srv, deps.cfg)
 	select {
 	case <-ctx.Done():
@@ -131,6 +133,7 @@ func loadDependencies() (*dependencies, error) {
 func startBackground(
 	ctx context.Context, deps *dependencies, cache *monitor.Cache,
 	coordinator *runtimeapply.Coordinator, cleaner *usercleanup.Cleaner,
+	longTaskCapabilities *gateway.LongTaskCapabilityCache,
 ) {
 	monitorDefaults := driver.ResourceSpec{
 		MemLimit:               deps.cfg.RuntimeDefaults.MemLimit,
@@ -141,20 +144,21 @@ func startBackground(
 		MaxLongTaskConcurrency: deps.cfg.RuntimeDefaults.MaxLongTaskConcurrency,
 	}
 	go collector.New(deps.driver, deps.store, cache, monitorDefaults,
-		time.Duration(deps.cfg.CollectIntervalSec)*time.Second).Run(ctx)
+		time.Duration(deps.cfg.CollectIntervalSec)*time.Second).
+		WithLongTaskCapabilities(longTaskCapabilities).Run(ctx)
 	go coordinator.Run(ctx)
 	go cleaner.Run(ctx)
 }
 
 func newHTTPServer(
 	deps *dependencies, cache *monitor.Cache, coordinator *runtimeapply.Coordinator,
-	cleaner *usercleanup.Cleaner,
+	cleaner *usercleanup.Cleaner, longTaskCapabilities *gateway.LongTaskCapabilityCache,
 ) *http.Server {
 	return &http.Server{
 		Addr: deps.cfg.ListenAddr,
 		Handler: api.NewServer(
 			deps.cfg, deps.store, deps.cipher, deps.driver, cache, deps.skillSyncer, coordinator,
-		).WithCleanupWaker(cleaner).Handler(),
+		).WithLongTaskCapabilities(longTaskCapabilities).WithCleanupWaker(cleaner).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      3 * time.Minute,

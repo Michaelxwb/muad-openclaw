@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "../src/api";
 import type { LongTask, LongTaskListResult, LongTaskPool } from "../src/api";
 import {
   LONG_TASK_POD_USER_COLUMN_WIDTH,
@@ -13,6 +14,7 @@ const apiMocks = vi.hoisted(() => ({
   listLongTasks: vi.fn(),
   listAllHumanUsers: vi.fn(),
   listPods: vi.fn(),
+  cancelLongTask: vi.fn(),
 }));
 
 vi.mock("../src/api", async (importOriginal) => {
@@ -251,3 +253,148 @@ function parsedDate(value?: string) {
   if (Number.isNaN(date.getTime())) throw new Error(`invalid test date: ${value}`);
   return date;
 }
+
+describe("Long Task cancel actions", () => {
+  function cancelableTask(
+    taskId: string,
+    status: LongTask["status"],
+    extra: Partial<LongTask> = {},
+  ): LongTask {
+    return {
+      ...runningTask,
+      taskId,
+      status,
+      stateRevision: 1,
+      canCancel: true,
+      ...extra,
+    };
+  }
+
+  beforeEach(() => {
+    apiMocks.cancelLongTask.mockReset();
+  });
+
+  it("LongTaskControlS09 offers actions only for queued/running and blocks repeats", async () => {
+    apiMocks.listLongTasks.mockResolvedValue(
+      pageResult({
+        items: [
+          cancelableTask("task-queued", "queued"),
+          cancelableTask("task-running-2", "running"),
+          cancelableTask("task-cancelling", "cancelling", { cancelRequestedBy: "admin" }),
+          cancelableTask("task-succeeded", "succeeded"),
+          cancelableTask("task-failed", "failed", { errorCode: "long_task_failed" }),
+          cancelableTask("task-cancelled", "cancelled", {
+            cancelledAt: "2026-08-09T10:05:00.000Z",
+          }),
+        ],
+        pools: [poolSummary],
+        total: 6,
+      }),
+    );
+    render(<LongTasks />);
+
+    expect(await screen.findByRole("button", { name: "取消排队" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "终止任务" })).toHaveLength(1);
+    const cancellingButton = screen.getByRole("button", { name: "终止中" });
+    expect(cancellingButton).toBeDisabled();
+    fireEvent.click(cancellingButton);
+    expect(apiMocks.cancelLongTask).not.toHaveBeenCalled();
+    expect(screen.queryByText(/重试/u)).not.toBeInTheDocument();
+  });
+
+  it("LongTaskControlS09 cancels a queued task with a single request, keeps 202 as accepted and refreshes", async () => {
+    apiMocks.listLongTasks.mockResolvedValue(
+      pageResult({
+        items: [cancelableTask("task-queued", "queued")],
+        pools: [poolSummary],
+        total: 1,
+      }),
+    );
+    apiMocks.cancelLongTask.mockResolvedValue({
+      taskId: "task-queued",
+      outcome: "cancel_requested",
+      status: "cancelling",
+      stateRevision: 2,
+    });
+    render(<LongTasks />);
+
+    const button = await screen.findByRole("button", { name: "取消排队" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(apiMocks.cancelLongTask).toHaveBeenCalledTimes(1));
+    expect(apiMocks.cancelLongTask).toHaveBeenCalledWith("task-queued");
+    expect(await screen.findByText("终止请求已接受，等待停止确认")).toBeInTheDocument();
+    // 202 不冒充已取消：不出现取消完成文案，并以一次列表刷新呈现 Worker 实际状态。
+    expect(screen.queryByText("任务已取消")).not.toBeInTheDocument();
+    await waitFor(() => expect(apiMocks.listLongTasks.mock.calls.length).toBeGreaterThanOrEqual(2));
+  });
+
+  it("LongTaskControlS09 dismisses confirmation without a request and surfaces failures without retry", async () => {
+    apiMocks.listLongTasks.mockResolvedValue(
+      pageResult({
+        items: [cancelableTask("task-running-2", "running")],
+        pools: [poolSummary],
+        total: 1,
+      }),
+    );
+    apiMocks.cancelLongTask.mockRejectedValue(
+      new ApiError("当前 Worker 不支持任务取消，请升级运行时", 503, 41003),
+    );
+    render(<LongTasks />);
+
+    const trigger = await screen.findByRole("button", { name: "终止任务" });
+    fireEvent.click(trigger);
+    await screen.findByText("终止该任务？");
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
+    expect(apiMocks.cancelLongTask).not.toHaveBeenCalled();
+
+    fireEvent.click(trigger);
+    await screen.findByText("终止该任务？");
+    fireEvent.click(screen.getByRole("button", { name: "确认" }));
+    await waitFor(() => expect(apiMocks.cancelLongTask).toHaveBeenCalledWith("task-running-2"));
+    expect(await screen.findByText(/不支持任务取消/u)).toBeInTheDocument();
+    expect(screen.queryByText(/重试/u)).not.toBeInTheDocument();
+  });
+
+  it("LongTaskControlS09 discards stale list responses so a cancelled row never regresses", async () => {
+    let resolveOld: (value: LongTaskListResult) => void = () => {};
+    let resolveNew: (value: LongTaskListResult) => void = () => {};
+    apiMocks.listLongTasks
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOld = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveNew = resolve;
+          }),
+      );
+    render(<LongTasks />);
+
+    fireEvent.change(screen.getByLabelText("查询长任务"), { target: { value: "report" } });
+    fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+    await waitFor(() => expect(apiMocks.listLongTasks).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      resolveNew(
+        pageResult({ items: [cancelableTask("task-done", "cancelled")], pools: [], total: 1 }),
+      );
+    });
+    expect(await screen.findByText("已取消")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveOld(
+        pageResult({
+          items: [cancelableTask("task-done", "running")],
+          pools: [poolSummary],
+          total: 1,
+        }),
+      );
+    });
+    await waitFor(() => expect(screen.getByText("已取消")).toBeInTheDocument());
+    expect(screen.queryByText("运行中")).not.toBeInTheDocument();
+  });
+});

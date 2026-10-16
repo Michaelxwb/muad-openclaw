@@ -16,6 +16,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/config"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/crypto"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/skillsync"
@@ -38,6 +39,9 @@ type Server struct {
 	skillUploadMu  sync.Mutex
 	bindingLimiter *bindingAttemptLimiter
 	loginLimiter   *bindingAttemptLimiter
+	// longTaskCapabilities 是各 Pod 的长任务取消能力快照缓存：由 health probe
+	// 更新（collector 接线），列表与取消入口只读查询，避免逐行 RPC。
+	longTaskCapabilities *gateway.LongTaskCapabilityCache
 }
 
 // ReconcileEnqueuer receives Pod IDs whose desired runtime generation changed.
@@ -72,8 +76,9 @@ func NewServer(
 ) *Server {
 	server := &Server{
 		cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache, skillSyncer: skillSyncer,
-		bindingLimiter: newBindingAttemptLimiter(10*time.Minute, 10, 4096),
-		loginLimiter:   newBindingAttemptLimiter(10*time.Minute, 5, 4096),
+		bindingLimiter:       newBindingAttemptLimiter(10*time.Minute, 10, 4096),
+		loginLimiter:         newBindingAttemptLimiter(10*time.Minute, 5, 4096),
+		longTaskCapabilities: gateway.NewLongTaskCapabilityCache(0),
 	}
 	if cfg != nil {
 		codec, err := crypto.NewBindingCodeCodec(cfg.MasterKey)
@@ -96,6 +101,21 @@ func NewServer(
 // cleaner's periodic sweep.
 func (s *Server) WithCleanupWaker(waker CleanupWaker) *Server {
 	s.cleanupWaker = waker
+	return s
+}
+
+// LongTaskCapabilities exposes the per-Pod cancel capability cache: the health
+// probe (collector) updates it, cancel/list paths only read it.
+func (s *Server) LongTaskCapabilities() *gateway.LongTaskCapabilityCache {
+	return s.longTaskCapabilities
+}
+
+// WithLongTaskCapabilities shares the process-wide capability cache between the
+// collector (writer) and the API (readers).
+func (s *Server) WithLongTaskCapabilities(cache *gateway.LongTaskCapabilityCache) *Server {
+	if cache != nil {
+		s.longTaskCapabilities = cache
+	}
 	return s
 }
 

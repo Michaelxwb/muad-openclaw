@@ -43,6 +43,8 @@ type fakeDriver struct {
 	restartErrors     map[string]error
 	channelLogsOutput string
 	channelLogsErr    error
+	cancelExecOut     string
+	cancelExecErr     error
 	logsOutput        string
 	logsErr           error
 	cleanupErr        error
@@ -219,6 +221,14 @@ func (f *fakeDriver) Exec(_ context.Context, podID string, cmd ...string) (strin
 		}
 		// Gateway channel logs (conversation records).
 		return "log-line\n[openclaw-weixin] message handled\n", nil
+	case strings.Contains(joined, "muad.long-task.cancel"):
+		if f.cancelExecErr != nil {
+			return "", f.cancelExecErr
+		}
+		if f.cancelExecOut != "" {
+			return f.cancelExecOut, nil
+		}
+		return `{"ok":true,"outcome":"cancel_requested","status":"cancelling","stateRevision":2}`, nil
 	case strings.Contains(joined, "muad.runtime.health"):
 		generation := f.created[podID].MultiUser.Generation
 		if generation == 0 {
@@ -403,6 +413,7 @@ func (f *fakeDriver) EnsurePublicSkillsStorage(context.Context) (driver.PublicSk
 }
 
 type testEnv struct {
+	srv       *api.Server
 	h         http.Handler
 	cfg       *config.Config
 	store     *repo.Store
@@ -477,12 +488,12 @@ func newTestEnv(t *testing.T) *testEnv {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	waker := &fakeCleanupWaker{}
-	h := api.NewServer(cfg, store, cipher, drv, cache, syncer, reconcile).
-		WithCleanupWaker(waker).
-		Handler()
+	server := api.NewServer(cfg, store, cipher, drv, cache, syncer, reconcile).
+		WithCleanupWaker(waker)
+	h := server.Handler()
 	return &testEnv{
-		h: h, cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache, reconcile: reconcile,
-		waker: waker, syncer: syncer, token: login(t, h), skillsDir: skillsDir,
+		srv: server, h: h, cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache,
+		reconcile: reconcile, waker: waker, syncer: syncer, token: login(t, h), skillsDir: skillsDir,
 	}
 }
 

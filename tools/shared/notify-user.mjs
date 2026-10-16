@@ -32,7 +32,8 @@ const MAX_STDERR_BYTES = 4 * 1024;
  * @param {object} options
  * @param {string} options.channel 投递通道
  * @param {string} options.peerId 收件人 peer id（裸 id 或 user:/channel: 前缀均可）
- * @param {string} options.text 文案
+ * @param {string} [options.text] 文案（与 media 至少其一）
+ * @param {string} [options.media] 附件（本地路径或 URL，经 --media 发送）
  * @param {typeof spawn} [options.spawn] 注入 spawn 供测试
  * @param {(msg: string) => void} [options.log] 诊断日志
  * @returns {Promise<{ok: boolean, error?: string}>}
@@ -41,22 +42,25 @@ export async function notifyUser({
   channel,
   peerId,
   text,
+  media,
   spawn: spawnLike = spawn,
   log = () => {},
 }) {
   const channelValue = String(channel ?? "").trim();
   const peerValue = String(peerId ?? "").trim();
   const textValue = String(text ?? "");
-  if (!channelValue || !peerValue || textValue === "") {
-    return { ok: false, error: "notify-user: channel, peerId, and text are required" };
+  const mediaValue = String(media ?? "").trim();
+  if (!channelValue || !peerValue || (textValue === "" && mediaValue === "")) {
+    return { ok: false, error: "notify-user: channel, peerId, and text or media are required" };
   }
   const args = [
     "message", "send",
     "--channel", channelValue,
     "--target", peerValue,
-    "--message", textValue,
-    "--json",
   ];
+  if (textValue !== "") args.push("--message", textValue);
+  if (mediaValue !== "") args.push("--media", mediaValue);
+  args.push("--json");
   const result = await runOpenClaw(args, spawnLike, log);
   if (!result.ok) {
     return { ok: false, error: result.error };

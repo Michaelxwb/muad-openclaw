@@ -117,6 +117,8 @@ const en: AppLocale = {
     succeeded: "Succeeded",
     failed: "Failed",
     queued: "Queued",
+    cancelling: "Terminating",
+    cancelled: "Cancelled",
     inProgress: "In progress",
   },
   channel: {
@@ -550,6 +552,18 @@ const en: AppLocale = {
     endedAt: "Ended at",
     updatedAt: "Updated",
     terminal: "Terminal reason",
+    cancelQueued: "Cancel queued",
+    terminate: "Terminate task",
+    terminateTitle: "Terminate this task?",
+    terminateContent:
+      "This terminates {{skill}} (task {{taskId}}). External operations and messages already sent cannot be recalled.",
+    cancelRequested: "Termination requested; waiting for stop confirmation",
+    cancelledNotice: "Task cancelled",
+    cancelUnavailableUnknown: "Worker cancel capability is not confirmed yet; try again later",
+    cancelUnavailableUnsupported:
+      "This Worker does not support task cancellation; upgrade the runtime",
+    cancelUnavailableStatus: "This status cannot be cancelled",
+    cancelFailed: "Failed to terminate the task; try again later",
   },
   user: {
     statusAll: "All statuses",

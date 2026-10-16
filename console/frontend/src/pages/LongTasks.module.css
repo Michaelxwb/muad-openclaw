@@ -113,6 +113,14 @@
   white-space: nowrap;
 }
 
+.taskAction {
+  white-space: nowrap;
+}
+
+.taskActionWrap {
+  display: inline-flex;
+}
+
 @media (max-width: 680px) {
   .filterGroup {
     display: grid;

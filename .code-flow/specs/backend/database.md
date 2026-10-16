@@ -44,11 +44,13 @@ db.Query("SELECT * FROM pods WHERE id = '" + id + "'")
 - 列表接口分页/过滤条件在 repo 实现，禁止无界扫大表到 handler
 - 删除 Human User / Pod 必须考虑级联清理与残留工作区策略（见 usercleanup）
 - 测试覆盖 schema 升级与关键查询（`console/backend/test/schema_test.go` 等）
+- SQLite CHECK 约束升级走 repo 内单事务重建：rename → 新 DDL → 显式列复制 → 行数校验 → 重建索引；用 `sqlite_master` 检测短路保证幂等，失败整体回滚并保留原表
 
 ## Patterns
 - 模型字段与 API DTO 分离，避免把存储列直接当外部契约
 - 迁移可重复执行（IF NOT EXISTS / 版本号）
 - 共享列清单用 const SQL 片段（如 `humanUserColumns`）避免漂移
+- 运行态镜像（如 `long_task_tasks`）按 `state_revision` 单向合并：只接受较新 revision 的合法前进、同 revision 幂等、旧格式（rev=0）沿用状态机兼容；终态（cancelled/succeeded/failed）不被快照改写，乱序/回退快照只推进 last_seen，不伪造 failed
 
 ## Avoid
 - 禁止 SQL 字符串拼接用户输入

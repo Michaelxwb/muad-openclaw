@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { constants, accessSync, readFileSync } from "node:fs";
+import { constants, accessSync, existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   IMAGE_CHANNEL_PLUGIN_SPECS,
@@ -37,14 +38,18 @@ export function validatePluginArtifacts(specs = IMAGE_PLUGINS, dependencies = {}
 
 export function validateRuntimePluginsOfflineSafe(specs = REQUIRED_RUNTIME_PLUGINS, dependencies = {}) {
   const read = dependencies.readFile ?? readFileSync;
+  // 构建期已把 node_modules 复制进插件目录（runtime-guard-deps 阶段）时允许声明
+  // dependencies：镜像内离线启动不再触发运行时 npm install；peerDependencies 仍需
+  // 宿主提供，缺失即拒绝。
+  const bundledModules = dependencies.hasBundledModules ?? ((root) => existsSync(join(root, "node_modules")));
   for (const spec of specs) {
     const packagePath = `${spec.root}/package.json`;
     const manifest = parseJSON(read(packagePath, "utf8"), packagePath);
     for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
       const entries = isRecord(manifest[field]) ? Object.keys(manifest[field]) : [];
-      if (entries.length > 0) {
-        throw new Error(`runtime plugin ${spec.id} must not require runtime npm install: ${field}`);
-      }
+      if (entries.length === 0) continue;
+      if (field !== "peerDependencies" && bundledModules(spec.root)) continue;
+      throw new Error(`runtime plugin ${spec.id} must not require runtime npm install: ${field}`);
     }
   }
 }

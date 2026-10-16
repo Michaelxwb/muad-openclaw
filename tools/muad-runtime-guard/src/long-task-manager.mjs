@@ -1,27 +1,30 @@
 import { randomUUID } from "node:crypto";
-import {
-  appendFileSync,
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  openSync,
-  closeSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
 import { notifyUser } from "../../shared/notify-user.mjs";
+import { createResultDelivery, parseAgentResultPayloads } from "./long-task-delivery.mjs";
+import {
+  appendTaskStateRecord,
+  compactTaskStateFile,
+  confirmTaskCancellation,
+  isTerminalStatus,
+  nextTaskRecord,
+  readActiveTaskRecords,
+  recoverInterruptedRecord,
+  requestTaskCancellation,
+} from "./long-task-cancel-state.mjs";
 
 const DEFAULT_STATE_FILE = "/tmp/muad-runtime-queues/long-task/state.jsonl";
 const TERMINAL_RETENTION_MS = 10 * 60_000;
 const DEFAULT_TIMEOUT_SECONDS = 24 * 60 * 60;
 const DEFAULT_STATE_COMPACT_EVERY = 100;
 const SKILL_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/u;
+// 子 CLI 输出的结果 JSON 上限：持续消费避免管道阻塞，超出即视为不可解析（fail loud）。
+const MAX_RESULT_BYTES = 4 * 1024 * 1024;
+const defaultResultDelivery = createResultDelivery();
 
 export class LongTaskManager {
   #pools = new Map();
@@ -34,6 +37,10 @@ export class LongTaskManager {
   #notifyFailure;
   #progressManager;
   #progressExecutions = new Map();
+  #runController = null;
+  #releaseTaskResources = null;
+  #releasedTaskIds = new Set();
+  #deliverResult = null;
 
   constructor(options) {
     this.limit = positiveInteger(options?.limit) ? options.limit : 2;
@@ -51,6 +58,13 @@ export class LongTaskManager {
     this.#now = options?.now ?? (() => new Date());
     this.#log = options?.log ?? (() => {});
     this.#notifyFailure = options?.notifyFailure ?? defaultNotifyFailure;
+    this.#runController = isRunController(options?.runController) ? options.runController : null;
+    this.#releaseTaskResources = typeof options?.releaseTaskResources === "function"
+      ? options.releaseTaskResources
+      : null;
+    this.#deliverResult = typeof options?.deliverResult === "function"
+      ? options.deliverResult
+      : defaultResultDelivery;
     this.updateProgressManager(options?.progressManager);
     this.shared = true;
     this.closed = false;
@@ -93,6 +107,233 @@ export class LongTaskManager {
       if (task) return task.peerId;
     }
     return "";
+  }
+
+  // 取消入口（控制面 RPC 唯一路径）：与完成回调在同一任务临界区线性化。queued 取消
+  // 在可靠保存取消终态后完成；running 先可靠保存 cancelling（继续占槽），再调用运行
+  // 控制器确认停止，只有确认完成并清理资源后才进入 cancelled。
+  async cancelTask(taskId, { requestedBy = "" } = {}) {
+    if (this.closed) return { ok: false, reason: "not_available" };
+    const located = this.#locateTask(taskId);
+    if (!located) return { ok: false, reason: "not_found" };
+    const { pool, task } = located;
+    if (task.status === "cancelling") {
+      return {
+        ok: true, outcome: "cancel_requested", status: "cancelling",
+        stateRevision: task.stateRevision ?? 0, repeated: true,
+      };
+    }
+    if (isTerminalStatus(task.status)) {
+      return { ok: false, reason: "already_terminal", status: task.status, stateRevision: task.stateRevision ?? 0 };
+    }
+    if (task.status === "queued") return this.#cancelQueuedTask(pool, task, requestedBy);
+    if (task.status === "running") return this.#cancelRunningTask(pool, task, requestedBy);
+    return { ok: false, reason: "already_terminal", status: task.status, stateRevision: task.stateRevision ?? 0 };
+  }
+
+  #locateTask(taskId) {
+    const id = textValue(taskId);
+    if (!id) return null;
+    for (const pool of this.#pools.values()) {
+      const task = pool.active.get(id) ??
+        pool.queue.find((item) => item.taskId === id) ??
+        pool.terminal.find((item) => item.taskId === id);
+      if (task) return { pool, task };
+    }
+    return null;
+  }
+
+  // 任务当前状态（长任务会话的取消门禁依赖此查询；未知任务返回 ""）。
+  taskStatus(taskId) {
+    return this.#locateTask(taskId)?.task.status ?? "";
+  }
+
+  // 运行控制器可能在异步加载原生运行环境后注入；只接受结构完整的 controller。
+  attachRunController(controller) {
+    if (isRunController(controller)) this.#runController = controller;
+    return this.#runController;
+  }
+
+  // 终态精确资源清理：每个任务至多调用一次，只传目标任务身份；注入回调异常仅记日志，
+  // 不改变任务状态（自然完成路径用；取消路径在收尾中 await 并显式处理失败）。
+  #taskResourceSnapshot(task) {
+    return Object.freeze({
+      taskId: task.taskId,
+      agentId: task.agentId,
+      sessionKey: task.sessionKey,
+      skillName: task.skillName,
+      status: task.status,
+    });
+  }
+
+  #releaseTaskResourcesOnce(task) {
+    if (!this.#releaseTaskResources || this.#releasedTaskIds.has(task.taskId)) return;
+    this.#releasedTaskIds.add(task.taskId);
+    try {
+      void Promise.resolve(this.#releaseTaskResources(this.#taskResourceSnapshot(task))).catch((error) =>
+        this.#log(`[muad-runtime-guard][longtask-cancel] release task resources failed taskId=${task.taskId} reason=${errorMessage(error)}`));
+    } catch (error) {
+      this.#log(`[muad-runtime-guard][longtask-cancel] release task resources failed taskId=${task.taskId} reason=${errorMessage(error)}`);
+    }
+  }
+
+  // 结果投递：许可已由 #finish 临界区裁定（取消已提交的任务不会进入这里）；发起后
+  // 视为在途，投递结果只记日志、不影响任务终态。
+  #initiateResultDelivery(task, payloads) {
+    const deliver = this.#deliverResult;
+    if (typeof deliver !== "function") return;
+    const target = Object.freeze({
+      taskId: task.taskId,
+      agentId: task.agentId,
+      peerId: task.peerId,
+      replyChannel: task.replyChannel,
+      locale: task.locale,
+      skillName: task.skillName,
+    });
+    try {
+      void Promise.resolve(deliver(target, payloads)).then((outcome) => {
+        this.#log(`[muad-runtime-guard][longtask-delivery] result delivery taskId=${task.taskId} sent=${outcome?.sent ?? 0} failed=${outcome?.failed ?? 0}`);
+      }).catch((error) => {
+        this.#log(`[muad-runtime-guard][longtask-delivery] result delivery failed taskId=${task.taskId} reason=${errorMessage(error)}`);
+      });
+    } catch (error) {
+      this.#log(`[muad-runtime-guard][longtask-delivery] result delivery failed taskId=${task.taskId} reason=${errorMessage(error)}`);
+    }
+  }
+
+  // 排队取消：先可靠写入取消终态（revision 单调），成功后才移出队列并终结，
+  // 写失败明确报错、保持排队，不接受取消成功。
+  #cancelQueuedTask(pool, task, requestedBy) {
+    const record = confirmTaskCancellation(task, { requestedBy, now: this.#now().toISOString() });
+    try {
+      appendTaskStateRecord(this.#stateFile, this.#persistedRecordFor(task, record));
+    } catch {
+      this.#log(`[muad-runtime-guard][longtask-cancel] queued cancel state write failed taskId=${task.taskId}`);
+      return { ok: false, reason: "state_unavailable" };
+    }
+    Object.assign(task, record);
+    pool.queue = pool.queue.filter((item) => item.taskId !== task.taskId);
+    this.#runController?.release?.(task.taskId);
+    pool.terminal.push(task);
+    this.#log(`[muad-runtime-guard][longtask-cancel] queued task cancelled taskId=${task.taskId}`);
+    this.#notifyChange();
+    return { ok: true, outcome: "cancelled", status: "cancelled", stateRevision: task.stateRevision };
+  }
+
+  // 运行中取消：先可靠提交取消请求（cancelling，继续占槽），再尝试停止确认。
+  async #cancelRunningTask(pool, task, requestedBy) {
+    const record = requestTaskCancellation(task, { requestedBy, now: this.#now().toISOString() });
+    try {
+      appendTaskStateRecord(this.#stateFile, this.#persistedRecordFor(task, record));
+    } catch {
+      this.#log(`[muad-runtime-guard][longtask-cancel] cancel request state write failed taskId=${task.taskId}`);
+      return { ok: false, reason: "state_unavailable" };
+    }
+    Object.assign(task, record);
+    this.#log(`[muad-runtime-guard][longtask-cancel] cancel requested taskId=${task.taskId}`);
+    this.#notifyChange();
+    if (!task.runBinding) {
+      // spawn 间隙：运行句柄绑定后由 #bindRunHandle 用同一取消标记补做停止确认。
+      return {
+        ok: true, outcome: "cancel_requested", status: "cancelling",
+        stateRevision: task.stateRevision, detail: "run_binding_pending",
+      };
+    }
+    return this.#confirmRunStop(pool, task, task.runBinding);
+  }
+
+  // 停止确认：只有运行控制器确认（drained 且自有进程真实退出）才清理并进入 cancelled；
+  // 未确认保持 cancelling（占槽），供有界对账重试，不伪造已取消。
+  async #confirmRunStop(pool, task, binding) {
+    const controller = this.#runController;
+    if (!controller || typeof controller.cancel !== "function" || !binding) {
+      return {
+        ok: true, outcome: "cancel_requested", status: "cancelling",
+        stateRevision: task.stateRevision, detail: "run_controller_unavailable",
+      };
+    }
+    let result;
+    try {
+      result = await controller.cancel(binding);
+    } catch (error) {
+      this.#log(`[muad-runtime-guard][longtask-cancel] stop confirm failed taskId=${task.taskId} reason=${errorMessage(error)}`);
+      return {
+        ok: true, outcome: "cancel_requested", status: "cancelling",
+        stateRevision: task.stateRevision, detail: "stop_unconfirmed",
+      };
+    }
+    if (!result?.confirmed) {
+      return {
+        ok: true, outcome: "cancel_requested", status: "cancelling",
+        stateRevision: task.stateRevision, detail: result?.reason || "stop_unconfirmed",
+      };
+    }
+    const sweep = await this.#sweepTaskProcesses(task);
+    if (!sweep.ok) {
+      return {
+        ok: true, outcome: "cancel_requested", status: "cancelling",
+        stateRevision: task.stateRevision, detail: "process_stop_unconfirmed",
+      };
+    }
+    return this.#finalizeCancelled(pool, task);
+  }
+
+  // 分离执行进程回收：exec 链路可能把脚本 setsid 分离（独立会话/进程组），run/CLI
+  // 终止触达不到；按任务 skillRoot 归属标记枚举并终止，只有全部消失才允许进入 cancelled。
+  async #sweepTaskProcesses(task) {
+    try {
+      const { sweepOrphanProcesses } = await import("./long-task-process-sweeper.mjs");
+      const result = await sweepOrphanProcesses(`${path.join(task.skillRoot)}/`);
+      if (!result.ok) {
+        this.#log(`[muad-runtime-guard][longtask-cancel] process sweep unconfirmed taskId=${task.taskId} remaining=${result.remaining.join(",")}`);
+      }
+      return result;
+    } catch (error) {
+      this.#log(`[muad-runtime-guard][longtask-cancel] process sweep failed taskId=${task.taskId} reason=${errorMessage(error)}`);
+      return { ok: true, remaining: [] };
+    }
+  }
+
+  // 收尾：停止已确认 → 清理进度桥与目标任务资源 → 可靠写入 cancelled → 释放槽位与
+  // 绑定。清理或写入任一环节失败保持 cancelling（占槽），不改写为成功。
+  async #finalizeCancelled(pool, task) {
+    if (!pool.active.has(task.taskId)) {
+      return { ok: true, outcome: "cancel_requested", status: task.status, stateRevision: task.stateRevision ?? 0 };
+    }
+    this.#finishProgress(task, { cancelled: true });
+    try {
+      if (this.#releaseTaskResources && !this.#releasedTaskIds.has(task.taskId)) {
+        await this.#releaseTaskResources(this.#taskResourceSnapshot(task));
+        this.#releasedTaskIds.add(task.taskId);
+      }
+    } catch (error) {
+      this.#log(`[muad-runtime-guard][longtask-cancel] release task resources failed taskId=${task.taskId} reason=${errorMessage(error)}`);
+      return {
+        ok: true, outcome: "cancel_requested", status: "cancelling",
+        stateRevision: task.stateRevision, detail: "cleanup_failed",
+      };
+    }
+    const record = confirmTaskCancellation(task, {
+      now: this.#now().toISOString(),
+      requestedBy: task.cancelRequestedBy,
+    });
+    try {
+      appendTaskStateRecord(this.#stateFile, this.#persistedRecordFor(task, record));
+    } catch {
+      this.#log(`[muad-runtime-guard][longtask-cancel] cancelled state write failed taskId=${task.taskId}`);
+      return {
+        ok: true, outcome: "cancel_requested", status: "cancelling",
+        stateRevision: task.stateRevision, detail: "state_unavailable",
+      };
+    }
+    Object.assign(task, record);
+    pool.active.delete(task.taskId);
+    this.#runController?.release?.(task.taskId);
+    pool.terminal.push(task);
+    this.#log(`[muad-runtime-guard] long task cancelled taskId=${task.taskId} skill=${task.skillName}`);
+    this.#drain(pool);
+    this.#notifyChange();
+    return { ok: true, outcome: "cancelled", status: "cancelled", stateRevision: task.stateRevision };
   }
 
   snapshot() {
@@ -167,6 +408,10 @@ export class LongTaskManager {
       replyChannel,
       locale: normalizedLocale(textValue(input.locale)),
       status: "queued",
+      stateRevision: 0,
+      cancelRequestedAt: "",
+      cancelRequestedBy: "",
+      cancelledAt: "",
       submittedAt,
       updatedAt: submittedAt,
       startedAt: "",
@@ -195,6 +440,9 @@ export class LongTaskManager {
   }
 
   #start(pool, task) {
+    // 防重跑护栏：只有仍在排队且从未提交取消请求的任务才允许启动（启动前、spawn
+    // 间隙与重复取消共用同一取消标记）。
+    if (task.status !== "queued" || task.cancelRequestedAt) return false;
     task.status = "running";
     task.startedAt = this.#now().toISOString();
     task.updatedAt = task.startedAt;
@@ -213,18 +461,45 @@ export class LongTaskManager {
     this.#registerProgress(task);
     this.#log(`[muad-runtime-guard] long task started taskId=${task.taskId} skill=${task.skillName}`);
     this.#notifyChange();
-    const running = this.#runTask(task, { timeoutSeconds: this.timeoutSeconds });
+    const running = this.#runTask(task, {
+      timeoutSeconds: this.timeoutSeconds,
+      onChild: (child) => this.#bindRunHandle(task, child),
+    });
     // runTask 同步 spawn 完成后会设置 task.childPid（见 runOpenClawAgent）；再落盘一次，
     // 让 state 记录携带 PID，供下次启动的孤儿检测（childStillRunning）使用。
     if (Number.isInteger(task.childPid)) this.#record(task);
+    // 终态化之前先回收该任务的分离执行进程（自然完成/失败同样可能留下 setsid 脚本）。
     void Promise.resolve(running)
-      .then(() => this.#finish(pool, task, "succeeded", "", ""))
-      .catch((error) => this.#finish(pool, task, "failed", errorMessage(error), errorCode(error)));
+      .then(async (settled) => {
+        await this.#sweepTaskProcesses(task);
+        this.#finish(pool, task, "succeeded", "", "", settled?.payloads);
+      })
+      .catch(async (error) => {
+        await this.#sweepTaskProcesses(task);
+        this.#finish(pool, task, "failed", errorMessage(error), errorCode(error));
+      });
     return true;
   }
 
-  #finish(pool, task, status, reason, code) {
-    if (!pool.active.delete(task.taskId)) return;
+  #finish(pool, task, status, reason, code, resultPayloads = undefined) {
+    if (!pool.active.has(task.taskId)) return;
+    if (task.status === "cancelling" || task.status === "cancelled") {
+      // 取消已提交（线性化点在前）：迟到完成回调不覆盖取消终态、不释放资源；运行
+      // 结束只作辅助证据，触发一次有界停止确认（对账），失败保持 cancelling。
+      this.#log(`[muad-runtime-guard] long task late ${status} ignored taskId=${task.taskId} status=${task.status}`);
+      if (task.status === "cancelling") {
+        void this.#confirmRunStop(pool, task, task.runBinding).catch((error) =>
+          this.#log(`[muad-runtime-guard][longtask-cancel] reconcile failed taskId=${task.taskId} reason=${errorMessage(error)}`));
+      }
+      return;
+    }
+    // 投递许可在此临界区唯一裁定（同步、无 await 间隙）：取消已提交的任务不再新发
+    // 成功结果或通用失败通知；许可一旦发起即视为在途，不再承诺撤回。
+    if (status === "succeeded" && Array.isArray(resultPayloads) && resultPayloads.length > 0) {
+      this.#initiateResultDelivery(task, resultPayloads);
+    }
+    pool.active.delete(task.taskId);
+    this.#runController?.release?.(task.taskId);
     const endedAt = this.#now().toISOString();
     task.status = status;
     task.endedAt = endedAt;
@@ -232,6 +507,7 @@ export class LongTaskManager {
     task.terminalReason = reason;
     task.errorCode = code;
     this.#finishProgress(task);
+    this.#releaseTaskResourcesOnce(task);
     this.#log(`[muad-runtime-guard] long task ${status} taskId=${task.taskId} skill=${task.skillName}${code ? ` errorCode=${code}` : ""}`);
     pool.terminal.push(task);
     this.#record(task);
@@ -242,6 +518,28 @@ export class LongTaskManager {
       void this.#notifyFailure(task, code).catch((error) =>
         this.#log(`[muad-runtime-guard] long task failure notify failed taskId=${task.taskId} error=${errorMessage(error)}`),
       );
+    }
+  }
+
+  // 记录本次执行的归属运行句柄：detached 子进程组由本 Worker 创建并持有，删除绑定
+  // 前只允许经 run controller 按 taskId/sessionKey/worker 精确取消（禁止全局 kill）。
+  #bindRunHandle(task, child) {
+    if (Number.isInteger(child?.pid)) task.childPid = child.pid;
+    const controller = this.#runController;
+    if (!controller || typeof controller.bind !== "function") return;
+    try {
+      task.runBinding = controller.bind(task, { child, detached: true });
+    } catch (error) {
+      this.#log(`[muad-runtime-guard] long task run binding failed taskId=${task.taskId} reason=${errorMessage(error)}`);
+      return;
+    }
+    if (task.status === "cancelling") {
+      // spawn 间隙已接受取消：绑定后立即补一次停止确认（同一取消标记，不再重跑）。
+      const pool = this.#pools.get(task.poolKey);
+      if (pool) {
+        void this.#confirmRunStop(pool, task, task.runBinding).catch((error) =>
+          this.#log(`[muad-runtime-guard][longtask-cancel] spawn-gap confirm failed taskId=${task.taskId} reason=${errorMessage(error)}`));
+      }
     }
   }
 
@@ -270,12 +568,17 @@ export class LongTaskManager {
     }
   }
 
-  #finishProgress(task) {
+  #finishProgress(task, { cancelled = false } = {}) {
     const registration = this.#progressExecutions.get(task.taskId);
     this.#progressExecutions.delete(task.taskId);
     if (!registration) return;
     try {
-      void Promise.resolve(registration.manager.finish(registration.executionKey)).catch(() =>
+      // 取消路径走进度桥的取消语义（拒绝迟到、丢弃未发起队列），且不发送成功/失败
+      // 类消息；正常完成仍走 finish。
+      const operation = cancelled && typeof registration.manager.cancel === "function"
+        ? registration.manager.cancel
+        : registration.manager.finish;
+      void Promise.resolve(operation.call(registration.manager, registration.executionKey)).catch(() =>
         logProgressFailure(this.#log, task.taskId, "finish", "progress_finish_failed"));
     } catch {
       logProgressFailure(this.#log, task.taskId, "finish", "progress_finish_failed");
@@ -295,29 +598,31 @@ export class LongTaskManager {
 
   #record(task, required = false) {
     try {
-      ensureStateFile(this.#stateFile);
-      // childPid 仅落入 state 文件（供下次启动的孤儿检测），不进 publicTask——
-      // console 快照契约保持不变。
-      const record = {
-        ...publicTask(task),
-        ...(task.executionInputs === undefined ? {} : {
-          executionInputs: task.executionInputs,
-          objective: task.objective,
-          originalPrompt: task.originalPrompt,
-        }),
-        ...(Number.isInteger(task.childPid) ? { childPid: task.childPid } : {}),
-      };
-      appendFileSync(this.#stateFile, `${JSON.stringify(record)}\n`, {
-        encoding: "utf8",
-        mode: 0o600,
-      });
-      chmodSync(this.#stateFile, 0o600);
+      const envelope = nextTaskRecord(task, this.#now().toISOString());
+      task.stateRevision = envelope.stateRevision;
+      appendTaskStateRecord(this.#stateFile, this.#persistedRecordFor(task));
       this.#compactStateWhenDue();
     } catch (error) {
       this.#log(`[muad-runtime-guard][longtask-state] write failed taskId=${task.taskId} reason=state_unavailable`);
       if (required) throw new Error("long task state unavailable", { cause: error });
     }
     if (!required) this.#notifyChange();
+  }
+
+  // state 文件的完整记录包络：publicTask + 仅落盘的执行输入 + childPid（不进 console
+  // 快照契约，供下次启动的孤儿检测）。patch 用于取消流程按状态模块生成的记录整包写入，
+  // 避免 nextTaskRecord 二次递增 revision。
+  #persistedRecordFor(task, patch = {}) {
+    const view = patch && Object.keys(patch).length > 0 ? { ...task, ...patch } : task;
+    return {
+      ...publicTask(view),
+      ...(view.executionInputs === undefined ? {} : {
+        executionInputs: view.executionInputs,
+        objective: view.objective,
+        originalPrompt: view.originalPrompt,
+      }),
+      ...(Number.isInteger(view.childPid) ? { childPid: view.childPid } : {}),
+    };
   }
 
   #notifyChange() {
@@ -333,22 +638,34 @@ export class LongTaskManager {
     this.#writesSinceCompact += 1;
     if (this.#writesSinceCompact < this.compactEvery) return;
     this.#writesSinceCompact = 0;
-    compactStateFile(this.#stateFile, this.#now, this.terminalRetentionMs);
+    compactTaskStateFile(this.#stateFile, this.#now, this.terminalRetentionMs);
   }
 
   #loadInterruptedTasks() {
-    const tasks = loadInterruptedTasks(this.#stateFile, this.#now);
-    if (tasks.length > 0) {
-      this.#log(`[muad-runtime-guard] long task restored ${tasks.length} interrupted task(s)`);
-    }
-    for (const task of tasks) {
-      // 恢复即终态：立即把 failed 落盘（与终端任务同一 retention），否则每次重启都会
-      // 重复恢复同一批 queued/running 记录，且 compact 永远保留它们 → 文件只增不减、
-      // 僵尸记录反复出现。落盘后该 taskId 的最新记录是 failed，下次重启不再恢复。
-      this.#record(task);
+    const now = this.#now().toISOString();
+    let recovered = 0;
+    let tombstones = 0;
+    for (const record of readActiveTaskRecords(this.#stateFile)) {
+      const { record: task, changed } = recoverInterruptedRecord(record, {
+        now,
+        childAlive: childStillRunning(record.childPid),
+      });
+      if (!task) continue;
+      if (changed) {
+        // 恢复即终态：立即把 queued/running 升级后的 failed 落盘（与终端任务同一
+        // retention），否则每次重启都会重复恢复同一批记录。revision 已由
+        // recoverInterruptedRecord 递增，这里按记录原样追加，不再二次递增。
+        appendTaskStateRecord(this.#stateFile, task);
+        recovered += 1;
+      } else if (task.status === "cancelling") {
+        // 取消墓碑：保留在状态文件与快照中，不重新执行，也不猜测已经停止。
+        tombstones += 1;
+      }
       const pool = this.#pool(task);
       pool.terminal.push(task);
     }
+    if (recovered > 0) this.#log(`[muad-runtime-guard] long task restored ${recovered} interrupted task(s)`);
+    if (tombstones > 0) this.#log(`[muad-runtime-guard] long task kept ${tombstones} cancelling tombstone(s)`);
   }
 }
 
@@ -357,7 +674,7 @@ export async function spawnOpenClawTask(task, options = {}) {
   const messageFile = path.join(tempRoot, "message.txt");
   try {
     await writeFile(messageFile, longTaskMessage(task), { mode: 0o600 });
-    await runOpenClawAgent(task, messageFile, options);
+    return await runOpenClawAgent(task, messageFile, options);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }
@@ -369,7 +686,6 @@ function runOpenClawAgent(task, messageFile, options) {
     "--agent", task.agentId,
     "--session-key", task.sessionKey,
     "--message-file", messageFile,
-    "--deliver",
     "--reply-channel", task.replyChannel,
     "--reply-to", task.peerId,
     "--json",
@@ -379,15 +695,30 @@ function runOpenClawAgent(task, messageFile, options) {
     ? options.watchdogMs
     : (options.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS) * 1000;
   return new Promise((resolve, reject) => {
-    // stdout 置 ignore：长任务 openclaw agent 会在 stdout 上输出进度/结果，若无人
-    // 消费，64KB 管道缓冲区写满即永久阻塞、exit 永不触发、并发槽泄漏。stderr 仅作
-    // 错误诊断收集，同样设上限防止无限增长。
-    const child = (options.spawn ?? spawn)("openclaw", args, { stdio: ["ignore", "ignore", "pipe"] });
-    // 进程级 watchdog：timeoutSeconds 只是传给子进程自己的 --timeout 参数，父进程
-    // 必须兜底——子进程挂死（不响应 kill 前）时按 watchdogMs 强杀并 reject，保证
-    // promise 必然 settle，队列不会因一个僵尸子进程永久占槽。
+    // stdout 持续消费：结果 JSON 由父进程解析并在取消仲裁后由 manager 投递（不再
+    // 传 --deliver）；管道必须有人读，否则 64KB 写满即永久阻塞、exit 永不触发、
+    // 并发槽泄漏。捕获缓冲有上限（超限按不可解析处理，仍持续消费不阻塞）；stderr
+    // 仅作错误诊断收集，同样设上限防止无限增长。
+    // detached：CLI 成为自有进程组组长，取消/看门狗只对本 Worker 归属的组补发终止
+    // （原生 abort/drain 完成后仍以真实退出为准，组信号本身不是停止确认）。
+    const child = (options.spawn ?? spawn)("openclaw", args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
+    });
+    try {
+      options.onChild?.(child);
+    } catch {
+      // 归属绑定失败不阻断任务执行；controller 缺失时取消能力按不可用处理。
+    }
     let settled = false;
     let stderr = "";
+    let stdout = "";
+    let stdoutBytes = 0;
+    child.stdout?.on("data", (chunk) => {
+      const text = String(chunk);
+      stdoutBytes += Buffer.byteLength(text);
+      if (stdoutBytes <= MAX_RESULT_BYTES) stdout += text;
+    });
     child.stderr?.on("data", (chunk) => { stderr += String(chunk).slice(0, 4096); });
     const watchdog = setTimeout(() => {
       if (settled) return;
@@ -396,6 +727,14 @@ function runOpenClawAgent(task, messageFile, options) {
         child.kill("SIGKILL");
       } catch {
         // child already gone; reject below is authoritative
+      }
+      // 自有进程组内的残留子孙一并清理（best effort；超时以 reject 表达，不代表已停止）。
+      if (Number.isInteger(child.pid) && child.pid > 0) {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch {
+          // group already gone
+        }
       }
       reject(new LongTaskRunError(124, `openclaw agent exceeded the ${watchdogMs}ms watchdog timeout and was killed`));
     }, watchdogMs);
@@ -408,7 +747,19 @@ function runOpenClawAgent(task, messageFile, options) {
     };
     child.on("error", settle(reject));
     child.on("exit", (code) => {
-      settle(code === 0 ? resolve : () => reject(new LongTaskRunError(code, stderr.trim())))();
+      if (code !== 0) {
+        settle(() => reject(new LongTaskRunError(code, stderr.trim())))();
+        return;
+      }
+      const parsed = parseAgentResultPayloads(stdout);
+      if (!parsed.ok) {
+        // 结果不可解析意味着没有任何结果会被投递：显式失败（fail loud），不静默成功。
+        const error = new LongTaskRunError(0, `openclaw agent result could not be parsed (${parsed.reason})`);
+        error.code = "longtask.result_unparsable";
+        settle(() => reject(error))();
+        return;
+      }
+      settle(resolve)({ payloads: parsed.payloads });
     });
     // 记录子进程 PID 到任务对象：manager 在 #start 时把带 PID 的记录落盘，供下次
     // 启动做孤儿检测（见 loadInterruptedTasks 的 childStillRunning）。
@@ -467,46 +818,6 @@ export class LongTaskRunError extends Error {
   }
 }
 
-function loadInterruptedTasks(stateFile, now) {
-  if (!existsSync(stateFile)) return [];
-  try {
-    return [...readLatestTaskRecords(stateFile).values()]
-      .filter((task) => task.status === "queued" || task.status === "running")
-      .map((task) => interruptedTask(task, now, childStillRunning(task.childPid)));
-  } catch {
-    return [];
-  }
-}
-
-function compactStateFile(stateFile, now, terminalRetentionMs) {
-  if (!existsSync(stateFile)) return;
-  const cutoff = now().getTime() - terminalRetentionMs;
-  // readLatestTaskRecords 已按 taskId 去重保留最新记录：恢复流程会把 queued/running
-  // 落盘为 failed，因此此处保留 queued/running 只覆盖"本进程仍在运行的活任务"；
-  // 终端记录按 retention 过期，僵尸记录不会永久滞留。
-  const records = [...readLatestTaskRecords(stateFile).values()].filter((task) =>
-    task.status === "queued" || task.status === "running" ||
-    Date.parse(task.updatedAt) >= cutoff);
-  const tempFile = `${stateFile}.${process.pid}.tmp`;
-  writeFileSync(tempFile, records.map((task) => `${JSON.stringify(task)}\n`).join(""), {
-    encoding: "utf8",
-    mode: 0o600,
-  });
-  chmodSync(tempFile, 0o600);
-  renameSync(tempFile, stateFile);
-  chmodSync(stateFile, 0o600);
-}
-
-function readLatestTaskRecords(stateFile) {
-  const latest = new Map();
-  for (const line of readFileSync(stateFile, "utf8").split(/\r?\n/u)) {
-    if (!line.trim()) continue;
-    const task = JSON.parse(line);
-    if (isTaskRecord(task)) latest.set(task.taskId, task);
-  }
-  return latest;
-}
-
 // 孤儿子进程检测：state 记录若带 childPid，用 kill(pid, 0) 探测进程是否仍存活。
 // 残余风险说明：被 spawn 的 openclaw agent 子进程独立于插件进程存活，重启后 guard
 // 无法重新挂接其 exit 事件（ChildProcess 句柄已随旧进程销毁），因此即使探测到存活，
@@ -525,32 +836,6 @@ function childStillRunning(pid) {
   }
 }
 
-function interruptedTask(task, now, childAlive) {
-  const endedAt = now().toISOString();
-  return {
-    ...task,
-    status: "failed",
-    endedAt,
-    updatedAt: endedAt,
-    terminalReason: childAlive
-      ? "runtime restarted before the long task finished (orphaned child may still deliver its result)"
-      : "runtime restarted before the long task finished",
-    errorCode: "long_task_interrupted",
-  };
-}
-
-function isTaskRecord(task) {
-  return task && typeof task.taskId === "string" && typeof task.agentId === "string" &&
-    typeof task.peerId === "string" && typeof task.skillName === "string";
-}
-
-function ensureStateFile(stateFile) {
-  mkdirSync(path.dirname(stateFile), { recursive: true, mode: 0o700 });
-  if (existsSync(stateFile)) return;
-  const fd = openSync(stateFile, "a", 0o600);
-  closeSync(fd);
-}
-
 function publicTask(task) {
   return {
     taskId: task.taskId,
@@ -562,6 +847,10 @@ function publicTask(task) {
     skillName: task.skillName,
     skillRoot: task.skillRoot,
     status: task.status,
+    stateRevision: Number.isInteger(task.stateRevision) && task.stateRevision > 0 ? task.stateRevision : 0,
+    cancelRequestedAt: textValue(task.cancelRequestedAt),
+    cancelRequestedBy: textValue(task.cancelRequestedBy),
+    cancelledAt: textValue(task.cancelledAt),
     submittedAt: task.submittedAt,
     startedAt: task.startedAt,
     endedAt: task.endedAt,
@@ -585,6 +874,11 @@ function positiveInteger(value) {
 
 function isProgressManager(manager) {
   return typeof manager?.registerBackground === "function" && typeof manager?.finish === "function";
+}
+
+function isRunController(controller) {
+  return typeof controller?.bind === "function" && typeof controller?.cancel === "function" &&
+    typeof controller?.release === "function";
 }
 
 function logProgressFailure(log, taskId, action, reason) {

@@ -110,6 +110,13 @@ const (
 	ConflictExists         = 40902
 	ConflictGeneration     = 40903
 	ConflictStateOperation = 40904
+	// 410xx — Long Task 取消
+	NotFoundLongTask          = 41001
+	ConflictLongTaskOwnership = 41002
+	LongTaskCancelUnsupported = 41003
+	LongTaskRunUnverifiable   = 41004
+	LongTaskCancelUnavailable = 41005
+	LongTaskCancelStateFailed = 41006
 	// 429xx — 限流
 	RateLimitedLogin   = 42901
 	RateLimitedBinding = 42902
@@ -188,6 +195,7 @@ var AllCodes = []int{
 	40701, 40702, 40703, 40704, 40705, 40706, 40707, 40708, 40709, 40710, 40711,
 	40801, 40802,
 	40901, 40902, 40903, 40904,
+	41001, 41002, 41003, 41004, 41005, 41006,
 	42901, 42902,
 	50001, 50002, 50003, 50004, 50006, 50007, 50008, 50009, 50010,
 	50011, 50012, 50013, 50014, 50015, 50016, 50017, 50018, 50019, 50020,

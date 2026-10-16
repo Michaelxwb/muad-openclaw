@@ -14,7 +14,8 @@ export type SkillStatus = "active" | "disabled" | "pending" | "deleted";
 export type EffectiveSkillStatus = "effective" | "conflict" | "disabled" | "missing_credential";
 export type SkillPolicyAction = "disable" | "allow_override";
 export type SkillSource = "user" | "platform";
-export type LongTaskStatus = "queued" | "running" | "succeeded" | "failed";
+export type LongTaskStatus =
+  "queued" | "running" | "cancelling" | "cancelled" | "succeeded" | "failed";
 
 export interface ApiSuccessResponse<T> {
   code: 0;
@@ -602,6 +603,12 @@ export interface LongTask {
   skillName: string;
   skillRoot: string;
   status: LongTaskStatus;
+  stateRevision: number;
+  cancelRequestedAt?: string;
+  cancelRequestedBy?: string;
+  cancelledAt?: string;
+  canCancel: boolean;
+  cancelUnavailableReason?: string;
   submittedAt: string;
   startedAt?: string;
   endedAt?: string;
@@ -609,6 +616,15 @@ export interface LongTask {
   errorCode?: string;
   updatedAt: string;
   lastSeenAt: string;
+}
+
+export type LongTaskCancelOutcome = "cancel_requested" | "cancelled" | "already_terminal";
+
+export interface LongTaskCancelResult {
+  taskId: string;
+  outcome: LongTaskCancelOutcome;
+  status: LongTaskStatus;
+  stateRevision: number;
 }
 
 export interface LongTaskPool {

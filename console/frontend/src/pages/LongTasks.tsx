@@ -21,6 +21,11 @@ import {
 import { useMountedRef } from "../hooks/useMountedRef";
 import { useHumanUserNames } from "../hooks/useHumanUserNames";
 import { usePodNames } from "../hooks/usePodNames";
+import { LongTaskActions } from "./long-tasks/LongTaskActions";
+import {
+  useLongTaskActions,
+  type LongTaskActionsController,
+} from "./long-tasks/useLongTaskActions";
 import { errorMessage } from "../utils/error";
 import { normalizePage } from "../utils/pageClamp";
 import styles from "./LongTasks.module.css";
@@ -56,16 +61,18 @@ const EMPTY_FILTERS: Filters = { q: "", status: "" };
 export function LongTasks({ onOpenPod }: Props) {
   const { t } = useTranslation();
   const state = useLongTasks();
+  const actions = useLongTaskActions({ refresh: state.refresh });
   const userNames = useHumanUserNames(true);
   const podNames = usePodNames(true);
   return (
     <div>
       <PageHeader title={t("nav.longTasks")} description={t("longTasks.pageDescription")} />
-      <FeedbackBanner error={state.error} />
+      <FeedbackBanner error={actions.error || state.error} message={actions.message} />
       <PageSection>
         <LongTaskToolbar state={state} />
         <LongTaskTable
           state={state}
+          actions={actions}
           userNames={userNames}
           podNames={podNames}
           onOpenPod={onOpenPod}
@@ -165,6 +172,8 @@ function LongTaskToolbar({ state }: { state: LongTaskState }) {
       { label: t("longTasks.statusAll"), value: "" },
       { label: t("status.queued"), value: "queued" },
       { label: t("status.running"), value: "running" },
+      { label: t("status.cancelling"), value: "cancelling" },
+      { label: t("status.cancelled"), value: "cancelled" },
       { label: t("status.succeeded"), value: "succeeded" },
       { label: t("status.failed"), value: "failed" },
     ],
@@ -218,11 +227,13 @@ function LongTaskToolbar({ state }: { state: LongTaskState }) {
 
 function LongTaskTable({
   state,
+  actions,
   userNames,
   podNames,
   onOpenPod,
 }: {
   state: LongTaskState;
+  actions: LongTaskActionsController;
   userNames: ReadonlyMap<string, string>;
   podNames: ReadonlyMap<string, string>;
   onOpenPod?: (podId: string) => void;
@@ -230,8 +241,8 @@ function LongTaskTable({
   const { t } = useTranslation();
   const rows = useMemo(() => mergePoolCounts(state.rows, state.pools), [state.pools, state.rows]);
   const columns = useMemo(
-    () => longTaskColumns(t, userNames, podNames, onOpenPod),
-    [onOpenPod, t, userNames, podNames],
+    () => longTaskColumns(t, userNames, podNames, onOpenPod, actions),
+    [actions, onOpenPod, t, userNames, podNames],
   );
   return (
     <Table
@@ -263,7 +274,8 @@ function longTaskColumns(
   t: TFunction,
   userNames: ReadonlyMap<string, string>,
   podNames: ReadonlyMap<string, string>,
-  onOpenPod?: (podId: string) => void,
+  onOpenPod: ((podId: string) => void) | undefined,
+  actions: LongTaskActionsController,
 ) {
   return [
     {
@@ -344,6 +356,19 @@ function longTaskColumns(
       align: "left" as const,
       width: 130,
       render: (_: unknown, task: LongTaskRow) => task.terminalReason || task.errorCode || "-",
+    },
+    {
+      title: t("common.actions"),
+      key: "actions",
+      align: "left" as const,
+      width: 110,
+      render: (_: unknown, task: LongTaskRow) => (
+        <LongTaskActions
+          task={task}
+          busy={actions.busyTaskIds.has(task.taskId)}
+          onCancel={actions.cancel}
+        />
+      ),
     },
   ];
 }

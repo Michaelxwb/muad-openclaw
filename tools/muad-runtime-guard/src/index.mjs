@@ -12,6 +12,16 @@ import { createLongTaskToolFactory } from "./long-task-tool.mjs";
 import { explicitSkillName } from "./skill-hooks.mjs";
 import { createLongTaskHooks } from "./long-task-hooks.mjs";
 import { LongTaskManager } from "./long-task-manager.mjs";
+import {
+  LONG_TASK_CANCEL_CAPABILITY_VERSION,
+  LONG_TASK_CANCEL_METHOD,
+  LONG_TASK_CANCEL_SCOPE,
+  createLongTaskCancelHandler,
+  installCancelCapability,
+  loadNativeCancelRuntime,
+  newWorkerInstanceId,
+} from "./long-task-cancel-rpc.mjs";
+import { createLongTaskRunController } from "./long-task-run-controller.mjs";
 import { LongTaskStateClient, LongTaskStateClientError } from "./long-task-state-client.mjs";
 import { createMainBindingReply } from "./main-binding-reply.mjs";
 import { createModelConfigDispatch } from "./model-config-reply.mjs";
@@ -50,7 +60,17 @@ const plugin = {
       globalThis,
       (message) => api.logger?.warn?.(message),
       skillProgressManager,
+      (task) => releaseLongTaskResources(task, skillLeaseManager, leaseManager),
     );
+    // 内部取消 RPC：仅 operator.write 控制面入口；能力以异步加载的原生运行环境为准，
+    // 未就绪时明确不可用（绝不注册为模型工具）。
+    const cancelCapability = installCancelCapability(globalThis, { available: false, version: 0 });
+    void wireLongTaskCancelRuntime({ api, manager: longTaskManager, capability: cancelCapability });
+    api.registerGatewayMethod(LONG_TASK_CANCEL_METHOD, createLongTaskCancelHandler({
+      manager: longTaskManager,
+      capability: cancelCapability,
+      log: (message) => api.logger?.warn?.(message),
+    }), { scope: LONG_TASK_CANCEL_SCOPE });
     installLongTaskStatePush(longTaskManager, config, api);
     registerMainBindingReply(api, config);
     registerModelConfigDispatch(api, config);
@@ -178,7 +198,9 @@ function skillLeaseBefore(hooks, config, manager, event, ctx) {
 function registerLongTaskHooks(api, getConfig, manager) {
   const { ledger, turns } = installSkillPreflightState();
   const log = message => api.logger?.warn?.(message);
-  const hooks = createLongTaskHooks({ getConfig, ledger, turns, log });
+  const hooks = createLongTaskHooks({ getConfig, ledger, turns, log,
+    resolveDefaultCwd: (ctx) => resolveWorkspace(api, ctx?.agentId),
+    resolveTaskStatus: (taskId) => manager.taskStatus(taskId) });
   const preflight = createLongTaskPreflight({ ledger, getConfig, getTurnContext: hooks.getTurnContext });
   api.registerTool(createLongTaskToolFactory({ preflight, manager, getConfig, log }), { name: "muad_submit_long_task" });
   api.on("before_dispatch", hooks.beforeDispatch, { priority: -1100, timeoutMs: 1_000 });
@@ -261,11 +283,37 @@ export function installBrowserLease(limit, globals = globalThis) {
   return manager;
 }
 
+// 长任务终态资源清理：只按目标任务的后台会话身份释放本进程持有的 shared
+// Skill/browser 租约；队列可能由后台执行进程持有，未持有时为 no-op 且可重复调用。
+async function releaseLongTaskResources(task, skillLeases, browserLeases) {
+  await skillLeases?.releaseSession?.(task?.sessionKey);
+  await browserLeases?.releaseSession?.(task?.sessionKey);
+}
+
+// 取消链装配：原生运行环境加载成功后注入共享 manager 的运行控制器并上报能力；
+// 失败时明确不可用（不危险兜底），能力状态由 health 只读上报。
+async function wireLongTaskCancelRuntime({ api, manager, capability }) {
+  const runtime = await loadNativeCancelRuntime();
+  if (!runtime.available) {
+    Object.assign(capability, { available: false, version: 0, reason: runtime.reason });
+    api.logger?.warn?.(`[muad-runtime-guard][longtask-cancel] native runtime unavailable reason=${runtime.reason}`);
+    return;
+  }
+  const controller = createLongTaskRunController({
+    native: runtime.native,
+    workerId: newWorkerInstanceId(),
+    log: (message) => api.logger?.warn?.(message),
+  });
+  manager.attachRunController?.(controller);
+  Object.assign(capability, { available: true, version: LONG_TASK_CANCEL_CAPABILITY_VERSION, reason: "" });
+}
+
 export function installLongTaskManager(
   limit,
   globals = globalThis,
   log = () => {},
   progressManager = undefined,
+  releaseTaskResources = undefined,
 ) {
   const symbol = Symbol.for("muad.longtask.manager");
   const existing = globals[symbol];
@@ -275,7 +323,7 @@ export function installLongTaskManager(
     return existing;
   }
   existing?.close?.();
-  const manager = new LongTaskManager({ limit, log, progressManager });
+  const manager = new LongTaskManager({ limit, log, progressManager, releaseTaskResources });
   globals[symbol] = manager;
   return manager;
 }

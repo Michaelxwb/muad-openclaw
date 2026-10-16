@@ -69,7 +69,9 @@ export class SkillProgressManager {
 
   reportProgress(executionKey, unknownEvent) {
     const state = this.#executions.get(String(executionKey ?? ""));
-    if (!state || !state.accepting) return { accepted: false, reason: "execution_finished" };
+    if (!state || !state.accepting) {
+      return { accepted: false, reason: state?.cancelled ? "execution_cancelled" : "execution_finished" };
+    }
     const validation = validateProgressEvent(unknownEvent);
     if (!validation.ok) return this.#drop(state, "report", validation.reason);
     const event = validation.event;
@@ -88,6 +90,19 @@ export class SkillProgressManager {
     const state = this.#executions.get(String(executionKey ?? ""));
     if (!state) return { finished: true, reason: "execution_not_found" };
     if (!state.finishPromise) state.finishPromise = this.#finishExecution(state);
+    return state.finishPromise;
+  }
+
+  // 取消语义：立即拒绝迟到进度、丢弃尚未发起的待发队列；已在途的发送保留为可解释
+  // 边界（可能仍到达，按原语义记录 delivered/failed）。取消与 finish 共享同一终态
+  // 结算（最多一次），且不发送额外成功/失败消息——取消终态通知由投递仲裁统一发送。
+  async cancel(executionKey) {
+    const state = this.#executions.get(String(executionKey ?? ""));
+    if (!state) return { cancelled: true, reason: "execution_not_found" };
+    state.accepting = false;
+    state.cancelled = true;
+    logDiagnostic(this.#log, state, "none", "cancel", "accepted", "cancelled");
+    if (!state.finishPromise) state.finishPromise = this.#cancelExecution(state);
     return state.finishPromise;
   }
 
@@ -140,6 +155,23 @@ export class SkillProgressManager {
     this.#executions.delete(state.executionKey);
     return { finished: true, ...(reason ? { reason } : {}) };
   }
+
+  async #cancelExecution(state) {
+    let bridgeReason = "";
+    try {
+      const result = await this.#bridge.finish(state.executionKey, { timeoutMs: this.#finishTimeoutMs });
+      bridgeReason = result?.reason ?? "";
+    } catch {
+      bridgeReason = "bridge_finish_failed";
+    }
+    state.accepting = false;
+    const settled = await settlesWithin(state.tail, this.#finishTimeoutMs);
+    const reason = settled ? bridgeReason : "send_timeout";
+    logDiagnostic(this.#log, state, "none", "cancel", "completed",
+      `${reason || "settled"} dropped=${state.dropped}`);
+    this.#executions.delete(state.executionKey);
+    return { cancelled: true, ...(reason ? { reason } : {}), dropped: state.dropped };
+  }
 }
 
 function enqueueDelivery(state, event, notify, timeoutMs, log) {
@@ -150,7 +182,14 @@ function enqueueDelivery(state, event, notify, timeoutMs, log) {
     text: renderProgressText(event, state),
   };
   state.tail = state.tail
-    .then(() => notifyOutcome(notify, input, timeoutMs))
+    .then(() => {
+      // 真正发送前检查取消状态：尚未发起的通知一律丢弃；已在途的发送不受影响。
+      if (state.cancelled) {
+        state.dropped += 1;
+        return { outcome: "dropped", reason: "cancelled" };
+      }
+      return notifyOutcome(notify, input, timeoutMs);
+    })
     .then(({ outcome, reason }) => logDiagnostic(log, state, event.stage, "deliver", outcome, reason || outcome))
     .finally(() => { state.pending -= 1; });
 }
@@ -220,6 +259,7 @@ function normalizeIdentity(input, identityField) {
 function executionState(executionKey, context, env) {
   return {
     executionKey, ...context, env, accepting: true, pending: 0,
+    cancelled: false, dropped: 0,
     tail: Promise.resolve(), finishPromise: undefined,
   };
 }

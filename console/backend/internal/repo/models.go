@@ -57,11 +57,15 @@ const (
 
 // Long task queue lifecycle states. These intentionally do not extend
 // SkillExecution statuses; queued/running task state is operational, not audit.
+// cancelling/cancelled are operator-initiated cancellation states: cancelling
+// still occupies a running slot until the Worker confirms a real stop.
 const (
-	LongTaskQueued    = "queued"
-	LongTaskRunning   = "running"
-	LongTaskSucceeded = "succeeded"
-	LongTaskFailed    = "failed"
+	LongTaskQueued     = "queued"
+	LongTaskRunning    = "running"
+	LongTaskCancelling = "cancelling"
+	LongTaskCancelled  = "cancelled"
+	LongTaskSucceeded  = "succeeded"
+	LongTaskFailed     = "failed"
 )
 
 // Skill entry types distinguish managed bundles from traditional OpenClaw Skills.
@@ -277,25 +281,29 @@ type SkillExecutionRecord struct {
 // visibility. The Console is the only database writer; Skill execution audit
 // remains in skill_execution_records.
 type LongTaskTask struct {
-	TaskID         string
-	PodID          string
-	HumanUserID    string
-	PoolKey        string
-	PoolQueued     int
-	PoolRunning    int
-	PoolLimit      int
-	AgentID        string
-	PeerID         string
-	SkillName      string
-	SkillRoot      string
-	Status         string
-	SubmittedAt    time.Time
-	StartedAt      time.Time
-	EndedAt        time.Time
-	TerminalReason string
-	ErrorCode      string
-	UpdatedAt      time.Time
-	LastSeenAt     time.Time
+	TaskID            string
+	PodID             string
+	HumanUserID       string
+	PoolKey           string
+	PoolQueued        int
+	PoolRunning       int
+	PoolLimit         int
+	AgentID           string
+	PeerID            string
+	SkillName         string
+	SkillRoot         string
+	Status            string
+	StateRevision     int
+	CancelRequestedAt time.Time
+	CancelRequestedBy string
+	CancelledAt       time.Time
+	SubmittedAt       time.Time
+	StartedAt         time.Time
+	EndedAt           time.Time
+	TerminalReason    string
+	ErrorCode         string
+	UpdatedAt         time.Time
+	LastSeenAt        time.Time
 }
 
 // LongTaskPool summarizes one user-agent runtime queue.

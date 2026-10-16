@@ -27,6 +27,16 @@
 ARG BASE_IMAGE=docker.sangfor.com/mss-base/muad-openclaw-base
 ARG BASE_TAG=2026.7.1
 
+# ── runtime guard（锁定生产解析依赖；与根 Dockerfile 同步） ──
+# bash-parser 等生产依赖在构建期 npm ci 打进镜像，运行期不再触发 npm install（离线化）。
+# npm ci 只做包安装，不加载 OpenClaw worker，不受下方 cgroup pids 限制问题影响。
+FROM ${BASE_IMAGE}:${BASE_TAG} AS runtime-guard-deps
+
+USER root
+WORKDIR /build/runtime-guard
+COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+
 FROM ${BASE_IMAGE}:${BASE_TAG}
 
 LABEL io.muad.image.role="app"
@@ -61,6 +71,7 @@ COPY tools/muad-progress/package.json /opt/muad/muad-progress/
 COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plugin.json \
     /opt/muad/muad-runtime-guard/
 COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
+COPY --from=runtime-guard-deps /build/runtime-guard/node_modules /opt/muad/muad-runtime-guard/node_modules
 COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
 COPY tools/shared /opt/muad/shared
 COPY skills /opt/openclaw-skills

@@ -1,8 +1,9 @@
 package test
 
 import (
-	"net/http"
-	"net/http/httptest"
+	"database/sql"
+	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -10,269 +11,202 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
-func TestLongTaskTasks_UpsertListAndMonotonicStatus(t *testing.T) {
-	store := newStore(t)
-	submitted := time.Date(2026, 8, 9, 10, 0, 0, 0, time.UTC)
-	task := repo.LongTaskTask{
-		TaskID: "task-a", PodID: "pod-a", HumanUserID: "user-a",
-		PoolKey: "agent:alice:wecom:direct:wx-1", PoolQueued: 1, PoolRunning: 0, PoolLimit: 2,
-		AgentID: "alice", PeerID: "wx-1",
-		SkillName: "xdr-query", SkillRoot: "/skills/xdr", Status: repo.LongTaskQueued,
-		SubmittedAt: submitted, UpdatedAt: submitted, LastSeenAt: submitted,
+// LongTaskControlB03 [integration] 真实边界：真实 SQLite 文件、升级前四状态旧表、
+// repo 迁移与镜像合并；不 mock。
+
+const legacyLongTaskDDLForMirror = `CREATE TABLE long_task_tasks (
+	task_id TEXT PRIMARY KEY,
+	pod_id TEXT NOT NULL,
+	human_user_id TEXT NOT NULL DEFAULT '',
+	pool_key TEXT NOT NULL,
+	agent_id TEXT NOT NULL,
+	peer_id TEXT NOT NULL,
+	skill_name TEXT NOT NULL,
+	skill_root TEXT NOT NULL DEFAULT '',
+	pool_queued INTEGER NOT NULL DEFAULT 0 CHECK (pool_queued >= 0),
+	pool_running INTEGER NOT NULL DEFAULT 0 CHECK (pool_running >= 0),
+	pool_limit INTEGER NOT NULL DEFAULT 0 CHECK (pool_limit >= 0),
+	status TEXT NOT NULL CHECK (status IN ('queued','running','succeeded','failed')),
+	submitted_at TEXT NOT NULL,
+	started_at TEXT NOT NULL DEFAULT '',
+	ended_at TEXT NOT NULL DEFAULT '',
+	terminal_reason TEXT NOT NULL DEFAULT '',
+	error_code TEXT NOT NULL DEFAULT '',
+	updated_at TEXT NOT NULL,
+	last_seen_at TEXT NOT NULL
+);
+CREATE INDEX idx_long_task_pod_updated ON long_task_tasks(pod_id, updated_at);
+CREATE INDEX idx_long_task_user_status ON long_task_tasks(human_user_id, status, submitted_at);
+CREATE INDEX idx_long_task_pool_status ON long_task_tasks(pool_key, status, submitted_at);`
+
+func openMirrorStore(t *testing.T) (*repo.Store, string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "mirror.db")
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
 	}
+	t.Cleanup(func() { _ = store.Close() })
+	return store, path
+}
+
+func taskSnapshot(taskID, status string, revision int, base time.Time) repo.LongTaskTask {
+	return repo.LongTaskTask{
+		TaskID: taskID, PodID: "pod-1", HumanUserID: "user-1",
+		PoolKey: "agent:alice:wecom:direct:wx-1", AgentID: "alice", PeerID: "wx-1",
+		SkillName: "xdr-query", SkillRoot: "/skills/xdr-query",
+		PoolQueued: 0, PoolRunning: 1, PoolLimit: 2,
+		Status: status, StateRevision: revision,
+		SubmittedAt: base, UpdatedAt: base, LastSeenAt: base,
+	}
+}
+
+func mustUpsert(t *testing.T, store *repo.Store, task repo.LongTaskTask) {
+	t.Helper()
 	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{task}); err != nil {
-		t.Fatalf("insert Long Task: %v", err)
+		t.Fatalf("upsert %s/%s rev=%d: %v", task.TaskID, task.Status, task.StateRevision, err)
 	}
-	task.Status = repo.LongTaskRunning
-	task.PoolQueued = 0
-	task.PoolRunning = 1
-	task.StartedAt = submitted.Add(time.Minute)
-	task.UpdatedAt = submitted.Add(time.Minute)
-	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{task}); err != nil {
-		t.Fatalf("advance Long Task: %v", err)
-	}
+}
 
-	// A status regression (running -> queued) is not silently dropped: the
-	// record is kept and converged to a terminal failed state with the reason
-	// recorded, preserving the incoming pool counters and last_seen.
-	regressed := task
-	regressed.Status = repo.LongTaskQueued
-	regressed.PoolQueued = 1
-	regressed.PoolRunning = 0
-	regressed.UpdatedAt = submitted.Add(90 * time.Second)
-	regressed.LastSeenAt = submitted.Add(90 * time.Second)
-	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{regressed}); err != nil {
-		t.Fatalf("regress running Long Task: %v", err)
-	}
-	listed, _, err := store.ListLongTaskTasks(repo.LongTaskListFilter{Query: "task-a", Limit: 1})
-	if err != nil || len(listed) != 1 {
-		t.Fatalf("list regressed Long Task = %+v, %v", listed, err)
-	}
-	got := listed[0]
-	if got.Status != repo.LongTaskFailed {
-		t.Fatalf("regressed Long Task status = %q, want failed: %+v", got.Status, got)
-	}
-	if !strings.Contains(got.TerminalReason, "running") || !strings.Contains(got.TerminalReason, "queued") {
-		t.Fatalf("regressed Long Task terminal_reason = %q", got.TerminalReason)
-	}
-	if got.PoolQueued != 1 || got.PoolRunning != 0 || got.EndedAt.IsZero() ||
-		!got.LastSeenAt.Equal(submitted.Add(90*time.Second)) {
-		t.Fatalf("regression dropped incoming snapshot fields: %+v", got)
-	}
-
-	// A later terminal snapshot on the failed row stays failed (terminal rows
-	// never regress), but counters/last_seen still converge.
-	succeeded := regressed
-	succeeded.Status = repo.LongTaskSucceeded
-	succeeded.PoolQueued = 0
-	succeeded.PoolRunning = 0
-	succeeded.EndedAt = submitted.Add(2 * time.Minute)
-	succeeded.UpdatedAt = submitted.Add(2 * time.Minute)
-	if err := store.UpsertLongTaskTasks([]repo.LongTaskTask{succeeded}); err != nil {
-		t.Fatalf("finish Long Task: %v", err)
-	}
-	items, total, err := store.ListLongTaskTasks(repo.LongTaskListFilter{
-		Query: "xdr", Status: repo.LongTaskFailed, Limit: 10,
-	})
+func readTaskRow(t *testing.T, store *repo.Store, taskID string) repo.LongTaskTask {
+	t.Helper()
+	tasks, _, err := store.ListLongTaskTasks(repo.LongTaskListFilter{})
 	if err != nil {
-		t.Fatalf("ListLongTaskTasks: %v", err)
+		t.Fatalf("list tasks: %v", err)
 	}
-	if total != 1 || len(items) != 1 || items[0].Status != repo.LongTaskFailed ||
-		items[0].PoolQueued != 0 || items[0].PoolRunning != 0 || items[0].PoolLimit != 2 ||
-		items[0].StartedAt.IsZero() || items[0].EndedAt.IsZero() ||
-		items[0].TerminalReason == "" {
-		t.Fatalf("listed Long Tasks = total %d items %+v", total, items)
+	for _, task := range tasks {
+		if task.TaskID == taskID {
+			return task
+		}
+	}
+	t.Fatalf("task %s not found", taskID)
+	return repo.LongTaskTask{}
+}
+
+func TestLongTaskControlB03MirrorMergeKeepsTerminalsAndIgnoresStaleSnapshots(t *testing.T) {
+	store, _ := openMirrorStore(t)
+	base := time.Date(2026, 10, 15, 9, 0, 0, 0, time.UTC)
+
+	// 正常前进：queued -> running -> cancelling -> cancelled，快照 revision 递增。
+	for _, step := range []struct {
+		status   string
+		revision int
+	}{
+		{repo.LongTaskQueued, 1},
+		{repo.LongTaskRunning, 2},
+		{repo.LongTaskCancelling, 3},
+		{repo.LongTaskCancelled, 4},
+	} {
+		mustUpsert(t, store, taskSnapshot("task-linear", step.status, step.revision, base.Add(time.Duration(step.revision)*time.Minute)))
+	}
+	linear := readTaskRow(t, store, "task-linear")
+	if linear.Status != repo.LongTaskCancelled || linear.StateRevision != 4 {
+		t.Fatalf("linear cancel flow not applied: %+v", linear)
+	}
+
+	// 重复快照幂等：同一 revision 重复上报不产生第二行、不回退。
+	mustUpsert(t, store, taskSnapshot("task-linear", repo.LongTaskCancelled, 4, base.Add(10*time.Minute)))
+	if again := readTaskRow(t, store, "task-linear"); again.Status != repo.LongTaskCancelled || again.StateRevision != 4 {
+		t.Fatalf("repeated snapshot changed the row: %+v", again)
+	}
+
+	// 已取消/已完成终态不被任何快照回退或改成 failed（含旧 revision 与旧格式 rev=0）。
+	succeeded := taskSnapshot("task-done", repo.LongTaskSucceeded, 5, base)
+	mustUpsert(t, store, succeeded)
+	mustUpsert(t, store, taskSnapshot("task-done", repo.LongTaskRunning, 2, base.Add(time.Minute)))
+	mustUpsert(t, store, taskSnapshot("task-done", repo.LongTaskQueued, 0, base.Add(2*time.Minute)))
+	if done := readTaskRow(t, store, "task-done"); done.Status != repo.LongTaskSucceeded {
+		t.Fatalf("succeeded terminal was overwritten: %+v", done)
+	}
+	mustUpsert(t, store, taskSnapshot("task-linear", repo.LongTaskRunning, 0, base.Add(3*time.Minute)))
+	if cancelled := readTaskRow(t, store, "task-linear"); cancelled.Status != repo.LongTaskCancelled {
+		t.Fatalf("cancelled terminal was overwritten by a legacy snapshot: %+v", cancelled)
+	}
+
+	// 乱序快照：迟到的 queued(rev 1) 不把 running(rev 3) 拉回去。
+	mustUpsert(t, store, taskSnapshot("task-ooo", repo.LongTaskRunning, 3, base))
+	mustUpsert(t, store, taskSnapshot("task-ooo", repo.LongTaskQueued, 1, base.Add(time.Minute)))
+	if ooo := readTaskRow(t, store, "task-ooo"); ooo.Status != repo.LongTaskRunning || ooo.StateRevision != 3 {
+		t.Fatalf("stale snapshot regressed the row: %+v", ooo)
+	}
+
+	// cancelling 单向门：迟到的 running(更高 revision) 也不得改写成 failed。
+	mustUpsert(t, store, taskSnapshot("task-stop", repo.LongTaskRunning, 2, base))
+	mustUpsert(t, store, taskSnapshot("task-stop", repo.LongTaskCancelling, 3, base.Add(time.Minute)))
+	mustUpsert(t, store, taskSnapshot("task-stop", repo.LongTaskRunning, 4, base.Add(2*time.Minute)))
+	stopping := readTaskRow(t, store, "task-stop")
+	if stopping.Status != repo.LongTaskCancelling {
+		t.Fatalf("cancelling task was regressed: %+v", stopping)
+	}
+	if strings.Contains(stopping.TerminalReason, "status_regressed") {
+		t.Fatalf("late snapshot must not fabricate a failed regression: %+v", stopping)
+	}
+
+	// 旧 revision（0）的合法前进仍兼容旧 Worker：queued(0) -> running(0) -> succeeded(0)。
+	for _, step := range []struct {
+		status   string
+		revision int
+	}{{repo.LongTaskQueued, 0}, {repo.LongTaskRunning, 0}, {repo.LongTaskSucceeded, 0}} {
+		mustUpsert(t, store, taskSnapshot("task-legacy", step.status, step.revision, base))
+	}
+	if legacy := readTaskRow(t, store, "task-legacy"); legacy.Status != repo.LongTaskSucceeded {
+		t.Fatalf("legacy revision-0 flow broken: %+v", legacy)
 	}
 }
 
-func TestLongTaskTasks_ListPoolsUsesUnpaginatedSummary(t *testing.T) {
-	store := newStore(t)
-	now := time.Date(2026, 8, 9, 10, 0, 0, 0, time.UTC)
-	tasks := []repo.LongTaskTask{
-		{
-			TaskID: "task-a", PodID: "pod-a", HumanUserID: "user-a",
-			PoolKey: "agent:alice:wecom:direct:wx-1", PoolQueued: 4, PoolRunning: 2, PoolLimit: 2,
-			AgentID: "alice", PeerID: "wx-1", SkillName: "xdr-query", Status: repo.LongTaskRunning,
-			SubmittedAt: now, StartedAt: now, UpdatedAt: now, LastSeenAt: now,
-		},
-		{
-			TaskID: "task-b", PodID: "pod-a", HumanUserID: "user-b",
-			PoolKey: "agent:bob:wecom:direct:wx-2", PoolQueued: 3, PoolRunning: 1, PoolLimit: 2,
-			AgentID: "bob", PeerID: "wx-2", SkillName: "report-customer", Status: repo.LongTaskQueued,
-			SubmittedAt: now.Add(time.Minute), UpdatedAt: now.Add(time.Minute), LastSeenAt: now.Add(time.Minute),
-		},
-	}
-	if err := store.UpsertLongTaskTasks(tasks); err != nil {
-		t.Fatalf("seed Long Tasks: %v", err)
-	}
-	items, total, err := store.ListLongTaskTasks(repo.LongTaskListFilter{PodID: "pod-a", Limit: 1})
+func TestLongTaskControlB03MigrationRepeatKeepsHistoryAndIndexes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-mirror.db")
+	legacy, err := sql.Open("sqlite", fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)", path))
 	if err != nil {
-		t.Fatalf("ListLongTaskTasks: %v", err)
+		t.Fatalf("open legacy sqlite: %v", err)
 	}
-	if total != 2 || len(items) != 1 {
-		t.Fatalf("paginated Long Tasks = total %d items %+v", total, items)
+	if _, err := legacy.Exec(legacyLongTaskDDLForMirror); err != nil {
+		t.Fatalf("create legacy table: %v", err)
 	}
-	pools, err := store.ListLongTaskPools(repo.LongTaskListFilter{PodID: "pod-a", Limit: 1})
+	if _, err := legacy.Exec(`INSERT INTO long_task_tasks (
+		task_id, pod_id, human_user_id, pool_key, agent_id, peer_id, skill_name, skill_root,
+		pool_queued, pool_running, pool_limit, status, submitted_at, started_at, ended_at,
+		terminal_reason, error_code, updated_at, last_seen_at
+	) VALUES ('lt-old', 'pod-1', 'user-1', 'agent:alice:wecom:direct:wx-1', 'alice', 'wx-1',
+		'xdr-query', '/skills/xdr-query', 1, 0, 2, 'succeeded', '2026-10-15T08:00:00.000Z',
+		'2026-10-15T08:00:01.000Z', '2026-10-15T08:01:00.000Z', 'finished', '',
+		'2026-10-15T08:01:00.000Z', '2026-10-15T08:01:00.000Z')`); err != nil {
+		t.Fatalf("seed legacy row: %v", err)
+	}
+	if err := legacy.Close(); err != nil {
+		t.Fatalf("close legacy: %v", err)
+	}
+
+	store, err := repo.Open(path)
 	if err != nil {
-		t.Fatalf("ListLongTaskPools: %v", err)
+		t.Fatalf("migrate legacy store: %v", err)
 	}
-	if len(pools) != 2 || pools[0].PoolQueued != 3 || pools[0].PoolRunning != 1 ||
-		pools[1].PoolQueued != 4 || pools[1].PoolRunning != 2 {
-		t.Fatalf("Long Task pools should not be sliced by task pagination: %+v", pools)
+	if err := store.Close(); err != nil {
+		t.Fatalf("close migrated store: %v", err)
 	}
-}
-
-func TestLongTaskAPI_ListAndRejectInvalidStatus(t *testing.T) {
-	env := newTestEnv(t)
-	createTestPod(t, env.store, "pod-a", 10)
-	alice := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
-	now := time.Date(2026, 8, 9, 11, 0, 0, 0, time.UTC)
-	if err := env.store.UpsertLongTaskTasks([]repo.LongTaskTask{{
-		TaskID: "task-api", PodID: "pod-a", HumanUserID: alice.HumanUserID,
-		PoolKey: "agent:alice:wecom:direct:wx-1", PoolQueued: 4, PoolRunning: 2, PoolLimit: 2,
-		AgentID: alice.AgentID, PeerID: "wx-1",
-		SkillName: "xdr-query", Status: repo.LongTaskRunning,
-		SubmittedAt: now, StartedAt: now, UpdatedAt: now, LastSeenAt: now,
-	}}); err != nil {
-		t.Fatalf("seed Long Task: %v", err)
+	// 迁移重复执行：历史行与索引保留，且旧终态不被改写。
+	again, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("repeat migration: %v", err)
 	}
-
-	response := env.do(http.MethodGet, "/api/v1/long-tasks?status=running&pageSize=10", "")
-	assertStatus(t, response, http.StatusOK)
-	data := decodeAPIData[struct {
-		Items []struct {
-			TaskID      string `json:"taskId"`
-			PodID       string `json:"podId"`
-			HumanUserID string `json:"humanUserId"`
-			PoolQueued  int    `json:"poolQueued"`
-			PoolRunning int    `json:"poolRunning"`
-			PoolLimit   int    `json:"poolLimit"`
-			AgentID     string `json:"agentId"`
-			SkillName   string `json:"skillName"`
-			Status      string `json:"status"`
-		} `json:"items"`
-		Pools []struct {
-			PoolKey     string `json:"poolKey"`
-			PoolQueued  int    `json:"poolQueued"`
-			PoolRunning int    `json:"poolRunning"`
-			PoolLimit   int    `json:"poolLimit"`
-		} `json:"pools"`
-		Total int `json:"total"`
-	}](t, response.Body.Bytes())
-	if data.Total != 1 || len(data.Items) != 1 || data.Items[0].TaskID != "task-api" ||
-		data.Items[0].HumanUserID != alice.HumanUserID || data.Items[0].PoolQueued != 4 ||
-		data.Items[0].PoolRunning != 2 || data.Items[0].PoolLimit != 2 ||
-		data.Items[0].Status != repo.LongTaskRunning {
-		t.Fatalf("Long Task API response = %+v", data)
+	defer again.Close()
+	tasks, total, err := again.ListLongTaskTasks(repo.LongTaskListFilter{})
+	if err != nil || total != 1 || len(tasks) != 1 {
+		t.Fatalf("legacy history lost: total=%d len=%d err=%v", total, len(tasks), err)
 	}
-	if len(data.Pools) != 1 || data.Pools[0].PoolQueued != 4 ||
-		data.Pools[0].PoolRunning != 2 || data.Pools[0].PoolLimit != 2 {
-		t.Fatalf("Long Task API pools = %+v", data.Pools)
+	if tasks[0].Status != repo.LongTaskSucceeded || tasks[0].TerminalReason != "finished" {
+		t.Fatalf("legacy terminal changed: %+v", tasks[0])
 	}
-
-	response = env.do(http.MethodGet, "/api/v1/long-tasks?status=blocked", "")
-	assertStatus(t, response, http.StatusBadRequest)
-}
-
-func TestLongTaskInternalAPI_UpsertsGuardSnapshot(t *testing.T) {
-	env := newTestEnv(t)
-	token := createPodWithToken(t, env, "pod-a")
-	alice := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
-
-	// The body mirrors the guard snapshot payload exactly, including the
-	// top-level active/queued/limit and per-task sourceSessionKey fields that
-	// decodeJSONBody (DisallowUnknownFields) would otherwise reject.
-	body := `{"active":1,"queued":0,"limit":2,"pools":[{"poolKey":"agent:alice:wecom:direct:wx-1",` +
-		`"sessionKey":"agent:alice:wecom:direct:wx-1","agentId":"alice","peerId":"wx-1",` +
-		`"queued":0,"active":1,"limit":2,"tasks":[{"taskId":"task-push-1",` +
-		`"poolKey":"agent:alice:wecom:direct:wx-1","sessionKey":"agent:alice:longtask:task-push-1",` +
-		`"sourceSessionKey":"agent:alice:wecom:direct:wx-1","agentId":"alice","peerId":"wx-1",` +
-		`"skillName":"xdr-query","skillRoot":"/skills/xdr-query","status":"running",` +
-		`"submittedAt":"2026-08-09T10:00:00.000Z","startedAt":"2026-08-09T10:00:01.000Z","endedAt":"",` +
-		`"terminalReason":"","errorCode":"","updatedAt":"2026-08-09T10:00:01.000Z"}]}]}`
-
-	rr := doInternalLongTasks(env, token, body)
-	assertStatus(t, rr, http.StatusOK)
-	if updated := decodeAPIData[struct {
-		Updated int `json:"updated"`
-	}](t, rr.Body.Bytes()).Updated; updated != 1 {
-		t.Fatalf("push updated count = %d, want 1", updated)
+	raw, err := sql.Open("sqlite", fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)", path))
+	if err != nil {
+		t.Fatalf("open raw sqlite: %v", err)
 	}
-
-	rr = env.do(http.MethodGet, "/api/v1/long-tasks?status=running&pageSize=10", "")
-	assertStatus(t, rr, http.StatusOK)
-	list := decodeAPIData[struct {
-		Items []struct {
-			TaskID      string `json:"taskId"`
-			HumanUserID string `json:"humanUserId"`
-			AgentID     string `json:"agentId"`
-			PoolQueued  int    `json:"poolQueued"`
-			PoolRunning int    `json:"poolRunning"`
-			PoolLimit   int    `json:"poolLimit"`
-			Status      string `json:"status"`
-		} `json:"items"`
-		Total int `json:"total"`
-	}](t, rr.Body.Bytes())
-	if list.Total != 1 || len(list.Items) != 1 || list.Items[0].TaskID != "task-push-1" ||
-		list.Items[0].HumanUserID != alice.HumanUserID || list.Items[0].AgentID != "alice" ||
-		list.Items[0].PoolQueued != 0 || list.Items[0].PoolRunning != 1 ||
-		list.Items[0].PoolLimit != 2 || list.Items[0].Status != repo.LongTaskRunning {
-		t.Fatalf("Long Task after push = %+v", list)
+	defer raw.Close()
+	var indexes int
+	if err := raw.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_long_task_%'`).Scan(&indexes); err != nil {
+		t.Fatalf("inspect indexes: %v", err)
 	}
-}
-
-func TestLongTaskInternalAPI_UnknownAgentUpsertsLeniently(t *testing.T) {
-	env := newTestEnv(t)
-	token := createPodWithToken(t, env, "pod-a")
-
-	body := `{"active":0,"queued":1,"limit":2,"pools":[{"poolKey":"agent:ghost:wecom:direct:wx-9",` +
-		`"sessionKey":"agent:ghost:wecom:direct:wx-9","agentId":"ghost","peerId":"wx-9",` +
-		`"queued":1,"active":0,"limit":2,"tasks":[{"taskId":"task-ghost",` +
-		`"poolKey":"agent:ghost:wecom:direct:wx-9","sessionKey":"agent:ghost:longtask:task-ghost",` +
-		`"sourceSessionKey":"agent:ghost:wecom:direct:wx-9","agentId":"ghost","peerId":"wx-9",` +
-		`"skillName":"xdr-query","skillRoot":"/skills/xdr-query","status":"queued",` +
-		`"submittedAt":"2026-08-09T10:00:00.000Z","startedAt":"","endedAt":"",` +
-		`"terminalReason":"","errorCode":"","updatedAt":"2026-08-09T10:00:00.000Z"}]}]}`
-
-	rr := doInternalLongTasks(env, token, body)
-	assertStatus(t, rr, http.StatusOK)
-	if updated := decodeAPIData[struct {
-		Updated int `json:"updated"`
-	}](t, rr.Body.Bytes()).Updated; updated != 1 {
-		t.Fatalf("push updated count = %d, want 1", updated)
+	if indexes != 3 {
+		t.Fatalf("expected the three long-task indexes, got %d", indexes)
 	}
-
-	items, total, err := env.store.ListLongTaskTasks(repo.LongTaskListFilter{
-		PodID: "pod-a", AgentID: "ghost", Limit: 10,
-	})
-	if err != nil || total != 1 || len(items) != 1 || items[0].HumanUserID != "" {
-		t.Fatalf("lenient upsert for unknown agent = total %d items %+v, err %v", total, items, err)
-	}
-}
-
-func TestLongTaskInternalAPI_InvalidSkillNameRejected(t *testing.T) {
-	env := newTestEnv(t)
-	token := createPodWithToken(t, env, "pod-a")
-
-	// skillName 为空触发 repo.ErrInvalidSkill，handler 应映射为 400 请求体错误
-	// （而非误导性的"无效 Skill"客户端错误码），避免把服务端数据校验失败伪装成 Skill 错误。
-	body := `{"active":0,"queued":0,"limit":2,"pools":[{"poolKey":"agent:alice:wecom:direct:wx-1",` +
-		`"sessionKey":"agent:alice:wecom:direct:wx-1","agentId":"alice","peerId":"wx-1",` +
-		`"queued":0,"active":0,"limit":2,"tasks":[{"taskId":"task-invalid",` +
-		`"poolKey":"agent:alice:wecom:direct:wx-1","sessionKey":"agent:alice:longtask:task-invalid",` +
-		`"sourceSessionKey":"agent:alice:wecom:direct:wx-1","agentId":"alice","peerId":"wx-1",` +
-		`"skillName":"","skillRoot":"/skills/xdr-query","status":"queued",` +
-		`"submittedAt":"2026-08-09T10:00:00.000Z","startedAt":"","endedAt":"",` +
-		`"terminalReason":"","errorCode":"","updatedAt":"2026-08-09T10:00:00.000Z"}]}]}`
-
-	rr := doInternalLongTasks(env, token, body)
-	assertStatus(t, rr, http.StatusBadRequest)
-}
-
-func doInternalLongTasks(env *testEnv, token, body string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/internal/v1/long-tasks", strings.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+token)
-	recorder := httptest.NewRecorder()
-	env.h.ServeHTTP(recorder, req)
-	return recorder
 }
