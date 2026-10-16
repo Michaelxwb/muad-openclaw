@@ -1,7 +1,7 @@
 version: 1
 task: long-task-control
 enforcement: required
-updated_at: '2026-10-15T11:47:25.058857+00:00'
+updated_at: '2026-10-16T10:31:45.718864+00:00'
 sources:
 - type: cli
   ref: bind
@@ -46,7 +46,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-015
           item_id: backend-code-quality-performance#RULE-backend-quality-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -90,6 +90,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: backend-code-quality-performance#RULE-backend-quality-001
+          executed_at: '2026-10-16T10:32:10.311589+00:00'
+          status: verified
+          rule_text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-backend-write-err-001
     summary: HTTP 错误响应必须走 `writeErr` / `writeRuntimeFailure` / `writeRepoError` 且只传
       `errcode` 常量；禁止旧签名 `writeErr(w, r, status, code, msg)` 或传字符串 message。
@@ -113,7 +125,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-016
           item_id: backend-code-quality-performance#RULE-backend-write-err-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -418,6 +430,17 @@ bindings:
           details:
             checked_files: 50
             violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-16T10:32:10.324204+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: 161c72830801390c438c38dc62dd0ac22ecaa16a32af328ddfa05240e178e0e6
+          error_code: null
+          details:
+            checked_files: 50
+            violations: []
       review:
         status: pending
         refs: []
@@ -572,7 +595,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-007
           item_id: backend-database#RULE-backend-database-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -616,6 +639,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: backend-database#RULE-backend-database-001
+          executed_at: '2026-10-16T10:32:10.326384+00:00'
+          status: verified
+          rule_text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-backend-no-select-star-001
     summary: Queries must list explicit columns; do not use `SELECT *` in production
       SQL.
@@ -639,7 +674,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-007
           item_id: backend-database#RULE-backend-no-select-star-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -944,6 +979,17 @@ bindings:
           details:
             checked_files: 197
             violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-16T10:32:10.361962+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: 3cbc36812181394f67b9b9321b34790acdba7235411ad2dc7d87eebb5cf658fd
+          error_code: null
+          details:
+            checked_files: 197
+            violations: []
       review:
         status: pending
         refs: []
@@ -1099,7 +1145,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-015
           item_id: backend-directory-structure#RULE-backend-directory-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -1137,6 +1183,18 @@ bindings:
           rule_text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: backend-directory-structure#RULE-backend-directory-001
+          executed_at: '2026-10-16T10:32:10.363363+00:00'
+          status: verified
+          rule_text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
@@ -1264,7 +1322,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-017
           item_id: backend-logging#RULE-backend-logging-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -1308,6 +1366,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: backend-logging#RULE-backend-logging-001
+          executed_at: '2026-10-16T10:32:10.364176+00:00'
+          status: verified
+          rule_text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-backend-redact-001
     summary: Error strings written to logs, audit details, apply-failure fields, or
       user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic`
@@ -1332,7 +1402,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-017
           item_id: backend-logging#RULE-backend-redact-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -1370,6 +1440,18 @@ bindings:
           rule_text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: backend-logging#RULE-backend-redact-001
+          executed_at: '2026-10-16T10:32:10.364187+00:00'
+          status: verified
+          rule_text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
@@ -1497,7 +1579,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-018
           item_id: backend-platform-rules#RULE-backend-platform-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -1541,6 +1623,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: backend-platform-rules#RULE-backend-platform-001
+          executed_at: '2026-10-16T10:32:10.365378+00:00'
+          status: verified
+          rule_text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-backend-http-envelope-001
     summary: All Console HTTP handlers must emit responses via `writeJSON` / `writeErr`
       with stable `code*` constants; do not call `json.NewEncoder` (or ad-hoc maps)
@@ -1565,7 +1659,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-016
           item_id: backend-platform-rules#RULE-backend-http-envelope-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -2164,6 +2258,90 @@ bindings:
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
               0.886s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-16T10:32:13.942947+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: 8a21b821289a25ec217b47b9f9d02512b83beb8d4f9adcdbcc8df7edd654060f
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 397c9e78fb4ef9ff1991957042171ec71400c868e69df390919675545ccb0df9
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.795s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-16T10:47:08.945213+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: ba9367826f9c490c09aedb11772dda4b913375e26377f26a64341b178513dc13
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 2eba5f3eea067db97eadf9b6c7d6411a7d548d53798b1143e79ab536a528d12d
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.654s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-16T11:20:25.904714+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: 0d200a1b25f0549e0a09dec42660c3179510002deb45d8f26b3babbadb2395f7
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: e70a0933cd5054d794b7190157312779dd941bd3bf0b0f54baef7b26d4dbbcd2
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.555s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-16T11:48:46.712635+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: df7239e76436a4ba338d5ac8c4712ee7042e92d565b560f1b63e839242c15b66
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 53c5473473ae091d61dbcc8508bce73e15a7853ea2a7febc2dd88081444d3291
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.526s\n"
       review:
         status: pending
         refs: []
@@ -2193,7 +2371,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-018
           item_id: backend-platform-rules#RULE-backend-model-pool-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -2231,6 +2409,18 @@ bindings:
           rule_text_sha256: 23c293f00680e409de4b6c712152fa0bc9e812273399c72c135ccdaf9082ee9f
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: backend-platform-rules#RULE-backend-model-pool-001
+          executed_at: '2026-10-16T10:32:13.943036+00:00'
+          status: verified
+          rule_text_sha256: 23c293f00680e409de4b6c712152fa0bc9e812273399c72c135ccdaf9082ee9f
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
@@ -2358,7 +2548,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-020
           item_id: frontend-component-specs#RULE-frontend-component-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -2402,6 +2592,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: frontend-component-specs#RULE-frontend-component-001
+          executed_at: '2026-10-16T10:32:13.944293+00:00'
+          status: verified
+          rule_text_sha256: e79c828738826162955fd6db0e99331d699d286fcf701c839b351b0c833ed119
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-frontend-semi-shell-001
     summary: Console UI must use `@douyinfe/semi-ui` as the primary component library;
       locale/theme shell is configured via `ConfigProvider` in `main.tsx` (and App-level
@@ -2426,7 +2628,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-020
           item_id: frontend-component-specs#RULE-frontend-semi-shell-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -2464,6 +2666,18 @@ bindings:
           rule_text_sha256: e9c32b34e6df5722515bab5fe2feaca80478baadc99eab5d878ab7e3de3b2a7c
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: frontend-component-specs#RULE-frontend-semi-shell-001
+          executed_at: '2026-10-16T10:32:13.944307+00:00'
+          status: verified
+          rule_text_sha256: e9c32b34e6df5722515bab5fe2feaca80478baadc99eab5d878ab7e3de3b2a7c
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
@@ -2618,7 +2832,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-019
           item_id: frontend-directory-structure#RULE-frontend-directory-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -2662,6 +2876,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: frontend-directory-structure#RULE-frontend-directory-001
+          executed_at: '2026-10-16T10:32:13.945183+00:00'
+          status: verified
+          rule_text_sha256: 66966dac0eb450b2ddde672de79b7855ccf19b371bc18776d8d0ecb196341a8f
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-frontend-api-types-001
     summary: Shared request/response types live in `src/types/api.ts` and are re-exported
       from `api.ts`; pages/components must not redefine drifting DTOs or hard-code
@@ -2686,7 +2912,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-019
           item_id: frontend-directory-structure#RULE-frontend-api-types-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -2724,6 +2950,18 @@ bindings:
           rule_text_sha256: da31561ab47f66800d4351fcaf04e354795189e6966f19bd5b78dcb91f2638cc
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: frontend-directory-structure#RULE-frontend-api-types-001
+          executed_at: '2026-10-16T10:32:13.945193+00:00'
+          status: verified
+          rule_text_sha256: da31561ab47f66800d4351fcaf04e354795189e6966f19bd5b78dcb91f2638cc
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
@@ -2851,7 +3089,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-021
           item_id: frontend-quality-standards#RULE-frontend-quality-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -2895,6 +3133,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: frontend-quality-standards#RULE-frontend-quality-001
+          executed_at: '2026-10-16T10:32:13.946284+00:00'
+          status: verified
+          rule_text_sha256: d02c28f2c041bfa9eea4ffc592e5352a37e8884776ec581eea954e1f49b6a4c0
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-frontend-api-client-001
     summary: 'All Console HTTP must go through `console/frontend/src/api.ts`: base
       path `/api/v1`, success only when response `code === 0` then unwrap `data`,
@@ -2920,7 +3170,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-019
           item_id: frontend-quality-standards#RULE-frontend-api-client-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -3244,6 +3494,17 @@ bindings:
           details:
             checked_files: 81
             violations: []
+        - verifier_ref: frontend-quality-standards#RULE-frontend-api-client-001
+          executed_at: '2026-10-16T10:32:13.966415+00:00'
+          status: verified
+          rule_text_sha256: f72980fb8ff80823ef0306b736ff3dfcc9216a23d166c4b3ef9f0c3283c1aafd
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: e3890eb504480796f3abcca55ae7c01290d4814788eabfde0d3a631dd90a9be9
+          error_code: null
+          details:
+            checked_files: 81
+            violations: []
       review:
         status: pending
         refs: []
@@ -3273,7 +3534,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-022
           item_id: frontend-quality-standards#RULE-frontend-i18n-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -3311,6 +3572,18 @@ bindings:
           rule_text_sha256: f7949e0627700b461018be02191edc4b983370e1968d47b5c5f0376b04c4e019
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: frontend-quality-standards#RULE-frontend-i18n-001
+          executed_at: '2026-10-16T10:32:13.946295+00:00'
+          status: verified
+          rule_text_sha256: f7949e0627700b461018be02191edc4b983370e1968d47b5c5f0376b04c4e019
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
@@ -3494,7 +3767,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-005
           item_id: runtime-config-and-apply#RULE-runtime-config-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -3538,6 +3811,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+          executed_at: '2026-10-16T10:32:13.968112+00:00'
+          status: verified
+          rule_text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-runtime-validate-before-write-001
     summary: Any renderer/inject path that materializes runtime config must call `validateRuntimeConfig`
       (or shared schema helper) before atomic write; desired state carries a monotonic
@@ -3562,7 +3847,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-005
           item_id: runtime-config-and-apply#RULE-runtime-validate-before-write-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -3600,6 +3885,18 @@ bindings:
           rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+          executed_at: '2026-10-16T10:32:13.968126+00:00'
+          status: verified
+          rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
@@ -3700,7 +3997,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-014
           item_id: runtime-directory-structure#RULE-runtime-directory-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -3738,6 +4035,18 @@ bindings:
           rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+          executed_at: '2026-10-16T10:32:13.968712+00:00'
+          status: verified
+          rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
@@ -3838,7 +4147,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-014
           item_id: runtime-isolation-and-security#RULE-runtime-security-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -3882,6 +4191,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+          executed_at: '2026-10-16T10:32:13.969513+00:00'
+          status: verified
+          rule_text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-runtime-secret-file-mode-001
     summary: Files that materialize config, bundles, or secrets on disk must use restrictive
       modes (`0o600` for written config/bundle material; Pod service token files `0400`
@@ -3906,7 +4227,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-006
           item_id: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -3944,6 +4265,18 @@ bindings:
           rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+          executed_at: '2026-10-16T10:32:13.969522+00:00'
+          status: verified
+          rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
@@ -4071,7 +4404,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-011
           item_id: runtime-skill-execution#RULE-runtime-skill-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -4115,6 +4448,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+          executed_at: '2026-10-16T10:32:13.971061+00:00'
+          status: verified
+          rule_text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-runtime-skill-layering-001
     summary: Resolution order prefers system (`system_protected`) over public/private;
       public/private name conflicts must not silently overwrite—override only via
@@ -4139,7 +4484,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-005
           item_id: runtime-skill-execution#RULE-runtime-skill-layering-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -4183,6 +4528,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+          executed_at: '2026-10-16T10:32:13.971074+00:00'
+          status: verified
+          rule_text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-runtime-log-injection-001
     summary: Tool/plugin modules must receive logging via an injected `log` callback
       (default no-op) instead of scattered `console.*`; the openclaw plugin path injects
@@ -4207,7 +4564,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-014
           item_id: runtime-skill-execution#RULE-runtime-log-injection-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -4251,6 +4608,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+          executed_at: '2026-10-16T10:32:13.971084+00:00'
+          status: verified
+          rule_text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-runtime-log-prefix-001
     summary: Log lines must carry a stable module prefix (`[session-manager]`, `[muad-runtime-guard]`)
       with `[<module>-<action>]` sub-tags for grep-ability.
@@ -4274,7 +4643,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-014
           item_id: runtime-skill-execution#RULE-runtime-log-prefix-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -4318,6 +4687,18 @@ bindings:
             source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
               需构建最新 pod 镜像并经 console API 升级后验证。
             owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+          executed_at: '2026-10-16T10:32:13.971091+00:00'
+          status: verified
+          rule_text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
   - ref: RULE-runtime-skill-fail-loud-001
     summary: Skill scripts must report failures to stderr and exit non-zero (fail
       loud); stdout is reserved for the machine-readable result. Errors written to
@@ -4342,7 +4723,7 @@ bindings:
         - artifact: long-task-control.md
           section_id: TASK-013
           item_id: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
-          artifact_sha256: a926a77969e5816cb5086d2435ee2e332a21d442062d04287fbfbb9d4d9060c1
+          artifact_sha256: 707808796c531b8feb151b0007dc3a4693e933b2e4af271f68d39538728e0cad
         decision: null
         evidence: []
       code:
@@ -4380,6 +4761,18 @@ bindings:
           rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
           artifact_sha256: null
           diff_sha256: head:a29ebfc9b14783c5c783bd943fcdbc4e0db10cd1
+          result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
+          error_code: null
+          details:
+            source: 确认全部 23 条。环境说明：consoledev 方式启动，muad 命名空间已有两个测试 pod（muad-oc-pod01/muad-oc-pod02）；E2E
+              需构建最新 pod 镜像并经 console API 升级后验证。
+            owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+          executed_at: '2026-10-16T10:32:13.971098+00:00'
+          status: verified
+          rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+          artifact_sha256: null
+          diff_sha256: head:f632e413c2dfbeff28522f333487161803135139
           result_sha256: d16b582a9d61081d9ec8583b4885a10b5d7d0094ee2e231a73c8270947826de0
           error_code: null
           details:
