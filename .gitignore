@@ -29,3 +29,6 @@ console/backend/console
 console/backend/config.yaml
 # 旧 env 部署方式已弃用（如有遗留也不入库）
 console/.env
+
+# 长任务取消 E2E 本机测试资产（fixture 打包、浏览器执行器及其依赖、交接文档、临时 ID），不入库
+.ltc-staging/
