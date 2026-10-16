@@ -11,12 +11,24 @@ import {
 // MUAD_LONG_TASK_CONTROL_E2E=1 时注册；未启用不执行任何真实场景。
 
 async function cancelAndSettle(scenario, taskId) {
+  const task = await scenario.task(taskId);
+  const submittedAt = String(task?.submittedAt ?? '');
+  // 任务可能在业务脚本真正启动前即被取消（该情形没有 pid 证据，属合法路径）；
+  // 给真实启动留出证据窗口，否则等到任务已进入终态。
+  await eventually(async () => {
+    const started = (await scenario.processRows()).some(row => String(row.startedAt ?? '') > submittedAt);
+    const current = await scenario.task(taskId);
+    return started || ['cancelled', 'succeeded', 'failed'].includes(current?.status ?? '');
+  }, 90_000);
   const response = await scenario.cancelTask(taskId);
   assert.equal(response.body?.code, 0, `cleanup cancel failed for ${taskId}`);
   await scenario.waitForTask(taskId, ['cancelled', 'succeeded', 'failed']);
-  const task = await scenario.task(taskId);
-  if (task.status === 'cancelled') await scenario.assertProcessStopped({ timeoutMs: 30_000 });
-  return task;
+  const settled = await scenario.task(taskId);
+  const hasPidEvidence = (await scenario.processRows()).some(row => String(row.startedAt ?? '') > submittedAt);
+  if (settled.status === 'cancelled' && hasPidEvidence) {
+    await scenario.assertProcessStopped({ timeoutMs: 30_000 });
+  }
+  return settled;
 }
 
 registerLongTaskControlE2E(
