@@ -119,6 +119,24 @@ test("pod service token reads are blocked even behind directory-op commands", as
   }
 });
 
+test("cross-user guard blocks trace spool path access", async () => {
+  const hooks = guard();
+  for (const command of [
+    "cat /tmp/muad-runtime-queues/skill-trace/11111111-2222-4333-8444-555555555555.jsonl",
+    "rm -rf /tmp/muad-runtime-queues/skill-trace",
+    "python3 -c \"print(open('/tmp/muad-runtime-queues/skill-trace/11111111-2222-4333-8444-555555555555.jsonl').read())\"",
+  ]) {
+    assert.deepEqual(await hooks.beforeToolCall(exec(command), context()), {
+      block: true,
+      blockReason: TRACE_SPOOL_REASON,
+    });
+  }
+  assert.deepEqual(await hooks.beforeToolCall(
+    { toolName: "write", params: { content: "readFileSync('/tmp/muad-runtime-queues/skill-trace/x.jsonl')" } },
+    context(),
+  ), { block: true, blockReason: TRACE_SPOOL_REASON });
+});
+
 test("non-shell and non-file tools are untouched", async () => {
   const hooks = guard();
   for (const event of [
@@ -226,3 +244,5 @@ const SESSION_REASON =
   "session files are not readable through shell or scripts; use the trusted session-manager CLI";
 const FORGED_KEY_REASON =
   "re-asserting MUAD_SESSION_KEY is disabled; the trusted execution context is injected automatically";
+const TRACE_SPOOL_REASON =
+  "Skill trace spool is managed by the runtime guard and is not readable or writable through shell or scripts";
