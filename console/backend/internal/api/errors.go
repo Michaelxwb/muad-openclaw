@@ -146,6 +146,10 @@ var errorCatalog = map[int]errorDef{
 	errcode.InvalidSkillExecutionFilter: {http.StatusBadRequest, "Skill 执行过滤条件不合法", "Invalid Skill execution filter"},
 	// invalid.long_task_status
 	errcode.InvalidLongTaskStatus: {http.StatusBadRequest, "Long Task 状态不合法", "Invalid Long Task status"},
+	// invalid.skill_trace
+	errcode.InvalidSkillTrace: {http.StatusBadRequest, "Skill 执行 trace 数据不合法", "Invalid Skill execution trace"},
+	// conflict.skill_trace_owner
+	errcode.ConflictSkillTraceOwner: {http.StatusConflict, "executionId 不属于该 Pod/Agent", "executionId does not belong to this Pod/Agent"},
 	// invalid.public_skill_storage_not_configured
 	errcode.InvalidPublicSkillStorageNotConfigured: {http.StatusBadRequest, "Public Skill 存储未配置", "Public Skill storage is not configured"},
 	// invalid.skill_platform_dependency

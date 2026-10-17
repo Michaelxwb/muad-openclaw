@@ -239,3 +239,322 @@ func doInternalSkillExecution(env *testEnv, token, body string) *httptest.Respon
 	env.h.ServeHTTP(recorder, req)
 	return recorder
 }
+
+// --- Skill execution trace API (TASK-002) ---
+
+type skillTraceInterfaceView struct {
+	Host   string `json:"host"`
+	Method string `json:"method"`
+	Path   string `json:"path"`
+	Count  int    `json:"count"`
+}
+
+type skillTraceMetricsView struct {
+	RequestCount    int                       `json:"requestCount"`
+	ErrorCount      int                       `json:"errorCount"`
+	DistinctHosts   int                       `json:"distinctHosts"`
+	MaxBurstPer10s  int                       `json:"maxBurstPer10s"`
+	TopInterfaces   []skillTraceInterfaceView `json:"topInterfaces"`
+	DetailTruncated bool                      `json:"detailTruncated"`
+	Aborted         bool                      `json:"aborted"`
+	AbortReason     string                    `json:"abortReason"`
+	AbortInterface  string                    `json:"abortInterface"`
+	AbortCount      *int                      `json:"abortCount"`
+}
+
+type skillTraceEventView struct {
+	EventID    string    `json:"eventId"`
+	Seq        int       `json:"seq"`
+	OccurredAt time.Time `json:"occurredAt"`
+	Kind       string    `json:"kind"`
+	Status     string    `json:"status"`
+	DurationMS *int      `json:"durationMs"`
+	Summary    string    `json:"summary"`
+	Detail     string    `json:"detail"`
+}
+
+type skillExecutionTraceView struct {
+	Metrics *skillTraceMetricsView `json:"metrics"`
+	Events  []skillTraceEventView  `json:"events"`
+}
+
+type skillExecutionStatView struct {
+	SkillName       string                    `json:"skillName"`
+	SkillScope      string                    `json:"skillScope"`
+	HumanUserID     string                    `json:"humanUserId"`
+	HumanUserName   string                    `json:"humanUserName"`
+	Executions      int                       `json:"executions"`
+	AbortedCount    int                       `json:"abortedCount"`
+	FlaggedCount    int                       `json:"flaggedCount"`
+	MaxRequests     int                       `json:"maxRequests"`
+	ErrorRate       float64                   `json:"errorRate"`
+	TopInterfaces   []skillTraceInterfaceView `json:"topInterfaces"`
+	LastExecutionAt time.Time                 `json:"lastExecutionAt"`
+}
+
+type skillExecutionStatsView struct {
+	Items []skillExecutionStatView `json:"items"`
+}
+
+func TestSkillExecutionTraceWritesReadsAndIsIdempotent(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+	createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createSkillTraceExecution(t, env, token, "exec-trace", "alice", "xdr-query", repo.SkillScopePrivate)
+
+	body := `{"agentId":"alice","metrics":{"requestCount":3,"errorCount":1,` +
+		`"distinctHosts":1,"maxBurstPer10s":2,` +
+		`"topInterfaces":[{"host":"mssw","method":"GET","path":"/api/v1/targets/{id}","count":3}],` +
+		`"detailTruncated":true,"aborted":true,"abortReason":"request_limit",` +
+		`"abortInterface":"GET mssw /api/v1/targets/{id}","abortCount":1001},` +
+		`"events":[` +
+		`{"eventId":"ev-2","seq":2,"occurredAt":"2026-10-17T06:02:03Z","kind":"http",` +
+		`"status":"error","durationMs":310,"summary":"GET mssw /targets","detail":"status=500"},` +
+		`{"eventId":"ev-1","seq":1,"occurredAt":"2026-10-17T06:02:01Z","kind":"exec",` +
+		`"status":"ok","durationMs":12400,"summary":"python3 run.py"}]}`
+
+	rr := doInternalSkillTrace(env, token, "exec-trace", body)
+	assertStatus(t, rr, http.StatusOK)
+	write := decodeAPIData[struct {
+		StoredEvents int  `json:"storedEvents"`
+		Aborted      bool `json:"aborted"`
+	}](t, rr.Body.Bytes())
+	if write.StoredEvents != 2 || !write.Aborted {
+		t.Fatalf("trace write response = %+v", write)
+	}
+
+	rr = env.do(http.MethodGet, "/api/v1/skill-executions/exec-trace/trace", "")
+	assertStatus(t, rr, http.StatusOK)
+	trace := decodeAPIData[skillExecutionTraceView](t, rr.Body.Bytes())
+	if trace.Metrics == nil {
+		t.Fatal("trace response missing metrics")
+	}
+	if trace.Metrics.RequestCount != 3 || trace.Metrics.ErrorCount != 1 ||
+		trace.Metrics.DistinctHosts != 1 || trace.Metrics.MaxBurstPer10s != 2 ||
+		!trace.Metrics.Aborted ||
+		trace.Metrics.AbortReason != "request_limit" ||
+		trace.Metrics.AbortInterface != "GET mssw /api/v1/targets/{id}" ||
+		trace.Metrics.AbortCount == nil || *trace.Metrics.AbortCount != 1001 ||
+		!trace.Metrics.DetailTruncated {
+		t.Fatalf("trace metrics = %+v", trace.Metrics)
+	}
+	if len(trace.Metrics.TopInterfaces) != 1 || trace.Metrics.TopInterfaces[0].Host != "mssw" ||
+		trace.Metrics.TopInterfaces[0].Path != "/api/v1/targets/{id}" {
+		t.Fatalf("trace top interfaces = %+v", trace.Metrics.TopInterfaces)
+	}
+	if len(trace.Events) != 2 || trace.Events[0].Seq != 1 || trace.Events[1].Seq != 2 ||
+		trace.Events[0].Kind != repo.SkillTraceKindExec || trace.Events[0].Summary != "python3 run.py" ||
+		trace.Events[0].DurationMS == nil || *trace.Events[0].DurationMS != 12400 ||
+		trace.Events[1].Status != repo.SkillTraceStatusError || trace.Events[1].Detail != "status=500" {
+		t.Fatalf("trace events = %+v", trace.Events)
+	}
+
+	// A retried upload stores only new events; the non-aborted replay snapshot
+	// must not clear the earlier abort flag.
+	replay := `{"agentId":"alice","metrics":{"requestCount":3,"errorCount":0},` +
+		`"events":[{"eventId":"ev-1","seq":1,"kind":"exec","status":"ok","summary":"python3 run.py"}]}`
+	rr = doInternalSkillTrace(env, token, "exec-trace", replay)
+	assertStatus(t, rr, http.StatusOK)
+	write = decodeAPIData[struct {
+		StoredEvents int  `json:"storedEvents"`
+		Aborted      bool `json:"aborted"`
+	}](t, rr.Body.Bytes())
+	if write.StoredEvents != 0 || !write.Aborted {
+		t.Fatalf("trace replay response = %+v", write)
+	}
+
+	rr = env.do(http.MethodGet, "/api/v1/skill-executions/exec-trace/trace", "")
+	assertStatus(t, rr, http.StatusOK)
+	replayed := decodeAPIData[skillExecutionTraceView](t, rr.Body.Bytes())
+	if replayed.Metrics == nil || !replayed.Metrics.Aborted || len(replayed.Events) != 2 {
+		t.Fatalf("replayed trace lost events or abort flag: %+v", replayed)
+	}
+
+	rr = env.do(http.MethodGet, "/api/v1/skill-executions/missing/trace", "")
+	assertStatus(t, rr, http.StatusNotFound)
+	if !strings.Contains(rr.Body.String(), `"code":40901`) {
+		t.Fatalf("missing execution trace response = %s", rr.Body.String())
+	}
+}
+
+func TestSkillExecutionTraceRejectsCrossPodOwner(t *testing.T) {
+	env := newTestEnv(t)
+	tokenA := createPodWithToken(t, env, "pod-a")
+	tokenB := createPodWithToken(t, env, "pod-b")
+	alice := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createTestHumanUser(t, env.store, "pod-b", "bob", repo.HumanUserStatusActive)
+	createSkillTraceExecution(t, env, tokenA, "exec-owned", "alice", "xdr-query", repo.SkillScopePrivate)
+
+	crossPod := `{"agentId":"bob","metrics":{"requestCount":1},"events":[]}`
+	rr := doInternalSkillTrace(env, tokenB, "exec-owned", crossPod)
+	assertStatus(t, rr, http.StatusConflict)
+	if !strings.Contains(rr.Body.String(), `"code":40535`) {
+		t.Fatalf("cross-Pod trace response = %s", rr.Body.String())
+	}
+
+	wrongAgent := `{"agentId":"bob","metrics":{"requestCount":1},"events":[]}`
+	rr = doInternalSkillTrace(env, tokenA, "exec-owned", wrongAgent)
+	assertStatus(t, rr, http.StatusConflict)
+
+	rr = env.do(http.MethodGet, "/api/v1/skill-executions/exec-owned/trace", "")
+	assertStatus(t, rr, http.StatusOK)
+	trace := decodeAPIData[skillExecutionTraceView](t, rr.Body.Bytes())
+	if trace.Metrics != nil || len(trace.Events) != 0 {
+		t.Fatalf("rejected cross-Pod write leaked data: %+v", trace)
+	}
+
+	unknown := `{"agentId":"` + alice.AgentID + `","metrics":{"requestCount":1},"events":[]}`
+	rr = doInternalSkillTrace(env, tokenA, "exec-unknown", unknown)
+	assertStatus(t, rr, http.StatusNotFound)
+}
+
+func TestSkillExecutionTraceRejectsInvalidPayloads(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+	createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	createSkillTraceExecution(t, env, token, "exec-invalid", "alice", "xdr-query", repo.SkillScopePrivate)
+
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"missing metrics", `{"agentId":"alice"}`},
+		{"negative metrics", `{"agentId":"alice","metrics":{"requestCount":-1}}`},
+		{"negative duration", `{"agentId":"alice","metrics":{"requestCount":1},` +
+			`"events":[{"eventId":"ev-1","seq":1,"kind":"exec","status":"ok",` +
+			`"durationMs":-5,"summary":"x"}]}`},
+		{"bad event kind", `{"agentId":"alice","metrics":{"requestCount":1},` +
+			`"events":[{"eventId":"ev-1","seq":1,"kind":"request","status":"ok","summary":"x"}]}`},
+		{"oversized detail", `{"agentId":"alice","metrics":{"requestCount":1},` +
+			`"events":[{"eventId":"ev-1","seq":1,"kind":"exec","status":"ok",` +
+			`"summary":"x","detail":"` + strings.Repeat("a", 2049) + `"}]}`},
+		{"too many events", tooManyTraceEventsBody(2001)},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			rr := doInternalSkillTrace(env, token, "exec-invalid", tt.body)
+			assertStatus(t, rr, http.StatusBadRequest)
+			if !strings.Contains(rr.Body.String(), `"code":40534`) {
+				t.Fatalf("invalid trace response = %s", rr.Body.String())
+			}
+		})
+	}
+
+	rr := env.do(http.MethodGet, "/api/v1/skill-executions/exec-invalid/trace", "")
+	assertStatus(t, rr, http.StatusOK)
+	trace := decodeAPIData[skillExecutionTraceView](t, rr.Body.Bytes())
+	if trace.Metrics != nil || len(trace.Events) != 0 {
+		t.Fatalf("rejected payload persisted partial trace: %+v", trace)
+	}
+}
+
+func TestSkillExecutionTraceStatsGroupsPrivateSkillPerUser(t *testing.T) {
+	env := newTestEnv(t)
+	token := createPodWithToken(t, env, "pod-a")
+	alice := createTestHumanUser(t, env.store, "pod-a", "alice", repo.HumanUserStatusActive)
+	bob := createTestHumanUser(t, env.store, "pod-a", "bob", repo.HumanUserStatusActive)
+	createSkillTraceExecution(t, env, token, "exec-a", "alice", "xdr-query", repo.SkillScopePrivate)
+	createSkillTraceExecution(t, env, token, "exec-b", "bob", "xdr-query", repo.SkillScopePrivate)
+
+	postTraceMetrics(t, env, token, "exec-a", "alice",
+		`{"requestCount":1001,"errorCount":37,"aborted":true,"abortReason":"request_limit",`+
+			`"topInterfaces":[{"host":"mssw","method":"GET","path":"/api/v1/targets/{id}","count":1001}]}`)
+	postTraceMetrics(t, env, token, "exec-b", "bob", `{"requestCount":20,"errorCount":1}`)
+
+	rr := env.do(http.MethodGet, "/api/v1/skill-executions/stats?window=7d&scope=private", "")
+	assertStatus(t, rr, http.StatusOK)
+	stats := decodeAPIData[skillExecutionStatsView](t, rr.Body.Bytes())
+	if len(stats.Items) != 2 {
+		t.Fatalf("stats rows = %d, want 2 (same private Skill split per user): %+v",
+			len(stats.Items), stats.Items)
+	}
+	byUser := map[string]skillExecutionStatView{}
+	for _, item := range stats.Items {
+		if item.SkillName != "xdr-query" || item.SkillScope != repo.SkillScopePrivate ||
+			item.Executions != 1 || item.LastExecutionAt.IsZero() {
+			t.Fatalf("unexpected stats row: %+v", item)
+		}
+		byUser[item.HumanUserID] = item
+	}
+	aliceRow, ok := byUser[alice.HumanUserID]
+	if !ok || aliceRow.HumanUserName != "alice" || aliceRow.MaxRequests != 1001 ||
+		aliceRow.AbortedCount != 1 || aliceRow.FlaggedCount != 1 {
+		t.Fatalf("alice stats = %+v", aliceRow)
+	}
+	if len(aliceRow.TopInterfaces) != 1 || aliceRow.TopInterfaces[0].Host != "mssw" ||
+		aliceRow.TopInterfaces[0].Count != 1001 {
+		t.Fatalf("alice top interfaces = %+v", aliceRow.TopInterfaces)
+	}
+	if rate := aliceRow.ErrorRate; rate < 0.0369 || rate > 0.037 {
+		t.Fatalf("alice error rate = %f, want ~0.037", rate)
+	}
+	bobRow, ok := byUser[bob.HumanUserID]
+	if !ok || bobRow.HumanUserName != "bob" || bobRow.MaxRequests != 20 ||
+		bobRow.AbortedCount != 0 || bobRow.FlaggedCount != 0 {
+		t.Fatalf("bob stats = %+v", bobRow)
+	}
+	if rate := bobRow.ErrorRate; rate != 0.05 {
+		t.Fatalf("bob error rate = %f, want 0.05", rate)
+	}
+
+	rr = env.do(http.MethodGet,
+		"/api/v1/skill-executions/stats?window=7d&humanUserId="+bob.HumanUserID, "")
+	assertStatus(t, rr, http.StatusOK)
+	filtered := decodeAPIData[skillExecutionStatsView](t, rr.Body.Bytes())
+	if len(filtered.Items) != 1 || filtered.Items[0].HumanUserID != bob.HumanUserID {
+		t.Fatalf("humanUserId filtered stats = %+v", filtered.Items)
+	}
+
+	for _, query := range []string{
+		"window=2d", "limit=0", "limit=201", "scope=unknown",
+	} {
+		rr = env.do(http.MethodGet, "/api/v1/skill-executions/stats?"+query, "")
+		assertStatus(t, rr, http.StatusBadRequest)
+		if !strings.Contains(rr.Body.String(), `"code":40509`) {
+			t.Fatalf("invalid stats query %q response = %s", query, rr.Body.String())
+		}
+	}
+}
+
+func createSkillTraceExecution(
+	t *testing.T, env *testEnv, token, executionID, agentID, skillName, scope string,
+) {
+	t.Helper()
+	body := fmt.Sprintf(`{"executionId":%q,"agentId":%q,"skillName":%q,"skillScope":%q,"startedAt":%q}`,
+		executionID, agentID, skillName, scope, time.Now().UTC().Format(time.RFC3339))
+	rr := doInternalSkillExecution(env, token, body)
+	assertStatus(t, rr, http.StatusOK)
+}
+
+func doInternalSkillTrace(
+	env *testEnv, token, executionID, body string,
+) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost,
+		"/internal/v1/skill-executions/"+executionID+"/trace", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	recorder := httptest.NewRecorder()
+	env.h.ServeHTTP(recorder, req)
+	return recorder
+}
+
+func postTraceMetrics(t *testing.T, env *testEnv, token, executionID, agentID, metrics string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"agentId":%q,"metrics":%s,"events":[]}`, agentID, metrics)
+	rr := doInternalSkillTrace(env, token, executionID, body)
+	assertStatus(t, rr, http.StatusOK)
+}
+
+func tooManyTraceEventsBody(count int) string {
+	var builder strings.Builder
+	builder.WriteString(`{"agentId":"alice","metrics":{"requestCount":1},"events":[`)
+	for index := 0; index < count; index++ {
+		if index > 0 {
+			builder.WriteString(",")
+		}
+		fmt.Fprintf(&builder,
+			`{"eventId":"ev-%d","seq":%d,"kind":"exec","status":"ok","summary":"x"}`,
+			index+1, index+1)
+	}
+	builder.WriteString(`]}`)
+	return builder.String()
+}

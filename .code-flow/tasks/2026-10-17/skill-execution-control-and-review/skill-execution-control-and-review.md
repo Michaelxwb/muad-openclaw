@@ -31,7 +31,7 @@
 | S-15 | backend.design.md#2.5.2 功能验收场景 | integration | 共享 gateway hook → 异步队列 → 其他用户 turn | TASK-005 | planned |
 | S-16 | backend.design.md#2.5.2 功能验收场景 | E2E | 旧 Skill（raw requests + 手工头）→ 新镜像 → 执行 | TASK-012 | planned |
 | S-17 | backend.design.md#2.5.2 功能验收场景 | integration | 混合 Skill（helper + raw requests） | TASK-007 | planned |
-| E-01 | backend.design.md#2.5.2 功能验收场景 | integration | Console 内部接口 → repo | TASK-002 | planned |
+| E-01 | backend.design.md#2.5.2 功能验收场景 | integration | Console 内部接口 → repo | TASK-002 | verified |
 | E-02 | backend.design.md#2.5.2 功能验收场景 | integration | dispatcher → WeCom HTTP（errcode≠0） | TASK-003 | planned |
 | E-03 | backend.design.md#2.5.2 功能验收场景 | integration | guard 上传失败 → 保留 spool → 下个 hook 重试 | TASK-005 | planned |
 | E-04 | backend.design.md#2.5.2 功能验收场景 | integration | 脚本绕过 helper 直接发请求 | TASK-007 | planned |
@@ -49,7 +49,7 @@
 | B-05 | backend.design.md#2.5.2 功能验收场景 | integration | 告警通道关闭 | TASK-003 | planned |
 | B-06 | backend.design.md#2.5.2 功能验收场景 | unit | Traceid 生成 | TASK-007 | planned |
 | B-07 | backend.design.md#2.5.2 功能验收场景 | integration | 多平台 header profile | TASK-007 | planned |
-| B-08 | backend.design.md#2.5.2 功能验收场景 | integration | stats 分组维度 | TASK-002 | planned |
+| B-08 | backend.design.md#2.5.2 功能验收场景 | integration | stats 分组维度 | TASK-002 | verified |
 | B-09 | backend.design.md#2.5.2 功能验收场景 | unit | 告警去重键 | TASK-003 | planned |
 | B-10 | backend.design.md#2.5.2 功能验收场景 | integration | 旧状态文件（无 requestProfile） | TASK-007 | planned |
 | S-21 | frontend.design.md#2.4 验收条件 | E2E | API → 状态 → 抽屉渲染 | TASK-011 | planned |
@@ -119,7 +119,7 @@
 
 ## TASK-002: Console trace 写入、查询与健康统计 API
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
@@ -132,31 +132,48 @@
 
 ### Checklist
 
-- [ ] 注册路由与 handler；内部接口校验 pod token 与 execution 归属，跨 Pod 返回稳定冲突码。
-- [ ] trace 写入使用单事务批量 insert/upsert；事件 `event_id` 幂等；metrics `aborted` 只升不降；请求体与事件数量设上限（2000）。
-- [ ] 查询接口按 `seq` 升序返回最多 2000 条；404 走既有 notfound。
-- [ ] stats 按 `(skillName, skillScope, humanUserId)` 分组，支持 `window`/`limit`/`scope`/`humanUserId`；标记阈值集中常量。
-- [ ] 新增错误码并补 `errorCatalog`、`errcode.AllCodes` 与双向守卫测试。
-- [ ] [verifier][integration] `backend-code-quality-performance#RULE-backend-quality-001`：读写均带 context 超时；`go vet`/`go test` 通过。
-- [ ] [verifier][unit] `backend-code-quality-performance#RULE-backend-write-err-001`：错误响应只传 errcode 常量，无字符串 message。
-- [ ] [verifier][integration] `backend-platform-rules#RULE-backend-http-envelope-001`：所有响应经 `writeJSON`/`writeErr`，无 handler 直写 `json.NewEncoder`。
-- [ ] 先写 API 测试（httptest + fake store/真实 SQLite）并记录 RED。
+- [x] 注册路由与 handler；内部接口校验 pod token 与 execution 归属，跨 Pod 返回稳定冲突码。
+- [x] trace 写入使用单事务批量 insert/upsert；事件 `event_id` 幂等；metrics `aborted` 只升不降；请求体与事件数量设上限（2000）。
+- [x] 查询接口按 `seq` 升序返回最多 2000 条；404 走既有 notfound。
+- [x] stats 按 `(skillName, skillScope, humanUserId)` 分组，支持 `window`/`limit`/`scope`/`humanUserId`；标记阈值集中常量。
+- [x] 新增错误码并补 `errorCatalog`、`errcode.AllCodes` 与双向守卫测试。
+- [x] [verifier][integration] `backend-code-quality-performance#RULE-backend-quality-001`：读写均带 context 超时；`go vet`/`go test` 通过。
+- [x] [verifier][unit] `backend-code-quality-performance#RULE-backend-write-err-001`：错误响应只传 errcode 常量，无字符串 message。
+- [x] [verifier][integration] `backend-platform-rules#RULE-backend-http-envelope-001`：所有响应经 `writeJSON`/`writeErr`，无 handler 直写 `json.NewEncoder`。
+- [x] 先写 API 测试（httptest + fake store/真实 SQLite）并记录 RED。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| E-01 | integration | HTTP → handler → repo → SQLite | 跨 Pod executionId 被拒绝；无数据泄漏；错误码稳定 | `console/backend/test/skill_executions_api_test.go` | `cd console/backend && go test ./test -run SkillExecutionTrace -count=1` | planned |
-| B-08 | integration | stats SQL → 查询 API | 两用户同名私有 Skill 返回两行，humanUserId 不同 | 同上 | 同上 | planned |
-| RULE-backend-write-err-001 | unit | handler 错误路径 | 只传 errcode 常量 | `console/backend/internal/api` 测试 | `cd console/backend && go test ./internal/api -run TestHTTPEncoder -count=1` | planned |
+| E-01 | integration | HTTP → handler → repo → SQLite | 跨 Pod executionId 被拒绝；无数据泄漏；错误码稳定 | `console/backend/test/skill_executions_api_test.go` | ["go","-C","console/backend","test","./test","-run","SkillExecutionTrace","-count=1"] | verified |
+| B-08 | integration | stats SQL → 查询 API | 两用户同名私有 Skill 返回两行，humanUserId 不同 | 同上 | ["go","-C","console/backend","test","./test","-run","SkillExecutionTrace","-count=1"] | verified |
+| RULE-backend-write-err-001 | unit | handler 错误路径 | 只传 errcode 常量 | `console/backend/internal/api` 测试 | `cd console/backend && go test ./internal/api -run TestHTTPEncoder -count=1` | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| E-01 | `go test ./test -run SkillExecutionTrace` FAIL：`POST /internal/v1/skill-executions/{id}/trace` 与 `GET .../trace` 均为 404，跨 Pod 用例无法触发冲突码 | PASS：`go test ./internal/api ./test -count=1`；`go test ./... -count=1` | `test/skill_executions_api_test.go:TestSkillExecutionTraceRejectsCrossPodOwner`、`TestSkillExecutionTraceRejectsInvalidPayloads` | httptest → 真实 Server handler → repo → 临时 SQLite；Pod B token + Pod A executionId 返回 409/40535，Pod A 冒用 agentId 同样 409，未知 executionId 返回 404/40901，被拒请求不落 metrics/events | verified |
+| B-08 | 同上 FAIL：`GET /api/v1/skill-executions/stats` 404 | PASS：`go test ./test -run SkillExecutionTraceStats -count=1` | `test/skill_executions_api_test.go:TestSkillExecutionTraceStatsGroupsPrivateSkillPerUser` | 两用户同名私有 Skill 各 1 次执行 → 2 行且 humanUserId 不同；`humanUserId` 过滤、`window/limit/scope` 非法参数返回 400/40509；统计含 flaggedCount、errorRate 与 Top 接口 | verified |
+| RULE-backend-write-err-001 | api 包编译失败：新增 errcode/handler 未定义 | PASS：`go test ./internal/api -run 'TestSkillTrace|TestSkillHealth|TestErrorCatalog|TestHTTPEncoder' -count=1` | `internal/api/skill_trace_test.go:TestSkillTraceErrorCodesInCatalog`、`TestSkillHealthFlagRequestThreshold`；既有 `TestErrorCatalogCoversAllCodes` 双向守卫 | 新增 `InvalidSkillTrace=40534`、`ConflictSkillTraceOwner=40535` 同时进入 errcode、AllCodes、errorCatalog；所有错误响应经 writeErr/writeRepoError，handler 无 `json.NewEncoder` | verified |
+
+健康标记阈值集中在 `internal/api/skill_trace.go` 常量：`skillHealthFlagMaxRequests=200`、`skillHealthFlagLimitRatio=0.2`、`skillHealthFlagErrorRate=0.2`；请求上限为 0（不限制）时阈值回退为 200。
+- E-01: failed — automated command failed; run_id=6511cd455bad4f36bf334dbed923b571 (confirmed_by: runner)
+- B-08: failed — automated command failed; run_id=6511cd455bad4f36bf334dbed923b571 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=d9db27575f024b4bacb2b1026a227975 (confirmed_by: runner)
+- B-08: verified — automated command passed; run_id=d9db27575f024b4bacb2b1026a227975 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=a170fbcb71c24d6eb7547b8d14580eaa (confirmed_by: runner)
+- B-08: verified — automated command passed; run_id=a170fbcb71c24d6eb7547b8d14580eaa (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] RED：新增 trace 写入/查询/跨 Pod 冲突/非法负载/stats 集成测试后，路由返回 404、api 包因新错误码未定义编译失败
+- [2026-10-17] GREEN：实现三个接口、ctx 超时、单事务 metrics upsert + 事件批量幂等、错误码与双向守卫；`go test ./internal/api ./test -count=1`、`go test ./... -count=1`、`go vet ./...` 全部通过
+- [2026-10-17] started
+- [2026-10-17] completed (done)
 
 ---
 
