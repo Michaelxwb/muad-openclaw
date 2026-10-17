@@ -216,7 +216,12 @@ function ResourceFields({
   return (
     <div className={containerStyles.dialogFields}>
       <label className={containerStyles.field}>
-        <span>{t("pod.maxUsers")}</span>
+        <span>
+          {t("pod.maxUsers")}
+          <span className={containerStyles.fieldHint}>
+            {t("pod.maxUsersCurrent", { count: userCount })}
+          </span>
+        </span>
         <InputNumber
           aria-label={t("pod.maxUsers")}
           value={maxUsers}
@@ -225,9 +230,6 @@ function ResourceFields({
           onChange={(value) => onMaxUsers(Number(value ?? 0))}
           style={{ width: "100%" }}
         />
-        <span className={containerStyles.fieldHint}>
-          {t("pod.maxUsersCurrent", { count: userCount })}
-        </span>
       </label>
       <ResourceInput
         label={t("pod.memLimit")}
