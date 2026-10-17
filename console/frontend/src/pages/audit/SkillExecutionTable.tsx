@@ -12,11 +12,12 @@ interface Props {
   userNames: ReadonlyMap<string, string>;
   podNames: ReadonlyMap<string, string>;
   onOpenPod?: (podId: string) => void;
+  onOpenTrace?: (executionId: string) => void;
 }
 
-export function SkillExecutionTable({ state, userNames, podNames, onOpenPod }: Props) {
+export function SkillExecutionTable({ state, userNames, podNames, onOpenPod, onOpenTrace }: Props) {
   const { t } = useTranslation();
-  const columns = executionColumns(t, userNames, podNames, onOpenPod);
+  const columns = executionColumns(t, userNames, podNames, onOpenPod, onOpenTrace);
   return (
     <Table
       columns={columns as never}
@@ -35,6 +36,11 @@ export function SkillExecutionTable({ state, userNames, podNames, onOpenPod }: P
       })}
       renderPagination={renderTablePagination}
       rowKey="executionId"
+      onRow={(row) =>
+        row && onOpenTrace
+          ? { onClick: () => onOpenTrace(row.executionId), style: { cursor: "pointer" } }
+          : {}
+      }
       size="small"
     />
   );
@@ -45,6 +51,7 @@ function executionColumns(
   userNames: ReadonlyMap<string, string>,
   podNames: ReadonlyMap<string, string>,
   onOpenPod?: (podId: string) => void,
+  onOpenTrace?: (executionId: string) => void,
 ) {
   return [
     {
@@ -95,6 +102,25 @@ function executionColumns(
       width: 180,
       render: (_: unknown, row: SkillExecution) => new Date(row.startedAt).toLocaleString(),
     },
+    ...(onOpenTrace
+      ? [
+          {
+            title: t("common.actions"),
+            width: 130,
+            render: (_: unknown, row: SkillExecution) => (
+              <Button
+                className={styles.linkButton}
+                theme="borderless"
+                size="small"
+                aria-label={`${t("audit.trace.open")} ${row.executionId}`}
+                onClick={() => onOpenTrace(row.executionId)}
+              >
+                {t("audit.trace.open")}
+              </Button>
+            ),
+          },
+        ]
+      : []),
   ];
 }
 

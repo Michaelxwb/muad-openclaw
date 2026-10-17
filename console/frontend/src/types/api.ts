@@ -527,6 +527,70 @@ export interface SkillExecutionQuery extends PageQuery {
   startedTo?: string;
 }
 
+export interface SkillTraceInterface {
+  host: string;
+  method: string;
+  path: string;
+  count: number;
+}
+
+export interface SkillTraceEvent {
+  eventId: string;
+  seq: number;
+  occurredAt: string;
+  kind: string;
+  status: string;
+  durationMs?: number;
+  summary: string;
+  detail?: string;
+}
+
+export interface SkillExecutionMetrics {
+  requestCount: number;
+  errorCount: number;
+  distinctHosts: number;
+  maxBurstPer10s: number;
+  topInterfaces: SkillTraceInterface[];
+  detailTruncated: boolean;
+  aborted: boolean;
+  abortReason?: string;
+  abortInterface?: string;
+  abortCount?: number;
+  updatedAt: string;
+}
+
+export interface SkillExecutionTrace {
+  metrics?: SkillExecutionMetrics | null;
+  events: SkillTraceEvent[];
+}
+
+export type SkillHealthWindow = "24h" | "7d" | "30d";
+
+export interface SkillHealthQuery {
+  window?: SkillHealthWindow;
+  limit?: number;
+  scope?: SkillScope;
+  humanUserId?: string;
+}
+
+export interface SkillHealthItem {
+  skillName: string;
+  skillScope: SkillScope;
+  humanUserId: string;
+  humanUserName: string;
+  executions: number;
+  abortedCount: number;
+  flaggedCount: number;
+  maxRequests: number;
+  errorRate: number;
+  topInterfaces: SkillTraceInterface[];
+  lastExecutionAt: string;
+}
+
+export interface SkillHealthResult {
+  items: SkillHealthItem[];
+}
+
 export interface ResourceValues {
   memLimit: string;
   cpuLimit: string;
