@@ -264,7 +264,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def _csrf_valid(self) -> bool:
         cookie_value = self._cookie_value("csrf_token")
-        header_value = self.headers.get("x-csrftoken", "")
+        # The adapter's login uses x-csrftoken; the requestProfile used for
+        # business calls uses x-csrf-token (MSSW's canonical spelling). Accept
+        # both so the fake matches either client path.
+        header_value = (
+            self.headers.get("x-csrftoken")
+            or self.headers.get("x-csrf-token")
+            or ""
+        )
         return bool(cookie_value and header_value and hmac.compare_digest(cookie_value, header_value))
 
     def _cookie_value(self, name: str) -> str:
