@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -434,7 +435,15 @@ func (s *Store) UpsertSkillExecutionRecord(record SkillExecutionRecord) (SkillEx
 
 // GetSkillExecutionRecord returns one execution record by immutable execution ID.
 func (s *Store) GetSkillExecutionRecord(executionID string) (SkillExecutionRecord, error) {
-	row := s.db.QueryRow(`SELECT `+skillExecutionColumns+
+	return s.GetSkillExecutionRecordContext(context.Background(), executionID)
+}
+
+// GetSkillExecutionRecordContext is GetSkillExecutionRecord bounded by ctx, for
+// request paths that carry a deadline.
+func (s *Store) GetSkillExecutionRecordContext(
+	ctx context.Context, executionID string,
+) (SkillExecutionRecord, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT `+skillExecutionColumns+
 		` FROM skill_execution_records WHERE execution_id = ?`, strings.TrimSpace(executionID))
 	return scanSkillExecutionRecord(row)
 }
