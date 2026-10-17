@@ -69,7 +69,8 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	startBackground(ctx, deps, cache, coordinator, cleaner, longTaskCapabilities)
-	srv := newHTTPServer(deps, cache, coordinator, cleaner, longTaskCapabilities)
+	srv, apiServer := newHTTPServer(deps, cache, coordinator, cleaner, longTaskCapabilities)
+	defer apiServer.Close()
 	serveErr := serve(srv, deps.cfg)
 	select {
 	case <-ctx.Done():
@@ -153,17 +154,18 @@ func startBackground(
 func newHTTPServer(
 	deps *dependencies, cache *monitor.Cache, coordinator *runtimeapply.Coordinator,
 	cleaner *usercleanup.Cleaner, longTaskCapabilities *gateway.LongTaskCapabilityCache,
-) *http.Server {
+) (*http.Server, *api.Server) {
+	apiServer := api.NewServer(
+		deps.cfg, deps.store, deps.cipher, deps.driver, cache, deps.skillSyncer, coordinator,
+	).WithLongTaskCapabilities(longTaskCapabilities).WithCleanupWaker(cleaner)
 	return &http.Server{
-		Addr: deps.cfg.ListenAddr,
-		Handler: api.NewServer(
-			deps.cfg, deps.store, deps.cipher, deps.driver, cache, deps.skillSyncer, coordinator,
-		).WithLongTaskCapabilities(longTaskCapabilities).WithCleanupWaker(cleaner).Handler(),
+		Addr:              deps.cfg.ListenAddr,
+		Handler:           apiServer.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      3 * time.Minute,
 		IdleTimeout:       60 * time.Second,
-	}
+	}, apiServer
 }
 
 func serve(srv *http.Server, cfg *config.Config) <-chan error {
