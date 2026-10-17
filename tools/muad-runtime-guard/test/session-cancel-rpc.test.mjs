@@ -309,6 +309,26 @@ test("cancel aborts/drains the active run, terminates confirmed processes and re
   }
 });
 
+test("empty expected aborts the run and kills no processes", async (t) => {
+  const procRoot = makeProcRoot(t);
+  addProcess(procRoot, { pid: 4028, environ: [`MUAD_SESSION_KEY=${SESSION_KEY}`] });
+  const { options, signals, calls } = handlerOptions(t, procRoot);
+
+  const result = await createSessionCancelHandler(options)({
+    sessionKey: SESSION_KEY, requestedBy: "admin-1", expected: [],
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.aborted, true);
+  assert.equal(result.drained, true);
+  assert.equal(result.killed, 0);
+  assert.deepEqual(result.remaining, []);
+  // 空 expected 不杀进程：扫描到的候选按 not_expected 上报，便于管理员确认。
+  assert.deepEqual(result.processes, [{ pid: 4028, outcome: "skipped", reason: "not_expected" }]);
+  assert.deepEqual(signals, []);
+  assert.equal(calls.aborted.length, 1);
+});
+
 test("cancel still cleans processes when the run already ended", async (t) => {
   const procRoot = makeProcRoot(t);
   addProcess(procRoot, { pid: 4300, environ: [`MUAD_SESSION_KEY=${SESSION_KEY}`] });
@@ -352,7 +372,7 @@ test("cancel rejects malformed requests and unwraps the gateway params envelope"
     await preview({ sessionKey: `agent:alice:wecom:direct:${"x".repeat(300)}`, requestedBy: "admin-1" }),
     { ok: false, reason: "invalid_session_key" },
   );
-  for (const expected of [undefined, [], [{ pid: 0, fingerprint: "0123456789abcdef" }],
+  for (const expected of [undefined, [{ pid: 0, fingerprint: "0123456789abcdef" }],
     [{ pid: 42, fingerprint: "short" }], [{ pid: 42 }], [{ pid: "42", fingerprint: "0123456789abcdef" }]]) {
     assert.deepEqual(await cancel({ sessionKey: SESSION_KEY, requestedBy: "admin-1", expected }),
       { ok: false, reason: "invalid_expected" }, JSON.stringify(expected));

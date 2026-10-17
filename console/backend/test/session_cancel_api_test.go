@@ -381,7 +381,7 @@ func TestSessionCancelWritesRedactedAudit(t *testing.T) {
 	}
 }
 
-// cancel 请求体必须非空且每项指纹有效；畸形请求零 RPC 调用。
+// cancel 请求体每项指纹必须有效；空数组合法（只 abort run，不杀进程）。
 func TestSessionCancelRejectsInvalidExpectedBody(t *testing.T) {
 	e := newTestEnv(t)
 	pod := createPodThroughAPI(t, e, testPodBody)
@@ -393,7 +393,6 @@ func TestSessionCancelRejectsInvalidExpectedBody(t *testing.T) {
 	for _, body := range []string{
 		``,
 		`{}`,
-		`{"expected":[]}`,
 		`{"expected":[{"pid":0,"fingerprint":"fp"}]}`,
 		`{"expected":[{"pid":4028,"fingerprint":""}]}`,
 		`{"expected":[{"pid":4028,"fingerprint":"fp"}],"podId":"forged"}`,
@@ -409,5 +408,29 @@ func TestSessionCancelRejectsInvalidExpectedBody(t *testing.T) {
 	}
 	if calls := sessionExecCalls(e); len(calls) != 0 {
 		t.Fatalf("invalid cancel bodies must not call the runtime: %#v", calls)
+	}
+}
+
+// B-07: 空 expected 合法——只 abort run，不杀进程；请求必须到达 RPC。
+func TestSessionCancelAcceptsEmptyExpected(t *testing.T) {
+	e := newTestEnv(t)
+	pod := createPodThroughAPI(t, e, testPodBody)
+	user := createTestHumanUser(t, e.store, pod.PodID, "alice", repo.HumanUserStatusActive)
+	identity := seedSessionCancelIdentity(t, e, user.HumanUserID, sessionCancelExternalID)
+	enableSessionCancel(e, pod.PodID)
+	cancelPath := sessionCancelPath(user.HumanUserID, identity.IdentityID, "cancel")
+	e.drv.sessionCancelOut = `{"ok":true,"aborted":true,"drained":true,"confirmed":true,"killed":0,"remaining":[],"processes":[]}`
+
+	rr := e.do(http.MethodPost, cancelPath, `{"expected":[]}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("empty expected status = %d, want 200: %s", rr.Code, rr.Body.String())
+	}
+	envelope := decodeSessionCancelEnvelope(t, rr.Body.Bytes())
+	if envelope.Code != 0 || !envelope.Data.Aborted || !envelope.Data.Drained || envelope.Data.Killed != 0 {
+		t.Fatalf("empty expected envelope = %+v", envelope)
+	}
+	calls := sessionExecCalls(e)
+	if len(calls) != 1 || !strings.Contains(strings.Join(calls[0], " "), `"expected":[]`) {
+		t.Fatalf("empty expected must reach cancel RPC, calls = %#v", calls)
 	}
 }

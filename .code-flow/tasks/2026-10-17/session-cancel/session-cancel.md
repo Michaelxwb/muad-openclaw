@@ -175,12 +175,12 @@
 
 ### Description
 
-实现 `session-cancel-rpc.mjs` 与 `session-cancel-controller.mjs`，注册 `muad.session.preview` / `muad.session.cancel`（operator.write），复用 `loadNativeCancelRuntime` 做 abort/drain；在 `index.mjs` 注册、在 `health.mjs` 上报 `sessionCancel`。preview 只读；cancel 要求非空 `expected` 且只处理指纹匹配项。
+实现 `session-cancel-rpc.mjs` 与 `session-cancel-controller.mjs`，注册 `muad.session.preview` / `muad.session.cancel`（operator.write），复用 `loadNativeCancelRuntime` 做 abort/drain；在 `index.mjs` 注册、在 `health.mjs` 上报 `sessionCancel`。preview 只读；cancel 的 `expected` 可为空（为空时只 abort run），非空时只处理指纹匹配项。
 
 ### Checklist
 
 - [x] 实现 preview：校验 sessionKey 形态、拒绝 `:longtask:`、返回 activeRun + sweeper 候选 + skipped
-- [x] 实现 cancel：校验 expected 非空；调用 native abort/drain；调用 sweeper 终止确认；返回 aborted/drained/killed/remaining
+- [x] 实现 cancel：校验 expected（空数组合法，只 abort run）；调用 native abort/drain；调用 sweeper 终止确认；返回 aborted/drained/killed/remaining
 - [x] 能力：仅当 native runtime 可用时 `available=true, version=1`；失败时明确 `reason`
 - [x] 在 `index.mjs` 用 `registerGatewayMethod(..., { scope: "operator.write" })` 注册两个方法
 - [x] 在 `health.mjs` 增加 `sessionCancel`
@@ -395,7 +395,7 @@
 - B-07：`activeRun.active=true, processes=[]` → 确认按钮可用，警告文案"将中止活跃 run。此操作不可撤销。"。
 - B-08：`skipped={notOwner:1, envMismatch:2, permissionDenied:0}` → "已跳过 3 个非目标进程"+非目标进程说明可见。
 - verifier：`rg "fetch\(|axios" console/frontend/src/components/human-users` 无输出；`rg "[一-龥]" console/frontend/src/components/human-users/SessionCancelDialog.tsx` 无输出；进程/结果表均 `rowKey="pid"`；新 DTO 位于 `src/types/api.ts`，`api.ts` 通过 `export type *` re-export；两个方法复用 `request`（`/api/v1`、`code===0` 解包、401 处理）。
-- 遗留：前端 B-07 允许"仅中止 run（0 进程）"时提交空 `expected`，但当前后端 `validSessionCancelExpected` 与 gateway `CancelSessionCancel` 均要求 `expected` 非空，会返回 400/41010。前后端边界需在 TASK-006 前对齐（要么后端允许空 expected 仅 abort run，要么前端在 0 进程时禁用确认）。
+- 遗留：B-07 的"仅中止 run（0 进程）"与后端非空 `expected` 约束冲突；已在 2026-10-18 的对齐修复中统一为"空 `expected` 合法、只 abort run"，并补 guard/gateway/API 测试。
 - S-09: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
 - S-10: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
 - E-07: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)

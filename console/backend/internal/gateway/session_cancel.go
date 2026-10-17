@@ -146,13 +146,14 @@ func CancelSessionCancel(
 	if err != nil {
 		return SessionCancelResult{}, err
 	}
-	if len(expected) == 0 {
-		return SessionCancelResult{}, fmt.Errorf("%w: empty expected process list", ErrSessionCancelFailed)
-	}
 	for _, item := range expected {
 		if item.PID <= 0 || strings.TrimSpace(item.Fingerprint) == "" {
 			return SessionCancelResult{}, fmt.Errorf("%w: invalid expected process fingerprint", ErrSessionCancelFailed)
 		}
+	}
+	// nil 切片按 [] 编码，避免 Worker 端把 null 当成非法 expected。
+	if expected == nil {
+		expected = []SessionCancelExpected{}
 	}
 	payload, err := json.Marshal(sessionCancelParams{
 		SessionKey: key, RequestedBy: operator, Expected: expected,

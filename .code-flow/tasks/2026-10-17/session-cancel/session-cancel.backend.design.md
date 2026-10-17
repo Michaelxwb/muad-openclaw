@@ -342,7 +342,7 @@ agent:<humanUser.AgentID>:<identity.OpenClawChannel || identity.Channel>:<identi
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| expected | array | 是 | `{pid, fingerprint}[]`，必须非空；只处理指纹匹配的进程 |
+| expected | array | 是 | `{pid, fingerprint}[]`，可为空；为空时只 abort run、不杀进程；只处理指纹匹配的进程 |
 
 **请求示例**
 
