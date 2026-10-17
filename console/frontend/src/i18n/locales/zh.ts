@@ -334,6 +334,8 @@ const zh = {
     maxSkillConcurrency: "Skill 并发",
     maxUsers: "用户上限",
     maxUsersRange: "用户上限必须在 1 到 {{max}} 之间",
+    maxUsersCurrent: "当前用户数 {{count}}",
+    maxUsersBelowUserCount: "用户上限不能小于当前用户数 {{count}}",
     memAlertThreshold: "内存告警阈值",
     memLimit: "内存上限 (GiB)",
     memLimitInvalid: "内存上限请填写数字（单位 GiB），例如 16",
