@@ -39,13 +39,14 @@ skill 名描述功能，平台名是 Console 里的标识，两者语义不同�
 
 ## 脚本里怎么写
 
-`session-manager get-state --skill-name <skill名>` 的 skill 名**硬编码**为 `muad.skill.json` 的 `name`，**不是 `platforms` 里的值**。
+`platform_request` 的平台名必须与 `muad.skill.json` 的 `platforms` 一致；skill 名只用于 manifest、SKILL.md 与目录名，不传给平台请求。
 
-```js
-// ✅ 对：skill 名硬编码
-const skillName = "smoke-platform-query";
-await execFileAsync("session-manager", ["get-state", "--skill-name", skillName]);
+```python
+from muad_skill_http import platform_request
 
-// ❌ 错：用平台名
-const skillName = "smoke_platform";  // 这是平台名，session-manager 会找不到
+# ✅ 对：平台名与 manifest platforms 一致
+response = platform_request("smoke_platform", "GET", "/api/v1/items")
+
+# ❌ 错：把 skill 名当平台名
+response = platform_request("smoke-platform-query", "GET", "/api/v1/items")
 ```

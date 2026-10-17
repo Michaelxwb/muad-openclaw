@@ -1,0 +1,7 @@
+{
+  "name": "violating-skill",
+  "platforms": ["demo_platform"],
+  "runtime": "script",
+  "version": "0.1.0",
+  "entrypoint": "scripts/run.sh"
+}
