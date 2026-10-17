@@ -55,7 +55,7 @@ func run() error {
 		log.Printf("[console] daily file logging enabled directory=%s", deps.cfg.LogDir)
 	}
 	cache := monitor.NewCache()
-	longTaskCapabilities := gateway.NewLongTaskCapabilityCache(0)
+	cancelCapabilities := gateway.NewCancelCapabilityCache(0)
 	coordinator, err := newRuntimeCoordinator(
 		deps.cfg, deps.store, deps.cipher, deps.driver, deps.skillSyncer,
 	)
@@ -68,8 +68,8 @@ func run() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	startBackground(ctx, deps, cache, coordinator, cleaner, longTaskCapabilities)
-	srv, apiServer := newHTTPServer(deps, cache, coordinator, cleaner, longTaskCapabilities)
+	startBackground(ctx, deps, cache, coordinator, cleaner, cancelCapabilities)
+	srv, apiServer := newHTTPServer(deps, cache, coordinator, cleaner, cancelCapabilities)
 	defer apiServer.Close()
 	serveErr := serve(srv, deps.cfg)
 	select {
@@ -134,7 +134,7 @@ func loadDependencies() (*dependencies, error) {
 func startBackground(
 	ctx context.Context, deps *dependencies, cache *monitor.Cache,
 	coordinator *runtimeapply.Coordinator, cleaner *usercleanup.Cleaner,
-	longTaskCapabilities *gateway.LongTaskCapabilityCache,
+	cancelCapabilities *gateway.CancelCapabilityCache,
 ) {
 	monitorDefaults := driver.ResourceSpec{
 		MemLimit:               deps.cfg.RuntimeDefaults.MemLimit,
@@ -146,18 +146,18 @@ func startBackground(
 	}
 	go collector.New(deps.driver, deps.store, cache, monitorDefaults,
 		time.Duration(deps.cfg.CollectIntervalSec)*time.Second).
-		WithLongTaskCapabilities(longTaskCapabilities).Run(ctx)
+		WithCancelCapabilities(cancelCapabilities).Run(ctx)
 	go coordinator.Run(ctx)
 	go cleaner.Run(ctx)
 }
 
 func newHTTPServer(
 	deps *dependencies, cache *monitor.Cache, coordinator *runtimeapply.Coordinator,
-	cleaner *usercleanup.Cleaner, longTaskCapabilities *gateway.LongTaskCapabilityCache,
+	cleaner *usercleanup.Cleaner, cancelCapabilities *gateway.CancelCapabilityCache,
 ) (*http.Server, *api.Server) {
 	apiServer := api.NewServer(
 		deps.cfg, deps.store, deps.cipher, deps.driver, cache, deps.skillSyncer, coordinator,
-	).WithLongTaskCapabilities(longTaskCapabilities).WithCleanupWaker(cleaner)
+	).WithCancelCapabilities(cancelCapabilities).WithCleanupWaker(cleaner)
 	return &http.Server{
 		Addr:              deps.cfg.ListenAddr,
 		Handler:           apiServer.Handler(),

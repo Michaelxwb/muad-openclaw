@@ -161,7 +161,7 @@ func TestLongTaskControlS24SnapshotListAndCapabilityGating(t *testing.T) {
 	}
 
 	// 能力可用后：queued/running 可操作，cancelling/终态依旧不可。
-	e.srv.LongTaskCapabilities().Update(pod.PodID, gateway.LongTaskCancelCapability{Available: true, Version: 1})
+	e.srv.CancelCapabilities().Update(pod.PodID, gateway.CancelCapability{LongTask: gateway.LongTaskCancelCapability{Available: true, Version: 1}})
 	view = listLongTasksS24(t, e, "")
 	for index, item := range view.Items {
 		byID[item.TaskID] = index

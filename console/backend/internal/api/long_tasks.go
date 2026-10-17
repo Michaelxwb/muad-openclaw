@@ -141,11 +141,11 @@ func (s *Server) longTaskCanCancel(task repo.LongTaskTask) (bool, string) {
 	default:
 		return false, "task_not_cancellable"
 	}
-	capability, known := s.longTaskCapabilities.Lookup(task.PodID)
+	capability, known := s.cancelCapabilities.Lookup(task.PodID)
 	if !known {
 		return false, "capability_unknown"
 	}
-	if !capability.Available {
+	if !capability.LongTask.Available {
 		return false, "worker_unsupported"
 	}
 	return true, ""
