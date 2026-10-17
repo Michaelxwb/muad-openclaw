@@ -37,3 +37,35 @@ whose session must not be reachable by the first).
 
 `/api/me` returns the username of the session's owner, so a leaked session
 exposes which account it belongs to.
+
+## MSSW mode
+
+`--platform mssw` models the MSSW gateway contract closely enough to exercise
+the real `MSSWSessionAdapter` and `muad_skill_http.platform_request`:
+
+```bash
+python3 tools/fake-business-platform/server.py --platform mssw --port 18080 \
+  --ak test-ak --sk test-sk
+```
+
+Endpoints:
+
+- `GET /v1/certification/get_token` issues a `csrf_token` cookie.
+- `POST /gateway/mss-auth-acl-service/v1/certification/login_agent` verifies the
+  SigV4-style `Authorization` header (HMAC-SHA256 over the canonical request),
+  the `x-csrftoken` header and issues `fake_session` + `csrf_token` cookies.
+- `GET /v1/rtt` is the health endpoint used by adapter validation.
+- `GET /api/v1/ping` requires the session cookie and the `x-csrftoken` header;
+  it echoes the `Traceid` request header.
+- `GET /__stats` returns per-path request counts; `GET /__stats/reset` clears them.
+
+Use it with the `mssw-platform-smoke` Skill or these tests:
+
+```bash
+# Real MSSWSessionAdapter login/health/profile against the fake server
+cd tools/session-manager && npm test -- --test-name-pattern="fake MSSW"
+
+# SDK + fake MSSW + per-interface request limit (Traceid/CSRF/exit 86)
+python3 tools/fake-business-platform/test_mssw_skill_smoke.py
+```
+

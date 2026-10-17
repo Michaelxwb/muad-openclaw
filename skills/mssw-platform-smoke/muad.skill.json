@@ -1,0 +1,7 @@
+{
+  "name": "mssw-platform-smoke",
+  "platforms": ["mssw"],
+  "runtime": "script",
+  "version": "0.1.0",
+  "entrypoint": "scripts/run.py"
+}
