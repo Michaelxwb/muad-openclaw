@@ -102,6 +102,17 @@ bindings:
           details:
             checked_files: 0
             violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-17T16:11:18.898167+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: 5a76641f058dbca2cb6bd2b62609b174dc168eccc506586e678c71c18590c191
+          result_sha256: 666dcdbe766fc716509bd2d8f74197638a5d2b1c3851b97f0cc6dc3dce733d2c
+          error_code: null
+          details:
+            checked_files: 4
+            violations: []
       review:
         status: pending
         refs: []
@@ -297,10 +308,21 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: verified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-17T16:11:18.901635+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: 5a76641f058dbca2cb6bd2b62609b174dc168eccc506586e678c71c18590c191
+          result_sha256: 412e39bf8acd937fcd3da9a1123c8a7bfa68b26ea44b151bf164d221f03d3bd5
+          error_code: null
+          details:
+            checked_files: 8
+            violations: []
       review:
         status: pending
         refs: []
@@ -857,7 +879,7 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: unverified
+        status: verified
         refs: []
         decision: null
         evidence:
@@ -872,6 +894,27 @@ bindings:
           details:
             reason: out_of_task_scope
             deferred_to_review: true
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-17T16:11:20.021566+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: 5a76641f058dbca2cb6bd2b62609b174dc168eccc506586e678c71c18590c191
+          result_sha256: f0769c37478184aecc00a8445540a13c0b8dec49828577fcc9dc8a7f26f31c70
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 00fa88fb51aee5d763f46b95bdc860e90c370710ce703be635efdb9f1f307f92
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.322s\n"
       review:
         status: pending
         refs: []
@@ -1456,6 +1499,17 @@ bindings:
           rule_text_sha256: f72980fb8ff80823ef0306b736ff3dfcc9216a23d166c4b3ef9f0c3283c1aafd
           artifact_sha256: null
           diff_sha256: 5b56d43dfaf9ba67e59876649988c05a0feed3af3aa2257c95484577c3e6080a
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
+        - verifier_ref: frontend-quality-standards#RULE-frontend-api-client-001
+          executed_at: '2026-10-17T16:11:20.025682+00:00'
+          status: verified
+          rule_text_sha256: f72980fb8ff80823ef0306b736ff3dfcc9216a23d166c4b3ef9f0c3283c1aafd
+          artifact_sha256: null
+          diff_sha256: 5a76641f058dbca2cb6bd2b62609b174dc168eccc506586e678c71c18590c191
           result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
           error_code: null
           details:

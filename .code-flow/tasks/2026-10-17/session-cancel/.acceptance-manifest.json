@@ -121,7 +121,7 @@
       "kind": "functional",
       "boundary": "handler → audit store",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -135,7 +135,56 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "3e66ea28c8dd4a2eb4d3bdbf2f96f1de",
+        "executed_at": "2026-10-17T16:11:18.772997+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/api",
+          "./test",
+          "-run",
+          "SessionCancel",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a7219642b9f0f7e4e0dfed6d039a6a0b0a7f30c49e3462190f26aa56855eebd7"
+      },
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "3e66ea28c8dd4a2eb4d3bdbf2f96f1de",
+          "executed_at": "2026-10-17T16:11:18.772997+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api",
+            "./test",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a7219642b9f0f7e4e0dfed6d039a6a0b0a7f30c49e3462190f26aa56855eebd7"
+        }
+      ]
     },
     {
       "id": "S-06",
@@ -157,7 +206,7 @@
       "kind": "functional",
       "boundary": "RPC + handler",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -171,7 +220,56 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "3e66ea28c8dd4a2eb4d3bdbf2f96f1de",
+        "executed_at": "2026-10-17T16:11:18.772997+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/api",
+          "./test",
+          "-run",
+          "SessionCancel",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a7219642b9f0f7e4e0dfed6d039a6a0b0a7f30c49e3462190f26aa56855eebd7"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "3e66ea28c8dd4a2eb4d3bdbf2f96f1de",
+          "executed_at": "2026-10-17T16:11:18.772997+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api",
+            "./test",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a7219642b9f0f7e4e0dfed6d039a6a0b0a7f30c49e3462190f26aa56855eebd7"
+        }
+      ]
     },
     {
       "id": "E-02",
@@ -197,7 +295,7 @@
       "kind": "functional",
       "boundary": "handler → capability",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -211,7 +309,56 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "3e66ea28c8dd4a2eb4d3bdbf2f96f1de",
+        "executed_at": "2026-10-17T16:11:18.772997+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/api",
+          "./test",
+          "-run",
+          "SessionCancel",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a7219642b9f0f7e4e0dfed6d039a6a0b0a7f30c49e3462190f26aa56855eebd7"
+      },
+      "runs": [
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "3e66ea28c8dd4a2eb4d3bdbf2f96f1de",
+          "executed_at": "2026-10-17T16:11:18.772997+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api",
+            "./test",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a7219642b9f0f7e4e0dfed6d039a6a0b0a7f30c49e3462190f26aa56855eebd7"
+        }
+      ]
     },
     {
       "id": "E-04",
@@ -220,7 +367,7 @@
       "kind": "functional",
       "boundary": "handler → repo",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "go",
         "-C",
@@ -234,7 +381,56 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "3e66ea28c8dd4a2eb4d3bdbf2f96f1de",
+        "executed_at": "2026-10-17T16:11:18.772997+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./internal/api",
+          "./test",
+          "-run",
+          "SessionCancel",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "a7219642b9f0f7e4e0dfed6d039a6a0b0a7f30c49e3462190f26aa56855eebd7"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "3e66ea28c8dd4a2eb4d3bdbf2f96f1de",
+          "executed_at": "2026-10-17T16:11:18.772997+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api",
+            "./test",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "a7219642b9f0f7e4e0dfed6d039a6a0b0a7f30c49e3462190f26aa56855eebd7"
+        }
+      ]
     },
     {
       "id": "E-05",
