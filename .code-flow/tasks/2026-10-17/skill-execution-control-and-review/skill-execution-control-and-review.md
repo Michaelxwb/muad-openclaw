@@ -20,7 +20,7 @@
 | S-04 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → 加密存储 → dispatcher → WeCom HTTP（httptest） | TASK-003 | verified |
 | S-05 | backend.design.md#2.5.2 功能验收场景 | E2E | 执行数据 → stats SQL → 查询 API → UI 列表 | TASK-012 | planned |
 | S-06 | backend.design.md#2.5.2 功能验收场景 | E2E | 审阅脚本 → 目标目录 → 报告输出（不执行目标代码） | TASK-008 | e2e_deferred |
-| S-07 | backend.design.md#2.5.2 功能验收场景 | integration | 下载 API → 私有上传 API → 管理员工作区 | TASK-009 | planned |
+| S-07 | backend.design.md#2.5.2 功能验收场景 | integration | 下载 API → 私有上传 API → 管理员工作区 | TASK-009 | verified |
 | S-08 | backend.design.md#2.5.2 功能验收场景 | integration | Skill 文档与模板文件内容 | TASK-008 | verified |
 | S-09 | backend.design.md#2.5.2 功能验收场景 | integration | helper → spool 文件 | TASK-007 | verified |
 | S-10 | backend.design.md#2.5.2 功能验收场景 | integration | helper 计数与 env | TASK-007 | verified |
@@ -559,7 +559,7 @@
 
 ## TASK-009: 管理员 review 流程验证
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-008
 - **Source**: `skill-execution-control-and-review.backend.design.md#2.3.1 功能清单`（FEAT-13）, `skill-execution-control-and-review.backend.design.md#2.2 痛点与价值`（US-06）
@@ -572,24 +572,38 @@
 
 ### Checklist
 
-- [ ] 编写集成测试：下载待审 bundle → 上传到管理员 human user → installer 同步到 `workspace-<agent>/skills` → 删除临时副本。
-- [ ] 验证原用户工作区无感知、无跨用户读取；同名冲突仍按既有策略拒绝。
-- [ ] [verifier][integration] `runtime-skill-execution#RULE-runtime-skill-layering-001`：system/public/private 解析与 allow_override 策略不变。
-- [ ] 更新管理员 review runbook（步骤、前置条件、清理动作）。
+- [x] 编写集成测试：下载待审 bundle → 上传到管理员 human user → installer 同步到 `workspace-<agent>/skills` → 删除临时副本。
+- [x] 验证原用户工作区无感知、无跨用户读取；同名冲突仍按既有策略拒绝。
+- [x] [verifier][integration] `runtime-skill-execution#RULE-runtime-skill-layering-001`：system/public/private 解析与 allow_override 策略不变。
+- [x] 更新管理员 review runbook（步骤、前置条件、清理动作）。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-07 | integration | 下载/上传/删除 API → 管理员工人工作区 | 管理员 agent 可读；原用户无感知；删除后清理 | `console/backend/test/runtime_file_skill_e2e_test.go` 或新增用例 | `cd console/backend && go test ./test -run AdminSkillReview -count=1` | planned |
+| S-07 | integration | 下载/上传/删除 API → 管理员工人工作区 | 管理员 agent 可读；原用户无感知；删除后清理 | `console/backend/test/admin_skill_review_test.go`（`TestAdminSkillReviewFlow_S07`） | ["go","-C","console/backend","test","./test","-run","AdminSkillReview","-count=1"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+- 既有能力验证，无 RED：S-07 复用已合并的下载、私有上传、删除端点与 skillsync installer，流程本身不新增生产代码，测试首跑即 GREEN（`go -C console/backend test ./test -run AdminSkillReview -count=1` → `ok`）。未伪造 RED。
+- 断言位置（`console/backend/test/admin_skill_review_test.go`）：
+  - 下载：`GET /api/v1/skills/{skillId}/download` 返回 `application/gzip` + `<name>.tar.gz`，解包后 `SKILL.md` 含 `REVIEW_ONLY_MARKER`。
+  - 上传：管理员 Human User 下创建 active private asset；同 user 重复上传返回 409；Public 同名无 allow_override 返回 409，显式 allow_override 返回 201；System 同名即使 allow_override 仍返回 400。
+  - installer：`SyncPod` 仅对 admin agent 执行 `install`（`--expected-name=review-target`，stdin bundle 含 marker），fake driver 记录 admin agent 安装哈希；全程无 alice agent 的 installer 调用。
+  - 隔离：alice 资产保持 pending、暂存目录内容逐字节不变、有效视图仍指向原 skillId；用 alice 路径删除 admin 副本返回 404。
+  - 清理：DELETE 后管理员暂存目录删除、资产状态 deleted；再次 `SyncPod` 仅对 admin agent 执行 `delete`，admin 有效视图不再包含该 Skill，alice 资产与目录不变。
+- 真实边界：httptest 走真实 HTTP handler + 真实 repo/skillsync，仅 RuntimeDriver 用 fake（不接真实 Docker/K8s）；installer 的 `workspace-<agent>/skills` 目标路径由 `bin/private-skill-installer.mjs` 承担。
+- Runbook：`docs/skill-admin-review-runbook.md`（前置条件、步骤、反向检查、清理动作），并从 `console/README.md` 链接。
+- S-07: verified — automated command passed; run_id=c6498fea53484d77848782e67fc66e50 (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] GREEN: `go -C console/backend test ./test -run AdminSkillReview -count=1` → ok（既有能力，无 RED）。
+- [2026-10-17] 新增管理员 review runbook 并链接 console README。
+- [2026-10-17] S-07 命令改为 argv JSON 并重锁 manifest。
+- [2026-10-17] completed (done)
 
 ---
 

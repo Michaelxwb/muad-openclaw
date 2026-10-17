@@ -6,6 +6,7 @@
 
 - [总体设计说明书](../docs/muad-openclaw-总体设计说明书.md)（架构评审基线）
 - [多用户单 Pod](../docs/multi-user-single-pod.md)
+- [管理员 review 用户 Skill Runbook](../docs/skill-admin-review-runbook.md)
 - [100 用户 Kubernetes 架构](../docs/k8s-architecture-100users.md)
 - [架构图](../docs/images/total-design/)
 - [Skill 执行审计任务档案](../.code-flow/tasks/archived/2026-07-14/skill-execution-audit/)
