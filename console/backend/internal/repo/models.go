@@ -460,6 +460,7 @@ type ResourceConfig struct {
 	MaxSkillConcurrency    int
 	MaxBrowserConcurrency  int
 	MaxLongTaskConcurrency int
+	SkillRequestLimit      int
 	UpdatedAt              time.Time
 }
 
