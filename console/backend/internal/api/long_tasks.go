@@ -13,6 +13,7 @@ type longTaskView struct {
 	TaskID                  string     `json:"taskId"`
 	PodID                   string     `json:"podId"`
 	HumanUserID             string     `json:"humanUserId"`
+	HumanUserName           string     `json:"humanUserName"`
 	PoolKey                 string     `json:"poolKey"`
 	PoolQueued              int        `json:"poolQueued"`
 	PoolRunning             int        `json:"poolRunning"`
@@ -65,10 +66,33 @@ func (s *Server) handleListLongTasks(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, r, errcode.InternalListLongTasks)
 		return
 	}
+	// 名称在读取时按当页 user 解析：前端只渲染列表返回值，不再拉取全量用户映射。
+	userNames, err := s.store.ListHumanUserDisplayNames(longTaskHumanUserIDs(tasks))
+	if err != nil {
+		writeErr(w, r, errcode.InternalListLongTasks)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items": s.longTaskViews(tasks), "pools": longTaskPoolViews(pools),
+		"items": s.longTaskViews(tasks, userNames), "pools": longTaskPoolViews(pools),
 		"total": total, "page": page, "pageSize": pageSize,
 	})
+}
+
+// longTaskHumanUserIDs 汇总当页任务的 Human User id（去重，保持稳定顺序）。
+func longTaskHumanUserIDs(tasks []repo.LongTaskTask) []string {
+	seen := make(map[string]struct{}, len(tasks))
+	ids := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		if task.HumanUserID == "" {
+			continue
+		}
+		if _, ok := seen[task.HumanUserID]; ok {
+			continue
+		}
+		seen[task.HumanUserID] = struct{}{}
+		ids = append(ids, task.HumanUserID)
+	}
+	return ids
 }
 
 func longTaskFilterFromRequest(
@@ -101,10 +125,10 @@ func validLongTaskStatus(status string) bool {
 	}
 }
 
-func (s *Server) longTaskViews(tasks []repo.LongTaskTask) []longTaskView {
+func (s *Server) longTaskViews(tasks []repo.LongTaskTask, userNames map[string]string) []longTaskView {
 	views := make([]longTaskView, 0, len(tasks))
 	for _, task := range tasks {
-		views = append(views, s.longTaskToView(task))
+		views = append(views, s.longTaskToView(task, userNames))
 	}
 	return views
 }
@@ -144,11 +168,12 @@ func longTaskPoolToView(pool repo.LongTaskPool) longTaskPoolView {
 	}
 }
 
-func (s *Server) longTaskToView(task repo.LongTaskTask) longTaskView {
+func (s *Server) longTaskToView(task repo.LongTaskTask, userNames map[string]string) longTaskView {
 	canCancel, reason := s.longTaskCanCancel(task)
 	return longTaskView{
 		TaskID: task.TaskID, PodID: task.PodID, HumanUserID: task.HumanUserID,
-		PoolKey: task.PoolKey, PoolQueued: task.PoolQueued, PoolRunning: task.PoolRunning,
+		HumanUserName: userNames[task.HumanUserID],
+		PoolKey:       task.PoolKey, PoolQueued: task.PoolQueued, PoolRunning: task.PoolRunning,
 		PoolLimit: task.PoolLimit, AgentID: task.AgentID, PeerID: task.PeerID,
 		SkillName: task.SkillName, SkillRoot: task.SkillRoot, Status: task.Status,
 		StateRevision:           int64(task.StateRevision),

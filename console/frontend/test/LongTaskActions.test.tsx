@@ -12,6 +12,7 @@ function task(overrides: Partial<LongTask> = {}): LongTask {
     taskId: "task-1",
     podId: "pod-a",
     humanUserId: "human-a",
+    humanUserName: "张三",
     poolKey: "agent:alice:wecom:direct:wx-1",
     poolQueued: 0,
     poolRunning: 1,

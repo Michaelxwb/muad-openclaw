@@ -19,7 +19,6 @@ import {
   tablePagination,
 } from "../components/Pagination";
 import { useMountedRef } from "../hooks/useMountedRef";
-import { useHumanUserNames } from "../hooks/useHumanUserNames";
 import { usePodNames } from "../hooks/usePodNames";
 import { LongTaskActions } from "./long-tasks/LongTaskActions";
 import {
@@ -62,7 +61,6 @@ export function LongTasks({ onOpenPod }: Props) {
   const { t } = useTranslation();
   const state = useLongTasks();
   const actions = useLongTaskActions({ refresh: state.refresh });
-  const userNames = useHumanUserNames(true);
   const podNames = usePodNames(true);
   return (
     <div>
@@ -70,13 +68,7 @@ export function LongTasks({ onOpenPod }: Props) {
       <FeedbackBanner error={actions.error || state.error} message={actions.message} />
       <PageSection>
         <LongTaskToolbar state={state} />
-        <LongTaskTable
-          state={state}
-          actions={actions}
-          userNames={userNames}
-          podNames={podNames}
-          onOpenPod={onOpenPod}
-        />
+        <LongTaskTable state={state} actions={actions} podNames={podNames} onOpenPod={onOpenPod} />
       </PageSection>
     </div>
   );
@@ -228,21 +220,19 @@ function LongTaskToolbar({ state }: { state: LongTaskState }) {
 function LongTaskTable({
   state,
   actions,
-  userNames,
   podNames,
   onOpenPod,
 }: {
   state: LongTaskState;
   actions: LongTaskActionsController;
-  userNames: ReadonlyMap<string, string>;
   podNames: ReadonlyMap<string, string>;
   onOpenPod?: (podId: string) => void;
 }) {
   const { t } = useTranslation();
   const rows = useMemo(() => mergePoolCounts(state.rows, state.pools), [state.pools, state.rows]);
   const columns = useMemo(
-    () => longTaskColumns(t, userNames, podNames, onOpenPod, actions),
-    [actions, onOpenPod, t, userNames, podNames],
+    () => longTaskColumns(t, podNames, onOpenPod, actions),
+    [actions, onOpenPod, t, podNames],
   );
   return (
     <Table
@@ -272,7 +262,6 @@ function LongTaskTable({
 
 function longTaskColumns(
   t: TFunction,
-  userNames: ReadonlyMap<string, string>,
   podNames: ReadonlyMap<string, string>,
   onOpenPod: ((podId: string) => void) | undefined,
   actions: LongTaskActionsController,
@@ -308,7 +297,7 @@ function longTaskColumns(
       align: "left" as const,
       width: LONG_TASK_POD_USER_COLUMN_WIDTH,
       render: (_: unknown, task: LongTaskRow) => (
-        <PodUserCell task={task} podNames={podNames} userNames={userNames} onOpenPod={onOpenPod} />
+        <PodUserCell task={task} podNames={podNames} onOpenPod={onOpenPod} />
       ),
     },
     {
@@ -376,16 +365,15 @@ function longTaskColumns(
 function PodUserCell({
   task,
   podNames,
-  userNames,
   onOpenPod,
 }: {
   task: LongTaskRow;
   podNames: ReadonlyMap<string, string>;
-  userNames: ReadonlyMap<string, string>;
   onOpenPod?: (podId: string) => void;
 }) {
   const podName = podNames.get(task.podId);
-  const userName = userNames.get(task.humanUserId) || task.humanUserId || "-";
+  // 用户名由后端按当页任务解析随列表返回；缺失（用户已删除等）时回退显示 id。
+  const userName = task.humanUserName || task.humanUserId || "-";
   const podLine = <PodLine podId={task.podId} podName={podName} />;
   return (
     <div className={`${styles.taskCell} ${styles.podUserCell}`}>

@@ -20,6 +20,7 @@ type s24LongTaskView struct {
 	Items []struct {
 		TaskID                  string `json:"taskId"`
 		HumanUserID             string `json:"humanUserId"`
+		HumanUserName           string `json:"humanUserName"`
 		Status                  string `json:"status"`
 		StateRevision           int64  `json:"stateRevision"`
 		CancelRequestedBy       string `json:"cancelRequestedBy"`
@@ -124,9 +125,16 @@ func TestLongTaskControlS24SnapshotListAndCapabilityGating(t *testing.T) {
 	if runItem.CanCancel || runItem.CancelUnavailableReason != "capability_unknown" {
 		t.Fatalf("unknown capability must not be cancellable: %+v", runItem)
 	}
+	// 列表在读取时解析人类用户名：前端只渲染返回值。
+	if runItem.HumanUserName != "alice" {
+		t.Fatalf("running row humanUserName = %q, want %q", runItem.HumanUserName, "alice")
+	}
 	legacyItem := view.Items[byID["task-legacy"]]
 	if legacyItem.Status != "succeeded" || legacyItem.CanCancel {
 		t.Fatalf("legacy row = %+v", legacyItem)
+	}
+	if legacyItem.HumanUserName != "bob" {
+		t.Fatalf("legacy row humanUserName = %q, want %q", legacyItem.HumanUserName, "bob")
 	}
 	// cancelling 占槽：池运行数与快照 active 一致（包含取消中的任务）。
 	poolRunning := map[string]int{}
@@ -204,5 +212,52 @@ func assertExclusiveModelBindings(t *testing.T, e *testEnv, aliceID, bobID, alic
 	if alice.ModelConfigID != aliceModel || bob.ModelConfigID != bobModel || aliceModel == bobModel {
 		t.Fatalf("exclusive model bindings changed: alice=%s/%s bob=%s/%s",
 			alice.ModelConfigID, aliceModel, bob.ModelConfigID, bobModel)
+	}
+}
+
+// LongTaskControlS24 [integration] 列表 humanUserName 由后端按当页 user 解析：
+// 已知用户返回 displayName；无对应用户/已删除用户返回空串，前端据此回退显示 id。
+func TestLongTaskControlS24ListResolvesHumanUserName(t *testing.T) {
+	e := newTestEnv(t)
+	pod := createPodThroughAPI(t, e, strings.Replace(testPodBody, `"maxUsers":2`, `"maxUsers":3`, 1))
+	alice := createTestHumanUser(t, e.store, pod.PodID, "alice", repo.HumanUserStatusActive)
+
+	snapshot := `{"active":2,"queued":0,"limit":2,"pools":[
+	  {"poolKey":"agent:alice:wecom:direct:u1","sessionKey":"agent:alice:wecom:direct:u1","agentId":"alice","peerId":"u1","queued":0,"active":1,"limit":2,"tasks":[
+	    {"taskId":"task-alice","poolKey":"agent:alice:wecom:direct:u1","agentId":"alice","peerId":"u1","skillName":"xdr-query","status":"running","submittedAt":"2026-10-16T08:00:00.000Z","startedAt":"2026-10-16T08:00:01.000Z","updatedAt":"2026-10-16T08:00:01.000Z"}
+	  ]},
+	  {"poolKey":"agent:carol:wecom:direct:u9","sessionKey":"agent:carol:wecom:direct:u9","agentId":"carol","peerId":"u9","queued":0,"active":1,"limit":2,"tasks":[
+	    {"taskId":"task-carol","poolKey":"agent:carol:wecom:direct:u9","agentId":"carol","peerId":"u9","skillName":"xdr-query","status":"failed","endedAt":"2026-10-16T08:01:00.000Z","terminalReason":"errored","updatedAt":"2026-10-16T08:01:00.000Z"}
+	  ]}
+	]}`
+	if rr := pushLongTaskSnapshot(t, e, pod.PodID, snapshot); rr.Code != http.StatusOK {
+		t.Fatalf("snapshot status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	view := listLongTasksS24(t, e, "")
+	names := map[string]string{}
+	for _, item := range view.Items {
+		names[item.TaskID] = item.HumanUserName
+	}
+	// 已知用户：名称随列表返回（createTestHumanUser 的 DisplayName = agentID）。
+	if names["task-alice"] != "alice" {
+		t.Fatalf("alice task humanUserName = %q, want %q", names["task-alice"], "alice")
+	}
+	// 无对应用户的任务：空串，前端回退显示 id。
+	if names["task-carol"] != "" {
+		t.Fatalf("task without a Human User must resolve to an empty name, got %q", names["task-carol"])
+	}
+
+	// 用户被清理（物理删除）后：历史任务仍保留，名称解析为空 → 回退 id。
+	if err := e.store.MarkHumanUserDeleting(alice.HumanUserID); err != nil {
+		t.Fatalf("mark alice deleting: %v", err)
+	}
+	if err := e.store.DeleteHumanUser(alice.HumanUserID); err != nil {
+		t.Fatalf("physically delete alice: %v", err)
+	}
+	view = listLongTasksS24(t, e, "")
+	for _, item := range view.Items {
+		if item.TaskID == "task-alice" && item.HumanUserName != "" {
+			t.Fatalf("deleted user must fall back to an empty name, got %q", item.HumanUserName)
+		}
 	}
 }

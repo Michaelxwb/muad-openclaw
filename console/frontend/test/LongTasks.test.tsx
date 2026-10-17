@@ -12,7 +12,6 @@ import {
 
 const apiMocks = vi.hoisted(() => ({
   listLongTasks: vi.fn(),
-  listAllHumanUsers: vi.fn(),
   listPods: vi.fn(),
   cancelLongTask: vi.fn(),
 }));
@@ -26,6 +25,7 @@ const runningTask: LongTask = {
   taskId: "task-running",
   podId: "pod-a",
   humanUserId: "human-a",
+  humanUserName: "张三",
   poolKey: "agent:alice:wecom:direct:wx-1",
   poolQueued: 1,
   poolRunning: 1,
@@ -72,12 +72,6 @@ beforeEach(() => {
       total: 2,
     }),
   );
-  apiMocks.listAllHumanUsers.mockReset().mockResolvedValue({
-    items: [{ humanUserId: "human-a", displayName: "张三" }],
-    total: 1,
-    page: 1,
-    pageSize: 1000,
-  });
   apiMocks.listPods.mockReset().mockResolvedValue({
     items: [{ podId: "pod-a", displayName: "主节点" }],
     total: 1,
@@ -131,6 +125,24 @@ describe("LongTasks", () => {
 
     fireEvent.click(podButtons[0]);
     expect(onOpenPod).toHaveBeenCalledWith("pod-a");
+  });
+
+  it("renders the backend-resolved user name and falls back to the id", async () => {
+    apiMocks.listLongTasks.mockResolvedValueOnce(
+      pageResult({
+        items: [
+          { ...runningTask, taskId: "task-named", humanUserName: "林海(10636)" },
+          { ...runningTask, taskId: "task-orphan", humanUserId: "gone-user", humanUserName: "" },
+        ],
+        pools: [poolSummary],
+        total: 2,
+      }),
+    );
+
+    render(<LongTasks />);
+
+    expect(await screen.findByText("林海(10636)")).toBeInTheDocument();
+    expect(screen.getByText("gone-user")).toBeInTheDocument();
   });
 
   it("submits typed filters through the API client", async () => {
