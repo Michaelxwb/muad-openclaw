@@ -69,6 +69,9 @@ import type {
   SkillAssetUpdateInput,
   SkillExecution,
   SkillExecutionQuery,
+  SkillExecutionTrace,
+  SkillHealthQuery,
+  SkillHealthResult,
   SkillPolicy,
   SkillPolicyInput,
   SkillReloadResult,
@@ -447,6 +450,18 @@ export const api = {
         scope: query.scope,
         startedFrom: query.startedFrom,
         startedTo: query.startedTo,
+      }),
+    ),
+  getSkillExecutionTrace: (executionId: string) =>
+    request<SkillExecutionTrace>("GET", `/skill-executions/${segment(executionId)}/trace`),
+  listSkillHealth: (query: SkillHealthQuery = {}) =>
+    request<SkillHealthResult>(
+      "GET",
+      withQuery("/skill-executions/stats", {
+        window: query.window,
+        limit: query.limit,
+        scope: query.scope,
+        humanUserId: query.humanUserId,
       }),
     ),
   listLongTasks: (query: LongTaskQuery = {}) =>
