@@ -65,7 +65,7 @@ function auditToolCall(state, event, ctx) {
   const config = state.getConfig();
   const match = event?.toolName === "read"
     ? auditRead(config, event, ctx)
-    : event?.toolName === "exec" ? auditExec(config, event, ctx) : null;
+    : ["exec", "bash"].includes(event?.toolName) ? auditExec(config, event, ctx) : null;
   if (!match || isLongTaskSkill(config, match.agentId, match.skillName)) return;
   auditForeground(state, config, event, ctx, match.agentId, match);
 }

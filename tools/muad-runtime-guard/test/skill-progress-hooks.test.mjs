@@ -20,6 +20,9 @@ test("SkillProgressHooks E-04 activates only an authorized explicit direct Skill
   const env = await progress.resolveExecEnv({ toolName: "exec", runId: "run-1" }, ctx);
   assert.match(env.MUAD_PROGRESS_EVENTS_FILE, /events\.jsonl$/u);
   assert.equal(env.MUAD_SKILL_NAME, "xdr-query");
+  const bashEnv = await progress.resolveExecEnv({ toolName: "bash", runId: "run-1" }, ctx);
+  assert.match(bashEnv.MUAD_PROGRESS_EVENTS_FILE, /events\.jsonl$/u);
+  assert.equal(bashEnv.MUAD_SKILL_NAME, "xdr-query");
   assert.equal((await progress.resolveExecEnv(
     { toolName: "exec", runId: "run-2" }, { ...ctx, runId: "run-2" },
   )), undefined);

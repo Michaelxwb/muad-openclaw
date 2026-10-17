@@ -47,7 +47,7 @@ export function createSkillTraceHooks({
   let closed = false;
 
   function resolveExecEnv(event, ctx) {
-    if (closed || text(event?.toolName) !== "exec") return undefined;
+    if (closed || !["exec", "bash"].includes(text(event?.toolName))) return undefined;
     const resolved = resolveEntry(event, ctx);
     if (!resolved.entry) {
       diag(`action=resolve outcome=${resolved.reason} agent=${text(ctx?.agentId) || "unknown"}`);
@@ -78,7 +78,7 @@ export function createSkillTraceHooks({
   function afterToolCall(event, ctx) {
     if (closed) return undefined;
     retryPending();
-    if (text(event?.toolName) !== "exec") return undefined;
+    if (!["exec", "bash"].includes(text(event?.toolName))) return undefined;
     const resolved = resolveEntry(event, ctx);
     if (!resolved.entry) return undefined;
     const entry = resolved.entry;
