@@ -36,6 +36,9 @@ import type {
   LongTaskListResult,
   LongTaskCancelResult,
   LongTaskQuery,
+  NotifySettings,
+  NotifySettingsInput,
+  NotifyTestResult,
   PageResult,
   PatchHumanUserInput,
   PatchPlatformInput,
@@ -464,6 +467,10 @@ export const api = {
   cancelLongTask: (taskId: string) =>
     request<LongTaskCancelResult>("POST", `/long-tasks/${encodeURIComponent(taskId)}/cancel`, {}),
   getResources: () => request<GlobalResourceConfig>("GET", "/settings/resources"),
+  getNotifySettings: () => request<NotifySettings>("GET", "/settings/notify"),
+  setNotifySettings: (input: NotifySettingsInput) =>
+    request<NotifySettings>("PUT", "/settings/notify", input),
+  testNotifySettings: () => request<NotifyTestResult>("POST", "/settings/notify/test", {}),
   getAgentGuidance: () => request<AgentGuidance>("GET", "/settings/agent-guidance"),
   setAgentGuidance: (input: AgentGuidanceInput) =>
     request<AgentGuidance>("PUT", "/settings/agent-guidance", input),

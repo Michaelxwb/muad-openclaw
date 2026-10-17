@@ -7,6 +7,7 @@ import { errorMessage, ErrorDetail } from "../utils/error";
 import { FeedbackBanner, PageHeader, PageSection } from "../components/ConsolePage";
 import { PlatformSettings } from "../components/platforms/PlatformSettings";
 import { AgentGuidanceSettings } from "../components/settings/AgentGuidanceSettings";
+import { NotifySettings } from "../components/settings/NotifySettings";
 import { useMountedRef } from "../hooks/useMountedRef";
 import { memLimitToGB } from "../utils/memLimit";
 import styles from "./Settings.module.css";
@@ -18,14 +19,27 @@ const RESTART_OPTIONS = [
   { value: "no", label: "no" },
 ];
 
-const EMPTY: ResourceConfig = {
+const MAX_SKILL_REQUEST_LIMIT = 1_000_000;
+
+interface ResourceFormState extends ResourceConfig {
+  skillRequestLimit: number;
+}
+
+const EMPTY: ResourceFormState = {
   memLimit: "",
   cpuLimit: "",
   restartPolicy: "unless-stopped",
   maxSkillConcurrency: 0,
   maxBrowserConcurrency: 0,
   maxLongTaskConcurrency: 0,
+  skillRequestLimit: 0,
 };
+
+function skillRequestLimitError(value: number): string | undefined {
+  if (!Number.isInteger(value)) return "settings.skillRequestLimitInteger";
+  if (value < 0 || value > MAX_SKILL_REQUEST_LIMIT) return "settings.skillRequestLimitRange";
+  return undefined;
+}
 
 export function Settings() {
   const { t } = useTranslation();
@@ -52,6 +66,7 @@ export function Settings() {
         <ErrorDetail detail={resources.errorDetail} />
         <ResourceForm state={resources} />
       </PageSection>
+      <NotifySettings />
       <AgentGuidanceSettings />
       <PlatformSettings />
     </div>
@@ -106,6 +121,26 @@ function ResourceForm({ state }: { state: ResourceState }) {
         value={state.form.maxLongTaskConcurrency ?? 0}
         onChange={(value) => set("maxLongTaskConcurrency", value)}
       />
+      <label htmlFor="resource-skill-request-limit">{t("settings.skillRequestLimit")}</label>
+      <div className={styles.field}>
+        <InputNumber
+          id="resource-skill-request-limit"
+          aria-label={t("settings.skillRequestLimitLabel")}
+          value={state.form.skillRequestLimit}
+          onChange={(value: number | string) => {
+            state.clearLimitError();
+            set("skillRequestLimit", Number(value ?? 0));
+          }}
+          style={{ width: "100%" }}
+        />
+        {state.limitError ? (
+          <span role="alert" className={styles.fieldError}>
+            {state.limitError}
+          </span>
+        ) : state.form.skillRequestLimit === 0 ? (
+          <span className={styles.fieldHint}>{t("settings.skillRequestLimitUnlimited")}</span>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -128,9 +163,10 @@ function NumberField(props: { label: string; value: number; onChange: (value: nu
 
 function useGlobalResources() {
   const { t } = useTranslation();
-  const [form, setForm] = useState<ResourceConfig>(EMPTY);
+  const [form, setForm] = useState<ResourceFormState>(EMPTY);
   const [config, setConfig] = useState<GlobalResourceConfig | null>(null);
   const [busy, setBusy] = useState(false);
+  const [limitError, setLimitError] = useState("");
   const [error, setError] = useState("");
   const [errorDetail, setErrorDetail] = useState<string | undefined>();
   const [message, setMessage] = useState("");
@@ -151,6 +187,7 @@ function useGlobalResources() {
         maxSkillConcurrency: result.effective.maxSkillConcurrency,
         maxBrowserConcurrency: result.effective.maxBrowserConcurrency,
         maxLongTaskConcurrency: result.effective.maxLongTaskConcurrency,
+        skillRequestLimit: result.skillRequestLimit ?? 0,
       });
     } catch (caught) {
       if (!mountedRef.current || requestId !== requestRef.current) return;
@@ -162,6 +199,13 @@ function useGlobalResources() {
     void load();
   }, [load]);
   const save = async () => {
+    const invalidLimit = skillRequestLimitError(form.skillRequestLimit);
+    if (invalidLimit) {
+      setLimitError(t(invalidLimit));
+      setMessage("");
+      return;
+    }
+    setLimitError("");
     setBusy(true);
     setError("");
     setErrorDetail(undefined);
@@ -180,5 +224,16 @@ function useGlobalResources() {
       if (mountedRef.current) setBusy(false);
     }
   };
-  return { form, config, busy, error, errorDetail, message, setForm, save };
+  return {
+    form,
+    config,
+    busy,
+    limitError,
+    clearLimitError: () => setLimitError(""),
+    error,
+    errorDetail,
+    message,
+    setForm,
+    save,
+  };
 }
