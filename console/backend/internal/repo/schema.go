@@ -210,6 +210,7 @@ CREATE TABLE IF NOT EXISTS resource_global (
 	max_skill_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_skill_concurrency >= 0),
 	max_browser_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_browser_concurrency >= 0),
 	max_long_task_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_long_task_concurrency >= 0),
+	skill_request_limit INTEGER NOT NULL DEFAULT 1000 CHECK (skill_request_limit >= 0),
 	updated_at TEXT NOT NULL
 );
 
@@ -297,6 +298,12 @@ func (s *Store) migrate() error {
 		return err
 	}
 	if err := s.migrateSkillExecutionRecords(); err != nil {
+		return err
+	}
+	if err := s.migrateSkillTraceSchema(); err != nil {
+		return err
+	}
+	if err := s.migrateResourceGlobalSkillRequestLimit(); err != nil {
 		return err
 	}
 	if err := s.migrateLongTaskTasks(); err != nil {
