@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "task_file": "skill-execution-control-and-review.md",
-  "task_sha256": "3c24fd593d0ac1801df7d1a31208e9a07b60c00e8bb020653c494c60f7e7fdde",
+  "task_sha256": "dc202c46b5a12328af3a5c09086cbb49251d70cad39595eeac1b1e47c391819e",
   "scenarios": [
     {
       "id": "S-01",
@@ -11,7 +11,10 @@
       "boundary": "Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API",
       "owner": "TASK-012",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cf_acceptance_runner.py",
+        "--include-e2e`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -24,7 +27,9 @@
       "boundary": "helper 退出 → guard abort → IM 通知 → Console 入库 → 通知分发",
       "owner": "TASK-012",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -37,7 +42,17 @@
       "boundary": "设置 API → resource_config → runtimeconfig builder → renderer → 配置字节",
       "owner": "TASK-004",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "console/backend",
+        "&&",
+        "go",
+        "test",
+        "./test",
+        "-run",
+        "SettingsResources",
+        "-count=1`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -50,7 +65,17 @@
       "boundary": "设置 API → 加密存储 → dispatcher → WeCom HTTP（httptest）",
       "owner": "TASK-003",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "console/backend",
+        "&&",
+        "go",
+        "test",
+        "./test",
+        "-run",
+        "Notify",
+        "-count=1`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -63,7 +88,9 @@
       "boundary": "执行数据 → stats SQL → 查询 API → UI 列表",
       "owner": "TASK-012",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -76,7 +103,13 @@
       "boundary": "审阅脚本 → 目标目录 → 报告输出（不执行目标代码）",
       "owner": "TASK-008",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`python3",
+        "-m",
+        "pytest",
+        "skills/self-skill-review/test",
+        "-q`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -89,7 +122,17 @@
       "boundary": "下载 API → 私有上传 API → 管理员工作区",
       "owner": "TASK-009",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "console/backend",
+        "&&",
+        "go",
+        "test",
+        "./test",
+        "-run",
+        "AdminSkillReview",
+        "-count=1`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -102,7 +145,9 @@
       "boundary": "Skill 文档与模板文件内容",
       "owner": "TASK-008",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -115,7 +160,15 @@
       "boundary": "helper → spool 文件",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "tools/muad-skill-sdk",
+        "&&",
+        "python3",
+        "-m",
+        "pytest",
+        "-q`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -128,7 +181,9 @@
       "boundary": "helper 计数与 env",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -141,7 +196,9 @@
       "boundary": "settings API → audit",
       "owner": "TASK-003",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -154,7 +211,15 @@
       "boundary": "session-manager 状态文件 → platform_request → HTTP（httptest）",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "tools/session-manager",
+        "&&",
+        "npm",
+        "test",
+        "--",
+        "--test-name-pattern=requestProfile`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -167,7 +232,9 @@
       "boundary": "mssp 状态文件 → platform_request",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -180,7 +247,9 @@
       "boundary": "两个用户并发 → 两份 spool → Console → 告警/统计",
       "owner": "TASK-012",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -193,7 +262,15 @@
       "boundary": "共享 gateway hook → 异步队列 → 其他用户 turn",
       "owner": "TASK-005",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "tools/muad-runtime-guard",
+        "&&",
+        "npm",
+        "test",
+        "--",
+        "--test-name-pattern=SkillTrace`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -206,7 +283,9 @@
       "boundary": "旧 Skill（raw requests + 手工头）→ 新镜像 → 执行",
       "owner": "TASK-012",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -219,7 +298,9 @@
       "boundary": "混合 Skill（helper + raw requests）",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -232,7 +313,17 @@
       "boundary": "Console 内部接口 → repo",
       "owner": "TASK-002",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "console/backend",
+        "&&",
+        "go",
+        "test",
+        "./test",
+        "-run",
+        "SkillExecutionTrace",
+        "-count=1`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -245,7 +336,15 @@
       "boundary": "dispatcher → WeCom HTTP（errcode≠0）",
       "owner": "TASK-003",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "console/backend",
+        "&&",
+        "go",
+        "test",
+        "./internal/notify",
+        "-count=1`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -258,7 +357,9 @@
       "boundary": "guard 上传失败 → 保留 spool → 下个 hook 重试",
       "owner": "TASK-005",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -271,7 +372,9 @@
       "boundary": "脚本绕过 helper 直接发请求",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -284,7 +387,9 @@
       "boundary": "并发计数锁",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -297,7 +402,9 @@
       "boundary": "IM 投递（mock 通道）",
       "owner": "TASK-005",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -310,7 +417,9 @@
       "boundary": "settings API 校验",
       "owner": "TASK-004",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -323,7 +432,9 @@
       "boundary": "session-manager → 状态文件 → platform_request",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -336,7 +447,9 @@
       "boundary": "cross-user-guard → 文件路径",
       "owner": "TASK-005",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -349,7 +462,9 @@
       "boundary": "platform_request → HTTP 401",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -362,7 +477,9 @@
       "boundary": "升级顺序/版本错配",
       "owner": "TASK-012",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -375,7 +492,9 @@
       "boundary": "helper 计数",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -388,7 +507,9 @@
       "boundary": "helper spool + guard 解析",
       "owner": "TASK-005",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -401,7 +522,9 @@
       "boundary": "路径归一化",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -414,7 +537,9 @@
       "boundary": "上限 0",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -427,7 +552,9 @@
       "boundary": "告警通道关闭",
       "owner": "TASK-003",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -440,7 +567,9 @@
       "boundary": "Traceid 生成",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -453,7 +582,9 @@
       "boundary": "多平台 header profile",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -466,7 +597,9 @@
       "boundary": "stats 分组维度",
       "owner": "TASK-002",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -479,7 +612,9 @@
       "boundary": "告警去重键",
       "owner": "TASK-003",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -492,7 +627,9 @@
       "boundary": "旧状态文件（无 requestProfile）",
       "owner": "TASK-007",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -505,7 +642,16 @@
       "boundary": "API → 状态 → 抽屉渲染",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "console/frontend",
+        "&&",
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -518,7 +664,9 @@
       "boundary": "状态 → UI",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -531,7 +679,16 @@
       "boundary": "表单 → api.ts → 后端 → 回显",
       "owner": "TASK-010",
       "status": "planned",
-      "command": null,
+      "command": [
+        "`cd",
+        "console/frontend",
+        "&&",
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Settings`"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -544,7 +701,9 @@
       "boundary": "API → 列表 → 钻取",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -557,7 +716,9 @@
       "boundary": "API 返回 truncated",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -570,7 +731,9 @@
       "boundary": "请求失败 → 错误态",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -583,7 +746,9 @@
       "boundary": "表单校验",
       "owner": "TASK-010",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -596,7 +761,9 @@
       "boundary": "测试接口返回 errcode≠0",
       "owner": "TASK-010",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -609,7 +776,9 @@
       "boundary": "空数据",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -622,7 +791,9 @@
       "boundary": "权限/404",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -635,7 +806,9 @@
       "boundary": "表单映射",
       "owner": "TASK-010",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -648,7 +821,9 @@
       "boundary": "时间线渲染",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -661,7 +836,9 @@
       "boundary": "健康列表分组",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []
@@ -674,7 +851,9 @@
       "boundary": "旧 Skill 时间线",
       "owner": "TASK-011",
       "status": "planned",
-      "command": null,
+      "command": [
+        "同上"
+      ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": []

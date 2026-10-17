@@ -73,7 +73,7 @@
 
 ## TASK-001: Console 数据模型与迁移
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**:
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.3 数据设计`, `skill-execution-control-and-review.backend.design.md#4.4 数据迁移`
@@ -86,27 +86,34 @@
 
 ### Checklist
 
-- [ ] 新建迁移文件：三张表 DDL + 索引 + `resource_config.skill_request_limit`（`IF NOT EXISTS` 或列检测，幂等）。
-- [ ] 实现 repo：事件按 `event_id` 幂等插入；metrics `aborted` 只升不降（`max(existing, excluded)`）；按 `(execution_id, seq)` 排序查询；stats 按 `(skill_name, skill_scope, human_user_id)` 分组。
-- [ ] 实现 notify 通道 repo：加密配置存取、enabled 切换、单通道读取。
-- [ ] [verifier][integration] `backend-database#RULE-backend-database-001`：所有 SQL 参数化且限定在 `internal/repo`；迁移在已有旧库上重复执行不报错、不丢数据。
-- [ ] [verifier][integration] `backend-database#RULE-backend-no-select-star-001`：审查/正则确认无 `SELECT *`。
-- [ ] 编写 schema 升级、外键级联、幂等迁移、metrics 单调性测试并记录 RED/GREEN。
+- [x] 新建迁移文件：三张表 DDL + 索引 + `resource_config.skill_request_limit`（`IF NOT EXISTS` 或列检测，幂等）。
+- [x] 实现 repo：事件按 `event_id` 幂等插入；metrics `aborted` 只升不降（`max(existing, excluded)`）；按 `(execution_id, seq)` 排序查询；stats 按 `(skill_name, skill_scope, human_user_id)` 分组。
+- [x] 实现 notify 通道 repo：加密配置存取、enabled 切换、单通道读取。
+- [x] [verifier][integration] `backend-database#RULE-backend-database-001`：所有 SQL 参数化且限定在 `internal/repo`；迁移在已有旧库上重复执行不报错、不丢数据。
+- [x] [verifier][integration] `backend-database#RULE-backend-no-select-star-001`：审查/正则确认无 `SELECT *`。
+- [x] 编写 schema 升级、外键级联、幂等迁移、metrics 单调性测试并记录 RED/GREEN。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| RULE-backend-database-001 | integration | 真实 SQLite 文件、迁移脚本 | 旧库升级成功；重复执行幂等；行数与关联保留 | `console/backend/test/schema_test.go` | `cd console/backend && go test ./test -run Schema -count=1` | planned |
-| RULE-backend-no-select-star-001 | unit | 生产 SQL 文本 | 无 `SELECT *` | repo 测试 + 正则扫描 | `cd console/backend && go test ./internal/repo -count=1` | planned |
+| RULE-backend-database-001 | integration | 真实 SQLite 文件、迁移脚本 | 旧库升级成功；重复执行幂等；行数与关联保留 | `console/backend/test/schema_test.go` | `cd console/backend && go test ./test -run Schema -count=1` | verified |
+| RULE-backend-no-select-star-001 | unit | 生产 SQL 文本 | 无 `SELECT *` | repo 测试 + 正则扫描 | `cd console/backend && go test ./internal/repo -count=1` | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| RULE-backend-database-001 | `go test ./test -run Schema...` FAIL：`skill_trace_events`/`skill_execution_metrics`/`notify_channels` 未创建、`resource_global.skill_request_limit` 不存在、旧库升级后表缺失 | PASS：`go test ./test -run Schema -count=1`；`go test ./internal/repo ./test -count=1`；`go test ./... -count=1` | `test/schema_test.go:TestSchemaCreatesSkillTraceAndNotifyTables`、`TestSchemaSkillTraceForeignKeysCascade`、`TestSchemaUpgradesLegacyDatabaseForSkillTrace` | 真实 SQLite 文件（modernc.org/sqlite）；旧库 fixture 删除三张表并重建旧版 `resource_global`，连续两次 `repo.Open` 验证幂等、执行行与原配置保留 | verified |
+| RULE-backend-no-select-star-001 | repo 包编译失败（模型/方法未定义），正则扫描无目标 | PASS：`go test ./internal/repo -count=1` | `internal/repo/skill_trace_test.go:TestRepoSQLHasNoSelectStar`（扫描包内非测试 `.go` 文件）、`TestInsertSkillTraceEventsIsIdempotent`、`TestUpsertSkillExecutionMetricsKeepsAbortedMonotonic`、`TestQuerySkillExecutionStatsGroupsPrivateSkillPerUser`、`TestNotifyChannelCRUD` | 全部 SQL 使用 `?` 占位符并限定 `internal/repo`；事件按 `event_id` 幂等、`(execution_id, seq)` 升序、metrics `aborted=max(...)`、stats 按三字段分组 | verified |
+
+注：仓库现有资源表名为 `resource_global`（Go 类型 `ResourceConfig`），迁移落在 `resource_global.skill_request_limit`，未新建平行 `resource_config` 表。
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] completed (done)
+- [2026-10-17] started
 
 ---
 
