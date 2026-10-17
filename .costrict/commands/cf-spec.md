@@ -5,6 +5,7 @@
 - `cf-spec migrate --plan <migration-plan.yml>`
 - `cf-spec context [需求目录]`
 - `cf-spec refresh [需求目录]`
+- `cf-spec status [需求目录]`
 - `cf-spec doctor [需求目录]`
 
 ## 通用硬门禁
@@ -30,14 +31,26 @@
 
 1. 读取并展示 `spec-context.yml` 的 bindings、Rule stage status、artifact refs、Evidence 与 drift。
 2. 执行：
-   `python3 .code-flow/scripts/cf_spec_context.py validate --task-dir <目录> --json`
+   `code-flow spec validate --task-dir <目录> --json`
 3. Context 缺失、schema/hash 无效时 fail-closed，不回退 Catalog。
+
+
+## status
+
+展示人话版 Context 状态：任务、marker hash 是否一致、code Gate 结果、各绑定 Rule 状态。
+
+执行：
+
+`code-flow spec status --task-dir <目录> --root "$PWD"`
+
+- marker 漂移时输出下一步：先 refresh 自动重同步；仍不一致时用 `active doctor --resync`（hash 取 status --json 的 context_sha256）。
+- 需要机器可读输出时加 `--json`。
 
 ## refresh
 
 执行：
 
-`python3 .code-flow/scripts/cf_spec_context.py refresh --task-dir <目录> --root "$PWD" --json`
+`code-flow spec refresh --task-dir <目录> --root "$PWD" --json`
 
 - changed required Rule 标为 stale，关联 stage Gate 必须阻断。
 - missing/conflict 不自动降级；回 Align 或 Plan 更新承接后再继续。
@@ -46,5 +59,21 @@
 ## doctor
 
 1. 校验 config schema、active marker、lock、Context hash、task/status、migration journal 和 legacy residue。
-2. active marker 存在时执行 `cf_spec_context.py active doctor`，传入可证明的 Context hash；无法证明时保持 `recovery_required`。
-3. 输出明确修复命令。不得删除损坏 marker、越过 required Gate 或静默切换到无任务模式。
+2. 按场景恢复，禁止删除 marker、手改状态或越过 required Gate：
+   - **Context hash drift**（`status` 显示 marker hash 漂移）：先执行 refresh，它会自动重同步 marker hash；成功后继续原流程，不要用 doctor。
+   - **marker 停在 `activating`（start 事务中断）**：取 `status --json` 的 `context_sha256` 执行 `active doctor`；hash/head 可证明时自动恢复 active，无法证明时加 `--resync` 重新绑定。
+   - **marker 损坏或归属无法证明**：向用户说明影响，仅在用户明确确认放弃该 TASK 后执行 `active doctor --abandon`，随后重新规划该任务。
+3. `active doctor` 返回 `recovery_required`（退出码 3）是诊断结果而非崩溃：按第 2 步选择 refresh / `--resync` / `--abandon`，不要用 `--help` 探测或反复重试。
+4. 输出明确修复命令。不得删除损坏 marker、越过 required Gate 或静默切换到无任务模式。
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow spec validate --task-dir "<需求目录>" --json
+code-flow spec status --task-dir "<需求目录>" --root "$PWD" --json
+code-flow spec refresh --task-dir "<需求目录>" --root "$PWD" --json
+```
+
+<!-- code-flow:runtime-commands end -->
