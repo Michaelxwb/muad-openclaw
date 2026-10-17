@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import type { HumanUser } from "../api";
 import { useMountedRef } from "./useMountedRef";
 
 /**
@@ -17,12 +18,11 @@ export function useHumanUserNames(active: boolean): ReadonlyMap<string, string> 
       return;
     }
     const requestId = ++requestRef.current;
-    void api
-      .listAllHumanUsers({ pageSize: 1000 })
-      .then((result) => {
+    void listAllHumanUsers()
+      .then((users) => {
         if (!mountedRef.current || requestId !== requestRef.current) return;
         const map = new Map<string, string>();
-        for (const user of result.items) {
+        for (const user of users) {
           if (user.displayName) map.set(user.humanUserId, user.displayName);
         }
         setNames(map);
@@ -33,4 +33,18 @@ export function useHumanUserNames(active: boolean): ReadonlyMap<string, string> 
   }, [active, mountedRef]);
 
   return names;
+}
+
+// 后端单页上限 100（parsePodPagination 的 maxPodPageSize），用户总数可超一页；
+// 逐页取全量，避免超出首页的用户因映射缺失回退成 id。
+async function listAllHumanUsers(): Promise<HumanUser[]> {
+  const pageSize = 100;
+  const first = await api.listAllHumanUsers({ page: 1, pageSize });
+  const items = [...first.items];
+  for (let page = 2; items.length < first.total; page++) {
+    const result = await api.listAllHumanUsers({ page, pageSize });
+    items.push(...result.items);
+    if (result.items.length === 0) break;
+  }
+  return items;
 }
