@@ -101,14 +101,21 @@ func TestSessionCancelE05CancelUsesBoundedExecAndParsesResult(t *testing.T) {
 	}
 }
 
-func TestSessionCancelE05CancelRejectsEmptyExpected(t *testing.T) {
-	ex := &recordingSessionExecer{out: `{"ok":true}`}
-	_, err := CancelSessionCancel(context.Background(), ex, "pod-a", "agent:john:wecom:direct:john", "admin-1", nil)
-	if !errors.Is(err, ErrSessionCancelFailed) {
-		t.Fatalf("empty expected error = %v, want ErrSessionCancelFailed", err)
+func TestSessionCancelAllowsEmptyExpectedToAbortOnly(t *testing.T) {
+	ex := &recordingSessionExecer{out: `{"ok":true,"aborted":true,"drained":true,"confirmed":true,"killed":0,"remaining":[],"processes":[]}`}
+	result, err := CancelSessionCancel(context.Background(), ex, "pod-a", "agent:john:wecom:direct:john", "admin-1", nil)
+	if err != nil {
+		t.Fatalf("empty expected must be accepted: %v", err)
 	}
-	if len(ex.calls) != 0 {
-		t.Fatalf("empty expected must not reach the runtime, calls = %#v", ex.calls)
+	if !result.Aborted || !result.Drained || result.Killed != 0 {
+		t.Fatalf("empty expected result = %+v, want abort-only", result)
+	}
+	if len(ex.calls) != 1 {
+		t.Fatalf("expected one cancel RPC, got %#v", ex.calls)
+	}
+	joined := strings.Join(ex.calls[0], " ")
+	if !strings.Contains(joined, `"expected":[]`) {
+		t.Fatalf("empty expected must be forwarded, call = %s", joined)
 	}
 }
 

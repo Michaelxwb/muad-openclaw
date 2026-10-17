@@ -256,6 +256,10 @@ describe("SessionCancelDialog", () => {
 
     expect(button).toBeEnabled();
     expect(screen.getByText("将中止活跃 run。此操作不可撤销。")).toBeInTheDocument();
+
+    cancelMock.mockResolvedValue(result({ killed: 0, processes: [] }));
+    fireEvent.click(button);
+    await waitFor(() => expect(cancelMock).toHaveBeenCalledWith("user-1", "identity-1", []));
   });
 
   it("B-08 explains the skipped non-target process count", () => {

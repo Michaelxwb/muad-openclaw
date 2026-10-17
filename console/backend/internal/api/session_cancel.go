@@ -238,7 +238,8 @@ func (s *Server) sessionCancelCapability(
 }
 
 func validSessionCancelExpected(expected []gateway.SessionCancelExpected) bool {
-	if len(expected) == 0 {
+	// expected 字段必须显式提供（nil 表示缺失）；空数组合法：只 abort run，不杀进程（B-07）。
+	if expected == nil {
 		return false
 	}
 	for _, item := range expected {

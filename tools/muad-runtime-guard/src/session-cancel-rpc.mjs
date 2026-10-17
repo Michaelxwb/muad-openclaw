@@ -91,7 +91,9 @@ export function validatePreviewRequest(params, knownAgents) {
 }
 
 function validateExpected(expected) {
-  if (!Array.isArray(expected) || expected.length === 0) return null;
+  if (!Array.isArray(expected)) return null;
+  // 空数组是合法输入：没有已确认的进程时只 abort run，不杀任何进程。
+  if (expected.length === 0) return [];
   const output = [];
   for (const item of expected) {
     if (!isRecord(item) || !hasExactKeys(item, ["pid", "fingerprint"])) return null;
