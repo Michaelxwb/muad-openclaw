@@ -1,4 +1,5 @@
 .dialog :global(.semi-modal) {
+  width: min(900px, calc(100vw - 48px));
   max-width: calc(100vw - 48px);
 }
 
@@ -41,7 +42,20 @@
   grid-template-columns: 96px minmax(0, 1fr);
   gap: 8px;
   align-items: baseline;
+}
+
+.summaryValue {
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.runTag {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.nowrap {
+  white-space: nowrap;
 }
 
 .summaryLabel {

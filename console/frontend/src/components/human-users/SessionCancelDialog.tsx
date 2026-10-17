@@ -206,6 +206,7 @@ export function SessionCancelDialog({
     <Modal
       className={`standard-modal ${styles.dialog}`}
       title={t("sessionCancel.title")}
+      width={900}
       visible={visible}
       onCancel={onClose}
       footer={
@@ -272,20 +273,20 @@ function SessionSummary({ preview }: { preview: SessionCancelPreview }) {
     <div className={styles.summary}>
       <div className={styles.summaryRow}>
         <span className={styles.summaryLabel}>{t("sessionCancel.sessionKey")}</span>
-        <span className="mono">{preview.sessionKey}</span>
+        <span className={`mono ${styles.summaryValue}`}>{preview.sessionKey}</span>
       </div>
       <div className={styles.summaryRow}>
         <span className={styles.summaryLabel}>{t("sessionCancel.agent")}</span>
-        <span>{preview.agentId}</span>
+        <span className={styles.summaryValue}>{preview.agentId}</span>
       </div>
       <div className={styles.summaryRow}>
         <span className={styles.summaryLabel}>{t("sessionCancel.activeRun")}</span>
         <Space>
-          <Tag color={preview.activeRun.active ? "green" : "grey"}>
+          <Tag className={styles.runTag} color={preview.activeRun.active ? "green" : "grey"}>
             {preview.activeRun.active ? t("sessionCancel.runActive") : t("sessionCancel.runIdle")}
           </Tag>
           {preview.activeRun.sessionId ? (
-            <Text type="tertiary" className="mono">
+            <Text type="tertiary" className={`mono ${styles.summaryValue}`}>
               {t("sessionCancel.runSessionId")}: {preview.activeRun.sessionId}
             </Text>
           ) : null}
@@ -309,17 +310,18 @@ export function ProcessPreviewTable({ processes, skipped }: ProcessPreviewTableP
         title: t("sessionCancel.columnPid"),
         dataIndex: "pid",
         key: "pid",
-        width: 90,
+        width: 80,
       },
       {
         title: t("sessionCancel.columnPgid"),
         dataIndex: "pgid",
         key: "pgid",
-        width: 90,
+        width: 80,
       },
       {
         title: t("sessionCancel.columnLeader"),
         key: "leader",
+        width: 96,
         render: (_: unknown, row: SessionCancelProcess) => (
           <Tag color={row.leader ? "green" : "grey"}>
             {row.leader ? t("sessionCancel.leaderYes") : t("sessionCancel.leaderNo")}
@@ -329,17 +331,23 @@ export function ProcessPreviewTable({ processes, skipped }: ProcessPreviewTableP
       {
         title: t("sessionCancel.columnAge"),
         key: "ageSeconds",
-        render: (_: unknown, row: SessionCancelProcess) =>
-          row.ageSeconds < 60
-            ? t("sessionCancel.ageSeconds", { count: row.ageSeconds })
-            : t("sessionCancel.ageMinutes", {
-                minutes: Math.floor(row.ageSeconds / 60),
-                seconds: row.ageSeconds % 60,
-              }),
+        width: 120,
+        render: (_: unknown, row: SessionCancelProcess) => (
+          <span className={styles.nowrap}>
+            {row.ageSeconds < 60
+              ? t("sessionCancel.ageSeconds", { count: row.ageSeconds })
+              : t("sessionCancel.ageMinutes", {
+                  minutes: Math.floor(row.ageSeconds / 60),
+                  seconds: row.ageSeconds % 60,
+                })}
+          </span>
+        ),
       },
       {
         title: t("sessionCancel.columnCommand"),
         key: "cmdline",
+        width: 420,
+        ellipsis: { showTitle: true },
         render: (_: unknown, row: SessionCancelProcess) => {
           const command = truncateCmdline(row.cmdline);
           return (
@@ -370,6 +378,7 @@ export function ProcessPreviewTable({ processes, skipped }: ProcessPreviewTableP
         dataSource={processes}
         pagination={false}
         size="small"
+        scroll={{ x: 820 }}
         empty={t("sessionCancel.emptyProcesses")}
       />
     </div>
