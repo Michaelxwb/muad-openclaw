@@ -22,6 +22,16 @@ import {
   newWorkerInstanceId,
 } from "./long-task-cancel-rpc.mjs";
 import { createLongTaskRunController } from "./long-task-run-controller.mjs";
+import {
+  SESSION_CANCEL_CAPABILITY_VERSION,
+  SESSION_CANCEL_LOG,
+  SESSION_CANCEL_METHOD,
+  SESSION_CANCEL_SCOPE,
+  SESSION_PREVIEW_METHOD,
+  createSessionCancelHandler,
+  createSessionPreviewHandler,
+  installSessionCancelCapability,
+} from "./session-cancel-rpc.mjs";
 import { LongTaskStateClient, LongTaskStateClientError } from "./long-task-state-client.mjs";
 import { createMainBindingReply } from "./main-binding-reply.mjs";
 import { createModelConfigDispatch } from "./model-config-reply.mjs";
@@ -83,6 +93,32 @@ const plugin = {
       capability: cancelCapability,
       log: (message) => api.logger?.warn?.(message),
     }), { scope: LONG_TASK_CANCEL_SCOPE });
+    // 会话终止 RPC：同样只走 operator.write 控制面；能力以原生 abort/drain 是否
+    // 加载成功为准，绝不注册为模型工具。
+    const sessionCancelCapability = installSessionCancelCapability(globalThis, {
+      available: false, version: 0, reason: "native_unavailable",
+    });
+    const sessionCancelRuntime = { native: null };
+    const sessionCancelLog = (message) => api.logger?.warn?.(message);
+    void wireSessionCancelRuntime({
+      api, capability: sessionCancelCapability, runtime: sessionCancelRuntime,
+    });
+    const sessionCancelOptions = {
+      getConfig: () => latestGuardConfig(config),
+      capability: sessionCancelCapability,
+      runtime: sessionCancelRuntime,
+      log: sessionCancelLog,
+    };
+    api.registerGatewayMethod(
+      SESSION_PREVIEW_METHOD,
+      createSessionPreviewHandler(sessionCancelOptions),
+      { scope: SESSION_CANCEL_SCOPE },
+    );
+    api.registerGatewayMethod(
+      SESSION_CANCEL_METHOD,
+      createSessionCancelHandler(sessionCancelOptions),
+      { scope: SESSION_CANCEL_SCOPE },
+    );
     installLongTaskStatePush(longTaskManager, config, api);
     registerMainBindingReply(api, config);
     registerModelConfigDispatch(api, config);
@@ -326,6 +362,21 @@ async function wireLongTaskCancelRuntime({ api, manager, capability }) {
   });
   manager.attachRunController?.(controller);
   Object.assign(capability, { available: true, version: LONG_TASK_CANCEL_CAPABILITY_VERSION, reason: "" });
+}
+
+// 会话终止链装配：原生 abort/drain 加载成功后注入运行时并上报能力（version=1）；
+// 失败时能力明确不可用并记录稳定 reason，不危险兜底。
+async function wireSessionCancelRuntime({ api, capability, runtime }) {
+  const loaded = await loadNativeCancelRuntime();
+  if (!loaded.available) {
+    Object.assign(capability, { available: false, version: 0, reason: loaded.reason });
+    api.logger?.warn?.(`${SESSION_CANCEL_LOG} native runtime unavailable reason=${loaded.reason}`);
+    return;
+  }
+  runtime.native = loaded.native;
+  Object.assign(capability, {
+    available: true, version: SESSION_CANCEL_CAPABILITY_VERSION, reason: "",
+  });
 }
 
 export function installLongTaskManager(

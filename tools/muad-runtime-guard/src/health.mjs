@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 
 import { parseGuardConfig } from "./config.mjs";
 import { cancelCapabilityOf } from "./long-task-cancel-rpc.mjs";
+import { sessionCancelCapabilityOf } from "./session-cancel-rpc.mjs";
 
 export const RUNTIME_GUARD_VERSION = 2;
 
@@ -12,6 +13,7 @@ export function runtimeHealth(config, globals = globalThis) {
   const skillQueue = globals[Symbol.for("muad.skill.lease")];
   const longTaskQueue = globals[Symbol.for("muad.longtask.manager")];
   const cancelCapability = cancelCapabilityOf(globals);
+  const sessionCancelCapability = sessionCancelCapabilityOf(globals);
   const sessionManagerLoaded = sessionManager?.loaded === true;
   const browser = queueSnapshot(browserQueue, config.maxBrowserConcurrency);
   const skill = queueSnapshot(skillQueue, config.maxSkillConcurrency);
@@ -27,6 +29,15 @@ export function runtimeHealth(config, globals = globalThis) {
       typeof longTaskQueue?.taskStatus === "function",
     version: Number.isInteger(cancelCapability?.version) ? cancelCapability.version : 0,
   };
+  // 会话终止能力：只有 native abort/drain 加载成功才 available=true, version=1；
+  // 缺失时给出稳定 reason，Console 据此明确不可用而不做危险兜底。
+  const sessionCancel = {
+    available: sessionCancelCapability?.available === true,
+    version: Number.isInteger(sessionCancelCapability?.version) ? sessionCancelCapability.version : 0,
+    reason: typeof sessionCancelCapability?.reason === "string"
+      ? sessionCancelCapability.reason
+      : (sessionCancelCapability?.available === true ? "" : "native_unavailable"),
+  };
   return {
     ok: config.valid && sessionManagerLoaded && Boolean(browserGuardLoaded) &&
       Boolean(skillGuardLoaded) && Boolean(longTaskGuardLoaded),
@@ -41,6 +52,7 @@ export function runtimeHealth(config, globals = globalThis) {
     skill,
     longTask,
     longTaskCancel,
+    sessionCancel,
   };
 }
 

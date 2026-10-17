@@ -33,7 +33,7 @@
 | S-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → audit store | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | S-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 Worker + 企微通道 + 队列 | TASK-006 | planned | - |
 | E-01 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC + handler | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
-| E-02 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC → 真实进程指纹复核 | TASK-002 | planned | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
+| E-02 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC → 真实进程指纹复核 | TASK-002 | verified | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
 | E-03 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → capability | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → repo | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | gateway Exec | TASK-003 | verified | ["go","-C","console/backend","test","./internal/gateway","-run","SessionCancel","-count=1"] |
@@ -41,7 +41,7 @@
 | B-01 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（PID 复用） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
 | B-02 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（UID/EPERM） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
 | B-03 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（非组长） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
-| B-04 | session-cancel.backend.design.md#2.5 验收条件 | unit | RPC 校验（longtask/PID1/self） | TASK-002 | planned | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
+| B-04 | session-cancel.backend.design.md#2.5 验收条件 | unit | RPC 校验（longtask/PID1/self） | TASK-002 | verified | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
 | B-05 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 企微队列 | TASK-006 | planned | - |
 | S-07 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 用户详情 → API → 真实 Worker | TASK-006 | planned | - |
 | S-08 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 弹窗 → API → Worker 信号 → UI | TASK-006 | planned | - |
@@ -166,7 +166,7 @@
 
 ## TASK-002: Guard session-cancel RPC 与能力注册
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: session-cancel.backend.design.md#3.4 接口设计（RPC）, session-cancel.backend.design.md#3.2 架构设计（模块落点）, session-cancel.backend.design.md#5.2 风险识别
@@ -179,34 +179,45 @@
 
 ### Checklist
 
-- [ ] 实现 preview：校验 sessionKey 形态、拒绝 `:longtask:`、返回 activeRun + sweeper 候选 + skipped
-- [ ] 实现 cancel：校验 expected 非空；调用 native abort/drain；调用 sweeper 终止确认；返回 aborted/drained/killed/remaining
-- [ ] 能力：仅当 native runtime 可用时 `available=true, version=1`；失败时明确 `reason`
-- [ ] 在 `index.mjs` 用 `registerGatewayMethod(..., { scope: "operator.write" })` 注册两个方法
-- [ ] 在 `health.mjs` 增加 `sessionCancel`
-- [ ] [E-02][integration] RPC cancel 传入过期指纹，断言只跳过、不发信号，返回 41009 判定所需字段
-- [ ] [B-04][unit] 断言 longtask key/PID 1/self 被拒绝或跳过
-- [ ] [RULE-runtime-skill-001][verifier] 断言取消 RPC 未注册为模型工具（`api.registerTool` 无新增），且不改变 Skill 激活/分层路径；运行既有 skill 测试
-- [ ] [RULE-runtime-skill-layering-001][verifier] `git diff --stat` 断言 `skills/` 与分层解析代码无改动；既有 layering 测试保持绿色
-- [ ] [RULE-runtime-log-injection-001][verifier] 断言新模块仅通过注入的 `log` 回调输出；`rg "console\\.(log|warn|error)" tools/muad-runtime-guard/src/session-cancel-*.mjs` 为空
-- [ ] [RULE-runtime-log-prefix-001][verifier] 断言日志行含 `[muad-runtime-guard][session-cancel]` 前缀；测试中捕获 log 断言
-- [ ] [RULE-runtime-skill-fail-loud-001][verifier] 断言本任务未新增/修改任何 Skill 脚本；`git diff --stat -- skills/` 为空
-- [ ] 运行 `node --test tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs tools/muad-runtime-guard/test/session-cancel-registration.test.mjs`
+- [x] 实现 preview：校验 sessionKey 形态、拒绝 `:longtask:`、返回 activeRun + sweeper 候选 + skipped
+- [x] 实现 cancel：校验 expected 非空；调用 native abort/drain；调用 sweeper 终止确认；返回 aborted/drained/killed/remaining
+- [x] 能力：仅当 native runtime 可用时 `available=true, version=1`；失败时明确 `reason`
+- [x] 在 `index.mjs` 用 `registerGatewayMethod(..., { scope: "operator.write" })` 注册两个方法
+- [x] 在 `health.mjs` 增加 `sessionCancel`
+- [x] [E-02][integration] RPC cancel 传入过期指纹，断言只跳过、不发信号，返回 41009 判定所需字段
+- [x] [B-04][unit] 断言 longtask key/PID 1/self 被拒绝或跳过
+- [x] [RULE-runtime-skill-001][verifier] 断言取消 RPC 未注册为模型工具（`api.registerTool` 无新增），且不改变 Skill 激活/分层路径；运行既有 skill 测试
+- [x] [RULE-runtime-skill-layering-001][verifier] `git diff --stat` 断言 `skills/` 与分层解析代码无改动；既有 layering 测试保持绿色
+- [x] [RULE-runtime-log-injection-001][verifier] 断言新模块仅通过注入的 `log` 回调输出；`rg "console\\.(log|warn|error)" tools/muad-runtime-guard/src/session-cancel-*.mjs` 为空
+- [x] [RULE-runtime-log-prefix-001][verifier] 断言日志行含 `[muad-runtime-guard][session-cancel]` 前缀；测试中捕获 log 断言
+- [x] [RULE-runtime-skill-fail-loud-001][verifier] 断言本任务未新增/修改任何 Skill 脚本；`git diff --stat -- skills/` 为空
+- [x] 运行 `node --test tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs tools/muad-runtime-guard/test/session-cancel-registration.test.mjs`
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| E-02 | integration | RPC handler + fake procRoot | 过期指纹进入 skipped，`killed=0`，无信号调用 | `test/session-cancel-rpc.test.mjs` / stale-preview | `["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"]` | planned |
-| B-04 | unit | RPC 参数校验 | longtask key 返回 invalid；PID 1/self 不在 candidates | `test/session-cancel-rpc.test.mjs` / rejected-targets | 同上 | planned |
+| E-02 | integration | RPC handler + fake procRoot | 过期指纹进入 skipped，`killed=0`，无信号调用 | `test/session-cancel-rpc.test.mjs` / stale-preview | `["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"]` | verified |
+| B-04 | unit | RPC 参数校验 | longtask key 返回 invalid；PID 1/self 不在 candidates | `test/session-cancel-rpc.test.mjs` / rejected-targets | `["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"]` | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写。
+- RED：`node --test tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs tools/muad-runtime-guard/test/session-cancel-registration.test.mjs` → `ERR_MODULE_NOT_FOUND`（`src/session-cancel-rpc.mjs` 尚不存在），0 pass / 2 fail。
+- GREEN：`node --test tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs` → 11/11 pass；追加注册测试后 `node --test ...session-cancel-rpc.test.mjs ...session-cancel-registration.test.mjs` → 14/14 pass。
+- E-02 证据：预览后同 pid 的 `startTime` 由 111 变为 222，cancel 返回 `processes=[{pid:4028,outcome:"skipped",reason:"fingerprint_mismatch"}]`、`killed=0`、`signals=[]`，但 run 级 abort/drain 仍执行（`sessionId=run-1`）；进程退出后取消返回 `outcome:"skipped",reason:"not_found"`，同样不发信号。输出含 `processes[].outcome/reason` 与 `killed/remaining`，足够 TASK-004 判定 41009。
+- B-04 证据：`agent:*:longtask:*`、含 `:longtask:` 段、未知 agent、段数不符、超长 key 均返回 `{ok:false,reason:"invalid_session_key"}`；`expected` 为空/含 PID 1/指纹格式非法返回 `invalid_expected`；fake procRoot 中的 PID 1 与 self(999) 不出现在 preview candidates，cancel 中 self 以 `outcome:"skipped",reason:"protected"` 上报且无信号。
+- 能力证据：注册后 health 为 `sessionCancel:{available:false,version:0,reason:"native_unavailable"}`；动态加载失败后 `reason:"sdk_unavailable"`；注入能力后 `{available:true,version:1,reason:""}`。两个 RPC 均以 `operator.write` 注册，`registration.tools` 仍只有 `muad_submit_long_task`。
+- verifier：`rg "console\\.(log|warn|error)|writeFile|mkdir" tools/muad-runtime-guard/src/session-cancel-*.mjs` 无输出；日志断言全部以 `[muad-runtime-guard][session-cancel]` 开头，不含 sessionKey、requestedBy、environ/凭证或 cmdline；`git diff --stat -- skills/` 为空。
+- 回归：`node --test test/skill-hooks... skill-trace.test.mjs plugin-health.test.mjs` 84/84 pass；guard 全量 `node --test tools/muad-runtime-guard/test/*.test.mjs` 339 pass / 2 skipped / 0 fail（补齐 worktree 本地 `bash-parser`、`typescript` 依赖后运行，依赖安装未进入提交）。
+- E-02: verified — automated command passed; run_id=8d0a2d1a0584433b8113f8f0e9f4f2fb (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=8d0a2d1a0584433b8113f8f0e9f4f2fb (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-18] started
+- [2026-10-18] implemented session-cancel RPC/controller, capability registration, health sessionCancel; E-02/B-04 passed
+- [2026-10-18] completed (done)
 
 ---
 
