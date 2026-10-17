@@ -1,7 +1,7 @@
 version: 1
 task: skill-execution-control-and-review
 enforcement: required
-updated_at: '2026-10-17T11:49:38.761696+00:00'
+updated_at: '2026-10-17T11:52:37.735567+00:00'
 sources:
 - type: cli
   ref: bind
@@ -51,7 +51,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-quality-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -175,7 +175,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-write-err-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -338,7 +338,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-database-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -468,7 +468,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-no-select-star-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -631,7 +631,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-backend-directory-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -765,7 +765,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-backend-logging-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -802,7 +802,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-backend-redact-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -936,7 +936,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-backend-platform-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1132,7 +1132,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-http-envelope-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1169,7 +1169,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-backend-model-pool-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1303,7 +1303,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-component-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1340,7 +1340,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-semi-shell-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1501,7 +1501,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-directory-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1538,7 +1538,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-api-types-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1672,7 +1672,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-quality-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1798,7 +1798,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-api-client-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1835,7 +1835,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-i18n-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2025,7 +2025,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-config-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2062,7 +2062,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-validate-before-write-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2169,7 +2169,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-007
           item_id: RULE-runtime-directory-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2276,7 +2276,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-runtime-security-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2313,7 +2313,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-secret-file-mode-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2447,7 +2447,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-skill-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2484,7 +2484,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-009
           item_id: RULE-runtime-skill-layering-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2521,7 +2521,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-log-injection-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2557,7 +2557,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-log-prefix-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2594,7 +2594,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-008
           item_id: RULE-runtime-skill-fail-loud-001
-          artifact_sha256: bccf5484000a23f3e1ccc92ef2d7bb6ddc449ab87d4548b90b3162c781c41134
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
