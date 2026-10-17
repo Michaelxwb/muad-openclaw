@@ -580,6 +580,7 @@
 - S-08: verified — automated command passed; run_id=da1361136cd74d6ba82b6f49af62e17e (confirmed_by: runner)
 - S-06: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
 
 ### Log
 
@@ -696,6 +697,7 @@
 - E-22: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - E-23: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - B-21: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-23: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
 
 ### Log
 
@@ -782,6 +784,8 @@
 - B-22: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - B-23: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - B-24: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-21: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-24: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
 
 ### Log
 
@@ -875,6 +879,11 @@
 - S-16: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - E-11: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - RULE-13: verified — command `go test -tags e2e ./test -run '^TestSkillTraceE2E_RULE13$' -count=1 -v` passed（pytest + guard node suite）
+- S-01: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-14: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
 
 ### Log
 
