@@ -66,6 +66,8 @@ json.NewEncoder(w).Encode(map[string]any{"error": "bad"})
 - **Runtime apply**：经 `runtimeconfig` + `runtimeapply`，带 generation、分 stage、失败可回滚；不要在 handler 里半套 apply
 - 错误码统一经 `internal/errcode` 定义（一场景一码、按业务块分段），`api/errors.go` 的 `errorCatalog` 提供 zh/en 文案与 HTTP status；用户 message 稳定、可本地化理解
 - 健康检查与业务鉴权分离
+- **告警去重键**：包含 pod + human user + skill + interface（如 `skill.request_limit:<podId>:<humanUserId>:<skill>:<interface>`），避免不同用户的问题互相掩盖
+- **告警通道**：企微 webhook 加密落库、GET 打码、仅允许 `qyapi.weixin.qq.com`、变更写 `settings.update` 审计；发送走异步分发器，业务错误不重试
 
 ## Patterns
 - 新平台能力先扩 registry/repo，再暴露 api，最后才动 driver

@@ -10,7 +10,7 @@
 
 - Base image: OpenClaw `2026.7.1` + Chromium/Playwright
 - Control scripts: `bin/*.mjs`（配置渲染、事务 apply、自检、安装）
-- Plugins/tools: `tools/muad-run-skill`、`muad-runtime-guard`、`session-manager`、`muad-progress` 等
+- Plugins/tools: `tools/muad-run-skill`、`muad-runtime-guard`、`muad-skill-sdk`、`session-manager`、`muad-progress` 等
 - Skill seeds/templates: `skills/`
 - Deploy: `Dockerfile`、`entrypoint.sh`、`build/helm-build/`、`compose.template.yml`
 
@@ -31,8 +31,10 @@
 | `tools/muad-runtime-guard/src/long-task-command-policy.mjs` | 长任务前台命令判定（Shell AST：cd/包装器/find -exec/awk/sed） |
 | `tools/muad-runtime-guard/src/long-task-cancel-state.mjs` | 长任务取消状态（0600 JSONL、单调 revision、取消墓碑） |
 | `tools/session-manager/` | 业务平台会话/凭证解析 |
+| `tools/muad-skill-sdk/` | Skill Python SDK（requests 透传、审计、限额、platform_request） |
 | `tools/muad-progress/` | 进度 CLI（Go） |
 | `skills/` | system skill 种子与开发模板 |
+| `skills/self-skill-review/` | 用户自建 Skill 只读审查（确定性检查 + 语义审查） |
 | `build/helm-build/` | Console Helm chart（内网部署） |
 
 ## Module Map
@@ -43,10 +45,11 @@ tools/
 ├── muad-run-skill/  # skill runner plugin
 ├── muad-runtime-guard/
 ├── session-manager/
+├── muad-skill-sdk/  # Skill Python SDK
 ├── muad-progress/   # Go progress + skill-check
 ├── progress-adapters/
 └── shared/               # shared-lease-queue + notify-user
-skills/              # seeds + _templates
+skills/              # seeds + _templates（含 self-skill-review）
 build/helm-build/ Dockerfile entrypoint.sh
 ```
 

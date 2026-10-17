@@ -31,6 +31,7 @@
 | `console/backend/internal/skillsync/` | 控制面 skill 文件与运行时对齐（public/private 同步、全局锁、hash 检测） |
 | `console/backend/internal/auth/` / `crypto/` | 鉴权与敏感字段编解码 |
 | `console/backend/internal/audit/` / `collector/` | 操作审计与采集 |
+| `console/backend/internal/notify/` | 通用告警事件分发（去重、限速、企微通道） |
 | `console/backend/internal/config/` | 服务配置加载 |
 | `console/backend/test/` | 集成/API 测试 |
 
@@ -47,6 +48,7 @@ console/backend/
 │   ├── runtimeconfig/    # desired config builder
 │   ├── runtimeapply/     # atomic apply pipeline
 │   ├── skillsync/        # skill 同步与并发安全
+│   ├── notify/           # 告警事件分发（WeCom）
 │   ├── auth/ crypto/ llm/ gateway/ monitor/
 │   └── web/              # embed SPA
 ├── test/
