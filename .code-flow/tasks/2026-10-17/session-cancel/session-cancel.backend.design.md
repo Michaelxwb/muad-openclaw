@@ -384,8 +384,10 @@ flowchart TD
     G -->|否| H["41010"]
     G -->|是| I{"killed=0 且全部 skipped?"}
     I -->|是| J["41009 提示重新预览"]
-    I -->|否| K["审计 + 返回逐进程结果"]
+    I -->|否| K["审计 + chat.inject 注记 + 返回逐进程结果"]
 ```
+
+**终止后会话注记**：cancel 成功且 `aborted=true` 或 `killed>0` 时，Console 通过 `chat.inject` 向目标会话追加一条 assistant 注记（管理员已从控制台终止、清理 N 个进程、remaining M、**不是模型执行失败**、未经用户要求不要自动重跑）。注记只进 transcript，不触发 agent run、不向 IM 通道投递；注入失败仅记录脱敏诊断，不影响已完成的终止结果。这样下一轮模型不会把被杀掉的 `process` session 误判为执行失败。
 
 #### 形态 B：内部 gateway RPC
 
