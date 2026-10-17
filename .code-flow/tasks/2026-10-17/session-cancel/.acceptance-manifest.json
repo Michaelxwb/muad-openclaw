@@ -229,7 +229,7 @@
       "kind": "functional",
       "boundary": "fake procRoot（PID 复用）",
       "owner": "TASK-001",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
@@ -237,7 +237,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "4f1e92d7a6564db8b596bdbb16a1acd3",
+        "executed_at": "2026-10-17T16:03:38.743484+00:00",
+        "command": [
+          "node",
+          "--test",
+          "tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "9a5454b3fa1e60084c3d7d97579ec37835e7f1a9e916cb7ec5d631a002228dbf"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "4f1e92d7a6564db8b596bdbb16a1acd3",
+          "executed_at": "2026-10-17T16:03:38.743484+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "9a5454b3fa1e60084c3d7d97579ec37835e7f1a9e916cb7ec5d631a002228dbf"
+        }
+      ]
     },
     {
       "id": "B-02",
@@ -246,7 +283,7 @@
       "kind": "functional",
       "boundary": "fake procRoot（UID/EPERM）",
       "owner": "TASK-001",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
@@ -254,7 +291,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "4f1e92d7a6564db8b596bdbb16a1acd3",
+        "executed_at": "2026-10-17T16:03:38.743484+00:00",
+        "command": [
+          "node",
+          "--test",
+          "tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "9a5454b3fa1e60084c3d7d97579ec37835e7f1a9e916cb7ec5d631a002228dbf"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "4f1e92d7a6564db8b596bdbb16a1acd3",
+          "executed_at": "2026-10-17T16:03:38.743484+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "9a5454b3fa1e60084c3d7d97579ec37835e7f1a9e916cb7ec5d631a002228dbf"
+        }
+      ]
     },
     {
       "id": "B-03",
@@ -263,7 +337,7 @@
       "kind": "functional",
       "boundary": "fake procRoot（非组长）",
       "owner": "TASK-001",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
@@ -271,7 +345,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "4f1e92d7a6564db8b596bdbb16a1acd3",
+        "executed_at": "2026-10-17T16:03:38.743484+00:00",
+        "command": [
+          "node",
+          "--test",
+          "tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "9a5454b3fa1e60084c3d7d97579ec37835e7f1a9e916cb7ec5d631a002228dbf"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "4f1e92d7a6564db8b596bdbb16a1acd3",
+          "executed_at": "2026-10-17T16:03:38.743484+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "9a5454b3fa1e60084c3d7d97579ec37835e7f1a9e916cb7ec5d631a002228dbf"
+        }
+      ]
     },
     {
       "id": "B-04",

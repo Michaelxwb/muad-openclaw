@@ -521,6 +521,8 @@ flowchart TD
 | `runtime-directory-structure#RULE-runtime-directory-001` | required | 新模块放 `tools/muad-runtime-guard/src` + 同目录测试 | §3.2 模块落点 | S-01, B-01 | applied |
 | `runtime-isolation-and-security#RULE-runtime-security-001` | required | 不读取/记录凭证，不把密钥写入镜像 | §3.4 安全不变量；§3.5 安全性 | B-02 | applied |
 | `runtime-isolation-and-security#RULE-runtime-secret-file-mode-001` | required | 本功能不落盘任何配置/凭证 | §3.3 数据设计（无文件写入） | S-02 | applied |
+| `runtime-config-and-apply#RULE-runtime-config-001` | required | 本功能不修改 runtime 配置/apply 路径 | §2.4 Out of Scope（无配置变更） | B-01~B-03 | applied（无配置变更） |
+| `runtime-config-and-apply#RULE-runtime-validate-before-write-001` | required | 本功能不物化 runtime config、不写 generation | §3.3 数据设计（无文件写入） | B-01~B-03 | applied（无配置变更） |
 | `runtime-skill-execution#RULE-runtime-skill-001` | required | 不改变 Skill 分层/激活；取消 RPC 不是模型工具 | §2.4 Out of Scope；§3.4 RULE-06 | E-04 | applied |
 | `runtime-skill-execution#RULE-runtime-skill-layering-001` | required | 不触碰 system/public/private 解析 | §2.4 Out of Scope | 现有回归测试 | applied（无行为变更） |
 | `runtime-skill-execution#RULE-runtime-log-injection-001` | required | 新模块通过注入 `log` 回调 | §3.2 模块落点；§3.5 日志 | S-02 | applied |
