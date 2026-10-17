@@ -561,6 +561,23 @@ export interface AgentGuidanceInput {
   globalPrompt?: string;
 }
 
+export interface NotifySettings {
+  enabled: boolean;
+  webhook: string;
+  updatedAt: string;
+}
+
+export interface NotifySettingsInput {
+  enabled: boolean;
+  webhook?: string;
+}
+
+export interface NotifyTestResult {
+  ok: boolean;
+  errcode: number;
+  errmsg: string;
+}
+
 export interface GlobalResourceConfig extends ResourceConfig {
   skillRequestLimit: number;
   configured: boolean;

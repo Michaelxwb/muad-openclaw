@@ -54,15 +54,15 @@
 | B-10 | backend.design.md#2.5.2 功能验收场景 | integration | 旧状态文件（无 requestProfile） | TASK-007 | verified |
 | S-21 | frontend.design.md#2.4 验收条件 | E2E | API → 状态 → 抽屉渲染 | TASK-011 | planned |
 | S-22 | frontend.design.md#2.4 验收条件 | integration | 状态 → UI | TASK-011 | planned |
-| S-23 | frontend.design.md#2.4 验收条件 | E2E | 表单 → api.ts → 后端 → 回显 | TASK-010 | planned |
+| S-23 | frontend.design.md#2.4 验收条件 | E2E | 表单 → api.ts → 后端 → 回显 | TASK-010 | e2e_deferred | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
 | S-24 | frontend.design.md#2.4 验收条件 | E2E | API → 列表 → 钻取 | TASK-011 | planned |
 | S-25 | frontend.design.md#2.4 验收条件 | integration | API 返回 truncated | TASK-011 | planned |
 | E-21 | frontend.design.md#2.4 验收条件 | integration | 请求失败 → 错误态 | TASK-011 | planned |
-| E-22 | frontend.design.md#2.4 验收条件 | integration | 表单校验 | TASK-010 | planned |
-| E-23 | frontend.design.md#2.4 验收条件 | integration | 测试接口返回 errcode≠0 | TASK-010 | planned |
+| E-22 | frontend.design.md#2.4 验收条件 | integration | 表单校验 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
+| E-23 | frontend.design.md#2.4 验收条件 | integration | 测试接口返回 errcode≠0 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
 | E-24 | frontend.design.md#2.4 验收条件 | integration | 空数据 | TASK-011 | planned |
 | E-25 | frontend.design.md#2.4 验收条件 | integration | 权限/404 | TASK-011 | planned |
-| B-21 | frontend.design.md#2.4 验收条件 | unit | 表单映射 | TASK-010 | planned |
+| B-21 | frontend.design.md#2.4 验收条件 | unit | 表单映射 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
 | B-22 | frontend.design.md#2.4 验收条件 | unit | 时间线渲染 | TASK-011 | planned |
 | B-23 | frontend.design.md#2.4 验收条件 | integration | 健康列表分组 | TASK-011 | planned |
 | B-24 | frontend.design.md#2.4 验收条件 | integration | 旧 Skill 时间线 | TASK-011 | planned |
@@ -552,7 +552,7 @@
 
 ## TASK-010: 前端系统设置（上限 + 告警推送）
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-003, TASK-004
 - **Source**: `skill-execution-control-and-review.frontend.design.md#3.3 组件设计`, `skill-execution-control-and-review.frontend.design.md#3.5 状态与数据流`, `skill-execution-control-and-review.frontend.design.md#3.9 文案与 i18n`
@@ -565,31 +565,49 @@
 
 ### Checklist
 
-- [ ] 扩展 `types/api.ts` 与 `api.ts`：资源设置字段、notify 读取/保存/测试方法。
-- [ ] 实现 `NotifySettings`/`NotifySettingsForm` 与 `ResourceForm` 新字段；保存/测试 busy 态与错误就地展示。
-- [ ] webhook 打码回显；输入框留空不修改；PUT 校验失败展示字段错误。
-- [ ] [verifier][integration] `frontend-component-specs#RULE-frontend-semi-shell-001`：Semi + 全局 ConfigProvider，无页面级重复包裹。
-- [ ] [verifier][integration] `frontend-directory-structure#RULE-frontend-directory-001`：文件位于 console/frontend，HTTP 经 api.ts。
-- [ ] [verifier][integration] `frontend-directory-structure#RULE-frontend-api-types-001`：类型集中 types/api.ts，api.ts re-export，无漂移 DTO。
-- [ ] [verifier][unit] `frontend-quality-standards#RULE-frontend-api-client-001`：无裸 fetch/axios。
-- [ ] 先写表单校验与保存/测试交互测试并记录 RED。
+- [x] 扩展 `types/api.ts` 与 `api.ts`：资源设置字段、notify 读取/保存/测试方法。
+- [x] 实现 `NotifySettings`/`NotifySettingsForm` 与 `ResourceForm` 新字段；保存/测试 busy 态与错误就地展示。
+- [x] webhook 打码回显；输入框留空不修改；PUT 校验失败展示字段错误。
+- [x] [verifier][integration] `frontend-component-specs#RULE-frontend-semi-shell-001`：Semi + 全局 ConfigProvider，无页面级重复包裹。
+- [x] [verifier][integration] `frontend-directory-structure#RULE-frontend-directory-001`：文件位于 console/frontend，HTTP 经 api.ts。
+- [x] [verifier][integration] `frontend-directory-structure#RULE-frontend-api-types-001`：类型集中 types/api.ts，api.ts re-export，无漂移 DTO。
+- [x] [verifier][unit] `frontend-quality-standards#RULE-frontend-api-client-001`：无裸 fetch/axios。
+- [x] 先写表单校验与保存/测试交互测试并记录 RED。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-23 | E2E | 表单 → api.ts → 后端 → 回显 | 保存成功；刷新回显；webhook 打码；测试结果就地展示 | `console/frontend/test/Settings.test.tsx` | `cd console/frontend && npm test -- --run Settings` | planned |
-| E-22 | integration | 表单校验 | 负数/非整数提示，不发请求 | 同上 | 同上 | planned |
-| E-23 | integration | 测试接口 errcode≠0 | 保留输入并展示失败原因 | 同上 | 同上 | planned |
-| B-21 | unit | 上限 0 | 显示"不限制"，保存成功 | 同上 | 同上 | planned |
+| S-23 | E2E | 表单 → api.ts → 后端 → 回显 | 保存成功；刷新回显；webhook 打码；测试结果就地展示 | `console/frontend/test/Settings.test.tsx` | ["npm", "test", "--", "--run", "Settings"] | e2e_deferred |
+| E-22 | integration | 表单校验 | 负数/非整数提示，不发请求 | 同上 | ["npm", "test", "--", "--run", "Settings"] | verified |
+| E-23 | integration | 测试接口 errcode≠0 | 保留输入并展示失败原因 | 同上 | ["npm", "test", "--", "--run", "Settings"] | verified |
+| B-21 | unit | 上限 0 | 显示"不限制"，保存成功 | 同上 | ["npm", "test", "--", "--run", "Settings"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+- RED (2026-10-17): `cd console/frontend && npm test -- --run Settings` → 6 failed / 9 passed。新增与更新的用例先于实现失败（缺少 `skillRequestLimit` 字段、「告警推送」区块与 notify API 方法）。
+- GREEN (2026-10-17): `cd console/frontend && npm test -- --run Settings` → 2 files / 15 tests passed。
+- FULL GATE (2026-10-17): `cd console/frontend && npm run check` → `tsc --noEmit` + eslint + prettier + vitest 全绿，26 files / 199 tests passed。
+- 断言位置（`console/frontend/test/Settings.test.tsx`）：
+  - S-23：`shows the masked webhook, keeps the input empty, and saves without overwriting`（打码地址回显、输入框为空、留空保存 payload 不含 webhook、保存成功提示）。
+  - E-22：`rejects negative and non-integer request limits without sending`（`-1` 显示范围错误、`1.5` 显示整数错误，`setResources` 均未调用）。
+  - E-23：`shows the test failure reason inline and keeps the typed webhook`（errcode 93000 与 errmsg 就地展示，输入保留）。
+  - B-21：`shows the unlimited hint and saves a zero request limit`（0 显示“不限制”，保存 payload `skillRequestLimit: 0`）。
+- 真实组件证据：`Settings` 渲染 `ResourceForm`（新增 `skillRequestLimit` 字段）与 `NotifySettings` 容器（`console/frontend/src/components/settings/NotifySettings.tsx`）→ `NotifySettingsForm`（`console/frontend/src/components/settings/NotifySettingsForm.tsx`）；请求经 `api.getNotifySettings/setNotifySettings/testNotifySettings`，无裸 fetch。
+- 边界说明：TASK-003/TASK-004 已合并 `GET/PUT /api/v1/settings/notify`、`POST /api/v1/settings/notify/test` 与 `settings/resources.skillRequestLimit`。本任务 vitest 按项目约定在 `api.ts` 边界 mock；S-23 的真实全链路 E2E 由 TASK-012 在全部功能任务完成后终验。
+- S-23: e2e_deferred — automated command e2e_deferred; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
+- E-22: verified — automated command passed; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
+- E-23: verified — automated command passed; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
+- B-21: verified — automated command passed; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] TASK-010 acceptance commands 改为 argv JSON（`["npm","test","--","--run","Settings"]`，cwd `console/frontend`）并重锁 manifest。
+- [2026-10-17] RED 6 failed / 9 passed；编码后 GREEN 15 passed；`npm run check` 199 passed。
+- [2026-10-17] done
+- [2026-10-17] completed (done)
 
 ---
 

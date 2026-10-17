@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "task_file": "skill-execution-control-and-review.md",
-  "task_sha256": "96f6f334d842142363950c3a7d8c71011ee3c882c55735c61312d5b09dd59a78",
+  "task_sha256": "4b63bceb19e708a303d7ad4348ee879967cc65be3c63906ced16a89d8d8025af",
   "scenarios": [
     {
       "id": "S-01",
@@ -1780,21 +1780,54 @@
       "kind": "e2e",
       "boundary": "表单 → api.ts → 后端 → 回显",
       "owner": "TASK-010",
-      "status": "planned",
+      "status": "e2e_deferred",
       "command": [
-        "`cd",
-        "console/frontend",
-        "&&",
         "npm",
         "test",
         "--",
         "--run",
-        "Settings`"
+        "Settings"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "S-23",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "bd340f0c86524066bc110049ee24c0fa",
+          "executed_at": "2026-10-17T11:52:18.964520+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-23",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "bd340f0c86524066bc110049ee24c0fa",
+        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0
+      }
     },
     {
       "id": "S-24",
@@ -1851,14 +1884,58 @@
       "kind": "functional",
       "boundary": "表单校验",
       "owner": "TASK-010",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Settings"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "E-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "bd340f0c86524066bc110049ee24c0fa",
+          "executed_at": "2026-10-17T11:52:18.964520+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "E-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "bd340f0c86524066bc110049ee24c0fa",
+        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+      }
     },
     {
       "id": "E-23",
@@ -1867,14 +1944,58 @@
       "kind": "functional",
       "boundary": "测试接口返回 errcode≠0",
       "owner": "TASK-010",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Settings"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "E-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "bd340f0c86524066bc110049ee24c0fa",
+          "executed_at": "2026-10-17T11:52:18.964520+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "E-23",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "bd340f0c86524066bc110049ee24c0fa",
+        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+      }
     },
     {
       "id": "E-24",
@@ -1915,14 +2036,58 @@
       "kind": "functional",
       "boundary": "表单映射",
       "owner": "TASK-010",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Settings"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "B-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "bd340f0c86524066bc110049ee24c0fa",
+          "executed_at": "2026-10-17T11:52:18.964520+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "B-21",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "bd340f0c86524066bc110049ee24c0fa",
+        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+      }
     },
     {
       "id": "B-22",
