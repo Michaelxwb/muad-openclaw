@@ -52,20 +52,20 @@
 | B-08 | backend.design.md#2.5.2 功能验收场景 | integration | stats 分组维度 | TASK-002 | verified |
 | B-09 | backend.design.md#2.5.2 功能验收场景 | unit | 告警去重键 | TASK-003 | verified |
 | B-10 | backend.design.md#2.5.2 功能验收场景 | integration | 旧状态文件（无 requestProfile） | TASK-007 | verified |
-| S-21 | frontend.design.md#2.4 验收条件 | E2E | API → 状态 → 抽屉渲染 | TASK-011 | planned |
-| S-22 | frontend.design.md#2.4 验收条件 | integration | 状态 → UI | TASK-011 | planned |
+| S-21 | frontend.design.md#2.4 验收条件 | E2E | API → 状态 → 抽屉渲染 | TASK-011 | e2e_deferred | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| S-22 | frontend.design.md#2.4 验收条件 | integration | 状态 → UI | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
 | S-23 | frontend.design.md#2.4 验收条件 | E2E | 表单 → api.ts → 后端 → 回显 | TASK-010 | e2e_deferred | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
-| S-24 | frontend.design.md#2.4 验收条件 | E2E | API → 列表 → 钻取 | TASK-011 | planned |
-| S-25 | frontend.design.md#2.4 验收条件 | integration | API 返回 truncated | TASK-011 | planned |
-| E-21 | frontend.design.md#2.4 验收条件 | integration | 请求失败 → 错误态 | TASK-011 | planned |
+| S-24 | frontend.design.md#2.4 验收条件 | E2E | API → 列表 → 钻取 | TASK-011 | e2e_deferred | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| S-25 | frontend.design.md#2.4 验收条件 | integration | API 返回 truncated | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| E-21 | frontend.design.md#2.4 验收条件 | integration | 请求失败 → 错误态 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
 | E-22 | frontend.design.md#2.4 验收条件 | integration | 表单校验 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
 | E-23 | frontend.design.md#2.4 验收条件 | integration | 测试接口返回 errcode≠0 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
-| E-24 | frontend.design.md#2.4 验收条件 | integration | 空数据 | TASK-011 | planned |
-| E-25 | frontend.design.md#2.4 验收条件 | integration | 权限/404 | TASK-011 | planned |
+| E-24 | frontend.design.md#2.4 验收条件 | integration | 空数据 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| E-25 | frontend.design.md#2.4 验收条件 | integration | 权限/404 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
 | B-21 | frontend.design.md#2.4 验收条件 | unit | 表单映射 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
-| B-22 | frontend.design.md#2.4 验收条件 | unit | 时间线渲染 | TASK-011 | planned |
-| B-23 | frontend.design.md#2.4 验收条件 | integration | 健康列表分组 | TASK-011 | planned |
-| B-24 | frontend.design.md#2.4 验收条件 | integration | 旧 Skill 时间线 | TASK-011 | planned |
+| B-22 | frontend.design.md#2.4 验收条件 | unit | 时间线渲染 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| B-23 | frontend.design.md#2.4 验收条件 | integration | 健康列表分组 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| B-24 | frontend.design.md#2.4 验收条件 | integration | 旧 Skill 时间线 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
 
 > 覆盖后端 38 个、前端 14 个场景；RULE-01~13 与高影响 RISK 均在对应任务 Checklist 或场景中映射。E2E 场景统一由 TASK-012 在全部功能任务完成后执行，不在编码期降级。
 
@@ -670,7 +670,7 @@
 
 ## TASK-011: 前端执行时间线与 Skill 健康
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: `skill-execution-control-and-review.frontend.design.md#3.3 组件设计`, `skill-execution-control-and-review.frontend.design.md#3.5 状态与数据流`, `skill-execution-control-and-review.frontend.design.md#3.6 UI 状态`
@@ -683,36 +683,62 @@
 
 ### Checklist
 
-- [ ] 实现 `ExecutionTraceDrawer`、`TraceSummaryHeader`、`TraceTimeline`；稳定 key=`eventId`；abort/truncated 高亮。
-- [ ] 实现 `SkillHealthTab`/`SkillHealthTable`：窗口切换后台刷新不闪；用户列；行点击钻取并带 `humanUserId`。
-- [ ] 覆盖 loading/empty/error/success 与旧 Skill exec-only 提示。
-- [ ] [verifier][integration] `frontend-component-specs#RULE-frontend-component-001`：容器/展示分离、props 类型化、无展示组件请求。
-- [ ] [verifier][integration] `frontend-quality-standards#RULE-frontend-quality-001`：strict TS、三态、vitest 通过。
-- [ ] [verifier][integration] `frontend-quality-standards#RULE-frontend-i18n-001`：新增 key zh/en 同步，列配置 `useMemo(...,[t])`。
-- [ ] 先写时间线与健康列表交互测试并记录 RED。
+- [x] 实现 `ExecutionTraceDrawer`、`TraceSummaryHeader`、`TraceTimeline`；稳定 key=`eventId`；abort/truncated 高亮。
+- [x] 实现 `SkillHealthTab`/`SkillHealthTable`：窗口切换后台刷新不闪；用户列；行点击钻取并带 `humanUserId`。
+- [x] 覆盖 loading/empty/error/success 与旧 Skill exec-only 提示。
+- [x] [verifier][integration] `frontend-component-specs#RULE-frontend-component-001`：容器/展示分离、props 类型化、无展示组件请求。
+- [x] [verifier][integration] `frontend-quality-standards#RULE-frontend-quality-001`：strict TS、三态、vitest 通过。
+- [x] [verifier][integration] `frontend-quality-standards#RULE-frontend-i18n-001`：新增 key zh/en 同步，列配置 `useMemo(...,[t])`。
+- [x] 先写时间线与健康列表交互测试并记录 RED。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-21 | E2E | API → 状态 → 抽屉渲染 | 汇总与事件按序显示；http 字段正确 | `console/frontend/test/AuditTrace.test.tsx` | `cd console/frontend && npm test -- --run Audit` | planned |
-| S-22 | integration | 状态 → UI | aborted 徽标/事件高亮 | 同上 | 同上 | planned |
-| S-24 | E2E | API → 列表 → 钻取 | 用户维度两行；钻取带 humanUserId | 同上 | 同上 | planned |
-| S-25 | integration | truncated 数据 | 顶部提示"明细已截断，共 N 次" | 同上 | 同上 | planned |
-| E-21 | integration | 请求失败 | Banner + ErrorDetail + 重试 | 同上 | 同上 | planned |
-| E-24 | integration | 空数据 | 空态文案 | 同上 | 同上 | planned |
-| E-25 | integration | 404 | 显示"执行不存在" | 同上 | 同上 | planned |
-| B-22 | unit | 2000 条事件 | 首屏可用，不卡顿 | 同上 | 同上 | planned |
-| B-23 | integration | 同名私有 Skill 两用户 | 两行分别显示用户 | 同上 | 同上 | planned |
-| B-24 | integration | 旧 Skill exec-only | 提示"未使用统一客户端"，无错误 | 同上 | 同上 | planned |
+| S-21 | E2E | API → 状态 → 抽屉渲染 | 汇总与事件按序显示；http 字段正确 | `console/frontend/test/AuditTrace.test.tsx` | ["npm", "test", "--", "--run", "Audit"] | e2e_deferred |
+| S-22 | integration | 状态 → UI | aborted 徽标/事件高亮 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| S-24 | E2E | API → 列表 → 钻取 | 用户维度两行；钻取带 humanUserId | 同上 | ["npm", "test", "--", "--run", "Audit"] | e2e_deferred |
+| S-25 | integration | truncated 数据 | 顶部提示"明细已截断，共 N 次" | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| E-21 | integration | 请求失败 | Banner + ErrorDetail + 重试 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| E-24 | integration | 空数据 | 空态文案 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| E-25 | integration | 404 | 显示"执行不存在" | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| B-22 | unit | 2000 条事件 | 首屏可用，不卡顿 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| B-23 | integration | 同名私有 Skill 两用户 | 两行分别显示用户 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| B-24 | integration | 旧 Skill exec-only | 提示"未使用统一客户端"，无错误 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-21 | `npm test -- --run AuditTrace` FAIL：`Failed to resolve import "../src/pages/audit/TraceTimeline"` | PASS：请求数/错误数/耗时 2.1s、Top 接口 ×2、事件顺序 `["event-1","event-2","event-3"]` | `test/AuditTrace.test.tsx:renders metrics and events in seq order with stable event ids` | 组件测试经 `src/api.ts` mock 层驱动 `SkillExecutionTrace` → Drawer 状态 → DOM；跨进程真实 API E2E 由 TASK-012 执行 | verified |
+| S-22 | 同上（组件不存在） | PASS：`已因请求超限终止` + 接口/1001 次；abort 行 `data-highlighted=true` | `test/AuditTrace.test.tsx:highlights aborted executions and abort events` | metrics.aborted/abortInterface/abortCount → 徽标与时间线高亮 | verified |
+| S-24 | 同上（组件不存在） | PASS：同名私有 Skill 两行（张三/李四）；点击后 `listSkillExecutions` 收到 `humanUserId=user-a`、`skillName=mss-report-skill` 并切页签 | `test/AuditTrace.test.tsx:lists both users of the same private Skill and drills down with humanUserId` | 健康行 → Audit 页签状态 → 执行日志查询参数；HTTP E2E 由 TASK-012 执行 | verified |
+| S-25 | 同上 | PASS：`明细已截断，共 1000 次请求` | `test/AuditTrace.test.tsx:keeps the truncated banner visible with the request count` | metrics.detailTruncated/requestCount 直接渲染 | verified |
+| E-21 | 同上 | PASS：Banner message + `技术详情`；点击重试后渲染成功，调用 2 次 | `test/AuditTrace.test.tsx:renders a banner, technical detail and retry when the request fails`、`shows a banner and retry when health data fails` | `ApiError(500, detail)` → error/errorDetail 三态 → 重试 | verified |
+| E-24 | 同上 | PASS：`该窗口内暂无 Skill 执行数据` | `test/AuditTrace.test.tsx:loads the default 7d window and shows the empty state` | 空 items → Table empty 槽 | verified |
+| E-25 | 同上 | PASS：`执行不存在` | `test/AuditTrace.test.tsx:maps a missing execution to the not-found state` | `ApiError(status=404)` 分支映射，不白屏 | verified |
+| B-22 | 同上 | PASS：2000 条事件仅首屏渲染 200 条，出现 `加载更多`，末条未渲染 | `test/AuditTrace.test.tsx:renders 2000 events progressively so the first screen stays responsive` | 时间线分页步进 200 条，稳定 key=eventId | verified |
+| B-23 | 同上 | PASS：两个用户同名 private Skill 各 1 行，分别显示张三/李四 | `test/AuditTrace.test.tsx:lists both users of the same private Skill and drills down with humanUserId` | 后端分组字段 humanUserName/humanUserId 直出 | verified |
+| B-24 | 同上 | PASS：仅 exec 事件显示 `未使用统一客户端` 提示，exec 事件正常渲染，无错误 Banner | `test/AuditTrace.test.tsx:shows a legacy hint instead of an error when only exec events exist` | metrics=null + 全 exec 事件 → legacy 分支 | verified |
+
+补充验证：`npx tsc --noEmit` 通过；`npx eslint src/` 通过；`npm test`（全量 27 文件 211 用例）通过。
+- S-21: e2e_deferred — automated command e2e_deferred; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- S-22: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- S-24: e2e_deferred — automated command e2e_deferred; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- S-25: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- E-21: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- E-24: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- E-25: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- B-22: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- B-23: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- B-24: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started (RED: `npm test -- --run AuditTrace` 无法解析 `TraceTimeline`，0 用例执行)
+- [2026-10-17] completed (GREEN: `npm test -- --run Audit` 25 用例、全量 211 用例、tsc/eslint 均通过)
+- [2026-10-17] completed (done)
 
 ---
 

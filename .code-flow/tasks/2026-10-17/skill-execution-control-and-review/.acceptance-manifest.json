@@ -2071,21 +2071,54 @@
       "kind": "e2e",
       "boundary": "API → 状态 → 抽屉渲染",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "e2e_deferred",
       "command": [
-        "`cd",
-        "console/frontend",
-        "&&",
         "npm",
         "test",
         "--",
         "--run",
-        "Audit`"
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-21",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0
+      },
+      "runs": [
+        {
+          "id": "S-21",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0
+        }
+      ]
     },
     {
       "id": "S-22",
@@ -2094,14 +2127,58 @@
       "kind": "functional",
       "boundary": "状态 → UI",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+      },
+      "runs": [
+        {
+          "id": "S-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        }
+      ]
     },
     {
       "id": "S-23",
@@ -2166,14 +2243,54 @@
       "kind": "e2e",
       "boundary": "API → 列表 → 钻取",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "e2e_deferred",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-24",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0
+      },
+      "runs": [
+        {
+          "id": "S-24",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0
+        }
+      ]
     },
     {
       "id": "S-25",
@@ -2182,14 +2299,58 @@
       "kind": "functional",
       "boundary": "API 返回 truncated",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-25",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+      },
+      "runs": [
+        {
+          "id": "S-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        }
+      ]
     },
     {
       "id": "E-21",
@@ -2198,14 +2359,58 @@
       "kind": "functional",
       "boundary": "请求失败 → 错误态",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-21",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+      },
+      "runs": [
+        {
+          "id": "E-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        }
+      ]
     },
     {
       "id": "E-22",
@@ -2334,14 +2539,58 @@
       "kind": "functional",
       "boundary": "空数据",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-24",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+      },
+      "runs": [
+        {
+          "id": "E-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        }
+      ]
     },
     {
       "id": "E-25",
@@ -2350,14 +2599,58 @@
       "kind": "functional",
       "boundary": "权限/404",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-25",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+      },
+      "runs": [
+        {
+          "id": "E-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        }
+      ]
     },
     {
       "id": "B-21",
@@ -2426,14 +2719,58 @@
       "kind": "functional",
       "boundary": "时间线渲染",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+      },
+      "runs": [
+        {
+          "id": "B-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        }
+      ]
     },
     {
       "id": "B-23",
@@ -2442,14 +2779,58 @@
       "kind": "functional",
       "boundary": "健康列表分组",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-23",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+      },
+      "runs": [
+        {
+          "id": "B-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        }
+      ]
     },
     {
       "id": "B-24",
@@ -2458,14 +2839,58 @@
       "kind": "functional",
       "boundary": "旧 Skill 时间线",
       "owner": "TASK-011",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
       ],
-      "cwd": ".",
-      "timeout": 60.0,
+      "cwd": "console/frontend",
+      "timeout": 300.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-24",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "015384433cbc4f579de9b80300150771",
+        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+      },
+      "runs": [
+        {
+          "id": "B-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        }
+      ]
     }
   ]
 }
