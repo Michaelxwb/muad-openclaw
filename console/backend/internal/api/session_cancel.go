@@ -131,7 +131,8 @@ func sessionCancelNote(result gateway.SessionCancelResult) string {
 	if len(result.Remaining) > 0 {
 		fmt.Fprintf(&b, "仍有 %d 个进程未确认退出。", len(result.Remaining))
 	}
-	b.WriteString("这不是模型执行失败；除非用户明确要求，不要自动重跑该任务。")
+	b.WriteString("上一轮的用户指令已作废：本轮不要执行、补跑、续跑或与新消息合并执行该任务；")
+	b.WriteString("除非用户在本轮消息中明确要求重跑。这不是模型执行失败。")
 	return b.String()
 }
 
