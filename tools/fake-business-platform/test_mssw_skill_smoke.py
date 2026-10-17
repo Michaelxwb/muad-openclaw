@@ -202,10 +202,19 @@ def main() -> int:
             stats = requests.get(base_url + "/__stats", timeout=5).json()["counts"]
             assert stats.get("/api/v1/ping", 0) >= 1, stats
 
+            raw_env = skill_env(bin_dir, spool, 0, "exec-raw-" + uuid.uuid4().hex)
+            raw_env.pop("MUAD_SKILL_NAME", None)
+            raw_result = run_skill([str(SKILL / "scripts/run.py")], raw_env)
+            assert raw_result.returncode == 4, (
+                "raw shell execution must be rejected, got %s: %s"
+                % (raw_result.returncode, raw_result.stderr)
+            )
+            assert "must run through Skill execution" in raw_result.stderr, raw_result.stderr
+
             requests.get(base_url + "/__stats/reset", timeout=5).raise_for_status()
             limit_spool = root / "limit-trace.jsonl"
             limit_result = run_skill(
-                [str(SKILL / "scripts/limit_probe.py"), "--count", "4"],
+                [str(SKILL / "scripts/limit_probe.py")],
                 skill_env(bin_dir, limit_spool, 3, "exec-limit-" + uuid.uuid4().hex),
             )
             assert limit_result.returncode == 86, (
@@ -213,18 +222,30 @@ def main() -> int:
             )
             summary = json.loads(limit_result.stdout.strip().splitlines()[-1])
             assert summary["status"] == "LIMIT_TRIGGERED", limit_result.stdout
+            assert summary["requested"] == 4, "default probe must send limit+1 requests: %s" % summary
             assert summary["sent"] == 3 and summary["limit"] == 3, summary
             events = [json.loads(line) for line in limit_spool.read_text(encoding="utf-8").splitlines() if line.strip()]
             aborts = [event for event in events if event.get("kind") == "abort"]
             assert aborts and aborts[-1].get("count") == 4, events
             stats = requests.get(base_url + "/__stats", timeout=5).json()["counts"]
-            assert stats.get("/api/v1/ping", 0) == 3, "the N+1 request must not reach the server: %s" % stats
+            requests_before_abort = stats.get("/api/v1/ping", 0)
+            assert requests_before_abort == 3, "the N+1 request must not reach the server: %s" % stats
+
+            requests.get(base_url + "/__stats/reset", timeout=5).raise_for_status()
+            below_limit = run_skill(
+                [str(SKILL / "scripts/limit_probe.py"), "--count", "2"],
+                skill_env(bin_dir, root / "below-limit-trace.jsonl", 3, "exec-below-" + uuid.uuid4().hex),
+            )
+            assert below_limit.returncode == 0, below_limit.stderr
+            below_summary = json.loads(below_limit.stdout.strip().splitlines()[-1])
+            assert below_summary["status"] == "LIMIT_NOT_TRIGGERED", below_limit.stdout
+            assert below_summary["sent"] == 2 and below_summary["limit"] == 3, below_summary
 
             print(json.dumps({
                 "status": "MSSW_SKILL_SMOKE_OK",
                 "traceId": trace_id,
                 "limitExitCode": limit_result.returncode,
-                "requestsBeforeAbort": stats.get("/api/v1/ping", 0),
+                "requestsBeforeAbort": requests_before_abort,
             }))
             return 0
     finally:

@@ -46,6 +46,8 @@ python3 tools/fake-business-platform/server.py --platform mssw --port 18080
 
 ## 执行
 
+本 Skill 必须在 Skill 执行上下文中运行：脚本启动时校验 guard 注入的 `MUAD_SKILL_NAME`，缺失或不等于 `mssw-platform-smoke` 时立即以退出码 `4` 终止并提示先激活 Skill。不要在普通 shell 里直接运行脚本；模型必须先读取 SKILL.md（或用户使用 `/skill:mssw-platform-smoke`）激活后再执行。
+
 单请求冒烟：
 
 ```bash
@@ -60,15 +62,22 @@ python3 scripts/run.py
 
 `SKILL_OUTPUT_DIR` 存在时会 best-effort 写入 `mssw-smoke.json`；写文件失败不影响 stdout 的成功结果。
 
-限额探测（默认 4 次；上限由 guard 注入的 `MUAD_SKILL_REQUEST_LIMIT` 决定）：
+限额探测（默认自动打满注入上限：`limit` 在 1–49 时发起 `limit+1` 次请求；未注入上限时默认 4 次）：
 
 ```bash
-python3 scripts/limit_probe.py --count 4
+python3 scripts/limit_probe.py
 ```
 
-- 必须在 guard 注入 `MUAD_SKILL_REQUEST_LIMIT` 的执行环境运行；脚本与 SDK 读取同一个变量，未注入（或配置为 0）时双方都按“不限”处理，脚本不做限额判断；
+需要验证未触发路径时显式给 `--count`（例如上限 3 时 `--count 2`）：
+
+```bash
+python3 scripts/limit_probe.py --count 2
+```
+
+- 上限由 guard 注入的 `MUAD_SKILL_REQUEST_LIMIT` 决定；脚本与 SDK 读取同一个变量，未注入（或配置为 0）时双方都按“不限”处理，脚本不做限额判断；
 - 进度写 stderr；成功或限额触发路径的 stdout 只有一条汇总 JSON，参数错误/HTTP 失败/缺 Traceid 等失败路径只写 stderr；
 - 每次响应的 `traceId` 会校验 UUID 格式并收集，断言互不相同，重复时退出码 3；
+- 显式 `--count` 在 1–50 之间；不传时由脚本按 `min(limit+1, 50)` 自动选择，`limit` 在 1–49 时默认执行即触发上限；`limit` 为 0 或 ≥50 时不会触发，需显式指定次数或调整 Console 请求上限；
 - 达到上限时，脚本会在第 N+1 次请求前先输出汇总，SDK 随后 `exit(86)`：
 
 ```json
@@ -81,7 +90,7 @@ python3 scripts/limit_probe.py --count 4
 {"status":"LIMIT_NOT_TRIGGERED","path":"/api/v1/ping","requested":4,"sent":4,"limit":0,"traceCount":4,"traceIdsUnique":true}
 ```
 
-`--path` 只允许 `/api/v1/ping` 或 `/api/v1/targets`；`--count` 必须在 1–50 之间。若已到预期限额但 SDK 没有终止，脚本会写 stderr 并 exit 1，stdout 仍然只有一条 JSON。
+`--path` 只允许 `/api/v1/ping` 或 `/api/v1/targets`。若已到预期限额但 SDK 没有终止，脚本会写 stderr 并 exit 1，stdout 仍然只有一条 JSON。
 
 ## 退出码
 
@@ -91,6 +100,7 @@ python3 scripts/limit_probe.py --count 4
 | `1` | `run.py` / `limit_probe.py` | 请求失败、响应缺字段、非 UUID `traceId`、`path` 与请求不一致，或运行时异常 |
 | `2` | `limit_probe.py` | 参数错误 |
 | `3` | `limit_probe.py` | 连续请求复用了同一个 Traceid |
+| `4` | `run.py` / `limit_probe.py` | 未通过 Skill 执行（`MUAD_SKILL_NAME` 缺失或不匹配） |
 | `86` | `limit_probe.py` | SDK 触发单接口请求上限，本次执行被终止 |
 
 ## 注意
