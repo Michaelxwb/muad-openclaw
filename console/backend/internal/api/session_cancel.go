@@ -217,7 +217,19 @@ func deriveSessionKey(user repo.HumanUser, identity repo.UserIdentity) (string, 
 	if agentID == "" || channel == "" || externalID == "" {
 		return "", errSessionKeyInvalid
 	}
-	sessionKey := fmt.Sprintf("agent:%s:%s:%s:%s", agentID, channel, peerKind, externalID)
+	// 长任务会话不属于前台终止范围；identity 的 externalId 出现 longtask 段也拒绝。
+	if strings.Contains(externalID, ":longtask:") {
+		return "", errSessionKeyForbidden
+	}
+	// OpenClaw 渲染 runtime config 时把唯一的 direct 身份写入
+	// session.identityLinks[agentId] = [<channel>:<externalId>]，core 以
+	// identityLinks 的 canonical key（agentId）作为 direct 会话的 peer；
+	// 未链接的 direct/group 身份仍以 externalId 为 peer。
+	peerID := externalID
+	if peerKind == "direct" {
+		peerID = agentID
+	}
+	sessionKey := fmt.Sprintf("agent:%s:%s:%s:%s", agentID, channel, peerKind, peerID)
 	if strings.Contains(sessionKey, ":longtask:") {
 		return "", errSessionKeyForbidden
 	}

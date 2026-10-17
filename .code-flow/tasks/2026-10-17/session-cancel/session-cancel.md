@@ -481,6 +481,7 @@
 - 环境：Pod `muad-oc-pod03-55ccccb75c-rvzw5`，镜像 `muad-openclaw:sessioncancel-e2e`，config generation 147；`muad.runtime.health` 返回 `sessionCancel: {available: true, version: 1}`。
 - 双用户：A `john-24c84418`（session `agent:john-24c84418:wecom:direct:e2e-a`）；B `e2e-bob`（Console 临时创建，session `agent:e2e-bob:wecom:direct:e2e-bob`，测试后已删除）。
 - S-01：A 的 preview 返回 `activeRun.active=true`、2 个进程（pid 597 `sh -c` 组长 / pid 598 `python3`，pgid 597），`skipped.envMismatch=3`；B 的 preview 只返回 pid 367 `sleep 300`（pgid 367），不含 A/gateway。
+- 2026-10-18 修复：真实 WeCom 会话 key 的 peer 是 identityLinks 的 canonical key（agentId），不是 externalId。修复 `deriveSessionKey`（direct → agentId）后，对真实 run `dad588a0-3242-4ac7-9bd1-ae362a520362` 的 Console preview 返回 `agent:john-24c84418:wecom:direct:john-24c84418` 及 pid 2424/2425，activeRun=true；修复前同一请求返回空进程且 activeRun=false。
 - S-02：对 A 调用 `muad.session.cancel`（expected 指纹 597/598）→ `aborted=true, drained=true, confirmed=true`；abort/drain 已使两个进程退出，sweeper 报告 `killed=0`（not_found）；随后 Console API 对 john 真实身份 `...wojmppeqaak5ytes5hexbxkosm1bot5w` 的 preview/cancel 实测 `killed=1, terminated/sigterm`，审计记录 id 1389（无 cmdline）。
 - S-03：A 终止后 B 的 pid 367 仍存活；gateway PID 1 存活；B 的 preview/cancel 后续正常，证明未跨用户误杀。
 - S-06：A 终止后通过 `chat.send` 发送"现在几点"，run `b6e22997` 在约 10 秒内返回 `00:22:18（2026-10-18，CST）`，会话未阻塞。企微 per-chat 队列排空未用真实 IM 复核，保留为 e2e_deferred。
