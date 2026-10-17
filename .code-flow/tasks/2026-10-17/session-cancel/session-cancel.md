@@ -2,7 +2,7 @@
 
 - **Source**: `.code-flow/tasks/2026-10-17/session-cancel/session-cancel.backend.design.md`, `.code-flow/tasks/2026-10-17/session-cancel/session-cancel.frontend.design.md`
 - **Created**: 2026-10-17
-- **Updated**: 2026-10-17
+- **Updated**: 2026-10-18
 
 > **场景 ID 说明**：后端/运行时 design 使用 S-01..S-06、E-01..E-06、B-01..B-05；前端 design 从 S-07、E-07、B-06 起编号，避免两份 design 的 ID 冲突。
 
@@ -38,9 +38,9 @@
 | E-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → repo | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | gateway Exec | TASK-003 | planned | ["go","-C","console/backend","test","./internal/gateway","-run","SessionCancel","-count=1"] |
 | E-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实信号 | TASK-006 | planned | - |
-| B-01 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（PID 复用） | TASK-001 | planned | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
-| B-02 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（UID/EPERM） | TASK-001 | planned | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
-| B-03 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（非组长） | TASK-001 | planned | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
+| B-01 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（PID 复用） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
+| B-02 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（UID/EPERM） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
+| B-03 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（非组长） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
 | B-04 | session-cancel.backend.design.md#2.5 验收条件 | unit | RPC 校验（longtask/PID1/self） | TASK-002 | planned | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
 | B-05 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 企微队列 | TASK-006 | planned | - |
 | S-07 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 用户详情 → API → 真实 Worker | TASK-006 | planned | - |
@@ -79,6 +79,8 @@
 | runtime-directory-structure#RULE-runtime-directory-001 | TASK-001 |
 | runtime-isolation-and-security#RULE-runtime-security-001 | TASK-001 |
 | runtime-isolation-and-security#RULE-runtime-secret-file-mode-001 | TASK-001 |
+| runtime-config-and-apply#RULE-runtime-config-001 | TASK-001 |
+| runtime-config-and-apply#RULE-runtime-validate-before-write-001 | TASK-001 |
 | runtime-skill-execution#RULE-runtime-skill-001 | TASK-002 |
 | runtime-skill-execution#RULE-runtime-skill-layering-001 | TASK-002 |
 | runtime-skill-execution#RULE-runtime-log-injection-001 | TASK-002 |
@@ -104,11 +106,11 @@
 
 ## TASK-001: Guard 进程扫描与安全终止模块
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**:
 - **Source**: session-cancel.backend.design.md#3.4 接口设计（安全不变量）, session-cancel.backend.design.md#3.5 质量实现方案, session-cancel.backend.design.md#2.5 验收条件
-- **Spec-Refs**: runtime-directory-structure#RULE-runtime-directory-001, runtime-isolation-and-security#RULE-runtime-security-001, runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+- **Spec-Refs**: runtime-directory-structure#RULE-runtime-directory-001, runtime-isolation-and-security#RULE-runtime-security-001, runtime-isolation-and-security#RULE-runtime-secret-file-mode-001, runtime-config-and-apply#RULE-runtime-config-001, runtime-config-and-apply#RULE-runtime-validate-before-write-001
 - **Acceptance-Refs**: B-01, B-02, B-03
 
 ### Description
@@ -117,32 +119,46 @@
 
 ### Checklist
 
-- [ ] 实现 `scanSessionProcesses({procRoot, sessionKey, uid})`：遍历数字目录，读取 environ/status/stat/cmdline，跳过 PID 1/self/不可读项
-- [ ] 实现 `fingerprint(sessionKey, pid, pgid, startTime, uid)`（sha256 前 16 hex）
-- [ ] 实现 `terminateConfirmed(candidates, expected)`：逐项复核指纹后 TERM→3s→复核→KILL→2s，返回 outcome/remaining
-- [ ] [B-01][unit] 用 fake procRoot 构造 PID 复用（同 pid、startTime 变化），断言不发信号且计入 skipped
-- [ ] [B-02][unit] 构造 UID 不匹配、environ EPERM、cmdline 为空，断言全部跳过且不抛错
-- [ ] [B-03][unit] 构造匹配的非组长进程，断言只对 pid 发信号、不调用 group kill
-- [ ] [RULE-runtime-directory-001][verifier] 断言新模块位于 `tools/muad-runtime-guard/src/` 且同目录存在测试；运行 `node --test tools/muad-runtime-guard/test/session-process-sweeper.test.mjs`
-- [ ] [RULE-runtime-security-001][verifier] 断言扫描/日志不读取或输出 environ 原值、凭证；测试中断言日志只含 pid/pgid/计数
-- [ ] [RULE-runtime-secret-file-mode-001][verifier] 断言本模块不调用 `writeFile`/`mkdir` 落盘任何配置或凭证；`rg "writeFile|mkdir" tools/muad-runtime-guard/src/session-process-sweeper.mjs` 为空
-- [ ] 运行 `node --test tools/muad-runtime-guard/test/session-process-sweeper.test.mjs` 并填写 Acceptance Evidence
+- [x] 实现 `scanSessionProcesses({procRoot, sessionKey, uid})`：遍历数字目录，读取 environ/status/stat/cmdline，跳过 PID 1/self/不可读项
+- [x] 实现 `fingerprint(sessionKey, pid, pgid, startTime, uid)`（sha256 前 16 hex）
+- [x] 实现 `terminateConfirmed(candidates, expected)`：逐项复核指纹后 TERM→3s→复核→KILL→2s，返回 outcome/remaining
+- [x] [B-01][unit] 用 fake procRoot 构造 PID 复用（同 pid、startTime 变化），断言不发信号且计入 skipped
+- [x] [B-02][unit] 构造 UID 不匹配、environ EPERM、cmdline 为空，断言全部跳过且不抛错
+- [x] [B-03][unit] 构造匹配的非组长进程，断言只对 pid 发信号、不调用 group kill
+- [x] [RULE-runtime-directory-001][verifier] 断言新模块位于 `tools/muad-runtime-guard/src/` 且同目录存在测试；运行 `node --test tools/muad-runtime-guard/test/session-process-sweeper.test.mjs`
+- [x] [RULE-runtime-security-001][verifier] 断言扫描/日志不读取或输出 environ 原值、凭证；测试中断言日志只含 pid/pgid/计数
+- [x] [RULE-runtime-secret-file-mode-001][verifier] 断言本模块不调用 `writeFile`/`mkdir` 落盘任何配置或凭证；`rg "writeFile|mkdir" tools/muad-runtime-guard/src/session-process-sweeper.mjs` 为空
+- [x] [RULE-runtime-config-001][verifier] 断言本任务不触碰 runtime 配置渲染/apply：`git diff --stat` 不含 `bin/`、`runtimeconfig`、`runtimeapply`；模块只读 /proc 与发送信号
+- [x] [RULE-runtime-validate-before-write-001][verifier] 断言本模块不物化 runtime config、不写 generation；`rg "validateRuntimeConfig|runtime-config-transaction|writeFile" tools/muad-runtime-guard/src/session-process-sweeper.mjs` 为空
+- [x] 运行 `node --test tools/muad-runtime-guard/test/session-process-sweeper.test.mjs` 并填写 Acceptance Evidence
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| B-01 | unit | fake procRoot 文件系统 | startTime 不一致时 `skipped` 包含该 pid，`kill` 未被调用 | `test/session-process-sweeper.test.mjs` / pid-reuse | `["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"]` | planned |
-| B-02 | unit | fake procRoot 文件系统 | 非目标 UID/EPERM 不进入 candidates，计数正确 | 同上 / owner-and-permission | 同上 | planned |
-| B-03 | unit | fake procRoot + 注入 kill 函数 | 非组长只调用 `kill(pid)`，不调用 `kill(-pgid)` | 同上 / non-leader | 同上 | planned |
+| B-01 | unit | fake procRoot 文件系统 | startTime 不一致时 `skipped` 包含该 pid，`kill` 未被调用 | `test/session-process-sweeper.test.mjs` / pid-reuse | `["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"]` | pass | verified |
+| B-02 | unit | fake procRoot 文件系统 | 非目标 UID/EPERM 不进入 candidates，计数正确 | 同上 / owner-and-permission | 同上 | pass | verified |
+| B-03 | unit | fake procRoot + 注入 kill 函数 | 非组长只调用 `kill(pid)`，不调用 `kill(-pgid)` | 同上 / non-leader | 同上 | pass | verified |
 
 ### Acceptance Evidence
 
 > 编码期填写 RED/GREEN 结果、断言位置与真实组件证据。
 
+- RED：`node --test tools/muad-runtime-guard/test/session-process-sweeper.test.mjs` → `ERR_MODULE_NOT_FOUND`（`src/session-process-sweeper.mjs` 尚不存在），0 pass / 1 fail。
+- GREEN：同一命令 13/13 pass。B-01 `startTime` 变化 → `processes=[{pid:4028,outcome:"skipped",reason:"identity_changed"}]` 且 `signals=[]`；B-02 UID 不匹配/EPERM/空 cmdline/PID1/self 全部跳过且计数 `{notOwner:1, permissionDenied:1, emptyCmdline:1, protected:2}`；B-03 非组长信号序列 `[[600,"SIGTERM"],[600,"SIGKILL"]]`（无 `-500`），组长为 `[[-700,"SIGTERM"],[-700,"SIGKILL"]]`；SIGKILL 后仍存活时 `remaining=[pid]`、`killed=0`，不伪报成功。
+- 断言位置：`tools/muad-runtime-guard/test/session-process-sweeper.test.mjs`（pid-reuse / owner-and-permission / non-leader / leader / remaining / logs 用例）。
+- verifier：`rg "writeFile|mkdir|console\.(log|warn|error)" tools/muad-runtime-guard/src/session-process-sweeper.mjs` 无输出；日志断言仅含 `[muad-runtime-guard][session-cancel]` 前缀与 pid/pgid/outcome/reason/计数，不含 sessionKey、environ 值或 cmdline。
+- 回归：新增模块零依赖；guard 非 E2E 单测 277 项中 261 pass / 14 fail，失败均为 worktree 未安装 `bash-parser`、缺少 `tsc` 的环境缺失（与本次新增文件无关）；E2E 场景按 Acceptance Coverage 由 TASK-006 执行。
+- B-01: verified — automated command passed; run_id=4f1e92d7a6564db8b596bdbb16a1acd3 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=4f1e92d7a6564db8b596bdbb16a1acd3 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=4f1e92d7a6564db8b596bdbb16a1acd3 (confirmed_by: runner)
+
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-18] resumed (in-progress)
+- [2026-10-18] completed (done)
 
 ---
 
