@@ -38,10 +38,30 @@ export type AdapterValidateInput = AdapterRefreshInput & {
   state: AdapterSessionState;
 };
 
+export type RequestProfileCsrf = {
+  cookie: string;
+  header: string;
+};
+
+/**
+ * Request-shaping hints written to the skill-scoped session file. The SDK reads
+ * this profile to build platform headers; values never go to CLI stdout.
+ */
+export type PlatformRequestProfile = {
+  baseUrl: string;
+  hostHeader: Record<string, string>;
+  referer?: string;
+  csrf: RequestProfileCsrf[];
+  staticHeaders: Record<string, string>;
+  traceHeader: string | null;
+  extraAllowed: boolean;
+};
+
 export type PlatformAdapter = {
   readonly platform: string;
   refresh(input: AdapterRefreshInput): Promise<AdapterSessionState>;
   validate?(input: AdapterValidateInput): Promise<boolean>;
+  requestProfile?(credential: ScopedCredential): PlatformRequestProfile;
 };
 
 export type LoginFailReason =
