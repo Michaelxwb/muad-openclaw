@@ -1,7 +1,7 @@
 version: 1
 task: session-cancel
 enforcement: required
-updated_at: '2026-10-17T16:11:57.096663+00:00'
+updated_at: '2026-10-17T16:18:32.187297+00:00'
 sources:
 - type: cli
   ref: bind
@@ -38,7 +38,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.4'
           item_id: SC-API-01
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -47,7 +47,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -74,7 +74,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.4'
           item_id: SC-API-ERR
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -83,7 +83,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -119,6 +119,17 @@ bindings:
           rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
           artifact_sha256: null
           diff_sha256: d39fcaa079b0cc06cff5d67658905cb07dbad1437c98a9cbb3bc06e2116bd392
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-17T16:24:30.123669+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
           result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
           error_code: null
           details:
@@ -270,7 +281,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-DATA-NO-SQL
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -279,7 +290,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -306,7 +317,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-DATA-NO-SQL
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -315,7 +326,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -340,6 +351,17 @@ bindings:
           rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
           artifact_sha256: null
           diff_sha256: d39fcaa079b0cc06cff5d67658905cb07dbad1437c98a9cbb3bc06e2116bd392
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-17T16:24:30.125750+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
           result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
           error_code: null
           details:
@@ -546,7 +568,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.2'
           item_id: SC-MODULES
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -555,7 +577,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -680,7 +702,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-AUDIT
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -689,7 +711,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -717,7 +739,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-AUDIT-REDACT
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -726,7 +748,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -851,7 +873,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.4'
           item_id: SC-SEC-INVARIANTS
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -860,7 +882,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -888,7 +910,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.4'
           item_id: SC-API-ENVELOPE
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -897,11 +919,11 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
-        status: unverified
+        status: verified
         refs: []
         decision: null
         evidence:
@@ -938,6 +960,27 @@ bindings:
           details:
             reason: out_of_task_scope
             deferred_to_review: true
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-17T16:24:33.564440+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          result_sha256: 6079399355fe8169c67bba1560e127b7076270f83bbb1e9d9fd82ee857234f49
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 4011bc3cbba762e384948e7ab2e3a1d73941084c5044ea9ed99712287a93f5df
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.540s\n"
       review:
         status: pending
         refs: []
@@ -958,7 +1001,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '2.4'
           item_id: SC-OUT-OF-SCOPE
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -967,7 +1010,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1101,7 +1144,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1138,7 +1181,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1299,7 +1342,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1336,7 +1379,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1470,7 +1513,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1508,7 +1551,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1549,6 +1592,17 @@ bindings:
           details:
             checked_files: 3
             violations: []
+        - verifier_ref: frontend-quality-standards#RULE-frontend-api-client-001
+          executed_at: '2026-10-17T16:24:33.568926+00:00'
+          status: verified
+          rule_text_sha256: f72980fb8ff80823ef0306b736ff3dfcc9216a23d166c4b3ef9f0c3283c1aafd
+          artifact_sha256: null
+          diff_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
@@ -1578,7 +1632,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1759,7 +1813,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-NO-CONFIG-WRITE
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -1768,7 +1822,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1796,7 +1850,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-NO-CONFIG-WRITE
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -1805,7 +1859,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -1903,7 +1957,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.2'
           item_id: SC-MODULES
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -1912,7 +1966,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -2010,7 +2064,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.5'
           item_id: SC-SEC-DESIGN
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -2019,7 +2073,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -2047,7 +2101,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-NO-FILE
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -2056,7 +2110,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -2181,7 +2235,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '2.4'
           item_id: SC-OUT-OF-SCOPE
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -2190,7 +2244,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -2218,7 +2272,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '2.4'
           item_id: SC-OUT-OF-SCOPE
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -2227,7 +2281,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -2255,7 +2309,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.5'
           item_id: SC-LOGGING
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -2264,7 +2318,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -2291,7 +2345,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.5'
           item_id: SC-LOGGING
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -2300,7 +2354,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
@@ -2328,7 +2382,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '2.4'
           item_id: SC-OUT-OF-SCOPE
-          artifact_sha256: 9917caa69ed7a2b0dbbf1d74174dbef67ff3ceefc34e68d896caa509843c0747
+          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
         decision: null
         evidence: []
       plan:
@@ -2337,7 +2391,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 68c79aa1db3bb8e0c5d42066aaa4a4322261786ece59b476b436446b29f13adf
+          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
         decision: null
         evidence: []
       code:
