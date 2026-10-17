@@ -25,7 +25,7 @@
 <skill-name>/
 ├── SKILL.md              # 必需：frontmatter + 指令
 ├── muad.skill.json       # 可选：managed 编排
-├── scripts/              # 可选：Shell/Python/Node 脚本
+├── scripts/              # 可选：Python 脚本
 └── references/           # 可选：参考资料
 ```
 
@@ -61,7 +61,7 @@ description: "MANDATORY before calling web_search, web_fetch, browser, or opencl
   "version": "1.0.0",
   "capabilities": ["browser"],
   "longTask": false,
-  "entrypoint": "scripts/run.mjs"
+  "entrypoint": "scripts/run.py"
 }
 ```
 
@@ -70,11 +70,9 @@ description: "MANDATORY before calling web_search, web_fetch, browser, or opencl
 
 上传时 Console 会校验非空平台依赖均已存在。无平台依赖的 Skill 可直接作为通用 Skill 使用；声明平台依赖的 Skill 通过 `session-manager get-state --skill-name <skill>` 解析，一次返回该 Skill 声明的全部平台凭证；任一平台未配置时调用失败（不做部分降级）。
 
-脚本类 Skill 采用**脚本自助**模式获取会话状态：`scripts/` 里的脚本直接调用
-`session-manager get-state --skill-name <skill>`，无需 env 注入——agent 身份由 Runtime Guard
-注入的 `MUAD_SESSION_KEY` 决定，脚本不自报身份。CLI 保证状态新鲜（缓存过期/缺失时自动登录并落盘），
-返回按 Skill 裁剪的 `sessionStateFile`；脚本再读该文件当前 Skill 的 `<platform>` section 取
-cookies 使用（文件只含当前 Skill 声明的平台）。cookie 不进入 CLI stdout、不进入模型上下文。
+脚本类 Skill 通过 `muad_skill_http.platform_request` 访问业务平台：SDK 内部读取登录态、
+拼装 Cookie/CSRF/Host/平台静态头，并为每个请求生成新的 `Traceid`。Skill 只传平台名与业务 path，
+不需要直接调用 `session-manager`，也不需要手工拼请求头。cookie 不进入模型上下文。
 需要浏览器能力（`capabilities: ["browser"]`）的 Skill 仍走
 `session_get_state` 模型工具，因为只有插件工具能调用 `browser.request`。
 
@@ -87,25 +85,27 @@ cookies 使用（文件只含当前 Skill 声明的平台）。cookie 不进入 
 - 两者是不同概念，**不要长得像**（反例：`smoke-platform` vs `smoke_platform` 只差横杠/下划线）——模型会把平台名当 skill 名传给工具，Console 按 skill 名解析时找不到、报 `agent is not active`。
 - SKILL.md 正文若提到平台，明确写「skill 名是 X，平台名是 Y」。
 
-### 脚本自助：skill 名硬编码 + 失败 fail loud
+### 脚本自助：平台名硬编码 + 失败 fail loud
 
-- 脚本里 `session-manager get-state --skill-name <skill名>` 的 skill 名**硬编码**（不要从模型或参数动态取），保证解析稳定。
+- 脚本里 `platform_request("<平台名>", ...)` 的平台名**硬编码**，与 `muad.skill.json` 的 `platforms` 一致（不要把 skill 名当平台名）。
 - 脚本失败必须写 **stderr** 并 **exit 非 0**（fail loud）；错误写 stdout 会导致 exec 失败日志转发不到，排查链路断掉。
 
 ### 引导模型跑脚本，而非直接调工具
 
-- SKILL.md 顶部用「快速调用速查」直接列出脚本命令（如 `node scripts/run.mjs`），引导模型跑脚本。
+- SKILL.md 顶部用「快速调用速查」直接列出脚本命令（如 `python3 scripts/run.py`），引导模型跑脚本。
 - 不要让模型直接调 `session_get_state` 工具——该工具需要 `skillName` 参数，模型容易传成平台名。
 
 ## 语言模板
 
-- [`business-skill-shell/`](business-skill-shell/)
+自建 Skill 统一使用 Python：
+
 - [`business-skill-python/`](business-skill-python/)
-- [`business-skill-ts/`](business-skill-ts/)
+
+TypeScript 与 Shell 模板已下线；存量 Skill 由管理员审批与 `self-skill-review` 逐步迁移。
 
 ## 主动进度 CLI
 
-三种脚本模板均直接执行 `muad-progress`，不 import TypeScript SDK，也不传 `channel`、`peerId` 或凭据。Runtime Guard 只在已激活的普通 Skill 或运行中的长任务里注入可信事件文件与收件路由。
+Python 模板直接执行 `muad-progress`，不传 `channel`、`peerId` 或凭据。Runtime Guard 只在已激活的普通 Skill 或运行中的长任务里注入可信事件文件与收件路由。
 
 ```bash
 muad-progress stage --stage query --text "正在查询"
