@@ -30,6 +30,7 @@ var (
 
 type skillBundleManifest struct {
 	Name            string   `json:"name"`
+	Author          string   `json:"author"`
 	Version         string   `json:"version"`
 	Runtime         string   `json:"runtime"`
 	Mode            string   `json:"mode"`
@@ -518,6 +519,13 @@ func readSkillBundleMetadata(skillDir, defaultVisibility string) (privateSkillIn
 	if err := validateOpenClawSkillMetadata(manifest, frontmatter, name, defaultVisibility); err != nil {
 		return privateSkillInstallResult{}, err
 	}
+	if managed && strings.TrimSpace(manifest.Author) == "" {
+		return privateSkillInstallResult{}, skillBundleError(
+			errcode.SkillBundleInvalidManifest,
+			"muad.skill.json 缺少 author 字段（作者姓名/工号/用户名）",
+			"muad.skill.json is missing the author field (author name/employee id/username)",
+		)
+	}
 	platforms, err := normalizeSkillPlatforms(manifest)
 	if err != nil {
 		return privateSkillInstallResult{}, err
@@ -536,7 +544,8 @@ func readSkillBundleMetadata(skillDir, defaultVisibility string) (privateSkillIn
 		return privateSkillInstallResult{}, err
 	}
 	metadata := map[string]any{
-		"name": name, "version": strings.TrimSpace(manifest.Version),
+		"name": name, "author": strings.TrimSpace(manifest.Author),
+		"version": strings.TrimSpace(manifest.Version),
 		"runtime": manifest.Runtime, "mode": manifest.Mode,
 		"visibility": valueOrDefault(manifest.Visibility, skillDefaultVisibility(defaultVisibility)),
 		"platforms":  platforms, "progressSupported": progressSupported,

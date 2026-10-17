@@ -19,7 +19,8 @@ def main():
         os.makedirs(out_dir, exist_ok=True)
         with open(os.path.join(out_dir, "result.json"), "w", encoding="utf-8") as handle:
             json.dump({"status": response.status_code}, handle)
-    print(json.dumps({"ok": True}))
+    # Response field, not a request header: must not trigger SS-R007.
+    print(json.dumps({"ok": True, "traceId": response.headers.get("Traceid")}))
 
 
 if __name__ == "__main__":

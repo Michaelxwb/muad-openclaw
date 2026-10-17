@@ -105,12 +105,12 @@ func MaskWebhook(webhook string) string {
 	return parsed.String()
 }
 
-// Send posts one text message. HTTP 200 with errcode != 0 is a permanent
+// Send posts one Markdown message. HTTP 200 with errcode != 0 is a permanent
 // business failure; transport errors are retryable.
 func (channel *WeComChannel) Send(ctx context.Context, event Event) error {
 	payload, err := json.Marshal(map[string]any{
-		"msgtype": "text",
-		"text":    map[string]string{"content": event.Text()},
+		"msgtype":  "markdown",
+		"markdown": map[string]string{"content": event.Markdown()},
 	})
 	if err != nil {
 		return fmt.Errorf("wecom: encode payload: %w", err)

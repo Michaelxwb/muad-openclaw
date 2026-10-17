@@ -47,6 +47,24 @@ def test_compliant_skill_passes() -> None:
     assert data["summary"]["files"] >= 3
 
 
+def test_response_trace_id_is_not_a_manual_header() -> None:
+    result = run_check(FIXTURES / "compliant-skill", "--format", "json")
+
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert "SS-R007" not in findings_by_rule(data)
+
+
+def test_review_fingerprint_is_stable_for_unchanged_target() -> None:
+    first = run_check(FIXTURES / "compliant-skill", "--format", "json")
+    second = run_check(FIXTURES / "compliant-skill", "--format", "json")
+
+    first_fingerprint = json.loads(first.stdout)["summary"]["fingerprint"]
+    second_fingerprint = json.loads(second.stdout)["summary"]["fingerprint"]
+    assert first_fingerprint.startswith("sha256:")
+    assert first_fingerprint == second_fingerprint
+
+
 def test_violating_skill_reports_rules_with_file_line() -> None:
     target = FIXTURES / "violating-skill"
     result = run_check(target, "--format", "json")
@@ -68,6 +86,7 @@ def test_violating_skill_reports_rules_with_file_line() -> None:
         "SS-R010",  # write outside SKILL_OUTPUT_DIR
         "SS-R011",  # session-manager skill name mismatch
         "SS-R012",  # hard-coded credential / internal URL
+        "SS-R014",  # missing author
     }
     assert expected <= set(grouped)
 
@@ -84,6 +103,7 @@ def test_violating_skill_reports_rules_with_file_line() -> None:
         "SS-R010": ("scripts/run.py", line_of(run_py, "/tmp/review-output.json")),
         "SS-R011": ("scripts/run.py", line_of(run_py, "session = subprocess.run")),
         "SS-R012": ("scripts/run.py", line_of(run_py, "PASSWORD =")),
+        "SS-R014": ("muad.skill.json", 1),
     }
     for rule, location in expected_locations.items():
         assert any(
@@ -123,6 +143,8 @@ def test_markdown_report_contains_file_line() -> None:
     assert "FAIL" in result.stdout
     assert "scripts/run.py:" in result.stdout
     assert "SS-R005" in result.stdout
+    assert "平台请求没有走统一 SDK" in result.stdout
+    assert "规则 ID 仅用于追踪" in result.stdout
 
 
 def test_output_option_writes_report(tmp_path: Path) -> None:

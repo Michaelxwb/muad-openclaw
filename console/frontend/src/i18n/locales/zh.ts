@@ -258,6 +258,7 @@ const zh = {
       notFound: "执行不存在",
       retry: "重试",
       showMore: "加载更多（剩余 {{count}} 条）",
+      traceId: "Traceid",
       kindExec: "执行",
       kindHttp: "接口",
       kindOutput: "输出",

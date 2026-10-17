@@ -35,7 +35,7 @@ test("SkillTrace resolve_exec_env injects execution env and creates a 0700/0600 
 });
 
 test("SkillTrace resolve_exec_env fails closed for missing, conflicting, or unidentified mappings", async () => {
-  const { hooks, executions } = setup();
+  const { hooks, executions, logs } = setup();
   const event = { toolName: "exec", runId: "run-1", sessionKey: SESSION_KEY };
 
   assert.equal(await hooks.resolveExecEnv(event, context()), undefined);
@@ -45,11 +45,42 @@ test("SkillTrace resolve_exec_env fails closed for missing, conflicting, or unid
     executionId: "99999999-2222-4333-8444-555555555555", skillName: "other-skill",
   });
   assert.equal(await hooks.resolveExecEnv(event, context()), undefined);
+  assert.ok(logs.some((line) => line.includes("action=resolve outcome=mapping_conflict")));
 
   executions.clear();
   register(executions, { executionId: EXECUTION_ID, skillName: "xdr-query" });
+  assert.equal(await hooks.resolveExecEnv({ toolName: "exec" }, context()), undefined);
+  assert.equal(await hooks.resolveExecEnv({ toolName: "read", sessionKey: SESSION_KEY }, context()), undefined);
+
+  // A session key for another agent must never resolve alice's execution.
+  assert.equal(await hooks.resolveExecEnv(
+    { toolName: "exec", sessionKey: "agent:bob:wecom:direct:wx-1" },
+    { agentId: "bob" },
+  ), undefined);
+});
+
+test("SkillTrace resolves an exec without runId from the session's sole execution", async () => {
+  const { hooks, executions } = setup();
+  register(executions, { executionId: EXECUTION_ID, skillName: "xdr-query" });
+
+  const env = await hooks.resolveExecEnv({ toolName: "exec", sessionKey: SESSION_KEY }, context());
+
+  assert.equal(env.MUAD_EXECUTION_ID, EXECUTION_ID);
+  assert.equal(env.MUAD_SKILL_NAME, "xdr-query");
+  assert.match(env.MUAD_TRACE_SPOOL, new RegExp(`/${EXECUTION_ID}\\.jsonl$`, "u"));
+});
+
+test("SkillTrace session fallback fails closed when a session has two executions", async () => {
+  const { hooks, executions, logs } = setup();
+  register(executions, { executionId: EXECUTION_ID, skillName: "xdr-query" });
+  register(executions, {
+    executionId: "99999999-2222-4333-8444-555555555555",
+    skillName: "other-skill",
+    runId: "run-2",
+  });
+
   assert.equal(await hooks.resolveExecEnv({ toolName: "exec", sessionKey: SESSION_KEY }, context()), undefined);
-  assert.equal(await hooks.resolveExecEnv({ toolName: "read", runId: "run-1", sessionKey: SESSION_KEY }, context()), undefined);
+  assert.ok(logs.some((line) => line.includes("action=resolve outcome=mapping_conflict")));
 });
 
 test("SkillTrace uses the taskId as executionId for long task sessions", async () => {
@@ -67,7 +98,7 @@ test("SkillTrace uses the taskId as executionId for long task sessions", async (
   assert.match(env.MUAD_TRACE_SPOOL, new RegExp(`/${taskId}\\.jsonl$`, "u"));
 });
 
-test("SkillTrace parses 500 helper events plus a 600-request summary without leaking trace ids", () => {
+test("SkillTrace parses 500 helper events plus a 600-request summary and carries the request Traceid", () => {
   const lines = [];
   for (let index = 1; index <= 500; index += 1) lines.push(httpLine(index));
   lines.splice(10, 0, "{not-json");
@@ -94,7 +125,9 @@ test("SkillTrace parses 500 helper events plus a 600-request summary without lea
   assert.equal(parsed.events[0].kind, "http");
   assert.equal(parsed.events[0].status, "ok");
   assert.match(parsed.events[0].summary, /^GET mssw \/api\/v1\/targets\/1$/u);
-  assert.doesNotMatch(JSON.stringify(parsed.events), /traceId|tr-1/u);
+  assert.equal(parsed.events[0].traceId, "tr-1");
+  assert.equal(parsed.events[1].traceId, "tr-2");
+  assert.doesNotMatch(JSON.stringify(parsed.events), /cookie|authorization|password/iu);
 });
 
 test("SkillTrace caps parsed events at 2000 and marks the detail truncated", () => {
@@ -259,6 +292,118 @@ test("SkillTrace keeps the spool and retries the identical batch after a failed 
   );
 });
 
+test("SkillTrace keeps one exec event per exec with monotonic seq", async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "skill-trace-"));
+  const calls = [];
+  const client = { report: async (executionId, payload) => { calls.push({ executionId, payload }); return {}; } };
+  const { hooks, executions } = setup({ client, spoolRoot: root });
+  register(executions, { executionId: EXECUTION_ID, skillName: "xdr-query" });
+
+  await hooks.resolveExecEnv(event(), context());
+  await hooks.afterToolCall({
+    ...event(), params: { command: "ls -la /opt/openclaw-skills/xdr-query" }, durationMs: 3,
+  }, context());
+  await hooks.flush();
+
+  const env = await hooks.resolveExecEnv(event(), context());
+  writeFileSync(env.MUAD_TRACE_SPOOL, `${httpLine(1)}\n${summaryLine(1)}\n`, { flag: "a" });
+  await hooks.afterToolCall({
+    ...event(), params: { command: "python3 /opt/openclaw-skills/xdr-query/scripts/run.py" }, durationMs: 100,
+  }, context());
+  await hooks.flush();
+
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].payload.events.map((item) => [item.seq, item.eventId, item.kind]), [
+    [1, `${EXECUTION_ID}:1`, "exec"],
+  ]);
+  assert.deepEqual(calls[1].payload.events.map((item) => [item.seq, item.eventId, item.kind]), [
+    [2, `${EXECUTION_ID}:2`, "exec"],
+    [3, `${EXECUTION_ID}:3`, "http"],
+  ]);
+  assert.equal(calls[1].payload.events[0].summary,
+    "python3 /opt/openclaw-skills/xdr-query/scripts/run.py");
+});
+
+test("SkillTrace accumulates metrics across exec batches", async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "skill-trace-"));
+  const calls = [];
+  const client = { report: async (executionId, payload) => { calls.push({ executionId, payload }); return {}; } };
+  const { hooks, executions } = setup({ client, spoolRoot: root });
+  register(executions, { executionId: EXECUTION_ID, skillName: "xdr-query" });
+
+  for (const command of ["python3 run1.py", "python3 run2.py"]) {
+    const env = await hooks.resolveExecEnv(event(), context());
+    writeFileSync(env.MUAD_TRACE_SPOOL, `${httpLine(1)}\n${summaryLine(1)}\n`, { flag: "a" });
+    await hooks.afterToolCall({ ...event(), params: { command } }, context());
+    await hooks.flush();
+  }
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].payload.metrics.requestCount, 1);
+  assert.equal(calls[1].payload.metrics.requestCount, 2);
+  assert.equal(calls[1].payload.metrics.errorCount, 0);
+  assert.equal(calls[1].payload.metrics.distinctHosts, 1);
+  assert.deepEqual(calls[1].payload.metrics.topInterfaces, [
+    { host: "mssw", method: "GET", path: "/api/v1/targets/1", count: 2 },
+  ]);
+});
+
+test("SkillTrace attribution slides its TTL while execs keep resolving", () => {
+  let clock = 1_000;
+  const executions = createSkillTraceExecutions({ now: () => clock, ttlMs: 1_000 });
+  executions.register({
+    agentId: "alice", sessionKey: SESSION_KEY, runId: "run-1",
+    skillName: "xdr-query", executionId: EXECUTION_ID,
+  });
+
+  clock += 900;
+  assert.ok(executions.resolveEntry({ agentId: "alice", sessionKey: SESSION_KEY, runId: "run-1" }).entry);
+  clock += 900;
+  assert.ok(executions.resolveEntry({ agentId: "alice", sessionKey: SESSION_KEY, runId: "run-1" }).entry);
+  clock += 1_100;
+  assert.equal(executions.resolveEntry({ agentId: "alice", sessionKey: SESSION_KEY, runId: "run-1" }).entry, null);
+});
+
+test("SkillTrace endSession clears the session fallback but keeps exact runId", () => {
+  const executions = createSkillTraceExecutions();
+  register(executions, { executionId: EXECUTION_ID, skillName: "xdr-query" });
+
+  assert.ok(executions.resolveEntry({ agentId: "alice", sessionKey: SESSION_KEY }).entry);
+  assert.equal(executions.endSession({
+    agentId: "alice", sessionKey: SESSION_KEY, runId: "run-1",
+  }), true);
+  assert.equal(executions.resolveEntry({ agentId: "alice", sessionKey: SESSION_KEY }).entry, null);
+  assert.ok(executions.resolveEntry({ agentId: "alice", sessionKey: SESSION_KEY, runId: "run-1" }).entry);
+});
+
+test("SkillTrace notify prefers the trusted turn sender over the session tail", async () => {
+  const sessionKey = "agent:alice:wecom:direct:agent-alice";
+  const root = mkdtempSync(path.join(os.tmpdir(), "skill-trace-"));
+  const notified = [];
+  const client = { report: async () => ({}) };
+  const notify = async (input) => { notified.push(input); return { ok: true }; };
+  const { hooks, executions } = setup({
+    client, notify, spoolRoot: root,
+    trustedSender: (agentId, key) => agentId === "alice" && key === sessionKey ? "wx-trusted" : "",
+  });
+  register(executions, {
+    executionId: EXECUTION_ID, skillName: "xdr-query", sessionKey,
+  });
+  const event = { toolName: "exec", runId: "run-1", sessionKey };
+  const env = await hooks.resolveExecEnv(event, context());
+  writeFileSync(env.MUAD_TRACE_SPOOL, [
+    JSON.stringify({ v: 1, kind: "abort", reason: "request_limit", interface: "GET mssw /api/v1/ping", count: 4 }),
+    JSON.stringify({ v: 1, kind: "summary", totalRequests: 4, aborted: true }),
+  ].join("\n"), { flag: "a" });
+
+  await hooks.afterToolCall(event, context());
+  await hooks.flush();
+
+  assert.equal(notified.length, 1);
+  assert.equal(notified[0].channel, "wecom");
+  assert.equal(notified[0].peerId, "wx-trusted");
+});
+
 test("SkillTrace aborted executions notify the mapped user without blocking trace upload", async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "skill-trace-"));
   const calls = [];
@@ -286,6 +431,9 @@ test("SkillTrace aborted executions notify the mapped user without blocking trac
   assert.equal(notified[0].channel, "wecom");
   assert.equal(notified[0].peerId, "wx-1");
   assert.match(notified[0].text, /xdr-query/u);
+  assert.match(notified[0].text, /接口：GET mssw \/api\/v1\/targets\/\{id\}/u);
+  assert.match(notified[0].text, /上限：单接口 50 次/u);
+  assert.match(notified[0].text, /拦截：第 1001 次请求/u);
 });
 
 test("SkillTrace uploads one exec event when the Skill wrote no helper events", async () => {
@@ -306,7 +454,7 @@ test("SkillTrace uploads one exec event when the Skill wrote no helper events", 
   assert.equal(calls[0].payload.metrics.aborted, false);
   assert.equal(calls[0].payload.events.length, 1);
   assert.deepEqual(calls[0].payload.events[0], {
-    eventId: `${EXECUTION_ID}:exec`,
+    eventId: `${EXECUTION_ID}:1`,
     seq: 1,
     occurredAt: calls[0].payload.events[0].occurredAt,
     kind: "exec",
@@ -411,7 +559,7 @@ test("SkillTrace startup cleanup removes only spool files older than 24h", () =>
   assert.equal(readFileSync(newFile, "utf8"), "{}\n");
 });
 
-function setup({ client, notify, config, spoolRoot, queueLimit } = {}) {
+function setup({ client, notify, config, spoolRoot, queueLimit, trustedSender } = {}) {
   const executions = createSkillTraceExecutions();
   const logs = [];
   const hooks = createSkillTraceHooks({
@@ -421,16 +569,17 @@ function setup({ client, notify, config, spoolRoot, queueLimit } = {}) {
     getConfig: () => ({ skillRequestLimit: 50, locale: "zh", ...(config ?? {}) }),
     spoolRoot,
     queueLimit,
+    trustedSender,
     log: (line) => logs.push(line),
   });
   return { hooks, executions, logs };
 }
 
-function register(executions, { executionId, skillName }) {
+function register(executions, { executionId, skillName, runId = "run-1", sessionKey = SESSION_KEY, agentId = "alice" }) {
   executions.register({
-    agentId: "alice",
-    sessionKey: SESSION_KEY,
-    runId: "run-1",
+    agentId,
+    sessionKey,
+    runId,
     skillName,
     executionId,
   });
@@ -457,5 +606,20 @@ function httpLine(index) {
     durationMs: 10 + (index % 50),
     errorClass: index % 10 === 0 ? "http_500" : "",
     traceId: `tr-${index}`,
+  });
+}
+
+function summaryLine(count) {
+  return JSON.stringify({
+    v: 1,
+    ts: "2026-10-17T06:02:00Z",
+    kind: "summary",
+    totalRequests: count,
+    errorCount: 0,
+    hosts: { mssw: count },
+    topInterfaces: [{ host: "mssw", method: "GET", path: "/api/v1/targets/1", count }],
+    maxBurst10s: 1,
+    truncated: false,
+    aborted: false,
   });
 }

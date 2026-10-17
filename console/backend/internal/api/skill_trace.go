@@ -16,11 +16,12 @@ import (
 )
 
 const (
-	skillTraceWriteTimeout   = 15 * time.Second
-	skillTraceReadTimeout    = 5 * time.Second
-	skillStatsReadTimeout    = 10 * time.Second
-	maxSkillTraceBodyBytes   = 8 << 20
-	maxSkillTraceDetailBytes = 2 << 10
+	skillTraceWriteTimeout    = 15 * time.Second
+	skillTraceReadTimeout     = 5 * time.Second
+	skillStatsReadTimeout     = 10 * time.Second
+	maxSkillTraceBodyBytes    = 8 << 20
+	maxSkillTraceDetailBytes  = 2 << 10
+	maxSkillTraceTraceIDBytes = 128
 )
 
 // Skill health flag rule: aborted, request count >= min(max, limit x ratio), or
@@ -69,6 +70,7 @@ type skillTraceEventRequest struct {
 	DurationMS *int      `json:"durationMs"`
 	Summary    string    `json:"summary"`
 	Detail     string    `json:"detail"`
+	TraceID    string    `json:"traceId"`
 }
 
 type skillTraceEventView struct {
@@ -80,6 +82,7 @@ type skillTraceEventView struct {
 	DurationMS *int      `json:"durationMs,omitempty"`
 	Summary    string    `json:"summary"`
 	Detail     string    `json:"detail,omitempty"`
+	TraceID    string    `json:"traceId,omitempty"`
 }
 
 type skillExecutionMetricsView struct {
@@ -160,14 +163,21 @@ func (s *Server) handleSkillExecutionTrace(w http.ResponseWriter, r *http.Reques
 	// The abort event fans out one admin alert. Dispatcher de-duplication keeps
 	// retried uploads of the same execution from alerting again.
 	if metrics.Aborted && s.notifier != nil {
-		s.notifier.Publish(ctx, notify.Event{
+		event := notify.Event{
 			Type:        "skill.request_limit",
 			PodID:       record.PodID,
 			HumanUserID: record.HumanUserID,
 			SkillName:   record.SkillName,
 			Interface:   storedMetrics.AbortInterface,
 			OccurredAt:  time.Now().UTC(),
-		})
+		}
+		// The alert is for operators: prefer the human-readable name. A deleted
+		// or unreadable user falls back to the stable human user id.
+		if user, err := s.store.GetHumanUser(record.HumanUserID); err == nil {
+			event.HumanUserName = user.DisplayName
+			event.AgentID = user.AgentID
+		}
+		s.notifier.Publish(ctx, event)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"storedEvents": stored, "aborted": storedMetrics.Aborted,
@@ -215,7 +225,7 @@ func skillTracePayload(
 		events = append(events, repo.SkillTraceEvent{
 			EventID: event.EventID, Seq: event.Seq, OccurredAt: event.OccurredAt,
 			Kind: event.Kind, Status: event.Status, DurationMS: event.DurationMS,
-			Summary: event.Summary, Detail: event.Detail,
+			Summary: event.Summary, Detail: event.Detail, TraceID: event.TraceID,
 		})
 	}
 	return metrics, events, true
@@ -223,7 +233,8 @@ func skillTracePayload(
 
 func validSkillTraceEvent(event skillTraceEventRequest) bool {
 	return (event.DurationMS == nil || *event.DurationMS >= 0) &&
-		len(event.Detail) <= maxSkillTraceDetailBytes
+		len(event.Detail) <= maxSkillTraceDetailBytes &&
+		len(strings.TrimSpace(event.TraceID)) <= maxSkillTraceTraceIDBytes
 }
 
 func skillTraceTopInterfaces(interfaces []skillTraceInterface) ([]skillTraceInterface, bool) {
@@ -359,7 +370,7 @@ func skillTraceEventViews(events []repo.SkillTraceEvent) []skillTraceEventView {
 		views = append(views, skillTraceEventView{
 			EventID: event.EventID, Seq: event.Seq, OccurredAt: event.OccurredAt,
 			Kind: event.Kind, Status: event.Status, DurationMS: event.DurationMS,
-			Summary: event.Summary, Detail: event.Detail,
+			Summary: event.Summary, Detail: event.Detail, TraceID: event.TraceID,
 		})
 	}
 	return views

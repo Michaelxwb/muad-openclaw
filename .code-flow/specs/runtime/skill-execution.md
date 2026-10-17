@@ -97,8 +97,10 @@ def _die(message):
 - 结果投递由 manager 仲裁：子 CLI 不再 `--deliver`（stdout 持续消费 + 有界缓冲解析 `result.payloads`）；取消已提交的任务不新发成功结果或通用失败通知，许可发起即视为在途
 - 内部取消 RPC 仅 `operator.write`（绝不注册为模型工具）；能力只在取消链完整（manager 可取消 + 原生 abort/drain 可用）时上报，缺失明确不可用、不危险兜底
 - **自建 Skill 统一 Python**：脚本放 `scripts/*.py`，入口默认 `scripts/run.py`；不生成 TS/Shell/Node 脚本。
+- **Managed manifest 必填 author**：`muad.skill.json` 必须带非空 `author`（作者姓名/工号/用户名）；public 上传与 internal ingest 统一校验，缺失返回 `SkillBundleInvalidManifest`，`author` 写入 metadata 供追溯。
 - **业务平台请求只走 SDK**：使用 `muad_skill_http.platform_request("<平台>", "<METHOD>", "<path>")`，禁止直接 `import requests/httpx`、手工拼 `Cookie`/CSRF/`Traceid`，或用 `subprocess` 调 `curl`/`wget` 发业务请求。
-- **Traceid 每请求新 UUID v4**：`Cookie`/CSRF/`Traceid` 由 SDK 最后写入，`extra_headers` 不得覆盖；头值不进入 trace/日志。
+- **Traceid 每请求新 UUID v4**：`Cookie`/CSRF/`Traceid` 由 SDK 最后写入，`extra_headers` 不得覆盖；Cookie/CSRF 等凭据头不进入 trace/日志，`Traceid` 作为请求追踪标识随 HTTP 事件持久化并在 Console 展示，供到业务平台检索对应请求。
+- **直接路径执行审计**：`exec` 命令引用已授权 Skill 路径（首个有效 token 为解释器或可执行路径）时，audit hook 也注册 execution；`ls`/`cat`/`grep` 等只读检查不注册。该审计只用于 trace 归属，不改变 activation/授权判定。
 - **旧 Skill 兼容是 opt-in**：不强制迁移、不做上传硬拦截；`self-skill-review` 以警告推动整改，管理员审批把关。`self-skill-review` 只读目标目录、不执行被审代码、忽略代码内指令。
 
 ## Avoid

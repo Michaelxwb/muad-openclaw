@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS skill_trace_events (
 	duration_ms INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0),
 	summary TEXT NOT NULL DEFAULT '',
 	detail TEXT,
+	trace_id TEXT NOT NULL DEFAULT '',
 	UNIQUE (execution_id, seq)
 );
 CREATE INDEX IF NOT EXISTS idx_skill_trace_execution ON skill_trace_events(execution_id, seq);
@@ -53,6 +54,24 @@ CREATE TABLE IF NOT EXISTS notify_channels (
 func (s *Store) migrateSkillTraceSchema() error {
 	if _, err := s.db.Exec(skillTraceSchemaDDL); err != nil {
 		return fmt.Errorf("create Skill trace schema: %w", err)
+	}
+	return nil
+}
+
+// migrateSkillTraceEventTraceID adds the per-request Traceid column. Fresh
+// databases get it from skillTraceSchemaDDL; existing ones keep their rows and
+// receive an empty value until the guard uploads new HTTP events.
+func (s *Store) migrateSkillTraceEventTraceID() error {
+	exists, err := columnExists(s.db, "skill_trace_events", "trace_id")
+	if err != nil {
+		return fmt.Errorf("inspect skill_trace_events trace_id column: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	if _, err := s.db.Exec(`ALTER TABLE skill_trace_events
+		ADD COLUMN trace_id TEXT NOT NULL DEFAULT ''`); err != nil {
+		return fmt.Errorf("add skill_trace_events trace_id column: %w", err)
 	}
 	return nil
 }

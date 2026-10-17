@@ -34,7 +34,7 @@ console/backend/internal/runtimeapply/  # 触发 apply，不复制 runner
 ## Guidance
 - `bin/`：镜像内 CLI/注入/事务脚本及其 `bin/test`
 - `tools/`：可独立测试的插件与适配器（Node/Go）
-- `skills/`：内置 skill 种子与 `_templates`；运行态 public/private 由 Console 管理
+- `skills/`：Skill 源码、测试/上传打包来源与 `_templates`；镜像不 COPY 该目录，运行态可用 Skill 由 public 存储挂载 + private 工作区组成
 - 部署清单放 Helm chart（`build/helm-build/`）与 compose 模板，不把集群专用路径写死进业务代码
 - 新增工具优先自包含 package（自有 package.json/go.mod + test）
 - runtime guard 新能力拆成单一职责模块：`tools/muad-runtime-guard/src/<功能>.mjs` + 同目录 `test/<功能>.test.mjs`

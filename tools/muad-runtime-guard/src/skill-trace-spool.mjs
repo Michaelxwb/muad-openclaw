@@ -20,6 +20,7 @@ const EXECUTION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[
 const SPOOL_FILE_PATTERN = /^[0-9a-f-]{36}\.jsonl$/iu;
 const MAX_INTERFACE_PATH = 200;
 const MAX_SUMMARY_LENGTH = 200;
+const MAX_TRACE_ID_LENGTH = 128;
 
 export function isSafeExecutionId(value) {
   return typeof value === "string" && EXECUTION_ID_PATTERN.test(value);
@@ -56,13 +57,14 @@ export function parseSkillTraceSpool(source, { executionId = "", now = Date.now(
   }
 
   const hosts = normalizeHosts(summary?.hosts) ?? hostsFrom(httpRecords);
+  const topInterfaces = normalizeInterfaces(summary?.topInterfaces) ?? topInterfacesFrom(httpRecords);
   const aborted = summary?.aborted === true || abort !== null;
   const metrics = {
     requestCount: integer(summary?.totalRequests) ?? httpRecords.length,
     errorCount: integer(summary?.errorCount) ?? httpRecords.filter(isErrorRecord).length,
     distinctHosts: Object.keys(hosts).length,
     maxBurstPer10s: integer(summary?.maxBurst10s) ?? 0,
-    topInterfaces: normalizeInterfaces(summary?.topInterfaces) ?? topInterfacesFrom(httpRecords),
+    topInterfaces,
     detailTruncated: summary?.truncated === true || dropped > 0,
     aborted,
     abortReason: aborted ? (text(summary?.abortReason) || text(abort?.reason) || "request_limit") : "",
@@ -72,7 +74,7 @@ export function parseSkillTraceSpool(source, { executionId = "", now = Date.now(
   const abortCount = integer(summary?.abortCount) ?? integer(abort?.count);
   if (aborted && abortCount !== null) metrics.abortCount = abortCount;
 
-  return { metrics, events, aborted };
+  return { metrics, events, aborted, hasSummary: summary !== null, hosts, interfaces: topInterfaces };
 }
 
 export function cleanupSkillTraceSpools({
@@ -151,6 +153,10 @@ function toEvent(record, seq, executionId, now) {
   };
   const durationMs = integer(record.durationMs);
   if (durationMs !== null && durationMs >= 0) event.durationMs = durationMs;
+  // Traceid is a request correlation id, not a credential; Console shows it so
+  // operators can look the request up on the business platform.
+  const traceId = text(record.traceId);
+  if (kind === "http" && traceId) event.traceId = traceId.slice(0, MAX_TRACE_ID_LENGTH);
   return event;
 }
 

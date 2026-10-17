@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import test from "node:test";
 
 import { createSkillAuditHooks } from "../src/skill-audit-hooks.mjs";
+import { createSkillTraceExecutions } from "../src/skill-trace-executions.mjs";
 
 const config = {
   valid: true,
@@ -90,6 +91,19 @@ test("skill audit hooks report only once per runId and skill", async () => {
 
   await hooks.beforeDispatch({ runId: "run-4", prompt: "/skill:xdr-query now" }, context("run-4"));
   await hooks.beforeDispatch({ runId: "run-4", prompt: "/skill:xdr-query again" }, context("run-4"));
+  await flush();
+
+  assert.equal(client.reports.length, 1);
+});
+
+test("skill audit hooks keep one execution when a long run outlives the turn TTL", async () => {
+  let clock = fixedNow.getTime();
+  const client = recordingClient();
+  const hooks = createSkillAuditHooks({ config, client, now: () => clock });
+
+  await hooks.beforeDispatch({ runId: "run-long", prompt: "/skill:xdr-query" }, context("run-long"));
+  clock += 11 * 60_000;
+  await hooks.beforeDispatch({ runId: "run-long", prompt: "/skill:xdr-query" }, context("run-long"));
   await flush();
 
   assert.equal(client.reports.length, 1);
@@ -297,6 +311,126 @@ test("skill audit hooks dedup dir-grant Skills across dispatch and read within a
   await flush();
 
   assert.equal(client.reports.length, 1, "同一 turn 对同一 skill 的 dispatch + read 只上报一次");
+});
+
+test("skill audit hooks report a direct Skill path execution without a SKILL.md read", async (t) => {
+  const root = skillRoot(t);
+  mkdirSync(join(root, "scripts"), { recursive: true });
+  const client = recordingClient();
+  const hooks = createSkillAuditHooks({
+    config: {
+      ...config,
+      skillAuditGrants: [
+        { agentId: "alice", name: "xdr-query", rootPath: root, source: "system" },
+      ],
+    },
+    client,
+    now: () => fixedNow,
+  });
+
+  await hooks.beforeToolCall({
+    runId: "run-exec-1",
+    toolName: "exec",
+    params: { command: `python3 ${join(root, "scripts", "run.py")}` },
+  }, context("run-exec-1"));
+  await hooks.beforeToolCall({
+    runId: "run-exec-ls",
+    toolName: "exec",
+    params: { command: `ls -la ${root}` },
+  }, context("run-exec-ls"));
+  await flush();
+
+  assert.equal(client.reports.length, 1);
+  assert.equal(client.reports[0].skillName, "xdr-query");
+  assert.equal(client.reports[0].skillScope, "system");
+});
+
+test("skill audit hooks register trace attribution for a direct Skill exec", async (t) => {
+  const root = skillRoot(t);
+  mkdirSync(join(root, "scripts"), { recursive: true });
+  const executions = createSkillTraceExecutions();
+  const hooks = createSkillAuditHooks({
+    config: {
+      ...config,
+      skillAuditGrants: [
+        { agentId: "alice", name: "xdr-query", rootPath: root, source: "system" },
+      ],
+    },
+    client: recordingClient(),
+    executions,
+    now: () => fixedNow,
+  });
+
+  await hooks.beforeToolCall({
+    runId: "run-exec-trace",
+    toolName: "exec",
+    params: { command: `python3 ${join(root, "scripts", "run.py")}` },
+  }, context("run-exec-trace"));
+
+  const resolved = executions.resolveEntry({
+    agentId: "alice",
+    sessionKey: "agent:alice:wecom:direct:user",
+    runId: "run-exec-trace",
+  });
+  assert.equal(resolved.entry?.skillName, "xdr-query");
+});
+
+test("skill audit hooks derive a direct exec Skill name from a directory grant and cwd", async (t) => {
+  const publicRoot = skillDir(t);
+  mkdirSync(join(publicRoot, "mssw-query", "scripts"), { recursive: true });
+  writeFileSync(join(publicRoot, "mssw-query", "SKILL.md"), "# MSSW\n");
+  const client = recordingClient();
+  const hooks = createSkillAuditHooks({
+    config: {
+      ...config,
+      skillAuditGrants: [
+        { agentId: "alice", name: "openclaw-skills", rootPath: publicRoot, source: "public", dir: true },
+      ],
+    },
+    client,
+    now: () => fixedNow,
+  });
+
+  await hooks.beforeToolCall({
+    runId: "run-exec-2",
+    toolName: "exec",
+    params: { command: `python3 ${join(publicRoot, "mssw-query", "scripts", "run.py")}` },
+  }, context("run-exec-2"));
+  await hooks.beforeToolCall({
+    runId: "run-exec-3",
+    toolName: "exec",
+    params: {
+      command: "python3 scripts/run.py",
+      cwd: join(publicRoot, "mssw-query", "scripts"),
+    },
+  }, context("run-exec-3"));
+  await flush();
+
+  assert.equal(client.reports.length, 2);
+  assert.equal(client.reports[0].skillName, "mssw-query");
+  assert.equal(client.reports[0].skillScope, "public");
+  assert.equal(client.reports[1].skillName, "mssw-query");
+});
+
+test("skill audit hooks clear the session attribution at agent_end", async () => {
+  const executions = createSkillTraceExecutions();
+  const client = recordingClient();
+  const hooks = createSkillAuditHooks({
+    config, client, executions, now: () => fixedNow.getTime(),
+  });
+  const sessionKey = "agent:alice:wecom:direct:user";
+
+  await hooks.beforeDispatch({ runId: "run-a", prompt: "/skill:xdr-query" }, context("run-a"));
+  const first = executions.resolveEntry({ agentId: "alice", sessionKey });
+  assert.ok(first.entry);
+
+  await hooks.agentEnd({ runId: "run-a" }, context("run-a"));
+  assert.equal(executions.resolveEntry({ agentId: "alice", sessionKey }).entry, null);
+
+  await hooks.beforeDispatch({ runId: "run-b", prompt: "/skill:xdr-query" }, context("run-b"));
+  const second = executions.resolveEntry({ agentId: "alice", sessionKey });
+  assert.ok(second.entry);
+  assert.notEqual(second.entry.executionId, first.entry.executionId);
 });
 
 const fixedNow = new Date("2026-08-12T09:30:00.000Z");

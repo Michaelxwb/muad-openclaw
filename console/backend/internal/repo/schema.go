@@ -303,6 +303,9 @@ func (s *Store) migrate() error {
 	if err := s.migrateSkillTraceSchema(); err != nil {
 		return err
 	}
+	if err := s.migrateSkillTraceEventTraceID(); err != nil {
+		return err
+	}
 	if err := s.migrateResourceGlobalSkillRequestLimit(); err != nil {
 		return err
 	}

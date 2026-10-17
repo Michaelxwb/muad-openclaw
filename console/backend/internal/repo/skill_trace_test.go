@@ -62,7 +62,8 @@ func TestInsertSkillTraceEventsIsIdempotent(t *testing.T) {
 		{EventID: "event-1", Seq: 1, OccurredAt: time.Date(2026, 10, 17, 6, 1, 0, 0, time.UTC),
 			Kind: SkillTraceKindExec, Status: SkillTraceStatusOK, Summary: "python3 run.py"},
 		{EventID: "event-2", Seq: 2, OccurredAt: time.Date(2026, 10, 17, 6, 2, 0, 0, time.UTC),
-			Kind: SkillTraceKindHTTP, Status: SkillTraceStatusError, Summary: "GET /api"},
+			Kind: SkillTraceKindHTTP, Status: SkillTraceStatusError, Summary: "GET /api",
+			TraceID: "7d8f4c8e-2b0a-4f1d-9e63-5f0f1a2b3c4d"},
 	}
 	stored, err := store.InsertSkillTraceEvents(context.Background(), "exec-a", events)
 	if err != nil {
@@ -108,6 +109,25 @@ func TestInsertSkillTraceEventsIsIdempotent(t *testing.T) {
 	}
 	if got[0].Summary != "python3 run.py" {
 		t.Fatalf("duplicate replay mutated stored event: %+v", got[0])
+	}
+	if got[1].TraceID != "7d8f4c8e-2b0a-4f1d-9e63-5f0f1a2b3c4d" {
+		t.Fatalf("http event trace id = %q", got[1].TraceID)
+	}
+	if got[0].TraceID != "" {
+		t.Fatalf("exec event trace id = %q, want empty", got[0].TraceID)
+	}
+}
+
+func TestMigrateSkillTraceEventTraceIDIsIdempotent(t *testing.T) {
+	store := newSkillTraceTestStore(t)
+	for range 2 {
+		if err := store.migrateSkillTraceEventTraceID(); err != nil {
+			t.Fatalf("migrateSkillTraceEventTraceID: %v", err)
+		}
+	}
+	exists, err := columnExists(store.db, "skill_trace_events", "trace_id")
+	if err != nil || !exists {
+		t.Fatalf("trace_id column exists = %v, err = %v", exists, err)
 	}
 }
 

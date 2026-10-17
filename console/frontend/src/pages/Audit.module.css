@@ -136,6 +136,14 @@
   font-weight: 500;
 }
 
+.traceEventTraceId {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  font-family: var(--semi-font-family-mono);
+  font-size: 12px;
+  user-select: text;
+}
+
 .traceEventDetail {
   margin: 4px 0 0;
   overflow-wrap: anywhere;

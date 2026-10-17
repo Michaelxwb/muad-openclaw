@@ -1,12 +1,12 @@
 # Skill 开发与分层
 
-本目录保存 Worker 镜像内置的 Skill 种子和开发模板。运行环境中的 Skill 由 Console 统一管理，并按 system、public、private 三层解析。
+本目录保存 Skill 源码与开发模板，是手工上传/测试用的打包来源；Worker 镜像不再内置 Skill。运行环境中的 Skill 由 Console 统一管理，实际可用集合由 public 存储挂载与 private 工作区组成，并按 system、public、private 三层解析。
 
 ## 分层与优先级
 
 | 范围 | 来源 | 生效方式 |
 |------|------|----------|
-| system | Worker 镜像内置 | 平台保护，用户不可覆盖或禁用 |
+| system | Console 预置（平台保护） | 平台保护，用户不可覆盖或禁用 |
 | public | 管理员上传的共享资产 | 状态变更后点击“应用 Skill”，同步到所有运行中 Pod |
 | private | 用户详情中上传 | 安装到目标 Agent 工作区，只调和目标 Pod |
 
@@ -24,7 +24,7 @@ Skill 激活按用户消息轮次隔离：
 
 怎么写一个 Skill（目录结构、`SKILL.md` frontmatter、managed manifest、脚本自助、关键提醒）见 [`_templates/README.md`](./_templates/README.md)。
 
-自建 Skill 统一使用 Python，业务平台请求经 `muad_skill_http.platform_request` 统一构造 Cookie/CSRF/Host 与每请求 `Traceid`。上线前可用内置 `self-skill-review` 做只读检查；上传链路不做语言硬拦截，最终由管理员审批。
+自建 Skill 统一使用 Python，业务平台请求经 `muad_skill_http.platform_request` 统一构造 Cookie/CSRF/Host 与每请求 `Traceid`。managed Skill 必须在 `muad.skill.json` 写非空 `author`（作者姓名/工号/用户名），上传时 Console 会校验。上线前可用内置 `self-skill-review` 做只读检查；上传链路不做语言硬拦截，最终由管理员审批。
 
 ## 长任务反馈
 

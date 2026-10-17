@@ -56,6 +56,7 @@ description: "MANDATORY before calling web_search, web_fetch, browser, or opencl
 ```json
 {
   "name": "mssw-query",
+  "author": "<作者姓名/工号>",
   "platforms": ["mssw"],
   "runtime": "script",
   "version": "1.0.0",
@@ -65,6 +66,7 @@ description: "MANDATORY before calling web_search, web_fetch, browser, or opencl
 }
 ```
 
+- `author`（必填）= 作者署名（姓名/工号/用户名），用于追溯 Skill 归属；上传时 Console 拒绝缺少该字段的 managed Skill。
 - `longTask: true` = 后台任务：installer 自动生成提交桩，运行时自动处理后台执行/递归防护/状态机。把普通 Skill 改成长任务只需加这一行，其余不用改。
 - `entrypoint`（可选）= 显式声明主入口脚本；脚本放 `scripts/` 会被自动扫描，调用方式由 `SKILL.md` 描述，不依赖 `entrypoint`。
 

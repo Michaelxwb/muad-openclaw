@@ -19,8 +19,12 @@ var ErrInvalidSkillTrace = &Error{Code: errcode.InvalidSkillTrace, Msg: "repo: i
 // resource row has never been written.
 const DefaultSkillRequestLimit = 1000
 
+// maxSkillTraceTraceIDBytes bounds the platform Traceid persisted with an HTTP
+// event; UUIDs are 36 bytes, the rest is headroom for future formats.
+const maxSkillTraceTraceIDBytes = 128
+
 const skillTraceEventColumns = `event_id, execution_id, seq, occurred_at, kind,
-	status, duration_ms, summary, COALESCE(detail, '')`
+	status, duration_ms, summary, COALESCE(detail, ''), COALESCE(trace_id, '')`
 
 const skillExecutionMetricsColumns = `execution_id, request_count, error_count,
 	distinct_hosts, max_burst_per_10s, top_interfaces_json, detail_truncated,
@@ -86,13 +90,13 @@ func insertSkillTraceEvents(
 		}
 		result, err := tx.ExecContext(ctx, `INSERT INTO skill_trace_events (
 			event_id, execution_id, seq, occurred_at, kind, status,
-			duration_ms, summary, detail
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			duration_ms, summary, detail, trace_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(event_id) DO NOTHING`,
 			prepared.EventID, prepared.ExecutionID, prepared.Seq,
 			formatTime(prepared.OccurredAt), prepared.Kind, prepared.Status,
 			nullableInt(prepared.DurationMS), prepared.Summary,
-			nullIfEmpty(prepared.Detail))
+			nullIfEmpty(prepared.Detail), prepared.TraceID)
 		if err != nil {
 			return 0, fmt.Errorf("insert Skill trace event: %w", err)
 		}
@@ -110,7 +114,9 @@ func prepareSkillTraceEvent(executionID string, event SkillTraceEvent) (SkillTra
 	event.EventID = strings.TrimSpace(event.EventID)
 	event.Kind = strings.TrimSpace(event.Kind)
 	event.Status = strings.TrimSpace(event.Status)
+	event.TraceID = strings.TrimSpace(event.TraceID)
 	if event.ExecutionID == "" || event.EventID == "" || event.Seq <= 0 ||
+		len(event.TraceID) > maxSkillTraceTraceIDBytes ||
 		!validSkillTraceKind(event.Kind) || !validSkillTraceStatus(event.Status) {
 		return SkillTraceEvent{}, ErrInvalidSkillTrace
 	}
@@ -154,7 +160,8 @@ func (s *Store) ListSkillTraceEvents(
 		var occurredAt string
 		var durationMS sql.NullInt64
 		if err := rows.Scan(&event.EventID, &event.ExecutionID, &event.Seq, &occurredAt,
-			&event.Kind, &event.Status, &durationMS, &event.Summary, &event.Detail); err != nil {
+			&event.Kind, &event.Status, &durationMS, &event.Summary, &event.Detail,
+			&event.TraceID); err != nil {
 			return nil, fmt.Errorf("scan Skill trace event: %w", err)
 		}
 		event.OccurredAt, err = parseRequiredTime(occurredAt, "skill_trace_events.occurred_at")

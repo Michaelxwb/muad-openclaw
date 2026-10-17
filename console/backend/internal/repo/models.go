@@ -301,6 +301,9 @@ type SkillTraceEvent struct {
 	DurationMS  *int
 	Summary     string
 	Detail      string
+	// TraceID is the platform request identifier for HTTP events; empty for
+	// other kinds or for events recorded before the column existed.
+	TraceID string
 }
 
 // SkillExecutionMetrics summarizes one execution's outbound request profile.

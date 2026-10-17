@@ -7,7 +7,12 @@ import { explicitSkillName } from "./skill-hooks.mjs";
 // 审计只记录 who-when-what（谁在什么时间执行了什么 skill），上报最小契约：
 // { executionId, agentId, skillName, skillScope, startedAt }。结果、耗时、进度都不记录。
 const TURN_CONTEXT_TTL_MS = 10 * 60_000;
+// Execution attribution outlives one turn: a long turn can read SKILL.md again
+// after the turn-context TTL and must not create a second execution for the
+// same runId + skill (that would make the trace mapping ambiguous).
+const REPORTED_TTL_MS = 24 * 60 * 60_000;
 const READ_PATH_KEYS = ["path", "file_path", "filePath", "file"];
+const EXEC_COMMAND_KEYS = ["command", "script", "cmd"];
 
 export function createSkillAuditHooks({
   config, getConfig = () => config, manager, client, executions, now = () => Date.now(),
@@ -20,7 +25,18 @@ export function createSkillAuditHooks({
     beforeDispatch: async (event, ctx) => auditDispatch(state, event, ctx),
     beforeAgentRun: async (event, ctx) => auditAgentRun(state, event, ctx),
     beforeToolCall: async (event, ctx) => auditToolCall(state, event, ctx),
+    agentEnd: async (event, ctx) => auditAgentEnd(state, event, ctx),
   };
+}
+
+function auditAgentEnd(state, event, ctx) {
+  if (!state.executions || typeof state.executions.endSession !== "function") return;
+  if (isLongTaskSession(event, ctx)) return;
+  state.executions.endSession({
+    agentId: resolveAgentId(event, ctx),
+    sessionKey: textValue(event?.sessionKey) || textValue(ctx?.sessionKey),
+    runId: resolveRunId(event, ctx),
+  });
 }
 
 function auditDispatch(state, event, ctx) {
@@ -45,10 +61,13 @@ function auditAgentRun(state, event, ctx) {
 
 function auditToolCall(state, event, ctx) {
   pruneExpired(state.reported, state.now());
-  if (isLongTaskSession(event, ctx) || event?.toolName !== "read") return;
-  const config = state.getConfig(), read = auditRead(config, event, ctx);
-  if (!read || isLongTaskSkill(config, read.agentId, read.skillName)) return;
-  auditForeground(state, config, event, ctx, read.agentId, read);
+  if (isLongTaskSession(event, ctx)) return;
+  const config = state.getConfig();
+  const match = event?.toolName === "read"
+    ? auditRead(config, event, ctx)
+    : event?.toolName === "exec" ? auditExec(config, event, ctx) : null;
+  if (!match || isLongTaskSkill(config, match.agentId, match.skillName)) return;
+  auditForeground(state, config, event, ctx, match.agentId, match);
 }
 
 function auditForeground(state, config, event, ctx, agentId, match) {
@@ -215,6 +234,75 @@ function auditRead(config, event, ctx) {
   return { agentId, grant, skillName, candidate };
 }
 
+// Direct path execution (for example `python3 /opt/openclaw-skills/<name>/scripts/run.py`
+// without a prior SKILL.md read) still needs an execution record so the trace
+// pipeline can attribute the exec. Match only the agent's own grants; a
+// command that does not reference a granted Skill path is ignored.
+function auditExec(config, event, ctx) {
+  const command = execCommandText(event);
+  if (!command || !looksExecutable(command)) return null;
+  const agentId = resolveAgentId(event, ctx);
+  if (!agentId) return null;
+  const cwd = resolveExistingPath(textValue(event?.params?.cwd) || textValue(event?.params?.workdir));
+  for (const grant of config?.skillAuditGrants ?? []) {
+    if (grant.agentId !== agentId) continue;
+    if (grant.dir !== true) {
+      if (containsPath(command, grant.rootPath) || (cwd && isWithin(grant.rootPath, cwd))) {
+        return { agentId, grant, skillName: grant.name };
+      }
+      continue;
+    }
+    const skillName = skillNameFromCommand(command, grant.rootPath) ||
+      (cwd ? skillNameFromDirGrant(grant, cwd) : "");
+    if (skillName && fs.existsSync(path.join(grant.rootPath, skillName, "SKILL.md"))) {
+      return { agentId, grant, skillName };
+    }
+  }
+  return null;
+}
+
+function execCommandText(event) {
+  for (const key of EXEC_COMMAND_KEYS) {
+    const value = textValue(event?.params?.[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
+// Keep inspection commands (`ls`, `cat`, `grep`) from starting an execution
+// record; a direct Skill run is an interpreter or an executable path.
+function looksExecutable(command) {
+  const interpreter = /^(?:python(?:\d+(?:\.\d+)*)?|node|bash|sh|zsh|bun|deno|perl|ruby|php|java|env)$/u;
+  for (const segment of command.split(/[;&|()]+/u)) {
+    const tokens = segment.trim().split(/\s+/u).filter(Boolean);
+    while (tokens.length > 0 && /^[A-Za-z_][A-Za-z0-9_]*=/u.test(tokens[0])) tokens.shift();
+    const token = tokens[0] ?? "";
+    if (!token) continue;
+    if (interpreter.test(path.basename(token))) return true;
+    if (token.startsWith("./") || token.startsWith("/")) return true;
+  }
+  return false;
+}
+
+function containsPath(command, rootPath) {
+  const root = textValue(rootPath).replace(/[/\\]+$/u, "");
+  if (!root) return false;
+  const index = command.indexOf(root);
+  if (index < 0) return false;
+  const next = command[index + root.length] ?? "";
+  return next === "" || /[/\\\s"'`;|&<>()]/u.test(next);
+}
+
+function skillNameFromCommand(command, rootPath) {
+  const root = textValue(rootPath).replace(/[/\\]+$/u, "");
+  if (!root) return "";
+  const index = command.indexOf(root);
+  if (index < 0) return "";
+  const rest = command.slice(index + root.length).replace(/^[/\\]+/u, "");
+  const name = rest.split(/[/\\\s"'`;|&<>()]+/u)[0] ?? "";
+  return /^[A-Za-z0-9_.-]+$/u.test(name) && !name.startsWith(".") ? name : "";
+}
+
 // 显式调用：先精确匹配 per-Skill grant（system 保持精确），再回退到目录 grant。
 // 目录回退用真实文件存在性判定，既解析 public/private scope，也过滤掉从未
 // 安装过的 skill 名（phantom 上报）。
@@ -318,10 +406,10 @@ function rememberReported(map, runId, skillName, now) {
   const record = map.get(runId);
   if (record) {
     record.skills.add(skillName);
-    record.expiresAt = now + TURN_CONTEXT_TTL_MS;
+    record.expiresAt = now + REPORTED_TTL_MS;
     return;
   }
-  map.set(runId, { skills: new Set([skillName]), expiresAt: now + TURN_CONTEXT_TTL_MS });
+  map.set(runId, { skills: new Set([skillName]), expiresAt: now + REPORTED_TTL_MS });
   if (map.size <= 1000) return;
   const first = map.keys().next().value;
   if (first) map.delete(first);

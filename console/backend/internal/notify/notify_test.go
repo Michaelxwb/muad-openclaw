@@ -53,7 +53,7 @@ func newTestChannel(t *testing.T, handler http.Handler, opts ...WeComOption) *We
 	return channel
 }
 
-func TestWeComChannelSendsTextMessageAndSucceeds(t *testing.T) {
+func TestWeComChannelSendsMarkdownMessageAndSucceeds(t *testing.T) {
 	var payload map[string]any
 	channel := newTestChannel(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -74,12 +74,12 @@ func TestWeComChannelSendsTextMessageAndSucceeds(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	if payload["msgtype"] != "text" {
+	if payload["msgtype"] != "markdown" {
 		t.Fatalf("msgtype = %v", payload["msgtype"])
 	}
-	text, _ := payload["text"].(map[string]any)
-	if text["content"] != "skill 请求超限" {
-		t.Fatalf("content = %v", text["content"])
+	markdown, _ := payload["markdown"].(map[string]any)
+	if markdown["content"] != "skill 请求超限" {
+		t.Fatalf("content = %v", markdown["content"])
 	}
 }
 
@@ -171,6 +171,43 @@ func TestDedupKeyIncludesIdentityFields(t *testing.T) {
 	}
 	if base.DedupKey() != base.DedupKey() {
 		t.Fatal("dedup key is not stable")
+	}
+}
+
+func TestEventTextUsesFriendlyUserName(t *testing.T) {
+	event := Event{
+		Type: "skill.request_limit", PodID: "pod-a",
+		HumanUserID: "user-a", HumanUserName: "Alice", AgentID: "agent-a",
+		SkillName: "skill-a", Interface: "GET mssw /api",
+		OccurredAt: time.Date(2026, 10, 17, 13, 46, 38, 0, time.UTC),
+	}
+	text := event.Text()
+	if !strings.Contains(text, "用户: Alice (user-a)") {
+		t.Fatalf("alert text lacks friendly user name: %s", text)
+	}
+	if !strings.Contains(text, "Agent: agent-a") {
+		t.Fatalf("alert text lacks agent id: %s", text)
+	}
+	if strings.Contains(text, "用户: user-a\n") {
+		t.Fatalf("alert text still uses the raw user id as the primary label: %s", text)
+	}
+
+	markdown := event.Markdown()
+	if !strings.Contains(markdown, "### Skill 请求超限告警") ||
+		!strings.Contains(markdown, "- **用户**：Alice（user-a）") ||
+		!strings.Contains(markdown, "- **Agent**：agent-a") {
+		t.Fatalf("markdown alert is not operator-friendly: %s", markdown)
+	}
+	if !strings.Contains(markdown, "> 场景：skill.request_limit") {
+		t.Fatalf("markdown alert lacks the scenario quote: %s", markdown)
+	}
+	if !strings.Contains(markdown, "- **时间**：2026-10-17 21:46:38 UTC+8") {
+		t.Fatalf("markdown alert time is not rendered in UTC+8: %s", markdown)
+	}
+
+	fallback := Event{Type: "skill.request_limit", HumanUserID: "user-b"}
+	if got := fallback.Text(); !strings.Contains(got, "用户: user-b") {
+		t.Fatalf("fallback alert text = %s, want the raw user id", got)
 	}
 }
 
