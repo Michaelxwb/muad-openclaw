@@ -81,7 +81,7 @@ func CancelLongTask(
 		"--params", string(payload), "--json",
 	)
 	if err != nil {
-		if isUnknownCancelMethod(err) {
+		if isUnknownRPCMethod(err) {
 			return LongTaskCancelResult{}, fmt.Errorf("%w: %w", ErrLongTaskCancelUnsupported, err)
 		}
 		return LongTaskCancelResult{}, fmt.Errorf("%w: %w", ErrLongTaskCancelRPC, err)
@@ -117,7 +117,7 @@ func CancelLongTask(
 	}
 }
 
-func isUnknownCancelMethod(err error) bool {
+func isUnknownRPCMethod(err error) bool {
 	text := strings.ToLower(err.Error())
 	return strings.Contains(text, "unknown method") ||
 		strings.Contains(text, "method not found") ||

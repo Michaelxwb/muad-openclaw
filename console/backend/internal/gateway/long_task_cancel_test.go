@@ -164,21 +164,21 @@ func TestLongTaskControlS22CancelIsInterruptibleByCallerDeadline(t *testing.T) {
 }
 
 func TestLongTaskControlS22CapabilityCacheStaysConservative(t *testing.T) {
-	cache := NewLongTaskCapabilityCache(50 * time.Millisecond)
+	cache := NewCancelCapabilityCache(50 * time.Millisecond)
 	now := time.Now()
 	cache.now = func() time.Time { return now }
 
 	if _, ok := cache.Lookup("pod-a"); ok {
 		t.Fatalf("unknown Pod must be conservatively not cancellable")
 	}
-	cache.Update("pod-a", LongTaskCancelCapability{Available: true, Version: 1})
+	cache.Update("pod-a", CancelCapability{LongTask: LongTaskCancelCapability{Available: true, Version: 1}})
 	capability, ok := cache.Lookup("pod-a")
-	if !ok || !capability.Available || capability.Version != 1 {
+	if !ok || !capability.LongTask.Available || capability.LongTask.Version != 1 {
 		t.Fatalf("expected cached available capability, got %+v ok=%v", capability, ok)
 	}
 	// 已知不支持同样是一个确定结论（可用但不可取消），而不是未知。
-	cache.Update("pod-b", LongTaskCancelCapability{Available: false, Version: 0})
-	if capability, ok := cache.Lookup("pod-b"); !ok || capability.Available {
+	cache.Update("pod-b", CancelCapability{LongTask: LongTaskCancelCapability{Available: false, Version: 0}})
+	if capability, ok := cache.Lookup("pod-b"); !ok || capability.LongTask.Available {
 		t.Fatalf("known-unsupported Pod = %+v ok=%v", capability, ok)
 	}
 	// 过期后保守回到未知。
@@ -186,7 +186,7 @@ func TestLongTaskControlS22CapabilityCacheStaysConservative(t *testing.T) {
 	if _, ok := cache.Lookup("pod-a"); ok {
 		t.Fatalf("expired capability must be treated as unknown")
 	}
-	cache.Update("pod-c", LongTaskCancelCapability{Available: true, Version: 1})
+	cache.Update("pod-c", CancelCapability{LongTask: LongTaskCancelCapability{Available: true, Version: 1}})
 	cache.Invalidate("pod-c")
 	if _, ok := cache.Lookup("pod-c"); ok {
 		t.Fatalf("invalidated capability must be treated as unknown")

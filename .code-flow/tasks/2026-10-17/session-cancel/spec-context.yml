@@ -1,7 +1,7 @@
 version: 1
 task: session-cancel
 enforcement: required
-updated_at: '2026-10-17T15:56:12.844622+00:00'
+updated_at: '2026-10-17T16:04:20.566578+00:00'
 sources:
 - type: cli
   ref: bind
@@ -87,10 +87,21 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: verified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-17T16:04:30.349123+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: 36394d15562c2359900b2f08706609c4aaf9d9ffffbb55fc68a152206b004b6a
+          result_sha256: 8bbe901a3c311f3bf0dfcb1a20e0273dbb7c512f78efd965abbf5d43e4afbdb3
+          error_code: null
+          details:
+            checked_files: 3
+            violations: []
       review:
         status: pending
         refs: []
@@ -181,6 +192,271 @@ bindings:
     summary: 错误响应统一走 `writeErr` / `writeRuntimeFailure` / `writeRepoError`，禁止 handler
       手写 `json.NewEncoder` 错误响应
     text_sha256: 703bfa163bf83716299618fccb409898e672b9b1a86c56272d21e3ca53323bff
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: backend-database
+  path: backend/database.md
+  status: active
+  hashes:
+    file_sha256: 97110aa6f92fb1e6a0c8c9135486568c17006c9125b7dc373b774241aa1deccf
+    metadata_sha256: 16a121ab90ca42efe62126aef147f86a9e3f41f78df276abfcd9151662b0f170
+    rules_sha256: a8b78dc27f0a85f8e4a5c00474f9566573663d30cadc120bdeced83fd87b8504
+  selected_by: scope:path
+  reason: Git diff matched console/backend/cmd/console/main.go,console/backend/internal/api/long_task_cancel.go,console/backend/internal/api/long_tasks.go,console/backend/internal/api/server.go,console/backend/internal/collector/collector.go,console/backend/internal/collector/session_cancel_test.go,console/backend/internal/gateway/long_task_cancel.go,console/backend/internal/gateway/long_task_cancel_test.go,console/backend/internal/gateway/long_task_capabilities.go,console/backend/internal/gateway/probe.go,console/backend/internal/gateway/session_cancel.go,console/backend/internal/gateway/session_cancel_test.go,console/backend/test/long_task_cancel_api_test.go,console/backend/test/long_task_cancel_list_test.go
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-backend-database-001
+    summary: All SQL must be parameterized and confined to `internal/repo` (or explicit
+      migration helpers); schema changes must be idempotent or versioned and must
+      not destroy user data silently.
+    text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
+    enforcement: required
+    verifier_ref: backend-database#RULE-backend-database-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: session-cancel.backend.design.md
+          section_id: '3.3'
+          item_id: SC-DATA-NO-SQL
+          artifact_sha256: 72dbb95321e53de0a29ee55fa2416e5cd95bff1ee0420082990bc0d615ca77fe
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: session-cancel.md
+          section_id: TASK-003
+          item_id: TASK-003
+          artifact_sha256: 88f8b3c1d245a7d380b7ad89a6c53a4ec0b93b53224773a132f5997e2b200778
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-backend-no-select-star-001
+    summary: Queries must list explicit columns; do not use `SELECT *` in production
+      SQL.
+    text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+    enforcement: required
+    verifier_ref: backend-database#RULE-backend-no-select-star-001
+    verifier_stage: code
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: session-cancel.backend.design.md
+          section_id: '3.3'
+          item_id: SC-DATA-NO-SQL
+          artifact_sha256: 72dbb95321e53de0a29ee55fa2416e5cd95bff1ee0420082990bc0d615ca77fe
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: session-cancel.md
+          section_id: TASK-003
+          item_id: TASK-003
+          artifact_sha256: 88f8b3c1d245a7d380b7ad89a6c53a4ec0b93b53224773a132f5997e2b200778
+        decision: null
+        evidence: []
+      code:
+        status: verified
+        refs: []
+        decision: null
+        evidence:
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-17T16:04:30.355149+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: 36394d15562c2359900b2f08706609c4aaf9d9ffffbb55fc68a152206b004b6a
+          result_sha256: 2819b179d7e4398b467e49d213d8f16b7ff074f658eab5bc8e17dd26f9df9672
+          error_code: null
+          details:
+            checked_files: 14
+            violations: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-001
+    summary: 模型字段与 API DTO 分离，避免把存储列直接当外部契约
+    text_sha256: 11956eb8e8695d58bf30caa6cf963841f9dd70f8ff267fcb4ed07838e3106777
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: 迁移可重复执行（IF NOT EXISTS / 版本号）
+    text_sha256: 4ca263814b857306a2ac69b7b43cb5cd99d19a01ee2b6916b5af720cefdf7be9
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 共享列清单用 const SQL 片段（如 `humanUserColumns`）避免漂移
+    text_sha256: d206311bb31eb81c54796d71d1336bfa330a978087f9108493a46886f3f239e2
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-004
+    summary: 运行态镜像（如 `long_task_tasks`）按 `state_revision` 单向合并：只接受较新 revision 的合法前进、同
+      revision 幂等、旧格式（rev=0）沿用状态机兼容；终态（cancelled/succeeded/failed）不被快照改写，乱序/回退快照只推进
+      last_seen，不伪造 failed
+    text_sha256: 4f1b28fa749d8ba59b4d2b9ba852ee7aaef24a969173ba539aff5c6a61e1398d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-005
+    summary: trace metrics 的 `aborted` 必须只升不降（`max(existing, excluded)`）；迟到的非 abort
+      快照不得覆盖已有终止记录，abort 详情仅由 abort 侧写入
+    text_sha256: 58b6d8e8d6008d321ee4184b4fb08346baf212c0a0c3228a291b4d1eb53691e1
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-006
+    summary: Skill 健康统计按 `(skill_name, skill_scope, human_user_id)` 分组；私有 Skill 同名跨用户不得合并
+    text_sha256: 88016ed42108cf61836ac01e5e02207adf9f2b2273cce565e5c4a4f24ca2e30b
     enforcement: advisory
     verifier_ref: advisory:none
     verifier_stage: code
@@ -591,10 +867,31 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: verified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-17T16:04:31.604633+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: 36394d15562c2359900b2f08706609c4aaf9d9ffffbb55fc68a152206b004b6a
+          result_sha256: de1ba8221b55e4e04f5f3d099f3435875078aef25f70b1b6a0fe5b68e34c2541
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 5d24dcd956889bcde4a0364bd7e8badd306b85312452c5b685f5815278ac574c
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.346s\n"
       review:
         status: pending
         refs: []
@@ -1169,10 +1466,21 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: verified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: frontend-quality-standards#RULE-frontend-api-client-001
+          executed_at: '2026-10-17T16:04:31.608919+00:00'
+          status: verified
+          rule_text_sha256: f72980fb8ff80823ef0306b736ff3dfcc9216a23d166c4b3ef9f0c3283c1aafd
+          artifact_sha256: null
+          diff_sha256: 36394d15562c2359900b2f08706609c4aaf9d9ffffbb55fc68a152206b004b6a
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
