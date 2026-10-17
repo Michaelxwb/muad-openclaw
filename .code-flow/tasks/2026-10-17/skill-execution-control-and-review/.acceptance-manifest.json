@@ -182,18 +182,57 @@
       "kind": "e2e",
       "boundary": "审阅脚本 → 目标目录 → 报告输出（不执行目标代码）",
       "owner": "TASK-008",
-      "status": "planned",
+      "status": "e2e_deferred",
       "command": [
-        "`python3",
+        "python3",
         "-m",
         "pytest",
         "skills/self-skill-review/test",
-        "-q`"
+        "skills/_templates/test",
+        "-q"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "da1361136cd74d6ba82b6f49af62e17e",
+          "executed_at": "2026-10-17T11:53:23.223325+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-06",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "da1361136cd74d6ba82b6f49af62e17e",
+        "executed_at": "2026-10-17T11:53:23.223325+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "skills/self-skill-review/test",
+          "skills/_templates/test",
+          "-q"
+        ],
+        "cwd": ".",
+        "timeout": 60.0
+      }
     },
     {
       "id": "S-07",
@@ -226,14 +265,61 @@
       "kind": "functional",
       "boundary": "Skill 文档与模板文件内容",
       "owner": "TASK-008",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "skills/self-skill-review/test",
+        "skills/_templates/test",
+        "-q"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "S-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "da1361136cd74d6ba82b6f49af62e17e",
+          "executed_at": "2026-10-17T11:53:23.223325+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "d9e9cd0587160a0f28e40b3937fca7160d5968c99d99f27ff52712a4d7a62a85"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "da1361136cd74d6ba82b6f49af62e17e",
+        "executed_at": "2026-10-17T11:53:23.223325+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "skills/self-skill-review/test",
+          "skills/_templates/test",
+          "-q"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "d9e9cd0587160a0f28e40b3937fca7160d5968c99d99f27ff52712a4d7a62a85"
+      }
     },
     {
       "id": "S-09",

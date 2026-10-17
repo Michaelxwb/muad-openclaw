@@ -2,5 +2,6 @@
   "name": "business-skill-python-template",
   "platforms": ["example_platform"],
   "runtime": "script",
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "entrypoint": "scripts/run.py"
 }

@@ -24,49 +24,25 @@ muad-progress error --stage query  --text "查询失败，请稍后重试" --cod
 - `--text` 是用户直接看到的文案；换行、Emoji、Markdown 按文本原样渲染。
 - 成功时 stdout 静默，不污染业务输出。
 
-## 三种语言封装（务必吞错，best-effort）
+## Python 封装（务必吞错，best-effort）
 
 进度失败**绝不能把成功的业务误报为失败**：
 
-### Shell
-
-```bash
-progress() {
-  if ! muad-progress "$@" >/dev/null 2>&1; then
-    printf '[<skill名>] progress unavailable\n' >&2
-  fi
-}
-progress stage --stage query --text "正在查询"
-```
-
-### Python
-
 ```python
 import subprocess
+
 
 def report_progress(command, text, stage="execute", code=None):
     args = ["muad-progress", command, "--stage", stage, "--text", text]
     if code:
         args.extend(["--code", code])
     try:
-        subprocess.run(args, check=False, capture_output=True)
-    except OSError:
+        subprocess.run(args, check=False, capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
         pass  # best-effort：进度不可用不影响业务结果
 ```
 
-### TypeScript
-
-```js
-import { spawn } from "node:child_process";
-
-function progress(command, stage, text) {
-  const child = spawn("muad-progress", [command, "--stage", stage, "--text", text],
-    { stdio: "ignore" });
-  child.on("error", () => {}); // best-effort
-}
-```
-
-现成完整实现直接抄：`skills/_templates/business-skill-{shell,python,ts}/scripts/run.*`。
+现成完整实现直接抄 `skills/_templates/business-skill-python/scripts/run.py`。
 
 ## 关键约束
 

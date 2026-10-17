@@ -11,9 +11,7 @@ const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const cliPath = path.join(packageRoot, "dist", "cli.js");
 const templatesRoot = path.join(repoRoot, "skills", "_templates");
 const templates = [
-  { name: "shell", dir: "business-skill-shell", command: "bash", script: "scripts/run.sh" },
   { name: "python", dir: "business-skill-python", command: "python3", script: "scripts/run.py" },
-  { name: "node", dir: "business-skill-ts", command: process.execPath, script: "scripts/run.mjs" },
 ];
 
 test("template scripts report stage and done without polluting successful business stdout", (t) => {
@@ -60,19 +58,22 @@ test("template business success survives a missing progress executable during ro
 function testSetup(t, includeProgress = true) {
   const root = mkdtempSync(path.join(tmpdir(), "muad-progress-templates-"));
   const binDir = createTestBin(root, includeProgress);
+  const stubDir = createPlatformStub(root);
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  return { root, binDir };
+  return { root, binDir, stubDir };
 }
 
-function runTemplate(template, setup, failSession, withEvents) {
+function runTemplate(template, setup, failPlatform, withEvents) {
   const templateRoot = path.join(templatesRoot, template.dir);
-  const eventsFile = path.join(setup.root, `${template.name}-${failSession ? "fail" : "ok"}.jsonl`);
+  const eventsFile = path.join(setup.root, `${template.name}-${failPlatform ? "fail" : "ok"}.jsonl`);
   const outputDir = path.join(setup.root, `${template.name}-output`);
+  const pythonPath = [setup.stubDir, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter);
   const env = {
     ...process.env,
     PATH: `${setup.binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+    PYTHONPATH: pythonPath,
     SKILL_OUTPUT_DIR: outputDir,
-    SESSION_MANAGER_FAIL: failSession ? "1" : "0",
+    PLATFORM_STUB_FAIL: failPlatform ? "1" : "0",
   };
   if (withEvents) env.MUAD_PROGRESS_EVENTS_FILE = eventsFile;
   const result = spawnSync(template.command, [template.script], { cwd: templateRoot, env, encoding: "utf8" });
@@ -86,18 +87,26 @@ function createTestBin(root, includeProgress) {
     writeFileSync(path.join(binDir, "muad-progress"),
       `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(cliPath)} "$@"\n`, { mode: 0o755 });
   }
-  writeFileSync(path.join(binDir, "session-manager"), sessionManagerFixture(), { mode: 0o755 });
   return binDir;
 }
 
-function sessionManagerFixture() {
-  return `#!/usr/bin/env node
-if (process.env.SESSION_MANAGER_FAIL === "1") {
-  process.stderr.write("session unavailable\\n");
-  process.exit(7);
-}
-process.stdout.write('{"state":"ready"}\\n');
-`;
+function createPlatformStub(root) {
+  const stubDir = path.join(root, "stub");
+  mkdirSync(stubDir, { recursive: true, mode: 0o700 });
+  writeFileSync(path.join(stubDir, "muad_skill_http.py"), `import os
+
+class PlatformSessionError(RuntimeError):
+    pass
+
+class _Response:
+    status_code = 200
+
+def platform_request(platform, method, path, **kwargs):
+    if os.environ.get("PLATFORM_STUB_FAIL") == "1":
+        raise PlatformSessionError("platform session unavailable")
+    return _Response()
+`);
+  return stubDir;
 }
 
 function readEvents(eventsFile) {

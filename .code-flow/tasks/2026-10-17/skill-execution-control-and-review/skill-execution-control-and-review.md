@@ -19,9 +19,9 @@
 | S-03 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → resource_config → runtimeconfig builder → renderer → 配置字节 | TASK-004 | verified |
 | S-04 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → 加密存储 → dispatcher → WeCom HTTP（httptest） | TASK-003 | verified |
 | S-05 | backend.design.md#2.5.2 功能验收场景 | E2E | 执行数据 → stats SQL → 查询 API → UI 列表 | TASK-012 | planned |
-| S-06 | backend.design.md#2.5.2 功能验收场景 | E2E | 审阅脚本 → 目标目录 → 报告输出（不执行目标代码） | TASK-008 | planned |
+| S-06 | backend.design.md#2.5.2 功能验收场景 | E2E | 审阅脚本 → 目标目录 → 报告输出（不执行目标代码） | TASK-008 | e2e_deferred |
 | S-07 | backend.design.md#2.5.2 功能验收场景 | integration | 下载 API → 私有上传 API → 管理员工作区 | TASK-009 | planned |
-| S-08 | backend.design.md#2.5.2 功能验收场景 | integration | Skill 文档与模板文件内容 | TASK-008 | planned |
+| S-08 | backend.design.md#2.5.2 功能验收场景 | integration | Skill 文档与模板文件内容 | TASK-008 | verified |
 | S-09 | backend.design.md#2.5.2 功能验收场景 | integration | helper → spool 文件 | TASK-007 | verified |
 | S-10 | backend.design.md#2.5.2 功能验收场景 | integration | helper 计数与 env | TASK-007 | verified |
 | S-11 | backend.design.md#2.5.2 功能验收场景 | integration | settings API → audit | TASK-003 | verified |
@@ -477,7 +477,7 @@
 ---
 ## TASK-008: `self-skill-review` 与 creator Python 收敛
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P1
 - **Depends**: TASK-007
 - **Source**: `skill-execution-control-and-review.backend.design.md#2.3.1 功能清单`, `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（存量与文档收敛）
@@ -490,27 +490,39 @@
 
 ### Checklist
 
-- [ ] 新建 SKILL.md、references/rules.md、scripts/check.py；检查项覆盖文件类型、manifest/frontmatter 一致、entrypoint `.py`、必须使用 platform_request、禁止手工 Cookie/CSRF、禁止 subprocess 发业务请求、stderr + 非 0、SKILL_OUTPUT_DIR、session-manager skill 名一致、凭据/内部 URL。
-- [ ] `check.py` 只读 AST/文本，不 import/执行目标代码；忽略代码内指令；输出 JSON/Markdown 检查表。
-- [ ] 更新 creator：删除语言选择、只保留 Python、示例改为 platform_request；下线/标记 TS/Shell 模板；更新 `_templates/README.md`。
-- [ ] [verifier][integration] `runtime-skill-execution#RULE-runtime-skill-fail-loud-001`：review 规则检查失败写 stderr + 非 0；示例与模板一致。
-- [ ] 先写 check.py 的违规/合规 fixture 测试并记录 RED/GREEN。
+- [x] 新建 SKILL.md、references/rules.md、scripts/check.py；检查项覆盖文件类型、manifest/frontmatter 一致、entrypoint `.py`、必须使用 platform_request、禁止手工 Cookie/CSRF、禁止 subprocess 发业务请求、stderr + 非 0、SKILL_OUTPUT_DIR、session-manager skill 名一致、凭据/内部 URL。
+- [x] `check.py` 只读 AST/文本，不 import/执行目标代码；忽略代码内指令；输出 JSON/Markdown 检查表。
+- [x] 更新 creator：删除语言选择、只保留 Python、示例改为 platform_request；下线/标记 TS/Shell 模板；更新 `_templates/README.md`。
+- [x] [verifier][integration] `runtime-skill-execution#RULE-runtime-skill-fail-loud-001`：review 规则检查失败写 stderr + 非 0；示例与模板一致。
+- [x] 先写 check.py 的违规/合规 fixture 测试并记录 RED/GREEN。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-06 | E2E | Skill 进程 → 目标目录 → 报告 | 报告列出违规与 file:line；目标脚本未执行 | `skills/self-skill-review/test/check.test.py` | `python3 -m pytest skills/self-skill-review/test -q` | planned |
-| S-08 | integration | 模板/文档文件扫描 | 无 TS/Shell 模板与示例；creator 只引导 Python | `skills/_templates/test/template-scan.py` | 同上 | planned |
-| RULE-runtime-skill-fail-loud-001 | integration | review 规则与示例 | 违规能被检出；示例 fail loud | `skills/self-skill-review/test/check.test.py` | 同上 | planned |
+| S-06 | E2E | Skill 进程 → 目标目录 → 报告 | 报告列出违规与 file:line；目标脚本未执行 | `skills/self-skill-review/test/test_check.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | e2e_deferred |
+| S-08 | integration | 模板/文档文件扫描 | 无 TS/Shell 模板与示例；creator 只引导 Python | `skills/_templates/test/test_template_scan.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | verified |
+| RULE-runtime-skill-fail-loud-001 | integration | review 规则与示例 | 违规能被检出；示例 fail loud | `skills/self-skill-review/test/test_check.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+- RED `python3 -m pytest skills/self-skill-review/test skills/_templates/test -q` → 14 failed（check.py 不存在；creator/templates 仍含 TS/Shell）。
+- GREEN 同命令 → 14 passed（checker 7 + template scan 7）。
+- S-06：`test_review_never_executes_target_code` 用真实子进程审查 `fixtures/no-execute-skill`，哨兵 `executed` 文件未出现；违规 fixture 断言 `SS-R001 scripts/run.sh:1`、`SS-R004 muad.skill.json:<entrypoint 行>`、`SS-R005/006/007/008/009/010/011/012 scripts/run.py:<对应行>`，Markdown 报告含 `file:line`。
+- S-08：`skills/_templates/test/test_template_scan.py` 扫描真实 `skills/_templates` 与 creator references：无 `.js/.mjs/.ts/.sh`，仅 `business-skill-python`，模板与 creator 均使用 `platform_request`，无 TS/Shell 示例。
+- fail loud：违规目标退出码 1 且 stderr 有汇总；合规目标退出码 0；目标不存在退出码 2 且仅写 stderr。Python 模板冒烟：成功 stdout 单行 JSON，失败 stderr + rc=1。
+- `node --check tools/muad-progress/test/template-integration.test.mjs` 通过；本机无 `dist/` 与 node_modules，未执行 `npm test`（模板运行语义已用 Python stub 冒烟验证）。
+- S-06: e2e_deferred — automated command e2e_deferred; run_id=da1361136cd74d6ba82b6f49af62e17e (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=da1361136cd74d6ba82b6f49af62e17e (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] RED: 14 failed（check.py 缺失 + 模板未收敛）
+- [2026-10-17] GREEN: 14 passed（checker fixtures + template scan）
+- [2026-10-17] completed (implementation + tests)
+- [2026-10-17] completed (done)
 
 ---
 

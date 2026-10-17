@@ -1,15 +1,15 @@
 ---
 name: business-skill-python-template
-description: Python business skill template with session-manager integration.
+description: Python business skill template using muad_skill_http.platform_request.
 ---
 
 # Python Business Skill Template
 
-Use this template for business-system skills implemented in Python.
+Use this template for business-system skills. Self-built Skills are Python-only.
 
 Execution rules:
 
-1. Run `python3 scripts/run.py`; it uses session-manager before accessing protected business systems.
+1. Run `python3 scripts/run.py`; business requests go through `muad_skill_http.platform_request`.
 2. Let the script report only coarse user-readable nodes through `muad-progress`; never pass a channel or recipient.
 3. Do not expose Cookie, token, password, internal URLs, SQL, or stack traces.
 4. Treat script stdout as the concise JSON result to summarize in the native final reply.

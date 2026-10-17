@@ -4,8 +4,9 @@ import os
 import subprocess
 import sys
 
+from muad_skill_http import platform_request
 
-SKILL_NAME = "business-skill-python-template"
+PLATFORM = "example_platform"
 
 
 def report_progress(command, text, code=None):
@@ -20,33 +21,28 @@ def report_progress(command, text, code=None):
             stderr=subprocess.DEVNULL,
             timeout=30,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.SubprocessError):
         return False
     return result.returncode == 0
 
 
-def session_state():
-    result = subprocess.run(
-        ["session-manager", "get-state", "--skill-name", SKILL_NAME],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    return json.loads(result.stdout)
+def fetch_example():
+    return platform_request(PLATFORM, "GET", "/api/v1/example")
 
 
 def main():
     report_progress("stage", "开始处理业务请求")
-    state = session_state()
+    response = fetch_example()
+    if response.status_code >= 400:
+        raise RuntimeError(f"example platform returned {response.status_code}")
     # 写文件用 SKILL_OUTPUT_DIR（guard 注入的 per-agent 目录）；别写 Skill 根目录（只读）或 /tmp
     out_dir = os.environ.get("SKILL_OUTPUT_DIR")
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
-        with open(os.path.join(out_dir, "result.json"), "w", encoding="utf-8") as f:
-            json.dump({"ok": True}, f, ensure_ascii=False)
+        with open(os.path.join(out_dir, "result.json"), "w", encoding="utf-8") as handle:
+            json.dump({"ok": True}, handle, ensure_ascii=False)
     report_progress("done", "业务处理已完成")
-    print(json.dumps({"ok": True, "sessionState": state.get("state", "ready")}, ensure_ascii=False))
+    print(json.dumps({"ok": True, "status": response.status_code}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
