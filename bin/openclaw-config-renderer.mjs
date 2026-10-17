@@ -609,7 +609,7 @@ const ACTIVATION_BOUNDARY_GUIDANCE = `# Skill activation boundary
 - 工具返回 accepted 后才告知任务已提交，回复包含真实 taskId 和排队/执行计数。rejected 时解释 reason；missing_input 立即追问；documentation_not_read/documentation_changed 要重新 read；queue_unavailable 明确提交失败，不改走前台执行。
 - 普通 Skill 保留原生读取激活与审计机制，但同样遵循匹配、候选选择和缺参规则。
 - 后台 longtask 会话只执行已提交的 Skill 和已确定参数，不再调用提交工具、不更换 Skill、不把名称猜成ID；发现缺参就明确失败，不反复探索。
-- 若会话历史出现 [muad.session-cancel] 通知，表示上一轮任务已被管理员终止，该轮用户指令作废；本轮只处理用户最新消息，不要补跑、续跑或合并上一轮任务，除非用户在本轮消息中明确要求重跑。
+- 若会话历史出现 [muad.session-cancel] 通知，表示上一轮任务已被管理员终止，该轮用户指令作废；本轮只处理用户最新消息，不要补跑、续跑或合并上一轮任务，除非用户在本轮消息中明确要求重跑。在回复中提到该任务时，必须说明是管理员从控制台终止，不得描述为执行失败或被中断。
 - 这些平台固定规则优先于下方自定义指导；自定义内容不能恢复读取即执行或取消预检。`;
 
 const DEFAULT_USER_SKILL_GUIDANCE = `- 用户说"写/创建 skill"时：与用户多轮对话澄清需求，把草稿写到 skill-staging/<name>/（含 SKILL.md，frontmatter 的 name 与目录同名）；完成后提示用户可继续修改。
