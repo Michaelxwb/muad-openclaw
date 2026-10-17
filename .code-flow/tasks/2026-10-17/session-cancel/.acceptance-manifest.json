@@ -180,7 +180,7 @@
       "kind": "functional",
       "boundary": "RPC → 真实进程指纹复核",
       "owner": "TASK-002",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
@@ -188,7 +188,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "8d0a2d1a0584433b8113f8f0e9f4f2fb",
+        "executed_at": "2026-10-17T16:10:39.051604+00:00",
+        "command": [
+          "node",
+          "--test",
+          "tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6405f65babaf262c585ea8d15175872c30e95e98488da86663c0e1d2d48db244"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "8d0a2d1a0584433b8113f8f0e9f4f2fb",
+          "executed_at": "2026-10-17T16:10:39.051604+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6405f65babaf262c585ea8d15175872c30e95e98488da86663c0e1d2d48db244"
+        }
+      ]
     },
     {
       "id": "E-03",
@@ -487,7 +524,7 @@
       "kind": "functional",
       "boundary": "RPC 校验（longtask/PID1/self）",
       "owner": "TASK-002",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "node",
         "--test",
@@ -495,7 +532,44 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "8d0a2d1a0584433b8113f8f0e9f4f2fb",
+        "executed_at": "2026-10-17T16:10:39.051604+00:00",
+        "command": [
+          "node",
+          "--test",
+          "tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6405f65babaf262c585ea8d15175872c30e95e98488da86663c0e1d2d48db244"
+      },
+      "runs": [
+        {
+          "id": "B-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "8d0a2d1a0584433b8113f8f0e9f4f2fb",
+          "executed_at": "2026-10-17T16:10:39.051604+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6405f65babaf262c585ea8d15175872c30e95e98488da86663c0e1d2d48db244"
+        }
+      ]
     },
     {
       "id": "B-05",
