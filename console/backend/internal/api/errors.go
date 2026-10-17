@@ -88,6 +88,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.InvalidDeleteState: {http.StatusBadRequest, "deleteState 必须为 true 或 false", "deleteState must be true or false"},
 	// invalid.allow_override
 	errcode.InvalidAllowOverride: {http.StatusBadRequest, "allowOverride 参数不合法", "Invalid allowOverride"},
+	// invalid.notify_webhook
+	errcode.InvalidNotifyWebhook: {http.StatusBadRequest, "告警 Webhook 不合法，必须是 https://qyapi.weixin.qq.com/ 地址", "Invalid alert webhook; it must be an https://qyapi.weixin.qq.com/ URL"},
 	// invalid.credentials
 	errcode.InvalidCredentials: {http.StatusUnauthorized, "账号或密码错误", "Invalid credentials"},
 	// unauthorized
@@ -198,6 +200,10 @@ var errorCatalog = map[int]errorDef{
 	errcode.SkillUploadTimeout: {http.StatusRequestTimeout, "Skill 包上传超时，请检查网络后重试", "Skill bundle upload timed out; check your network and retry"},
 	// internal.skill_upload_deadline
 	errcode.InternalSkillUploadDeadline: {http.StatusInternalServerError, "无法设置 Skill 上传读取期限", "Unable to set the Skill upload read deadline"},
+	// internal.read_notify_config
+	errcode.InternalReadNotifyConfig: {http.StatusInternalServerError, "读取告警配置失败", "Failed to read alert configuration"},
+	// internal.save_notify_config
+	errcode.InternalSaveNotifyConfig: {http.StatusInternalServerError, "保存告警配置失败", "Failed to save alert configuration"},
 	// invalid.platform_not_found
 	errcode.InvalidPlatformNotFound: {http.StatusBadRequest, "业务平台不存在", "Platform not found"},
 	// invalid.platform_display_name
@@ -356,6 +362,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.RuntimeApplyFailed: {http.StatusBadGateway, "绑定已保存，但运行时配置应用失败", "Binding saved but runtime config apply failed"},
 	// runtime.upgrade_rollback_failed
 	errcode.RuntimeUpgradeRollbackFailed: {http.StatusBadGateway, "Pod 升级失败，且自动回滚也未成功", "Pod upgrade failed and automatic rollback did not succeed"},
+	// upstream.notify_failed
+	errcode.UpstreamNotifyFailed: {http.StatusBadGateway, "告警发送失败", "Failed to deliver alert"},
 	// unavailable.binding_code_service
 	errcode.UnavailableBindingCodeService: {http.StatusServiceUnavailable, "绑定码服务暂不可用", "Binding code service is temporarily unavailable"},
 	// unavailable.runtime_reconciler
