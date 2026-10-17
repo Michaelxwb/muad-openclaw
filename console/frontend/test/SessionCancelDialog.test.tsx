@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Toast } from "@douyinfe/semi-ui";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/api")>();
@@ -106,6 +107,8 @@ beforeEach(() => {
   cancelMock.mockReset();
 });
 
+afterEach(() => Toast.destroyAll());
+
 describe("SessionCancelDialog", () => {
   it("S-09 renders the empty state and disables confirmation when nothing is running", async () => {
     previewMock.mockResolvedValue(preview({ activeRun: { active: false }, processes: [] }));
@@ -141,6 +144,26 @@ describe("SessionCancelDialog", () => {
     expect(cancelMock).toHaveBeenCalledWith("user-1", "identity-1", [
       { pid: 4028, fingerprint: "fp-a" },
     ]);
+  });
+
+  it("S-10b treats an aborted run with already-gone processes as success", async () => {
+    previewMock.mockResolvedValue(preview());
+    cancelMock.mockResolvedValue(
+      result({
+        aborted: true,
+        drained: true,
+        confirmed: true,
+        killed: 0,
+        remaining: [],
+        processes: [{ pid: 4028, outcome: "skipped", reason: "not_found" }],
+      }),
+    );
+    renderDialog();
+
+    fireEvent.click(await screen.findByRole("button", { name: /终止会话并结束 1 个进程/ }));
+
+    expect(await screen.findByText("会话任务已终止")).toBeInTheDocument();
+    expect(screen.queryByText("会话任务已处理，但部分进程未终止")).not.toBeInTheDocument();
   });
 
   it("E-07 reports an unsupported Worker and keeps confirmation disabled", async () => {

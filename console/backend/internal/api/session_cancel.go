@@ -291,8 +291,13 @@ func validSessionCancelExpected(expected []gateway.SessionCancelExpected) bool {
 	return true
 }
 
-// sessionCancelAllSkipped 对应设计中的 41009：所有 expected 指纹均已失效。
+// sessionCancelAllSkipped 对应设计中的 41009：本轮没有中止 run、没有杀掉任何
+// 进程，且所有 expected 指纹都已失效。若 abort 已生效，进程随 abort 退出属于
+// 成功终止，不能报"请重新预览"。
 func sessionCancelAllSkipped(result gateway.SessionCancelResult) bool {
+	if result.Aborted || result.Confirmed {
+		return false
+	}
 	if result.Killed != 0 || len(result.Processes) == 0 {
 		return false
 	}
