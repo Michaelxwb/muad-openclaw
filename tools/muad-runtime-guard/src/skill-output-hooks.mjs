@@ -26,7 +26,7 @@ export function createSkillOutputHooks({
 }) {
   return {
     resolveExecEnv: async (event, ctx) => {
-      if (textValue(event?.toolName) !== "exec") return undefined;
+      if (!["exec", "bash"].includes(textValue(event?.toolName))) return undefined;
       const sessionKey = textValue(event?.sessionKey) || textValue(ctx?.sessionKey);
       const { agentId, rest } = parseAgentSessionKey(sessionKey);
       // Fail closed: the session key's agent must match the trusted agent

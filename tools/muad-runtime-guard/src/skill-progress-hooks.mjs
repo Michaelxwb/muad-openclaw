@@ -92,7 +92,7 @@ export function createSkillProgressHooks(options = {}) {
   };
 
   const resolveExecEnv = async (event, ctx) => {
-    if (text(event?.toolName) !== "exec" || closed) return undefined;
+    if (!["exec", "bash"].includes(text(event?.toolName)) || closed) return undefined;
     pruneExpired(active, pending, turnSenders, now(), manager, log);
     const record = resolveForegroundRecord(active, {
       runId: event?.runId ?? ctx?.runId,
