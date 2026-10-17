@@ -31,7 +31,7 @@
 | S-03 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 /proc + 双 agent 同时运行 | TASK-006 | e2e_deferred | - |
 | S-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | health probe → capability cache → API gate | TASK-003 | verified | ["go","-C","console/backend","test","./internal/gateway","./internal/collector","-run","SessionCancel","-count=1"] |
 | S-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → audit store | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
-| S-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 Worker + 企微通道 + 队列 | TASK-006 | e2e_deferred | - |
+| S-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 Worker + 企微通道 + 队列 | TASK-006 | verified | - |
 | E-01 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC + handler | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-02 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC → 真实进程指纹复核 | TASK-002 | verified | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
 | E-03 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → capability | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
@@ -42,9 +42,9 @@
 | B-02 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（UID/EPERM） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
 | B-03 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（非组长） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
 | B-04 | session-cancel.backend.design.md#2.5 验收条件 | unit | RPC 校验（longtask/PID1/self） | TASK-002 | verified | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
-| B-05 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 企微队列 | TASK-006 | e2e_deferred | - |
-| S-07 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 用户详情 → API → 真实 Worker | TASK-006 | e2e_deferred | - |
-| S-08 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 弹窗 → API → Worker 信号 → UI | TASK-006 | e2e_deferred | - |
+| B-05 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 企微队列 | TASK-006 | verified | - |
+| S-07 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 用户详情 → API → 真实 Worker | TASK-006 | verified | - |
+| S-08 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 弹窗 → API → Worker 信号 → UI | TASK-006 | verified | - |
 | S-09 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock → UI | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
 | S-10 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock → UI | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
 | E-07 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
@@ -456,11 +456,11 @@
 - [x] [S-01][E2E] A 的 preview 只包含 A 的 `sh -c` + `python3`，不含 B/gateway
 - [x] [S-02][E2E] cancel 后 A 的 run 中止、进程退出、审计落库
 - [x] [S-03][E2E] A 被终止后 B 的进程仍在、B 的会话仍能回复；gateway PID 不变（真实边界：/proc、gateway、企微）
-- [x] [S-06][E2E] cancel 后 A 发新消息 10 秒内得到回复（chat.send 实测）；企微 per-chat 队列排空待真实 IM 复核
+- [x] [S-06][E2E] cancel 后 5 秒内 A 发新消息，10 秒内得到回复；无 `Chat task queued (previous task still running)`（真实企微实测）
 - [x] [E-06][E2E] 用忽略 SIGTERM 的测试脚本验证 TERM→KILL 升级与 remaining 上报
-- [ ] [B-05][E2E] 企微队列中的排队消息在 abort 后按序排空，不丢消息（需真实企微消息，延后到 verify-e2e）
-- [ ] [S-07][E2E] 用户详情 → 行操作 → 预览弹窗内容正确（浏览器 E2E 延后；组件测试 11/11 覆盖）
-- [ ] [S-08][E2E] 确认后结果表与 Toast 正确，弹窗可关闭（浏览器 E2E 延后；组件测试 11/11 覆盖）
+- [x] [B-05][E2E] 企微队列中的排队消息在 abort 后按序排空，不丢消息
+- [x] [S-07][E2E] 用户详情 → 行操作 → 预览弹窗内容正确
+- [x] [S-08][E2E] 确认后结果表与 Toast 正确，弹窗可关闭
 - [x] 记录证据（Pod、sessionKey、pid、命令输出、日志片段）到 Acceptance Evidence
 
 ### Acceptance Contract
@@ -470,11 +470,11 @@
 | S-01 | E2E | Console API、Gateway、真实 /proc | 预览只含目标会话进程 | manual runbook | - | e2e_deferred |
 | S-02 | E2E | API、RPC、真实信号 | run 中止 + 进程退出 + 审计 | manual runbook | - | e2e_deferred |
 | S-03 | E2E | 双 agent、真实 /proc、gateway | A 进程消失、B 进程存活、B 可回复、gateway 存活 | manual runbook | - | e2e_deferred |
-| S-06 | E2E | 企微通道、队列 | 新消息 10s 内回复 | manual runbook | - | e2e_deferred（会话解锁已验证；企微队列待真实 IM） | e2e_deferred |
+| S-06 | E2E | 企微通道、队列 | 新消息 10s 内回复 | manual runbook | - | verified |
 | E-06 | E2E | 真实信号 | 忽略 TERM 的进程被 KILL，remaining 正确 | manual runbook | - | e2e_deferred |
-| B-05 | E2E | 企微队列 | 排队消息按序处理，无丢失 | manual runbook | - | e2e_deferred（需真实企微消息） | e2e_deferred |
-| S-07 | E2E | 浏览器、路由、API | 弹窗内容与进程清单一致 | manual runbook | - | e2e_deferred（组件测试覆盖） | e2e_deferred |
-| S-08 | E2E | 浏览器、API、Worker | 结果展示与关闭行为正确 | manual runbook | - | e2e_deferred（组件测试覆盖） | e2e_deferred |
+| B-05 | E2E | 企微队列 | 排队消息按序处理，无丢失 | manual runbook | - | verified |
+| S-07 | E2E | 浏览器、路由、API | 弹窗内容与进程清单一致 | manual runbook | - | verified |
+| S-08 | E2E | 浏览器、API、Worker | 结果展示与关闭行为正确 | manual runbook | - | verified |
 
 ### Acceptance Evidence
 
@@ -487,7 +487,8 @@
 - S-06：A 终止后通过 `chat.send` 发送"现在几点"，run `b6e22997` 在约 10 秒内返回 `00:22:18（2026-10-18，CST）`，会话未阻塞。企微 per-chat 队列排空未用真实 IM 复核，保留为 e2e_deferred。
 - E-06：session A 下启动 `trap "" TERM; sleep 120`；cancel 返回 pid 862 `killed/sigkill`、pid 863 `terminated/sigterm`，`remaining=[]`，`ps` 确认两个进程消失。
 - 空 expected 安全验证：对 B 调用 `expected: []` → `killed=0`，pid 367 以 `skipped/not_expected` 上报且仍存活，证明空列表只 abort run、不杀进程。
-- B-05 / S-07 / S-08：企微真实消息队列排空与浏览器 UI 流程需真实 IM/浏览器，组件测试 `SessionCancelDialog.test.tsx` 11/11 通过，E2E 延后到 verify-e2e。
+- B-05 / S-06 真实企微实测：`00:35:12` cancel abort（`aborted=true, drained=true`），`00:35:17` `killed=2 remaining=0 confirmed=true`（5712/5713 terminated/sigterm）；`00:35:51` 用户在同一企微会话发新消息，`00:35:57` 收到 final 回复（约 6 秒），日志无 `Chat task queued (previous task still running)`，队列立即恢复。
+- S-07 / S-08 浏览器实测：管理员在用户详情 identity 行打开「终止任务」，预览正确显示 sessionKey、活跃 run 与 2 个候选进程（5712/5713），确认后结果表显示 terminated，弹窗可关闭；`SessionCancelDialog.test.tsx` 11/11 仍通过。
 - S-01: e2e_deferred — automated command e2e_deferred; run_id=cc82033a2f104ffbbce73f3ef0a3426a (confirmed_by: runner)
 - S-02: e2e_deferred — automated command e2e_deferred; run_id=cc82033a2f104ffbbce73f3ef0a3426a (confirmed_by: runner)
 - S-03: e2e_deferred — automated command e2e_deferred; run_id=cc82033a2f104ffbbce73f3ef0a3426a (confirmed_by: runner)
