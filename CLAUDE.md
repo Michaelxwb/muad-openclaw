@@ -51,6 +51,7 @@
   ```
 - 本地无 `gh` CLI：Actions 运行状态需到仓库 Actions 页查看（`github.com/<owner>/muad-openclaw/actions`）
 - 内网千流流水线（git.sangfor.com / docker.sangfor.com）与 GitHub 构建相互独立；千流 task 脚本（`build/docker-build/task*.sh`）已 gitignore（内网有备份），以备份为准，勿 `git add -f` 强制提交
+- 新增 runtime Python SDK/依赖时，必须同时更新根 `Dockerfile` 与 `build/docker-build/Dockerfile.openclaw`，并在构建期加 import 自检；两处安装段保持一致
 
 <!-- code-flow:spec-loading schema=1 start -->
 ## Spec Workflow (schema 1)
@@ -79,3 +80,5 @@ Do NOT ask the user which Specs to load—the Context-first router is authoritat
 - 一个需求的 prd / design / tasks 同放需求目录 `.code-flow/tasks/<日期>/<需求>/`；全栈需求可有 `<需求>.frontend.design.md` + `<需求>.backend.design.md`，`/cf-task:plan <需求目录>` 合并拆解，`/cf-task:archive` 按整个需求目录归档（旧扁平布局仍兼容）
 - Workflow: `/cf-task:prd` → `.prd.md` → `/cf-task:align <.prd.md>` → `.design.md`(s) → `/cf-task:plan <需求目录>` → tasks
 - Templates are read by the commands themselves; you do not need to pre-load them
+- Acceptance Contract 的命令单元格必须是可执行 argv JSON（如 `["go","-C","console/backend","test","./test","-run","X","-count=1"]`），不能写 `cd ... && ...` 或“同上”，否则 acceptance runner spawn 失败
+- 并行 worktree 的运行时校验要求 `.claude/settings.local.json` hook 契约被 git 跟踪；修改 hooks 后先提交再 `code-flow task parallel prepare`，否则 worktree 会报 `worktree_runtime_invalid`
