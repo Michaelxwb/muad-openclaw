@@ -1,0 +1,170 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build *)",
+      "Bash(go test *)",
+      "Bash(go vet *)",
+      "Bash(open *)",
+      "Bash(curl *)",
+      "Bash(python3 -m http.server 9998)",
+      "Bash(grep -n -A2 \"codeInvalidField,$\" human_user_attach.go)",
+      "Bash(cat)",
+      "Bash(python3 /tmp/migrate_repierr.py)",
+      "Bash(python3 /tmp/migrate_502.py)",
+      "Bash(grep -rn \"writeErr\\(w,$\" internal/)",
+      "Bash(python3 *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(sed -n '/^func writeErr/,/^}/p' internal/api/errors.go)",
+      "Bash(sed -n '/^func writeRuntimeFailure/,/^}/p' internal/api/errors.go)",
+      "Bash(npm install *)",
+      "Bash(node *)",
+      "Bash(git -C /Users/jahan/workspace/muad-openclaw mv console/frontend/src/utils/error.ts console/frontend/src/utils/error.tsx)",
+      "Bash(cp /tmp/merge_i18n.py /tmp/maniftest/merge.py)",
+      "Bash(sed -i '' 's|/Users/jahan/workspace/muad-openclaw|/tmp/maniftest|' /tmp/maniftest/merge.py)",
+      "Bash(awk '/export type TFunction|export interface TFunction|type TFunction</,/}/' node_modules/i18next/index.d.ts)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(grep -E ',\\\\s*\\\\{')",
+      "Bash(echo \"exit=$?\")",
+      "Bash(npx prettier *)",
+      "Bash(npm run *)",
+      "Bash(npm ls *)",
+      "Bash(sed -n '/\\\\.dialogFields/,/}/p' src/pages/Containers.module.css)",
+      "Bash(sed -n '/\\\\.field {/,/}/p' src/pages/Containers.module.css)",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(docker system *)",
+      "Bash(./build.sh app *)",
+      "Bash(npm test *)",
+      "Bash(perl -pi -e 's/\\\\r\\\\n/\\\\n/g' tools/session-manager/fixtures/shell/get-state.sh skills/_templates/business-skill-shell/scripts/run.sh)",
+      "Bash(docker run *)",
+      "Bash(docker rmi *)",
+      "Bash(awk '{print $1}')",
+      "Bash(kubectl config *)",
+      "Bash(kubectl get *)",
+      "Bash(kubectl logs *)",
+      "Bash(kubectl exec *)",
+      "Bash(sqlite3 data/console.db \".tables\")",
+      "Bash(sqlite3 data/console.db \"SELECT id, agent_id, model_config_id, display_name FROM human_users;\")",
+      "Bash(sqlite3 data/console.db \"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%bind%';\")",
+      "Bash(sqlite3 data/console.db \".schema human_users\")",
+      "Bash(sqlite3 data/console.db \".schema binding_codes\")",
+      "Bash(sqlite3 -header data/console.db \"SELECT human_user_id, pod_id, agent_id, status, browser_profile FROM human_users;\")",
+      "Bash(sqlite3 -header data/console.db \"SELECT binding_code_id, code_hint, human_user_id, pod_id, channel, purpose, status, used_external_id, expires_at FROM binding_codes;\")",
+      "Bash(sqlite3 -header data/console.db \".schema user_identities\")",
+      "Bash(sqlite3 -header data/console.db \"SELECT * FROM user_identities;\")",
+      "Bash(sqlite3 -header data/console.db \"SELECT created_at, action, target, metadata FROM audit_log WHERE pod_id='pod01' OR metadata LIKE '%pod01%' ORDER BY created_at DESC LIMIT 25;\")",
+      "Bash(sqlite3 data/console.db \".schema audit_log\")",
+      "Bash(sqlite3 -header data/console.db \"SELECT human_user_id, status, created_at, updated_at FROM human_users;\")",
+      "Bash(sqlite3 -header data/console.db \"SELECT pod_id, image_tag, config_generation, last_apply_status FROM pods;\")",
+      "Bash(sqlite3 -header -column data/console.db \"SELECT ts, actor, action, substr\\(payload,1,160\\) AS payload FROM audit_log WHERE payload LIKE '%932e0ac0%' OR target LIKE '%932e0ac0%' ORDER BY ts;\")",
+      "Bash(sqlite3 -header -column data/console.db \"SELECT ts, actor, action, target, substr\\(payload,1,220\\) AS payload FROM audit_log WHERE ts >= '2026-08-06T13:20' AND ts <= '2026-08-06T13:55' ORDER BY ts;\")",
+      "Bash(sqlite3 -header data/console.db \"SELECT pod_id, channels, config_generation, applied_generation FROM pods;\")",
+      "Bash(sqlite3 data/console.db \"SELECT pod_id, substr\\(channel_configs_enc,1,80\\) FROM pods;\")",
+      "Bash(gofmt -w internal/errcode/errcode.go)",
+      "Bash(gofmt -w internal/api/errors.go)",
+      "Bash(awk '/^import \\\\\\(/,/^\\\\\\)/' skills.go)",
+      "Bash(gofmt -w internal/api/)",
+      "Bash(grep -v \"writeErr\\(w, r, errcode\\\\.[A-Za-z]+\\)$\")",
+      "Bash(gofmt -w internal/errcode/errcode.go internal/api/errors.go internal/api/errors_test.go internal/repo/skills.go internal/repo/platforms.go internal/repo/binding_codes.go internal/repo/human_users.go internal/api/internal_bindings.go)",
+      "Bash(grep -cE \"^\\\\t[A-Z][A-Za-z0-9]*\\\\s+= [0-9]+$\" internal/errcode/errcode.go)",
+      "Bash(rg -n \"doctor|refresh|repair|fix\" .code-flow/scripts/cf_spec_*.py)",
+      "Bash(rg \"_test\\\\.go$\")",
+      "Bash(rg -l \"package test\" console/backend/test/*.go)",
+      "Bash(rg -l \"httptest\" console/backend/test/*.go)",
+      "Bash(rg -n \"func New.*Test|func .*Test.*\\\\\\(\" console/backend/internal/repo/*.go console/backend/internal/api/*.go)",
+      "Bash(rg -n \"包内.*_test|集成测|table-driven\" .code-flow/specs/backend/*.md)",
+      "Bash(rg -n \"installPublicSkillBundle|MaxBytesReader|ParseMultipartForm\" internal/api/*.go)",
+      "Bash(rg -n \"maxExtractedSkillBundleBytes\" internal/api/*.go)",
+      "Bash(rg *)",
+      "Bash(echo \"---exit $?---\")",
+      "Bash(gofmt -l internal/config/ internal/api/ test/)",
+      "Bash(gofmt -d internal/config/config.go)",
+      "Bash(gofmt -d internal/api/skill_bundle_test.go)",
+      "Bash(gofmt -l)",
+      "Bash(gofmt -d)",
+      "Bash(awk 'NR>=1 && NR<=75' internal/skillsync/files.go)",
+      "Bash(gofmt -l internal/api/)",
+      "Bash(gofmt -l internal/ test/)",
+      "Bash(echo \"vet exit: $?\")",
+      "Bash(git hash-object *)",
+      "Bash(echo \"worktree clean-hash: $\\(git hash-object Dockerfile\\)\")",
+      "Bash(echo \"worktree raw-hash: $\\(git hash-object --no-filters Dockerfile\\)\")",
+      "Bash(git check-attr *)",
+      "Bash(git update-index *)",
+      "Bash(git add *)",
+      "Bash(echo \"TSC_EXIT=$?\")",
+      "Bash(npx eslint *)",
+      "Bash(echo \"ESLINT_EXIT=$?\")",
+      "Bash(echo \"PRETTIER_EXIT=$?\")",
+      "Bash(echo \"VITEST_EXIT=$?\")",
+      "Bash(echo \"GOTEST_EXIT=$?\")",
+      "Bash(node --test bin/test/*.test.mjs)",
+      "Bash(echo \"BIN_EXIT=$?\")",
+      "Bash(awk '{print $2}')",
+      "Bash(awk -F/ '{print $1\"/\"$2}')",
+      "Bash(grep -iE \"node_modules|dist|\\\\.env|secret|\\\\.o$|\\\\.bin$|/tmp|coverage|\\\\.DS_Store\")",
+      "Bash(echo \"--- exit $? \\(1 = no suspicious files\\) ---\")",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git tag *)",
+      "Bash(git ls-remote *)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.openclaw.ai)",
+      "Bash(docker info *)",
+      "Bash(bash -n build/docker-build/task0-session-manager.sh)",
+      "Bash(bash -c ' *)",
+      "Read(//private/tmp/**)"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_pre_tool_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_post_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_user_prompt_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; f=\"$d/.code-flow/scripts/cf_stop_hook.py\"; if [ -f \"$f\" ]; then cd \"$d\" && python3 \"$f\"; fi",
+            "timeout": 35
+          }
+        ]
+      }
+    ]
+  }
+}
