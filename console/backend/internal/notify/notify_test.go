@@ -263,6 +263,30 @@ func TestDispatcherDeduplicatesWithinWindow(t *testing.T) {
 	}
 }
 
+func TestDispatcherDefaultDedupWindowIsThreeMinutes(t *testing.T) {
+	channel := &recordingChannel{}
+	now := time.Date(2026, 10, 18, 0, 0, 0, 0, time.UTC)
+	dispatcher := newTestDispatcher(t, channel, Options{Now: func() time.Time { return now }})
+	event := Event{
+		Type: "skill.request_limit", PodID: "pod-a", HumanUserID: "user-a",
+		SkillName: "skill-a", Interface: "GET mssw /api",
+	}
+
+	dispatcher.Publish(context.Background(), event)
+	waitFor(t, func() bool { return channel.sends.Load() == 1 })
+
+	now = now.Add(3*time.Minute - time.Second)
+	dispatcher.Publish(context.Background(), event)
+	time.Sleep(50 * time.Millisecond)
+	if got := channel.sends.Load(); got != 1 {
+		t.Fatalf("deliveries = %d, want 1 inside the default 3m window", got)
+	}
+
+	now = now.Add(time.Second)
+	dispatcher.Publish(context.Background(), event)
+	waitFor(t, func() bool { return channel.sends.Load() == 2 })
+}
+
 func TestDispatcherRateLimitsTenPerMinute(t *testing.T) {
 	channel := &recordingChannel{}
 	dispatcher := newTestDispatcher(t, channel, Options{

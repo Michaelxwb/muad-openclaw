@@ -189,7 +189,7 @@ func New(opts Options) *Dispatcher {
 	}
 	dedupWindow := opts.DedupWindow
 	if dedupWindow <= 0 {
-		dedupWindow = 5 * time.Minute
+		dedupWindow = 3 * time.Minute
 	}
 	rateLimit := opts.RateLimit
 	if rateLimit <= 0 {
