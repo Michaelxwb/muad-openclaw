@@ -813,7 +813,7 @@
       "kind": "functional",
       "boundary": "API mock → UI",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -825,7 +825,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "S-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     },
     {
       "id": "S-10",
@@ -834,7 +879,7 @@
       "kind": "functional",
       "boundary": "API mock → UI",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -846,7 +891,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     },
     {
       "id": "E-07",
@@ -855,7 +945,7 @@
       "kind": "functional",
       "boundary": "API mock",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -867,7 +957,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "E-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     },
     {
       "id": "E-08",
@@ -876,7 +1011,7 @@
       "kind": "functional",
       "boundary": "API mock",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -888,7 +1023,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "E-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     },
     {
       "id": "E-09",
@@ -897,7 +1077,7 @@
       "kind": "functional",
       "boundary": "API mock",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -909,7 +1089,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "E-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     },
     {
       "id": "E-10",
@@ -918,7 +1143,7 @@
       "kind": "functional",
       "boundary": "UI",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -930,7 +1155,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "E-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     },
     {
       "id": "E-11",
@@ -939,7 +1209,7 @@
       "kind": "functional",
       "boundary": "API mock",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -951,7 +1221,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "E-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     },
     {
       "id": "B-06",
@@ -960,7 +1275,7 @@
       "kind": "functional",
       "boundary": "展示组件",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -972,7 +1287,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "B-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     },
     {
       "id": "B-07",
@@ -981,7 +1341,7 @@
       "kind": "functional",
       "boundary": "展示组件",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -993,7 +1353,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "B-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     },
     {
       "id": "B-08",
@@ -1002,7 +1407,7 @@
       "kind": "functional",
       "boundary": "展示组件",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
         "npm",
         "-C",
@@ -1014,7 +1419,52 @@
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+        "executed_at": "2026-10-17T16:16:01.010830+00:00",
+        "command": [
+          "npm",
+          "-C",
+          "console/frontend",
+          "run",
+          "test",
+          "--",
+          "test/SessionCancelDialog.test.tsx"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+      },
+      "runs": [
+        {
+          "id": "B-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee287fa842a34f0389e4ce04ecaf1cf7",
+          "executed_at": "2026-10-17T16:16:01.010830+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "51ec9c23051b43507cbadfe71aad7870e0d0df1fee3b95cf6e07565abe8b54d2"
+        }
+      ]
     }
   ]
 }

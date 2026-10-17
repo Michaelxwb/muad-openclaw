@@ -45,16 +45,16 @@
 | B-05 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 企微队列 | TASK-006 | planned | - |
 | S-07 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 用户详情 → API → 真实 Worker | TASK-006 | planned | - |
 | S-08 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 弹窗 → API → Worker 信号 → UI | TASK-006 | planned | - |
-| S-09 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock → UI | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
-| S-10 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock → UI | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
-| E-07 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
-| E-08 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
-| E-09 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
-| E-10 | session-cancel.frontend.design.md#2.4 验收条件 | integration | UI | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
-| E-11 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
-| B-06 | session-cancel.frontend.design.md#2.4 验收条件 | unit | 展示组件 | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
-| B-07 | session-cancel.frontend.design.md#2.4 验收条件 | unit | 展示组件 | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
-| B-08 | session-cancel.frontend.design.md#2.4 验收条件 | unit | 展示组件 | TASK-005 | planned | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| S-09 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock → UI | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| S-10 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock → UI | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| E-07 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| E-08 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| E-09 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| E-10 | session-cancel.frontend.design.md#2.4 验收条件 | integration | UI | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| E-11 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| B-06 | session-cancel.frontend.design.md#2.4 验收条件 | unit | 展示组件 | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| B-07 | session-cancel.frontend.design.md#2.4 验收条件 | unit | 展示组件 | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
+| B-08 | session-cancel.frontend.design.md#2.4 验收条件 | unit | 展示组件 | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
 
 ### RULE / RISK 映射
 
@@ -331,7 +331,7 @@
 
 ## TASK-005: 前端会话终止交互与数据层
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-004
 - **Source**: session-cancel.frontend.design.md#3.3 组件设计, session-cancel.frontend.design.md#3.4 组件接口契约, session-cancel.frontend.design.md#3.5 状态与数据流, session-cancel.frontend.design.md#3.6 UI 状态
@@ -344,49 +344,75 @@
 
 ### Checklist
 
-- [ ] `api.ts` 增加 `previewSessionCancel` / `cancelSession`，类型放 `types/api.ts`
-- [ ] 新增 `SessionCancelDialog.tsx` + CSS：预览摘要、进程表（PID/PGID/组长/时长/命令）、危险确认、结果表
-- [ ] IdentityManager 行操作打开弹窗；确认中禁止重复提交；关闭后复位
-- [ ] UI 四态：loading / empty / error（41007/41008/41009/41010）/ success
-- [ ] 41009 提供"重新预览"；skipped/remaining 明确展示
-- [ ] 所有文案走 i18n（zh/en）
-- [ ] [S-09][integration] 空集合空态 + 确认禁用
-- [ ] [S-10][integration] skipped/remaining 展示
-- [ ] [E-07..E-05][integration] 四类错误与重复提交
-- [ ] [B-06][unit] 断言 cmdline 超过 200 字符时截断展示
-- [ ] [B-07][unit] 断言 run active 且进程为 0 时确认按钮可用
-- [ ] [B-08][unit] 断言 skipped 计数文案与"非目标进程"说明展示
-- [ ] [RULE-frontend-component-001][verifier] 断言 props 强类型、展示组件无网络 IO、列表 `rowKey=pid`；`npm -C console/frontend run check` 通过
-- [ ] [RULE-frontend-semi-shell-001][verifier] 断言使用 Semi Modal/Table/Button/Tag/Toast，未引入其他 UI 库；代码审查 + lint
-- [ ] [RULE-frontend-directory-001][verifier] 断言所有 HTTP 经 `src/api.ts`；`rg "fetch\\(|axios" console/frontend/src/components/human-users` 为空
-- [ ] [RULE-frontend-api-types-001][verifier] 断言新类型在 `src/types/api.ts` 并由 `api.ts` re-export；`tsc --noEmit` 通过
-- [ ] [RULE-frontend-quality-001][verifier] 运行 `npm -C console/frontend run check`（tsc + eslint + prettier + vitest），断言四态与错误处理覆盖
-- [ ] [RULE-frontend-api-client-001][verifier] 断言 `/api/v1` 前缀、`code===0` 解包、401 处理均复用 api.ts；组件测试 mock api.ts
-- [ ] [RULE-frontend-i18n-001][verifier] 断言组件文案全部走 `useTranslation`；`rg "[一-龥]" src/components/human-users/SessionCancelDialog.tsx` 仅允许注释/测试
-- [ ] 运行 `npm -C console/frontend run test -- test/SessionCancelDialog.test.tsx`
+- [x] `api.ts` 增加 `previewSessionCancel` / `cancelSession`，类型放 `types/api.ts`
+- [x] 新增 `SessionCancelDialog.tsx` + CSS：预览摘要、进程表（PID/PGID/组长/时长/命令）、危险确认、结果表
+- [x] IdentityManager 行操作打开弹窗；确认中禁止重复提交；关闭后复位
+- [x] UI 四态：loading / empty / error（41007/41008/41009/41010）/ success
+- [x] 41009 提供"重新预览"；skipped/remaining 明确展示
+- [x] 所有文案走 i18n（zh/en）
+- [x] [S-09][integration] 空集合空态 + 确认禁用
+- [x] [S-10][integration] skipped/remaining 展示
+- [x] [E-07..E-11][integration] 四类错误与重复提交
+- [x] [B-06][unit] 断言 cmdline 超过 200 字符时截断展示
+- [x] [B-07][unit] 断言 run active 且进程为 0 时确认按钮可用
+- [x] [B-08][unit] 断言 skipped 计数文案与"非目标进程"说明展示
+- [x] [RULE-frontend-component-001][verifier] 断言 props 强类型、展示组件无网络 IO、列表 `rowKey=pid`；`npm -C console/frontend run check` 通过
+- [x] [RULE-frontend-semi-shell-001][verifier] 断言使用 Semi Modal/Table/Button/Tag/Toast，未引入其他 UI 库；代码审查 + lint
+- [x] [RULE-frontend-directory-001][verifier] 断言所有 HTTP 经 `src/api.ts`；`rg "fetch\\(|axios" console/frontend/src/components/human-users` 为空
+- [x] [RULE-frontend-api-types-001][verifier] 断言新类型在 `src/types/api.ts` 并由 `api.ts` re-export；`tsc --noEmit` 通过
+- [x] [RULE-frontend-quality-001][verifier] 运行 `npm -C console/frontend run check`（tsc + eslint + prettier + vitest），断言四态与错误处理覆盖
+- [x] [RULE-frontend-api-client-001][verifier] 断言 `/api/v1` 前缀、`code===0` 解包、401 处理均复用 api.ts；组件测试 mock api.ts
+- [x] [RULE-frontend-i18n-001][verifier] 断言组件文案全部走 `useTranslation`；`rg "[一-龥]" src/components/human-users/SessionCancelDialog.tsx` 仅允许注释/测试
+- [x] 运行 `npm -C console/frontend run test -- test/SessionCancelDialog.test.tsx`
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-09 | integration | api.ts mock → UI | 空态文案 + 确认禁用 | `test/SessionCancelDialog.test.tsx` | `["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"]` | planned |
-| S-10 | integration | api.ts mock → UI | skipped/remaining 可见，不显示全成功 | 同上 | 同上 | planned |
-| E-07 | integration | api.ts mock → UI | 41007 文案 + 确认禁用 | 同上 | 同上 | planned |
-| E-08 | integration | api.ts mock → UI | 41009 提示 + 重新预览 | 同上 | 同上 | planned |
-| E-09 | integration | api.ts mock → UI | 41008/41010 错误 Banner | 同上 | 同上 | planned |
-| E-10 | integration | UI | 连点只发一次请求，按钮 loading | 同上 | 同上 | planned |
-| E-11 | integration | api.ts mock → UI | 预览失败显示错误而非空态 | 同上 | 同上 | planned |
-| B-06 | unit | 展示组件 | cmdline 截断 200 | 同上 | 同上 | planned |
-| B-07 | unit | 展示组件 | run active + 0 进程时确认可用 | 同上 | 同上 | planned |
-| B-08 | unit | 展示组件 | skipped 计数文案 | 同上 | 同上 | planned |
+| S-09 | integration | api.ts mock → UI | 空态文案 + 确认禁用 | `test/SessionCancelDialog.test.tsx` | `["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"]` | verified |
+| S-10 | integration | api.ts mock → UI | skipped/remaining 可见，不显示全成功 | 同上 | 同上 | verified |
+| E-07 | integration | api.ts mock → UI | 41007 文案 + 确认禁用 | 同上 | 同上 | verified |
+| E-08 | integration | api.ts mock → UI | 41009 提示 + 重新预览 | 同上 | 同上 | verified |
+| E-09 | integration | api.ts mock → UI | 41008/41010 错误 Banner | 同上 | 同上 | verified |
+| E-10 | integration | UI | 连点只发一次请求，按钮 loading | 同上 | 同上 | verified |
+| E-11 | integration | api.ts mock → UI | 预览失败显示错误而非空态 | 同上 | 同上 | verified |
+| B-06 | unit | 展示组件 | cmdline 截断 200 | 同上 | 同上 | verified |
+| B-07 | unit | 展示组件 | run active + 0 进程时确认可用 | 同上 | 同上 | verified |
+| B-08 | unit | 展示组件 | skipped 计数文案 | 同上 | 同上 | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写。
+- RED：`npm -C console/frontend run test -- test/SessionCancelDialog.test.tsx` → `Failed to resolve import ".../SessionCancelDialog"`，0 test / 1 suite failed。
+- GREEN：同一命令 → 11/11 pass（1 file）。`npm -C console/frontend run check` → tsc/eslint/prettier 全通过，vitest 28 files / 222 tests pass。
+- S-09：preview 返回 `activeRun.active=false, processes=[]` → 文案"没有正在运行的任务或后台进程"可见，确认按钮 disabled，未调用 cancel。
+- S-10：cancel 返回 `killed=1, remaining=[5001]` 且一条 `skipped/permission_denied` → 结果区显示"已终止 1 个进程""未退出进程：5001""已跳过""权限不足"，Toast 为 `会话任务已处理，但部分进程未终止`，不出现"会话任务已终止"；只提交 `[{pid:4028,fingerprint:"fp-a"}]`。
+- E-07：preview 抛 41007 → "当前 Worker 不支持会话终止"，确认按钮 disabled。
+- E-08：cancel 抛 41009 → 提示"进程列表已变化，请重新预览"且确认禁用；点击"重新预览"后二次 preview 成功、错误清除、按钮恢复可用。
+- E-09：cancel 抛 41008 / 41010 → 分别展示"会话或身份不存在""会话终止失败" Banner，无成功 Toast。
+- E-10：确认按钮连点两次 → `cancelSession` 仅调用 1 次，按钮进入 loading/disabled。
+- E-11：preview 抛普通错误 → 展示"读取会话运行状态失败"+重试，不出现空态文案；重试后渲染会话摘要。
+- B-06：250 字符 cmdline → 仅渲染前 200 字符 + 省略号，`TAIL-MARKER` 原文不出现。
+- B-07：`activeRun.active=true, processes=[]` → 确认按钮可用，警告文案"将中止活跃 run。此操作不可撤销。"。
+- B-08：`skipped={notOwner:1, envMismatch:2, permissionDenied:0}` → "已跳过 3 个非目标进程"+非目标进程说明可见。
+- verifier：`rg "fetch\(|axios" console/frontend/src/components/human-users` 无输出；`rg "[一-龥]" console/frontend/src/components/human-users/SessionCancelDialog.tsx` 无输出；进程/结果表均 `rowKey="pid"`；新 DTO 位于 `src/types/api.ts`，`api.ts` 通过 `export type *` re-export；两个方法复用 `request`（`/api/v1`、`code===0` 解包、401 处理）。
+- 遗留：前端 B-07 允许"仅中止 run（0 进程）"时提交空 `expected`，但当前后端 `validSessionCancelExpected` 与 gateway `CancelSessionCancel` 均要求 `expected` 非空，会返回 400/41010。前后端边界需在 TASK-006 前对齐（要么后端允许空 expected 仅 abort run，要么前端在 0 进程时禁用确认）。
+- S-09: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
+- E-07: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
+- E-08: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
+- E-09: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
+- E-10: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
+- E-11: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
+- B-07: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
+- B-08: verified — automated command passed; run_id=ee287fa842a34f0389e4ce04ecaf1cf7 (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-18] started
+- [2026-10-18] implemented types/api methods, SessionCancelDialog + CSS, IdentityManager row action, zh/en i18n; S-09/S-10/E-07..E-11/B-06..B-08 passed
+- [2026-10-18] completed (done)
 
 ---
 
