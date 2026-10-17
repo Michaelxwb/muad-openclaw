@@ -78,7 +78,7 @@
 - **Depends**:
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.3 数据设计`, `skill-execution-control-and-review.backend.design.md#4.4 数据迁移`
 - **Spec-Refs**: backend-database#RULE-backend-database-001, backend-database#RULE-backend-no-select-star-001
-- **Acceptance-Refs**: —（数据模型迁移由 schema 测试覆盖，无独立 design 场景）
+- **Acceptance-Refs**: N/A（数据模型迁移由 schema 测试覆盖，无独立 design 场景）
 
 ### Description
 
@@ -300,7 +300,7 @@
 - **Depends**:
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（平台 request profile）
 - **Spec-Refs**:
-- **Acceptance-Refs**: S-12, S-13, B-07
+- **Acceptance-Refs**: N/A（profile 输出由 TASK-007 的 S-12/S-13/B-07 端到端覆盖；本任务以 profile 测试验证）
 
 ### Description
 
