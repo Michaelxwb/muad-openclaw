@@ -24,6 +24,8 @@ Skill 激活按用户消息轮次隔离：
 
 怎么写一个 Skill（目录结构、`SKILL.md` frontmatter、managed manifest、脚本自助、关键提醒）见 [`_templates/README.md`](./_templates/README.md)。
 
+自建 Skill 统一使用 Python，业务平台请求经 `muad_skill_http.platform_request` 统一构造 Cookie/CSRF/Host 与每请求 `Traceid`。上线前可用内置 `self-skill-review` 做只读检查；上传链路不做语言硬拦截，最终由管理员审批。
+
 ## 长任务反馈
 
 普通 Skill 与 `longTask:true` Skill 都可在自己选择的关键业务节点执行语言无关的 `muad-progress` CLI，主动发送 stage/done/error 文本。Skill 不持有收件人：Runtime Guard 从可信前台会话或后台 task 决定企微/Mattermost 目标；事件和诊断只在 execution 生命周期内保存，不写 Console 数据库。
