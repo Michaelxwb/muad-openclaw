@@ -1,7 +1,7 @@
 version: 1
 task: session-cancel
 enforcement: required
-updated_at: '2026-10-17T15:56:12.844622+00:00'
+updated_at: '2026-10-17T16:04:54.848935+00:00'
 sources:
 - type: cli
   ref: bind
@@ -87,10 +87,21 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: verified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-17T16:04:58.341314+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: 5b56d43dfaf9ba67e59876649988c05a0feed3af3aa2257c95484577c3e6080a
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
@@ -591,10 +602,21 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: unverified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-17T16:04:58.346750+00:00'
+          status: unverified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: 5b56d43dfaf9ba67e59876649988c05a0feed3af3aa2257c95484577c3e6080a
+          result_sha256: af3dc8226a5c0d131d240b46baf7642c736ac06602062bbfafaec2c25afa83a5
+          error_code: deferred_to_review
+          details:
+            reason: out_of_task_scope
+            deferred_to_review: true
       review:
         status: pending
         refs: []
@@ -1169,10 +1191,21 @@ bindings:
         decision: null
         evidence: []
       code:
-        status: pending
+        status: verified
         refs: []
         decision: null
-        evidence: []
+        evidence:
+        - verifier_ref: frontend-quality-standards#RULE-frontend-api-client-001
+          executed_at: '2026-10-17T16:04:58.351545+00:00'
+          status: verified
+          rule_text_sha256: f72980fb8ff80823ef0306b736ff3dfcc9216a23d166c4b3ef9f0c3283c1aafd
+          artifact_sha256: null
+          diff_sha256: 5b56d43dfaf9ba67e59876649988c05a0feed3af3aa2257c95484577c3e6080a
+          result_sha256: cafe49a648943a15e98b35a3947170e5a5b296320f41a38b7d31e58af1b4356f
+          error_code: null
+          details:
+            checked_files: 0
+            violations: []
       review:
         status: pending
         refs: []
@@ -1328,6 +1361,150 @@ bindings:
   - ref: PATTERN-frontend-005
     summary: 纯函数模块直接 `i18n.t`；组件内统一 `useTranslation`
     text_sha256: 3528d9243f118f39b0c9ff7591bc5d70376942029ad5703e70413059dbbd6316
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+- spec_id: runtime-config-and-apply
+  path: runtime/config-and-apply.md
+  status: active
+  hashes:
+    file_sha256: 4e43e458da21da31f032fcc92be485eb0a3a62323605d4ef72b3aa2695d33724
+    metadata_sha256: f275035e49c2d53961baf0ae8b9974d6867e3504a48b7128483ec94ab60e72ae
+    rules_sha256: cedb07c8944d42c5c74ebe18b0418eb7bcc2a9f7d87cb5e8b58161a83ba94d45
+  selected_by: scope:path
+  reason: Git diff matched tools/muad-runtime-guard/src/session-process-sweeper.mjs,tools/muad-runtime-guard/test/session-process-sweeper.test.mjs
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
+  - ref: RULE-runtime-config-001
+    summary: Runtime configuration changes must validate against schema, apply through
+      the transactional pipeline (`runtime-config-transaction` / control-plane `runtimeapply`),
+      and preserve rollback or failed-health recovery.
+    text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+    enforcement: required
+    verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: session-cancel.backend.design.md
+          section_id: '3.3'
+          item_id: SC-NO-CONFIG-WRITE
+          artifact_sha256: 65a7995b2923a6ee53ed7c6fefde430153259e53cd8a3cd6afe21edc646205ff
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: session-cancel.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: adad8b83eb9b39818720d50643901de271c7fcf585309a25b03556178098d799
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-validate-before-write-001
+    summary: Any renderer/inject path that materializes runtime config must call `validateRuntimeConfig`
+      (or shared schema helper) before atomic write; desired state carries a monotonic
+      `generation`.
+    text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+    enforcement: required
+    verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+    verifier_stage: review
+    stage_status:
+      design:
+        status: applied
+        refs:
+        - artifact: session-cancel.backend.design.md
+          section_id: '3.3'
+          item_id: SC-NO-CONFIG-WRITE
+          artifact_sha256: 65a7995b2923a6ee53ed7c6fefde430153259e53cd8a3cd6afe21edc646205ff
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: session-cancel.md
+          section_id: TASK-001
+          item_id: TASK-001
+          artifact_sha256: adad8b83eb9b39818720d50643901de271c7fcf585309a25b03556178098d799
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-001
+    summary: 控制面构建 desired DTO，Worker 执行 transaction script
+    text_sha256: 969b322dbf270438aaa0869abd0db76afeee170b3edf9baa4a61e607612a5765
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 用 generation 单调递增检测漂移与冲突（generation conflict）
+    text_sha256: 2d27b0f5e2a796b7d7190722ce790f8eb75b1ee6ea0e91d52f524b6a3cdd0b3d
     enforcement: advisory
     verifier_ref: advisory:none
     verifier_stage: code
