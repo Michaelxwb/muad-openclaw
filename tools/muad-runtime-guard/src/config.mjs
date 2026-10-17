@@ -1,6 +1,8 @@
 import { POD_SERVICE_TOKEN_FILE } from "./binding-client.mjs";
 
 const ID_PATTERN = /^[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?$/u;
+const DEFAULT_SKILL_REQUEST_LIMIT = 1_000;
+const MAX_SKILL_REQUEST_LIMIT = 1_000_000;
 
 export function parseGuardConfig(value) {
   const input = isRecord(value) ? value : {};
@@ -18,6 +20,7 @@ export function parseGuardConfig(value) {
   const maxBrowserConcurrency = input.maxBrowserConcurrency;
   const maxSkillConcurrency = input.maxSkillConcurrency;
   const maxLongTaskConcurrency = input.maxLongTaskConcurrency;
+  const skillRequestLimit = input.skillRequestLimit;
   const valid = Number.isInteger(generation) && generation > 0 && mainAgentId === "main" &&
     ID_PATTERN.test(quarantineProfile) && validURL(consoleInternalURL) &&
     serviceTokenFile === POD_SERVICE_TOKEN_FILE && agentProfiles !== null && sessionAgentIds !== null &&
@@ -27,6 +30,7 @@ export function parseGuardConfig(value) {
     sameSkillRootAgentSet(agentProfiles, skillReadRoots) &&
     agentProfiles.every((mapping) => mapping.profile !== quarantineProfile) &&
     supportedLocale(locale) &&
+    validSkillRequestLimit(skillRequestLimit) &&
     positiveInteger(maxBrowserConcurrency) && positiveInteger(maxSkillConcurrency) &&
     positiveInteger(maxLongTaskConcurrency);
   return {
@@ -45,7 +49,16 @@ export function parseGuardConfig(value) {
     maxBrowserConcurrency: positiveInteger(maxBrowserConcurrency) ? maxBrowserConcurrency : 1,
     maxSkillConcurrency: positiveInteger(maxSkillConcurrency) ? maxSkillConcurrency : 1,
     maxLongTaskConcurrency: positiveInteger(maxLongTaskConcurrency) ? maxLongTaskConcurrency : 1,
+    skillRequestLimit: validSkillRequestLimit(skillRequestLimit) && skillRequestLimit !== undefined
+      ? skillRequestLimit
+      : DEFAULT_SKILL_REQUEST_LIMIT,
   };
+}
+
+function validSkillRequestLimit(value) {
+  // Optional for legacy consoles: a missing field means the documented default.
+  return value === undefined ||
+    (Number.isInteger(value) && value >= 0 && value <= MAX_SKILL_REQUEST_LIMIT);
 }
 
 function parseSkillAuditGrants(value) {

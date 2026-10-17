@@ -28,22 +28,22 @@
 | S-12 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager 状态文件 → platform_request → HTTP（httptest） | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
 | S-13 | backend.design.md#2.5.2 功能验收场景 | integration | mssp 状态文件 → platform_request | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
 | S-14 | backend.design.md#2.5.2 功能验收场景 | E2E | 两个用户并发 → 两份 spool → Console → 告警/统计 | TASK-012 | planned |
-| S-15 | backend.design.md#2.5.2 功能验收场景 | integration | 共享 gateway hook → 异步队列 → 其他用户 turn | TASK-005 | planned |
+| S-15 | backend.design.md#2.5.2 功能验收场景 | integration | 共享 gateway hook → 异步队列 → 其他用户 turn | TASK-005 | verified |
 | S-16 | backend.design.md#2.5.2 功能验收场景 | E2E | 旧 Skill（raw requests + 手工头）→ 新镜像 → 执行 | TASK-012 | planned |
 | S-17 | backend.design.md#2.5.2 功能验收场景 | integration | 混合 Skill（helper + raw requests） | TASK-007 | verified |
 | E-01 | backend.design.md#2.5.2 功能验收场景 | integration | Console 内部接口 → repo | TASK-002 | verified |
 | E-02 | backend.design.md#2.5.2 功能验收场景 | integration | dispatcher → WeCom HTTP（errcode≠0） | TASK-003 | verified |
-| E-03 | backend.design.md#2.5.2 功能验收场景 | integration | guard 上传失败 → 保留 spool → 下个 hook 重试 | TASK-005 | planned |
+| E-03 | backend.design.md#2.5.2 功能验收场景 | integration | guard 上传失败 → 保留 spool → 下个 hook 重试 | TASK-005 | verified |
 | E-04 | backend.design.md#2.5.2 功能验收场景 | integration | 脚本绕过 helper 直接发请求 | TASK-007 | verified |
 | E-05 | backend.design.md#2.5.2 功能验收场景 | unit | 并发计数锁 | TASK-007 | verified |
-| E-06 | backend.design.md#2.5.2 功能验收场景 | integration | IM 投递（mock 通道） | TASK-005 | planned |
+| E-06 | backend.design.md#2.5.2 功能验收场景 | integration | IM 投递（mock 通道） | TASK-005 | verified |
 | E-07 | backend.design.md#2.5.2 功能验收场景 | integration | settings API 校验 | TASK-004 | verified |
 | E-08 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager → 状态文件 → platform_request | TASK-007 | verified |
-| E-09 | backend.design.md#2.5.2 功能验收场景 | integration | cross-user-guard → 文件路径 | TASK-005 | planned |
+| E-09 | backend.design.md#2.5.2 功能验收场景 | integration | cross-user-guard → 文件路径 | TASK-005 | verified |
 | E-10 | backend.design.md#2.5.2 功能验收场景 | integration | platform_request → HTTP 401 | TASK-007 | verified |
 | E-11 | backend.design.md#2.5.2 功能验收场景 | integration | 升级顺序/版本错配 | TASK-012 | planned |
 | B-01 | backend.design.md#2.5.2 功能验收场景 | unit | helper 计数 | TASK-007 | verified |
-| B-02 | backend.design.md#2.5.2 功能验收场景 | integration | helper spool + guard 解析 | TASK-005 | planned |
+| B-02 | backend.design.md#2.5.2 功能验收场景 | integration | helper spool + guard 解析 | TASK-005 | verified |
 | B-03 | backend.design.md#2.5.2 功能验收场景 | unit | 路径归一化 | TASK-007 | verified |
 | B-04 | backend.design.md#2.5.2 功能验收场景 | unit | 上限 0 | TASK-007 | verified |
 | B-05 | backend.design.md#2.5.2 功能验收场景 | integration | 告警通道关闭 | TASK-003 | verified |
@@ -306,7 +306,7 @@
 
 ## TASK-005: runtime guard trace 归属、回传与隔离
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-002, TASK-004, TASK-007
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.2 架构设计`, `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
@@ -319,35 +319,66 @@
 
 ### Checklist
 
-- [ ] 实现执行归属映射（session/turn 隔离，长任务 taskId），冲突/缺失不注入 env。
-- [ ] `resolve_exec_env` 注入 trace env；spool 路径只用 UUID，目录 0700、文件 0600。
-- [ ] exec 结束读取 spool：解析 summary 与事件、限制 2000 条、批量 POST 内部接口；失败保留 spool 并在下个 hook 重试；成功删除。
-- [ ] abort 时通过共享 `notifyUser` 异步通知用户；IM 失败只记日志，不影响终止与 trace。
-- [ ] 异步有界队列；hook 内只入队；队列满丢弃并记日志，不阻塞其他用户 turn。
-- [ ] cross-user-guard 增加 trace spool 路径拦截；启动清理 24h 孤儿文件。
-- [ ] [verifier][integration] `runtime-isolation-and-security#RULE-runtime-secret-file-mode-001`：目录 0700、文件 0600、原子写。
-- [ ] [verifier][integration] `runtime-skill-execution#RULE-runtime-skill-001`：不改变 skill 分层、激活、并发租约。
-- [ ] [verifier][unit] `runtime-skill-execution#RULE-runtime-log-injection-001`：注入 log，无散落 `console.*`。
-- [ ] [verifier][unit] `runtime-skill-execution#RULE-runtime-log-prefix-001`：日志前缀 `[muad-runtime-guard][skill-trace]`。
-- [ ] 先写 spool 解析/上传/重试与多用户隔离测试并记录 RED。
+- [x] 实现执行归属映射（session/turn 隔离，长任务 taskId），冲突/缺失不注入 env。
+- [x] `resolve_exec_env` 注入 trace env；spool 路径只用 UUID，目录 0700、文件 0600。
+- [x] exec 结束读取 spool：解析 summary 与事件、限制 2000 条、批量 POST 内部接口；失败保留 spool 并在下个 hook 重试；成功删除。
+- [x] abort 时通过共享 `notifyUser` 异步通知用户；IM 失败只记日志，不影响终止与 trace。
+- [x] 异步有界队列；hook 内只入队；队列满丢弃并记日志，不阻塞其他用户 turn。
+- [x] cross-user-guard 增加 trace spool 路径拦截；启动清理 24h 孤儿文件。
+- [x] [verifier][integration] `runtime-isolation-and-security#RULE-runtime-secret-file-mode-001`：目录 0700、文件 0600、原子写。
+- [x] [verifier][integration] `runtime-skill-execution#RULE-runtime-skill-001`：不改变 skill 分层、激活、并发租约。
+- [x] [verifier][unit] `runtime-skill-execution#RULE-runtime-log-injection-001`：注入 log，无散落 `console.*`。
+- [x] [verifier][unit] `runtime-skill-execution#RULE-runtime-log-prefix-001`：日志前缀 `[muad-runtime-guard][skill-trace]`。
+- [x] 先写 spool 解析/上传/重试与多用户隔离测试并记录 RED。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-15 | integration | guard hook → 队列 → 其他 turn | hook 50ms 内返回；不阻塞；最终入库 | `tools/muad-runtime-guard/test/skill-trace.test.mjs` | `cd tools/muad-runtime-guard && npm test -- --test-name-pattern=SkillTrace` | planned |
-| E-03 | integration | 真实 spool 文件 + 失败上传 | 保留并重试；事件不重复 | 同上 | 同上 | planned |
-| E-06 | integration | notifyUser fake | 投递失败不影响终止/trace | 同上 | 同上 | planned |
-| E-09 | integration | cross-user-guard 路径扫描 | 命令含 spool 路径被拒绝 | `tools/muad-runtime-guard/test/cross-user-guard.test.mjs` | 同上 | planned |
-| B-02 | integration | helper spool + guard 解析 | 500 条明细 + 汇总 600 + truncated | `tools/muad-runtime-guard/test/skill-trace.test.mjs` | 同上 | planned |
+| S-15 | integration | guard hook → 队列 → 其他 turn | hook 50ms 内返回；不阻塞；最终入库 | `tools/muad-runtime-guard/test/skill-trace.test.mjs` | ["node","--test","--test-name-pattern=SkillTrace","tools/muad-runtime-guard/test/skill-trace.test.mjs"] | verified |
+| E-03 | integration | 真实 spool 文件 + 失败上传 | 保留并重试；事件不重复 | 同上 | ["node","--test","--test-name-pattern=SkillTrace","tools/muad-runtime-guard/test/skill-trace.test.mjs"] | verified |
+| E-06 | integration | notifyUser fake | 投递失败不影响终止/trace | 同上 | ["node","--test","--test-name-pattern=SkillTrace","tools/muad-runtime-guard/test/skill-trace.test.mjs"] | verified |
+| E-09 | integration | cross-user-guard 路径扫描 | 命令含 spool 路径被拒绝 | `tools/muad-runtime-guard/test/cross-user-guard.test.mjs` | ["node","--test","--test-name-pattern=trace spool","tools/muad-runtime-guard/test/cross-user-guard.test.mjs"] | verified |
+| B-02 | integration | helper spool + guard 解析 | 500 条明细 + 汇总 600 + truncated | `tools/muad-runtime-guard/test/skill-trace.test.mjs` | ["node","--test","--test-name-pattern=SkillTrace","tools/muad-runtime-guard/test/skill-trace.test.mjs"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+- **RED**：
+  - `node --test --test-name-pattern=SkillTrace tools/muad-runtime-guard/test/skill-trace.test.mjs` → `ERR_MODULE_NOT_FOUND`（`src/skill-trace-executions.mjs` 未实现），12 个用例全部无法加载。
+  - `node --test --test-name-pattern="trace spool" tools/muad-runtime-guard/test/cross-user-guard.test.mjs` → FAIL：spool 路径命令返回 `undefined`（未被拦截）。
+- **GREEN**：
+  - `cd tools/muad-runtime-guard && npm test` → `tests 300 / pass 298 / fail 0 / skipped 2`（worktree 内先 `npm ci`；`tests/muad-progress` 同样 `npm ci` 后 e2e 可跑）。
+  - 定向命令：`node --test --test-name-pattern=SkillTrace tools/muad-runtime-guard/test/skill-trace.test.mjs` → 16/16；`node --test --test-name-pattern="trace spool" tools/muad-runtime-guard/test/cross-user-guard.test.mjs` → 1/1。
+- **断言位置 / 真实边界**：
+  - S-15：`tools/muad-runtime-guard/test/skill-trace.test.mjs::SkillTrace hook enqueues upload work and returns within 50ms while the queue is blocked`（真实 spool 文件 + 被阻塞的上传 worker；hook 实测 <50ms 返回，解阻后批量请求到达 `report(executionId, payload)`）；`SkillTrace drops work when the bounded queue is full...`（队列满丢弃并记日志）。
+  - E-03：`SkillTrace keeps the spool and retries the identical batch after a failed upload`（真实 `mkdtemp` spool 文件；首次上传抛 retryable 失败后文件保留，下个 `after_tool_call` 重试；两次 payload 的 `eventId` 序列一致，成功后文件删除）。
+  - E-06：`SkillTrace aborted executions notify the mapped user without blocking trace upload`（abort summary → `notifyUser` fake 收到 wecom/wx-1 与 Skill 名）；`SkillTrace notification failure is logged and does not affect the trace upload`（IM 抛错只记日志，trace 仍上传）。
+  - E-09：`tools/muad-runtime-guard/test/cross-user-guard.test.mjs::cross-user guard blocks trace spool path access`（exec 读/删目录与 write 内容含 `/tmp/muad-runtime-queues/skill-trace/` 均被拒绝；文件名 UUID）。
+  - B-02：`SkillTrace parses 500 helper events plus a 600-request summary without leaking trace ids`（500 条 `http` + summary `totalRequests=600`/`truncated=true` → 500 events、requestCount=600、detailTruncated=true；容忍 `platform` 回退 host、忽略 `traceId`）；`SkillTrace caps parsed events at 2000...`。
+  - 归属隔离：`SkillTrace resolve_exec_env fails closed for missing, conflicting, or unidentified mappings`（缺失/冲突/无 runId 均不注入）；`SkillTrace uses the taskId as executionId for long task sessions`；`SkillTrace audit dispatch promotes the same execution when the run starts`（dispatch 无 runId → before_agent_run 补登记；后续同 run 上报复用同一 executionId，不制造冲突）。
+  - 文件模式：`SkillTrace resolve_exec_env injects execution env and creates a 0700/0600 spool`（真实 `statSync`：目录 `0700`、文件 `0600`，路径仅 `<uuid>.jsonl`）。
+  - 日志：`SkillTrace logs every diagnostic with the stable module prefix`（所有注入 log 行以 `[muad-runtime-guard][skill-trace]` 开头）。
+  - 上传客户端：`SkillTrace client posts the batch to the internal trace endpoint with the pod token`（`POST /internal/v1/skill-executions/{id}/trace`、Bearer pod token）；`SkillTrace client retries server failures but not deterministic rejections`（5xx retryable，409 不可重试）。
+  - 真实 HTTP 未连 Console：上传客户端以注入 `fetch` 验证 URL/头/JSON；spool 解析使用真实 helper 形态文件；`notifyUser` 按 E-06 约定注入 fake。
+- **Spec 规则**：
+  - `RULE-runtime-secret-file-mode-001`：`ensureSkillTraceSpool` 创建/强制目录 0700、文件 0600；跨用户路径拦截；证据见上。
+  - `RULE-runtime-skill-001`：仅新增 `resolve_exec_env`/`after_tool_call` 注入与审计登记，未改 skill 解析、激活门禁、并发租约；`npm test` 全绿含既有 lease/preflight 用例。
+  - `RULE-runtime-log-injection-001`：新模块全部通过注入 `log`（默认 no-op），无 `console.*`。
+  - `RULE-runtime-log-prefix-001`：全部日志稳定前缀 `[muad-runtime-guard][skill-trace]`。
+- S-15: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- E-09: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] RED：skill-trace 测试模块缺失；cross-user spool 拦截用例失败。
+- [2026-10-17] GREEN：新增归属映射/spool 解析/上传客户端/有界队列/abort 通知/启动清理/cross-user 拦截；`npm test` 299 tests（297 pass / 2 skipped）。
+- [2026-10-17] 将 TASK-005 Acceptance Contract 执行命令改为可执行 argv JSON 并重锁 manifest；仅本任务行变更。
+- [2026-10-17] completed (done)
 
 ---
 

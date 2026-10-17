@@ -638,20 +638,55 @@
       "kind": "functional",
       "boundary": "共享 gateway hook → 异步队列 → 其他用户 turn",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "`cd",
-        "tools/muad-runtime-guard",
-        "&&",
-        "npm",
-        "test",
-        "--",
-        "--test-name-pattern=SkillTrace`"
+        "node",
+        "--test",
+        "--test-name-pattern=SkillTrace",
+        "tools/muad-runtime-guard/test/skill-trace.test.mjs"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-15",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "9d0c823270ee4343a61bd65e728153cb",
+        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=SkillTrace",
+          "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+      },
+      "runs": [
+        {
+          "id": "S-15",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        }
+      ]
     },
     {
       "id": "S-16",
@@ -880,14 +915,55 @@
       "kind": "functional",
       "boundary": "guard 上传失败 → 保留 spool → 下个 hook 重试",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "node",
+        "--test",
+        "--test-name-pattern=SkillTrace",
+        "tools/muad-runtime-guard/test/skill-trace.test.mjs"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "9d0c823270ee4343a61bd65e728153cb",
+        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=SkillTrace",
+          "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+      },
+      "runs": [
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        }
+      ]
     },
     {
       "id": "E-04",
@@ -1016,14 +1092,55 @@
       "kind": "functional",
       "boundary": "IM 投递（mock 通道）",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "node",
+        "--test",
+        "--test-name-pattern=SkillTrace",
+        "tools/muad-runtime-guard/test/skill-trace.test.mjs"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "9d0c823270ee4343a61bd65e728153cb",
+        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=SkillTrace",
+          "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+      },
+      "runs": [
+        {
+          "id": "E-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        }
+      ]
     },
     {
       "id": "E-07",
@@ -1161,14 +1278,55 @@
       "kind": "functional",
       "boundary": "cross-user-guard → 文件路径",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "node",
+        "--test",
+        "--test-name-pattern=trace spool",
+        "tools/muad-runtime-guard/test/cross-user-guard.test.mjs"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "9d0c823270ee4343a61bd65e728153cb",
+        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=trace spool",
+          "tools/muad-runtime-guard/test/cross-user-guard.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+      },
+      "runs": [
+        {
+          "id": "E-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=trace spool",
+            "tools/muad-runtime-guard/test/cross-user-guard.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        }
+      ]
     },
     {
       "id": "E-10",
@@ -1313,14 +1471,55 @@
       "kind": "functional",
       "boundary": "helper spool + guard 解析",
       "owner": "TASK-005",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "node",
+        "--test",
+        "--test-name-pattern=SkillTrace",
+        "tools/muad-runtime-guard/test/skill-trace.test.mjs"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "9d0c823270ee4343a61bd65e728153cb",
+        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=SkillTrace",
+          "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        }
+      ]
     },
     {
       "id": "B-03",
