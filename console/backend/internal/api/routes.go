@@ -78,7 +78,9 @@ func (s *Server) registerExistingSettingsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/human-users/{humanUserId}/skill-policies", s.handleCreateSkillPolicy)
 	mux.HandleFunc("DELETE /api/v1/human-users/{humanUserId}/skill-policies/{policyId}", s.handleDeleteSkillPolicy)
 	mux.HandleFunc("GET /api/v1/skill-executions", s.handleListSkillExecutions)
+	mux.HandleFunc("GET /api/v1/skill-executions/stats", s.handleSkillExecutionStats)
 	mux.HandleFunc("GET /api/v1/skill-executions/{executionId}", s.handleGetSkillExecution)
+	mux.HandleFunc("GET /api/v1/skill-executions/{executionId}/trace", s.handleGetSkillExecutionTrace)
 	mux.HandleFunc("GET /api/v1/long-tasks", s.handleListLongTasks)
 	mux.HandleFunc("POST /api/v1/long-tasks/{taskId}/cancel", s.handleCancelLongTask)
 	mux.HandleFunc("GET /api/v1/audit", s.handleAuditQuery)
@@ -93,6 +95,7 @@ func (s *Server) registerInternalRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /internal/v1/bindings/activate", s.handleActivateBinding)
 	mux.HandleFunc("POST /internal/v1/session-credentials/resolve", s.handleResolveSessionCredential)
 	mux.HandleFunc("POST /internal/v1/skill-executions", s.handleUpsertSkillExecution)
+	mux.HandleFunc("POST /internal/v1/skill-executions/{executionId}/trace", s.handleSkillExecutionTrace)
 	mux.HandleFunc("POST /internal/v1/long-tasks", s.handleUpsertLongTasks)
 	mux.HandleFunc("POST /internal/v1/skills/private/ingest", s.handleIngestPrivateSkill)
 }

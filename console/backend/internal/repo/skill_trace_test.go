@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -63,7 +64,7 @@ func TestInsertSkillTraceEventsIsIdempotent(t *testing.T) {
 		{EventID: "event-2", Seq: 2, OccurredAt: time.Date(2026, 10, 17, 6, 2, 0, 0, time.UTC),
 			Kind: SkillTraceKindHTTP, Status: SkillTraceStatusError, Summary: "GET /api"},
 	}
-	stored, err := store.InsertSkillTraceEvents("exec-a", events)
+	stored, err := store.InsertSkillTraceEvents(context.Background(), "exec-a", events)
 	if err != nil {
 		t.Fatalf("InsertSkillTraceEvents: %v", err)
 	}
@@ -75,7 +76,7 @@ func TestInsertSkillTraceEventsIsIdempotent(t *testing.T) {
 		EventID: "event-3", Seq: 3, OccurredAt: time.Date(2026, 10, 17, 6, 3, 0, 0, time.UTC),
 		Kind: SkillTraceKindOutput, Status: SkillTraceStatusOK, Summary: "done",
 	})
-	stored, err = store.InsertSkillTraceEvents("exec-a", replay)
+	stored, err = store.InsertSkillTraceEvents(context.Background(), "exec-a", replay)
 	if err != nil {
 		t.Fatalf("InsertSkillTraceEvents replay: %v", err)
 	}
@@ -83,7 +84,7 @@ func TestInsertSkillTraceEventsIsIdempotent(t *testing.T) {
 		t.Fatalf("stored events on replay = %d, want 1 (only the new event)", stored)
 	}
 	// Same event_id retried with a different seq must not mutate the stored row.
-	stored, err = store.InsertSkillTraceEvents("exec-a", []SkillTraceEvent{{
+	stored, err = store.InsertSkillTraceEvents(context.Background(), "exec-a", []SkillTraceEvent{{
 		EventID: "event-1", Seq: 9, OccurredAt: time.Now().UTC(),
 		Kind: SkillTraceKindAbort, Status: SkillTraceStatusError, Summary: "conflict",
 	}})
@@ -93,7 +94,7 @@ func TestInsertSkillTraceEventsIsIdempotent(t *testing.T) {
 	if stored != 0 {
 		t.Fatalf("stored events for duplicate event_id = %d, want 0", stored)
 	}
-	got, err := store.ListSkillTraceEvents("exec-a", 0)
+	got, err := store.ListSkillTraceEvents(context.Background(), "exec-a", 0)
 	if err != nil {
 		t.Fatalf("ListSkillTraceEvents: %v", err)
 	}
@@ -114,7 +115,7 @@ func TestListSkillTraceEventsOrdersBySeqAndLimits(t *testing.T) {
 	store := newSkillTraceTestStore(t)
 	insertTestExecution(t, store, "exec-a", "user-a", "agent-a")
 	for _, seq := range []int{3, 1, 2} {
-		if _, err := store.InsertSkillTraceEvents("exec-a", []SkillTraceEvent{{
+		if _, err := store.InsertSkillTraceEvents(context.Background(), "exec-a", []SkillTraceEvent{{
 			EventID: "event-" + string(rune('0'+seq)), Seq: seq,
 			OccurredAt: time.Now().UTC(), Kind: SkillTraceKindExec,
 			Status: SkillTraceStatusOK, Summary: "step",
@@ -122,7 +123,7 @@ func TestListSkillTraceEventsOrdersBySeqAndLimits(t *testing.T) {
 			t.Fatalf("InsertSkillTraceEvents seq %d: %v", seq, err)
 		}
 	}
-	got, err := store.ListSkillTraceEvents("exec-a", 2)
+	got, err := store.ListSkillTraceEvents(context.Background(), "exec-a", 2)
 	if err != nil {
 		t.Fatalf("ListSkillTraceEvents: %v", err)
 	}
@@ -135,7 +136,7 @@ func TestUpsertSkillExecutionMetricsKeepsAbortedMonotonic(t *testing.T) {
 	store := newSkillTraceTestStore(t)
 	insertTestExecution(t, store, "exec-a", "user-a", "agent-a")
 	abortCount := 1001
-	if err := store.UpsertSkillExecutionMetrics(SkillExecutionMetrics{
+	if err := store.UpsertSkillExecutionMetrics(context.Background(), SkillExecutionMetrics{
 		ExecutionID: "exec-a", RequestCount: 1001, ErrorCount: 37, DistinctHosts: 1,
 		MaxBurstPer10s: 420, TopInterfacesJSON: `[{"host":"mssw","method":"GET","path":"/x","count":990}]`,
 		DetailTruncated: true, Aborted: true, AbortReason: "request_limit",
@@ -143,13 +144,13 @@ func TestUpsertSkillExecutionMetricsKeepsAbortedMonotonic(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpsertSkillExecutionMetrics aborted: %v", err)
 	}
-	if err := store.UpsertSkillExecutionMetrics(SkillExecutionMetrics{
+	if err := store.UpsertSkillExecutionMetrics(context.Background(), SkillExecutionMetrics{
 		ExecutionID: "exec-a", RequestCount: 10, ErrorCount: 1,
 		TopInterfacesJSON: `[]`, Aborted: false, DetailTruncated: false,
 	}); err != nil {
 		t.Fatalf("UpsertSkillExecutionMetrics downgrade: %v", err)
 	}
-	got, err := store.GetSkillExecutionMetrics("exec-a")
+	got, err := store.GetSkillExecutionMetrics(context.Background(), "exec-a")
 	if err != nil {
 		t.Fatalf("GetSkillExecutionMetrics: %v", err)
 	}
@@ -166,18 +167,18 @@ func TestUpsertSkillExecutionMetricsKeepsAbortedMonotonic(t *testing.T) {
 
 	// First write non-aborted, then aborted: it must upgrade.
 	insertTestExecution(t, store, "exec-b", "user-a", "agent-a")
-	if err := store.UpsertSkillExecutionMetrics(SkillExecutionMetrics{
+	if err := store.UpsertSkillExecutionMetrics(context.Background(), SkillExecutionMetrics{
 		ExecutionID: "exec-b", RequestCount: 5, TopInterfacesJSON: `[]`,
 	}); err != nil {
 		t.Fatalf("UpsertSkillExecutionMetrics initial: %v", err)
 	}
-	if err := store.UpsertSkillExecutionMetrics(SkillExecutionMetrics{
+	if err := store.UpsertSkillExecutionMetrics(context.Background(), SkillExecutionMetrics{
 		ExecutionID: "exec-b", RequestCount: 6, TopInterfacesJSON: `[]`,
 		Aborted: true, AbortReason: "request_limit",
 	}); err != nil {
 		t.Fatalf("UpsertSkillExecutionMetrics upgrade: %v", err)
 	}
-	upgraded, err := store.GetSkillExecutionMetrics("exec-b")
+	upgraded, err := store.GetSkillExecutionMetrics(context.Background(), "exec-b")
 	if err != nil {
 		t.Fatalf("GetSkillExecutionMetrics upgraded: %v", err)
 	}
@@ -190,13 +191,13 @@ func TestQuerySkillExecutionStatsGroupsPrivateSkillPerUser(t *testing.T) {
 	store := newSkillTraceTestStore(t)
 	insertTestExecution(t, store, "exec-a", "user-a", "agent-a")
 	insertTestExecution(t, store, "exec-b", "user-b", "agent-b")
-	if err := store.UpsertSkillExecutionMetrics(SkillExecutionMetrics{
+	if err := store.UpsertSkillExecutionMetrics(context.Background(), SkillExecutionMetrics{
 		ExecutionID: "exec-a", RequestCount: 1001, ErrorCount: 37, TopInterfacesJSON: `[]`,
 		Aborted: true, AbortReason: "request_limit",
 	}); err != nil {
 		t.Fatalf("upsert metrics a: %v", err)
 	}
-	if err := store.UpsertSkillExecutionMetrics(SkillExecutionMetrics{
+	if err := store.UpsertSkillExecutionMetrics(context.Background(), SkillExecutionMetrics{
 		ExecutionID: "exec-b", RequestCount: 20, ErrorCount: 1, TopInterfacesJSON: `[]`,
 	}); err != nil {
 		t.Fatalf("upsert metrics b: %v", err)
@@ -205,7 +206,7 @@ func TestQuerySkillExecutionStatsGroupsPrivateSkillPerUser(t *testing.T) {
 		Since: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), Limit: 10,
 		Scope: SkillScopePrivate,
 	}
-	stats, err := store.QuerySkillExecutionStats(filter)
+	stats, err := store.QuerySkillExecutionStats(context.Background(), filter)
 	if err != nil {
 		t.Fatalf("QuerySkillExecutionStats: %v", err)
 	}
@@ -230,7 +231,7 @@ func TestQuerySkillExecutionStatsGroupsPrivateSkillPerUser(t *testing.T) {
 		t.Fatalf("user-b stats = %+v", byUser["user-b"])
 	}
 	filter.HumanUserID = "user-b"
-	stats, err = store.QuerySkillExecutionStats(filter)
+	stats, err = store.QuerySkillExecutionStats(context.Background(), filter)
 	if err != nil {
 		t.Fatalf("QuerySkillExecutionStats by user: %v", err)
 	}
