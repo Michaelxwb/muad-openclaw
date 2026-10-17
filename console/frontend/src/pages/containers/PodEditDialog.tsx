@@ -231,16 +231,6 @@ function ResourceFields({
           style={{ width: "100%" }}
         />
       </label>
-      <ResourceInput
-        label={t("pod.memLimit")}
-        value={form.memLimit}
-        onChange={(memLimit) => setForm({ ...form, memLimit })}
-      />
-      <ResourceInput
-        label={t("pod.cpuLimit")}
-        value={form.cpuLimit}
-        onChange={(cpuLimit) => setForm({ ...form, cpuLimit })}
-      />
       <label className={containerStyles.field}>
         <span>{t("pod.restartPolicy")}</span>
         <Select
@@ -257,6 +247,16 @@ function ResourceFields({
           style={{ width: "100%" }}
         />
       </label>
+      <ResourceInput
+        label={t("pod.cpuLimit")}
+        value={form.cpuLimit}
+        onChange={(cpuLimit) => setForm({ ...form, cpuLimit })}
+      />
+      <ResourceInput
+        label={t("pod.memLimit")}
+        value={form.memLimit}
+        onChange={(memLimit) => setForm({ ...form, memLimit })}
+      />
       <ResourceNumber
         label={t("pod.maxSkillConcurrency")}
         value={form.maxSkillConcurrency ?? 0}
