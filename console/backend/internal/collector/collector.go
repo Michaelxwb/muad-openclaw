@@ -36,7 +36,7 @@ type Collector struct {
 	defaults     driver.ResourceSpec
 	interval     time.Duration
 	workers      int
-	capabilities *gateway.LongTaskCapabilityCache
+	capabilities *gateway.CancelCapabilityCache
 }
 
 // PodSource provides the control-plane state included in each snapshot.
@@ -53,9 +53,10 @@ func New(drv driver.RuntimeDriver, source PodSource, cache *monitor.Cache, defau
 	}
 }
 
-// WithLongTaskCapabilities wires the per-Pod cancel capability cache: every probe
-// cycle publishes the guard health capability here (read-only for list/cancel paths).
-func (c *Collector) WithLongTaskCapabilities(cache *gateway.LongTaskCapabilityCache) *Collector {
+// WithCancelCapabilities wires the per-Pod cancel capability cache: every probe
+// cycle publishes the guard health capabilities here (read-only for list/cancel
+// paths).
+func (c *Collector) WithCancelCapabilities(cache *gateway.CancelCapabilityCache) *Collector {
 	c.capabilities = cache
 	return c
 }
@@ -131,12 +132,7 @@ func (c *Collector) probeRunningPods(ctx context.Context, snaps map[string]monit
 			defer cancel()
 			status := gateway.Probe(pctx, c.drv, id)
 			mergeGatewayStatus(&base, status)
-			if c.capabilities != nil {
-				c.capabilities.Update(id, gateway.LongTaskCancelCapability{
-					Available: status.LongTaskCancelAvailable,
-					Version:   status.LongTaskCancelVersion,
-				})
-			}
+			c.updateCapabilities(id, status)
 			mu.Lock()
 			results[id] = base
 			mu.Unlock()
@@ -146,6 +142,24 @@ func (c *Collector) probeRunningPods(ctx context.Context, snaps map[string]monit
 	for podID, snapshot := range results {
 		snaps[podID] = snapshot
 	}
+}
+
+// updateCapabilities publishes the guard health snapshot for both long-task and
+// session-cancel capabilities; the cache treats unknown/expired as unavailable.
+func (c *Collector) updateCapabilities(podID string, status gateway.Status) {
+	if c.capabilities == nil {
+		return
+	}
+	c.capabilities.Update(podID, gateway.CancelCapability{
+		LongTask: gateway.LongTaskCancelCapability{
+			Available: status.LongTaskCancelAvailable,
+			Version:   status.LongTaskCancelVersion,
+		},
+		SessionCancel: gateway.SessionCancelCapability{
+			Available: status.SessionCancelAvailable,
+			Version:   status.SessionCancelVersion,
+		},
+	})
 }
 
 func (c *Collector) baseSnapshots() (map[string]monitor.Snapshot, error) {

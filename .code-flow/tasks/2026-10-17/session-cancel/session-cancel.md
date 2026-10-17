@@ -29,14 +29,14 @@
 | S-01 | session-cancel.backend.design.md#2.5 验收条件 | E2E | Console API → Gateway Exec → 真实 /proc | TASK-006 | planned | - |
 | S-02 | session-cancel.backend.design.md#2.5 验收条件 | E2E | API → RPC → 真实信号 → 进程退出 | TASK-006 | planned | - |
 | S-03 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 /proc + 双 agent 同时运行 | TASK-006 | planned | - |
-| S-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | health probe → capability cache → API gate | TASK-003 | planned | ["go","-C","console/backend","test","./internal/gateway","./internal/collector","-run","SessionCancel","-count=1"] |
+| S-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | health probe → capability cache → API gate | TASK-003 | verified | ["go","-C","console/backend","test","./internal/gateway","./internal/collector","-run","SessionCancel","-count=1"] |
 | S-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → audit store | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | S-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 Worker + 企微通道 + 队列 | TASK-006 | planned | - |
 | E-01 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC + handler | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-02 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC → 真实进程指纹复核 | TASK-002 | planned | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
 | E-03 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → capability | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → repo | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
-| E-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | gateway Exec | TASK-003 | planned | ["go","-C","console/backend","test","./internal/gateway","-run","SessionCancel","-count=1"] |
+| E-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | gateway Exec | TASK-003 | verified | ["go","-C","console/backend","test","./internal/gateway","-run","SessionCancel","-count=1"] |
 | E-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实信号 | TASK-006 | planned | - |
 | B-01 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（PID 复用） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
 | B-02 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（UID/EPERM） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
@@ -88,6 +88,8 @@
 | runtime-skill-execution#RULE-runtime-skill-fail-loud-001 | TASK-002 |
 | backend-code-quality-performance#RULE-backend-quality-001 | TASK-003 |
 | backend-directory-structure#RULE-backend-directory-001 | TASK-003 |
+| backend-database#RULE-backend-database-001 | TASK-003 |
+| backend-database#RULE-backend-no-select-star-001 | TASK-003 |
 | backend-code-quality-performance#RULE-backend-write-err-001 | TASK-004 |
 | backend-logging#RULE-backend-logging-001 | TASK-004 |
 | backend-logging#RULE-backend-redact-001 | TASK-004 |
@@ -210,11 +212,11 @@
 
 ## TASK-003: Console gateway 适配器与能力缓存
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**:
 - **Source**: session-cancel.backend.design.md#3.2 架构设计（模块落点）, session-cancel.backend.design.md#3.4 接口设计（错误码）, session-cancel.backend.design.md#3.5 质量实现方案
-- **Spec-Refs**: backend-code-quality-performance#RULE-backend-quality-001, backend-directory-structure#RULE-backend-directory-001
+- **Spec-Refs**: backend-code-quality-performance#RULE-backend-quality-001, backend-directory-structure#RULE-backend-directory-001, backend-database#RULE-backend-database-001, backend-database#RULE-backend-no-select-star-001
 - **Acceptance-Refs**: S-04, E-05
 
 ### Description
@@ -223,29 +225,40 @@
 
 ### Checklist
 
-- [ ] 实现 `PreviewSessionCancel` / `CancelSessionCancel` 适配器（10s / 20s deadline）
-- [ ] 解析 health `sessionCancel` 字段；泛化 `CancelCapabilityCache`（保留 longtask 语义）
-- [ ] collector 探活时同时更新两类能力；能力过期/未知返回 ok=false
-- [ ] [S-04][integration] 断言 health 上报 → cache 命中 → 过期后 ok=false
-- [ ] [E-05][integration] 断言 RPC 超时/不可解析映射为 41010，不伪报成功
-- [ ] [RULE-backend-quality-001][verifier] 运行 `go -C console/backend vet ./...` 与 `go -C console/backend test ./internal/gateway ./internal/collector -run "SessionCancel" -count=1`，断言 Exec 有 context deadline、错误显式返回
-- [ ] [RULE-backend-directory-001][verifier] 断言新增文件位于 `console/backend/internal/gateway/`，未新增跨层依赖；`go list -deps ./internal/api` 无循环
-- [ ] 运行 `go -C console/backend test ./internal/gateway ./internal/collector -run "SessionCancel" -count=1`
+- [x] 实现 `PreviewSessionCancel` / `CancelSessionCancel` 适配器（10s / 20s deadline）
+- [x] 解析 health `sessionCancel` 字段；泛化 `CancelCapabilityCache`（保留 longtask 语义）
+- [x] collector 探活时同时更新两类能力；能力过期/未知返回 ok=false
+- [x] [S-04][integration] 断言 health 上报 → cache 命中 → 过期后 ok=false
+- [x] [E-05][integration] 断言 RPC 超时/不可解析映射为 41010，不伪报成功
+- [x] [RULE-backend-quality-001][verifier] 运行 `go -C console/backend vet ./...` 与 `go -C console/backend test ./internal/gateway ./internal/collector -run "SessionCancel" -count=1`，断言 Exec 有 context deadline、错误显式返回
+- [x] [RULE-backend-directory-001][verifier] 断言新增文件位于 `console/backend/internal/gateway/`，未新增跨层依赖；`go list -deps ./internal/api` 无循环
+- [x] [RULE-backend-database-001][verifier] 断言本任务未新增/修改任何 SQL 与 schema：`git diff --stat` 不含 `internal/repo/`；新增文件无 `db.Query`/`db.Exec`
+- [x] [RULE-backend-no-select-star-001][verifier] 断言新增/修改代码无 `SELECT *`：`rg "SELECT \\*" console/backend/internal/gateway console/backend/internal/collector` 为空
+- [x] 运行 `go -C console/backend test ./internal/gateway ./internal/collector -run "SessionCancel" -count=1`
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-04 | integration | probe JSON → cache → lookup | available/version 正确；TTL 过期后 ok=false | `internal/gateway/session_cancel_test.go` | `["go","-C","console/backend","test","./internal/gateway","./internal/collector","-run","SessionCancel","-count=1"]` | planned |
-| E-05 | integration | gateway Exec fake | 超时/坏 JSON → ErrSessionCancelFailed | `internal/gateway/session_cancel_test.go` | 同上 | planned |
+| S-04 | integration | probe JSON → cache → lookup | available/version 正确；TTL 过期后 ok=false | `internal/gateway/session_cancel_test.go` | `["go","-C","console/backend","test","./internal/gateway","./internal/collector","-run","SessionCancel","-count=1"]` | passed | verified |
+| E-05 | integration | gateway Exec fake | 超时/坏 JSON → ErrSessionCancelFailed | `internal/gateway/session_cancel_test.go` | 同上 | passed | verified |
 
 ### Acceptance Evidence
 
-> 编码期填写。
+- [2026-10-18] RED: `go -C console/backend test ./internal/gateway ./internal/collector -run "SessionCancel" -count=1` → build failed（undefined: `PreviewSessionCancel` / `NewCancelCapabilityCache` / `Collector.updateCapabilities`）。
+- [2026-10-18] GREEN: 同一命令 → `ok internal/gateway 0.091s`、`ok internal/collector 0.267s`（exit 0）。
+- [2026-10-18] 回归: `go -C console/backend vet ./...` exit 0；`go -C console/backend test ./internal/gateway ./internal/collector ./internal/api ./test -count=1` 全 ok；`go -C console/backend test ./... -count=1` 全 ok（含长任务取消 API/列表回归）。
+- [2026-10-18] `go -C console/backend list -deps ./internal/api` exit 0（无循环依赖）；新增文件仅位于 `console/backend/internal/gateway/` 与 `console/backend/internal/collector/`。
+- S-04: verified — automated command passed; run_id=f6b8ab441e7f47d48821333eaa7dc0cc (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=f6b8ab441e7f47d48821333eaa7dc0cc (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-18] implemented: gateway session-cancel adapter, generalized CancelCapabilityCache, health sessionCancel parsing, collector wiring; S-04/E-05 passed
+- [2026-10-18] resumed (in-progress)
+- [2026-10-18] completed (done)
 
 ---
 
