@@ -89,6 +89,9 @@ func (s *Server) registerExistingSettingsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/settings/resources", s.handleSetResources)
 	mux.HandleFunc("GET /api/v1/settings/agent-guidance", s.handleGetAgentGuidance)
 	mux.HandleFunc("PUT /api/v1/settings/agent-guidance", s.handleSetAgentGuidance)
+	mux.HandleFunc("GET /api/v1/settings/notify", s.handleGetNotifySettings)
+	mux.HandleFunc("PUT /api/v1/settings/notify", s.handlePutNotifySettings)
+	mux.HandleFunc("POST /api/v1/settings/notify/test", s.handleTestNotify)
 }
 
 func (s *Server) registerInternalRoutes(mux *http.ServeMux) {

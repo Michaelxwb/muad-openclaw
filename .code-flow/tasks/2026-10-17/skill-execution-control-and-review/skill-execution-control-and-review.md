@@ -17,14 +17,14 @@
 | S-01 | backend.design.md#2.5.2 功能验收场景 | E2E | Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API | TASK-012 | planned |
 | S-02 | backend.design.md#2.5.2 功能验收场景 | E2E | helper 退出 → guard abort → IM 通知 → Console 入库 → 通知分发 | TASK-012 | planned |
 | S-03 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → resource_config → runtimeconfig builder → renderer → 配置字节 | TASK-004 | planned |
-| S-04 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → 加密存储 → dispatcher → WeCom HTTP（httptest） | TASK-003 | planned |
+| S-04 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → 加密存储 → dispatcher → WeCom HTTP（httptest） | TASK-003 | verified |
 | S-05 | backend.design.md#2.5.2 功能验收场景 | E2E | 执行数据 → stats SQL → 查询 API → UI 列表 | TASK-012 | planned |
 | S-06 | backend.design.md#2.5.2 功能验收场景 | E2E | 审阅脚本 → 目标目录 → 报告输出（不执行目标代码） | TASK-008 | planned |
 | S-07 | backend.design.md#2.5.2 功能验收场景 | integration | 下载 API → 私有上传 API → 管理员工作区 | TASK-009 | planned |
 | S-08 | backend.design.md#2.5.2 功能验收场景 | integration | Skill 文档与模板文件内容 | TASK-008 | planned |
 | S-09 | backend.design.md#2.5.2 功能验收场景 | integration | helper → spool 文件 | TASK-007 | planned |
 | S-10 | backend.design.md#2.5.2 功能验收场景 | integration | helper 计数与 env | TASK-007 | planned |
-| S-11 | backend.design.md#2.5.2 功能验收场景 | integration | settings API → audit | TASK-003 | planned |
+| S-11 | backend.design.md#2.5.2 功能验收场景 | integration | settings API → audit | TASK-003 | verified |
 | S-12 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager 状态文件 → platform_request → HTTP（httptest） | TASK-007 | planned |
 | S-13 | backend.design.md#2.5.2 功能验收场景 | integration | mssp 状态文件 → platform_request | TASK-007 | planned |
 | S-14 | backend.design.md#2.5.2 功能验收场景 | E2E | 两个用户并发 → 两份 spool → Console → 告警/统计 | TASK-012 | planned |
@@ -32,7 +32,7 @@
 | S-16 | backend.design.md#2.5.2 功能验收场景 | E2E | 旧 Skill（raw requests + 手工头）→ 新镜像 → 执行 | TASK-012 | planned |
 | S-17 | backend.design.md#2.5.2 功能验收场景 | integration | 混合 Skill（helper + raw requests） | TASK-007 | planned |
 | E-01 | backend.design.md#2.5.2 功能验收场景 | integration | Console 内部接口 → repo | TASK-002 | verified |
-| E-02 | backend.design.md#2.5.2 功能验收场景 | integration | dispatcher → WeCom HTTP（errcode≠0） | TASK-003 | planned |
+| E-02 | backend.design.md#2.5.2 功能验收场景 | integration | dispatcher → WeCom HTTP（errcode≠0） | TASK-003 | verified |
 | E-03 | backend.design.md#2.5.2 功能验收场景 | integration | guard 上传失败 → 保留 spool → 下个 hook 重试 | TASK-005 | planned |
 | E-04 | backend.design.md#2.5.2 功能验收场景 | integration | 脚本绕过 helper 直接发请求 | TASK-007 | planned |
 | E-05 | backend.design.md#2.5.2 功能验收场景 | unit | 并发计数锁 | TASK-007 | planned |
@@ -46,11 +46,11 @@
 | B-02 | backend.design.md#2.5.2 功能验收场景 | integration | helper spool + guard 解析 | TASK-005 | planned |
 | B-03 | backend.design.md#2.5.2 功能验收场景 | unit | 路径归一化 | TASK-007 | planned |
 | B-04 | backend.design.md#2.5.2 功能验收场景 | unit | 上限 0 | TASK-007 | planned |
-| B-05 | backend.design.md#2.5.2 功能验收场景 | integration | 告警通道关闭 | TASK-003 | planned |
+| B-05 | backend.design.md#2.5.2 功能验收场景 | integration | 告警通道关闭 | TASK-003 | verified |
 | B-06 | backend.design.md#2.5.2 功能验收场景 | unit | Traceid 生成 | TASK-007 | planned |
 | B-07 | backend.design.md#2.5.2 功能验收场景 | integration | 多平台 header profile | TASK-007 | planned |
 | B-08 | backend.design.md#2.5.2 功能验收场景 | integration | stats 分组维度 | TASK-002 | verified |
-| B-09 | backend.design.md#2.5.2 功能验收场景 | unit | 告警去重键 | TASK-003 | planned |
+| B-09 | backend.design.md#2.5.2 功能验收场景 | unit | 告警去重键 | TASK-003 | verified |
 | B-10 | backend.design.md#2.5.2 功能验收场景 | integration | 旧状态文件（无 requestProfile） | TASK-007 | planned |
 | S-21 | frontend.design.md#2.4 验收条件 | E2E | API → 状态 → 抽屉渲染 | TASK-011 | planned |
 | S-22 | frontend.design.md#2.4 验收条件 | integration | 状态 → UI | TASK-011 | planned |
@@ -70,6 +70,7 @@
 > 覆盖后端 38 个、前端 14 个场景；RULE-01~13 与高影响 RISK 均在对应任务 Checklist 或场景中映射。E2E 场景统一由 TASK-012 在全部功能任务完成后执行，不在编码期降级。
 
 ---
+
 
 ## TASK-001: Console 数据模型与迁移
 
@@ -179,7 +180,7 @@
 
 ## TASK-003: 通用通知能力与企微通道
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
@@ -192,33 +193,56 @@
 
 ### Checklist
 
-- [ ] 实现 Event/Channel/Dispatcher 与关闭时的 goroutine 收敛；`Publish` 非阻塞，队列满丢弃并记日志。
-- [ ] 实现 WeCom channel：`errcode != 0` 视为失败；5s 超时；拒绝跨 host 重定向；仅允许 `qyapi.weixin.qq.com`。
-- [ ] 实现 notify 配置读写与测试接口；webhook 用 `Cipher.Encrypt` 落库，GET 打码，PUT 校验域名；变更写 `settings.update` 审计。
-- [ ] 实现去重与限速；dedupKey 含 pod + user + skill + interface。
-- [ ] [verifier][integration] `backend-directory-structure#RULE-backend-directory-001`：notify 包不直连 DB/HTTP handler，分层正确。
-- [ ] [verifier][integration] `backend-logging#RULE-backend-logging-001`：告警日志结构化，不含 webhook/key；操作审计与 skill telemetry 分离。
-- [ ] [verifier][integration] `backend-logging#RULE-backend-redact-001`：上游错误进日志/响应前经 `RedactDiagnostic`。
-- [ ] [verifier][integration] `runtime-isolation-and-security#RULE-runtime-security-001`：webhook 不落明文、不进镜像；配置读取仅服务端。
-- [ ] 先写 httptest 用例（成功、errcode≠0、超时、去重、限速）并记录 RED。
+- [x] 实现 Event/Channel/Dispatcher 与关闭时的 goroutine 收敛；`Publish` 非阻塞，队列满丢弃并记日志。
+- [x] 实现 WeCom channel：`errcode != 0` 视为失败；5s 超时；拒绝跨 host 重定向；仅允许 `qyapi.weixin.qq.com`。
+- [x] 实现 notify 配置读写与测试接口；webhook 用 `Cipher.Encrypt` 落库，GET 打码，PUT 校验域名；变更写 `settings.update` 审计。
+- [x] 实现去重与限速；dedupKey 含 pod + user + skill + interface。
+- [x] [verifier][integration] `backend-directory-structure#RULE-backend-directory-001`：notify 包不直连 DB/HTTP handler，分层正确。
+- [x] [verifier][integration] `backend-logging#RULE-backend-logging-001`：告警日志结构化，不含 webhook/key；操作审计与 skill telemetry 分离。
+- [x] [verifier][integration] `backend-logging#RULE-backend-redact-001`：上游错误进日志/响应前经 `RedactDiagnostic`。
+- [x] [verifier][integration] `runtime-isolation-and-security#RULE-runtime-security-001`：webhook 不落明文、不进镜像；配置读取仅服务端。
+- [x] 先写 httptest 用例（成功、errcode≠0、超时、去重、限速）并记录 RED。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-04 | integration | settings API → 加密存储 → dispatcher → httptest | 测试消息 errcode=0；GET 打码 | `console/backend/test/notify_api_test.go` | `cd console/backend && go test ./test -run Notify -count=1` | planned |
-| S-11 | integration | settings API → audit → DB | 产生 settings.update；库中密文；响应打码 | 同上 | 同上 | planned |
-| E-02 | integration | dispatcher → httptest（errcode≠0） | 标记失败、不重试业务错误；去重/限速生效 | `console/backend/internal/notify` 测试 | `cd console/backend && go test ./internal/notify -count=1` | planned |
-| B-05 | integration | 通道关闭 | 不发 webhook；trace/用户通知不受影响 | 同上 | 同上 | planned |
-| B-09 | unit | 去重键生成 | 不同用户生成不同 dedupKey | `console/backend/internal/notify` 测试 | 同上 | planned |
+| S-04 | integration | settings API → 加密存储 → dispatcher → httptest | 测试消息 errcode=0；GET 打码 | `console/backend/test/notify_api_test.go` | ["sh","-c","cd console/backend && go test ./test -run Notify -count=1"] | verified |
+| S-11 | integration | settings API → audit → DB | 产生 settings.update；库中密文；响应打码 | 同上 | ["sh","-c","cd console/backend && go test ./test -run Notify -count=1"] | verified |
+| E-02 | integration | dispatcher → httptest（errcode≠0） | 标记失败、不重试业务错误；去重/限速生效 | `console/backend/internal/notify` 测试 | ["sh","-c","cd console/backend && go test ./internal/notify -count=1"] | verified |
+| B-05 | integration | 通道关闭 | 不发 webhook；trace/用户通知不受影响 | 同上 | ["sh","-c","cd console/backend && go test ./internal/notify -count=1"] | verified |
+| B-09 | unit | 去重键生成 | 不同用户生成不同 dedupKey | `console/backend/internal/notify` 测试 | ["sh","-c","cd console/backend && go test ./internal/notify -count=1"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+- **RED**：
+  - `go test ./internal/notify -count=1` → `build failed`（`undefined: Event/Channel/Dispatcher/WeComChannel` 等），先落测试后实现。
+  - `go test ./test -run Notify -count=1` → `build failed`（`internal/notify: no non-test Go files`，且 `WithNotifyChannelFactory` 未实现）。
+- **GREEN**：
+  - `go test ./internal/notify -count=1` → `ok`。
+  - `go test ./test -run Notify -count=1` → `ok`。
+  - `go test ./internal/notify ./internal/api ./test -count=1` → 三个包全部 `ok`。
+  - `go vet ./...` → 无输出。
+- **断言位置 / 真实边界**：
+  - S-04/E-02：`internal/notify/notify_test.go::TestWeComChannelSendsTextMessageAndSucceeds`、`TestDispatcherDoesNotRetryBusinessError`（真实 `httptest` HTTP，`WithHTTPClient` 仅替换 transport，webhook 域名校验仍生效）。
+  - S-04：`test/notify_api_test.go::TestNotifyTestDeliversThroughDispatcher`（PUT → DB 密文 → provider 解密 → WeCom channel → httptest；GET/PUT 响应打码）。
+  - S-11：`test/notify_api_test.go::TestNotifySettingsEncryptsMasksAndAudits`（`Cipher.Decrypt` 校验落库密文，`QueryAudit` 校验 `settings.update`）。
+  - E-02：`TestDispatcherRetriesNetworkFailureOnce`（网络失败恰好重试一次）、`TestDispatcherDoesNotRetryBusinessError`（errcode≠0 不重试）、`TestDispatcherDeduplicatesWithinWindow`、`TestDispatcherRateLimitsTenPerMinute`。
+  - B-05：`TestDispatcherSkipsWhenChannelDisabled`、`test/notify_api_test.go::TestNotifyDisabledChannelSendsNothing`（禁用通道零 webhook 请求）。
+  - B-09：`TestDedupKeyIncludesIdentityFields`（不同用户/接口产生不同 dedupKey）。
+  - 安全：`TestWeComChannelRejectsInvalidWebhook`、`TestWeComChannelRejectsCrossHostRedirect`、`TestWeComChannelTimeout`、`TestNotifyTestUpstreamFailureIsRedacted`（错误不包含 webhook key）。
+- S-04: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- B-05: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- B-09: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] implemented internal/notify + WeCom + settings notify API; tests RED→GREEN; `go test ./internal/notify ./internal/api ./test` 与 `go vet ./...` 通过
+- [2026-10-17] completed (done)
 
 ---
 
