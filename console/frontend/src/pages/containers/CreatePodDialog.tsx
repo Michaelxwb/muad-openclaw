@@ -10,6 +10,7 @@ import styles from "../Containers.module.css";
 import {
   createPodInput,
   EMPTY_CREATE_FORM,
+  MAX_USERS_PER_POD,
   type CreateFormState,
   validateCreateForm,
 } from "./createPodModel";
@@ -108,7 +109,7 @@ function CreatePodFields({
         label={t("pod.maxUsers")}
         value={form.maxUsers}
         min={1}
-        max={10}
+        max={MAX_USERS_PER_POD}
         onChange={(value) => set("maxUsers", value)}
       />
       <RestartField value={form.restartPolicy} onChange={(value) => set("restartPolicy", value)} />

@@ -20,7 +20,8 @@ const (
 	defaultPodPage     = 1
 	defaultPodPageSize = 20
 	maxPodPageSize     = 100
-	maxUsersPerPod     = 10
+	// maxUsersPerPod 是每 Pod 用户容量上限：放开给管理员按需分配（原 10）。
+	maxUsersPerPod = 100
 )
 
 var (

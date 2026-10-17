@@ -333,7 +333,7 @@ const zh = {
     maxLongTaskConcurrency: "长任务并发",
     maxSkillConcurrency: "Skill 并发",
     maxUsers: "用户上限",
-    maxUsersRange: "用户上限必须在 1 到 10 之间",
+    maxUsersRange: "用户上限必须在 1 到 {{max}} 之间",
     memAlertThreshold: "内存告警阈值",
     memLimit: "内存上限 (GiB)",
     memLimitInvalid: "内存上限请填写数字（单位 GiB），例如 16",

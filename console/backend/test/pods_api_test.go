@@ -186,6 +186,34 @@ func TestPodAPI_RejectsCapacityReduction(t *testing.T) {
 	}
 }
 
+// 用户上限放开到 100：管理员可自行分配每 Pod 容量，超过 1-100 仍拒绝。
+func TestPodAPI_MaxUsersAllowsAdminCapacityUpTo100(t *testing.T) {
+	e := newTestEnv(t)
+	createPodThroughAPI(t, e, testPodBody)
+
+	rr := e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"maxUsers":100}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("patch maxUsers=100 status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	pod, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod: %v", err)
+	}
+	if pod.MaxUsers != 100 {
+		t.Fatalf("maxUsers = %d, want 100", pod.MaxUsers)
+	}
+
+	rr = e.do(http.MethodPatch, "/api/v1/containers/pod-a", `{"maxUsers":101}`)
+	assertAPIError(t, rr, errcode.InvalidPodConfig, "1-100")
+	stored, err := e.store.GetPod("pod-a")
+	if err != nil {
+		t.Fatalf("GetPod after rejection: %v", err)
+	}
+	if stored.MaxUsers != 100 {
+		t.Fatalf("rejected patch changed maxUsers to %d", stored.MaxUsers)
+	}
+}
+
 func TestPodAPI_CreateValidationIncludesDetail(t *testing.T) {
 	e := newTestEnv(t)
 
