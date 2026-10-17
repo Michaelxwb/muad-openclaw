@@ -218,7 +218,10 @@ test("SkillTrace hook enqueues upload work and returns within 50ms while the que
   assert.equal(calls.length, 1);
   assert.equal(calls[0].executionId, EXECUTION_ID);
   assert.equal(calls[0].payload.agentId, "alice");
-  assert.equal(calls[0].payload.events.length, 1);
+  assert.equal(calls[0].payload.events.length, 2);
+  assert.equal(calls[0].payload.events[0].kind, "exec");
+  assert.equal(calls[0].payload.events[0].seq, 1);
+  assert.deepEqual(calls[0].payload.events.slice(1).map((item) => item.seq), [2]);
 });
 
 test("SkillTrace keeps the spool and retries the identical batch after a failed upload", async () => {
@@ -277,10 +280,62 @@ test("SkillTrace aborted executions notify the mapped user without blocking trac
   assert.equal(calls.length, 1);
   assert.equal(calls[0].payload.metrics.aborted, true);
   assert.equal(calls[0].payload.metrics.abortInterface, "GET mssw /api/v1/targets/{id}");
+  assert.deepEqual(calls[0].payload.events.map((item) => item.kind), ["exec", "http", "abort"]);
+  assert.equal(calls[0].payload.events[2].status, "error");
   assert.equal(notified.length, 1);
   assert.equal(notified[0].channel, "wecom");
   assert.equal(notified[0].peerId, "wx-1");
   assert.match(notified[0].text, /xdr-query/u);
+});
+
+test("SkillTrace uploads one exec event when the Skill wrote no helper events", async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "skill-trace-"));
+  const calls = [];
+  const client = { report: async (executionId, payload) => { calls.push({ executionId, payload }); return {}; } };
+  const { hooks, executions } = setup({ client, spoolRoot: root });
+  register(executions, { executionId: EXECUTION_ID, skillName: "legacy-report" });
+  await hooks.resolveExecEnv(event(), context());
+
+  await hooks.afterToolCall({
+    ...event(), params: { command: "python3 legacy_skill.py\n--flag" }, durationMs: 12,
+  }, context());
+  await hooks.flush();
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].payload.metrics.requestCount, 0);
+  assert.equal(calls[0].payload.metrics.aborted, false);
+  assert.equal(calls[0].payload.events.length, 1);
+  assert.deepEqual(calls[0].payload.events[0], {
+    eventId: `${EXECUTION_ID}:exec`,
+    seq: 1,
+    occurredAt: calls[0].payload.events[0].occurredAt,
+    kind: "exec",
+    status: "ok",
+    summary: "python3 legacy_skill.py --flag",
+    detail: "",
+    durationMs: 12,
+  });
+});
+
+test("SkillTrace marks a failed exec event without leaking stderr", async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "skill-trace-"));
+  const calls = [];
+  const client = { report: async (executionId, payload) => { calls.push({ executionId, payload }); return {}; } };
+  const { hooks, executions } = setup({ client, spoolRoot: root });
+  register(executions, { executionId: EXECUTION_ID, skillName: "legacy-report" });
+  await hooks.resolveExecEnv(event(), context());
+
+  await hooks.afterToolCall({
+    ...event(), params: { command: "python3 legacy_skill.py" },
+    error: { stderr: "token=super-secret" },
+  }, context());
+  await hooks.flush();
+
+  const execEvent = calls[0].payload.events[0];
+  assert.equal(execEvent.kind, "exec");
+  assert.equal(execEvent.status, "error");
+  assert.equal(execEvent.detail, "exec_failed");
+  assert.doesNotMatch(JSON.stringify(calls[0].payload), /super-secret/u);
 });
 
 test("SkillTrace notification failure is logged and does not affect the trace upload", async () => {

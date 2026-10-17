@@ -80,30 +80,30 @@ export function createSkillTraceHooks({
     if (!resolved.entry) return undefined;
     const entry = resolved.entry;
     const spoolPath = spoolFileFor(spoolRoot, entry.executionId);
-    let spoolText;
+    let spoolText = "";
     try {
-      if (!existsSync(spoolPath)) return undefined;
-      spoolText = readFileSync(spoolPath, "utf8");
+      if (existsSync(spoolPath)) spoolText = readFileSync(spoolPath, "utf8");
     } catch {
       diag(`action=read outcome=failed executionId=${entry.executionId}`);
       return undefined;
     }
-    if (!spoolText.trim()) {
-      removeSpool(spoolPath);
-      return undefined;
-    }
-    const parsed = parseSkillTraceSpool(spoolText, { executionId: entry.executionId, now: now() });
-    if (parsed.events.length === 0 && parsed.metrics.requestCount === 0 && !parsed.aborted) {
-      removeSpool(spoolPath);
-      return undefined;
-    }
+    if (!spoolText.trim()) removeSpool(spoolPath);
+    const parsed = parseSkillTraceSpool(spoolText, {
+      executionId: entry.executionId, now: now(),
+    });
+    // Old Skills write no helper events but still get one exec event; helper
+    // events follow it with a stable +1 shift so exec is always first.
+    const events = [
+      execTraceEvent(entry.executionId, event, now()),
+      ...parsed.events.map((item) => ({ ...item, seq: item.seq + 1 })),
+    ];
     const job = {
       executionId: entry.executionId,
       agentId: text(entry.agentId),
       skillName: entry.skillName,
       route: entry.route,
       spoolPath,
-      payload: { agentId: entry.agentId, metrics: parsed.metrics, events: parsed.events },
+      payload: { agentId: entry.agentId, metrics: parsed.metrics, events },
       aborted: parsed.aborted,
     };
     if (parsed.aborted) scheduleNotify(job);
@@ -299,6 +299,38 @@ function parseSessionKey(value) {
     rest: parts.slice(2).join(":"),
     peerId: parts.at(-1) ?? "",
   };
+}
+
+// One exec event per execution, derived from the trusted tool event. Commands
+// are collapsed to a single line and never include stderr/cookie material.
+function execTraceEvent(executionId, event, at) {
+  const failed = Boolean(event?.error);
+  const traceEvent = {
+    eventId: `${executionId}:exec`,
+    seq: 1,
+    occurredAt: new Date(at).toISOString(),
+    kind: "exec",
+    status: failed ? "error" : "ok",
+    summary: (execCommand(event) || "exec").slice(0, 200),
+    detail: failed ? "exec_failed" : "",
+  };
+  const durationMs = integer(event?.durationMs);
+  if (durationMs !== null && durationMs >= 0) traceEvent.durationMs = durationMs;
+  return traceEvent;
+}
+
+function execCommand(event) {
+  const params = event?.params;
+  if (params === null || typeof params !== "object" || Array.isArray(params)) return "";
+  for (const key of ["command", "script", "cmd"]) {
+    const value = text(params[key]);
+    if (value) return value.replace(/\s+/gu, " ");
+  }
+  return "";
+}
+
+function integer(value) {
+  return Number.isInteger(value) ? value : null;
 }
 
 function createBoundedQueue({ limit, log }) {
