@@ -1,7 +1,7 @@
 version: 1
 task: skill-execution-control-and-review
 enforcement: required
-updated_at: '2026-10-17T11:58:25.081943+00:00'
+updated_at: '2026-10-17T11:59:01.821082+00:00'
 sources:
 - type: cli
   ref: bind
@@ -22,115 +22,6 @@ bindings:
   - code
   - review
   rules:
-  - ref: PATTERN-backend-001
-    summary: table-driven tests
-    text_sha256: 63b77ecd86e891c95de079549157211b9c484265eab0b634a703d5fc136aa8b3
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-backend-002
-    summary: fake Driver 注入 apply/coordinator 测试
-    text_sha256: 6165390b3a5d64582d231a8df8f34eae4b5ffd41d383ee7e50b7f1a0ea4347cb
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-backend-003
-    summary: 关键路径先写失败用例再实现
-    text_sha256: 823088b0379f5d42abcb9e6c9951c5978d783ef585a79ea29e9dee3bbfe0872a
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-backend-004
-    summary: 错误响应统一走 `writeErr` / `writeRuntimeFailure` / `writeRepoError`，禁止 handler
-      手写 `json.NewEncoder` 错误响应
-    text_sha256: 703bfa163bf83716299618fccb409898e672b9b1a86c56272d21e3ca53323bff
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
   - ref: RULE-backend-quality-001
     summary: Backend changes must handle errors explicitly, bound remote/runtime calls
       with context deadlines, and keep `go vet` / `go test` green for touched packages
@@ -160,7 +51,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-quality-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-quality-001
@@ -348,7 +239,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-write-err-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-write-err-001
@@ -376,26 +267,9 @@ bindings:
         refs: []
         decision: null
         evidence: []
-- spec_id: backend-database
-  path: backend/database.md
-  status: active
-  hashes:
-    file_sha256: 278d13e2bbf7e9da1a13048541d80b36ba86c295dfdef9c108af33c739335879
-    metadata_sha256: 16a121ab90ca42efe62126aef147f86a9e3f41f78df276abfcd9151662b0f170
-    rules_sha256: a8b78dc27f0a85f8e4a5c00474f9566573663d30cadc120bdeced83fd87b8504
-  selected_by: agent
-  reason: 新增 skill_trace_events / skill_execution_metrics / notify_channels 表与 resource_config
-    列，需迁移与查询约束
-  enforcement: required
-  stages:
-  - design
-  - plan
-  - code
-  - review
-  rules:
   - ref: PATTERN-backend-001
-    summary: 模型字段与 API DTO 分离，避免把存储列直接当外部契约
-    text_sha256: 11956eb8e8695d58bf30caa6cf963841f9dd70f8ff267fcb4ed07838e3106777
+    summary: table-driven tests
+    text_sha256: 63b77ecd86e891c95de079549157211b9c484265eab0b634a703d5fc136aa8b3
     enforcement: advisory
     verifier_ref: advisory:none
     verifier_stage: code
@@ -421,8 +295,8 @@ bindings:
         decision: null
         evidence: []
   - ref: PATTERN-backend-002
-    summary: 迁移可重复执行（IF NOT EXISTS / 版本号）
-    text_sha256: 4ca263814b857306a2ac69b7b43cb5cd99d19a01ee2b6916b5af720cefdf7be9
+    summary: fake Driver 注入 apply/coordinator 测试
+    text_sha256: 6165390b3a5d64582d231a8df8f34eae4b5ffd41d383ee7e50b7f1a0ea4347cb
     enforcement: advisory
     verifier_ref: advisory:none
     verifier_stage: code
@@ -448,8 +322,8 @@ bindings:
         decision: null
         evidence: []
   - ref: PATTERN-backend-003
-    summary: 共享列清单用 const SQL 片段（如 `humanUserColumns`）避免漂移
-    text_sha256: d206311bb31eb81c54796d71d1336bfa330a978087f9108493a46886f3f239e2
+    summary: 关键路径先写失败用例再实现
+    text_sha256: 823088b0379f5d42abcb9e6c9951c5978d783ef585a79ea29e9dee3bbfe0872a
     enforcement: advisory
     verifier_ref: advisory:none
     verifier_stage: code
@@ -475,10 +349,9 @@ bindings:
         decision: null
         evidence: []
   - ref: PATTERN-backend-004
-    summary: 运行态镜像（如 `long_task_tasks`）按 `state_revision` 单向合并：只接受较新 revision 的合法前进、同
-      revision 幂等、旧格式（rev=0）沿用状态机兼容；终态（cancelled/succeeded/failed）不被快照改写，乱序/回退快照只推进
-      last_seen，不伪造 failed
-    text_sha256: 4f1b28fa749d8ba59b4d2b9ba852ee7aaef24a969173ba539aff5c6a61e1398d
+    summary: 错误响应统一走 `writeErr` / `writeRuntimeFailure` / `writeRepoError`，禁止 handler
+      手写 `json.NewEncoder` 错误响应
+    text_sha256: 703bfa163bf83716299618fccb409898e672b9b1a86c56272d21e3ca53323bff
     enforcement: advisory
     verifier_ref: advisory:none
     verifier_stage: code
@@ -503,6 +376,23 @@ bindings:
         refs: []
         decision: null
         evidence: []
+- spec_id: backend-database
+  path: backend/database.md
+  status: active
+  hashes:
+    file_sha256: 278d13e2bbf7e9da1a13048541d80b36ba86c295dfdef9c108af33c739335879
+    metadata_sha256: 16a121ab90ca42efe62126aef147f86a9e3f41f78df276abfcd9151662b0f170
+    rules_sha256: a8b78dc27f0a85f8e4a5c00474f9566573663d30cadc120bdeced83fd87b8504
+  selected_by: agent
+  reason: 新增 skill_trace_events / skill_execution_metrics / notify_channels 表与 resource_config
+    列，需迁移与查询约束
+  enforcement: required
+  stages:
+  - design
+  - plan
+  - code
+  - review
+  rules:
   - ref: RULE-backend-database-001
     summary: All SQL must be parameterized and confined to `internal/repo` (or explicit
       migration helpers); schema changes must be idempotent or versioned and must
@@ -532,7 +422,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-database-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-database-001
@@ -726,7 +616,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-no-select-star-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-no-select-star-001
@@ -754,6 +644,116 @@ bindings:
         refs: []
         decision: null
         evidence: []
+  - ref: PATTERN-backend-001
+    summary: 模型字段与 API DTO 分离，避免把存储列直接当外部契约
+    text_sha256: 11956eb8e8695d58bf30caa6cf963841f9dd70f8ff267fcb4ed07838e3106777
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: 迁移可重复执行（IF NOT EXISTS / 版本号）
+    text_sha256: 4ca263814b857306a2ac69b7b43cb5cd99d19a01ee2b6916b5af720cefdf7be9
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 共享列清单用 const SQL 片段（如 `humanUserColumns`）避免漂移
+    text_sha256: d206311bb31eb81c54796d71d1336bfa330a978087f9108493a46886f3f239e2
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-004
+    summary: 运行态镜像（如 `long_task_tasks`）按 `state_revision` 单向合并：只接受较新 revision 的合法前进、同
+      revision 幂等、旧格式（rev=0）沿用状态机兼容；终态（cancelled/succeeded/failed）不被快照改写，乱序/回退快照只推进
+      last_seen，不伪造 failed
+    text_sha256: 4f1b28fa749d8ba59b4d2b9ba852ee7aaef24a969173ba539aff5c6a61e1398d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
 - spec_id: backend-directory-structure
   path: backend/directory-structure.md
   status: active
@@ -770,6 +770,63 @@ bindings:
   - code
   - review
   rules:
+  - ref: RULE-backend-directory-001
+    summary: Console backend code must live under `console/backend/` with `cmd/` entrypoints
+      and `internal/` packages; handlers must not own persistence or runtime-driver
+      details.
+    text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
+    enforcement: required
+    verifier_ref: backend-directory-structure#RULE-backend-directory-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.2'
+          item_id: internal/notify
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-directory-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-directory-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-directory-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-directory-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-directory-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-directory-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
   - ref: PATTERN-backend-001
     summary: 新资源：`api` 路由 + `repo` 模型 +（如需）`driver`/`runtimeconfig` 扩展
     text_sha256: ffd0a9492109b8da27e9d19f2666829f1fb0e829a290835b239902b4e4700010
@@ -851,63 +908,6 @@ bindings:
         refs: []
         decision: null
         evidence: []
-  - ref: RULE-backend-directory-001
-    summary: Console backend code must live under `console/backend/` with `cmd/` entrypoints
-      and `internal/` packages; handlers must not own persistence or runtime-driver
-      details.
-    text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
-    enforcement: required
-    verifier_ref: backend-directory-structure#RULE-backend-directory-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.2'
-          item_id: internal/notify
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-directory-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-directory-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-directory-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-directory-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-directory-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-directory-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
 - spec_id: backend-logging
   path: backend/logging.md
   status: active
@@ -924,6 +924,120 @@ bindings:
   - code
   - review
   rules:
+  - ref: RULE-backend-logging-001
+    summary: Logs and audit records must be structured enough to debug, must never
+      include secrets/credentials, and must keep operation audit separate from skill-execution
+      telemetry.
+    text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+    enforcement: required
+    verifier_ref: backend-logging#RULE-backend-logging-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.5'
+          item_id: 可观测性设计
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-logging-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-logging-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-logging-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-logging-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-logging-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-logging-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-backend-redact-001
+    summary: Error strings written to logs, audit details, apply-failure fields, or
+      user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic`
+      (or equivalent redaction) before persistence or emission.
+    text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+    enforcement: required
+    verifier_ref: backend-logging#RULE-backend-redact-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.5'
+          item_id: 安全性设计
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-redact-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-redact-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-redact-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-redact-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-redact-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-backend-redact-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
   - ref: PATTERN-backend-001
     summary: handler 入口记录关键 id，apply 流水按 stage 打点
     text_sha256: c79a6ef9bcaea5daf6590e157b5cb1232553e19bdd981d6749814bf96288f919
@@ -1005,120 +1119,6 @@ bindings:
         refs: []
         decision: null
         evidence: []
-  - ref: RULE-backend-logging-001
-    summary: Logs and audit records must be structured enough to debug, must never
-      include secrets/credentials, and must keep operation audit separate from skill-execution
-      telemetry.
-    text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
-    enforcement: required
-    verifier_ref: backend-logging#RULE-backend-logging-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.5'
-          item_id: 可观测性设计
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-logging-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-logging-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-logging-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-logging-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-logging-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-logging-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-backend-redact-001
-    summary: Error strings written to logs, audit details, apply-failure fields, or
-      user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic`
-      (or equivalent redaction) before persistence or emission.
-    text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
-    enforcement: required
-    verifier_ref: backend-logging#RULE-backend-redact-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.5'
-          item_id: 安全性设计
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-redact-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-redact-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-redact-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-redact-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-redact-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-backend-redact-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
 - spec_id: backend-platform-rules
   path: backend/platform-rules.md
   status: active
@@ -1135,12 +1135,14 @@ bindings:
   - code
   - review
   rules:
-  - ref: PATTERN-backend-001
-    summary: 新平台能力先扩 registry/repo，再暴露 api，最后才动 driver
-    text_sha256: eafb41a91eb99ea17792558908c621c53f131b38106301e23ffca005a2ccc9b3
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
+  - ref: RULE-backend-platform-001
+    summary: Control-plane changes must preserve multi-user isolation, mandatory model-pool
+      binding, secret-not-in-image injection, and generation-based runtime apply with
+      health/rollback semantics.
+    text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
+    enforcement: required
+    verifier_ref: backend-platform-rules#RULE-backend-platform-001
+    verifier_stage: review
     stage_status:
       code:
         status: pending
@@ -1148,67 +1150,41 @@ bindings:
         decision: null
         evidence: []
       design:
-        status: pending
-        refs: []
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.2'
+          item_id: 架构设计
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-backend-002
-    summary: repo 层 sentinel error → `errors.go` / handler 映射到 HTTP code
-    text_sha256: bb50fcd3db4cb60eafa2bdb37a36a2820e29285a43855e74c15d366cbc66fa32
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-backend-003
-    summary: 破坏性 API 变更走显式版本或兼容窗口
-    text_sha256: 9edc8d306a946542dddd02908bc8551bbf827130665af56ce064bf411c9a4343
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-004
+          item_id: RULE-backend-platform-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-004
+          item_id: RULE-backend-platform-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-004
+          item_id: RULE-backend-platform-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-004
+          item_id: RULE-backend-platform-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-004
+          item_id: RULE-backend-platform-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-004
+          item_id: RULE-backend-platform-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -1458,7 +1434,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-http-envelope-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-http-envelope-001
@@ -1515,7 +1491,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-backend-model-pool-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-backend-model-pool-001
@@ -1543,14 +1519,12 @@ bindings:
         refs: []
         decision: null
         evidence: []
-  - ref: RULE-backend-platform-001
-    summary: Control-plane changes must preserve multi-user isolation, mandatory model-pool
-      binding, secret-not-in-image injection, and generation-based runtime apply with
-      health/rollback semantics.
-    text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
-    enforcement: required
-    verifier_ref: backend-platform-rules#RULE-backend-platform-001
-    verifier_stage: review
+  - ref: PATTERN-backend-001
+    summary: 新平台能力先扩 registry/repo，再暴露 api，最后才动 driver
+    text_sha256: eafb41a91eb99ea17792558908c621c53f131b38106301e23ffca005a2ccc9b3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       code:
         status: pending
@@ -1558,41 +1532,67 @@ bindings:
         decision: null
         evidence: []
       design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.2'
-          item_id: 架构设计
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        status: pending
+        refs: []
         decision: null
         evidence: []
       plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-004
-          item_id: RULE-backend-platform-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-004
-          item_id: RULE-backend-platform-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-004
-          item_id: RULE-backend-platform-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-004
-          item_id: RULE-backend-platform-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-004
-          item_id: RULE-backend-platform-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-004
-          item_id: RULE-backend-platform-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-002
+    summary: repo 层 sentinel error → `errors.go` / handler 映射到 HTTP code
+    text_sha256: bb50fcd3db4cb60eafa2bdb37a36a2820e29285a43855e74c15d366cbc66fa32
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-003
+    summary: 破坏性 API 变更走显式版本或兼容窗口
+    text_sha256: 9edc8d306a946542dddd02908bc8551bbf827130665af56ce064bf411c9a4343
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
         decision: null
         evidence: []
       review:
@@ -1616,6 +1616,120 @@ bindings:
   - code
   - review
   rules:
+  - ref: RULE-frontend-component-001
+    summary: Components must type props, keep presentational pieces free of network
+      I/O, use stable list keys, and prefer Semi Design + CSS Modules over ad-hoc
+      inline styles for layout/theme.
+    text_sha256: e79c828738826162955fd6db0e99331d699d286fcf701c839b351b0c833ed119
+    enforcement: required
+    verifier_ref: frontend-component-specs#RULE-frontend-component-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.frontend.design.md
+          section_id: '3.3'
+          item_id: CMP-03
+          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-component-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-component-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-component-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-component-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-component-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-component-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-frontend-semi-shell-001
+    summary: Console UI must use `@douyinfe/semi-ui` as the primary component library;
+      locale/theme shell is configured via `ConfigProvider` in `main.tsx` (and App-level
+      theme helpers), not per-page re-wrapping.
+    text_sha256: e9c32b34e6df5722515bab5fe2feaca80478baadc99eab5d878ab7e3de3b2a7c
+    enforcement: required
+    verifier_ref: frontend-component-specs#RULE-frontend-semi-shell-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.frontend.design.md
+          section_id: '3.1'
+          item_id: 技术选型
+          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-semi-shell-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-semi-shell-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-semi-shell-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-semi-shell-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-semi-shell-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-semi-shell-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
   - ref: PATTERN-frontend-001
     summary: 容器组件拉数，展示组件只渲染
     text_sha256: 7ed7f61abf755563673e9138a88c4c5265cd6d2fca0aab8cc9efacf47a9c1ac2
@@ -1724,120 +1838,6 @@ bindings:
         refs: []
         decision: null
         evidence: []
-  - ref: RULE-frontend-component-001
-    summary: Components must type props, keep presentational pieces free of network
-      I/O, use stable list keys, and prefer Semi Design + CSS Modules over ad-hoc
-      inline styles for layout/theme.
-    text_sha256: e79c828738826162955fd6db0e99331d699d286fcf701c839b351b0c833ed119
-    enforcement: required
-    verifier_ref: frontend-component-specs#RULE-frontend-component-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.frontend.design.md
-          section_id: '3.3'
-          item_id: CMP-03
-          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-component-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-component-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-component-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-component-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-component-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-component-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-frontend-semi-shell-001
-    summary: Console UI must use `@douyinfe/semi-ui` as the primary component library;
-      locale/theme shell is configured via `ConfigProvider` in `main.tsx` (and App-level
-      theme helpers), not per-page re-wrapping.
-    text_sha256: e9c32b34e6df5722515bab5fe2feaca80478baadc99eab5d878ab7e3de3b2a7c
-    enforcement: required
-    verifier_ref: frontend-component-specs#RULE-frontend-semi-shell-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.frontend.design.md
-          section_id: '3.1'
-          item_id: 技术选型
-          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-semi-shell-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-semi-shell-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-semi-shell-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-semi-shell-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-semi-shell-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-semi-shell-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
 - spec_id: frontend-directory-structure
   path: frontend/directory-structure.md
   status: active
@@ -1854,6 +1854,120 @@ bindings:
   - code
   - review
   rules:
+  - ref: RULE-frontend-directory-001
+    summary: Console frontend source must live under `console/frontend/`; HTTP access
+      must go through `src/api.ts` (or thin wrappers over it), not ad-hoc `fetch`
+      in pages/components.
+    text_sha256: 66966dac0eb450b2ddde672de79b7855ccf19b371bc18776d8d0ecb196341a8f
+    enforcement: required
+    verifier_ref: frontend-directory-structure#RULE-frontend-directory-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.frontend.design.md
+          section_id: '3.3'
+          item_id: CMP-06
+          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-directory-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-directory-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-directory-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-directory-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-directory-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-directory-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-frontend-api-types-001
+    summary: Shared request/response types live in `src/types/api.ts` and are re-exported
+      from `api.ts`; pages/components must not redefine drifting DTOs or hard-code
+      API path strings outside `api.ts`.
+    text_sha256: da31561ab47f66800d4351fcaf04e354795189e6966f19bd5b78dcb91f2638cc
+    enforcement: required
+    verifier_ref: frontend-directory-structure#RULE-frontend-api-types-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.frontend.design.md
+          section_id: '3.5'
+          item_id: 数据获取层
+          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-api-types-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-api-types-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-api-types-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-api-types-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-api-types-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-010
+          item_id: RULE-frontend-api-types-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
   - ref: PATTERN-frontend-001
     summary: 页面 = 容器（拉数 + 编排）+ 展示组件（props 驱动）
     text_sha256: ff31dee928f5c12da2035b5d9fedd6f92dad91c8fa833f6f71b90422ded403b6
@@ -1935,120 +2049,6 @@ bindings:
         refs: []
         decision: null
         evidence: []
-  - ref: RULE-frontend-api-types-001
-    summary: Shared request/response types live in `src/types/api.ts` and are re-exported
-      from `api.ts`; pages/components must not redefine drifting DTOs or hard-code
-      API path strings outside `api.ts`.
-    text_sha256: da31561ab47f66800d4351fcaf04e354795189e6966f19bd5b78dcb91f2638cc
-    enforcement: required
-    verifier_ref: frontend-directory-structure#RULE-frontend-api-types-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.frontend.design.md
-          section_id: '3.5'
-          item_id: 数据获取层
-          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-api-types-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-api-types-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-api-types-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-api-types-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-api-types-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-api-types-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-frontend-directory-001
-    summary: Console frontend source must live under `console/frontend/`; HTTP access
-      must go through `src/api.ts` (or thin wrappers over it), not ad-hoc `fetch`
-      in pages/components.
-    text_sha256: 66966dac0eb450b2ddde672de79b7855ccf19b371bc18776d8d0ecb196341a8f
-    enforcement: required
-    verifier_ref: frontend-directory-structure#RULE-frontend-directory-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.frontend.design.md
-          section_id: '3.3'
-          item_id: CMP-06
-          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-directory-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-directory-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-directory-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-directory-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-directory-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-010
-          item_id: RULE-frontend-directory-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
 - spec_id: frontend-quality-standards
   path: frontend/quality-standards.md
   status: active
@@ -2065,13 +2065,14 @@ bindings:
   - code
   - review
   rules:
-  - ref: PATTERN-frontend-001
-    summary: 页面只调用 `api.*`，错误用 `Toast` / Banner 展示 `ApiError`，技术细节经 `ErrorDetail`
-      折叠
-    text_sha256: 88736609b84f1afea42a3c1f75c61fa1355fb2025095b53f1202431dbe77de43
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
+  - ref: RULE-frontend-quality-001
+    summary: Console frontend changes must keep TypeScript strict typing, explicit
+      async loading/error/success handling, and pass project frontend validators (tsc/eslint/prettier/vitest
+      when applicable).
+    text_sha256: d02c28f2c041bfa9eea4ffc592e5352a37e8884776ec581eea954e1f49b6a4c0
+    enforcement: required
+    verifier_ref: frontend-quality-standards#RULE-frontend-quality-001
+    verifier_stage: review
     stage_status:
       code:
         status: pending
@@ -2079,122 +2080,41 @@ bindings:
         decision: null
         evidence: []
       design:
-        status: pending
-        refs: []
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.frontend.design.md
+          section_id: '3.6'
+          item_id: UI状态
+          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
         decision: null
         evidence: []
       plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-frontend-002
-    summary: '`useMountedRef` 防止卸载后 setState'
-    text_sha256: c8d858c31deee34866fe727ce966bda94950e5f21d8f538c1c930e6ee61485f6
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-frontend-003
-    summary: 变更 `api.ts` / `types/api.ts` 时同步检查调用方与 vitest
-    text_sha256: 2e3341e17d9e375e2ffc80d7ae93c11569c5e040e599a52fe0fa629fb7175048
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-frontend-004
-    summary: 模块级 config 数组/列工厂（`SCOPE_OPTIONS` / `STATUS_OPTIONS` / `skillColumns`
-      / `platformColumns`）移入组件 `useMemo(..., [t])`，`label` 走统一 i18n key，`color` 留在代码
-    text_sha256: 8ccd924dd31fc857a09456aa24785fefedfa4df4d06a65747a5dcda8206407b3
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-frontend-005
-    summary: 纯函数模块直接 `i18n.t`；组件内统一 `useTranslation`
-    text_sha256: 3528d9243f118f39b0c9ff7591bc5d70376942029ad5703e70413059dbbd6316
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-quality-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-quality-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-quality-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-quality-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-quality-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-011
+          item_id: RULE-frontend-quality-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
@@ -2364,7 +2284,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-api-client-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-api-client-001
@@ -2421,7 +2341,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-i18n-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-i18n-001
@@ -2449,14 +2369,13 @@ bindings:
         refs: []
         decision: null
         evidence: []
-  - ref: RULE-frontend-quality-001
-    summary: Console frontend changes must keep TypeScript strict typing, explicit
-      async loading/error/success handling, and pass project frontend validators (tsc/eslint/prettier/vitest
-      when applicable).
-    text_sha256: d02c28f2c041bfa9eea4ffc592e5352a37e8884776ec581eea954e1f49b6a4c0
-    enforcement: required
-    verifier_ref: frontend-quality-standards#RULE-frontend-quality-001
-    verifier_stage: review
+  - ref: PATTERN-frontend-001
+    summary: 页面只调用 `api.*`，错误用 `Toast` / Banner 展示 `ApiError`，技术细节经 `ErrorDetail`
+      折叠
+    text_sha256: 88736609b84f1afea42a3c1f75c61fa1355fb2025095b53f1202431dbe77de43
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
     stage_status:
       code:
         status: pending
@@ -2464,41 +2383,122 @@ bindings:
         decision: null
         evidence: []
       design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.frontend.design.md
-          section_id: '3.6'
-          item_id: UI状态
-          artifact_sha256: fb5f6e2b657e728a9c22e44ba15f74ecf3a60a6c91bf45f1cc63aa0d3ad0d152
+        status: pending
+        refs: []
         decision: null
         evidence: []
       plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-quality-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-quality-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-quality-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-quality-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-quality-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-011
-          item_id: RULE-frontend-quality-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-frontend-002
+    summary: '`useMountedRef` 防止卸载后 setState'
+    text_sha256: c8d858c31deee34866fe727ce966bda94950e5f21d8f538c1c930e6ee61485f6
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-frontend-003
+    summary: 变更 `api.ts` / `types/api.ts` 时同步检查调用方与 vitest
+    text_sha256: 2e3341e17d9e375e2ffc80d7ae93c11569c5e040e599a52fe0fa629fb7175048
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-frontend-004
+    summary: 模块级 config 数组/列工厂（`SCOPE_OPTIONS` / `STATUS_OPTIONS` / `skillColumns`
+      / `platformColumns`）移入组件 `useMemo(..., [t])`，`label` 走统一 i18n key，`color` 留在代码
+    text_sha256: 8ccd924dd31fc857a09456aa24785fefedfa4df4d06a65747a5dcda8206407b3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-frontend-005
+    summary: 纯函数模块直接 `i18n.t`；组件内统一 `useTranslation`
+    text_sha256: 3528d9243f118f39b0c9ff7591bc5d70376942029ad5703e70413059dbbd6316
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
         decision: null
         evidence: []
       review:
@@ -2522,60 +2522,6 @@ bindings:
   - code
   - review
   rules:
-  - ref: PATTERN-runtime-001
-    summary: 控制面构建 desired DTO，Worker 执行 transaction script
-    text_sha256: 969b322dbf270438aaa0869abd0db76afeee170b3edf9baa4a61e607612a5765
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: PATTERN-runtime-002
-    summary: 用 generation 单调递增检测漂移与冲突（generation conflict）
-    text_sha256: 2d27b0f5e2a796b7d7190722ce790f8eb75b1ee6ea0e91d52f524b6a3cdd0b3d
-    enforcement: advisory
-    verifier_ref: advisory:none
-    verifier_stage: code
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      plan:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
   - ref: RULE-runtime-config-001
     summary: Runtime configuration changes must validate against schema, apply through
       the transactional pipeline (`runtime-config-transaction` / control-plane `runtimeapply`),
@@ -2605,7 +2551,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-config-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-config-001
@@ -2662,7 +2608,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-validate-before-write-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-validate-before-write-001
@@ -2690,6 +2636,60 @@ bindings:
         refs: []
         decision: null
         evidence: []
+  - ref: PATTERN-runtime-001
+    summary: 控制面构建 desired DTO，Worker 执行 transaction script
+    text_sha256: 969b322dbf270438aaa0869abd0db76afeee170b3edf9baa4a61e607612a5765
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-002
+    summary: 用 generation 单调递增检测漂移与冲突（generation conflict）
+    text_sha256: 2d27b0f5e2a796b7d7190722ce790f8eb75b1ee6ea0e91d52f524b6a3cdd0b3d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
 - spec_id: runtime-directory-structure
   path: runtime/directory-structure.md
   status: active
@@ -2706,6 +2706,63 @@ bindings:
   - code
   - review
   rules:
+  - ref: RULE-runtime-directory-001
+    summary: Worker/runtime assets must live under `bin/`, `tools/`, `skills/`, `seed/`,
+      or image entrypoints; do not vendor or fork OpenClaw upstream source into this
+      repository.
+    text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+    enforcement: required
+    verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.2'
+          item_id: 技术分层
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-007
+          item_id: RULE-runtime-directory-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-007
+          item_id: RULE-runtime-directory-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-007
+          item_id: RULE-runtime-directory-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-007
+          item_id: RULE-runtime-directory-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-007
+          item_id: RULE-runtime-directory-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-007
+          item_id: RULE-runtime-directory-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
   - ref: PATTERN-runtime-001
     summary: 控制面改行为 → backend；Worker 内执行 → tools/bin
     text_sha256: 8b0c2519d72b83bd812f4458edf5989a0735cdfbb1d021cdd6c9a60e3cc25a9c
@@ -2760,63 +2817,6 @@ bindings:
         refs: []
         decision: null
         evidence: []
-  - ref: RULE-runtime-directory-001
-    summary: Worker/runtime assets must live under `bin/`, `tools/`, `skills/`, `seed/`,
-      or image entrypoints; do not vendor or fork OpenClaw upstream source into this
-      repository.
-    text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
-    enforcement: required
-    verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.2'
-          item_id: 技术分层
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-007
-          item_id: RULE-runtime-directory-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-007
-          item_id: RULE-runtime-directory-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-007
-          item_id: RULE-runtime-directory-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-007
-          item_id: RULE-runtime-directory-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-007
-          item_id: RULE-runtime-directory-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-007
-          item_id: RULE-runtime-directory-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
 - spec_id: runtime-isolation-and-security
   path: runtime/isolation-and-security.md
   status: active
@@ -2833,6 +2833,120 @@ bindings:
   - code
   - review
   rules:
+  - ref: RULE-runtime-security-001
+    summary: Channel credentials, LLM keys, platform API keys, and service tokens
+      must be injected at runtime and never baked into images or committed; each Human
+      User must keep isolated agent workspace, browser profile, and session state.
+    text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+    enforcement: required
+    verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.5'
+          item_id: 安全性设计
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-runtime-security-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-runtime-security-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-runtime-security-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-runtime-security-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-runtime-security-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-003
+          item_id: RULE-runtime-security-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-secret-file-mode-001
+    summary: Files that materialize config, bundles, or secrets on disk must use restrictive
+      modes (`0o600` for written config/bundle material; Pod service token files `0400`
+      at the canonical path validated by image self-check).
+    text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+    enforcement: required
+    verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.5'
+          item_id: 安全性设计
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-secret-file-mode-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-secret-file-mode-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-secret-file-mode-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-secret-file-mode-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-secret-file-mode-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-secret-file-mode-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
   - ref: PATTERN-runtime-001
     summary: inject-env / inject-channels / inject-multi-user-config 作为注入单一入口
     text_sha256: a7979f71c77a2fa895f00623ff5eab9de188d4f0db0688f72902e7ed677916d9
@@ -2914,120 +3028,6 @@ bindings:
         refs: []
         decision: null
         evidence: []
-  - ref: RULE-runtime-secret-file-mode-001
-    summary: Files that materialize config, bundles, or secrets on disk must use restrictive
-      modes (`0o600` for written config/bundle material; Pod service token files `0400`
-      at the canonical path validated by image self-check).
-    text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
-    enforcement: required
-    verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.5'
-          item_id: 安全性设计
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-secret-file-mode-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-secret-file-mode-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-secret-file-mode-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-secret-file-mode-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-secret-file-mode-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-secret-file-mode-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-runtime-security-001
-    summary: Channel credentials, LLM keys, platform API keys, and service tokens
-      must be injected at runtime and never baked into images or committed; each Human
-      User must keep isolated agent workspace, browser profile, and session state.
-    text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
-    enforcement: required
-    verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.5'
-          item_id: 安全性设计
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-runtime-security-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-runtime-security-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-runtime-security-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-runtime-security-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-runtime-security-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-003
-          item_id: RULE-runtime-security-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
 - spec_id: runtime-skill-execution
   path: runtime/skill-execution.md
   status: active
@@ -3044,6 +3044,290 @@ bindings:
   - code
   - review
   rules:
+  - ref: RULE-runtime-skill-001
+    summary: Skills must honor system/public/private layering, require explicit activation/policy
+      gates before tools run, emit progress/telemetry without secrets, and respect
+      concurrency/lease limits.
+    text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.2'
+          item_id: 架构设计
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-skill-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-skill-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-skill-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-skill-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-skill-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-skill-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-skill-layering-001
+    summary: Resolution order prefers system (`system_protected`) over public/private;
+      public/private name conflicts must not silently overwrite—override only via
+      explicit allow_override policy.
+    text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '2.4'
+          item_id: 范围与边界
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-009
+          item_id: RULE-runtime-skill-layering-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-009
+          item_id: RULE-runtime-skill-layering-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-009
+          item_id: RULE-runtime-skill-layering-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-009
+          item_id: RULE-runtime-skill-layering-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-009
+          item_id: RULE-runtime-skill-layering-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-009
+          item_id: RULE-runtime-skill-layering-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-log-injection-001
+    summary: Tool/plugin modules must receive logging via an injected `log` callback
+      (default no-op) instead of scattered `console.*`; the openclaw plugin path injects
+      `api.logger?.warn`, the CLI path injects `console.warn`.
+    text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.5'
+          item_id: 可观测性设计
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-injection-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-injection-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-injection-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-injection-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-injection-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-injection-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-log-prefix-001
+    summary: Log lines must carry a stable module prefix (`[session-manager]`, `[muad-runtime-guard]`)
+      with `[<module>-<action>]` sub-tags for grep-ability.
+    text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.5'
+          item_id: 可观测性设计
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-prefix-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-prefix-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-prefix-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-prefix-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-prefix-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-005
+          item_id: RULE-runtime-log-prefix-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: RULE-runtime-skill-fail-loud-001
+    summary: Skill scripts must report failures to stderr and exit non-zero (fail
+      loud); stdout is reserved for the machine-readable result. Errors written to
+      stdout break exec-failure log forwarding.
+    text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+    enforcement: required
+    verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+    verifier_stage: review
+    stage_status:
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      design:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.backend.design.md
+          section_id: '3.4'
+          item_id: SDK函数接口
+          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
+        decision: null
+        evidence: []
+      plan:
+        status: applied
+        refs:
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-008
+          item_id: RULE-runtime-skill-fail-loud-001
+          artifact_sha256: 2babf709b45d32bd19f08100df1ac6fc1315b9a8b68eb8be27754b3881d97b6a
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-008
+          item_id: RULE-runtime-skill-fail-loud-001
+          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-008
+          item_id: RULE-runtime-skill-fail-loud-001
+          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-008
+          item_id: RULE-runtime-skill-fail-loud-001
+          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-008
+          item_id: RULE-runtime-skill-fail-loud-001
+          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
+        - artifact: skill-execution-control-and-review.md
+          section_id: TASK-008
+          item_id: RULE-runtime-skill-fail-loud-001
+          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
   - ref: PATTERN-runtime-001
     summary: 先 policy/activation gate，再 runner
     text_sha256: 22fad8cba0a207a4c85636e47ee58891b2eff905817e0faba4910158f86a5ebb
@@ -3311,290 +3595,6 @@ bindings:
       plan:
         status: pending
         refs: []
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-runtime-log-injection-001
-    summary: Tool/plugin modules must receive logging via an injected `log` callback
-      (default no-op) instead of scattered `console.*`; the openclaw plugin path injects
-      `api.logger?.warn`, the CLI path injects `console.warn`.
-    text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
-    enforcement: required
-    verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.5'
-          item_id: 可观测性设计
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-injection-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-injection-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-injection-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-injection-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-injection-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-injection-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-runtime-log-prefix-001
-    summary: Log lines must carry a stable module prefix (`[session-manager]`, `[muad-runtime-guard]`)
-      with `[<module>-<action>]` sub-tags for grep-ability.
-    text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
-    enforcement: required
-    verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.5'
-          item_id: 可观测性设计
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-prefix-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-prefix-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-prefix-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-prefix-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-prefix-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-log-prefix-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-runtime-skill-001
-    summary: Skills must honor system/public/private layering, require explicit activation/policy
-      gates before tools run, emit progress/telemetry without secrets, and respect
-      concurrency/lease limits.
-    text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
-    enforcement: required
-    verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.2'
-          item_id: 架构设计
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-skill-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-skill-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-skill-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-skill-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-skill-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-005
-          item_id: RULE-runtime-skill-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-runtime-skill-fail-loud-001
-    summary: Skill scripts must report failures to stderr and exit non-zero (fail
-      loud); stdout is reserved for the machine-readable result. Errors written to
-      stdout break exec-failure log forwarding.
-    text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
-    enforcement: required
-    verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '3.4'
-          item_id: SDK函数接口
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-008
-          item_id: RULE-runtime-skill-fail-loud-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-008
-          item_id: RULE-runtime-skill-fail-loud-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-008
-          item_id: RULE-runtime-skill-fail-loud-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-008
-          item_id: RULE-runtime-skill-fail-loud-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-008
-          item_id: RULE-runtime-skill-fail-loud-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-008
-          item_id: RULE-runtime-skill-fail-loud-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
-        decision: null
-        evidence: []
-      review:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-  - ref: RULE-runtime-skill-layering-001
-    summary: Resolution order prefers system (`system_protected`) over public/private;
-      public/private name conflicts must not silently overwrite—override only via
-      explicit allow_override policy.
-    text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
-    enforcement: required
-    verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
-    verifier_stage: review
-    stage_status:
-      code:
-        status: pending
-        refs: []
-        decision: null
-        evidence: []
-      design:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.backend.design.md
-          section_id: '2.4'
-          item_id: 范围与边界
-          artifact_sha256: 05d0cf105a884c6f648f5f51e934ecd4d7ce850bd02a8662ff7f5575c1c4b4fb
-        decision: null
-        evidence: []
-      plan:
-        status: applied
-        refs:
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-009
-          item_id: RULE-runtime-skill-layering-001
-          artifact_sha256: 53321df0f6f2852d52bd6c55c140db546340f4453ec61c6bafdc3aaa4ed0fb98
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-009
-          item_id: RULE-runtime-skill-layering-001
-          artifact_sha256: 0bf0b89d6fd925222f02a9b98a33412585ed51f5fa310ae53e69649caa7f7576
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-009
-          item_id: RULE-runtime-skill-layering-001
-          artifact_sha256: 70231cc0bc0eb74d3bf9d459182f1ea0a74544656a109c19ebb505c5fba6e61b
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-009
-          item_id: RULE-runtime-skill-layering-001
-          artifact_sha256: 3bed1d83e26e7245f2c03434196077eb04e052cc8ab481c44344a5c7873fe10d
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-009
-          item_id: RULE-runtime-skill-layering-001
-          artifact_sha256: 70131ad5e5aa993c594e11456a770df1cd77fc4aefbbbe44a005c2be36985106
-        - artifact: skill-execution-control-and-review.md
-          section_id: TASK-009
-          item_id: RULE-runtime-skill-layering-001
-          artifact_sha256: 5e03803953025a4a52d43155370cc24e7198569baffe6e72653d77fb76a313a4
         decision: null
         evidence: []
       review:
