@@ -40,6 +40,8 @@ func (s *Server) registerHumanUserRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/human-users/{humanUserId}/identities", s.handleCreateIdentity)
 	mux.HandleFunc("PATCH /api/v1/human-users/{humanUserId}/identities/{identityId}", s.handlePatchIdentity)
 	mux.HandleFunc("DELETE /api/v1/human-users/{humanUserId}/identities/{identityId}", s.handleDeleteIdentity)
+	mux.HandleFunc("POST /api/v1/human-users/{humanUserId}/identities/{identityId}/session/preview", s.handlePreviewSessionCancel)
+	mux.HandleFunc("POST /api/v1/human-users/{humanUserId}/identities/{identityId}/session/cancel", s.handleCancelSession)
 	mux.HandleFunc("POST /api/v1/human-users/{humanUserId}/binding-codes", s.handleCreateBindingCode)
 	mux.HandleFunc("GET /api/v1/human-users/{humanUserId}/binding-codes", s.handleListBindingCodes)
 	mux.HandleFunc("DELETE /api/v1/human-users/{humanUserId}/binding-codes/{bindingCodeId}", s.handleRevokeBindingCode)

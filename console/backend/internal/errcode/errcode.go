@@ -120,6 +120,14 @@ const (
 	LongTaskRunUnverifiable   = 41004
 	LongTaskCancelUnavailable = 41005
 	LongTaskCancelStateFailed = 41006
+	// SessionCancelUnsupported: 会话终止能力未知/过期/不可用。
+	SessionCancelUnsupported = 41007
+	// NotFoundSession: identity 不属于路径用户或用户不在运行 Pod。
+	NotFoundSession = 41008
+	// ConflictSessionPreviewStale: 所有 expected 指纹均失效，需要重新预览。
+	ConflictSessionPreviewStale = 41009
+	// SessionCancelFailed: 会话终止 RPC 失败/超时/响应不可解析。
+	SessionCancelFailed = 41010
 	// 429xx — 限流
 	RateLimitedLogin   = 42901
 	RateLimitedBinding = 42902
@@ -201,7 +209,7 @@ var AllCodes = []int{
 	40701, 40702, 40703, 40704, 40705, 40706, 40707, 40708, 40709, 40710, 40711,
 	40801, 40802,
 	40901, 40902, 40903, 40904,
-	41001, 41002, 41003, 41004, 41005, 41006,
+	41001, 41002, 41003, 41004, 41005, 41006, 41007, 41008, 41009, 41010,
 	42901, 42902,
 	50001, 50002, 50003, 50004, 50006, 50007, 50008, 50009, 50010,
 	50011, 50012, 50013, 50014, 50015, 50016, 50017, 50018, 50019, 50020,
