@@ -50,6 +50,7 @@
   display: grid;
   gap: 5px;
   min-width: 0;
+  align-content: start;
 }
 
 .field > span {
@@ -65,8 +66,10 @@
 }
 
 .fieldHint {
+  margin-left: 6px;
   color: var(--semi-color-text-2);
   font-size: 12px;
+  font-weight: 400;
 }
 
 @media (max-width: 680px) {
