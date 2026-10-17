@@ -22,36 +22,36 @@
 | S-06 | backend.design.md#2.5.2 功能验收场景 | E2E | 审阅脚本 → 目标目录 → 报告输出（不执行目标代码） | TASK-008 | planned |
 | S-07 | backend.design.md#2.5.2 功能验收场景 | integration | 下载 API → 私有上传 API → 管理员工作区 | TASK-009 | planned |
 | S-08 | backend.design.md#2.5.2 功能验收场景 | integration | Skill 文档与模板文件内容 | TASK-008 | planned |
-| S-09 | backend.design.md#2.5.2 功能验收场景 | integration | helper → spool 文件 | TASK-007 | planned |
-| S-10 | backend.design.md#2.5.2 功能验收场景 | integration | helper 计数与 env | TASK-007 | planned |
+| S-09 | backend.design.md#2.5.2 功能验收场景 | integration | helper → spool 文件 | TASK-007 | verified |
+| S-10 | backend.design.md#2.5.2 功能验收场景 | integration | helper 计数与 env | TASK-007 | verified |
 | S-11 | backend.design.md#2.5.2 功能验收场景 | integration | settings API → audit | TASK-003 | verified |
-| S-12 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager 状态文件 → platform_request → HTTP（httptest） | TASK-007 | planned |
-| S-13 | backend.design.md#2.5.2 功能验收场景 | integration | mssp 状态文件 → platform_request | TASK-007 | planned |
+| S-12 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager 状态文件 → platform_request → HTTP（httptest） | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
+| S-13 | backend.design.md#2.5.2 功能验收场景 | integration | mssp 状态文件 → platform_request | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
 | S-14 | backend.design.md#2.5.2 功能验收场景 | E2E | 两个用户并发 → 两份 spool → Console → 告警/统计 | TASK-012 | planned |
 | S-15 | backend.design.md#2.5.2 功能验收场景 | integration | 共享 gateway hook → 异步队列 → 其他用户 turn | TASK-005 | planned |
 | S-16 | backend.design.md#2.5.2 功能验收场景 | E2E | 旧 Skill（raw requests + 手工头）→ 新镜像 → 执行 | TASK-012 | planned |
-| S-17 | backend.design.md#2.5.2 功能验收场景 | integration | 混合 Skill（helper + raw requests） | TASK-007 | planned |
+| S-17 | backend.design.md#2.5.2 功能验收场景 | integration | 混合 Skill（helper + raw requests） | TASK-007 | verified |
 | E-01 | backend.design.md#2.5.2 功能验收场景 | integration | Console 内部接口 → repo | TASK-002 | verified |
 | E-02 | backend.design.md#2.5.2 功能验收场景 | integration | dispatcher → WeCom HTTP（errcode≠0） | TASK-003 | verified |
 | E-03 | backend.design.md#2.5.2 功能验收场景 | integration | guard 上传失败 → 保留 spool → 下个 hook 重试 | TASK-005 | planned |
-| E-04 | backend.design.md#2.5.2 功能验收场景 | integration | 脚本绕过 helper 直接发请求 | TASK-007 | planned |
-| E-05 | backend.design.md#2.5.2 功能验收场景 | unit | 并发计数锁 | TASK-007 | planned |
+| E-04 | backend.design.md#2.5.2 功能验收场景 | integration | 脚本绕过 helper 直接发请求 | TASK-007 | verified |
+| E-05 | backend.design.md#2.5.2 功能验收场景 | unit | 并发计数锁 | TASK-007 | verified |
 | E-06 | backend.design.md#2.5.2 功能验收场景 | integration | IM 投递（mock 通道） | TASK-005 | planned |
 | E-07 | backend.design.md#2.5.2 功能验收场景 | integration | settings API 校验 | TASK-004 | verified |
-| E-08 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager → 状态文件 → platform_request | TASK-007 | planned |
+| E-08 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager → 状态文件 → platform_request | TASK-007 | verified |
 | E-09 | backend.design.md#2.5.2 功能验收场景 | integration | cross-user-guard → 文件路径 | TASK-005 | planned |
-| E-10 | backend.design.md#2.5.2 功能验收场景 | integration | platform_request → HTTP 401 | TASK-007 | planned |
+| E-10 | backend.design.md#2.5.2 功能验收场景 | integration | platform_request → HTTP 401 | TASK-007 | verified |
 | E-11 | backend.design.md#2.5.2 功能验收场景 | integration | 升级顺序/版本错配 | TASK-012 | planned |
-| B-01 | backend.design.md#2.5.2 功能验收场景 | unit | helper 计数 | TASK-007 | planned |
+| B-01 | backend.design.md#2.5.2 功能验收场景 | unit | helper 计数 | TASK-007 | verified |
 | B-02 | backend.design.md#2.5.2 功能验收场景 | integration | helper spool + guard 解析 | TASK-005 | planned |
-| B-03 | backend.design.md#2.5.2 功能验收场景 | unit | 路径归一化 | TASK-007 | planned |
-| B-04 | backend.design.md#2.5.2 功能验收场景 | unit | 上限 0 | TASK-007 | planned |
+| B-03 | backend.design.md#2.5.2 功能验收场景 | unit | 路径归一化 | TASK-007 | verified |
+| B-04 | backend.design.md#2.5.2 功能验收场景 | unit | 上限 0 | TASK-007 | verified |
 | B-05 | backend.design.md#2.5.2 功能验收场景 | integration | 告警通道关闭 | TASK-003 | verified |
-| B-06 | backend.design.md#2.5.2 功能验收场景 | unit | Traceid 生成 | TASK-007 | planned |
-| B-07 | backend.design.md#2.5.2 功能验收场景 | integration | 多平台 header profile | TASK-007 | planned |
+| B-06 | backend.design.md#2.5.2 功能验收场景 | unit | Traceid 生成 | TASK-007 | verified |
+| B-07 | backend.design.md#2.5.2 功能验收场景 | integration | 多平台 header profile | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
 | B-08 | backend.design.md#2.5.2 功能验收场景 | integration | stats 分组维度 | TASK-002 | verified |
 | B-09 | backend.design.md#2.5.2 功能验收场景 | unit | 告警去重键 | TASK-003 | verified |
-| B-10 | backend.design.md#2.5.2 功能验收场景 | integration | 旧状态文件（无 requestProfile） | TASK-007 | planned |
+| B-10 | backend.design.md#2.5.2 功能验收场景 | integration | 旧状态文件（无 requestProfile） | TASK-007 | verified |
 | S-21 | frontend.design.md#2.4 验收条件 | E2E | API → 状态 → 抽屉渲染 | TASK-011 | planned |
 | S-22 | frontend.design.md#2.4 验收条件 | integration | 状态 → UI | TASK-011 | planned |
 | S-23 | frontend.design.md#2.4 验收条件 | E2E | 表单 → api.ts → 后端 → 回显 | TASK-010 | planned |
@@ -70,6 +70,10 @@
 > 覆盖后端 38 个、前端 14 个场景；RULE-01~13 与高影响 RISK 均在对应任务 Checklist 或场景中映射。E2E 场景统一由 TASK-012 在全部功能任务完成后执行，不在编码期降级。
 
 ---
+
+
+
+
 
 
 
@@ -394,7 +398,7 @@
 
 ## TASK-007: Python SDK `muad_skill_http`
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-006
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（形态 C、SDK 环境契约、spool 契约、请求头构造顺序）`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
@@ -407,44 +411,70 @@
 
 ### Checklist
 
-- [ ] 建立包与测试；构建阶段安装到 site-packages；不新增运行时依赖（`requests` 已有）。
-- [ ] 实现通用请求、spool JSONL、路径归一化、接口计数锁、500 条明细上限、summary 全量。
-- [ ] 实现超限判定：第 N+1 次不发送、flush abort/summary、`os._exit(86)`；0 表示不限制。
-- [ ] 实现 `platform_request`/`platform`：状态文件缓存、Cookie/CSRF/Host/静态头、`Traceid` 每请求 UUID v4、强制头不可覆盖、`extra_headers` 逃生口。
-- [ ] 实现 401/403 刷新策略（GET/HEAD 重试一次），缺 profile 回退默认并记诊断。
-- [ ] [verifier][unit] `runtime-directory-structure#RULE-runtime-directory-001`：SDK 放 `tools/muad-skill-sdk`，不 fork 上游、不散落 bin。
-- [ ] 先写计数/终止/归一化/header/Traceid 测试并记录 RED/GREEN。
+- [x] 建立包与测试；构建阶段安装到 site-packages；不新增运行时依赖（`requests` 已有）。
+- [x] 实现通用请求、spool JSONL、路径归一化、接口计数锁、500 条明细上限、summary 全量。
+- [x] 实现超限判定：第 N+1 次不发送、flush abort/summary、`os._exit(86)`；0 表示不限制。
+- [x] 实现 `platform_request`/`platform`：状态文件缓存、Cookie/CSRF/Host/静态头、`Traceid` 每请求 UUID v4、强制头不可覆盖、`extra_headers` 逃生口。
+- [x] 实现 401/403 刷新策略（GET/HEAD 重试一次），缺 profile 回退默认并记诊断。
+- [x] [verifier][unit] `runtime-directory-structure#RULE-runtime-directory-001`：SDK 放 `tools/muad-skill-sdk`，不 fork 上游、不散落 bin。
+- [x] 先写计数/终止/归一化/header/Traceid 测试并记录 RED/GREEN。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-09 | integration | helper → 真实 spool 文件 | 成功/失败都计数；errorCount 正确 | `tools/muad-skill-sdk/test/test_http.py` | `cd tools/muad-skill-sdk && python3 -m pytest -q` | planned |
-| S-10 | integration | helper 计数与 env | limit=0 不终止；requestCount=1000 | 同上 | 同上 | planned |
-| S-12 | integration | 状态文件 → httptest | Cookie/CSRF/Host 正确；Traceid 两次不同 | 同上 | 同上 | planned |
-| S-13 | integration | mssp 状态文件 → httptest | 静态头/timezone 正确；不带 mssw 头 | 同上 | 同上 | planned |
-| S-17 | integration | helper + raw requests 混合 | helper 计数、raw 不计；都成功 | 同上 | 同上 | planned |
-| E-04 | integration | raw requests 直连 | 无接口事件但脚本正常 | 同上 | 同上 | planned |
-| E-05 | unit | 多线程计数 | 恰好放行 N 次，不超发 | 同上 | 同上 | planned |
-| E-08 | integration | 缺登录态 | 刷新一次；仍失败 fail loud | 同上 | 同上 | planned |
-| E-10 | integration | 401/403 | GET 重试一次；POST 返回原响应 | 同上 | 同上 | planned |
-| B-01 | unit | 上限 N=1 | 第 1 次放行、第 2 次终止 | 同上 | 同上 | planned |
-| B-03 | unit | 路径归一化 | 数字/UUID 归为同一接口 | 同上 | 同上 | planned |
-| B-04 | unit | 上限 0 | 永不终止 | 同上 | 同上 | planned |
-| B-06 | unit | Traceid | 1000 次无重复 UUID | 同上 | 同上 | planned |
-| B-07 | integration | 多平台 profile | 头不串平台 | 同上 | 同上 | planned |
-| B-10 | integration | 旧状态文件 | 回退默认 profile，不崩溃 | 同上 | 同上 | planned |
+| S-09 | integration | helper → 真实 spool 文件 | 成功/失败都计数；errorCount 正确 | `tools/muad-skill-sdk/test/test_http.py` | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| S-10 | integration | helper 计数与 env | limit=0 不终止；requestCount=1000 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| S-12 | integration | 状态文件 → httptest | Cookie/CSRF/Host 正确；Traceid 两次不同 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| S-13 | integration | mssp 状态文件 → httptest | 静态头/timezone 正确；不带 mssw 头 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| S-17 | integration | helper + raw requests 混合 | helper 计数、raw 不计；都成功 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| E-04 | integration | raw requests 直连 | 无接口事件但脚本正常 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| E-05 | unit | 多线程计数 | 恰好放行 N 次，不超发 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| E-08 | integration | 缺登录态 | 刷新一次；仍失败 fail loud | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| E-10 | integration | 401/403 | GET 重试一次；POST 返回原响应 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-01 | unit | 上限 N=1 | 第 1 次放行、第 2 次终止 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-03 | unit | 路径归一化 | 数字/UUID 归为同一接口 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-04 | unit | 上限 0 | 永不终止 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-06 | unit | Traceid | 1000 次无重复 UUID | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-07 | integration | 多平台 profile | 头不串平台 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-10 | integration | 旧状态文件 | 回退默认 profile，不崩溃 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-09/S-10/B-01/B-04/E-05 | 首次运行 `python3 -m pytest -q` → `ModuleNotFoundError: No module named 'muad_skill_http'`（测试先于实现）；首次实现后 17 passed / 12 failed（本机代理劫持 127.0.0.1、并发汇总预期偏差） | `cd tools/muad-skill-sdk && . .venv/bin/activate && python3 -m pytest -q` → `29 passed in 12.44s` | `test_spool_records_success_and_failure_with_error_count`、`test_limit_zero_is_unlimited_and_detail_caps_at_500`、`test_limit_one_allows_first_and_terminates_second`、`test_missing_limit_env_does_not_limit`、`test_threaded_counting_admits_exactly_limit` | 真实本地 HTTP server（ThreadingHTTPServer）+ 真实 JSONL spool 文件；200/500 都落事件、errorCount=1；limit=0 时 1000 次全放行、明细 500 条 + summary totalRequests=1000/truncated=true；limit=1 时第 2 次未到达 server、abort/summary 先 flush；20 线程并发恰好 5 次到达 server | verified |
+| B-03/B-06 | 同包导入失败 | 同上 | `test_path_normalization`（5 组）、`test_traceid_is_unique_uuid4_and_always_rotates` | 数字/UUID/长 hex 段均归一为 `{id}`，query 丢弃；1000 次 header 构造的 Traceid 全不重复且 UUID version=4 | verified |
+| S-12/S-13/B-07/B-10 | 同包导入失败 | 同上 | `test_mssw_platform_request_headers`、`test_mssp_static_headers_do_not_leak_to_mssw`、`test_extra_headers_cannot_override_mandatory_headers`、`test_old_state_file_without_profile_falls_back`、`test_profile_can_disable_trace_header` | 真实 `<skill>.session.json` 状态文件 + PATH 上真实可执行的 `session-manager`；server 实收 Cookie/`x-csrf-token`/`Host`/mssp `X-CSRFToken`+`timezone`；两平台头不串；旧文件回退并输出 `request profile fallback missing=requestProfile`；spool 与 stderr 均不含 cookie/CSRF 值 | verified |
+| E-08/E-10 | 同包导入失败 | 同上 | `test_idempotent_401_403_refreshes_and_retries_once[4 组]`、`test_post_401_is_returned_without_retry`、`test_second_401_after_refresh_is_returned`、`test_refresh_failure_fails_loud_without_sending`、`test_401_refresh_failure_fails_loud` | GET/HEAD 401/403 各触发 1 次 `get-state` 刷新并仅重试 1 次；POST 401 原样返回且不刷新；刷新失败抛 `PlatformSessionError` 且未发出业务请求 | verified |
+| S-17/E-04 | 同包导入失败 | 同上 | `test_mixed_helper_and_raw_requests_only_count_helper`、`test_raw_requests_bypass_the_helper` | 同一本地 server 上 raw `requests` 直连成功且 spool 无 http 事件；helper + raw 混合时仅 helper 计数（1 条） | verified |
+| 构建安装 | Dockerfile 未含 SDK 时镜像内无 `muad_skill_http` | `docker build --check` → `Check complete, no warnings found`；在 `muad-openclaw-base:2026.7.1`（Python 3.11.2 / setuptools 66.1.1）中执行 Dockerfile 同一 `pip3 install --no-deps --no-build-isolation` 成功构建并安装包 | `Dockerfile` SDK 安装段；`tools/muad-skill-sdk/pyproject.toml` | 构建期安装到 site-packages，`requests` 仍来自 `requirements.txt`，无新增运行时依赖；Dockerfile 以 `import muad_skill_http` + `EXIT_REQUEST_LIMIT == 86` 自检 | verified |
+- S-09: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-12: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-13: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-17: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- E-08: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- E-10: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-07: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-10: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] added tools/muad-skill-sdk (pyproject + muad_skill_http package) and test/test_http.py; RED (ModuleNotFoundError) → GREEN 29 passed
+- [2026-10-17] Dockerfile installs SDK into site-packages at build time; docker build --check clean; install verified on base image
+- [2026-10-17] completed (implementation + tests)
+- [2026-10-17] completed (done)
 
 ---
-
 ## TASK-008: `self-skill-review` 与 creator Python 收敛
 
 - **Status**: draft

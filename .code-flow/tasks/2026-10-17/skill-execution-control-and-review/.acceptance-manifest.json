@@ -242,20 +242,58 @@
       "kind": "functional",
       "boundary": "helper → spool 文件",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "`cd",
-        "tools/muad-skill-sdk",
-        "&&",
         "python3",
         "-m",
         "pytest",
-        "-q`"
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "S-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "S-10",
@@ -264,14 +302,58 @@
       "kind": "functional",
       "boundary": "helper 计数与 env",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "S-11",
@@ -334,20 +416,58 @@
       "kind": "functional",
       "boundary": "session-manager 状态文件 → platform_request → HTTP（httptest）",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "`cd",
-        "tools/session-manager",
-        "&&",
-        "npm",
-        "test",
-        "--",
-        "--test-name-pattern=requestProfile`"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-12",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "S-13",
@@ -356,14 +476,58 @@
       "kind": "functional",
       "boundary": "mssp 状态文件 → platform_request",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-13",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "S-13",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "S-14",
@@ -426,14 +590,58 @@
       "kind": "functional",
       "boundary": "混合 Skill（helper + raw requests）",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-17",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "S-17",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "E-01",
@@ -602,14 +810,58 @@
       "kind": "functional",
       "boundary": "脚本绕过 helper 直接发请求",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "E-05",
@@ -618,14 +870,58 @@
       "kind": "functional",
       "boundary": "并发计数锁",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "E-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "E-06",
@@ -719,14 +1015,58 @@
       "kind": "functional",
       "boundary": "session-manager → 状态文件 → platform_request",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "E-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "E-09",
@@ -751,14 +1091,58 @@
       "kind": "functional",
       "boundary": "platform_request → HTTP 401",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "E-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "E-11",
@@ -783,14 +1167,58 @@
       "kind": "functional",
       "boundary": "helper 计数",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "B-02",
@@ -815,14 +1243,58 @@
       "kind": "functional",
       "boundary": "路径归一化",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "B-04",
@@ -831,14 +1303,58 @@
       "kind": "functional",
       "boundary": "上限 0",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "B-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "B-05",
@@ -901,14 +1417,58 @@
       "kind": "functional",
       "boundary": "Traceid 生成",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "B-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "B-07",
@@ -917,14 +1477,58 @@
       "kind": "functional",
       "boundary": "多平台 header profile",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "B-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "B-08",
@@ -1077,14 +1681,58 @@
       "kind": "functional",
       "boundary": "旧状态文件（无 requestProfile）",
       "owner": "TASK-007",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "B-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "ee773a174bb0452f9c4935da741e69e8",
+        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+      },
+      "runs": [
+        {
+          "id": "B-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        }
+      ]
     },
     {
       "id": "S-21",
