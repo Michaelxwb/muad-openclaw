@@ -13,10 +13,12 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.equal(registration.command.acceptsArgs, true);
   assert.equal(registration.command.requireAuth, false);
   assert.deepEqual(registration.methods.map((entry) => entry.method), [
-    "muad.long-task.cancel", "muad.runtime.health", "muad.runtime.verify-routes",
+    "muad.long-task.cancel", "muad.session.preview", "muad.session.cancel",
+    "muad.runtime.health", "muad.runtime.verify-routes",
   ]);
   assert.deepEqual(registration.methods.map((entry) => entry.options), [
-    { scope: "operator.write" }, { scope: "operator.read" }, { scope: "operator.read" },
+    { scope: "operator.write" }, { scope: "operator.write" }, { scope: "operator.write" },
+    { scope: "operator.read" }, { scope: "operator.read" },
   ]);
   assert.deepEqual(registration.reloadPolicy, {
     noopPrefixes: ["plugins.entries.muad-runtime-guard.config.generation"],
@@ -71,6 +73,7 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     skill: { active: 0, queued: 0, limit: 4 },
     longTask: { active: 0, queued: 0, limit: 2 },
     longTaskCancel: { available: false, version: 0 },
+    sessionCancel: { available: false, version: 0, reason: "native_unavailable" },
   });
   assert.equal(JSON.stringify(health).includes("pod-service-token"), false);
 });
@@ -166,6 +169,7 @@ function registerPlugin(t, config) {
     delete globalThis[Symbol.for("muad.longtask.manager")];
     delete globalThis[Symbol.for("muad.skill.progress.manager")];
     delete globalThis[Symbol.for("muad.longtask.cancel")];
+    delete globalThis[Symbol.for("muad.session.cancel")];
     delete globalThis[Symbol.for("muad.longtask.worker-instance")];
   });
   return registration;
