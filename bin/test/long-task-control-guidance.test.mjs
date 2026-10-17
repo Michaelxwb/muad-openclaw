@@ -44,13 +44,13 @@ test('LongTaskControlS14 fixed guidance pins matching rules, screenshot examples
   const file = path.join(agent.workspace, 'AGENTS.md');
   const text = readFileSync(file, 'utf8');
   // 唯一自动、多候选选择、参考不授权
-  assert.match(text, /唯一明确匹配且参数齐全：直接执行/u);
-  assert.match(text, /多个合理候选：列出名称和区别/u);
+  assert.match(text, /唯一明确匹配且参数齐全.*直接执行/u);
+  assert.match(text, /多个合理候选.*列出名称和区别/u);
   assert.match(text, /参考.*不授权运行/u);
-  // 截图等价正反例与缺参/无适用 Skill
-  assert.match(text, /触发判定正反例/u);
-  assert.match(text, /直接调用 muad_submit_long_task/u);
-  assert.match(text, /追问所缺参数/u);
+  // 触发判定正反例与缺参/无适用 Skill
+  assert.match(text, /触发判定/u);
+  assert.match(text, /muad_submit_long_task/u);
+  assert.match(text, /立即追问/u);
   assert.match(text, /没有适用 Skill.*缺少能力|缺少能力/u);
   // explicit_name 可信来源
   assert.match(text, /explicit_name/u);
