@@ -341,7 +341,7 @@ const en: AppLocale = {
     maxLongTaskConcurrency: "Long Task concurrency",
     maxSkillConcurrency: "Skill concurrency",
     maxUsers: "Max users",
-    maxUsersRange: "Max users must be between 1 and 10",
+    maxUsersRange: "Max users must be between 1 and {{max}}",
     memAlertThreshold: "Memory alert threshold",
     memLimit: "Memory limit (GiB)",
     memLimitInvalid: "Memory limit must be a number (in GiB), e.g. 16",

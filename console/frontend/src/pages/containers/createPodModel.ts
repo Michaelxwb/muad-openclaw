@@ -1,6 +1,9 @@
 import type { ChannelCredential, CreatePodInput } from "../../api";
 import i18n from "../../i18n";
 
+// 与后端 maxUsersPerPod 保持一致：每 Pod 用户容量上限，管理员可按需分配。
+export const MAX_USERS_PER_POD = 100;
+
 export interface CreateFormState {
   podId: string;
   displayName: string;
@@ -37,7 +40,9 @@ export function validateCreateForm(form: CreateFormState): string {
     return i18n.t("pod.podIdInvalid");
   }
   if (form.displayName.trim().length > 128) return i18n.t("pod.displayNameTooLong");
-  if (form.maxUsers < 1 || form.maxUsers > 10) return i18n.t("pod.maxUsersRange");
+  if (form.maxUsers < 1 || form.maxUsers > MAX_USERS_PER_POD) {
+    return i18n.t("pod.maxUsersRange", { max: MAX_USERS_PER_POD });
+  }
   if (/\s/.test(form.imageTag)) return i18n.t("pod.imageNoSpace");
   const memLimit = form.memLimit.trim();
   if (memLimit && !/^[0-9]+(?:\.[0-9]+)?([bkmg])?$/i.test(memLimit)) {
