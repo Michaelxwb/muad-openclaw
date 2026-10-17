@@ -67,6 +67,14 @@ COPY requirements.txt /opt/muad/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5 \
     -i https://pypi.tuna.tsinghua.edu.cn/simple -r /opt/muad/requirements.txt
 
+# Skill Python SDK（构建期安装到 site-packages；requests 来自 requirements.txt）。
+COPY tools/muad-skill-sdk/pyproject.toml /opt/muad/muad-skill-sdk/pyproject.toml
+COPY tools/muad-skill-sdk/muad_skill_http /opt/muad/muad-skill-sdk/muad_skill_http
+RUN pip3 install --no-cache-dir --break-system-packages --no-deps --no-build-isolation \
+      /opt/muad/muad-skill-sdk \
+    && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86" \
+    && rm -rf /opt/muad/muad-skill-sdk
+
 COPY --from=session-manager-builder /build/session-manager/dist /opt/muad/session-manager/dist
 COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \
     tools/session-manager/openclaw.plugin.json /opt/muad/session-manager/
