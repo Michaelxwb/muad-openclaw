@@ -345,6 +345,42 @@ test("skill audit hooks report a direct Skill path execution without a SKILL.md 
   assert.equal(client.reports[0].skillScope, "system");
 });
 
+test("skill audit hooks pre-register prompt-path Skills at agent run without premature reporting", async (t) => {
+  const publicRoot = skillDir(t);
+  const skill = join(publicRoot, "mssw-platform-smoke");
+  mkdirSync(skill, { recursive: true });
+  writeFileSync(join(skill, "SKILL.md"), "# MSSW\n");
+  const client = recordingClient();
+  const activated = [];
+  const hooks = createSkillAuditHooks({
+    config: {
+      ...config,
+      skillAuditGrants: [
+        { agentId: "alice", name: "openclaw-skills", rootPath: publicRoot, source: "public", dir: true },
+      ],
+    },
+    client,
+    onSkillActivated: (input) => activated.push(input),
+    now: () => fixedNow,
+  });
+
+  // 首条 exec 之前就从 prompt 登记，保证 resolve_exec_env 能拿到 Skill 上下文。
+  await hooks.beforeAgentRun({
+    runId: "run-pre-1",
+    prompt: `用 mssw-platform-smoke：cd ${skill} && python3 run.py`,
+  }, context("run-pre-1"));
+  assert.deepEqual(activated.map((input) => [input.runId, input.skillName]),
+    [["run-pre-1", "mssw-platform-smoke"]]);
+  assert.equal(client.reports.length, 0, "仅在 prompt 中提到路径不产生审计执行记录");
+
+  await hooks.beforeToolCall({
+    runId: "run-pre-1", toolName: "exec", params: { command: `cd ${skill} && python3 run.py` },
+  }, context("run-pre-1"));
+  await flush();
+  assert.equal(client.reports.length, 1, "实际执行后仍由 exec 审计上报一次");
+  assert.equal(client.reports[0].skillName, "mssw-platform-smoke");
+});
+
 test("skill audit hooks register trace attribution for a direct Skill exec", async (t) => {
   const root = skillRoot(t);
   mkdirSync(join(root, "scripts"), { recursive: true });

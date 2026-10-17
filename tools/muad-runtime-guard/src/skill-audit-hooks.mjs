@@ -57,6 +57,58 @@ function auditAgentRun(state, event, ctx) {
     rememberTurn(state.turns, runId, { agentId: resolveAgentId(event, ctx) }, state.now());
     promotePendingExecution(state, event, ctx, runId);
   }
+  activatePromptSkill(state, event, ctx);
+}
+
+// OpenClaw 在 before_tool_call 之前就已执行 exec 的 prepareBeforeToolCallParams
+// （resolve_exec_env 在此运行），所以一轮的第一条 exec 若直接执行 Skill、没有先
+// read SKILL.md，等 before_tool_call 登记已经太晚，该条命令拿不到 MUAD_SKILL_NAME。
+// before_agent_run 能看到本轮 prompt 且早于任何工具：这里按 prompt 中出现的 Skill
+// 显式命令/路径预登记执行上下文；只做环境登记，审计仍由实际 read/exec 触发。
+function activatePromptSkill(state, event, ctx) {
+  const prompt = promptText(event);
+  if (!prompt) return;
+  const config = state.getConfig(), agentId = resolveAgentId(event, ctx);
+  const match = findPromptSkill(config, agentId, prompt);
+  if (!match || isLongTaskSkill(config, agentId, match.skillName)) return;
+  activateProgress(state.onSkillActivated,
+    activationInput(config, event, ctx, agentId, match.skillName), state.diag);
+}
+
+// 只接受两种可信信号：显式 Skill 命令，或 prompt 中真实存在的 Skill 根路径。
+// 多个候选时不猜，宁可本轮不注入，也不把执行错误归属到某个 Skill。
+function findPromptSkill(config, agentId, prompt) {
+  const explicit = explicitSkillName(prompt);
+  if (explicit) return findDispatchGrant(config, agentId, explicit);
+  const names = new Set();
+  for (const grant of config?.skillAuditGrants ?? []) {
+    if (grant.agentId !== agentId) continue;
+    if (grant.dir !== true) {
+      if (containsPath(prompt, grant.rootPath)) names.add(grant.name);
+      continue;
+    }
+    const candidates = skillNamesFromCommand(prompt, grant.rootPath);
+    for (const name of candidates) {
+      if (fs.existsSync(path.join(grant.rootPath, name, "SKILL.md"))) names.add(name);
+    }
+  }
+  if (names.size !== 1) return null;
+  return findDispatchGrant(config, agentId, [...names][0]);
+}
+
+function skillNamesFromCommand(command, rootPath) {
+  const root = textValue(rootPath).replace(/[/\\]+$/u, "");
+  const names = new Set();
+  if (!root) return names;
+  let from = 0;
+  for (;;) {
+    const index = command.indexOf(root, from);
+    if (index < 0) return names;
+    from = index + root.length;
+    const rest = command.slice(from).replace(/^[/\\]+/u, "");
+    const name = rest.split(/[/\\\s"'`;|&<>()]+/u)[0] ?? "";
+    if (/^[A-Za-z0-9_.-]+$/u.test(name) && !name.startsWith(".")) names.add(name);
+  }
 }
 
 function auditToolCall(state, event, ctx) {
