@@ -361,8 +361,8 @@ func TestSessionCancelWritesRedactedAudit(t *testing.T) {
 		}
 	}
 
-	// 41009: 全部 expected 指纹失效（killed=0 且全部 skipped），提示重新预览。
-	e.drv.sessionCancelOut = `{"ok":true,"aborted":true,"drained":false,"confirmed":false,` +
+	// 41009: 没有 abort、也没有杀掉进程，全部 expected 指纹失效，提示重新预览。
+	e.drv.sessionCancelOut = `{"ok":true,"aborted":false,"drained":false,"confirmed":false,` +
 		`"killed":0,"remaining":[4028],"processes":[` +
 		`{"pid":4028,"outcome":"skipped","reason":"fingerprint_mismatch"}]}`
 	stale := e.do(http.MethodPost, cancelPath, requestBody)
@@ -438,6 +438,38 @@ func TestSessionCancelRejectsInvalidExpectedBody(t *testing.T) {
 	}
 	if calls := sessionExecCalls(e); len(calls) != 0 {
 		t.Fatalf("invalid cancel bodies must not call the runtime: %#v", calls)
+	}
+}
+
+// abort 已生效时进程可能随 abort 退出（sweeper 看到 not_found），仍是成功终止，
+// 不能返回 41009 让管理员误以为需要重新预览。
+func TestSessionCancelAbortedWithGoneProcessesReturnsSuccess(t *testing.T) {
+	e := newTestEnv(t)
+	pod := createPodThroughAPI(t, e, testPodBody)
+	user := createTestHumanUser(t, e.store, pod.PodID, "alice", repo.HumanUserStatusActive)
+	identity := seedSessionCancelIdentity(t, e, user.HumanUserID, sessionCancelExternalID)
+	enableSessionCancel(e, pod.PodID)
+	cancelPath := sessionCancelPath(user.HumanUserID, identity.IdentityID, "cancel")
+	e.drv.sessionCancelOut = `{"ok":true,"aborted":true,"drained":true,"confirmed":true,` +
+		`"killed":0,"remaining":[],"processes":[{"pid":4028,"outcome":"skipped","reason":"not_found"}]}`
+
+	rr := e.do(http.MethodPost, cancelPath, `{"expected":[{"pid":4028,"fingerprint":"fp-1"}]}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("aborted-with-gone-processes status = %d, want 200: %s", rr.Code, rr.Body.String())
+	}
+	envelope := decodeSessionCancelEnvelope(t, rr.Body.Bytes())
+	if envelope.Code != 0 || !envelope.Data.Aborted || !envelope.Data.Confirmed {
+		t.Fatalf("aborted-with-gone-processes envelope = %+v", envelope)
+	}
+	if calls := sessionInjectCalls(e); len(calls) != 1 {
+		t.Fatalf("expected cancel note injection, got %#v", calls)
+	}
+	entries, total, err := e.store.QueryAuditFiltered(repo.AuditFilter{Action: "session.cancel"})
+	if err != nil || total != 1 || len(entries) != 1 {
+		t.Fatalf("audit entries = %d/%d err=%v", len(entries), total, err)
+	}
+	if strings.Contains(entries[0].Payload, "41009") {
+		t.Fatalf("successful abort must not audit 41009: %s", entries[0].Payload)
 	}
 }
 

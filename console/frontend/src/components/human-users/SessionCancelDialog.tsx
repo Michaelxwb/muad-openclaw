@@ -174,7 +174,10 @@ export function SessionCancelDialog({
       if (!mountedRef.current) return;
       setCancelState({ busy: false, error: "", stale: false, result });
       const partial =
-        result.remaining.length > 0 || result.processes.some((item) => item.outcome === "skipped");
+        result.remaining.length > 0 ||
+        (result.processes.some((item) => item.outcome === "skipped") &&
+          !result.aborted &&
+          !result.confirmed);
       if (partial) {
         Toast.warning(t("sessionCancel.partial"));
       } else {
