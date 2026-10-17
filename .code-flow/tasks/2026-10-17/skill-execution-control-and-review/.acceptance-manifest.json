@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "task_file": "skill-execution-control-and-review.md",
-  "task_sha256": "4b63bceb19e708a303d7ad4348ee879967cc65be3c63906ced16a89d8d8025af",
+  "task_sha256": "e1de1f80c9de6b12938edc6e9c326c63d2e6b00826fcb27911dfd855cce6f882",
   "scenarios": [
     {
       "id": "S-01",
@@ -194,6 +194,25 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-06",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "da1361136cd74d6ba82b6f49af62e17e",
+        "executed_at": "2026-10-17T11:53:23.223325+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "skills/self-skill-review/test",
+          "skills/_templates/test",
+          "-q"
+        ],
+        "cwd": ".",
+        "timeout": 60.0
+      },
       "runs": [
         {
           "id": "S-06",
@@ -213,26 +232,7 @@
           "cwd": ".",
           "timeout": 60.0
         }
-      ],
-      "revision": 1,
-      "evidence": {
-        "id": "S-06",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "da1361136cd74d6ba82b6f49af62e17e",
-        "executed_at": "2026-10-17T11:53:23.223325+00:00",
-        "command": [
-          "python3",
-          "-m",
-          "pytest",
-          "skills/self-skill-review/test",
-          "skills/_templates/test",
-          "-q"
-        ],
-        "cwd": ".",
-        "timeout": 60.0
-      }
+      ]
     },
     {
       "id": "S-07",
@@ -241,22 +241,67 @@
       "kind": "functional",
       "boundary": "下载 API → 私有上传 API → 管理员工作区",
       "owner": "TASK-009",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "`cd",
-        "console/backend",
-        "&&",
         "go",
+        "-C",
+        "console/backend",
         "test",
         "./test",
         "-run",
         "AdminSkillReview",
-        "-count=1`"
+        "-count=1"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c6498fea53484d77848782e67fc66e50",
+          "executed_at": "2026-10-17T11:58:03.487238+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "AdminSkillReview",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "d9ce3c5699397e18b12ba818870e3f6701ebc0bd9732c329b29b18fce66beb3d"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "c6498fea53484d77848782e67fc66e50",
+        "executed_at": "2026-10-17T11:58:03.487238+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "AdminSkillReview",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "d9ce3c5699397e18b12ba818870e3f6701ebc0bd9732c329b29b18fce66beb3d"
+      }
     },
     {
       "id": "S-08",
@@ -277,6 +322,27 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "da1361136cd74d6ba82b6f49af62e17e",
+        "executed_at": "2026-10-17T11:53:23.223325+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "skills/self-skill-review/test",
+          "skills/_templates/test",
+          "-q"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "d9e9cd0587160a0f28e40b3937fca7160d5968c99d99f27ff52712a4d7a62a85"
+      },
       "runs": [
         {
           "id": "S-08",
@@ -298,28 +364,7 @@
           "timeout": 60.0,
           "fingerprint": "d9e9cd0587160a0f28e40b3937fca7160d5968c99d99f27ff52712a4d7a62a85"
         }
-      ],
-      "revision": 1,
-      "evidence": {
-        "id": "S-08",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "da1361136cd74d6ba82b6f49af62e17e",
-        "executed_at": "2026-10-17T11:53:23.223325+00:00",
-        "command": [
-          "python3",
-          "-m",
-          "pytest",
-          "skills/self-skill-review/test",
-          "skills/_templates/test",
-          "-q"
-        ],
-        "cwd": ".",
-        "timeout": 60.0,
-        "fingerprint": "d9e9cd0587160a0f28e40b3937fca7160d5968c99d99f27ff52712a4d7a62a85"
-      }
+      ]
     },
     {
       "id": "S-09",
@@ -2076,6 +2121,24 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "S-23",
+        "kind": "e2e",
+        "status": "e2e_deferred",
+        "revision": 1,
+        "run_id": "bd340f0c86524066bc110049ee24c0fa",
+        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0
+      },
       "runs": [
         {
           "id": "S-23",
@@ -2094,25 +2157,7 @@
           "cwd": "console/frontend",
           "timeout": 300.0
         }
-      ],
-      "revision": 1,
-      "evidence": {
-        "id": "S-23",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "bd340f0c86524066bc110049ee24c0fa",
-        "executed_at": "2026-10-17T11:52:18.964520+00:00",
-        "command": [
-          "npm",
-          "test",
-          "--",
-          "--run",
-          "Settings"
-        ],
-        "cwd": "console/frontend",
-        "timeout": 300.0
-      }
+      ]
     },
     {
       "id": "S-24",
@@ -2180,6 +2225,26 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "bd340f0c86524066bc110049ee24c0fa",
+        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+      },
       "runs": [
         {
           "id": "E-22",
@@ -2200,27 +2265,7 @@
           "timeout": 300.0,
           "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
         }
-      ],
-      "revision": 1,
-      "evidence": {
-        "id": "E-22",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "bd340f0c86524066bc110049ee24c0fa",
-        "executed_at": "2026-10-17T11:52:18.964520+00:00",
-        "command": [
-          "npm",
-          "test",
-          "--",
-          "--run",
-          "Settings"
-        ],
-        "cwd": "console/frontend",
-        "timeout": 300.0,
-        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
-      }
+      ]
     },
     {
       "id": "E-23",
@@ -2240,6 +2285,26 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "E-23",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "bd340f0c86524066bc110049ee24c0fa",
+        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+      },
       "runs": [
         {
           "id": "E-23",
@@ -2260,27 +2325,7 @@
           "timeout": 300.0,
           "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
         }
-      ],
-      "revision": 1,
-      "evidence": {
-        "id": "E-23",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "bd340f0c86524066bc110049ee24c0fa",
-        "executed_at": "2026-10-17T11:52:18.964520+00:00",
-        "command": [
-          "npm",
-          "test",
-          "--",
-          "--run",
-          "Settings"
-        ],
-        "cwd": "console/frontend",
-        "timeout": 300.0,
-        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
-      }
+      ]
     },
     {
       "id": "E-24",
@@ -2332,6 +2377,26 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
+      "revision": 1,
+      "evidence": {
+        "id": "B-21",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "bd340f0c86524066bc110049ee24c0fa",
+        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+      },
       "runs": [
         {
           "id": "B-21",
@@ -2352,27 +2417,7 @@
           "timeout": 300.0,
           "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
         }
-      ],
-      "revision": 1,
-      "evidence": {
-        "id": "B-21",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "bd340f0c86524066bc110049ee24c0fa",
-        "executed_at": "2026-10-17T11:52:18.964520+00:00",
-        "command": [
-          "npm",
-          "test",
-          "--",
-          "--run",
-          "Settings"
-        ],
-        "cwd": "console/frontend",
-        "timeout": 300.0,
-        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
-      }
+      ]
     },
     {
       "id": "B-22",
