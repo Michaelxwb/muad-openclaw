@@ -8,6 +8,7 @@ import { PodEditDialog } from "../src/pages/containers/PodEditDialog";
 const apiMocks = vi.hoisted(() => ({
   getPod: vi.fn(),
   getPodResources: vi.fn(),
+  patchPod: vi.fn(),
   updatePodChannels: vi.fn(),
   setPodResources: vi.fn(),
 }));
@@ -20,6 +21,7 @@ vi.mock("../src/api", async (importOriginal) => {
       ...actual.api,
       getPod: apiMocks.getPod,
       getPodResources: apiMocks.getPodResources,
+      patchPod: apiMocks.patchPod,
       updatePodChannels: apiMocks.updatePodChannels,
       setPodResources: apiMocks.setPodResources,
     },
@@ -59,10 +61,38 @@ const pod: Pod = {
 
 const resources: PodResourceConfig = {
   podId: "pod-a",
-  overrides: { memLimit: "4g", cpuLimit: "2", restartPolicy: "", maxSkillConcurrency: 0, maxBrowserConcurrency: 0, maxLongTaskConcurrency: 0 },
-  globalDefaults: { memLimit: "2g", cpuLimit: "1", restartPolicy: "unless-stopped", maxSkillConcurrency: 1, maxBrowserConcurrency: 1, maxLongTaskConcurrency: 2 },
-  runtimeDefaults: { memLimit: "1g", cpuLimit: "1", restartPolicy: "unless-stopped", maxSkillConcurrency: 1, maxBrowserConcurrency: 1, maxLongTaskConcurrency: 2 },
-  effective: { memLimit: "4g", cpuLimit: "2", restartPolicy: "", maxSkillConcurrency: 1, maxBrowserConcurrency: 1, maxLongTaskConcurrency: 2 },
+  overrides: {
+    memLimit: "4g",
+    cpuLimit: "2",
+    restartPolicy: "",
+    maxSkillConcurrency: 0,
+    maxBrowserConcurrency: 0,
+    maxLongTaskConcurrency: 0,
+  },
+  globalDefaults: {
+    memLimit: "2g",
+    cpuLimit: "1",
+    restartPolicy: "unless-stopped",
+    maxSkillConcurrency: 1,
+    maxBrowserConcurrency: 1,
+    maxLongTaskConcurrency: 2,
+  },
+  runtimeDefaults: {
+    memLimit: "1g",
+    cpuLimit: "1",
+    restartPolicy: "unless-stopped",
+    maxSkillConcurrency: 1,
+    maxBrowserConcurrency: 1,
+    maxLongTaskConcurrency: 2,
+  },
+  effective: {
+    memLimit: "4g",
+    cpuLimit: "2",
+    restartPolicy: "",
+    maxSkillConcurrency: 1,
+    maxBrowserConcurrency: 1,
+    maxLongTaskConcurrency: 2,
+  },
   memoryAlertThresholdMiB: 0,
   configGeneration: 1,
   appliedGeneration: 1,
@@ -72,10 +102,12 @@ const resources: PodResourceConfig = {
 beforeEach(() => {
   apiMocks.getPod.mockReset();
   apiMocks.getPodResources.mockReset();
+  apiMocks.patchPod.mockReset();
   apiMocks.updatePodChannels.mockReset();
   apiMocks.setPodResources.mockReset();
   apiMocks.getPod.mockResolvedValue(pod);
   apiMocks.getPodResources.mockResolvedValue(resources);
+  apiMocks.patchPod.mockResolvedValue(pod);
   // 保存链路的两个 mock 按真实 api 契约返回已 resolve 的 Promise，
   // 避免 await undefined（微任务续延无确定性）给串行保存断言引入隐式时序依赖。
   apiMocks.updatePodChannels.mockResolvedValue({});
@@ -91,6 +123,9 @@ describe("PodEditDialog", () => {
     expect(await screen.findByText("消息通道")).toBeInTheDocument();
     expect(screen.getByText("资源")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
+    // 用户上限可编辑：展示当前上限与当前用户数
+    expect(screen.getByDisplayValue("10")).toBeInTheDocument();
+    expect(screen.getByText("当前用户数 1")).toBeInTheDocument();
     // 资源覆盖预填（4g → 4）
     expect(screen.getByDisplayValue("4")).toBeInTheDocument();
   });
@@ -131,6 +166,46 @@ describe("PodEditDialog", () => {
     expect(apiMocks.updatePodChannels.mock.invocationCallOrder[0]).toBeLessThan(
       apiMocks.setPodResources.mock.invocationCallOrder[0],
     );
+    // 用户上限未变化时不发起 PATCH
+    expect(apiMocks.patchPod).not.toHaveBeenCalled();
+  });
+
+  it("可编辑用户上限并随保存先行提交", async () => {
+    render(<PodEditDialog podId="pod-a" onClose={vi.fn()} onSaved={vi.fn()} />);
+    await screen.findByText("消息通道");
+
+    fireEvent.change(screen.getByDisplayValue("10"), { target: { value: "50" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(
+      () => {
+        expect(apiMocks.patchPod).toHaveBeenCalledWith("pod-a", { maxUsers: 50 });
+      },
+      { timeout: 5000 },
+    );
+    await waitFor(
+      () => {
+        expect(apiMocks.updatePodChannels).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 5000 },
+    );
+    expect(apiMocks.patchPod.mock.invocationCallOrder[0]).toBeLessThan(
+      apiMocks.updatePodChannels.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("用户上限低于当前用户数时本地拦截，不调用任何接口", async () => {
+    apiMocks.getPod.mockResolvedValue({ ...pod, maxUsers: 20, userCount: 12 });
+    render(<PodEditDialog podId="pod-a" onClose={vi.fn()} onSaved={vi.fn()} />);
+    await screen.findByText("消息通道");
+
+    fireEvent.change(screen.getByDisplayValue("20"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(await screen.findByText("用户上限不能小于当前用户数 12")).toBeInTheDocument();
+    expect(apiMocks.patchPod).not.toHaveBeenCalled();
+    expect(apiMocks.updatePodChannels).not.toHaveBeenCalled();
+    expect(apiMocks.setPodResources).not.toHaveBeenCalled();
   });
 
   it("未选择任何通道时拦截保存，不调用接口", async () => {

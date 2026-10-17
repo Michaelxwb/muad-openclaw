@@ -17,6 +17,7 @@ import type { ResourceConfig } from "../../api";
 import { ChannelFields, useChannelForm, type ChannelInitial } from "../../components/ChannelForm";
 import { errorMessage, ErrorDetail } from "../../utils/error";
 import { memLimitToGB } from "../../utils/memLimit";
+import { MAX_USERS_PER_POD } from "./createPodModel";
 import formStyles from "../../components/ChannelForm.module.css";
 import containerStyles from "../Containers.module.css";
 
@@ -34,6 +35,8 @@ export function PodEditDialog({ podId, onClose, onSaved }: Props) {
   const [loaded, setLoaded] = useState<{
     channels: ChannelInitial;
     resources: ResourceConfig;
+    maxUsers: number;
+    userCount: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -60,6 +63,8 @@ export function PodEditDialog({ podId, onClose, onSaved }: Props) {
             maxBrowserConcurrency: resources.overrides.maxBrowserConcurrency,
             maxLongTaskConcurrency: resources.overrides.maxLongTaskConcurrency,
           },
+          maxUsers: pod.maxUsers,
+          userCount: pod.userCount,
         });
       })
       .catch((e) => {
@@ -79,7 +84,7 @@ export function PodEditDialog({ podId, onClose, onSaved }: Props) {
       visible={podId !== null}
       onCancel={onClose}
       footer={null}
-      width={520}
+      width={640}
     >
       {loading ? (
         <Spin />
@@ -93,6 +98,8 @@ export function PodEditDialog({ podId, onClose, onSaved }: Props) {
           podId={podId!}
           initial={loaded.channels}
           resourceInitial={loaded.resources}
+          maxUsersInitial={loaded.maxUsers}
+          userCount={loaded.userCount}
           onClose={onClose}
           onSaved={onSaved}
         />
@@ -105,12 +112,16 @@ function PodEditForm({
   podId,
   initial,
   resourceInitial,
+  maxUsersInitial,
+  userCount,
   onClose,
   onSaved,
 }: {
   podId: string;
   initial: ChannelInitial;
   resourceInitial: ResourceConfig;
+  maxUsersInitial: number;
+  userCount: number;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -119,14 +130,27 @@ function PodEditForm({
   const [error, setError] = useState("");
   const [errorDetail, setErrorDetail] = useState<string | undefined>();
   const [resources, setResources] = useState<ResourceConfig>(resourceInitial);
+  const [maxUsers, setMaxUsers] = useState(maxUsersInitial);
   const channelForm = useChannelForm({
     mode: "edit",
     initial,
     onSubmit: async (v) => {
+      if (maxUsers < 1 || maxUsers > MAX_USERS_PER_POD) {
+        setError(t("pod.maxUsersRange", { max: MAX_USERS_PER_POD }));
+        return;
+      }
+      if (maxUsers < userCount) {
+        setError(t("pod.maxUsersBelowUserCount", { count: userCount }));
+        return;
+      }
       setBusy(true);
       setError("");
       setErrorDetail(undefined);
       try {
+        // 容量先提交：低于当前用户数会被后端拒绝，避免通道/资源已落的中间态。
+        if (maxUsers !== maxUsersInitial) {
+          await api.patchPod(podId, { maxUsers });
+        }
         await api.updatePodChannels(podId, v);
         const result = await api.setPodResources(podId, resources);
         if (result?.requiresPodRestart) {
@@ -155,7 +179,13 @@ function PodEditForm({
         <Text className={formStyles.label} type="tertiary" size="small">
           {t("common.resources")}
         </Text>
-        <ResourceFields form={resources} setForm={setResources} />
+        <ResourceFields
+          form={resources}
+          setForm={setResources}
+          maxUsers={maxUsers}
+          userCount={userCount}
+          onMaxUsers={setMaxUsers}
+        />
       </div>
       <Space className={formStyles.actions}>
         <Button onClick={onClose} disabled={busy}>
@@ -172,13 +202,33 @@ function PodEditForm({
 function ResourceFields({
   form,
   setForm,
+  maxUsers,
+  userCount,
+  onMaxUsers,
 }: {
   form: ResourceConfig;
   setForm: (form: ResourceConfig) => void;
+  maxUsers: number;
+  userCount: number;
+  onMaxUsers: (value: number) => void;
 }) {
   const { t } = useTranslation();
   return (
     <div className={containerStyles.dialogFields}>
+      <label className={containerStyles.field}>
+        <span>{t("pod.maxUsers")}</span>
+        <InputNumber
+          aria-label={t("pod.maxUsers")}
+          value={maxUsers}
+          min={1}
+          max={MAX_USERS_PER_POD}
+          onChange={(value) => onMaxUsers(Number(value ?? 0))}
+          style={{ width: "100%" }}
+        />
+        <span className={containerStyles.fieldHint}>
+          {t("pod.maxUsersCurrent", { count: userCount })}
+        </span>
+      </label>
       <ResourceInput
         label={t("pod.memLimit")}
         value={form.memLimit}
