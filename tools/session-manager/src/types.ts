@@ -1,5 +1,5 @@
 import { RESOLVER_PURPOSE, SESSION_MANAGER_VERSION } from "./constants/runtime.js";
-import type { AdapterSessionState } from "./adapters/types.js";
+import type { AdapterSessionState, PlatformRequestProfile } from "./adapters/types.js";
 
 export type TrustedContext = {
   agentId: string;
@@ -96,6 +96,7 @@ export type SkillSessionPlatform = {
   credentialFingerprint: string;
   cookies: AdapterSessionState["cookies"];
   storageState: AdapterSessionState["storageState"];
+  requestProfile: PlatformRequestProfile;
 };
 
 export type SkillSessionInput = {

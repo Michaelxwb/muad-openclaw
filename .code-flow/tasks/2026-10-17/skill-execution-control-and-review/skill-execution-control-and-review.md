@@ -295,11 +295,11 @@
 
 ## TASK-006: session-manager 平台 request profile
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**:
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（平台 request profile）
-- **Spec-Refs**: —（runtime-directory rule 由 TASK-007 负责）
+- **Spec-Refs**:
 - **Acceptance-Refs**: S-12, S-13, B-07
 
 ### Description
@@ -308,26 +308,33 @@
 
 ### Checklist
 
-- [ ] 扩展 `PlatformAdapter` 可选方法；mssw/mssp 实现 profile；静态头值来自凭据，不写死在代码。
-- [ ] 状态文件追加 `requestProfile`；已有字段、文件路径与 0600 模式不变。
-- [ ] 旧凭据/缺省字段的 profile 回退策略：缺静态头时给默认值并记录诊断，不崩溃。
-- [ ] 先写 profile 输出与旧字段兼容测试并记录 RED/GREEN。
+- [x] 扩展 `PlatformAdapter` 可选方法；mssw/mssp 实现 profile；静态头值来自凭据，不写死在代码。
+- [x] 状态文件追加 `requestProfile`；已有字段、文件路径与 0600 模式不变。
+- [x] 旧凭据/缺省字段的 profile 回退策略：缺静态头时给默认值并记录诊断，不崩溃。
+- [x] 先写 profile 输出与旧字段兼容测试并记录 RED/GREEN。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-12 | integration | session-manager → 状态文件 | mssw profile 含 csrf 映射与 Host；旧字段不变 | `tools/session-manager/test/session-store.test.ts` | `cd tools/session-manager && npm test -- --test-name-pattern=requestProfile` | planned |
-| S-13 | integration | session-manager → 状态文件 | mssp profile 含静态头与 timezone | 同上 | 同上 | planned |
-| B-07 | integration | 两平台状态文件 | 两平台 profile 不串 | 同上 | 同上 | planned |
+| S-12 | integration | session-manager → 状态文件 | mssw profile 含 csrf 映射与 Host；旧字段不变 | `tools/session-manager/test/session-store.test.mjs` | `cd tools/session-manager && npm test -- --test-name-pattern=requestProfile` | verified |
+| S-13 | integration | session-manager → 状态文件 | mssp profile 含静态头与 timezone | 同上 | 同上 | verified |
+| B-07 | integration | 两平台状态文件 | 两平台 profile 不串 | 同上 | 同上 | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+- RED: `cd tools/session-manager && npm test -- --test-name-pattern=requestProfile` → 5 个 `requestProfile*` 用例失败（`requestProfile` 为 `undefined`），其余既有用例通过。
+- GREEN: `cd tools/session-manager && npm test` → `tests 107 / pass 107 / fail 0`；定向命令同样通过。
+- 断言位置：`tools/session-manager/test/session-store.test.mjs` 的 5 个 `requestProfile:` 用例（L19 mssw profile、L72 mssp 静态头、L102 双平台隔离、L145 旧凭据回退、L174 默认 profile）。
+- 真实边界证据：`SessionStore` + `mkdtempSync` 真实临时目录、真实 `MSSWSessionAdapter`/`MSSPSessionAdapter`、真实 `<skill>.session.json` 落盘读取，未 mock 状态文件写入；断言旧字段 `cookies`/`storageState`/`expiresAt`/`credentialFingerprint` 逐项不变、文件 mode `0o600`、CLI stdout 不含 `requestProfile`。
+- 旧凭据缺省证据：mssp 凭据无 `csrfToken`/`timezone` 时 profile `staticHeaders={}` 且日志含 `request profile fallback missing=staticHeaders...`，`get-state` 仍成功。
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] implemented request profile + tests (RED → GREEN)
+- [2026-10-17] completed (done)
 
 ---
 
