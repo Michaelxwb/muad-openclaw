@@ -264,6 +264,53 @@ export interface IdentityDeleteResult {
   deleted: boolean;
 }
 
+export interface SessionCancelProcess {
+  pid: number;
+  pgid: number;
+  startTime: number;
+  uid: number;
+  leader: boolean;
+  ageSeconds: number;
+  cmdline: string;
+  fingerprint: string;
+}
+
+export interface SessionCancelSkipped {
+  notOwner: number;
+  envMismatch: number;
+  permissionDenied: number;
+}
+
+export interface SessionCancelPreview {
+  sessionKey: string;
+  agentId: string;
+  activeRun: { active: boolean; sessionId?: string };
+  processes: SessionCancelProcess[];
+  skipped: SessionCancelSkipped;
+}
+
+export interface SessionCancelExpected {
+  pid: number;
+  fingerprint: string;
+}
+
+export type SessionCancelOutcome = "terminated" | "killed" | "skipped";
+
+export interface SessionCancelProcessResult {
+  pid: number;
+  outcome: SessionCancelOutcome;
+  reason?: string;
+}
+
+export interface SessionCancelResultData {
+  aborted: boolean;
+  drained: boolean;
+  confirmed: boolean;
+  killed: number;
+  remaining: number[];
+  processes: SessionCancelProcessResult[];
+}
+
 export interface BindingCode {
   bindingCodeId: string;
   codeHint: string;

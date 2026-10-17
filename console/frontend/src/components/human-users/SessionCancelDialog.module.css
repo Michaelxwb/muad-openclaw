@@ -1,0 +1,98 @@
+.dialog :global(.semi-modal) {
+  max-width: calc(100vw - 48px);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 0;
+}
+
+.errorBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--semi-color-border);
+  border-radius: 8px;
+  background: var(--semi-color-fill-0);
+}
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  overflow-wrap: anywhere;
+}
+
+.summaryLabel {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+}
+
+.processSection,
+.resultSection {
+  margin-top: 16px;
+}
+
+.sectionTitle {
+  margin-bottom: 8px;
+  color: var(--semi-color-text-0);
+  font-weight: 600;
+}
+
+.skippedNote {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.cmdline {
+  display: inline-block;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.empty {
+  display: block;
+  margin-top: 16px;
+}
+
+.warning {
+  margin-top: 16px;
+}
+
+.resultTags {
+  margin-bottom: 8px;
+}
+
+.resultSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}

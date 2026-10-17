@@ -9,6 +9,7 @@ import { errorMessage } from "../../utils/error";
 import i18n from "../../i18n";
 import styles from "../HumanUsersPanel.module.css";
 import { Field, UserStatusTag } from "./shared";
+import { SessionCancelDialog } from "./SessionCancelDialog";
 
 interface Props {
   user: HumanUser;
@@ -21,6 +22,7 @@ export function IdentityManager({ user, identities, channels, onChanged }: Props
   const { t } = useTranslation();
   const [createOpen, setCreateOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Identity | null>(null);
+  const [cancelIdentity, setCancelIdentity] = useState<Identity | null>(null);
   const actions = useIdentityActions(user, pendingDelete, setPendingDelete, onChanged);
 
   return (
@@ -33,7 +35,16 @@ export function IdentityManager({ user, identities, channels, onChanged }: Props
         </Button>
       </div>
       <Table
-        columns={identityColumns(t, actions.busyId, actions.setStatus, setPendingDelete) as never}
+        columns={
+          identityColumns(
+            t,
+            actions.busyId,
+            actions.setStatus,
+            setPendingDelete,
+            setCancelIdentity,
+            cancelIdentity !== null,
+          ) as never
+        }
         dataSource={identities}
         rowKey="identityId"
         pagination={false}
@@ -52,6 +63,15 @@ export function IdentityManager({ user, identities, channels, onChanged }: Props
         onClose={() => setPendingDelete(null)}
         onDelete={() => void actions.remove()}
       />
+      {cancelIdentity ? (
+        <SessionCancelDialog
+          visible
+          humanUserId={user.humanUserId}
+          identity={cancelIdentity}
+          onClose={() => setCancelIdentity(null)}
+          onCancelled={() => void onChanged()}
+        />
+      ) : null}
     </div>
   );
 }
@@ -101,6 +121,8 @@ function identityColumns(
   busyId: string,
   onStatus: (identity: Identity) => Promise<void>,
   onDelete: (identity: Identity) => void,
+  onCancelSession: (identity: Identity) => void,
+  cancelOpen: boolean,
 ) {
   return [
     {
@@ -144,6 +166,9 @@ function identityColumns(
             onClick={() => void onStatus(identity)}
           >
             {identity.status === "active" ? t("status.disable") : t("status.enable")}
+          </Button>
+          <Button size="small" disabled={cancelOpen} onClick={() => onCancelSession(identity)}>
+            {t("sessionCancel.trigger")}
           </Button>
           <Button size="small" type="danger" onClick={() => onDelete(identity)}>
             {t("common.delete")}

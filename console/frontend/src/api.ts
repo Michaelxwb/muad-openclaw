@@ -72,6 +72,9 @@ import type {
   SkillExecutionTrace,
   SkillHealthQuery,
   SkillHealthResult,
+  SessionCancelExpected,
+  SessionCancelPreview,
+  SessionCancelResultData,
   SkillPolicy,
   SkillPolicyInput,
   SkillReloadResult,
@@ -286,6 +289,18 @@ export const api = {
     request<IdentityDeleteResult>(
       "DELETE",
       `${humanUserPath(humanUserId)}/identities/${segment(identityId)}`,
+    ),
+  previewSessionCancel: (humanUserId: string, identityId: string) =>
+    request<SessionCancelPreview>(
+      "POST",
+      `${humanUserPath(humanUserId)}/identities/${segment(identityId)}/session/preview`,
+      {},
+    ),
+  cancelSession: (humanUserId: string, identityId: string, expected: SessionCancelExpected[]) =>
+    request<SessionCancelResultData>(
+      "POST",
+      `${humanUserPath(humanUserId)}/identities/${segment(identityId)}/session/cancel`,
+      { expected },
     ),
 
   createBindingCode: (humanUserId: string, input: ActivationInput) =>
