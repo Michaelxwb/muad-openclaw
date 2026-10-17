@@ -15,12 +15,57 @@
   font-weight: 600;
 }
 
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fieldHint {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+}
+
+.fieldError {
+  color: var(--semi-color-danger);
+  font-size: 12px;
+}
+
+.notifyGrid {
+  display: grid;
+  grid-template-columns: 220px minmax(240px, 1fr);
+  gap: 12px 16px;
+  align-items: start;
+}
+
+.notifyField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.notifyField label {
+  color: var(--semi-color-text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notifyActions {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 800px) {
   .formGrid {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .guidanceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notifyGrid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
