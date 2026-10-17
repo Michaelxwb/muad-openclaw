@@ -27,15 +27,21 @@ type ConfigError struct{ Err error }
 func (e *ConfigError) Error() string { return "notify: resolve channel: " + e.Err.Error() }
 func (e *ConfigError) Unwrap() error { return e.Err }
 
+// alertTimeZone is China Standard Time (UTC+8); alerts are read by operators
+// in the local timezone. China has no DST, so a fixed offset is stable.
+var alertTimeZone = time.FixedZone("UTC+8", 8*60*60)
+
 // Event is one operator alert.
 type Event struct {
-	Type        string
-	PodID       string
-	HumanUserID string
-	SkillName   string
-	Interface   string
-	Message     string
-	OccurredAt  time.Time
+	Type          string
+	PodID         string
+	HumanUserID   string
+	HumanUserName string
+	AgentID       string
+	SkillName     string
+	Interface     string
+	Message       string
+	OccurredAt    time.Time
 }
 
 // DedupKey identifies one alert subject. It follows the design contract
@@ -49,13 +55,60 @@ func (e Event) Text() string {
 	if strings.TrimSpace(e.Message) != "" {
 		return e.Message
 	}
+	user := strings.TrimSpace(e.HumanUserName)
+	userID := strings.TrimSpace(e.HumanUserID)
+	if user == "" {
+		user = userID
+	} else if userID != "" && user != userID {
+		// Keep the stable ID beside the display name for operators; a name
+		// alone is ambiguous and an ID alone is not friendly.
+		user = fmt.Sprintf("%s (%s)", user, userID)
+	}
 	lines := []string{fmt.Sprintf("场景: %s", e.scenario())}
 	for _, field := range []struct{ label, value string }{
-		{"Pod", e.PodID}, {"用户", e.HumanUserID}, {"Skill", e.SkillName}, {"接口", e.Interface},
+		{"Pod", e.PodID}, {"用户", user}, {"Agent", e.AgentID},
+		{"Skill", e.SkillName}, {"接口", e.Interface},
 	} {
 		if field.value != "" {
 			lines = append(lines, fmt.Sprintf("%s: %s", field.label, field.value))
 		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// Markdown renders the alert for channels that support Markdown (WeCom group
+// robots). Message wins when set.
+func (e Event) Markdown() string {
+	if strings.TrimSpace(e.Message) != "" {
+		return e.Message
+	}
+	title := "运维告警"
+	if e.scenario() == "skill.request_limit" {
+		title = "Skill 请求超限告警"
+	}
+	user := strings.TrimSpace(e.HumanUserName)
+	userID := strings.TrimSpace(e.HumanUserID)
+	if user == "" {
+		user = userID
+	} else if userID != "" && user != userID {
+		user = fmt.Sprintf("%s（%s）", user, userID)
+	}
+	lines := []string{
+		"### " + title,
+		"",
+		fmt.Sprintf("> 场景：%s", e.scenario()),
+	}
+	for _, field := range []struct{ label, value string }{
+		{"Pod", e.PodID}, {"用户", user}, {"Agent", e.AgentID},
+		{"Skill", e.SkillName}, {"接口", e.Interface},
+	} {
+		if field.value != "" {
+			lines = append(lines, fmt.Sprintf("- **%s**：%s", field.label, field.value))
+		}
+	}
+	if !e.OccurredAt.IsZero() {
+		lines = append(lines, fmt.Sprintf("- **时间**：%s",
+			e.OccurredAt.In(alertTimeZone).Format("2006-01-02 15:04:05 UTC+8")))
 	}
 	return strings.Join(lines, "\n")
 }

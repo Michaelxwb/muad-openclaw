@@ -63,6 +63,7 @@ const plugin = {
       getConfig: () => latestGuardConfig(config),
       executions: skillTraceExecutions,
       client: createSkillTraceClient(config),
+      trustedSender: skillProgressHooks.trustedSender,
       log: (message) => api.logger?.warn?.(message),
     });
     installSkillTraceCleanup(globalThis, { log: (message) => api.logger?.warn?.(message) });
@@ -279,6 +280,7 @@ function registerSkillAuditHooks(api, config, client, onSkillActivated, manager,
   api.on("before_dispatch", hooks.beforeDispatch, { priority: -100, timeoutMs: 1_000 });
   api.on("before_agent_run", hooks.beforeAgentRun, { priority: -100, timeoutMs: 1_000 });
   api.on("before_tool_call", hooks.beforeToolCall, { priority: -100, timeoutMs: 1_000 });
+  api.on("agent_end", hooks.agentEnd, { priority: 900, timeoutMs: 1_000 });
 }
 
 function resolveWorkspace(api, agentId) {

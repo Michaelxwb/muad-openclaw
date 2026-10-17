@@ -153,7 +153,7 @@ func TestNotifyTestDeliversThroughDispatcher(t *testing.T) {
 	if requests.Load() != 1 {
 		t.Fatalf("webhook requests = %d, want 1", requests.Load())
 	}
-	if len(payloads) == 0 || !strings.Contains(payloads[0], `"msgtype":"text"`) {
+	if len(payloads) == 0 || !strings.Contains(payloads[0], `"msgtype":"markdown"`) {
 		t.Fatalf("payload = %q", payloads)
 	}
 }

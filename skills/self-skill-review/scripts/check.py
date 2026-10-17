@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import json
 import os
 import re
@@ -34,6 +35,12 @@ SENSITIVE_HEADERS = {
     "cookie", "set-cookie", "x-csrftoken", "x-csrf-token", "csrf-token",
     "csrftoken", "traceid", "x-trace-id",
 }
+# SS-R007 must distinguish request header construction from ordinary response
+# payload keys such as {"traceId": ...}. Only these names count as header
+# containers; a sensitive key in any other dict is response data, not a header.
+HEADER_CONTAINER_NAMES = {
+    "header", "headers", "cookie", "cookies", "extra_headers", "http_headers",
+}
 NETWORK_ARG_RE = re.compile(
     r"(?i)(?:^|[\s/])(?:curl|wget|httpie|http)(?:$|[\s/])|https?://|\brequests\b|\burllib\b"
 )
@@ -49,6 +56,26 @@ CREDENTIAL_RE = re.compile(
 )
 PLACEHOLDER_MARKERS = ("<", "example", "placeholder", "your-", "xxxx", "****", "redacted")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
+
+# Rule ids are for tracking and suppression. User-facing reports lead with the
+# problem title so an author does not need to know the SS-Rxxx catalog.
+RULE_TITLES = {
+    "SS-R001": "文件类型或 Skill 结构不符合要求",
+    "SS-R002": "muad.skill.json 缺失或不合法",
+    "SS-R003": "Skill 名称不一致",
+    "SS-R004": "entrypoint 配置不正确",
+    "SS-R005": "平台请求没有走统一 SDK",
+    "SS-R006": "直连业务平台 HTTP 接口",
+    "SS-R007": "手工构造敏感请求头",
+    "SS-R008": "通过 subprocess 发送业务请求",
+    "SS-R009": "失败路径没有正确报错",
+    "SS-R010": "文件写入位置不安全",
+    "SS-R011": "session-manager 的 Skill 名称不匹配",
+    "SS-R012": "硬编码凭据或内部地址",
+    "SS-R013": "Python 语法错误",
+    "SS-R014": "缺少作者信息",
+}
+SEVERITY_LABELS = {"error": "错误", "warning": "警告"}
 
 
 @dataclass(frozen=True)
@@ -166,6 +193,12 @@ def _check_manifest_fields(target: Path, manifest) -> list[Finding]:
     name = manifest.get("name")
     if not isinstance(name, str) or not name.strip():
         findings.append(_finding("SS-R002", path, target, _line_containing(path, '"name"'), "manifest name must be a non-empty string"))
+    author = manifest.get("author")
+    if not isinstance(author, str) or not author.strip():
+        findings.append(_finding(
+            "SS-R014", path, target, _line_containing(path, '"author"'),
+            "manifest author must be a non-empty string (author name/employee id/username)",
+        ))
     if "runtime" in manifest and manifest.get("runtime") != "script":
         findings.append(_finding("SS-R002", path, target, _line_containing(path, '"runtime"'), "manifest runtime must be \"script\""))
     if "version" in manifest:
@@ -268,10 +301,43 @@ def _header_key(node):
     return None
 
 
+def _header_container_name(node):
+    if isinstance(node, ast.Name):
+        return node.id.strip().lower()
+    if isinstance(node, ast.Attribute):
+        return node.attr.strip().lower()
+    return ""
+
+
+def _is_header_container(name):
+    return name in HEADER_CONTAINER_NAMES
+
+
+def _dict_in_header_context(node, parents):
+    parent = parents.get(node)
+    if isinstance(parent, ast.keyword):
+        return _is_header_container((parent.arg or "").strip().lower())
+    if isinstance(parent, ast.Assign):
+        return any(_is_header_container(_header_container_name(target))
+                   for target in parent.targets)
+    if isinstance(parent, ast.Call):
+        func = parent.func
+        if isinstance(func, ast.Attribute):
+            # headers.update({...}) / session.headers.update({...})
+            return (_is_header_container(func.attr.strip().lower()) or
+                    _is_header_container(_header_container_name(func.value)))
+        if isinstance(func, ast.Name):
+            return _is_header_container(func.id.strip().lower())
+    return False
+
+
 def _check_manual_headers(path: Path, target: Path, tree) -> list[Finding]:
     findings = []
+    parents = _index_parents(tree)
     for node in ast.walk(tree):
         if isinstance(node, ast.Dict):
+            if not _dict_in_header_context(node, parents):
+                continue
             for key in node.keys:
                 if _header_key(key) in SENSITIVE_HEADERS:
                     findings.append(_finding(
@@ -281,12 +347,17 @@ def _check_manual_headers(path: Path, target: Path, tree) -> list[Finding]:
                     ))
         elif isinstance(node, ast.Assign):
             for assigned in node.targets:
-                if isinstance(assigned, ast.Subscript) and _header_key(assigned.slice) in SENSITIVE_HEADERS:
-                    findings.append(_finding(
-                        "SS-R007", path, target, node.lineno,
-                        f"manual sensitive header {_header_key(assigned.slice)!r}; platform_request builds Cookie/CSRF/Traceid",
-                        severity="warning",
-                    ))
+                if not isinstance(assigned, ast.Subscript):
+                    continue
+                if _header_key(assigned.slice) not in SENSITIVE_HEADERS:
+                    continue
+                if not _is_header_container(_header_container_name(assigned.value)):
+                    continue
+                findings.append(_finding(
+                    "SS-R007", path, target, node.lineno,
+                    f"manual sensitive header {_header_key(assigned.slice)!r}; platform_request builds Cookie/CSRF/Traceid",
+                    severity="warning",
+                ))
     return findings
 
 
@@ -536,6 +607,20 @@ def check_skill(target: Path) -> list[Finding]:
     return _deduplicate(findings)
 
 
+def _target_fingerprint(target: Path, files) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(files, key=lambda item: item.relative_to(target).as_posix()):
+        relative = path.relative_to(target).as_posix()
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        try:
+            digest.update(path.read_bytes())
+        except OSError:
+            digest.update(b"<unreadable>")
+        digest.update(b"\0")
+    return "sha256:" + digest.hexdigest()
+
+
 def _summary(findings: list[Finding], file_count: int) -> dict:
     errors = sum(1 for item in findings if item.severity == "error")
     warnings = sum(1 for item in findings if item.severity == "warning")
@@ -543,21 +628,27 @@ def _summary(findings: list[Finding], file_count: int) -> dict:
 
 
 def _render_json(target: Path, findings: list[Finding]) -> str:
+    files = _iter_files(target)
+    summary = _summary(findings, len(files))
+    summary["fingerprint"] = _target_fingerprint(target, files)
     payload = {
         "target": str(target),
-        "summary": _summary(findings, len(_iter_files(target))),
+        "summary": summary,
         "findings": [asdict(item) for item in findings],
     }
     return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
 
 def _render_markdown(target: Path, findings: list[Finding]) -> str:
-    summary = _summary(findings, len(_iter_files(target)))
+    files = _iter_files(target)
+    summary = _summary(findings, len(files))
+    fingerprint = _target_fingerprint(target, files)
     result = "FAIL" if summary["errors"] else "PASS"
     lines = [
         f"# Skill Review: {target.name}",
         "",
         f"- Target: `{target}`",
+        f"- Fingerprint: `{fingerprint}`",
         f"- Result: {result}",
         f"- Findings: {summary['errors']} error(s), {summary['warnings']} warning(s), {summary['files']} file(s)",
         "",
@@ -566,12 +657,18 @@ def _render_markdown(target: Path, findings: list[Finding]) -> str:
         lines.append("No findings.")
         return "\n".join(lines) + "\n"
     lines.extend([
-        "| Severity | Rule | Location | Message |",
-        "|----------|------|----------|---------|",
+        "> 规则 ID 仅用于追踪；请优先阅读“问题”和“说明”。",
+        "",
+        "| 级别 | 问题 | 位置 | 说明 |",
+        "|------|------|------|------|",
     ])
     for item in findings:
         message = item.message.replace("|", "\\|")
-        lines.append(f"| {item.severity} | {item.rule} | `{item.file}:{item.line}` | {message} |")
+        title = RULE_TITLES.get(item.rule, "规则问题")
+        severity = SEVERITY_LABELS.get(item.severity, item.severity)
+        lines.append(
+            f"| {severity} | {title}（{item.rule}） | `{item.file}:{item.line}` | {message} |"
+        )
     return "\n".join(lines) + "\n"
 
 

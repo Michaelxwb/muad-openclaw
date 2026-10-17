@@ -12,7 +12,7 @@
 #      （Task0 会先用 mss-fe-node:20.9.0 构建 session-manager 与 muad-progress dist，
 #       task4 恢复缓存后再调本 Dockerfile 构建 app 镜像）
 #
-# 构建上下文：仓库根（需包含 bin/、tools/、skills/、requirements.txt、
+# 构建上下文：仓库根（需包含 bin/、tools/、requirements.txt、
 #              console/backend/internal/crypto/binding_code_spec.json 等业务代码，
 #              以及 task4 脚本恢复的 tools/session-manager/dist/、tools/muad-progress/dist/）
 #
@@ -82,7 +82,6 @@ COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
 COPY --from=runtime-guard-deps /build/runtime-guard/node_modules /opt/muad/muad-runtime-guard/node_modules
 COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
 COPY tools/shared /opt/muad/shared
-COPY skills /opt/openclaw-skills
 COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh
 
 # 不在 build 期跑 `node /opt/muad/runtime-image-self-check.mjs --image-only`：
@@ -99,7 +98,7 @@ RUN set -eux; \
     chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-progress \
       /opt/muad/muad-runtime-guard /opt/muad/shared; \
     chown -R node:node /opt/muad/session-manager /opt/muad/muad-progress /opt/muad/muad-runtime-guard \
-      /opt/muad/shared /opt/openclaw-skills
+      /opt/muad/shared
 
 USER node
 WORKDIR /app

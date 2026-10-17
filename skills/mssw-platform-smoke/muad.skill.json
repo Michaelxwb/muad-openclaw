@@ -3,5 +3,6 @@
   "platforms": ["mssw"],
   "runtime": "script",
   "version": "0.1.0",
-  "entrypoint": "scripts/run.py"
+  "entrypoint": "scripts/run.py",
+  "author": "muad-team"
 }

@@ -264,6 +264,7 @@ const en: AppLocale = {
       notFound: "Execution not found",
       retry: "Retry",
       showMore: "Load more ({{count}} remaining)",
+      traceId: "Traceid",
       kindExec: "Exec",
       kindHttp: "HTTP",
       kindOutput: "Output",

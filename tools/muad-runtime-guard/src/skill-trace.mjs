@@ -8,7 +8,7 @@
 // and the abort notification run on a bounded background queue so one user's
 // execution can never block another user's turn.
 
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
+import { existsSync, readFileSync, statSync, unlinkSync } from "node:fs";
 
 import { notifyUser } from "../../shared/notify-user.mjs";
 import {
@@ -21,6 +21,7 @@ const DEFAULT_REQUEST_LIMIT = 1_000;
 const MAX_REQUEST_LIMIT = 1_000_000;
 const MAX_RETRY_ENTRIES = 500;
 const MAX_NOTIFIED_ENTRIES = 2_000;
+const MAX_SPOOL_STATES = 2_000;
 const KNOWN_CHANNEL_TYPES = new Set(["wecom", "mattermost", "openclaw-weixin", "wechat", "weixin"]);
 
 export function createSkillTraceHooks({
@@ -30,6 +31,7 @@ export function createSkillTraceHooks({
   notify = notifyUser,
   spoolRoot = SKILL_TRACE_SPOOL_ROOT,
   queueLimit = DEFAULT_QUEUE_LIMIT,
+  trustedSender = () => "",
   now = Date.now,
   log = () => {},
 } = {}) {
@@ -41,6 +43,7 @@ export function createSkillTraceHooks({
   const queued = new Set();
   const retries = new Map();
   const notified = new Set();
+  const spoolStates = new Map();
   let closed = false;
 
   function resolveExecEnv(event, ctx) {
@@ -55,7 +58,7 @@ export function createSkillTraceHooks({
       diag(`action=resolve outcome=invalid_entry executionId=${entry.executionId}`);
       return undefined;
     }
-    const route = resolveRoute(event, ctx);
+    const route = resolveRoute(event, ctx, trustedSender);
     if (route.channel && route.peerId) executions.updateRoute(entry.executionId, route);
     let spoolPath;
     try {
@@ -80,35 +83,108 @@ export function createSkillTraceHooks({
     if (!resolved.entry) return undefined;
     const entry = resolved.entry;
     const spoolPath = spoolFileFor(spoolRoot, entry.executionId);
+    const state = spoolStateFor(entry.executionId);
     let spoolText = "";
+    let stat = null;
     try {
-      if (existsSync(spoolPath)) spoolText = readFileSync(spoolPath, "utf8");
+      if (existsSync(spoolPath)) {
+        stat = statSync(spoolPath);
+        spoolText = readFileSync(spoolPath, "utf8");
+      }
     } catch {
       diag(`action=read outcome=failed executionId=${entry.executionId}`);
       return undefined;
     }
-    if (!spoolText.trim()) removeSpool(spoolPath);
-    const parsed = parseSkillTraceSpool(spoolText, {
+    if (!stat) {
+      state.ino = 0;
+      state.offset = 0;
+      state.lastJob = null;
+    } else if (stat.ino !== state.ino) {
+      state.ino = stat.ino;
+      state.offset = 0;
+      state.lastJob = null;
+    }
+    const offset = Number.isInteger(state.offset) && state.offset >= 0 && state.offset <= spoolText.length
+      ? state.offset
+      : 0;
+    // Only consume complete lines; a torn trailing line is retried on the next
+    // read instead of being skipped permanently.
+    const completeEnd = spoolText.lastIndexOf("\n") + 1;
+    const end = completeEnd > offset ? completeEnd : offset;
+    const newText = spoolText.slice(offset, end);
+    state.offset = end;
+
+    if (!newText.trim()) {
+      // No new helper output. A pending retry already owns this spool; reusing
+      // it avoids duplicate event ids for the same failed batch.
+      if (queued.has(entry.executionId) || retries.has(entry.executionId)) return undefined;
+      if (state.lastJob) {
+        scheduleTrace(state.lastJob);
+        return undefined;
+      }
+    }
+
+    const parsed = parseSkillTraceSpool(newText, {
       executionId: entry.executionId, now: now(),
     });
+    const baseSeq = reserveBaseSeq(entry.executionId, 1 + parsed.events.length);
+    if (!baseSeq) {
+      diag(`action=seq outcome=failed executionId=${entry.executionId}`);
+      return undefined;
+    }
     // Old Skills write no helper events but still get one exec event; helper
-    // events follow it with a stable +1 shift so exec is always first.
+    // events follow it with a stable seq so a retry uploads the same batch.
     const events = [
-      execTraceEvent(entry.executionId, event, now()),
-      ...parsed.events.map((item) => ({ ...item, seq: item.seq + 1 })),
+      execTraceEvent(entry.executionId, event, now(), baseSeq),
+      ...parsed.events.map((item) => {
+        const seq = baseSeq + item.seq;
+        return { ...item, seq, eventId: `${entry.executionId}:${seq}` };
+      }),
     ];
+    const metrics = mergeMetrics(entry.executionId, parsed);
     const job = {
       executionId: entry.executionId,
       agentId: text(entry.agentId),
       skillName: entry.skillName,
       route: entry.route,
       spoolPath,
-      payload: { agentId: entry.agentId, metrics: parsed.metrics, events },
+      payload: { agentId: entry.agentId, metrics, events },
       aborted: parsed.aborted,
     };
+    state.lastJob = job;
     if (parsed.aborted) scheduleNotify(job);
     scheduleTrace(job);
     return undefined;
+  }
+
+  function reserveBaseSeq(executionId, count) {
+    if (!executions || typeof executions.reserveSeq !== "function") return 1;
+    return executions.reserveSeq(executionId, count);
+  }
+
+  function mergeMetrics(executionId, parsed) {
+    if (!executions || typeof executions.mergeMetrics !== "function") return parsed.metrics;
+    const merged = executions.mergeMetrics(executionId, {
+      ...parsed.metrics,
+      hasSummary: parsed.hasSummary,
+      hosts: parsed.hosts,
+      interfaces: parsed.interfaces,
+    });
+    return merged ?? parsed.metrics;
+  }
+
+  function spoolStateFor(executionId) {
+    let state = spoolStates.get(executionId);
+    if (!state) {
+      state = { ino: 0, offset: 0, lastJob: null };
+      spoolStates.set(executionId, state);
+      while (spoolStates.size > MAX_SPOOL_STATES) {
+        const oldest = spoolStates.keys().next().value;
+        if (oldest === undefined) break;
+        spoolStates.delete(oldest);
+      }
+    }
+    return state;
   }
 
   function retryPending() {
@@ -122,7 +198,13 @@ export function createSkillTraceHooks({
     }
     const accepted = queue.enqueue(async () => {
       try {
-        await client.report(job.executionId, job.payload);
+        // Metrics are cumulative per execution. Use the latest snapshot at
+        // upload time so a retried older batch cannot regress a newer count.
+        const metrics = typeof executions?.metricsSnapshot === "function"
+          ? executions.metricsSnapshot(job.executionId)
+          : null;
+        const payload = metrics ? { ...job.payload, metrics } : job.payload;
+        await client.report(job.executionId, payload);
         retries.delete(job.executionId);
         removeSpool(job.spoolPath);
         diag(`action=upload outcome=ok executionId=${job.executionId} events=${job.payload.events.length}`);
@@ -162,9 +244,11 @@ export function createSkillTraceHooks({
         const result = await notify(input);
         if (result?.ok === false) throw new Error(result.error || "notify failed");
         diag(`action=notify outcome=ok executionId=${job.executionId}`);
-      } catch {
+      } catch (error) {
         // Notification is best-effort: termination and trace upload already happened.
-        diag(`action=notify outcome=failed executionId=${job.executionId}`);
+        const detail = text(error?.message);
+        const reason = detail.includes("timed out") ? "timeout" : "delivery_failed";
+        diag(`action=notify outcome=failed reason=${reason} executionId=${job.executionId}`);
       }
     });
     if (!accepted) diag(`action=enqueue outcome=dropped reason=queue_full kind=notify executionId=${job.executionId}`);
@@ -227,24 +311,38 @@ export function installSkillTraceCleanup(globals = globalThis, {
 
 function executionIdentity(event, ctx) {
   const sessionKey = text(event?.sessionKey) || text(ctx?.sessionKey);
+  if (!sessionKey) return null;
   const { agentId: sessionAgent, rest } = parseSessionKey(sessionKey);
+  // Never let a session key claim a different agent than the trusted hook
+  // context; the registry also indexes by agentId, so a mismatch must not
+  // silently fall back to another user's session.
+  const contextAgent = text(ctx?.agentId) || text(event?.agentId);
+  if (sessionAgent && contextAgent && sessionAgent !== contextAgent) return null;
+  const agentId = contextAgent || sessionAgent;
   if (rest.startsWith("longtask:")) {
     const taskId = text(rest.slice("longtask:".length).split(":")[0]);
     return taskId ? { taskId } : null;
   }
   const runId = text(event?.runId) || text(ctx?.runId);
-  if (!runId || !sessionKey) return null;
-  return {
-    agentId: text(ctx?.agentId) || text(event?.agentId) || sessionAgent,
-    sessionKey,
-    runId,
-  };
+  // resolve_exec_env often omits runId; the registry then resolves the
+  // session's sole execution and fails closed when the session is ambiguous.
+  return { agentId, sessionKey, runId };
 }
 
-function resolveRoute(event, ctx) {
+function resolveRoute(event, ctx, getTrustedSender = () => "") {
   const sessionKey = text(event?.sessionKey) || text(ctx?.sessionKey);
   const channel = channelFromSession(sessionKey) || text(event?.channel) || text(ctx?.channel);
-  const peerId = text(ctx?.channelContext?.sender?.id) ||
+  const agentId = text(ctx?.agentId) || text(event?.agentId) || parseSessionKey(sessionKey).agentId;
+  let trusted = "";
+  try {
+    trusted = text(getTrustedSender(agentId, sessionKey));
+  } catch {
+    // Route correction must never break the trace hook.
+  }
+  // A multi-user gateway uses the agent id as the session-key tail. Prefer the
+  // trusted sender cached by before_agent_run before any event/session fallback.
+  const peerId = trusted ||
+    text(ctx?.channelContext?.sender?.id) ||
     text(event?.senderId) || text(ctx?.senderId) ||
     text(event?.replyToId) || text(event?.replyTo) ||
     text(parseSessionKey(sessionKey).peerId);
@@ -281,10 +379,23 @@ function requestLimit(config) {
 function abortMessage(job, config) {
   const limit = requestLimit(config);
   const skillName = text(job.skillName) || "skill";
+  const metrics = job?.payload?.metrics ?? {};
+  const abortInterface = text(metrics.abortInterface);
+  const abortCount = Number.isInteger(metrics.abortCount) ? metrics.abortCount : null;
   if (text(config?.locale) === "en") {
-    return `Skill "${skillName}" exceeded the request limit (${limit} per interface); this run was stopped.`;
+    const lines = [
+      `Skill "${skillName}" exceeded the request limit (${limit} per interface); this run was stopped.`,
+    ];
+    if (abortInterface) lines.push(`Interface: ${abortInterface}`);
+    lines.push(`Limit: ${limit} request(s) per interface`);
+    if (abortCount !== null) lines.push(`Blocked at request #${abortCount}`);
+    return lines.join("\n");
   }
-  return `Skill「${skillName}」请求次数超过上限（单接口 ${limit} 次），已终止本次执行。`;
+  const lines = [`⚠️ Skill「${skillName}」请求次数超过上限，本次执行已终止。`];
+  if (abortInterface) lines.push(`接口：${abortInterface}`);
+  lines.push(`上限：单接口 ${limit} 次`);
+  if (abortCount !== null) lines.push(`拦截：第 ${abortCount} 次请求`);
+  return lines.join("\n");
 }
 
 function parseSessionKey(value) {
@@ -303,11 +414,11 @@ function parseSessionKey(value) {
 
 // One exec event per execution, derived from the trusted tool event. Commands
 // are collapsed to a single line and never include stderr/cookie material.
-function execTraceEvent(executionId, event, at) {
+function execTraceEvent(executionId, event, at, seq) {
   const failed = Boolean(event?.error);
   const traceEvent = {
-    eventId: `${executionId}:exec`,
-    seq: 1,
+    eventId: `${executionId}:${seq}`,
+    seq,
     occurredAt: new Date(at).toISOString(),
     kind: "exec",
     status: failed ? "error" : "ok",

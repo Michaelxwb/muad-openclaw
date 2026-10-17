@@ -20,7 +20,7 @@ description: 指导用户写一个满足 muad claw 格式的自建 Skill。用�
 
 每个自建 Skill 都要先确认这几件事，缺一项都要明确补上或明确不需要：
 
-1. **`muad.skill.json` 清单文件**：所有自建 Skill 都要有，声明 name/platforms/runtime/version 等元数据。详见 [`references/skill-manifest.md`](references/skill-manifest.md)。
+1. **`muad.skill.json` 清单文件**：所有自建 Skill 都要有，声明 name/author/platforms/runtime/version 等元数据。`author` 必填，写作者姓名/工号/用户名，便于后续追溯。详见 [`references/skill-manifest.md`](references/skill-manifest.md)。
 2. **对接平台 → 使用 `muad_skill_http.platform_request`**：Skill 访问受保护的业务平台时，脚本里调用 `muad_skill_http.platform_request("<平台名>", "<METHOD>", "<path>")`。Cookie、CSRF、Host、平台静态头与每请求新的 `Traceid` 都由 SDK 统一构造；不要手工拼装请求头，也不要直接调用 `session-manager` 或 `requests`。详见 [`references/http-headers.md`](references/http-headers.md) 与 [`references/session-manager.md`](references/session-manager.md)。
 3. **有输出文件 → 接入 SKILL_OUTPUT_DIR**：Skill 若要写文件（报告、临时结果），必须写到环境变量 `SKILL_OUTPUT_DIR` 指向的目录，**不要写 Skill 根目录（只读）或 `/tmp`（不隔离不持久）**。详见 [`references/skill-output-dir.md`](references/skill-output-dir.md)。
 4. **长耗时 → 主动进度通知**：脚本预计 >10s 或分多个阶段时，建议接入 `muad-progress`，让用户在 IM 里实时看到逐节点进度。见 [`references/progress-notify.md`](references/progress-notify.md)。
@@ -29,12 +29,13 @@ description: 指导用户写一个满足 muad claw 格式的自建 Skill。用�
 
 ### Step 1：确认 skill 的形态与边界
 
-先问用户四件事（一次问完，不要挤牙膏）：
+先问用户五件事（一次问完，不要挤牙膏）：
 
-1. **skill 名**：小写字母、数字、`-` 或 `_`，必须以字母开头。建议与平台名**显式区分**（见 [`references/naming-pitfalls.md`](references/naming-pitfalls.md)）。
-2. **是否要对接业务平台**：要的话问平台名（Console 里配置的自由字符串，如 `mssw`、`smoke_platform`）；可能对接多个平台（如 health-checkup-report 同时对接 `mssw` + `mssp`），每个平台各传各的平台名给 `platform_request`。
-3. **是否有输出文件**：要写报告/临时文件的话，确认文件名与格式。
-4. **是否长耗时**：脚本预计 >10s 或分多个阶段时，建议接入**主动进度通知**（`muad-progress`）。
+1. **作者署名**：必填，写姓名/工号/用户名，用于后续追溯。优先使用当前用户可识别的署名；无法确定时询问用户，禁止留空。
+2. **skill 名**：小写字母、数字、`-` 或 `_`，必须以字母开头。建议与平台名**显式区分**（见 [`references/naming-pitfalls.md`](references/naming-pitfalls.md)）。
+3. **是否要对接业务平台**：要的话问平台名（Console 里配置的自由字符串，如 `mssw`、`smoke_platform`）；可能对接多个平台（如 health-checkup-report 同时对接 `mssw` + `mssp`），每个平台各传各的平台名给 `platform_request`。
+4. **是否有输出文件**：要写报告/临时文件的话，确认文件名与格式。
+5. **是否长耗时**：脚本预计 >10s 或分多个阶段时，建议接入**主动进度通知**（`muad-progress`）。
 
 实现语言固定 Python，不需要询问。
 
@@ -59,6 +60,7 @@ skill-staging/<skill名>/
 ```json
 {
   "name": "<skill名>",
+  "author": "<作者姓名/工号>",
   "platforms": ["<平台名>"],
   "runtime": "script",
   "version": "0.1.0",
@@ -99,6 +101,7 @@ body 用祈使句写指令，遵循"渐进式披露"——核心流程放 SKILL.
 写完草稿后，逐条对照检查：
 
 - [ ] `muad.skill.json` 存在且 JSON 合法，`name` 与 SKILL.md frontmatter `name`、目录名一致
+- [ ] `muad.skill.json` 的 `author` 非空，写的是可追溯的作者姓名/工号/用户名
 - [ ] `entrypoint` 若声明，指向 `scripts/run.py` 等 `.py` 文件
 - [ ] 若声明了 `platforms`：脚本调用 `muad_skill_http.platform_request`，平台名与 `platforms` 一致
 - [ ] 脚本没有 `import requests`/`httpx`/`urllib.request` 直连，没有手工拼 `Cookie`/CSRF/`Traceid`，没有用 `subprocess` 调 `curl`/`wget`

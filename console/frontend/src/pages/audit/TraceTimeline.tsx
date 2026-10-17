@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { Button, Empty, Tag } from "@douyinfe/semi-ui";
+import { Button, Empty, Tag, Typography } from "@douyinfe/semi-ui";
 import type { SkillTraceEvent } from "../../api";
 import styles from "../Audit.module.css";
 
@@ -71,6 +71,13 @@ function TraceEventRow({ event }: { event: SkillTraceEvent }) {
       </Tag>
       <div className={styles.traceEventBody}>
         <div className={styles.traceEventSummary}>{event.summary || "-"}</div>
+        {event.kind === "http" && event.traceId && (
+          <div className={styles.traceEventTraceId}>
+            <Typography.Text type="tertiary" size="small" copyable={{ content: event.traceId }}>
+              {`${t("audit.trace.traceId")}: ${event.traceId}`}
+            </Typography.Text>
+          </div>
+        )}
         {event.detail && <pre className={styles.traceEventDetail}>{event.detail}</pre>}
       </div>
       <span className={styles.traceDuration}>{formatDuration(event.durationMs)}</span>

@@ -543,6 +543,7 @@ export interface SkillTraceEvent {
   durationMs?: number;
   summary: string;
   detail?: string;
+  traceId?: string;
 }
 
 export interface SkillExecutionMetrics {

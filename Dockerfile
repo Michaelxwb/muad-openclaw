@@ -1,5 +1,5 @@
 # muad-openclaw 应用镜像
-# 在基础镜像上叠加业务插件代码（bin/ tools/ skills/ entrypoint）
+# 在基础镜像上叠加业务插件代码（bin/ tools/ entrypoint）
 # 变更频率：每次业务代码发布
 #
 # 构建参数:
@@ -87,7 +87,6 @@ COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
 COPY --from=runtime-guard-deps /build/runtime-guard/node_modules /opt/muad/muad-runtime-guard/node_modules
 COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
 COPY tools/shared /opt/muad/shared
-COPY skills /opt/openclaw-skills
 COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh
 
 RUN set -eux; \
@@ -100,7 +99,7 @@ RUN set -eux; \
     chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-progress \
       /opt/muad/muad-runtime-guard /opt/muad/shared; \
     chown -R node:node /opt/muad/session-manager /opt/muad/muad-progress /opt/muad/muad-runtime-guard \
-      /opt/muad/shared /opt/openclaw-skills; \
+      /opt/muad/shared; \
     su node -c "node /opt/muad/runtime-image-self-check.mjs --image-only"
 
 USER node

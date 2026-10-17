@@ -71,6 +71,7 @@ const trace: SkillExecutionTrace = {
       durationMs: 310,
       summary: "GET mssw /api/v1/targets/{id}",
       detail: "",
+      traceId: "6f0e4b8a-6c1f-4a4e-9d7a-2f0f6a7b8c9d",
     },
     {
       eventId: "event-3",
@@ -166,6 +167,8 @@ describe("execution trace drawer", () => {
     const rows = screen.getAllByTestId("trace-event");
     expect(rows.map((row) => row.dataset.eventId)).toEqual(["event-1", "event-2", "event-3"]);
     expect(rows[1]).toHaveTextContent("GET mssw /api/v1/targets/{id}");
+    expect(rows[1]).toHaveTextContent("Traceid: 6f0e4b8a-6c1f-4a4e-9d7a-2f0f6a7b8c9d");
+    expect(rows[2]).not.toHaveTextContent("Traceid");
     expect(rows[1]).toHaveTextContent("200");
     expect(rows[1]).toHaveTextContent("310ms");
     expect(await screen.findByText("python3 scripts/run.py")).toBeInTheDocument();

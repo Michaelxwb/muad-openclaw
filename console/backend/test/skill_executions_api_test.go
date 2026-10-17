@@ -271,6 +271,7 @@ type skillTraceEventView struct {
 	DurationMS *int      `json:"durationMs"`
 	Summary    string    `json:"summary"`
 	Detail     string    `json:"detail"`
+	TraceID    string    `json:"traceId"`
 }
 
 type skillExecutionTraceView struct {
@@ -309,7 +310,8 @@ func TestSkillExecutionTraceWritesReadsAndIsIdempotent(t *testing.T) {
 		`"abortInterface":"GET mssw /api/v1/targets/{id}","abortCount":1001},` +
 		`"events":[` +
 		`{"eventId":"ev-2","seq":2,"occurredAt":"2026-10-17T06:02:03Z","kind":"http",` +
-		`"status":"error","durationMs":310,"summary":"GET mssw /targets","detail":"status=500"},` +
+		`"status":"error","durationMs":310,"summary":"GET mssw /targets","detail":"status=500",` +
+		`"traceId":"7d8f4c8e-2b0a-4f1d-9e63-5f0f1a2b3c4d"},` +
 		`{"eventId":"ev-1","seq":1,"occurredAt":"2026-10-17T06:02:01Z","kind":"exec",` +
 		`"status":"ok","durationMs":12400,"summary":"python3 run.py"}]}`
 
@@ -345,7 +347,9 @@ func TestSkillExecutionTraceWritesReadsAndIsIdempotent(t *testing.T) {
 	if len(trace.Events) != 2 || trace.Events[0].Seq != 1 || trace.Events[1].Seq != 2 ||
 		trace.Events[0].Kind != repo.SkillTraceKindExec || trace.Events[0].Summary != "python3 run.py" ||
 		trace.Events[0].DurationMS == nil || *trace.Events[0].DurationMS != 12400 ||
-		trace.Events[1].Status != repo.SkillTraceStatusError || trace.Events[1].Detail != "status=500" {
+		trace.Events[1].Status != repo.SkillTraceStatusError || trace.Events[1].Detail != "status=500" ||
+		trace.Events[1].TraceID != "7d8f4c8e-2b0a-4f1d-9e63-5f0f1a2b3c4d" ||
+		trace.Events[0].TraceID != "" {
 		t.Fatalf("trace events = %+v", trace.Events)
 	}
 
@@ -428,6 +432,9 @@ func TestSkillExecutionTraceRejectsInvalidPayloads(t *testing.T) {
 		{"oversized detail", `{"agentId":"alice","metrics":{"requestCount":1},` +
 			`"events":[{"eventId":"ev-1","seq":1,"kind":"exec","status":"ok",` +
 			`"summary":"x","detail":"` + strings.Repeat("a", 2049) + `"}]}`},
+		{"oversized trace id", `{"agentId":"alice","metrics":{"requestCount":1},` +
+			`"events":[{"eventId":"ev-1","seq":1,"kind":"http","status":"ok",` +
+			`"summary":"x","traceId":"` + strings.Repeat("a", 129) + `"}]}`},
 		{"too many events", tooManyTraceEventsBody(2001)},
 	}
 	for _, tt := range cases {

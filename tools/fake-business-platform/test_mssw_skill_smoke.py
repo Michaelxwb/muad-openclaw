@@ -196,7 +196,7 @@ def main() -> int:
             assert result.returncode == 0, "run.py failed: %s" % (result.stderr or result.stdout)
             payload = json.loads(result.stdout.strip().splitlines()[-1])
             assert payload["httpStatus"] == 200, payload
-            trace_id = payload.get("traceId")
+            trace_id = payload.get("trace") or payload.get("traceId")
             assert trace_id and uuid.UUID(str(trace_id)).version == 4, payload
 
             stats = requests.get(base_url + "/__stats", timeout=5).json()["counts"]
@@ -211,6 +211,9 @@ def main() -> int:
             assert limit_result.returncode == 86, (
                 "limit probe expected exit 86, got %s: %s" % (limit_result.returncode, limit_result.stderr)
             )
+            summary = json.loads(limit_result.stdout.strip().splitlines()[-1])
+            assert summary["status"] == "LIMIT_TRIGGERED", limit_result.stdout
+            assert summary["sent"] == 3 and summary["limit"] == 3, summary
             events = [json.loads(line) for line in limit_spool.read_text(encoding="utf-8").splitlines() if line.strip()]
             aborts = [event for event in events if event.get("kind") == "abort"]
             assert aborts and aborts[-1].get("count") == 4, events

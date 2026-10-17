@@ -30,11 +30,13 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     "before_tool_call", "before_agent_finalize", "reply_payload_sending", "agent_end",
     "resolve_exec_env", "resolve_exec_env", "before_agent_run", "agent_end",
     "resolve_exec_env", "after_tool_call", "before_tool_call", "reply_payload_sending",
-    "before_dispatch", "before_agent_run", "before_tool_call", "after_tool_call", "after_tool_call",
+    "before_dispatch", "before_agent_run", "before_tool_call", "agent_end",
+    "after_tool_call", "after_tool_call",
   ]);
   assert.deepEqual(registration.hooks[20].options, { priority: -100, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[21].options, { priority: -100, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[22].options, { priority: -100, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[23].options, { priority: 900, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[0].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[1].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[4].options, { priority: -1000, timeoutMs: 35_000 });

@@ -181,7 +181,7 @@ func makeReviewSkillBundle(t *testing.T, name string) []byte {
 	writeTarFile(t, tarball, name+"/SKILL.md", []byte(
 		"---\nname: "+name+"\ndescription: admin review fixture.\n---\n# "+name+"\n\n"+reviewSkillMarker+"\n"))
 	writeTarFile(t, tarball, name+"/muad.skill.json",
-		[]byte(`{"name":"`+name+`","runtime":"script"}`))
+		[]byte(`{"name":"`+name+`","author":"Test Author","runtime":"script"}`))
 	if err := tarball.Close(); err != nil {
 		t.Fatalf("close review bundle tar: %v", err)
 	}
