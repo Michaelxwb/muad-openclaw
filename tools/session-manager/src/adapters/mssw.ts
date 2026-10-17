@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
 import { createInsecureFetch } from "./insecure-fetch.js";
+import { buildRequestProfile, stringMap } from "./request-profile.js";
 import {
   type AdapterRefreshInput,
   type AdapterValidateInput,
@@ -9,9 +10,12 @@ import {
   type LoginFailReason,
   PlatformAdapterError,
   type PlatformAdapter,
+  type PlatformRequestProfile,
+  type RequestProfileCsrf,
   type SameSite,
   type SessionCookie,
 } from "./types.js";
+import type { ScopedCredential } from "../types.js";
 
 const HMAC_SHA256_ALGO = "HMAC-SHA256";
 const SIGN_DATE_HEADER = "sign-date";
@@ -86,6 +90,31 @@ export class MSSWSessionAdapter implements PlatformAdapter {
     this.platform = platform;
     this.#branchTag = branchTag;
     this.#log = log;
+  }
+
+  requestProfile(credential: ScopedCredential): PlatformRequestProfile {
+    return buildRequestProfile(
+      this.platform,
+      credential.credentials,
+      this.profileCsrf(),
+      this.profileStaticHeaders(credential.credentials),
+      this.#log,
+    );
+  }
+
+  // Platform differences are limited to the static header set; the login flow and
+  // CSRF cookie mapping are shared by mssw/mssp.
+  protected profileCsrf(): RequestProfileCsrf[] {
+    return [{ cookie: CSRF_COOKIE_NAME, header: "x-csrf-token" }];
+  }
+
+  protected profileStaticHeaders(credentials: Record<string, unknown>): Record<string, string> {
+    return stringMap(credentials.staticHeaders);
+  }
+
+  protected logProfileFallback(missing: readonly string[]): void {
+    if (missing.length === 0) return;
+    this.#log(`[session-manager] platform=${this.platform} request profile fallback missing=${missing.join(",")}`);
   }
 
   async refresh(input: AdapterRefreshInput): Promise<AdapterSessionState> {
