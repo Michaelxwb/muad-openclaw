@@ -1,5 +1,6 @@
 import { AdapterRegistry, createInstalledAdapterRegistry } from "./adapters/registry.js";
-import { PlatformAdapterError, type AdapterSessionState } from "./adapters/types.js";
+import { defaultRequestProfile } from "./adapters/request-profile.js";
+import { PlatformAdapterError, type AdapterSessionState, type PlatformRequestProfile } from "./adapters/types.js";
 import { DEFAULT_ADAPTER_TIMEOUT_MS, SESSION_MANAGER_VERSION } from "./constants/runtime.js";
 import {
   SessionManagerError,
@@ -64,7 +65,7 @@ export class SessionService {
       skillName: credential.skillName,
       humanUserId: credential.humanUserId,
       podId: credential.podId,
-      platforms: perPlatform.map((entry) => skillSessionPlatform(entry.state, entry.stored)),
+      platforms: perPlatform.map((entry) => skillSessionPlatform(entry.state, entry.stored, entry.requestProfile)),
     });
     return {
       version: SESSION_MANAGER_VERSION,
@@ -81,11 +82,16 @@ export class SessionService {
 
   async #getStateForPlatform(
     context: TrustedContext, credential: ResolvedCredential, platform: ResolvedPlatformCredential,
-  ): Promise<{ state: PlatformSessionState; stored: StoredSession }> {
+  ): Promise<{ state: PlatformSessionState; stored: StoredSession; requestProfile: PlatformRequestProfile }> {
     const scoped = scopedCredential(credential, platform);
+    const requestProfile = this.#requestProfile(scoped);
     const cached = await this.#store.read(scoped);
     if (cached && await this.#cacheIsValid(scoped, cached)) {
-      return { state: await this.#platformState(context, scoped, cached, "cache"), stored: cached };
+      return {
+        state: await this.#platformState(context, scoped, cached, "cache"),
+        stored: cached,
+        requestProfile,
+      };
     }
     const paths = this.#store.paths(scoped.agentId, scoped.platform);
     await this.#store.ensureDirectory(paths);
@@ -100,7 +106,20 @@ export class SessionService {
     return {
       state: await this.#platformState(context, scoped, resolved.stored, resolved.source),
       stored: resolved.stored,
+      requestProfile,
     };
+  }
+
+  #requestProfile(credential: ScopedCredential): PlatformRequestProfile {
+    const adapter = this.#adapters.get(credential.platform);
+    if (typeof adapter.requestProfile === "function") {
+      try {
+        return adapter.requestProfile(credential);
+      } catch {
+        this.#log(`[session-manager] platform=${credential.platform} request profile fallback=default reason=adapter_error`);
+      }
+    }
+    return defaultRequestProfile(credential.platform, credential.credentials, this.#log);
   }
 
   async #resolve(context: TrustedContext, skillName: string): Promise<ResolvedCredential> {
@@ -284,7 +303,7 @@ function platformState(
 }
 
 function skillSessionPlatform(
-  state: PlatformSessionState, stored: StoredSession,
+  state: PlatformSessionState, stored: StoredSession, requestProfile: PlatformRequestProfile,
 ): SkillSessionPlatform {
   return {
     platform: state.platform,
@@ -293,6 +312,7 @@ function skillSessionPlatform(
     credentialFingerprint: state.credentialFingerprint,
     cookies: stored.state.cookies,
     storageState: stored.state.storageState,
+    requestProfile,
   };
 }
 

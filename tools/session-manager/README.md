@@ -126,6 +126,45 @@ session-manager 的登录逻辑以 `PlatformAdapter` 形式接入，按平台名
 
 新增一个复用 mssw 协议的平台时，照此再加一个 ~12 行的薄子类并在 `registry.ts` 注册即可，无需复制签名/错误映射逻辑。
 
+### 平台 request profile（session 文件扩展）
+
+`get-state` 写出的 `<skill>.session.json` 在每个平台 section 追加 `requestProfile`，
+供 `muad_skill_http.platform_request` 组装业务请求头；CLI stdout 不包含该字段。
+
+```json
+{
+  "platforms": {
+    "mssw": {
+      "cookies": [{ "name": "soc-token", "value": "..." }],
+      "storageState": { "cookies": [], "origins": [] },
+      "expiresAt": "...",
+      "credentialFingerprint": "sha256:...",
+      "requestProfile": {
+        "baseUrl": "https://sitmssw.soar.sangfor.com",
+        "hostHeader": { "Host": "inner.sangfor.com.cn" },
+        "referer": "https://sitmssw.soar.sangfor.com/index.html",
+        "csrf": [{ "cookie": "csrf_token", "header": "x-csrf-token" }],
+        "staticHeaders": {},
+        "traceHeader": "Traceid",
+        "extraAllowed": true
+      }
+    }
+  }
+}
+```
+
+凭据 JSON 中与 profile 相关的可选字段：
+
+- `hostHeader`：对象，透传为请求头（如 `{ "Host": "inner.sangfor.com.cn" }`）。
+- `referer`：平台页面地址。
+- `staticHeaders`：对象，平台级固定头；mssw/mssp 通用。
+- `csrfToken` / `timezone`：mssp 专用，分别映射为 `X-CSRFToken` 与 `timezone`。
+- `traceHeader`：默认为 `Traceid`；显式设为 `null` 可关闭。
+
+`requestProfile` 只从凭据读取值，不在代码里写死平台 token。旧凭据缺少可选字段时
+profile 使用空值/默认值，并通过日志输出一条 `request profile fallback missing=...`
+诊断，不影响 `get-state` 成功。
+
 ## 接入一个新平台的登录逻辑
 
 接入新平台分两种路径，按平台登录协议复杂度选择。
