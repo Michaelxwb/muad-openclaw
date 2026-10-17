@@ -133,6 +133,7 @@ func sessionCancelNote(result gateway.SessionCancelResult) string {
 	}
 	b.WriteString("上一轮的用户指令已作废：本轮不要执行、补跑、续跑或与新消息合并执行该任务；")
 	b.WriteString("除非用户在本轮消息中明确要求重跑。这不是模型执行失败。")
+	b.WriteString("如果回复中提到上一轮任务，必须明确说明是管理员从控制台终止，不要描述为执行失败或被中断。")
 	return b.String()
 }
 
