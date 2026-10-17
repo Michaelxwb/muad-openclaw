@@ -581,6 +581,7 @@
 - S-06: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - S-06: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
 
 ### Log
 
@@ -698,6 +699,7 @@
 - E-23: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - B-21: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - S-23: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-23: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
 
 ### Log
 
@@ -786,6 +788,8 @@
 - B-24: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 - S-21: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
 - S-24: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-21: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-24: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
 
 ### Log
 
@@ -802,7 +806,7 @@
 - **Priority**: P0
 - **Depends**: TASK-005, TASK-006, TASK-007, TASK-008, TASK-010, TASK-011
 - **Source**: `skill-execution-control-and-review.backend.design.md#2.5.2 功能验收场景`, `skill-execution-control-and-review.backend.design.md#3.2 架构设计`（兼容性与渐进迁移）, `skill-execution-control-and-review.backend.design.md#4.2 发布与回滚`
-- **Spec-Refs**: backend-code-quality-performance#RULE-backend-quality-001, runtime-skill-execution#RULE-runtime-skill-001, runtime-isolation-and-security#RULE-runtime-security-001, runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+- **Spec-Refs**:
 - **Acceptance-Refs**: S-01, S-02, S-05, S-14, S-16, E-11, RULE-13
 
 ### Description
@@ -884,6 +888,11 @@
 - S-05: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
 - S-14: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
 - S-16: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-14: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
 
 ### Log
 
