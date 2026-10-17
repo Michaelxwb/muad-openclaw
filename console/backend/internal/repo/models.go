@@ -320,25 +320,31 @@ type SkillExecutionMetrics struct {
 	UpdatedAt         time.Time
 }
 
-// SkillExecutionStatsFilter scopes the grouped Skill health query.
+// SkillExecutionStatsFilter scopes the grouped Skill health query. The flag
+// thresholds are supplied by the API layer so the rule stays in one place.
 type SkillExecutionStatsFilter struct {
-	Since       time.Time
-	Limit       int
-	Scope       string
-	HumanUserID string
+	Since                time.Time
+	Limit                int
+	Scope                string
+	HumanUserID          string
+	FlagRequestThreshold int
+	FlagErrorRate        float64
 }
 
 // SkillExecutionStat is one (skill_name, skill_scope, human_user_id) group.
 type SkillExecutionStat struct {
-	SkillName       string
-	SkillScope      string
-	HumanUserID     string
-	HumanUserName   string
-	Executions      int
-	AbortedCount    int
-	SumErrors       int64
-	MaxRequests     int
-	LastExecutionAt time.Time
+	SkillName         string
+	SkillScope        string
+	HumanUserID       string
+	HumanUserName     string
+	Executions        int
+	AbortedCount      int
+	FlaggedCount      int
+	SumRequests       int64
+	SumErrors         int64
+	MaxRequests       int
+	TopInterfacesJSON string
+	LastExecutionAt   time.Time
 }
 
 // NotifyChannel types supported by the alert dispatcher.

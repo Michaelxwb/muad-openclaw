@@ -1,16 +1,23 @@
 package repo
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
 )
 
 // ErrInvalidSkillTrace rejects malformed trace payloads at the repo boundary.
-var ErrInvalidSkillTrace = errors.New("repo: invalid Skill trace")
+var ErrInvalidSkillTrace = &Error{Code: errcode.InvalidSkillTrace, Msg: "repo: invalid Skill trace"}
+
+// DefaultSkillRequestLimit is the per-interface cap applied when the global
+// resource row has never been written.
+const DefaultSkillRequestLimit = 1000
 
 const skillTraceEventColumns = `event_id, execution_id, seq, occurred_at, kind,
 	status, duration_ms, summary, COALESCE(detail, '')`
@@ -20,25 +27,64 @@ const skillExecutionMetricsColumns = `execution_id, request_count, error_count,
 	aborted, COALESCE(abort_reason, ''), COALESCE(abort_interface, ''),
 	abort_count, updated_at`
 
+// StoreSkillExecutionTrace persists one execution's summary and event batch in
+// a single transaction. A retried upload stores only events whose event_id is
+// not persisted yet, and the metrics upsert keeps aborted monotonic.
+func (s *Store) StoreSkillExecutionTrace(
+	ctx context.Context, executionID string, metrics SkillExecutionMetrics, events []SkillTraceEvent,
+) (int, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin Skill trace write: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := upsertSkillExecutionMetrics(ctx, tx, metrics); err != nil {
+		return 0, err
+	}
+	stored, err := insertSkillTraceEvents(ctx, tx, executionID, events)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit Skill trace write: %w", err)
+	}
+	return stored, nil
+}
+
 // InsertSkillTraceEvents inserts events for one execution idempotently by
 // event_id. A retried batch stores only events that were not persisted yet and
 // returns that count.
-func (s *Store) InsertSkillTraceEvents(executionID string, events []SkillTraceEvent) (int, error) {
+func (s *Store) InsertSkillTraceEvents(
+	ctx context.Context, executionID string, events []SkillTraceEvent,
+) (int, error) {
 	if len(events) == 0 {
 		return 0, nil
 	}
-	tx, err := s.db.Begin()
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin Skill trace insert: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	stored, err := insertSkillTraceEvents(ctx, tx, executionID, events)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit Skill trace insert: %w", err)
+	}
+	return stored, nil
+}
+
+func insertSkillTraceEvents(
+	ctx context.Context, tx *sql.Tx, executionID string, events []SkillTraceEvent,
+) (int, error) {
 	stored := 0
 	for _, event := range events {
 		prepared, err := prepareSkillTraceEvent(executionID, event)
 		if err != nil {
 			return 0, err
 		}
-		result, err := tx.Exec(`INSERT INTO skill_trace_events (
+		result, err := tx.ExecContext(ctx, `INSERT INTO skill_trace_events (
 			event_id, execution_id, seq, occurred_at, kind, status,
 			duration_ms, summary, detail
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -55,9 +101,6 @@ func (s *Store) InsertSkillTraceEvents(executionID string, events []SkillTraceEv
 			return 0, fmt.Errorf("count Skill trace insert: %w", err)
 		}
 		stored += int(affected)
-	}
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit Skill trace insert: %w", err)
 	}
 	return stored, nil
 }
@@ -92,11 +135,13 @@ func validSkillTraceStatus(status string) bool {
 
 // ListSkillTraceEvents returns one execution's timeline in seq order, capped at
 // MaxSkillTraceEvents.
-func (s *Store) ListSkillTraceEvents(executionID string, limit int) ([]SkillTraceEvent, error) {
+func (s *Store) ListSkillTraceEvents(
+	ctx context.Context, executionID string, limit int,
+) ([]SkillTraceEvent, error) {
 	if limit <= 0 || limit > MaxSkillTraceEvents {
 		limit = MaxSkillTraceEvents
 	}
-	rows, err := s.db.Query(`SELECT `+skillTraceEventColumns+`
+	rows, err := s.db.QueryContext(ctx, `SELECT `+skillTraceEventColumns+`
 		FROM skill_trace_events WHERE execution_id = ? ORDER BY seq ASC LIMIT ?`,
 		strings.TrimSpace(executionID), limit)
 	if err != nil {
@@ -128,12 +173,26 @@ func (s *Store) ListSkillTraceEvents(executionID string, limit int) ([]SkillTrac
 // UpsertSkillExecutionMetrics stores one execution summary. Non-abort counters
 // follow the latest payload; the aborted flag and its detail are monotonic so a
 // later non-aborted snapshot cannot erase an observed abort.
-func (s *Store) UpsertSkillExecutionMetrics(metrics SkillExecutionMetrics) error {
+func (s *Store) UpsertSkillExecutionMetrics(
+	ctx context.Context, metrics SkillExecutionMetrics,
+) error {
+	return upsertSkillExecutionMetrics(ctx, s.db, metrics)
+}
+
+// sqlExecerContext is satisfied by both *sql.DB and *sql.Tx so the metrics
+// upsert can run standalone or inside the combined trace transaction.
+type sqlExecerContext interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+func upsertSkillExecutionMetrics(
+	ctx context.Context, execer sqlExecerContext, metrics SkillExecutionMetrics,
+) error {
 	prepared, err := prepareSkillExecutionMetrics(metrics)
 	if err != nil {
 		return err
 	}
-	_, err = s.db.Exec(`INSERT INTO skill_execution_metrics (
+	_, err = execer.ExecContext(ctx, `INSERT INTO skill_execution_metrics (
 		execution_id, request_count, error_count, distinct_hosts, max_burst_per_10s,
 		top_interfaces_json, detail_truncated, aborted, abort_reason,
 		abort_interface, abort_count, updated_at
@@ -189,8 +248,10 @@ func prepareSkillExecutionMetrics(metrics SkillExecutionMetrics) (SkillExecution
 }
 
 // GetSkillExecutionMetrics returns one execution's summary or ErrNotFound.
-func (s *Store) GetSkillExecutionMetrics(executionID string) (SkillExecutionMetrics, error) {
-	row := s.db.QueryRow(`SELECT `+skillExecutionMetricsColumns+`
+func (s *Store) GetSkillExecutionMetrics(
+	ctx context.Context, executionID string,
+) (SkillExecutionMetrics, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT `+skillExecutionMetricsColumns+`
 		FROM skill_execution_metrics WHERE execution_id = ?`, strings.TrimSpace(executionID))
 	var metrics SkillExecutionMetrics
 	var detailTruncated, aborted int
@@ -221,28 +282,55 @@ func (s *Store) GetSkillExecutionMetrics(executionID string) (SkillExecutionMetr
 
 // QuerySkillExecutionStats groups executions by (skill_name, skill_scope,
 // human_user_id) so same-named private Skills of different users stay separate.
-func (s *Store) QuerySkillExecutionStats(filter SkillExecutionStatsFilter) ([]SkillExecutionStat, error) {
+// FlaggedCount applies the caller's request-count and error-rate thresholds per
+// execution; TopInterfaces come from the group's highest-request execution.
+func (s *Store) QuerySkillExecutionStats(
+	ctx context.Context, filter SkillExecutionStatsFilter,
+) ([]SkillExecutionStat, error) {
 	limit := filter.Limit
 	if limit <= 0 {
 		limit = 50
 	}
+	since := formatTime(filter.Since)
 	where := ` WHERE r.started_at >= ?`
-	args := []any{formatTime(filter.Since)}
+	whereArgs := []any{since}
 	if filter.Scope != "" {
 		where += ` AND r.skill_scope = ?`
-		args = append(args, filter.Scope)
+		whereArgs = append(whereArgs, filter.Scope)
 	}
 	if filter.HumanUserID != "" {
 		where += ` AND r.human_user_id = ?`
-		args = append(args, filter.HumanUserID)
+		whereArgs = append(whereArgs, filter.HumanUserID)
 	}
+	// SELECT-list placeholders come first: flag threshold, flag error rate, and
+	// the window bound of the top-interfaces subquery.
+	args := []any{filter.FlagRequestThreshold, filter.FlagErrorRate, since}
+	args = append(args, whereArgs...)
 	args = append(args, limit)
-	rows, err := s.db.Query(`SELECT r.skill_name, r.skill_scope, r.human_user_id,
+	rows, err := s.db.QueryContext(ctx, `SELECT r.skill_name, r.skill_scope, r.human_user_id,
 		COALESCE(MAX(u.display_name), ''),
 		COUNT(r.execution_id) AS executions,
 		COALESCE(SUM(CASE WHEN m.aborted = 1 THEN 1 ELSE 0 END), 0) AS aborted_count,
+		COALESCE(SUM(CASE
+			WHEN m.aborted = 1
+			  OR (COALESCE(m.request_count, 0) > 0 AND COALESCE(m.request_count, 0) >= ?)
+			  OR (COALESCE(m.request_count, 0) > 0
+			      AND CAST(COALESCE(m.error_count, 0) AS REAL) / m.request_count >= ?)
+			THEN 1 ELSE 0 END), 0) AS flagged_count,
+		COALESCE(SUM(COALESCE(m.request_count, 0)), 0) AS sum_requests,
 		COALESCE(SUM(COALESCE(m.error_count, 0)), 0) AS sum_errors,
 		COALESCE(MAX(m.request_count), 0) AS max_requests,
+		COALESCE((
+			SELECT m2.top_interfaces_json
+			FROM skill_execution_metrics m2
+			JOIN skill_execution_records r2 ON r2.execution_id = m2.execution_id
+			WHERE r2.skill_name = r.skill_name
+			  AND r2.skill_scope = r.skill_scope
+			  AND r2.human_user_id = r.human_user_id
+			  AND r2.started_at >= ?
+			ORDER BY m2.request_count DESC, r2.started_at DESC
+			LIMIT 1
+		), '[]') AS top_interfaces_json,
 		MAX(r.started_at) AS last_execution_at
 		FROM skill_execution_records r
 		LEFT JOIN skill_execution_metrics m ON m.execution_id = r.execution_id
@@ -259,8 +347,9 @@ func (s *Store) QuerySkillExecutionStats(filter SkillExecutionStatsFilter) ([]Sk
 		var stat SkillExecutionStat
 		var lastExecutionAt string
 		if err := rows.Scan(&stat.SkillName, &stat.SkillScope, &stat.HumanUserID,
-			&stat.HumanUserName, &stat.Executions, &stat.AbortedCount,
-			&stat.SumErrors, &stat.MaxRequests, &lastExecutionAt); err != nil {
+			&stat.HumanUserName, &stat.Executions, &stat.AbortedCount, &stat.FlaggedCount,
+			&stat.SumRequests, &stat.SumErrors, &stat.MaxRequests,
+			&stat.TopInterfacesJSON, &lastExecutionAt); err != nil {
 			return nil, fmt.Errorf("scan Skill execution stat: %w", err)
 		}
 		stat.LastExecutionAt, err = parseRequiredTime(lastExecutionAt, "skill_execution_records.started_at")
@@ -270,6 +359,22 @@ func (s *Store) QuerySkillExecutionStats(filter SkillExecutionStatsFilter) ([]Sk
 		stats = append(stats, stat)
 	}
 	return stats, rows.Err()
+}
+
+// GetSkillRequestLimit returns the configured per-interface request cap
+// (0 = unlimited), falling back to the schema default when resource_global has
+// never been written.
+func (s *Store) GetSkillRequestLimit(ctx context.Context) (int, error) {
+	var limit int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT skill_request_limit FROM resource_global WHERE id = 1`).Scan(&limit)
+	if errors.Is(err, sql.ErrNoRows) {
+		return DefaultSkillRequestLimit, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("read Skill request limit: %w", err)
+	}
+	return limit, nil
 }
 
 func nullableInt(value *int) any {

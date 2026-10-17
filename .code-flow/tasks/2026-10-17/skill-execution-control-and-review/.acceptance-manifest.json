@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "task_file": "skill-execution-control-and-review.md",
-  "task_sha256": "dc202c46b5a12328af3a5c09086cbb49251d70cad39595eeac1b1e47c391819e",
+  "task_sha256": "96f6f334d842142363950c3a7d8c71011ee3c882c55735c61312d5b09dd59a78",
   "scenarios": [
     {
       "id": "S-01",
@@ -312,21 +312,88 @@
       "kind": "functional",
       "boundary": "Console 内部接口 → repo",
       "owner": "TASK-002",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "`cd",
-        "console/backend",
-        "&&",
         "go",
+        "-C",
+        "console/backend",
         "test",
         "./test",
         "-run",
         "SkillExecutionTrace",
-        "-count=1`"
+        "-count=1"
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "a170fbcb71c24d6eb7547b8d14580eaa",
+        "executed_at": "2026-10-17T11:40:32.180731+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "SkillExecutionTrace",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "d9db27575f024b4bacb2b1026a227975",
+          "executed_at": "2026-10-17T11:40:26.647588+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "a170fbcb71c24d6eb7547b8d14580eaa",
+          "executed_at": "2026-10-17T11:40:32.180731+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+        }
+      ]
     },
     {
       "id": "E-02",
@@ -596,13 +663,88 @@
       "kind": "functional",
       "boundary": "stats 分组维度",
       "owner": "TASK-002",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "./test",
+        "-run",
+        "SkillExecutionTrace",
+        "-count=1"
       ],
       "cwd": ".",
       "timeout": 60.0,
-      "depends_on": []
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "a170fbcb71c24d6eb7547b8d14580eaa",
+        "executed_at": "2026-10-17T11:40:32.180731+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "SkillExecutionTrace",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+      },
+      "runs": [
+        {
+          "id": "B-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "d9db27575f024b4bacb2b1026a227975",
+          "executed_at": "2026-10-17T11:40:26.647588+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "B-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "a170fbcb71c24d6eb7547b8d14580eaa",
+          "executed_at": "2026-10-17T11:40:32.180731+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+        }
+      ]
     },
     {
       "id": "B-09",
