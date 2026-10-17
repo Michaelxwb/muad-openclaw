@@ -263,11 +263,12 @@ graph LR
 **session key 推导规则**
 
 ```
-agent:<humanUser.AgentID>:<identity.OpenClawChannel || identity.Channel>:<identity.PeerKind || "direct">:<strings.ToLower(identity.ExternalID)>
+agent:<humanUser.AgentID>:<identity.OpenClawChannel || identity.Channel>:<identity.PeerKind || "direct">:<canonicalPeer>
 ```
 
 约束：
-- 拒绝包含 `:longtask:` 的结果；
+- `direct` 身份的 `canonicalPeer` = `humanUser.AgentID`（runtime 渲染的 `session.identityLinks[agentId]` 的 canonical key；core 用它作为会话 peer）；未链接的 direct / `group` 身份仍用 `strings.ToLower(identity.ExternalID)`。
+- 拒绝包含 `:longtask:` 的结果（同时检查 externalId）。
 - 只接受由 `identityId` 关联出的 identity，且 identity.HumanUserID 必须等于路径中的 humanUserId；
 - 推导结果必须在 E2E 中与 `openclaw sessions --all-agents --json` 的 key 完全一致（含小写化）。
 

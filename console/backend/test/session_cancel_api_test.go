@@ -19,7 +19,7 @@ import (
 
 const (
 	sessionCancelExternalID = "Alice-External"
-	sessionCancelKey        = "agent:alice:wecom:direct:alice-external"
+	sessionCancelKey        = "agent:alice:wecom:direct:alice"
 )
 
 func enableSessionCancel(e *testEnv, podID string) {
