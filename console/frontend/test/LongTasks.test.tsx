@@ -9,6 +9,7 @@ import {
   LONG_TASK_TABLE_SCROLL_X,
   LongTasks,
 } from "../src/pages/LongTasks";
+import tableStyles from "../src/pages/LongTasks.module.css";
 
 const apiMocks = vi.hoisted(() => ({
   listLongTasks: vi.fn(),
@@ -122,6 +123,10 @@ describe("LongTasks", () => {
     expect(podUserLines[0]).toHaveTextContent("pod-a");
     expect(podUserLines[1]).toHaveTextContent("alice");
     expect(podUserLines[2]).toHaveTextContent("张三");
+
+    // 长池名单行截断：承载省略号样式，避免长 key 竖排撑高行
+    const poolKeys = screen.getAllByText("agent:alice:wecom:direct:wx-1");
+    expect(poolKeys[0].className).toContain(tableStyles.clipLine);
 
     fireEvent.click(podButtons[0]);
     expect(onOpenPod).toHaveBeenCalledWith("pod-a");
