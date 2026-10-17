@@ -25,6 +25,7 @@ const (
 	InvalidQrcodeWechatOnly = 40009
 	InvalidDeleteState      = 40010
 	InvalidAllowOverride    = 40011
+	InvalidNotifyWebhook    = 40012
 	// 401xx — 认证授权
 	InvalidCredentials   = 40101
 	Unauthorized         = 40102
@@ -156,6 +157,8 @@ const (
 	InternalListLongTasks             = 50032
 	InternalUpsertLongTasks           = 50033
 	InternalSkillUploadDeadline       = 50034
+	InternalReadNotifyConfig          = 50035
+	InternalSaveNotifyConfig          = 50036
 	// 502xx — 运行时失败
 	RuntimeReadPodLogs               = 50201
 	RuntimeWechatLogin               = 50202
@@ -172,6 +175,7 @@ const (
 	RuntimeTokenRotation             = 50213
 	RuntimeApplyFailed               = 50214
 	RuntimeUpgradeRollbackFailed     = 50215
+	UpstreamNotifyFailed             = 50216
 	// 503xx — 依赖不可用
 	UnavailableBindingCodeService     = 50301
 	UnavailableRuntimeReconciler      = 50302
@@ -184,7 +188,7 @@ const (
 // TestErrorCatalogCoversAllCodes) so a newly added code cannot silently lack a
 // catalog entry and fall back to internal.error at runtime.
 var AllCodes = []int{
-	40001, 40003, 40004, 40005, 40006, 40007, 40008, 40009, 40010, 40011,
+	40001, 40003, 40004, 40005, 40006, 40007, 40008, 40009, 40010, 40011, 40012,
 	40101, 40102, 40103,
 	40201, 40202, 40203, 40204, 40205, 40206, 40207, 40208,
 	40301, 40302, 40303,
@@ -202,7 +206,8 @@ var AllCodes = []int{
 	50001, 50002, 50003, 50004, 50006, 50007, 50008, 50009, 50010,
 	50011, 50012, 50013, 50014, 50015, 50016, 50017, 50018, 50019, 50020,
 	50021, 50022, 50023, 50024, 50025, 50026, 50027, 50028, 50029, 50030, 50031, 50032, 50033, 50034,
+	50035, 50036,
 	50201, 50202, 50203, 50204, 50205, 50206, 50207, 50208, 50209, 50210,
-	50211, 50212, 50213, 50214, 50215,
+	50211, 50212, 50213, 50214, 50215, 50216,
 	50301, 50302, 50303, 50304,
 }

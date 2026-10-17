@@ -18,6 +18,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/notify"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/skillsync"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/web"
@@ -42,6 +43,9 @@ type Server struct {
 	// longTaskCapabilities 是各 Pod 的长任务取消能力快照缓存：由 health probe
 	// 更新（collector 接线），列表与取消入口只读查询，避免逐行 RPC。
 	longTaskCapabilities *gateway.LongTaskCapabilityCache
+	// notifier dispatches operator alerts asynchronously; Close converges it.
+	notifier             *notify.Dispatcher
+	notifyChannelFactory func(webhook string) (notify.Channel, error)
 }
 
 // ReconcileEnqueuer receives Pod IDs whose desired runtime generation changed.
@@ -79,7 +83,11 @@ func NewServer(
 		bindingLimiter:       newBindingAttemptLimiter(10*time.Minute, 10, 4096),
 		loginLimiter:         newBindingAttemptLimiter(10*time.Minute, 5, 4096),
 		longTaskCapabilities: gateway.NewLongTaskCapabilityCache(0),
+		notifyChannelFactory: func(webhook string) (notify.Channel, error) {
+			return notify.NewWeComChannel(webhook)
+		},
 	}
+	server.notifier = notify.New(notify.Options{Provider: server.resolveNotifyChannel})
 	if cfg != nil {
 		codec, err := crypto.NewBindingCodeCodec(cfg.MasterKey)
 		if err != nil {
@@ -102,6 +110,23 @@ func NewServer(
 func (s *Server) WithCleanupWaker(waker CleanupWaker) *Server {
 	s.cleanupWaker = waker
 	return s
+}
+
+// WithNotifyChannelFactory overrides how a stored webhook becomes a delivery
+// channel. Tests use it to inject an HTTP transport; the webhook host
+// allow-list still applies.
+func (s *Server) WithNotifyChannelFactory(factory func(string) (notify.Channel, error)) *Server {
+	if factory != nil {
+		s.notifyChannelFactory = factory
+	}
+	return s
+}
+
+// Close converges the asynchronous notify worker. It is idempotent.
+func (s *Server) Close() {
+	if s.notifier != nil {
+		s.notifier.Close()
+	}
 }
 
 // LongTaskCapabilities exposes the per-Pod cancel capability cache: the health
