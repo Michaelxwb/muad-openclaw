@@ -594,6 +594,7 @@ export interface LongTask {
   taskId: string;
   podId: string;
   humanUserId: string;
+  humanUserName: string;
   poolKey: string;
   poolQueued: number;
   poolRunning: number;

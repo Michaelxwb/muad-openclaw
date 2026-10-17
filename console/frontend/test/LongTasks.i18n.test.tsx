@@ -13,7 +13,6 @@ import zh from "../src/i18n/locales/zh";
 
 const apiMocks = vi.hoisted(() => ({
   listLongTasks: vi.fn(),
-  listAllHumanUsers: vi.fn(),
   listPods: vi.fn(),
 }));
 
@@ -27,6 +26,7 @@ function task(overrides: Partial<LongTask>): LongTask {
     taskId: "task-1",
     podId: "pod-a",
     humanUserId: "human-a",
+    humanUserName: "张三",
     poolKey: "agent:alice:wecom:direct:wx-1",
     poolQueued: 0,
     poolRunning: 1,
@@ -99,9 +99,7 @@ function hasKey(root: unknown, dotted: string): boolean {
 
 beforeEach(() => {
   apiMocks.listLongTasks.mockReset();
-  apiMocks.listAllHumanUsers.mockReset();
   apiMocks.listPods.mockReset();
-  apiMocks.listAllHumanUsers.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
   apiMocks.listPods.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
 });
 

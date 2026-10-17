@@ -143,6 +143,36 @@ func (s *Store) ListHumanUsers(filter HumanUserListFilter) ([]HumanUser, int, er
 	return users, total, err
 }
 
+// ListHumanUserDisplayNames returns human_user_id → display_name for the given
+// ids. Missing ids (e.g. deleted users) are simply absent from the map so
+// callers can fall back to the raw id.
+func (s *Store) ListHumanUserDisplayNames(humanUserIDs []string) (map[string]string, error) {
+	names := make(map[string]string, len(humanUserIDs))
+	if len(humanUserIDs) == 0 {
+		return names, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(humanUserIDs)), ",")
+	args := make([]any, 0, len(humanUserIDs))
+	for _, id := range humanUserIDs {
+		args = append(args, id)
+	}
+	rows, err := s.db.Query(
+		`SELECT human_user_id, display_name FROM human_users WHERE human_user_id IN (`+placeholders+`)`,
+		args...)
+	if err != nil {
+		return nil, fmt.Errorf("list Human User display names: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, displayName string
+		if err := rows.Scan(&id, &displayName); err != nil {
+			return nil, fmt.Errorf("scan Human User display name: %w", err)
+		}
+		names[id] = displayName
+	}
+	return names, rows.Err()
+}
+
 // UpdateHumanUser applies mutable fields and rechecks capacity when enabling.
 func (s *Store) UpdateHumanUser(humanUserID string, update HumanUserUpdate) error {
 	if strings.TrimSpace(update.DisplayName) == "" || !validHumanUserStatus(update.Status) {
