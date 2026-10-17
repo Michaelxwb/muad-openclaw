@@ -20,6 +20,16 @@ const SESSION_ARTIFACT_PATTERNS = [
 // would enable reading it).
 const POD_SERVICE_TOKEN_PATTERN = /\/run\/secrets\/muad\/pod-service-token\b/u;
 
+// Skill trace spools are guard-owned request telemetry. Allowing scripts to
+// read or forge them would let one user inject events into (or inspect) another
+// user's execution trace, so this path is never whitelisted for directory ops.
+const SKILL_TRACE_SPOOL_PATTERNS = [
+  /\/tmp\/muad-runtime-queues\/skill-trace(?:\/|\b)/u,
+  /(?:^|[\/\s"'])muad-runtime-queues\/skill-trace(?:\/|\b)/u,
+];
+const SKILL_TRACE_SPOOL_REASON =
+  "Skill trace spool is managed by the runtime guard and is not readable or writable through shell or scripts";
+
 // 本地正则仅为辅助防线：exec 子进程可任意改写自身 env（字符串拼接、env 字典赋值
 // 都能绕过字面匹配），Node 进程内无法完全防伪。硬边界在服务端归属校验——console
 // resolver 按 pod 校验 agent 归属（GetHumanUserByAgent(pod, agent)），session-manager
@@ -94,6 +104,7 @@ function scanToolCall(event) {
     : FILE_CONTENT_TOOLS.has(toolName) ? fileContentText(event) : "";
   if (!text) return "";
   if (FORGED_SESSION_KEY_PATTERNS.some((pattern) => pattern.test(text))) return FORGED_KEY_REASON;
+  if (SKILL_TRACE_SPOOL_PATTERNS.some((pattern) => pattern.test(text))) return SKILL_TRACE_SPOOL_REASON;
   return sessionAccessReason(text);
 }
 

@@ -31,6 +31,9 @@ import { SkillAuditClient, SkillAuditClientError } from "./skill-audit-client.mj
 import { createSkillLeaseHooks } from "./skill-hooks.mjs";
 import { createSkillOutputHooks } from "./skill-output-hooks.mjs";
 import { createSkillProgressHooks } from "./skill-progress-hooks.mjs";
+import { createSkillTraceHooks, installSkillTraceCleanup } from "./skill-trace.mjs";
+import { SkillTraceClient, SkillTraceClientError } from "./skill-trace-client.mjs";
+import { installSkillTraceExecutions } from "./skill-trace-executions.mjs";
 import { SharedSkillLeaseManager } from "./skill-lease.mjs";
 import { SkillProgressManager } from "./skill-progress-manager.mjs";
 import {
@@ -55,6 +58,14 @@ const plugin = {
       manager: skillProgressManager,
       log: (message) => api.logger?.warn?.(message),
     });
+    const skillTraceExecutions = installSkillTraceExecutions(globalThis);
+    const skillTraceHooks = createSkillTraceHooks({
+      getConfig: () => latestGuardConfig(config),
+      executions: skillTraceExecutions,
+      client: createSkillTraceClient(config),
+      log: (message) => api.logger?.warn?.(message),
+    });
+    installSkillTraceCleanup(globalThis, { log: (message) => api.logger?.warn?.(message) });
     const longTaskManager = installLongTaskManager(
       config.maxLongTaskConcurrency,
       globalThis,
@@ -80,8 +91,9 @@ const plugin = {
     const longTaskHooks = registerLongTaskHooks(api, () => latestGuardConfig(config), longTaskManager);
     registerSkillOutputHooks(api, longTaskManager, skillProgressManager);
     registerSkillProgressHooks(api, skillProgressHooks);
+    registerSkillTraceHooks(api, skillTraceHooks);
     registerCrossUserGuard(api, config);
-    registerSkillAuditHooks(api, config, createSkillAuditClient(config), skillProgressHooks.activate, longTaskManager);
+    registerSkillAuditHooks(api, config, createSkillAuditClient(config), skillProgressHooks.activate, longTaskManager, skillTraceExecutions);
     api.on("after_tool_call", longTaskHooks.afterToolCall, { priority: 900, timeoutMs: 1_000 });
     registerExecFailureLog(api);
     registerReloadPolicy(api);
@@ -240,6 +252,11 @@ function registerSkillProgressHooks(api, hooks) {
   api.on("agent_end", hooks.agentEnd, { priority: 850, timeoutMs: 5_000 });
 }
 
+function registerSkillTraceHooks(api, hooks) {
+  api.on("resolve_exec_env", hooks.resolveExecEnv, { priority: -780, timeoutMs: 1_000 });
+  api.on("after_tool_call", hooks.afterToolCall, { priority: 950, timeoutMs: 1_000 });
+}
+
 function registerCrossUserGuard(api, config) {
   const hooks = createCrossUserGuard({
     config,
@@ -249,12 +266,13 @@ function registerCrossUserGuard(api, config) {
   api.on("reply_payload_sending", hooks.replyPayloadSending, { priority: -850, timeoutMs: 1_000 });
 }
 
-function registerSkillAuditHooks(api, config, client, onSkillActivated, manager) {
+function registerSkillAuditHooks(api, config, client, onSkillActivated, manager, executions) {
   const hooks = createSkillAuditHooks({
     config,
     getConfig: () => latestGuardConfig(config),
     manager,
     client,
+    executions,
     onSkillActivated,
     log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
   });
@@ -422,6 +440,16 @@ function createSkillAuditClient(config) {
     return { report: async () => { throw new SkillAuditClientError("service_unavailable", true); } };
   }
   return new SkillAuditClient({
+    baseURL: config.consoleInternalURL,
+    tokenFile: config.serviceTokenFile,
+  });
+}
+
+function createSkillTraceClient(config) {
+  if (!config.valid) {
+    return { report: async () => { throw new SkillTraceClientError("service_unavailable", true); } };
+  }
+  return new SkillTraceClient({
     baseURL: config.consoleInternalURL,
     tokenFile: config.serviceTokenFile,
   });

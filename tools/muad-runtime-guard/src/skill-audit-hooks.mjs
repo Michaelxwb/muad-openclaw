@@ -10,11 +10,12 @@ const TURN_CONTEXT_TTL_MS = 10 * 60_000;
 const READ_PATH_KEYS = ["path", "file_path", "filePath", "file"];
 
 export function createSkillAuditHooks({
-  config, getConfig = () => config, manager, client, now = () => Date.now(),
+  config, getConfig = () => config, manager, client, executions, now = () => Date.now(),
   log = () => {}, onSkillActivated = () => {},
 }) {
-  const state = { getConfig, manager, client, now, onSkillActivated,
-    turns: new Map(), reported: new Map(), diag: message => log(`[skill-audit] ${message}`) };
+  const state = { getConfig, manager, client, executions, now, onSkillActivated,
+    turns: new Map(), reported: new Map(), pendingExecutions: new Map(),
+    diag: message => log(`[skill-audit] ${message}`) };
   return {
     beforeDispatch: async (event, ctx) => auditDispatch(state, event, ctx),
     beforeAgentRun: async (event, ctx) => auditAgentRun(state, event, ctx),
@@ -36,7 +37,10 @@ function auditAgentRun(state, event, ctx) {
   pruneExpired(state.turns, state.now());
   if (isLongTaskSession(event, ctx)) return auditBackground(state, event, ctx);
   const runId = resolveRunId(event, ctx);
-  if (runId) rememberTurn(state.turns, runId, { agentId: resolveAgentId(event, ctx) }, state.now());
+  if (runId) {
+    rememberTurn(state.turns, runId, { agentId: resolveAgentId(event, ctx) }, state.now());
+    promotePendingExecution(state, event, ctx, runId);
+  }
 }
 
 function auditToolCall(state, event, ctx) {
@@ -51,7 +55,11 @@ function auditForeground(state, config, event, ctx, agentId, match) {
   const runId = resolveRunId(event, ctx);
   if (runId && alreadyReported(state.reported, runId, match.skillName)) return;
   activateProgress(state.onSkillActivated, activationInput(config, event, ctx, agentId, match.skillName), state.diag);
-  reportOnce(state.client, match.grant, agentId, match.skillName, state.now(), state.diag);
+  reportOnce(state, match.grant, agentId, match.skillName, state.now(), state.diag, randomUUID(), {
+    agentId,
+    sessionKey: textValue(event?.sessionKey) || textValue(ctx?.sessionKey),
+    runId,
+  });
   if (runId) rememberReported(state.reported, runId, match.skillName, state.now());
 }
 
@@ -64,7 +72,10 @@ function auditBackground(state, event, ctx) {
   const config = state.getConfig();
   const grant = findGrantBySkillPath(config, agentId, resolveExistingPath(path.join(task.skillRoot, "SKILL.md")));
   if (!grant) return;
-  reportOnce(state.client, grant, agentId, task.skillName, state.now(), state.diag, task.taskId);
+  reportOnce(state, grant, agentId, task.skillName, state.now(), state.diag, task.taskId, {
+    agentId,
+    taskId: task.taskId,
+  });
   rememberReported(state.reported, task.taskId, task.skillName, state.now());
 }
 
@@ -95,8 +106,10 @@ function activationInput(config, event, ctx, agentId, skillName) {
 }
 
 // 上报是 fire-and-forget：失败只记日志，不阻塞 turn（审计不能影响执行）。
-function reportOnce(client, grant, agentId, skillName, now, diag, executionId = randomUUID()) {
-  if (!client || typeof client.report !== "function") return;
+// 同时把 executionId 登记到 trace 归属映射：runId 可用时直接登记；dispatch
+// 发生在 run 创建之前时先缓存，待 before_agent_run 拿到 runId 后补登记。
+function reportOnce(state, grant, agentId, skillName, now, diag, executionId = randomUUID(), identity = {}) {
+  if (!state.client || typeof state.client.report !== "function") return;
   const startedAt = new Date(now).toISOString();
   const request = {
     executionId,
@@ -105,14 +118,86 @@ function reportOnce(client, grant, agentId, skillName, now, diag, executionId = 
     skillScope: grant.source,
     startedAt,
   };
+  registerExecution(state, identity, request);
   Promise.resolve()
-    .then(() => client.report(request))
+    .then(() => state.client.report(request))
     .then(() => diag(`reported executionId=${request.executionId} agent=${agentId} skill=${skillName}`))
     .catch((error) => {
       const code = error?.code ?? "unknown";
       const retryable = error?.retryable === true;
       diag(`report failed agent=${agentId} skill=${skillName} code=${code} retryable=${retryable}`);
     });
+}
+
+function registerExecution(state, identity, request) {
+  if (!state.executions || typeof state.executions.register !== "function") return;
+  const agentId = textValue(identity.agentId) || request.agentId;
+  const runId = textValue(identity.runId);
+  if (runId) {
+    // dispatch（无 runId）与 read-SKILL.md 可能各自上报一次审计；归属必须
+    // 复用先登记的那条 execution，额外上报不能再登记同键第二个 execution，
+    // 否则会制造自己制造的 mapping_conflict。不同 Skill 则保留冲突语义。
+    const existing = state.executions.resolve?.({ agentId, sessionKey: identity.sessionKey, runId });
+    if (existing?.skillName === request.skillName) return;
+    state.executions.register({
+      agentId,
+      sessionKey: identity.sessionKey,
+      runId,
+      skillName: request.skillName,
+      executionId: request.executionId,
+    });
+    return;
+  }
+  const taskId = textValue(identity.taskId);
+  if (taskId) {
+    state.executions.register({
+      agentId,
+      taskId,
+      skillName: request.skillName,
+      executionId: request.executionId,
+    });
+    return;
+  }
+  rememberPendingExecution(state, agentId, identity.sessionKey, request);
+}
+
+function rememberPendingExecution(state, agentId, sessionKey, request) {
+  const session = textValue(sessionKey);
+  if (!agentId || !session) return;
+  const key = JSON.stringify([agentId, session]);
+  const at = state.now();
+  const existing = state.pendingExecutions.get(key);
+  if (existing && !existing.conflicted && existing.executionId !== request.executionId) {
+    // Two Skills dispatched before the run existed: attribution is ambiguous,
+    // so drop it instead of risking a trace on the wrong execution.
+    state.pendingExecutions.set(key, { conflicted: true, expiresAt: at + TURN_CONTEXT_TTL_MS });
+    return;
+  }
+  state.pendingExecutions.set(key, {
+    conflicted: false,
+    executionId: request.executionId,
+    skillName: request.skillName,
+    expiresAt: at + TURN_CONTEXT_TTL_MS,
+  });
+}
+
+function promotePendingExecution(state, event, ctx, runId) {
+  const agentId = resolveAgentId(event, ctx);
+  const sessionKey = textValue(event?.sessionKey) || textValue(ctx?.sessionKey);
+  if (!agentId || !sessionKey) return;
+  pruneExpired(state.pendingExecutions, state.now());
+  const key = JSON.stringify([agentId, sessionKey]);
+  const pending = state.pendingExecutions.get(key);
+  if (!pending) return;
+  state.pendingExecutions.delete(key);
+  if (pending.conflicted) return;
+  state.executions?.register?.({
+    agentId,
+    sessionKey,
+    runId,
+    skillName: pending.skillName,
+    executionId: pending.executionId,
+  });
 }
 
 function auditRead(config, event, ctx) {
