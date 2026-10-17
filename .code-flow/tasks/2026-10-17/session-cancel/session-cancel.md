@@ -30,12 +30,12 @@
 | S-02 | session-cancel.backend.design.md#2.5 验收条件 | E2E | API → RPC → 真实信号 → 进程退出 | TASK-006 | planned | - |
 | S-03 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 /proc + 双 agent 同时运行 | TASK-006 | planned | - |
 | S-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | health probe → capability cache → API gate | TASK-003 | verified | ["go","-C","console/backend","test","./internal/gateway","./internal/collector","-run","SessionCancel","-count=1"] |
-| S-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → audit store | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
+| S-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → audit store | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | S-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 Worker + 企微通道 + 队列 | TASK-006 | planned | - |
-| E-01 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC + handler | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
+| E-01 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC + handler | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-02 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC → 真实进程指纹复核 | TASK-002 | verified | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
-| E-03 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → capability | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
-| E-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → repo | TASK-004 | planned | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
+| E-03 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → capability | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
+| E-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → repo | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | gateway Exec | TASK-003 | verified | ["go","-C","console/backend","test","./internal/gateway","-run","SessionCancel","-count=1"] |
 | E-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实信号 | TASK-006 | planned | - |
 | B-01 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（PID 复用） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
@@ -275,7 +275,7 @@
 
 ## TASK-004: Console API、错误码与审计
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-003
 - **Source**: session-cancel.backend.design.md#3.4 接口设计（HTTP API）, session-cancel.backend.design.md#3.3 数据设计（审计）, session-cancel.backend.design.md#2.5 验收条件
@@ -308,18 +308,24 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-05 | integration | handler → repo audit | 审计含 pod/user/agent/sessionKey/计数；无 cmdline 原文 | `test/session_cancel_api_test.go` | `["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"]` | planned |
-| E-01 | integration | handler → gateway fake | 空 preview 返回 processes=[]，code=0 | 同上 | 同上 | planned |
-| E-03 | integration | handler → capability cache | 未知/过期 → 41007，无 Exec 调用 | 同上 | 同上 | planned |
-| E-04 | integration | handler → repo | 归属不符 → 404；longtask → 400；无 RPC 调用 | 同上 | 同上 | planned |
+| S-05 | integration | handler → repo audit | 审计含 pod/user/agent/sessionKey/计数；无 cmdline 原文 | `test/session_cancel_api_test.go` | `["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"]` | verified |
+| E-01 | integration | handler → gateway fake | 空 preview 返回 processes=[]，code=0 | 同上 | 同上 | verified |
+| E-03 | integration | handler → capability cache | 未知/过期 → 41007，无 Exec 调用 | 同上 | 同上 | verified |
+| E-04 | integration | handler → repo | 归属不符 → 404；longtask → 400；无 RPC 调用 | 同上 | 同上 | verified |
 
 ### Acceptance Evidence
 
 > 编码期填写。
+- S-05: verified — automated command passed; run_id=3e66ea28c8dd4a2eb4d3bdbf2f96f1de (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=3e66ea28c8dd4a2eb4d3bdbf2f96f1de (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=3e66ea28c8dd4a2eb4d3bdbf2f96f1de (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=3e66ea28c8dd4a2eb4d3bdbf2f96f1de (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-18] started
+- [2026-10-18] completed (done)
 
 ---
 

@@ -264,6 +264,14 @@ var errorCatalog = map[int]errorDef{
 	errcode.LongTaskCancelUnavailable: {http.StatusServiceUnavailable, "Worker 取消服务暂不可用，请稍后重试", "Task cancellation service is temporarily unavailable"},
 	// internal.long_task_cancel_state
 	errcode.LongTaskCancelStateFailed: {http.StatusInternalServerError, "取消记录保存失败，任务未被标记为已取消", "Failed to persist the cancellation; the task was not marked cancelled"},
+	// session.cancel_unsupported
+	errcode.SessionCancelUnsupported: {http.StatusConflict, "当前 Worker 不支持会话终止", "This Worker does not support session cancellation"},
+	// not_found.session
+	errcode.NotFoundSession: {http.StatusNotFound, "会话或身份不存在", "Session or identity not found"},
+	// conflict.session_preview_stale
+	errcode.ConflictSessionPreviewStale: {http.StatusConflict, "进程列表已变化，请重新预览", "The process list has changed; preview again"},
+	// session.cancel_failed
+	errcode.SessionCancelFailed: {http.StatusBadGateway, "会话终止失败", "Session cancellation failed"},
 	// rate_limited.login
 	errcode.RateLimitedLogin: {http.StatusTooManyRequests, "登录尝试过于频繁，请稍后再试", "Too many login attempts, please try again later"},
 	// rate_limited.binding
