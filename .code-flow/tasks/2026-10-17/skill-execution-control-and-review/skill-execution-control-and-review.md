@@ -16,7 +16,7 @@
 |--------|---------|---------|-------------|---------|------|
 | S-01 | backend.design.md#2.5.2 功能验收场景 | E2E | Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API | TASK-012 | planned |
 | S-02 | backend.design.md#2.5.2 功能验收场景 | E2E | helper 退出 → guard abort → IM 通知 → Console 入库 → 通知分发 | TASK-012 | planned |
-| S-03 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → resource_config → runtimeconfig builder → renderer → 配置字节 | TASK-004 | planned |
+| S-03 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → resource_config → runtimeconfig builder → renderer → 配置字节 | TASK-004 | verified |
 | S-04 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → 加密存储 → dispatcher → WeCom HTTP（httptest） | TASK-003 | verified |
 | S-05 | backend.design.md#2.5.2 功能验收场景 | E2E | 执行数据 → stats SQL → 查询 API → UI 列表 | TASK-012 | planned |
 | S-06 | backend.design.md#2.5.2 功能验收场景 | E2E | 审阅脚本 → 目标目录 → 报告输出（不执行目标代码） | TASK-008 | planned |
@@ -37,7 +37,7 @@
 | E-04 | backend.design.md#2.5.2 功能验收场景 | integration | 脚本绕过 helper 直接发请求 | TASK-007 | planned |
 | E-05 | backend.design.md#2.5.2 功能验收场景 | unit | 并发计数锁 | TASK-007 | planned |
 | E-06 | backend.design.md#2.5.2 功能验收场景 | integration | IM 投递（mock 通道） | TASK-005 | planned |
-| E-07 | backend.design.md#2.5.2 功能验收场景 | integration | settings API 校验 | TASK-004 | planned |
+| E-07 | backend.design.md#2.5.2 功能验收场景 | integration | settings API 校验 | TASK-004 | verified |
 | E-08 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager → 状态文件 → platform_request | TASK-007 | planned |
 | E-09 | backend.design.md#2.5.2 功能验收场景 | integration | cross-user-guard → 文件路径 | TASK-005 | planned |
 | E-10 | backend.design.md#2.5.2 功能验收场景 | integration | platform_request → HTTP 401 | TASK-007 | planned |
@@ -70,6 +70,8 @@
 > 覆盖后端 38 个、前端 14 个场景；RULE-01~13 与高影响 RISK 均在对应任务 Checklist 或场景中映射。E2E 场景统一由 TASK-012 在全部功能任务完成后执行，不在编码期降级。
 
 ---
+
+
 
 
 ## TASK-001: Console 数据模型与迁移
@@ -248,7 +250,7 @@
 
 ## TASK-004: 请求上限设置链路
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `skill-execution-control-and-review.backend.design.md#2.3.2 字段约束`, `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#4.2 发布与回滚`
@@ -261,29 +263,40 @@
 
 ### Checklist
 
-- [ ] 扩展 `GET/PUT /api/v1/settings/resources` 与前端契约字段 `skillRequestLimit`，校验范围并映射稳定错误码。
-- [ ] `SaveResourcesAndMarkPods` 增加参数与变更检测；builder/renderer/schema 同步字段；无效值拒绝写入。
-- [ ] [verifier][integration] `backend-platform-rules#RULE-backend-platform-001`：多用户隔离、秘密注入、generation apply 语义不变；不新增模型回退链。
-- [ ] [verifier][unit] `backend-platform-rules#RULE-backend-model-pool-001`：非回归检查，确认未改动 CreateHumanUser / model_config_id 绑定路径。
-- [ ] [verifier][integration] `runtime-config-and-apply#RULE-runtime-config-001`：配置经 runtimeapply 事务链路，失败可回滚。
-- [ ] [verifier][integration] `runtime-config-and-apply#RULE-runtime-validate-before-write-001`：写入前 `validateRuntimeConfig`，generation 单调。
-- [ ] 先写设置保存→配置字节的失败用例并记录 RED。
+- [x] 扩展 `GET/PUT /api/v1/settings/resources` 与前端契约字段 `skillRequestLimit`，校验范围并映射稳定错误码。
+- [x] `SaveResourcesAndMarkPods` 增加参数与变更检测；builder/renderer/schema 同步字段；无效值拒绝写入。
+- [x] [verifier][integration] `backend-platform-rules#RULE-backend-platform-001`：多用户隔离、秘密注入、generation apply 语义不变；不新增模型回退链。
+- [x] [verifier][unit] `backend-platform-rules#RULE-backend-model-pool-001`：非回归检查，确认未改动 CreateHumanUser / model_config_id 绑定路径。
+- [x] [verifier][integration] `runtime-config-and-apply#RULE-runtime-config-001`：配置经 runtimeapply 事务链路，失败可回滚。
+- [x] [verifier][integration] `runtime-config-and-apply#RULE-runtime-validate-before-write-001`：写入前 `validateRuntimeConfig`，generation 单调。
+- [x] 先写设置保存→配置字节的失败用例并记录 RED。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-03 | integration | handler → repo → builder → renderer | 配置含 `skillRequestLimit:50`；generation 前移；guard env 可见 | `console/backend/test/settings_resources_test.go` | `cd console/backend && go test ./test -run SettingsResources -count=1` | planned |
-| E-07 | integration | settings API 校验 | 负数/非数字返回稳定错误码且不落库 | 同上 | 同上 | planned |
-| RULE-runtime-validate-before-write-001 | integration | schema + atomic write | 非法配置不写盘；generation 单调 | `bin/test` renderer/schema 测试 | `cd bin && npm test -- --test-name-pattern=RuntimeConfig` | planned |
+| S-03 | integration | handler → repo → builder → renderer | 配置含 `skillRequestLimit:50`；generation 前移；guard env 可见 | `console/backend/test/settings_resources_test.go`：`TestSettingsResourcesSkillRequestLimitFlowsToRuntimeConfig` | ["go","-C","console/backend","test","./test","-run","SettingsResources","-count=1"] | verified |
+| E-07 | integration | settings API 校验 | 负数/非数字返回稳定错误码且不落库 | 同上：`TestSettingsResourcesSkillRequestLimitValidation` | ["go","-C","console/backend","test","./test","-run","SettingsResources","-count=1"] | verified |
+| RULE-runtime-validate-before-write-001 | integration | schema + atomic write | 非法配置不写盘；generation 单调 | `bin/test/runtime-config-schema.test.mjs`、`bin/test/inject-multi-user-config.test.mjs` | ["node","--test","bin/test/runtime-config-schema.test.mjs","bin/test/inject-multi-user-config.test.mjs"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据。
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-03 | `go test ./test -run SettingsResources` 编译失败：`RuntimeGuard has no field SkillRequestLimit` | PASS：["go","-C","console/backend","test","./test","-run","SettingsResources","-count=1"]；`go test ./test ./internal/api ./internal/runtimeconfig ./internal/repo -count=1` 全绿 | `test/settings_resources_test.go`：`TestSettingsResourcesSkillRequestLimitFlowsToRuntimeConfig` | 真实 httptest settings handler → 真实 SQLite repo（`resource_global.skill_request_limit`）→ 真实 `runtimeconfig.Builder` 在 build 时读取全局配置 → Go DTO 经 stdin 交给真实 Node `runtime-config-schema.mjs` + `openclaw-config-renderer.mjs`，断言渲染后 guard config 含 `"skillRequestLimit":50`；重复保存同一值 generation 不前移 | verified |
+| E-07 | 同一次编译失败；实现前负数/非数字会通过校验 | PASS：["go","-C","console/backend","test","./test","-run","SettingsResources","-count=1"] | `test/settings_resources_test.go`：`TestSettingsResourcesSkillRequestLimitValidation` | 真实 settings API：`-1`、`1000001`、`"abc"` 均返回 HTTP 400 + `code:40003`（`errcode.InvalidResourceLimits`）；`GetResourceGlobal` 仍为 `ErrNotFound`（未落库），Pod generation 未前移 | verified |
+| RULE-runtime-validate-before-write-001 | `node --test ...` FAIL：合法值报 `runtime.guard contains unknown field: skillRequestLimit`；非法值未被拒绝 | PASS：["node","--test","bin/test/runtime-config-schema.test.mjs","bin/test/inject-multi-user-config.test.mjs"] → 35/35；`node --test bin/test/*.test.mjs` → 121/123（2 项预存在失败：缺少本地 `node_modules` 的 offline-safe 断言与千流 recipe 断言，与本次改动无关） | `bin/test/runtime-config-schema.test.mjs`（0/50/1000000 接受；缺省兼容旧 Console；-1/1000001/1.5/"50"/null 拒绝）、`bin/test/inject-multi-user-config.test.mjs`（renderer 写 guard config，旧 DTO 缺省回落 1000） | 真实 `parseRuntimeConfig`/`validateRuntimeConfig` 严格校验路径；renderer 输出经既有 `bin/test` 原子写与 transaction 测试回归；guard 插件 manifest `configSchema` 同步新增 `skillRequestLimit`（0~1000000） | verified |
+- S-03: verified — automated command passed; run_id=42166c55c81f44cca405d2dc208657eb (confirmed_by: runner)
+- E-07: verified — automated command passed; run_id=42166c55c81f44cca405d2dc208657eb (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] RED：Go 测试因 `RuntimeGuard.SkillRequestLimit` 未定义编译失败；Node schema 拒绝新字段、非法值未被拒。
+- [2026-10-17] GREEN：repo/API/builder/renderer/schema 贯通；`go test ./...` 与 `go vet ./...` 通过；目标 Node 测试 35/35。
+- [2026-10-17] 完成：稳定错误码 40003；未变化不触发 apply；未改动 Human User 创建与 model_config_id 绑定路径。
+- [2026-10-17] completed (done)
 
 ---
 

@@ -43,22 +43,67 @@
       "kind": "functional",
       "boundary": "设置 API → resource_config → runtimeconfig builder → renderer → 配置字节",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "`cd",
-        "console/backend",
-        "&&",
         "go",
+        "-C",
+        "console/backend",
         "test",
         "./test",
         "-run",
         "SettingsResources",
-        "-count=1`"
+        "-count=1"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "S-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "42166c55c81f44cca405d2dc208657eb",
+        "executed_at": "2026-10-17T11:45:35.341812+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "SettingsResources",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "42166c55c81f44cca405d2dc208657eb",
+          "executed_at": "2026-10-17T11:45:35.341812+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SettingsResources",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+        }
+      ]
     },
     {
       "id": "S-04",
@@ -605,14 +650,67 @@
       "kind": "functional",
       "boundary": "settings API 校验",
       "owner": "TASK-004",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "./test",
+        "-run",
+        "SettingsResources",
+        "-count=1"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "revision": 1,
+      "evidence": {
+        "id": "E-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "42166c55c81f44cca405d2dc208657eb",
+        "executed_at": "2026-10-17T11:45:35.341812+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "SettingsResources",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+      },
+      "runs": [
+        {
+          "id": "E-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "42166c55c81f44cca405d2dc208657eb",
+          "executed_at": "2026-10-17T11:45:35.341812+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SettingsResources",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+        }
+      ]
     },
     {
       "id": "E-08",

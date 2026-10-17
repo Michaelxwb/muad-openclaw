@@ -64,17 +64,18 @@ func (s *Store) SetResourceGlobal(c ResourceConfig) error {
 	_, err := s.db.Exec(
 		`INSERT INTO resource_global (
 			id, mem_limit, cpu_limit, restart_policy, max_skill_concurrency,
-			max_browser_concurrency, max_long_task_concurrency, updated_at
-		) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+			max_browser_concurrency, max_long_task_concurrency, skill_request_limit, updated_at
+		) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		   mem_limit=excluded.mem_limit, cpu_limit=excluded.cpu_limit,
 		   restart_policy=excluded.restart_policy,
 		   max_skill_concurrency=excluded.max_skill_concurrency,
 		   max_browser_concurrency=excluded.max_browser_concurrency,
 		   max_long_task_concurrency=excluded.max_long_task_concurrency,
+		   skill_request_limit=excluded.skill_request_limit,
 		   updated_at=excluded.updated_at`,
 		c.MemLimit, c.CPULimit, c.RestartPolicy, c.MaxSkillConcurrency,
-		c.MaxBrowserConcurrency, c.MaxLongTaskConcurrency, now,
+		c.MaxBrowserConcurrency, c.MaxLongTaskConcurrency, c.SkillRequestLimit, now,
 	)
 	return err
 }
@@ -83,11 +84,12 @@ func (s *Store) SetResourceGlobal(c ResourceConfig) error {
 func (s *Store) GetResourceGlobal() (ResourceConfig, error) {
 	row := s.db.QueryRow(`SELECT mem_limit, cpu_limit, restart_policy,
 		max_skill_concurrency, max_browser_concurrency, max_long_task_concurrency,
-		updated_at FROM resource_global WHERE id = 1`)
+		skill_request_limit, updated_at FROM resource_global WHERE id = 1`)
 	var c ResourceConfig
 	var ts string
 	switch err := row.Scan(&c.MemLimit, &c.CPULimit, &c.RestartPolicy,
-		&c.MaxSkillConcurrency, &c.MaxBrowserConcurrency, &c.MaxLongTaskConcurrency, &ts); err {
+		&c.MaxSkillConcurrency, &c.MaxBrowserConcurrency, &c.MaxLongTaskConcurrency,
+		&c.SkillRequestLimit, &ts); err {
 	case sql.ErrNoRows:
 		return ResourceConfig{}, ErrNotFound
 	case nil:
@@ -103,9 +105,11 @@ func (s *Store) GetResourceGlobal() (ResourceConfig, error) {
 // leave the config saved while Pods stay converged (or vice versa).
 func (s *Store) SaveResourcesAndMarkPods(
 	c ResourceConfig,
-	memChanged, cpuChanged, restartChanged, skillChanged, browserChanged, longTaskChanged bool,
+	memChanged, cpuChanged, restartChanged, skillChanged, browserChanged, longTaskChanged,
+	requestLimitChanged bool,
 ) ([]string, error) {
-	if !memChanged && !cpuChanged && !restartChanged && !skillChanged && !browserChanged && !longTaskChanged {
+	if !memChanged && !cpuChanged && !restartChanged && !skillChanged && !browserChanged &&
+		!longTaskChanged && !requestLimitChanged {
 		if err := s.SetResourceGlobal(c); err != nil {
 			return nil, err
 		}
@@ -120,22 +124,23 @@ func (s *Store) SaveResourcesAndMarkPods(
 	if _, err := tx.Exec(
 		`INSERT INTO resource_global (
 			id, mem_limit, cpu_limit, restart_policy, max_skill_concurrency,
-			max_browser_concurrency, max_long_task_concurrency, updated_at
-		) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+			max_browser_concurrency, max_long_task_concurrency, skill_request_limit, updated_at
+		) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		   mem_limit=excluded.mem_limit, cpu_limit=excluded.cpu_limit,
 		   restart_policy=excluded.restart_policy,
 		   max_skill_concurrency=excluded.max_skill_concurrency,
 		   max_browser_concurrency=excluded.max_browser_concurrency,
 		   max_long_task_concurrency=excluded.max_long_task_concurrency,
+		   skill_request_limit=excluded.skill_request_limit,
 		   updated_at=excluded.updated_at`,
 		c.MemLimit, c.CPULimit, c.RestartPolicy, c.MaxSkillConcurrency,
-		c.MaxBrowserConcurrency, c.MaxLongTaskConcurrency, now,
+		c.MaxBrowserConcurrency, c.MaxLongTaskConcurrency, c.SkillRequestLimit, now,
 	); err != nil {
 		return nil, fmt.Errorf("save resource config: %w", err)
 	}
 	podIDs, err := markInheritingPodsPendingTx(tx, memChanged, cpuChanged, restartChanged,
-		skillChanged, browserChanged, longTaskChanged)
+		skillChanged, browserChanged, longTaskChanged, requestLimitChanged)
 	if err != nil {
 		return nil, err
 	}
