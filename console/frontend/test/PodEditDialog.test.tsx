@@ -170,6 +170,33 @@ describe("PodEditDialog", () => {
     expect(apiMocks.patchPod).not.toHaveBeenCalled();
   });
 
+  it("资源区按「用户上限 | 重启策略」「CPU | 内存」顺序排布，当前用户数提示内联在标签行", async () => {
+    render(<PodEditDialog podId="pod-a" onClose={vi.fn()} onSaved={vi.fn()} />);
+    await screen.findByText("消息通道");
+
+    // 资源网格为两列行优先排布：抓取各字段标签，校验换位后的顺序
+    const grid = screen.getByText("资源").nextElementSibling as HTMLElement;
+    const labels = Array.from(grid.querySelectorAll("label")).map((label) =>
+      String(label.querySelector("span")?.firstChild?.textContent ?? ""),
+    );
+    expect(labels).toEqual([
+      "用户上限",
+      "重启策略",
+      "CPU 上限",
+      "内存上限 (GiB)",
+      "Skill 并发",
+      "Browser 并发",
+      "长任务并发",
+    ]);
+
+    // 提示与标签同一行（内联在标签 span 内），而不是独占一行把右列拉开
+    const hint = screen.getByText("当前用户数 1");
+    expect(hint.parentElement?.firstChild?.textContent).toBe("用户上限");
+    // label 结构固定为 [标签行, 控件]，保证两列字段等高对齐
+    const maxUsersLabel = grid.querySelector("label");
+    expect(maxUsersLabel?.children).toHaveLength(2);
+  });
+
   it("可编辑用户上限并随保存先行提交", async () => {
     render(<PodEditDialog podId="pod-a" onClose={vi.fn()} onSaved={vi.fn()} />);
     await screen.findByText("消息通道");
