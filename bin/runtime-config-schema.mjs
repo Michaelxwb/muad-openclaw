@@ -350,8 +350,20 @@ function validateSessionManager(value, agents) {
 
 function validateGuard(value, agents, profiles) {
   assertRecord(value, "runtime.guard");
-  assertExactKeys(value, ["mainAgentId", "quarantineProfile", "agentProfiles"], "runtime.guard");
+  // skillRequestLimit is optional: older consoles do not emit it yet and the
+  // renderer falls back to the documented default (1000).
+  assertExactKeys(
+    value,
+    ["mainAgentId", "quarantineProfile", "agentProfiles", "skillRequestLimit"],
+    "runtime.guard",
+    ["mainAgentId", "quarantineProfile", "agentProfiles"],
+  );
   if (value.mainAgentId !== "main" || value.quarantineProfile !== "quarantine") throw new Error("runtime.guard defaults are invalid");
+  if (value.skillRequestLimit !== undefined) {
+    if (!Number.isInteger(value.skillRequestLimit) || value.skillRequestLimit < 0 || value.skillRequestLimit > 1000000) {
+      throw new Error("runtime.guard.skillRequestLimit must be an integer between 0 and 1000000");
+    }
+  }
   assertArray(value.agentProfiles, "runtime.guard.agentProfiles");
   const mapped = new Set();
   value.agentProfiles.forEach((mapping, index) => {

@@ -543,6 +543,7 @@ export interface ResourceConfig {
   maxSkillConcurrency?: number;
   maxBrowserConcurrency?: number;
   maxLongTaskConcurrency?: number;
+  skillRequestLimit?: number;
 }
 
 export interface AgentGuidance {
@@ -561,6 +562,7 @@ export interface AgentGuidanceInput {
 }
 
 export interface GlobalResourceConfig extends ResourceConfig {
+  skillRequestLimit: number;
   configured: boolean;
   globalOverrides: ResourceValues;
   runtimeDefaults: ResourceValues;

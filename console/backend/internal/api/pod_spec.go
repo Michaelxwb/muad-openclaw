@@ -62,7 +62,7 @@ func (s *Server) assemblePodSpec(pod repo.Pod, runtime runtimeconfig.Result) (dr
 	if err != nil {
 		return driver.PodSpec{}, fmt.Errorf("decrypt Pod service token: %w", err)
 	}
-	global, _, err := s.readGlobalResources()
+	global, _, _, err := s.readGlobalResources()
 	if err != nil {
 		return driver.PodSpec{}, err
 	}
