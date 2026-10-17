@@ -54,6 +54,10 @@ type Status struct {
 	// 取消链完整（manager 可取消 + 原生 abort/drain 可用）才为 true。
 	LongTaskCancelAvailable bool
 	LongTaskCancelVersion   int
+	// SessionCancelAvailable/Version 来自 guard health 的会话终止能力上报：
+	// 只有 native abort/drain 与会话进程扫描链完整时才为 true。
+	SessionCancelAvailable bool
+	SessionCancelVersion   int
 }
 
 // Execer runs a command inside a Pod (satisfied by each RuntimeDriver).
@@ -159,6 +163,8 @@ func mergeRuntimeHealthResult(status *Status, out string, err error) {
 	status.BrowserQueued = health.Browser.Queued
 	status.LongTaskCancelAvailable = health.LongTaskCancel.Available
 	status.LongTaskCancelVersion = health.LongTaskCancel.Version
+	status.SessionCancelAvailable = health.SessionCancel.Available
+	status.SessionCancelVersion = health.SessionCancel.Version
 }
 
 // mergeConfigRevisionResult merges the config.get RPC output.
@@ -253,6 +259,10 @@ type runtimeHealthJSON struct {
 		Available bool `json:"available"`
 		Version   int  `json:"version"`
 	} `json:"longTaskCancel"`
+	SessionCancel struct {
+		Available bool `json:"available"`
+		Version   int  `json:"version"`
+	} `json:"sessionCancel"`
 }
 
 type configGetJSON struct {

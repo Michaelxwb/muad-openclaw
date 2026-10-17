@@ -258,7 +258,7 @@ graph LR
 
 ### 3.3 数据设计
 
-**无新增表、无 schema 迁移。** 复用现有 `audit_events` 存储审计；能力缓存为进程内存（TTL 1 分钟）。
+**无新增表、无 schema 迁移。** 复用现有 `audit_events` 存储审计；能力缓存为进程内存（TTL 1 分钟）。本功能不新增或修改任何 SQL，gateway/collector 不引入 repo 查询；`session_cancel` 适配器只调用 `Driver.Exec`。
 
 **session key 推导规则**
 
@@ -518,6 +518,8 @@ flowchart TD
 | `backend-platform-rules#RULE-backend-platform-001` | required | 保持多用户隔离与密钥不进镜像 | §3.4 安全不变量；§3.5 安全性 | S-03 | applied |
 | `backend-platform-rules#RULE-backend-http-envelope-001` | required | 统一 writeJSON/writeErr + code 常量 | §3.4 响应/错误码 | E-03, E-05 | applied |
 | `backend-platform-rules#RULE-backend-model-pool-001` | required | 本次不触碰 Human User 创建/模型绑定 | §2.4 Out of Scope | 现有回归测试 | applied（无行为变更） |
+| `backend-database#RULE-backend-database-001` | required | 本功能不新增/修改 SQL 与 schema | §3.3 数据设计（无新增表、无 SQL） | S-04, E-05 | applied（无 SQL 变更） |
+| `backend-database#RULE-backend-no-select-star-001` | required | 不引入任何查询语句 | §3.3 数据设计（无 SQL） | S-04, E-05 | applied（无 SQL 变更） |
 | `runtime-directory-structure#RULE-runtime-directory-001` | required | 新模块放 `tools/muad-runtime-guard/src` + 同目录测试 | §3.2 模块落点 | S-01, B-01 | applied |
 | `runtime-isolation-and-security#RULE-runtime-security-001` | required | 不读取/记录凭证，不把密钥写入镜像 | §3.4 安全不变量；§3.5 安全性 | B-02 | applied |
 | `runtime-isolation-and-security#RULE-runtime-secret-file-mode-001` | required | 本功能不落盘任何配置/凭证 | §3.3 数据设计（无文件写入） | S-02 | applied |
