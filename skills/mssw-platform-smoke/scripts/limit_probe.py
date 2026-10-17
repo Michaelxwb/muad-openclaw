@@ -15,7 +15,16 @@ import uuid
 
 from muad_skill_http import platform_request
 
-from _common import ALLOWED_PATHS, DEFAULT_PROBE_COUNT, MAX_PROBE_COUNT, PING_PATH, PLATFORM
+from _common import (
+    ALLOWED_PATHS,
+    DEFAULT_PROBE_COUNT,
+    EXIT_NOT_SKILL_EXECUTION,
+    MAX_PROBE_COUNT,
+    PING_PATH,
+    PLATFORM,
+    SkillExecutionRequired,
+    require_skill_execution,
+)
 
 
 class _Parser(argparse.ArgumentParser):
@@ -35,6 +44,12 @@ def _limit_from_env():
     except (TypeError, ValueError):
         return 0
     return value if value > 0 else 0
+
+
+def _default_count(limit):
+    # No explicit --count: make the probe hit the injected limit by sending
+    # limit+1 requests. Without an injected limit, only check Traceid uniqueness.
+    return min(limit + 1, MAX_PROBE_COUNT) if limit > 0 else DEFAULT_PROBE_COUNT
 
 
 def _trace_id(response):
@@ -59,22 +74,24 @@ def _summary(status, path, requested, sent, limit, trace_ids):
 
 
 def main():
+    require_skill_execution()
     parser = _Parser(description="Probe the MSSW per-interface request limit.")
-    parser.add_argument("--count", type=int, default=DEFAULT_PROBE_COUNT)
+    parser.add_argument("--count", type=int, default=None)
     parser.add_argument("--path", default=PING_PATH, choices=sorted(ALLOWED_PATHS))
     args = parser.parse_args()
-    if not 1 <= args.count <= MAX_PROBE_COUNT:
+    limit = _limit_from_env()
+    count = args.count if args.count is not None else _default_count(limit)
+    if not 1 <= count <= MAX_PROBE_COUNT:
         _fail("--count must be between 1 and %d" % MAX_PROBE_COUNT, 2)
 
-    limit = _limit_from_env()
     trace_ids = []
     sent = 0
-    for index in range(args.count):
+    for index in range(count):
         expected_trigger = limit > 0 and index + 1 > limit
         if expected_trigger:
             # The SDK will call os._exit(86) inside platform_request before the
             # request is sent; emit the single stdout result first.
-            _summary("LIMIT_TRIGGERED", args.path, args.count, sent, limit, trace_ids)
+            _summary("LIMIT_TRIGGERED", args.path, count, sent, limit, trace_ids)
         response = platform_request(PLATFORM, "GET", args.path)
         if expected_trigger:
             # One summary has already been printed; never emit a second stdout
@@ -93,16 +110,19 @@ def main():
         if trace_id in trace_ids:
             _fail("duplicate Traceid detected", 3)
         trace_ids.append(trace_id)
-        sys.stderr.write("request %d/%d status=%d\n" % (index + 1, args.count, response.status_code))
+        sys.stderr.write("request %d/%d status=%d\n" % (index + 1, count, response.status_code))
         sys.stderr.flush()
 
-    _summary("LIMIT_NOT_TRIGGERED", args.path, args.count, sent, limit, trace_ids)
+    _summary("LIMIT_NOT_TRIGGERED", args.path, count, sent, limit, trace_ids)
     return 0
 
 
 if __name__ == "__main__":
     try:
         sys.exit(main())
+    except SkillExecutionRequired as error:
+        sys.stderr.write(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False) + "\n")
+        sys.exit(EXIT_NOT_SKILL_EXECUTION)
     except SystemExit:
         raise
     except Exception as error:

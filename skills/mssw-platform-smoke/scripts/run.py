@@ -8,10 +8,17 @@ import uuid
 
 from muad_skill_http import platform_request
 
-from _common import PING_PATH, PLATFORM
+from _common import (
+    EXIT_NOT_SKILL_EXECUTION,
+    PING_PATH,
+    PLATFORM,
+    SkillExecutionRequired,
+    require_skill_execution,
+)
 
 
 def main():
+    require_skill_execution()
     response = platform_request(PLATFORM, "GET", PING_PATH)
     if response.status_code != 200:
         raise RuntimeError("%s ping returned HTTP %d" % (PLATFORM, response.status_code))
@@ -58,6 +65,9 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
+    except SkillExecutionRequired as error:
+        sys.stderr.write(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False) + "\n")
+        sys.exit(EXIT_NOT_SKILL_EXECUTION)
     except Exception as error:
         sys.stderr.write(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False) + "\n")
         sys.exit(1)
