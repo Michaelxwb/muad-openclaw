@@ -107,11 +107,11 @@ describe("LongTasks", () => {
     const columnStyles = Array.from(taskTable.querySelectorAll("col")).map(
       (column) => column.getAttribute("style") ?? "",
     );
-    expect(columnStyles[0]).not.toContain("width");
-    expect(columnStyles[1]).not.toContain("width");
+    expect(columnStyles[0]).toContain("width: 250px");
+    expect(columnStyles[1]).toContain("width: 240px");
     expect(columnStyles[2]).toContain(`width: ${LONG_TASK_POD_USER_COLUMN_WIDTH}px`);
-    expect(columnStyles[3]).not.toContain("width");
-    expect(columnStyles[8]).toContain("width: 130px");
+    expect(columnStyles[3]).toContain("width: 220px");
+    expect(columnStyles[8]).not.toContain("width");
 
     const podButtons = screen.getAllByRole("button", { name: /主节点/ });
     const podUserCell = podButtons[0].closest('[role="gridcell"]');

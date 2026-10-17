@@ -30,7 +30,7 @@ import { normalizePage } from "../utils/pageClamp";
 import styles from "./LongTasks.module.css";
 
 const REFRESH_MS = 5000;
-export const LONG_TASK_TABLE_MIN_WIDTH = 1464;
+export const LONG_TASK_TABLE_MIN_WIDTH = 1660;
 export const LONG_TASK_TABLE_SCROLL_X = "100%";
 export const LONG_TASK_POD_USER_COLUMN_WIDTH = 240;
 
@@ -271,6 +271,7 @@ function longTaskColumns(
       title: t("longTasks.task"),
       key: "task",
       align: "left" as const,
+      width: 250,
       render: (_: unknown, task: LongTaskRow) => (
         <div className={styles.taskCell}>
           <span className={`${styles.primary} ${styles.mono}`}>{task.taskId}</span>
@@ -282,10 +283,18 @@ function longTaskColumns(
       title: t("longTasks.agentPool"),
       key: "pool",
       align: "left" as const,
+      width: 240,
       render: (_: unknown, task: LongTaskRow) => (
         <div className={styles.taskCell}>
-          <span className={`${styles.primary} ${styles.mono}`}>{task.poolKey}</span>
-          <span className={styles.subtle} aria-label={poolMetricsLabel(t, task)}>
+          <Tooltip content={task.poolKey} showArrow>
+            <span className={`${styles.primary} ${styles.mono} ${styles.clipLine}`}>
+              {task.poolKey}
+            </span>
+          </Tooltip>
+          <span
+            className={`${styles.subtle} ${styles.clipLine}`}
+            aria-label={poolMetricsLabel(t, task)}
+          >
             {poolMetricsText(t, task)}
           </span>
         </div>
@@ -304,6 +313,7 @@ function longTaskColumns(
       title: t("longTasks.skill"),
       key: "skill",
       align: "left" as const,
+      width: 220,
       render: (_: unknown, task: LongTaskRow) => (
         <div className={styles.taskCell}>
           <span className={`${styles.primary} ${styles.skillName}`}>{task.skillName}</span>
@@ -343,8 +353,14 @@ function longTaskColumns(
       title: t("longTasks.terminal"),
       key: "terminal",
       align: "left" as const,
-      width: 130,
-      render: (_: unknown, task: LongTaskRow) => task.terminalReason || task.errorCode || "-",
+      render: (_: unknown, task: LongTaskRow) => {
+        const text = task.terminalReason || task.errorCode || "-";
+        return (
+          <Tooltip content={text} showArrow>
+            <span className={styles.terminalText}>{text}</span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: t("common.actions"),

@@ -12,6 +12,29 @@
 
 .longTaskTable :global(.semi-table) {
   min-width: var(--long-task-table-min-width);
+  /* 固定布局：列宽以声明为准，不再被超长内容（错误文本等）撑宽或挤压 */
+  table-layout: fixed;
+}
+
+/* 单行截断 + 省略号：长 poolKey/指标等不再逐字符换行撑高行 */
+.clipLine {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 结束原因/错误码：吸收剩余列宽；两行截断 + 悬停查看全文，行高保持可控 */
+.terminalText {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .mono {
