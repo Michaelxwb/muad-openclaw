@@ -1,7 +1,7 @@
 version: 1
 task: skill-execution-control-and-review
 enforcement: required
-updated_at: '2026-10-17T12:15:13.416607+00:00'
+updated_at: '2026-10-17T12:18:48.898028+00:00'
 sources:
 - type: cli
   ref: bind
@@ -51,7 +51,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-quality-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-quality-001
@@ -91,6 +91,17 @@ bindings:
           rule_text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: backend-code-quality-performance#RULE-backend-quality-001
+          executed_at: '2026-10-17T12:18:49.751837+00:00'
+          status: verified
+          rule_text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -263,6 +274,17 @@ bindings:
           details:
             checked_files: 53
             violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-17T12:18:49.781480+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: c433e9b7d0cfaa6ecb765161f6aa027e7ff8ded606822c45569c812e24910b6d
+          error_code: null
+          details:
+            checked_files: 53
+            violations: []
       design:
         status: applied
         refs:
@@ -278,7 +300,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-write-err-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-write-err-001
@@ -461,7 +483,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-database-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-database-001
@@ -501,6 +523,17 @@ bindings:
           rule_text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: backend-database#RULE-backend-database-001
+          executed_at: '2026-10-17T12:18:49.783387+00:00'
+          status: verified
+          rule_text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -679,6 +712,17 @@ bindings:
           details:
             checked_files: 214
             violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-17T12:18:49.966088+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: 191aeb1ad8f8d9df8a7f1ea2904dd461d4b4580820a530ae1438d1b1a14ff71b
+          error_code: null
+          details:
+            checked_files: 214
+            violations: []
       design:
         status: applied
         refs:
@@ -694,7 +738,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-no-select-star-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-001
           item_id: RULE-backend-no-select-star-001
@@ -877,7 +921,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-backend-directory-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-backend-directory-001
@@ -917,6 +961,17 @@ bindings:
           rule_text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: backend-directory-structure#RULE-backend-directory-001
+          executed_at: '2026-10-17T12:18:49.967603+00:00'
+          status: verified
+          rule_text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -1048,7 +1103,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-backend-logging-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-backend-logging-001
@@ -1093,6 +1148,17 @@ bindings:
           details:
             source: 确认以上 23 条 review 规则全部通过
             owner: project-owner
+        - verifier_ref: backend-logging#RULE-backend-logging-001
+          executed_at: '2026-10-17T12:18:49.968552+00:00'
+          status: verified
+          rule_text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
   - ref: RULE-backend-redact-001
     summary: Error strings written to logs, audit details, apply-failure fields, or
       user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic`
@@ -1122,7 +1188,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-backend-redact-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-backend-redact-001
@@ -1162,6 +1228,17 @@ bindings:
           rule_text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: backend-logging#RULE-backend-redact-001
+          executed_at: '2026-10-17T12:18:49.968567+00:00'
+          status: verified
+          rule_text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -1293,7 +1370,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-backend-platform-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-backend-platform-001
@@ -1333,6 +1410,17 @@ bindings:
           rule_text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: backend-platform-rules#RULE-backend-platform-001
+          executed_at: '2026-10-17T12:18:49.969867+00:00'
+          status: verified
+          rule_text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -1628,6 +1716,48 @@ bindings:
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
               0.488s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-17T12:18:53.342028+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: a2760e0640d7af28235371a485765dc761c6593efa439f5e302072d6a12b79c6
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 7cdd287a3efa9d235dd8223950c1b7cfefadf77f1763e82268bbb294a86f81a6
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.324s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-17T12:19:41.700848+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: 15bc8f59513cf18db2dbd06f51794389016c0cfb0936e345e423487739fb1d26
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 7953131cecdf8d826bce7bc9a6c8e5a5619ec968962b15d89465335e008d8cc4
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.319s\n"
       design:
         status: applied
         refs:
@@ -1643,7 +1773,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-http-envelope-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-002
           item_id: RULE-backend-http-envelope-001
@@ -1700,7 +1830,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-backend-model-pool-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-backend-model-pool-001
@@ -1740,6 +1870,17 @@ bindings:
           rule_text_sha256: 23c293f00680e409de4b6c712152fa0bc9e812273399c72c135ccdaf9082ee9f
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: backend-platform-rules#RULE-backend-model-pool-001
+          executed_at: '2026-10-17T12:18:53.342201+00:00'
+          status: verified
+          rule_text_sha256: 23c293f00680e409de4b6c712152fa0bc9e812273399c72c135ccdaf9082ee9f
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -1871,7 +2012,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-component-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-component-001
@@ -1916,6 +2057,17 @@ bindings:
           details:
             source: 确认以上 23 条 review 规则全部通过
             owner: project-owner
+        - verifier_ref: frontend-component-specs#RULE-frontend-component-001
+          executed_at: '2026-10-17T12:18:53.343927+00:00'
+          status: verified
+          rule_text_sha256: e79c828738826162955fd6db0e99331d699d286fcf701c839b351b0c833ed119
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
   - ref: RULE-frontend-semi-shell-001
     summary: Console UI must use `@douyinfe/semi-ui` as the primary component library;
       locale/theme shell is configured via `ConfigProvider` in `main.tsx` (and App-level
@@ -1945,7 +2097,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-semi-shell-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-semi-shell-001
@@ -1985,6 +2137,17 @@ bindings:
           rule_text_sha256: e9c32b34e6df5722515bab5fe2feaca80478baadc99eab5d878ab7e3de3b2a7c
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: frontend-component-specs#RULE-frontend-semi-shell-001
+          executed_at: '2026-10-17T12:18:53.343946+00:00'
+          status: verified
+          rule_text_sha256: e9c32b34e6df5722515bab5fe2feaca80478baadc99eab5d878ab7e3de3b2a7c
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -2143,7 +2306,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-directory-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-directory-001
@@ -2188,6 +2351,17 @@ bindings:
           details:
             source: 确认以上 23 条 review 规则全部通过
             owner: project-owner
+        - verifier_ref: frontend-directory-structure#RULE-frontend-directory-001
+          executed_at: '2026-10-17T12:18:53.344957+00:00'
+          status: verified
+          rule_text_sha256: 66966dac0eb450b2ddde672de79b7855ccf19b371bc18776d8d0ecb196341a8f
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
   - ref: RULE-frontend-api-types-001
     summary: Shared request/response types live in `src/types/api.ts` and are re-exported
       from `api.ts`; pages/components must not redefine drifting DTOs or hard-code
@@ -2217,7 +2391,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-api-types-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-api-types-001
@@ -2257,6 +2431,17 @@ bindings:
           rule_text_sha256: da31561ab47f66800d4351fcaf04e354795189e6966f19bd5b78dcb91f2638cc
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: frontend-directory-structure#RULE-frontend-api-types-001
+          executed_at: '2026-10-17T12:18:53.344971+00:00'
+          status: verified
+          rule_text_sha256: da31561ab47f66800d4351fcaf04e354795189e6966f19bd5b78dcb91f2638cc
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -2388,7 +2573,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-quality-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-quality-001
@@ -2428,6 +2613,17 @@ bindings:
           rule_text_sha256: d02c28f2c041bfa9eea4ffc592e5352a37e8884776ec581eea954e1f49b6a4c0
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: frontend-quality-standards#RULE-frontend-quality-001
+          executed_at: '2026-10-17T12:18:53.346413+00:00'
+          status: verified
+          rule_text_sha256: d02c28f2c041bfa9eea4ffc592e5352a37e8884776ec581eea954e1f49b6a4c0
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -2602,6 +2798,17 @@ bindings:
           details:
             checked_files: 89
             violations: []
+        - verifier_ref: frontend-quality-standards#RULE-frontend-api-client-001
+          executed_at: '2026-10-17T12:18:53.371730+00:00'
+          status: verified
+          rule_text_sha256: f72980fb8ff80823ef0306b736ff3dfcc9216a23d166c4b3ef9f0c3283c1aafd
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: 027bb2ceb46b7eb53212193a6d48c2aa3341edd95ecdb485657925a25e8bbe91
+          error_code: null
+          details:
+            checked_files: 89
+            violations: []
       design:
         status: applied
         refs:
@@ -2617,7 +2824,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-api-client-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-010
           item_id: RULE-frontend-api-client-001
@@ -2674,7 +2881,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-i18n-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-011
           item_id: RULE-frontend-i18n-001
@@ -2714,6 +2921,17 @@ bindings:
           rule_text_sha256: f7949e0627700b461018be02191edc4b983370e1968d47b5c5f0376b04c4e019
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: frontend-quality-standards#RULE-frontend-i18n-001
+          executed_at: '2026-10-17T12:18:53.346437+00:00'
+          status: verified
+          rule_text_sha256: f7949e0627700b461018be02191edc4b983370e1968d47b5c5f0376b04c4e019
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -2901,7 +3119,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-config-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-config-001
@@ -2946,6 +3164,17 @@ bindings:
           details:
             source: 确认以上 23 条 review 规则全部通过
             owner: project-owner
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+          executed_at: '2026-10-17T12:18:53.373770+00:00'
+          status: verified
+          rule_text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
   - ref: RULE-runtime-validate-before-write-001
     summary: Any renderer/inject path that materializes runtime config must call `validateRuntimeConfig`
       (or shared schema helper) before atomic write; desired state carries a monotonic
@@ -2975,7 +3204,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-validate-before-write-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-004
           item_id: RULE-runtime-validate-before-write-001
@@ -3015,6 +3244,17 @@ bindings:
           rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+          executed_at: '2026-10-17T12:18:53.373792+00:00'
+          status: verified
+          rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -3119,7 +3359,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-007
           item_id: RULE-runtime-directory-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-007
           item_id: RULE-runtime-directory-001
@@ -3159,6 +3399,17 @@ bindings:
           rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+          executed_at: '2026-10-17T12:18:53.374636+00:00'
+          status: verified
+          rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -3263,7 +3514,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-runtime-security-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-003
           item_id: RULE-runtime-security-001
@@ -3308,6 +3559,17 @@ bindings:
           details:
             source: 确认以上 23 条 review 规则全部通过
             owner: project-owner
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+          executed_at: '2026-10-17T12:18:53.376107+00:00'
+          status: verified
+          rule_text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
   - ref: RULE-runtime-secret-file-mode-001
     summary: Files that materialize config, bundles, or secrets on disk must use restrictive
       modes (`0o600` for written config/bundle material; Pod service token files `0400`
@@ -3337,7 +3599,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-secret-file-mode-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-secret-file-mode-001
@@ -3377,6 +3639,17 @@ bindings:
           rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+          executed_at: '2026-10-17T12:18:53.376131+00:00'
+          status: verified
+          rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
@@ -3508,7 +3781,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-skill-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-skill-001
@@ -3553,6 +3826,17 @@ bindings:
           details:
             source: 确认以上 23 条 review 规则全部通过
             owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+          executed_at: '2026-10-17T12:18:53.378522+00:00'
+          status: verified
+          rule_text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
   - ref: RULE-runtime-skill-layering-001
     summary: Resolution order prefers system (`system_protected`) over public/private;
       public/private name conflicts must not silently overwrite—override only via
@@ -3582,7 +3866,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-009
           item_id: RULE-runtime-skill-layering-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-009
           item_id: RULE-runtime-skill-layering-001
@@ -3627,6 +3911,17 @@ bindings:
           details:
             source: 确认以上 23 条 review 规则全部通过
             owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+          executed_at: '2026-10-17T12:18:53.378543+00:00'
+          status: verified
+          rule_text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
   - ref: RULE-runtime-log-injection-001
     summary: Tool/plugin modules must receive logging via an injected `log` callback
       (default no-op) instead of scattered `console.*`; the openclaw plugin path injects
@@ -3656,7 +3951,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-log-injection-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-log-injection-001
@@ -3701,6 +3996,17 @@ bindings:
           details:
             source: 确认以上 23 条 review 规则全部通过
             owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+          executed_at: '2026-10-17T12:18:53.378558+00:00'
+          status: verified
+          rule_text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
   - ref: RULE-runtime-log-prefix-001
     summary: Log lines must carry a stable module prefix (`[session-manager]`, `[muad-runtime-guard]`)
       with `[<module>-<action>]` sub-tags for grep-ability.
@@ -3729,7 +4035,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-log-prefix-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-005
           item_id: RULE-runtime-log-prefix-001
@@ -3774,6 +4080,17 @@ bindings:
           details:
             source: 确认以上 23 条 review 规则全部通过
             owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+          executed_at: '2026-10-17T12:18:53.378567+00:00'
+          status: verified
+          rule_text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
   - ref: RULE-runtime-skill-fail-loud-001
     summary: Skill scripts must report failures to stderr and exit non-zero (fail
       loud); stdout is reserved for the machine-readable result. Errors written to
@@ -3803,7 +4120,7 @@ bindings:
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-008
           item_id: RULE-runtime-skill-fail-loud-001
-          artifact_sha256: f366bab7b5fc14895208e2488a4cd9a1c8d7d854f1c74da30b48895442e722e7
+          artifact_sha256: b1339dc3c4dee6bc6c0b99bb7be602b21ebabfa232ab665c02f3825de44e576f
         - artifact: skill-execution-control-and-review.md
           section_id: TASK-008
           item_id: RULE-runtime-skill-fail-loud-001
@@ -3843,6 +4160,17 @@ bindings:
           rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
           artifact_sha256: null
           diff_sha256: head:805f32aed2473b5c7e3325b2b630f26d16303af9
+          result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
+          error_code: null
+          details:
+            source: 确认以上 23 条 review 规则全部通过
+            owner: project-owner
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+          executed_at: '2026-10-17T12:18:53.378576+00:00'
+          status: verified
+          rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+          artifact_sha256: null
+          diff_sha256: head:c4998423a7652be893e01fa5a658119afbfc50da
           result_sha256: e840932ad446d1dbb4942dba148675e21198ff76342623486771c3f95a8c96fc
           error_code: null
           details:
