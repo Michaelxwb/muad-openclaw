@@ -144,7 +144,8 @@ function toEvent(record, seq, executionId, now) {
     seq,
     occurredAt,
     kind,
-    status: kind === "abort" ? "aborted" : (isErrorRecord(record) ? "error" : "ok"),
+    // The Console schema only accepts ok/error; abort is carried by `kind`.
+    status: kind === "abort" ? "error" : (isErrorRecord(record) ? "error" : "ok"),
     summary: summaryText(record, kind),
     detail: text(record.errorClass),
   };

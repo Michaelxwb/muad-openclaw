@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "task_file": "skill-execution-control-and-review.md",
-  "task_sha256": "e1de1f80c9de6b12938edc6e9c326c63d2e6b00826fcb27911dfd855cce6f882",
+  "task_sha256": "83ee573cfcab1b6b41a50bd02e6efc8827019640cbd2c497b591afc40e8ce1e7",
   "scenarios": [
     {
       "id": "S-01",
@@ -10,15 +10,76 @@
       "kind": "e2e",
       "boundary": "Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API",
       "owner": "TASK-012",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "`cf_acceptance_runner.py",
-        "--include-e2e`"
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S01$",
+        "-count=1",
+        "-v"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S01$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-01",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S01$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
     },
     {
       "id": "S-02",
@@ -27,14 +88,76 @@
       "kind": "e2e",
       "boundary": "helper 退出 → guard abort → IM 通知 → Console 入库 → 通知分发",
       "owner": "TASK-012",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S02$",
+        "-count=1",
+        "-v"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S02$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-02",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S02$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
     },
     {
       "id": "S-03",
@@ -57,15 +180,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-03",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "42166c55c81f44cca405d2dc208657eb",
-        "executed_at": "2026-10-17T11:45:35.341812+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "go",
           "-C",
@@ -78,7 +201,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -102,6 +225,28 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+        },
+        {
+          "id": "S-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SettingsResources",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -121,15 +266,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-04",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
-        "executed_at": "2026-10-17T11:40:43.609275+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "sh",
           "-c",
@@ -137,7 +282,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -156,6 +301,23 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./test -run Notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -166,14 +328,76 @@
       "kind": "e2e",
       "boundary": "执行数据 → stats SQL → 查询 API → UI 列表",
       "owner": "TASK-012",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S05$",
+        "-count=1",
+        "-v"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S05$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-05",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S05$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
     },
     {
       "id": "S-06",
@@ -182,7 +406,7 @@
       "kind": "e2e",
       "boundary": "审阅脚本 → 目标目录 → 报告输出（不执行目标代码）",
       "owner": "TASK-008",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "python3",
         "-m",
@@ -194,14 +418,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-06",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "da1361136cd74d6ba82b6f49af62e17e",
-        "executed_at": "2026-10-17T11:53:23.223325+00:00",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -211,7 +436,8 @@
           "-q"
         ],
         "cwd": ".",
-        "timeout": 60.0
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -231,6 +457,26 @@
           ],
           "cwd": ".",
           "timeout": 60.0
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -255,6 +501,29 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "AdminSkillReview",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
       "runs": [
         {
           "id": "S-07",
@@ -277,31 +546,30 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "d9ce3c5699397e18b12ba818870e3f6701ebc0bd9732c329b29b18fce66beb3d"
+        },
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "AdminSkillReview",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
-      ],
-      "revision": 1,
-      "evidence": {
-        "id": "S-07",
-        "kind": "functional",
-        "status": "passed",
-        "exit_code": 0,
-        "revision": 1,
-        "run_id": "c6498fea53484d77848782e67fc66e50",
-        "executed_at": "2026-10-17T11:58:03.487238+00:00",
-        "command": [
-          "go",
-          "-C",
-          "console/backend",
-          "test",
-          "./test",
-          "-run",
-          "AdminSkillReview",
-          "-count=1"
-        ],
-        "cwd": ".",
-        "timeout": 60.0,
-        "fingerprint": "d9ce3c5699397e18b12ba818870e3f6701ebc0bd9732c329b29b18fce66beb3d"
-      }
+      ]
     },
     {
       "id": "S-08",
@@ -322,15 +590,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-08",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "da1361136cd74d6ba82b6f49af62e17e",
-        "executed_at": "2026-10-17T11:53:23.223325+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -341,7 +609,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "d9e9cd0587160a0f28e40b3937fca7160d5968c99d99f27ff52712a4d7a62a85"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -363,6 +631,26 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "d9e9cd0587160a0f28e40b3937fca7160d5968c99d99f27ff52712a4d7a62a85"
+        },
+        {
+          "id": "S-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -384,15 +672,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-09",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -402,7 +690,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -423,6 +711,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -444,15 +751,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-10",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -462,7 +769,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -483,6 +790,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -502,15 +828,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-11",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
-        "executed_at": "2026-10-17T11:40:43.609275+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "sh",
           "-c",
@@ -518,7 +844,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -537,6 +863,23 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./test -run Notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -558,15 +901,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-12",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -576,7 +919,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -597,6 +940,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -618,15 +980,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-13",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -636,7 +998,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -657,6 +1019,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-13",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -667,14 +1048,76 @@
       "kind": "e2e",
       "boundary": "两个用户并发 → 两份 spool → Console → 告警/统计",
       "owner": "TASK-012",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S14$",
+        "-count=1",
+        "-v"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "S-14",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S14$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-14",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S14$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
     },
     {
       "id": "S-15",
@@ -693,15 +1136,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-15",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "9d0c823270ee4343a61bd65e728153cb",
-        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "node",
           "--test",
@@ -710,7 +1153,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -730,6 +1173,24 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "S-15",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -740,14 +1201,76 @@
       "kind": "e2e",
       "boundary": "旧 Skill（raw requests + 手工头）→ 新镜像 → 执行",
       "owner": "TASK-012",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S16$",
+        "-count=1",
+        "-v"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "S-16",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S16$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "S-16",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S16$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
     },
     {
       "id": "S-17",
@@ -767,15 +1290,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-17",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -785,7 +1308,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -806,6 +1329,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-17",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -830,15 +1372,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-01",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "a170fbcb71c24d6eb7547b8d14580eaa",
-        "executed_at": "2026-10-17T11:40:32.180731+00:00",
+        "revision": 3,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "go",
           "-C",
@@ -851,7 +1393,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -896,6 +1438,28 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -915,15 +1479,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-02",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
-        "executed_at": "2026-10-17T11:40:43.609275+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "sh",
           "-c",
@@ -931,7 +1495,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -950,6 +1514,23 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./internal/notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -970,15 +1551,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-03",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "9d0c823270ee4343a61bd65e728153cb",
-        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "node",
           "--test",
@@ -987,7 +1568,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1007,6 +1588,24 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1028,15 +1627,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-04",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -1046,7 +1645,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1067,6 +1666,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1088,15 +1706,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-05",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -1106,7 +1724,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1127,6 +1745,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "E-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1147,15 +1784,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-06",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "9d0c823270ee4343a61bd65e728153cb",
-        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "node",
           "--test",
@@ -1164,7 +1801,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1184,6 +1821,24 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "E-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1208,15 +1863,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-07",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "42166c55c81f44cca405d2dc208657eb",
-        "executed_at": "2026-10-17T11:45:35.341812+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "go",
           "-C",
@@ -1229,7 +1884,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1253,6 +1908,28 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+        },
+        {
+          "id": "E-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SettingsResources",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1274,15 +1951,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-08",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -1292,7 +1969,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1313,6 +1990,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "E-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1333,15 +2029,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-09",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "9d0c823270ee4343a61bd65e728153cb",
-        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "node",
           "--test",
@@ -1350,7 +2046,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1370,6 +2066,24 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "E-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=trace spool",
+            "tools/muad-runtime-guard/test/cross-user-guard.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1391,15 +2105,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-10",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -1409,7 +2123,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1430,6 +2144,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "E-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1440,14 +2173,76 @@
       "kind": "functional",
       "boundary": "升级顺序/版本错配",
       "owner": "TASK-012",
-      "status": "planned",
+      "status": "verified",
       "command": [
-        "同上"
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_E11$",
+        "-count=1",
+        "-v"
       ],
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "runs": []
+      "runs": [
+        {
+          "id": "E-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_E11$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "E-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_E11$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
     },
     {
       "id": "B-01",
@@ -1467,15 +2262,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-01",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -1485,7 +2280,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1506,6 +2301,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1526,15 +2340,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-02",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "9d0c823270ee4343a61bd65e728153cb",
-        "executed_at": "2026-10-17T11:55:15.986655+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "node",
           "--test",
@@ -1543,7 +2357,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1563,6 +2377,24 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1584,15 +2416,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-03",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -1602,7 +2434,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1623,6 +2455,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1644,15 +2495,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-04",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -1662,7 +2513,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1683,6 +2534,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1702,15 +2572,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-05",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
-        "executed_at": "2026-10-17T11:40:43.609275+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "sh",
           "-c",
@@ -1718,7 +2588,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1737,6 +2607,23 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "B-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./internal/notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1758,15 +2645,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-06",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -1776,7 +2663,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1797,6 +2684,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1818,15 +2724,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-07",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -1836,7 +2742,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1857,6 +2763,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1881,15 +2806,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "B-08",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "a170fbcb71c24d6eb7547b8d14580eaa",
-        "executed_at": "2026-10-17T11:40:32.180731+00:00",
+        "revision": 3,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "go",
           "-C",
@@ -1902,7 +2827,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -1947,6 +2872,28 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+        },
+        {
+          "id": "B-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -1966,15 +2913,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-09",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
-        "executed_at": "2026-10-17T11:40:43.609275+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "sh",
           "-c",
@@ -1982,7 +2929,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2001,6 +2948,23 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "B-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./internal/notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2022,15 +2986,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-10",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "ee773a174bb0452f9c4935da741e69e8",
-        "executed_at": "2026-10-17T11:41:52.542641+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "python3",
           "-m",
@@ -2040,7 +3004,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2061,6 +3025,25 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2071,7 +3054,7 @@
       "kind": "e2e",
       "boundary": "API → 状态 → 抽屉渲染",
       "owner": "TASK-011",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "npm",
         "test",
@@ -2082,14 +3065,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-21",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2098,7 +3082,8 @@
           "Audit"
         ],
         "cwd": "console/frontend",
-        "timeout": 300.0
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2117,6 +3102,25 @@
           ],
           "cwd": "console/frontend",
           "timeout": 300.0
+        },
+        {
+          "id": "S-21",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2138,15 +3142,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-22",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2156,7 +3160,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2177,6 +3181,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "S-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2187,7 +3210,7 @@
       "kind": "e2e",
       "boundary": "表单 → api.ts → 后端 → 回显",
       "owner": "TASK-010",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "npm",
         "test",
@@ -2198,14 +3221,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-23",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "bd340f0c86524066bc110049ee24c0fa",
-        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2214,7 +3238,8 @@
           "Settings"
         ],
         "cwd": "console/frontend",
-        "timeout": 300.0
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2233,6 +3258,25 @@
           ],
           "cwd": "console/frontend",
           "timeout": 300.0
+        },
+        {
+          "id": "S-23",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2243,7 +3287,7 @@
       "kind": "e2e",
       "boundary": "API → 列表 → 钻取",
       "owner": "TASK-011",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": [
         "npm",
         "test",
@@ -2254,14 +3298,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-24",
         "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2270,7 +3315,8 @@
           "Audit"
         ],
         "cwd": "console/frontend",
-        "timeout": 300.0
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2289,6 +3335,25 @@
           ],
           "cwd": "console/frontend",
           "timeout": 300.0
+        },
+        {
+          "id": "S-24",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2310,15 +3375,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "S-25",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2328,7 +3393,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2349,6 +3414,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "S-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2370,15 +3454,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-21",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2388,7 +3472,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2409,6 +3493,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "E-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2430,15 +3533,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-22",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "bd340f0c86524066bc110049ee24c0fa",
-        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2448,7 +3551,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2469,6 +3572,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        },
+        {
+          "id": "E-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2490,15 +3612,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-23",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "bd340f0c86524066bc110049ee24c0fa",
-        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2508,7 +3630,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2529,6 +3651,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        },
+        {
+          "id": "E-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2550,15 +3691,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-24",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2568,7 +3709,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2589,6 +3730,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "E-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2610,15 +3770,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "E-25",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2628,7 +3788,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2649,6 +3809,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "E-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2670,15 +3849,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-21",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "bd340f0c86524066bc110049ee24c0fa",
-        "executed_at": "2026-10-17T11:52:18.964520+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2688,7 +3867,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2709,6 +3888,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        },
+        {
+          "id": "B-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2730,15 +3928,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-22",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2748,7 +3946,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2769,6 +3967,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "B-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2790,15 +4007,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-23",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2808,7 +4025,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2829,6 +4046,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "B-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     },
@@ -2850,15 +4086,15 @@
       "cwd": "console/frontend",
       "timeout": 300.0,
       "depends_on": [],
-      "revision": 1,
+      "revision": 2,
       "evidence": {
         "id": "B-24",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 1,
-        "run_id": "015384433cbc4f579de9b80300150771",
-        "executed_at": "2026-10-17T11:58:43.891345+00:00",
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
         "command": [
           "npm",
           "test",
@@ -2868,7 +4104,7 @@
         ],
         "cwd": "console/frontend",
         "timeout": 300.0,
-        "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
       },
       "runs": [
         {
@@ -2889,6 +4125,25 @@
           "cwd": "console/frontend",
           "timeout": 300.0,
           "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "B-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
         }
       ]
     }
