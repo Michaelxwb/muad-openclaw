@@ -7,6 +7,11 @@ export interface SkillExecutionFilters {
   startedTo: string;
 }
 
+export interface SkillExecutionDrilldown {
+  skillName: string;
+  humanUserId: string;
+}
+
 export const EMPTY_SKILL_EXECUTION_FILTERS: SkillExecutionFilters = {
   q: "",
   scope: "",
