@@ -67,6 +67,43 @@ export class SkillProgressManager {
     return true;
   }
 
+  // 管理员终止：在 abort 前捕获活跃前台 execution 的可信投递路由和 Skill 名称；
+  // abort/agent_end 会清理 execution，必须提前拿。没有活跃 execution 返回 null。
+  captureCancelRoute(input = {}) {
+    const sessionKey = text(input.sessionKey);
+    const agentId = text(input.agentId);
+    if (!sessionKey || !agentId) return null;
+    for (const state of this.#executions.values()) {
+      if (state.kind !== "foreground" || !state.accepting) continue;
+      if (state.sessionKey !== sessionKey || state.agentId !== agentId) continue;
+      return { route: { ...state.route }, skillName: state.skillName, locale: state.locale };
+    }
+    return null;
+  }
+
+  // 用进度通道的同一条 notifyUser 路径向用户立即推送终止通知；不启动 agent run。
+  async notifyCancelled(notice, counts = {}) {
+    if (!notice?.route || !validRoute(notice.route.channel, notice.route.peerId)) {
+      return { delivered: false, reason: "route_not_found" };
+    }
+    const killed = Number.isInteger(counts.killed) && counts.killed > 0 ? counts.killed : 0;
+    const remaining = Array.isArray(counts.remaining) ? counts.remaining.length : 0;
+    const result = await notifyOutcome(this.#notify, {
+      channel: notice.route.channel,
+      peerId: notice.route.peerId,
+      text: cancelNoticeText(notice, killed, remaining),
+    }, this.#notifyTimeoutMs);
+    try {
+      this.#log(
+        `[muad-runtime-guard][skill-progress] cancel-notice skill=${text(notice.skillName) || "unknown"}` +
+          ` outcome=${result.outcome}${result.reason ? ` reason=${result.reason}` : ""}`,
+      );
+    } catch {
+      // logging is best-effort
+    }
+    return { delivered: result.outcome === "delivered", ...result };
+  }
+
   reportProgress(executionKey, unknownEvent) {
     const state = this.#executions.get(String(executionKey ?? ""));
     if (!state || !state.accepting) {
@@ -201,6 +238,21 @@ async function notifyOutcome(notify, input, timeoutMs) {
       ? { outcome: "delivered" }
       : { outcome: "notify_failed", reason: diagnosticDetail(result?.error) }, () => ({ outcome: "notify_rejected" }));
   return raceTimeout(operation, timeoutMs, { outcome: "notify_timeout" });
+}
+
+function cancelNoticeText(notice, killed, remaining) {
+  const skill = text(notice.skillName);
+  if (notice.locale === "en") {
+    const target = skill ? `the "${skill}" task` : "the current session task";
+    let message = `【Task terminated】An administrator terminated ${target}.`;
+    if (killed > 0) message += ` Cleaned up ${killed} background process(es).`;
+    if (remaining > 0) message += ` ${remaining} process(es) not yet confirmed exited.`;
+    return message;
+  }
+  let message = `【任务终止】管理员已从控制台终止${skill ? `「${skill}」任务` : "本会话任务"}。`;
+  if (killed > 0) message += `已清理 ${killed} 个后台进程。`;
+  if (remaining > 0) message += `仍有 ${remaining} 个进程未确认退出。`;
+  return message;
 }
 
 // notifyUser 的 error 是我们自己拼的稳定文案（含 message send 的失败原因），

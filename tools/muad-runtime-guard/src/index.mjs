@@ -107,6 +107,7 @@ const plugin = {
       getConfig: () => latestGuardConfig(config),
       capability: sessionCancelCapability,
       runtime: sessionCancelRuntime,
+      progress: skillProgressManager,
       log: sessionCancelLog,
     };
     api.registerGatewayMethod(
