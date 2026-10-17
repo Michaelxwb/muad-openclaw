@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "muad-skill-http"
+version = "0.1.0"
+description = "Trace-aware HTTP helper and platform request client for muad skills"
+requires-python = ">=3.9"
+dependencies = ["requests>=2.31"]
+
+[tool.setuptools]
+packages = ["muad_skill_http"]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
