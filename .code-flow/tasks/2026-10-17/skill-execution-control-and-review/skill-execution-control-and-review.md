@@ -14,12 +14,12 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 |
 |--------|---------|---------|-------------|---------|------|
-| S-01 | backend.design.md#2.5.2 功能验收场景 | E2E | Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API | TASK-012 | planned |
-| S-02 | backend.design.md#2.5.2 功能验收场景 | E2E | helper 退出 → guard abort → IM 通知 → Console 入库 → 通知分发 | TASK-012 | planned |
+| S-01 | backend.design.md#2.5.2 功能验收场景 | E2E | Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API | TASK-012 | verified |
+| S-02 | backend.design.md#2.5.2 功能验收场景 | E2E | helper 退出 → guard abort → IM 通知 → Console 入库 → 通知分发 | TASK-012 | verified |
 | S-03 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → resource_config → runtimeconfig builder → renderer → 配置字节 | TASK-004 | verified |
 | S-04 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → 加密存储 → dispatcher → WeCom HTTP（httptest） | TASK-003 | verified |
-| S-05 | backend.design.md#2.5.2 功能验收场景 | E2E | 执行数据 → stats SQL → 查询 API → UI 列表 | TASK-012 | planned |
-| S-06 | backend.design.md#2.5.2 功能验收场景 | E2E | 审阅脚本 → 目标目录 → 报告输出（不执行目标代码） | TASK-008 | e2e_deferred |
+| S-05 | backend.design.md#2.5.2 功能验收场景 | E2E | 执行数据 → stats SQL → 查询 API → UI 列表 | TASK-012 | verified |
+| S-06 | backend.design.md#2.5.2 功能验收场景 | E2E | 审阅脚本 → 目标目录 → 报告输出（不执行目标代码） | TASK-008 | verified |
 | S-07 | backend.design.md#2.5.2 功能验收场景 | integration | 下载 API → 私有上传 API → 管理员工作区 | TASK-009 | verified |
 | S-08 | backend.design.md#2.5.2 功能验收场景 | integration | Skill 文档与模板文件内容 | TASK-008 | verified |
 | S-09 | backend.design.md#2.5.2 功能验收场景 | integration | helper → spool 文件 | TASK-007 | verified |
@@ -27,9 +27,9 @@
 | S-11 | backend.design.md#2.5.2 功能验收场景 | integration | settings API → audit | TASK-003 | verified |
 | S-12 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager 状态文件 → platform_request → HTTP（httptest） | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
 | S-13 | backend.design.md#2.5.2 功能验收场景 | integration | mssp 状态文件 → platform_request | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
-| S-14 | backend.design.md#2.5.2 功能验收场景 | E2E | 两个用户并发 → 两份 spool → Console → 告警/统计 | TASK-012 | planned |
+| S-14 | backend.design.md#2.5.2 功能验收场景 | E2E | 两个用户并发 → 两份 spool → Console → 告警/统计 | TASK-012 | verified |
 | S-15 | backend.design.md#2.5.2 功能验收场景 | integration | 共享 gateway hook → 异步队列 → 其他用户 turn | TASK-005 | verified |
-| S-16 | backend.design.md#2.5.2 功能验收场景 | E2E | 旧 Skill（raw requests + 手工头）→ 新镜像 → 执行 | TASK-012 | planned |
+| S-16 | backend.design.md#2.5.2 功能验收场景 | E2E | 旧 Skill（raw requests + 手工头）→ 新镜像 → 执行 | TASK-012 | verified |
 | S-17 | backend.design.md#2.5.2 功能验收场景 | integration | 混合 Skill（helper + raw requests） | TASK-007 | verified |
 | E-01 | backend.design.md#2.5.2 功能验收场景 | integration | Console 内部接口 → repo | TASK-002 | verified |
 | E-02 | backend.design.md#2.5.2 功能验收场景 | integration | dispatcher → WeCom HTTP（errcode≠0） | TASK-003 | verified |
@@ -41,7 +41,7 @@
 | E-08 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager → 状态文件 → platform_request | TASK-007 | verified |
 | E-09 | backend.design.md#2.5.2 功能验收场景 | integration | cross-user-guard → 文件路径 | TASK-005 | verified |
 | E-10 | backend.design.md#2.5.2 功能验收场景 | integration | platform_request → HTTP 401 | TASK-007 | verified |
-| E-11 | backend.design.md#2.5.2 功能验收场景 | integration | 升级顺序/版本错配 | TASK-012 | planned |
+| E-11 | backend.design.md#2.5.2 功能验收场景 | integration | 升级顺序/版本错配 | TASK-012 | verified |
 | B-01 | backend.design.md#2.5.2 功能验收场景 | unit | helper 计数 | TASK-007 | verified |
 | B-02 | backend.design.md#2.5.2 功能验收场景 | integration | helper spool + guard 解析 | TASK-005 | verified |
 | B-03 | backend.design.md#2.5.2 功能验收场景 | unit | 路径归一化 | TASK-007 | verified |
@@ -52,10 +52,10 @@
 | B-08 | backend.design.md#2.5.2 功能验收场景 | integration | stats 分组维度 | TASK-002 | verified |
 | B-09 | backend.design.md#2.5.2 功能验收场景 | unit | 告警去重键 | TASK-003 | verified |
 | B-10 | backend.design.md#2.5.2 功能验收场景 | integration | 旧状态文件（无 requestProfile） | TASK-007 | verified |
-| S-21 | frontend.design.md#2.4 验收条件 | E2E | API → 状态 → 抽屉渲染 | TASK-011 | e2e_deferred | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| S-21 | frontend.design.md#2.4 验收条件 | E2E | API → 状态 → 抽屉渲染 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
 | S-22 | frontend.design.md#2.4 验收条件 | integration | 状态 → UI | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
-| S-23 | frontend.design.md#2.4 验收条件 | E2E | 表单 → api.ts → 后端 → 回显 | TASK-010 | e2e_deferred | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
-| S-24 | frontend.design.md#2.4 验收条件 | E2E | API → 列表 → 钻取 | TASK-011 | e2e_deferred | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| S-23 | frontend.design.md#2.4 验收条件 | E2E | 表单 → api.ts → 后端 → 回显 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
+| S-24 | frontend.design.md#2.4 验收条件 | E2E | API → 列表 → 钻取 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
 | S-25 | frontend.design.md#2.4 验收条件 | integration | API 返回 truncated | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
 | E-21 | frontend.design.md#2.4 验收条件 | integration | 请求失败 → 错误态 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
 | E-22 | frontend.design.md#2.4 验收条件 | integration | 表单校验 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
@@ -172,11 +172,17 @@
 - B-08: verified — automated command passed; run_id=d9db27575f024b4bacb2b1026a227975 (confirmed_by: runner)
 - E-01: verified — automated command passed; run_id=a170fbcb71c24d6eb7547b8d14580eaa (confirmed_by: runner)
 - B-08: verified — automated command passed; run_id=a170fbcb71c24d6eb7547b8d14580eaa (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-08: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 
 ### Log
 
 - [2026-10-17] created (draft)
 - [2026-10-17] started
+- [2026-10-17] RED：S-01 缺 exec 事件；S-02 abort 事件状态被 schema 拒绝（400/40534）且管理员告警未触发；S-16 空 spool 不上报
+- [2026-10-17] GREEN：补齐 guard exec 事件、abort 状态映射、Console aborted→notify.Publish；新增 Node/Python/Go 跨边界 E2E 与真实 HTTP UI E2E
+- [2026-10-17] 将 TASK-012 Contract 命令改为可执行 argv JSON，按 ID 保留既有 runtime evidence 重锁 manifest（valid=true）
+- [2026-10-17] `cf_acceptance_runner.py --include-e2e --write-evidence` decision=pass（52/52）
 - [2026-10-17] RED：新增 trace 写入/查询/跨 Pod 冲突/非法负载/stats 集成测试后，路由返回 404、api 包因新错误码未定义编译失败
 - [2026-10-17] GREEN：实现三个接口、ctx 超时、单事务 metrics upsert + 事件批量幂等、错误码与双向守卫；`go test ./internal/api ./test -count=1`、`go test ./... -count=1`、`go vet ./...` 全部通过
 - [2026-10-17] started
@@ -242,6 +248,11 @@
 - E-02: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
 - B-05: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
 - B-09: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-05: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-09: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 
 ### Log
 
@@ -292,6 +303,8 @@
 | RULE-runtime-validate-before-write-001 | `node --test ...` FAIL：合法值报 `runtime.guard contains unknown field: skillRequestLimit`；非法值未被拒绝 | PASS：["node","--test","bin/test/runtime-config-schema.test.mjs","bin/test/inject-multi-user-config.test.mjs"] → 35/35；`node --test bin/test/*.test.mjs` → 121/123（2 项预存在失败：缺少本地 `node_modules` 的 offline-safe 断言与千流 recipe 断言，与本次改动无关） | `bin/test/runtime-config-schema.test.mjs`（0/50/1000000 接受；缺省兼容旧 Console；-1/1000001/1.5/"50"/null 拒绝）、`bin/test/inject-multi-user-config.test.mjs`（renderer 写 guard config，旧 DTO 缺省回落 1000） | 真实 `parseRuntimeConfig`/`validateRuntimeConfig` 严格校验路径；renderer 输出经既有 `bin/test` 原子写与 transaction 测试回归；guard 插件 manifest `configSchema` 同步新增 `skillRequestLimit`（0~1000000） | verified |
 - S-03: verified — automated command passed; run_id=42166c55c81f44cca405d2dc208657eb (confirmed_by: runner)
 - E-07: verified — automated command passed; run_id=42166c55c81f44cca405d2dc208657eb (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-07: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 
 ### Log
 
@@ -370,6 +383,11 @@
 - E-06: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
 - E-09: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- S-15: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-09: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 
 ### Log
 
@@ -495,6 +513,21 @@
 - B-06: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
 - B-07: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
 - B-10: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-12: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-13: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-17: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-08: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-10: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-07: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-10: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 
 ### Log
 
@@ -531,7 +564,7 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-06 | E2E | Skill 进程 → 目标目录 → 报告 | 报告列出违规与 file:line；目标脚本未执行 | `skills/self-skill-review/test/test_check.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | e2e_deferred |
+| S-06 | E2E | Skill 进程 → 目标目录 → 报告 | 报告列出违规与 file:line；目标脚本未执行 | `skills/self-skill-review/test/test_check.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | verified |
 | S-08 | integration | 模板/文档文件扫描 | 无 TS/Shell 模板与示例；creator 只引导 Python | `skills/_templates/test/test_template_scan.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | verified |
 | RULE-runtime-skill-fail-loud-001 | integration | review 规则与示例 | 违规能被检出；示例 fail loud | `skills/self-skill-review/test/test_check.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | verified |
 
@@ -545,6 +578,8 @@
 - `node --check tools/muad-progress/test/template-integration.test.mjs` 通过；本机无 `dist/` 与 node_modules，未执行 `npm test`（模板运行语义已用 Python stub 冒烟验证）。
 - S-06: e2e_deferred — automated command e2e_deferred; run_id=da1361136cd74d6ba82b6f49af62e17e (confirmed_by: runner)
 - S-08: verified — automated command passed; run_id=da1361136cd74d6ba82b6f49af62e17e (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 
 ### Log
 
@@ -595,6 +630,7 @@
 - 真实边界：httptest 走真实 HTTP handler + 真实 repo/skillsync，仅 RuntimeDriver 用 fake（不接真实 Docker/K8s）；installer 的 `workspace-<agent>/skills` 目标路径由 `bin/private-skill-installer.mjs` 承担。
 - Runbook：`docs/skill-admin-review-runbook.md`（前置条件、步骤、反向检查、清理动作），并从 `console/README.md` 链接。
 - S-07: verified — automated command passed; run_id=c6498fea53484d77848782e67fc66e50 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 
 ### Log
 
@@ -635,7 +671,7 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-23 | E2E | 表单 → api.ts → 后端 → 回显 | 保存成功；刷新回显；webhook 打码；测试结果就地展示 | `console/frontend/test/Settings.test.tsx` | ["npm", "test", "--", "--run", "Settings"] | e2e_deferred |
+| S-23 | E2E | 表单 → api.ts → 后端 → 回显 | 保存成功；刷新回显；webhook 打码；测试结果就地展示 | `console/frontend/test/Settings.test.tsx` | ["npm", "test", "--", "--run", "Settings"] | verified |
 | E-22 | integration | 表单校验 | 负数/非整数提示，不发请求 | 同上 | ["npm", "test", "--", "--run", "Settings"] | verified |
 | E-23 | integration | 测试接口 errcode≠0 | 保留输入并展示失败原因 | 同上 | ["npm", "test", "--", "--run", "Settings"] | verified |
 | B-21 | unit | 上限 0 | 显示"不限制"，保存成功 | 同上 | ["npm", "test", "--", "--run", "Settings"] | verified |
@@ -656,6 +692,10 @@
 - E-22: verified — automated command passed; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
 - E-23: verified — automated command passed; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
 - B-21: verified — automated command passed; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
+- S-23: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-22: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-23: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-21: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 
 ### Log
 
@@ -695,9 +735,9 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-21 | E2E | API → 状态 → 抽屉渲染 | 汇总与事件按序显示；http 字段正确 | `console/frontend/test/AuditTrace.test.tsx` | ["npm", "test", "--", "--run", "Audit"] | e2e_deferred |
+| S-21 | E2E | API → 状态 → 抽屉渲染 | 汇总与事件按序显示；http 字段正确 | `console/frontend/test/AuditTrace.test.tsx` | ["npm", "test", "--", "--run", "Audit"] | verified |
 | S-22 | integration | 状态 → UI | aborted 徽标/事件高亮 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
-| S-24 | E2E | API → 列表 → 钻取 | 用户维度两行；钻取带 humanUserId | 同上 | ["npm", "test", "--", "--run", "Audit"] | e2e_deferred |
+| S-24 | E2E | API → 列表 → 钻取 | 用户维度两行；钻取带 humanUserId | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
 | S-25 | integration | truncated 数据 | 顶部提示"明细已截断，共 N 次" | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
 | E-21 | integration | 请求失败 | Banner + ErrorDetail + 重试 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
 | E-24 | integration | 空数据 | 空态文案 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
@@ -732,6 +772,16 @@
 - B-22: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
 - B-23: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
 - B-24: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- S-21: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-22: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-24: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-25: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-21: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-24: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-25: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-22: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-23: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-24: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
 
 ### Log
 
@@ -744,11 +794,11 @@
 
 ## TASK-012: 跨边界 E2E 与兼容性验收
 
-- **Status**: draft
+- **Status**: done
 - **Priority**: P0
 - **Depends**: TASK-005, TASK-006, TASK-007, TASK-008, TASK-010, TASK-011
 - **Source**: `skill-execution-control-and-review.backend.design.md#2.5.2 功能验收场景`, `skill-execution-control-and-review.backend.design.md#3.2 架构设计`（兼容性与渐进迁移）, `skill-execution-control-and-review.backend.design.md#4.2 发布与回滚`
-- **Spec-Refs**: —（跨任务 E2E，无独立 Rule owner）
+- **Spec-Refs**: backend-code-quality-performance#RULE-backend-quality-001, runtime-skill-execution#RULE-runtime-skill-001, runtime-isolation-and-security#RULE-runtime-security-001, runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
 - **Acceptance-Refs**: S-01, S-02, S-05, S-14, S-16, E-11, RULE-13
 
 ### Description
@@ -757,31 +807,77 @@
 
 ### Checklist
 
-- [ ] [S-01][E2E] 编写全链路用例（真实边界：Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API），断言事件、汇总与脱敏。
-- [ ] [S-02][E2E] 编写超限用例（helper 退出 → guard abort → IM 通知 → Console → 通知分发），断言第 N+1 次未发出、退出码 86、用户/管理员通知。
-- [ ] [S-05][E2E] 验证 stats 数据 → API → UI 列表与异常标记。
-- [ ] [S-14][E2E] 两用户并发同名 public Skill：trace 分离、告警按用户、统计两行。
-- [ ] [S-16][E2E] 旧 Skill（raw requests + 手工头）升级后原样执行；只有 exec 事件；不触发限额。
-- [ ] [E-11][integration] 版本错配/升级顺序：新 guard + 旧 Console、旧 guard + 新 Console 只降级不崩溃。
-- [ ] [verifier][integration] RULE-13 兼容约束：确认未改 requests、CLI stdout、状态文件已有字段与旧链路行为。
-- [ ] 执行 `cf_acceptance_runner.py --manifest <需求目录>/.acceptance-manifest.json --root . --include-e2e --write-evidence` 并记录证据。
+- [x] [S-01][E2E] 编写全链路用例（真实边界：Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API），断言事件、汇总与脱敏。
+- [x] [S-02][E2E] 编写超限用例（helper 退出 → guard abort → IM 通知 → Console → 通知分发），断言第 N+1 次未发出、退出码 86、用户/管理员通知。
+- [x] [S-05][E2E] 验证 stats 数据 → API → UI 列表与异常标记。
+- [x] [S-14][E2E] 两用户并发同名 public Skill：trace 分离、告警按用户、统计两行。
+- [x] [S-16][E2E] 旧 Skill（raw requests + 手工头）升级后原样执行；只有 exec 事件；不触发限额。
+- [x] [E-11][integration] 版本错配/升级顺序：新 guard + 旧 Console、旧 guard + 新 Console 只降级不崩溃。
+- [x] [verifier][integration] RULE-13 兼容约束：确认未改 requests、CLI stdout、状态文件已有字段与旧链路行为。
+- [x] 执行 `cf_acceptance_runner.py --manifest <需求目录>/.acceptance-manifest.json --root . --include-e2e --write-evidence` 并记录证据。
 
 ### Acceptance Contract
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-01 | E2E | 全链路（脚本/helper/guard/API/DB） | 事件与汇总完整；无敏感头 | `console/backend/test/skill_trace_e2e_test.go` | `cf_acceptance_runner.py --include-e2e` | planned |
-| S-02 | E2E | 全链路 + 通知 | 超限终止、IM、管理员告警 | 同上 | 同上 | planned |
-| S-05 | E2E | 数据 → API → UI | 健康视图与异常标记 | 同上 | 同上 | planned |
-| S-14 | E2E | 两用户并发 | trace/告警/统计隔离 | 同上 | 同上 | planned |
-| S-16 | E2E | 旧 Skill → 新镜像 | 原行为不变；仅 exec trace | 同上 | 同上 | planned |
-| E-11 | integration | 版本错配 | 降级不崩溃；spool 重试 | 同上 | 同上 | planned |
-| RULE-13 | integration | 兼容面 | requests/CLI/状态文件/旧链路不变 | 同上 | 同上 | planned |
+| S-01 | E2E | 全链路（脚本/helper/guard/API/DB） | 事件与汇总完整；无敏感头 | `console/backend/test/skill_trace_e2e_test.go` | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S01$","-count=1","-v"] | verified |
+| S-02 | E2E | 全链路 + 通知 | 超限终止、IM、管理员告警 | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S02$","-count=1","-v"] | verified |
+| S-05 | E2E | 数据 → API → UI | 健康视图与异常标记 | 同上 + `console/frontend/test-e2e/skill-health.e2e.tsx` | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S05$","-count=1","-v"] | verified |
+| S-14 | E2E | 两用户并发 | trace/告警/统计隔离 | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S14$","-count=1","-v"] | verified |
+| S-16 | E2E | 旧 Skill → 新镜像 | 原行为不变；仅 exec trace | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S16$","-count=1","-v"] | verified |
+| E-11 | integration | 版本错配 | 降级不崩溃；spool 重试 | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_E11$","-count=1","-v"] | verified |
+| RULE-13 | integration | 兼容面 | requests/CLI/状态文件/旧链路不变 | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_RULE13$","-count=1","-v"] | verified |
 
 ### Acceptance Evidence
 
-> 编码期由 `cf-task-start` 填写 RED/GREEN、断言位置与真实组件证据；E2E 由 verify-e2e 统一执行。
+**RED（先写 E2E，确认缺口真实存在）**
+
+| 场景 | 命令 | 失败原因 |
+|------|------|---------|
+| S-01 | `go test -tags e2e ./test -run TestSkillTraceE2E_S01 -count=1` | trace 只有 3 条 `http` 事件，缺 `exec` 事件（guard 从未产出 exec 事件） |
+| S-02 | 同上 `-run TestSkillTraceE2E_S02` | trace 上报返回 400/40534：abort 事件 `status="aborted"` 不被 Console schema（ok/error）接受；管理员告警未触发（handler 未调用 `notify.Publish`） |
+| S-05/S-14 | 同上 | 依赖 S-01/S-02 的同一缺口；stats/UI 链路无法得到 aborted 数据 |
+| S-16 | 同上 `-run TestSkillTraceE2E_S16` | 空 spool 直接 return，旧 Skill 完全没有 trace（设计要求仅 exec 事件） |
+
+**GREEN（真实跨边界实现，未降级为 mock）**
+
+- 修复 TASK-002/005 遗留的三处集成缺口（本任务发现并补齐，均有上述 RED 用例覆盖）：
+  1. guard 每执行产出一条 `exec` 事件（`skill-trace.mjs:execTraceEvent`，seq=1，helper 事件统一 +1），旧 Skill 因此得到仅 exec 的 trace；
+  2. abort 事件状态改为 schema 允许的 `error`（`kind=abort` 保留语义），trace 可正常入库；
+  3. Console trace 写入在 `metrics.aborted` 时调用 `notify.Publish`，经真实 Dispatcher + WeCom 通道分发管理员告警（5 分钟去重）。
+- `console/backend/test/skill_trace_e2e_test.go`：临时 SQLite + 真实 `api.Server` httptest → 真实 HTTP 创建 execution/写 trace/查 trace/stats；Node 直接加载 `tools/muad-runtime-guard/src` 的归属映射、spool 解析、有界队列、SkillTraceClient；Python 子进程真实执行 `muad_skill_http`（helper）或裸 `requests`（legacy）；业务平台为本地 httptest 记录真实请求；WeCom 为本地 httptest（保留 `qyapi.weixin.qq.com` 白名单与真实 dispatcher）。
+- S-01：exit 0；exec env（EXECUTION_ID/TRACE_SPOOL/LIMIT）正确；spool 0700/0600 且上传后删除；trace 4 事件（exec + 3 http）、requestCount=3、errorCount=0、Top 接口 `{host}/api/v1/targets/{id}`×3；响应/DB 不含 `e2e-secret-header`/`e2e-secret-body`/`Cookie`（业务服务器确实收到了这些值）。
+- S-02：limit=3 / 4 次请求 → 业务服务器只收到 3 次（第 4 次未发出）、进程 exit 86；trace aborted=true、abortReason=request_limit、abortCount=4；事件 exec+3 http+abort；guard 用户通知（wecom/wx-alice，fake）1 条；Console 管理员 WeCom 告警 1 条且含 humanUserId/skill。
+- S-05：stats SQL 返回 abortedCount=1、flaggedCount=1、maxRequests=4、Top 接口正确；`console/frontend/test-e2e/skill-health.e2e.tsx` 以真实 HTTP 渲染 Audit 健康表（skill 行、aborted/flagged=1、maxRequests=4），点击钻取后执行日志页签从真实 `/skill-executions` 查询出该 executionId。
+- S-14：同 Pod 两用户并发（limit=2 / 3 次）→ 两进程均 exit 86；两份 trace 按 executionId 分离（所有 eventId 带各自前缀），各自 abortedCount=3；guard 用户通知按 peer 区分；管理员收到 2 条含不同 humanUserId 的告警；stats 返回两行（同 public skill，不同 humanUserId）。
+- S-16：limit=1 但裸 `requests` 3 次全部成功（业务服务器收到 3 次，带手工 `Cookie`/`X-Manual-Csrf`），进程 exit 0、无用户通知；trace 仅 1 条 exec 事件、requestCount=0、aborted=false；旧状态文件（仅 cookies/storageState）读取正常。
+- E-11：新 guard + 旧 Console（404）→ Skill 正常 exit 0、spool 保留；Console 升级后同一 spool 重放上传成功并删除；旧 guard + 新 Console（仅 execution 记录、无 trace）→ trace 接口 200 返回空 metrics/events、stats 正常降级，无 5xx。
+- RULE-13：`python3 -m pytest -q tools/muad-skill-sdk/test` + `node --test --test-name-pattern=SkillTrace tools/muad-runtime-guard/test/skill-trace.test.mjs` 全绿（覆盖 raw requests 绕过、混合请求、旧状态文件回退、requests 未被替换）。
+
+**回归**
+
+- `go test ./... -count=1`（console/backend）全绿；`go test -tags e2e ./test -run TestSkillTraceE2E -count=1` 全绿。
+- `npm test -- --run`（console/frontend）27 文件 / 211 用例全绿（E2E 文件不在默认 include）。
+- `node --test --test-name-pattern=SkillTrace tools/muad-runtime-guard/test/skill-trace.test.mjs` 18/18。
+- `cf_acceptance_runner.py --manifest ... --root . --include-e2e --write-evidence` → decision=pass（52/52，含 S-06/S-21/S-23/S-24 重跑）。
+
+**未自动化 / 边界说明**
+
+- `output` 事件：本需求实现（TASK-005）没有产出文件事件的生产者，S-01 按实际链路断言 exec + http + 汇总；这是设计（§2.5.2 列出的 exec/http/output）与实现的已知差异，未用伪造事件掩盖。
+- 真实 OpenClaw gateway 进程/真实企微服务器：本环境不可用；guard 以真实模块 + 真实 Node 子进程驱动，WeCom 以保留 host 白名单的本地 httptest 替代（设计允许）。
+- session-manager CLI stdout 字段兼容未在本任务重跑（需 TS 构建）；状态文件旧字段兼容由 SDK `B-10` 用例覆盖，CLI 行为由 TASK-006 既有测试守护。
+- 用户 IM 投递在 guard 侧按 E-06 契约注入 fake（不阻塞 trace/终止）。
+
+- S-01: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-14: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-11: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- RULE-13: verified — command `go test -tags e2e ./test -run '^TestSkillTraceE2E_RULE13$' -count=1 -v` passed（pytest + guard node suite）
 
 ### Log
 
 - [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] completed (done)

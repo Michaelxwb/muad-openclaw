@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/errcode"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/notify"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 )
 
@@ -155,6 +156,18 @@ func (s *Server) handleSkillExecutionTrace(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		writeRepoError(w, r, err)
 		return
+	}
+	// The abort event fans out one admin alert. Dispatcher de-duplication keeps
+	// retried uploads of the same execution from alerting again.
+	if metrics.Aborted && s.notifier != nil {
+		s.notifier.Publish(ctx, notify.Event{
+			Type:        "skill.request_limit",
+			PodID:       record.PodID,
+			HumanUserID: record.HumanUserID,
+			SkillName:   record.SkillName,
+			Interface:   storedMetrics.AbortInterface,
+			OccurredAt:  time.Now().UTC(),
+		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"storedEvents": stored, "aborted": storedMetrics.Aborted,
