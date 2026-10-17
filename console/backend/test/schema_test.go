@@ -533,6 +533,231 @@ const legacyPodsWithoutSkillsPendingSchema = `CREATE TABLE pods (
 	CHECK (applied_generation <= config_generation)
 );`
 
+func TestSchemaCreatesSkillTraceAndNotifyTables(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "skill-trace.db")
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	db := openSchemaDB(t, path)
+
+	for _, table := range []string{
+		"skill_trace_events", "skill_execution_metrics", "notify_channels",
+	} {
+		if !schemaObjectExists(t, db, "table", table) {
+			t.Errorf("table %q was not created", table)
+		}
+	}
+	for _, index := range []string{"idx_skill_trace_execution", "idx_skill_trace_occurred"} {
+		if !schemaObjectExists(t, db, "index", index) {
+			t.Errorf("index %q was not created", index)
+		}
+	}
+	for _, column := range []string{
+		"event_id", "execution_id", "seq", "occurred_at", "kind", "status",
+		"duration_ms", "summary", "detail",
+	} {
+		if !tableColumnExists(t, db, "skill_trace_events", column) {
+			t.Errorf("skill_trace_events.%s column was not created", column)
+		}
+	}
+	for _, column := range []string{
+		"execution_id", "request_count", "error_count", "distinct_hosts",
+		"max_burst_per_10s", "top_interfaces_json", "detail_truncated", "aborted",
+		"abort_reason", "abort_interface", "abort_count", "updated_at",
+	} {
+		if !tableColumnExists(t, db, "skill_execution_metrics", column) {
+			t.Errorf("skill_execution_metrics.%s column was not created", column)
+		}
+	}
+	for _, column := range []string{
+		"channel_id", "type", "name", "config_enc", "enabled",
+		"created_at", "updated_at",
+	} {
+		if !tableColumnExists(t, db, "notify_channels", column) {
+			t.Errorf("notify_channels.%s column was not created", column)
+		}
+	}
+	if !tableColumnExists(t, db, "resource_global", "skill_request_limit") {
+		t.Error("resource_global.skill_request_limit column was not created")
+	}
+
+	if _, err := db.Exec(`INSERT INTO resource_global (updated_at)
+		VALUES ('2026-10-17T06:00:00Z')`); err != nil {
+		t.Fatalf("insert resource_global: %v", err)
+	}
+	var limit int
+	if err := db.QueryRow(`SELECT skill_request_limit FROM resource_global WHERE id = 1`).Scan(&limit); err != nil {
+		t.Fatalf("read skill_request_limit default: %v", err)
+	}
+	if limit != 1000 {
+		t.Errorf("skill_request_limit default = %d, want 1000", limit)
+	}
+	if _, err := db.Exec(`UPDATE resource_global SET skill_request_limit = -1 WHERE id = 1`); err == nil {
+		t.Error("resource_global.skill_request_limit CHECK accepted a negative value")
+	}
+	if _, err := db.Exec(`INSERT INTO notify_channels (
+		channel_id, type, name, config_enc, created_at, updated_at
+	) VALUES ('channel-a', 'email', 'bad', 'enc', 'now', 'now')`); err == nil {
+		t.Error("notify_channels.type CHECK accepted an unsupported channel type")
+	}
+}
+
+func TestSchemaSkillTraceForeignKeysCascade(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "skill-trace-cascade.db")
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	db := openSchemaDB(t, path)
+	insertPod(t, db, "pod-a", "fingerprint-a")
+	insertLLMModel(t, db, "model-a")
+	insertSchemaHumanUser(t, db)
+	if _, err := db.Exec(`INSERT INTO skill_execution_records (
+		execution_id, pod_id, human_user_id, agent_id, skill_name, skill_scope,
+		started_at, created_at
+	) VALUES ('exec-a', 'pod-a', 'user-a', 'agent-a', 'xdr-query', 'private',
+		'2026-10-17T06:00:00Z', '2026-10-17T06:00:00Z')`); err != nil {
+		t.Fatalf("insert execution record: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO skill_trace_events (
+		event_id, execution_id, seq, occurred_at, kind, status, summary
+	) VALUES ('event-a', 'exec-a', 1, '2026-10-17T06:01:00Z', 'exec', 'ok', 'run')`); err != nil {
+		t.Fatalf("insert trace event: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO skill_execution_metrics (
+		execution_id, request_count, top_interfaces_json, updated_at
+	) VALUES ('exec-a', 5, '[]', '2026-10-17T06:01:00Z')`); err != nil {
+		t.Fatalf("insert execution metrics: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO skill_trace_events (
+		event_id, execution_id, seq, occurred_at, kind, status, summary
+	) VALUES ('event-missing', 'exec-missing', 1, '2026-10-17T06:01:00Z', 'exec', 'ok', 'run')`); err == nil {
+		t.Fatal("skill_trace_events accepted an event for a missing execution")
+	}
+
+	if _, err := db.Exec(`DELETE FROM skill_execution_records WHERE execution_id = 'exec-a'`); err != nil {
+		t.Fatalf("delete execution record: %v", err)
+	}
+	for _, table := range []string{"skill_trace_events", "skill_execution_metrics"} {
+		var count int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		if count != 0 {
+			t.Errorf("%s rows after execution delete = %d, want 0 (ON DELETE CASCADE)", table, count)
+		}
+	}
+}
+
+func TestSchemaUpgradesLegacyDatabaseForSkillTrace(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-skill-trace.db")
+	store, err := repo.Open(path)
+	if err != nil {
+		t.Fatalf("Open initial database: %v", err)
+	}
+	if err := store.SetResourceGlobal(repo.ResourceConfig{MemLimit: "3g", CPULimit: "2"}); err != nil {
+		t.Fatalf("SetResourceGlobal: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close initial database: %v", err)
+	}
+
+	db := openSchemaDB(t, path)
+	insertPod(t, db, "pod-a", "fingerprint-a")
+	insertLLMModel(t, db, "model-a")
+	insertSchemaHumanUser(t, db)
+	if _, err := db.Exec(`INSERT INTO skill_execution_records (
+		execution_id, pod_id, human_user_id, agent_id, skill_name, skill_scope,
+		started_at, created_at
+	) VALUES ('exec-legacy', 'pod-a', 'user-a', 'agent-a', 'xdr-query', 'private',
+		'2026-10-17T06:00:00Z', '2026-10-17T06:00:00Z')`); err != nil {
+		t.Fatalf("insert legacy execution record: %v", err)
+	}
+	// Simulate a database created before this migration: the three tables and
+	// the resource_global column do not exist yet.
+	for _, statement := range []string{
+		`DROP TABLE IF EXISTS skill_trace_events`,
+		`DROP TABLE IF EXISTS skill_execution_metrics`,
+		`DROP TABLE IF EXISTS notify_channels`,
+		`ALTER TABLE resource_global RENAME TO resource_global_legacy`,
+		legacyResourceGlobalWithoutSkillRequestLimit,
+		`INSERT INTO resource_global (
+			id, mem_limit, cpu_limit, restart_policy, max_skill_concurrency,
+			max_browser_concurrency, max_long_task_concurrency, updated_at
+		) SELECT id, mem_limit, cpu_limit, restart_policy, max_skill_concurrency,
+			max_browser_concurrency, max_long_task_concurrency, updated_at
+			FROM resource_global_legacy`,
+		`DROP TABLE resource_global_legacy`,
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("prepare legacy schema: %v", err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	// Open twice: the first run upgrades, the second must be a no-op.
+	for run := 1; run <= 2; run++ {
+		store, err := repo.Open(path)
+		if err != nil {
+			t.Fatalf("Open migrated database (run %d): %v", run, err)
+		}
+		if err := store.Close(); err != nil {
+			t.Fatalf("Close migrated database (run %d): %v", run, err)
+		}
+		db = openSchemaDB(t, path)
+		for _, table := range []string{
+			"skill_trace_events", "skill_execution_metrics", "notify_channels",
+		} {
+			if !schemaObjectExists(t, db, "table", table) {
+				t.Fatalf("run %d: migrated table %q missing", run, table)
+			}
+		}
+		if !tableColumnExists(t, db, "resource_global", "skill_request_limit") {
+			t.Fatalf("run %d: resource_global.skill_request_limit missing", run)
+		}
+		var executions int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM skill_execution_records
+			WHERE execution_id = 'exec-legacy'`).Scan(&executions); err != nil {
+			t.Fatalf("run %d: count execution records: %v", run, err)
+		}
+		if executions != 1 {
+			t.Fatalf("run %d: execution rows = %d, want 1", run, executions)
+		}
+		var memLimit string
+		var limit int
+		if err := db.QueryRow(`SELECT mem_limit, skill_request_limit FROM resource_global
+			WHERE id = 1`).Scan(&memLimit, &limit); err != nil {
+			t.Fatalf("run %d: read migrated resource_global: %v", run, err)
+		}
+		if memLimit != "3g" || limit != 1000 {
+			t.Fatalf("run %d: migrated resource_global = %q limit %d, want 3g/1000", run, memLimit, limit)
+		}
+		if err := db.Close(); err != nil {
+			t.Fatalf("run %d: close inspected database: %v", run, err)
+		}
+	}
+}
+
+const legacyResourceGlobalWithoutSkillRequestLimit = `CREATE TABLE resource_global (
+	id INTEGER PRIMARY KEY CHECK (id = 1),
+	mem_limit TEXT NOT NULL DEFAULT '',
+	cpu_limit TEXT NOT NULL DEFAULT '',
+	restart_policy TEXT NOT NULL DEFAULT '',
+	max_skill_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_skill_concurrency >= 0),
+	max_browser_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_browser_concurrency >= 0),
+	max_long_task_concurrency INTEGER NOT NULL DEFAULT 0 CHECK (max_long_task_concurrency >= 0),
+	updated_at TEXT NOT NULL
+)`
+
 const legacyLongTaskTasksWithoutPoolLimitSchema = `CREATE TABLE long_task_tasks (
 	task_id TEXT PRIMARY KEY,
 	pod_id TEXT NOT NULL,
