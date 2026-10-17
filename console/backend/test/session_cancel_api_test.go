@@ -59,6 +59,18 @@ func sessionExecCalls(e *testEnv) [][]string {
 	return calls
 }
 
+func sessionInjectCalls(e *testEnv) [][]string {
+	e.drv.mu.Lock()
+	defer e.drv.mu.Unlock()
+	var calls [][]string
+	for _, call := range e.drv.execCalls {
+		if strings.Contains(strings.Join(call.cmd, " "), "chat.inject") {
+			calls = append(calls, call.cmd)
+		}
+	}
+	return calls
+}
+
 type sessionCancelEnvelope struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -294,6 +306,24 @@ func TestSessionCancelWritesRedactedAudit(t *testing.T) {
 	if params.SessionKey != sessionCancelKey || params.RequestedBy != "root" || len(params.Expected) != 2 ||
 		params.Expected[0].PID != 4028 || params.Expected[0].Fingerprint != "fp-a" {
 		t.Fatalf("cancel params = %+v", params)
+	}
+
+	injectCalls := sessionInjectCalls(e)
+	if len(injectCalls) != 1 {
+		t.Fatalf("expected one chat.inject note, got %#v", injectCalls)
+	}
+	var note struct {
+		SessionKey string `json:"sessionKey"`
+		Message    string `json:"message"`
+		Label      string `json:"label"`
+	}
+	if err := json.Unmarshal([]byte(argValue(injectCalls[0], "--params")), &note); err != nil {
+		t.Fatalf("inject params must be JSON: %v", err)
+	}
+	if note.SessionKey != sessionCancelKey || note.Label != "muad.session-cancel" ||
+		!strings.Contains(note.Message, "管理员已从控制台终止") ||
+		!strings.Contains(note.Message, "不是模型执行失败") {
+		t.Fatalf("inject note = %+v", note)
 	}
 
 	entries, total, err := e.store.QueryAuditFiltered(repo.AuditFilter{Action: "session.cancel"})

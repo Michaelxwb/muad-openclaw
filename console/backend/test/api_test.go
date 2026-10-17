@@ -49,6 +49,7 @@ type fakeDriver struct {
 	sessionPreviewErr error
 	sessionCancelOut  string
 	sessionCancelErr  error
+	sessionInjectErr  error
 	logsOutput        string
 	logsErr           error
 	cleanupErr        error
@@ -243,6 +244,11 @@ func (f *fakeDriver) Exec(_ context.Context, podID string, cmd ...string) (strin
 			return "", f.sessionCancelErr
 		}
 		return f.sessionCancelOut, nil
+	case strings.Contains(joined, "chat.inject"):
+		if f.sessionInjectErr != nil {
+			return "", f.sessionInjectErr
+		}
+		return `{"ok":true,"messageId":"inject-1"}`, nil
 	case strings.Contains(joined, "muad.runtime.health"):
 		generation := f.created[podID].MultiUser.Generation
 		if generation == 0 {

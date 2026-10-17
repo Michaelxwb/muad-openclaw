@@ -103,7 +103,36 @@ func (s *Server) handleCancelSession(w http.ResponseWriter, r *http.Request) {
 		result.Processes = []gateway.SessionCancelProcess{}
 	}
 	s.auditSessionCancel(r, target, result, 0)
+	// 给会话追加一条权威注记：下一轮模型据此知道是管理员终止，而不是把被杀的
+	// process session 误判为模型执行失败。注记失败不影响已完成的终止结果。
+	if result.Aborted || result.Killed > 0 {
+		noteCtx, noteCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		err := gateway.InjectSessionNote(noteCtx, s.drv, target.podID, target.sessionKey, sessionCancelNote(result))
+		noteCancel()
+		if err != nil {
+			log.Printf("session_cancel_note_failed pod=%s error=%s",
+				target.podID, auditlog.RedactDiagnostic(err.Error()))
+		}
+	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+// sessionCancelNote 是注入会话的 assistant 注记：只陈述控制面事实，不把终止
+// 归因给模型；同时明确禁止未经用户要求自动重跑。
+func sessionCancelNote(result gateway.SessionCancelResult) string {
+	var b strings.Builder
+	b.WriteString("【系统通知】管理员已从控制台终止本会话上一轮任务。")
+	if result.Aborted {
+		b.WriteString("本轮 run 已中止。")
+	}
+	if result.Killed > 0 {
+		fmt.Fprintf(&b, "已清理 %d 个后台进程。", result.Killed)
+	}
+	if len(result.Remaining) > 0 {
+		fmt.Fprintf(&b, "仍有 %d 个进程未确认退出。", len(result.Remaining))
+	}
+	b.WriteString("这不是模型执行失败；除非用户明确要求，不要自动重跑该任务。")
+	return b.String()
 }
 
 // sessionCancelTargetForRequest 校验 identity 归属、用户运行 Pod 与推导 key；
