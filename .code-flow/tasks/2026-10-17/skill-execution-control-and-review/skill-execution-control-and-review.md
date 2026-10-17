@@ -80,7 +80,7 @@
 
 ## TASK-001: Console 数据模型与迁移
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**:
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.3 数据设计`, `skill-execution-control-and-review.backend.design.md#4.4 数据迁移`
@@ -126,7 +126,7 @@
 
 ## TASK-002: Console trace 写入、查询与健康统计 API
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
@@ -192,7 +192,7 @@
 
 ## TASK-003: 通用通知能力与企微通道
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
@@ -265,7 +265,7 @@
 
 ## TASK-004: 请求上限设置链路
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: `skill-execution-control-and-review.backend.design.md#2.3.2 字段约束`, `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#4.2 发布与回滚`
@@ -319,7 +319,7 @@
 
 ## TASK-005: runtime guard trace 归属、回传与隔离
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-002, TASK-004, TASK-007
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.2 架构设计`, `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
@@ -402,7 +402,7 @@
 
 ## TASK-006: session-manager 平台 request profile
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**:
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（平台 request profile）
@@ -447,7 +447,7 @@
 
 ## TASK-007: Python SDK `muad_skill_http`
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-006
 - **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（形态 C、SDK 环境契约、spool 契约、请求头构造顺序）`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
@@ -541,7 +541,7 @@
 ---
 ## TASK-008: `self-skill-review` 与 creator Python 收敛
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-007
 - **Source**: `skill-execution-control-and-review.backend.design.md#2.3.1 功能清单`, `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（存量与文档收敛）
@@ -594,7 +594,7 @@
 
 ## TASK-009: 管理员 review 流程验证
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P1
 - **Depends**: TASK-008
 - **Source**: `skill-execution-control-and-review.backend.design.md#2.3.1 功能清单`（FEAT-13）, `skill-execution-control-and-review.backend.design.md#2.2 痛点与价值`（US-06）
@@ -645,7 +645,7 @@
 
 ## TASK-010: 前端系统设置（上限 + 告警推送）
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-003, TASK-004
 - **Source**: `skill-execution-control-and-review.frontend.design.md#3.3 组件设计`, `skill-execution-control-and-review.frontend.design.md#3.5 状态与数据流`, `skill-execution-control-and-review.frontend.design.md#3.9 文案与 i18n`
@@ -710,7 +710,7 @@
 
 ## TASK-011: 前端执行时间线与 Skill 健康
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-002
 - **Source**: `skill-execution-control-and-review.frontend.design.md#3.3 组件设计`, `skill-execution-control-and-review.frontend.design.md#3.5 状态与数据流`, `skill-execution-control-and-review.frontend.design.md#3.6 UI 状态`
@@ -794,7 +794,7 @@
 
 ## TASK-012: 跨边界 E2E 与兼容性验收
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-005, TASK-006, TASK-007, TASK-008, TASK-010, TASK-011
 - **Source**: `skill-execution-control-and-review.backend.design.md#2.5.2 功能验收场景`, `skill-execution-control-and-review.backend.design.md#3.2 架构设计`（兼容性与渐进迁移）, `skill-execution-control-and-review.backend.design.md#4.2 发布与回滚`
