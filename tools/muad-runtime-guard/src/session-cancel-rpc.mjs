@@ -150,6 +150,7 @@ function resolveOptions(options) {
     log: typeof options.log === "function" ? options.log : () => {},
     scan: typeof options.scan === "function" ? options.scan : scanSessionProcesses,
     controller: options.controller,
+    progress: options.progress,
     sweeper: {
       procRoot: options.procRoot,
       uid: options.uid === undefined ? defaultUid() : options.uid,
@@ -237,6 +238,12 @@ export function createSessionCancelHandler(options = {}) {
       return { ok: false, reason: "session_cancel_unavailable" };
     }
     const { sessionKey, agentId, expected } = validated.request;
+    let cancelNotice = null;
+    try {
+      cancelNotice = ctx.progress?.captureCancelRoute?.({ sessionKey, agentId }) ?? null;
+    } catch {
+      cancelNotice = null;
+    }
     const abort = await sessionController(ctx).abort(sessionKey);
     if (abort.reason === "native_unavailable") {
       logLine(ctx.log, `cancel failed agent=${agentId} reason=native_unavailable`);
@@ -254,6 +261,22 @@ export function createSessionCancelHandler(options = {}) {
         ` confirmed=${confirmed} killed=${termination.killed} remaining=${termination.remaining.length}` +
         ` abort_reason=${abort.reason || "none"}`,
     );
+    if (cancelNotice && typeof ctx.progress?.notifyCancelled === "function") {
+      const delivery = await withTimeout(
+        Promise.resolve(ctx.progress.notifyCancelled(cancelNotice, {
+          killed: termination.killed,
+          remaining: termination.remaining,
+        })),
+        2_000,
+        { delivered: false, reason: "notify_timeout" },
+      );
+      logLine(
+        ctx.log,
+        `cancel notice skill=${cancelNotice.skillName || "unknown"}` +
+          ` delivered=${delivery?.delivered === true}` +
+          `${delivery?.reason ? ` reason=${delivery.reason}` : ""}`,
+      );
+    }
     return {
       ok: true,
       aborted: abort.aborted,
@@ -264,4 +287,15 @@ export function createSessionCancelHandler(options = {}) {
       processes,
     };
   };
+}
+
+// 终止通知是 best-effort：最多等 2s，超时不影响 cancel 结果；底层 message send
+// 仍可能继续完成。
+function withTimeout(promise, timeoutMs, fallback) {
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(fallback), Math.max(1, timeoutMs));
+  });
+  return Promise.race([Promise.resolve(promise).catch(() => fallback), timeout])
+    .finally(() => clearTimeout(timer));
 }

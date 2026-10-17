@@ -277,7 +277,18 @@ test("cancel aborts/drains the active run, terminates confirmed processes and re
   const procRoot = makeProcRoot(t);
   addProcess(procRoot, { pid: 4028, environ: [`MUAD_SESSION_KEY=${SESSION_KEY}`] });
   addProcess(procRoot, { pid: 4029, environ: [`MUAD_SESSION_KEY=${SESSION_KEY}`] });
-  const { options, signals, calls, logs } = handlerOptions(t, procRoot);
+  const progress = {
+    captured: [], notified: [],
+    captureCancelRoute(input) {
+      this.captured.push(input);
+      return { route: { channel: "wecom", peerId: "user-9" }, skillName: "slow-foreground-smoke", locale: "zh" };
+    },
+    async notifyCancelled(notice, counts) {
+      this.notified.push({ notice, counts });
+      return { delivered: true };
+    },
+  };
+  const { options, signals, calls, logs } = handlerOptions(t, procRoot, { options: { progress } });
   const preview = await createSessionPreviewHandler(options)({
     sessionKey: SESSION_KEY, requestedBy: "admin-1",
   });
@@ -307,6 +318,10 @@ test("cancel aborts/drains the active run, terminates confirmed processes and re
     assert.equal(line.includes("do-not-log-this"), false);
     assert.equal(line.includes("run.py"), false);
   }
+  assert.deepEqual(progress.captured, [{ sessionKey: SESSION_KEY, agentId: "alice" }]);
+  assert.equal(progress.notified.length, 1);
+  assert.deepEqual(progress.notified[0].counts, { killed: 2, remaining: [] });
+  assert.equal(progress.notified[0].notice.skillName, "slow-foreground-smoke");
 });
 
 test("empty expected aborts the run and kills no processes", async (t) => {

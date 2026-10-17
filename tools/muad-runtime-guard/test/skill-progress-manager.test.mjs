@@ -149,6 +149,35 @@ test("SkillProgressManager foreground route is direct, identity-bound, and env-s
   manager.close();
 });
 
+test("SkillProgressManager cancel notice captures route and sends immediately", async () => {
+  const calls = [];
+  const manager = createManager({
+    notify: async (input) => { calls.push(input); return { ok: true }; },
+  });
+  const sessionKey = "agent:alice:mattermost:direct:alice";
+  const registration = manager.registerForeground({
+    runId: "run-1", agentId: "alice", sessionKey,
+    senderId: "user-9", skillName: "report-skill", locale: "zh",
+  });
+
+  const notice = manager.captureCancelRoute({ sessionKey, agentId: "alice" });
+  assert.deepEqual(notice, {
+    route: { channel: "mattermost", peerId: "user-9" },
+    skillName: "report-skill", locale: "zh",
+  });
+  const delivered = await manager.notifyCancelled(notice, { killed: 2, remaining: [] });
+  assert.equal(delivered.delivered, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].peerId, "user-9");
+  assert.match(calls[0].text, /任务终止/);
+  assert.match(calls[0].text, /report-skill/);
+  assert.match(calls[0].text, /2 个后台进程/);
+
+  await manager.finish(registration.executionKey);
+  assert.equal(manager.captureCancelRoute({ sessionKey, agentId: "alice" }), null);
+  manager.close();
+});
+
 test("SkillProgressManager foreground route prefers the trusted senderId over the session key segment", async () => {
   const calls = [];
   const manager = createManager({
