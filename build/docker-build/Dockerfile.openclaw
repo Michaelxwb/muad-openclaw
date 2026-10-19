@@ -61,6 +61,10 @@ RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5
     -r /opt/muad/requirements.txt \
     && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86"
 
+# Skills 继续 `import requests`；compat 只在 guard 注入 MUAD_REQUESTS_COMPAT=1
+# 和 MUAD_BUSINESS_HOSTS 的 skill exec 中生效，其它 Python 进程不 patch。
+RUN python3 -c "import site, pathlib; p = pathlib.Path(site.getsitepackages()[0]) / 'muad_requests_compat.pth'; p.write_text('import muad_skill_http.compat\n', encoding='utf-8')"
+
 # runtime CLI dist 由 Task0 预构建，task4 从千流缓存恢复。
 # 这里直接 COPY 已构建的 dist，不在镜像内跑 npm（避免 base 镜像里 node worker thread abort）
 COPY tools/session-manager/dist /opt/muad/session-manager/dist

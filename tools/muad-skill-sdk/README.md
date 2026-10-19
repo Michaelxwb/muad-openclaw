@@ -1,15 +1,15 @@
 # muad-skill-http
 
-Trace-aware HTTP helpers and a platform request client for muad skills.
+Trace-aware HTTP helpers and runtime instrumentation for muad skills.
 
-`platform_request()` sends business-platform requests using a session state
-file resolved by the caller. The Skill runs `session-manager get-state
---skill-name <name>` and passes the returned `sessionStateFile`; the SDK never
-runs `session-manager` itself. It assembles the browser defaults, platform host
-header, platform static headers, cookies, CSRF header and a fresh `Traceid`
-UUID v4 for every request, and re-asserts the mandatory headers last so caller
-headers cannot override them. Cookie and CSRF values never reach the trace
-spool.
+Business skills keep using `import requests`. In the runtime image a `.pth`
+startup hook imports `muad_skill_http.compat`, which patches
+`requests.Session.request` only when Runtime Guard injects
+`MUAD_REQUESTS_COMPAT=1` and a non-empty `MUAD_BUSINESS_HOSTS` allowlist. Only
+requests whose URL `host:port` exactly matches an allowlisted business host are
+instrumented: `TraceId` and `X-Csrftoken` are overwritten with fresh UUID v4
+values and the request is counted against the execution limit. Every other
+request passes through untouched. Skill code does not import the SDK.
 
 ## Install
 
@@ -20,39 +20,27 @@ pip install muad-skill-http
 ## Usage
 
 ```python
-import json
-import subprocess
+import requests
 
-from muad_skill_http import get, platform_request
-
-# Plain HTTP with trace accounting.
-response = get("https://example.com/api/v1/items")
-
-# Resolve the login state with session-manager, then pass its state file.
-completed = subprocess.run(
-    ["session-manager", "get-state", "--skill-name", "my-skill"],
-    capture_output=True, text=True, check=True,
+response = requests.get(
+    "https://demo.example.internal/api/v1/targets",
+    headers={"Cookie": cookie_header},
 )
-state_file = json.loads(completed.stdout)["sessionStateFile"]
-response = platform_request(
-    "demo", "GET", "/api/v1/targets", state_file=state_file,
-)
-
-# Optional: a reusable client bound to the same state file.
-from muad_skill_http import platform
-
-client = platform("demo", state_file)
-response = client.get("/api/v1/targets")
 ```
 
-`get` / `post` / `put` / `patch` / `delete` / `head` / `options` / `request`
-wrap `requests` and record request counts for the current skill execution.
+Runtime Guard then adds the tracing/CSRF headers and records the request.
+
+`get` / `post` / `put` / `patch` / `delete` / `head` / `options` / `request` /
+`session` are also exported as thin `requests` wrappers that record request
+counts for the current skill execution. They are optional; plain `requests`
+calls are instrumented by the compat layer.
 
 ### Local development: build a state file from browser cookies
 
 `build_local_state` converts the `Cookie` request header copied from browser
-DevTools into the state JSON expected by `state_file`. It also writes the
-cookies into `storageState`; cookie values are never logged.
+DevTools into the state JSON the skill template reads from
+`~/.muad-local/session-state.json`. It also writes the cookies into
+`storageState`; cookie values are never logged.
 
 ```python
 import json
@@ -66,7 +54,7 @@ state = build_local_state(
     host_header={"Host": "demo.example.internal"},
     csrf=[{"cookie": "csrf_token", "header": "x-csrftoken"}],
 )
-with open("/home/me/muad-local/demo.json", "w", encoding="utf-8") as handle:
+with open("/home/me/.muad-local/session-state.json", "w", encoding="utf-8") as handle:
     json.dump(state, handle)
 ```
 
@@ -88,21 +76,12 @@ helpers are for local development only; production sessions come from
 runs do not need a `session-manager` binary. Never commit a filled-in state
 file.
 
-### Runtime requirements for `platform_request`
-
-`platform_request` requires the `state_file` argument: the
-`sessionStateFile` returned by `session-manager get-state`. Resolving the
-session is the Skill's responsibility; the SDK does not run `session-manager`
-or read credentials from the environment. If the file is missing, malformed,
-expired, or lacks the requested platform, the SDK raises
-`muad_skill_http.PlatformSessionError` before sending any request.
-
-Plain `get` / `post` calls work anywhere.
-
 ## Environment variables
 
 | Variable | Purpose |
 | --- | --- |
+| `MUAD_REQUESTS_COMPAT` | `1` enables the `requests` instrumentation. Runtime Guard injects it. |
+| `MUAD_BUSINESS_HOSTS` | Comma-separated `host:port` allowlist. Only these hosts are instrumented. Runtime Guard injects the pod-wide union of enabled platform `baseUrl` hosts. |
 | `MUAD_TRACE_SPOOL` | Optional JSONL trace spool path; paired with `MUAD_EXECUTION_ID`. |
 | `MUAD_EXECUTION_ID` | Execution id written to the trace spool. |
 | `MUAD_SKILL_REQUEST_LIMIT` | Per-execution interface request limit; unset or `0` means unlimited. Exceeding the limit exits with code `86`. |

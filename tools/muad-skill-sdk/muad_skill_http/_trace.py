@@ -1,8 +1,9 @@
 """Per-execution trace spool and interface request limit.
 
-The recorder is process-wide. Counting and limit enforcement stay in memory
-under a lock; the spool file is the only observable side effect and every
-I/O failure is swallowed so auditing never breaks a skill request.
+The recorder keeps per-process counts for the summary and, when a request
+limit is configured, also maintains an execution-wide counter file so child
+processes share the same per-interface limit. Every I/O failure is swallowed
+so auditing never breaks a skill request.
 """
 
 from __future__ import annotations
@@ -15,10 +16,17 @@ import time
 from collections import deque
 from datetime import datetime, timezone
 
+try:  # pragma: no cover - Windows has no fcntl
+    import fcntl
+except ImportError:  # pragma: no cover
+    fcntl = None
+
 EXIT_REQUEST_LIMIT = 86
 DETAIL_LIMIT = 500
 BURST_WINDOW_SECONDS = 10.0
 TOP_INTERFACE_LIMIT = 10
+COUNTER_SUFFIX = ".limit.json"
+MAX_COUNTER_BYTES = 1 << 20
 
 
 def _terminate(code):
@@ -36,6 +44,116 @@ def _parse_limit():
     except (TypeError, ValueError):
         return 0
     return value if value > 0 else 0
+
+
+class _SharedCounter:
+    """Execution-wide counter shared by every process of one skill execution.
+
+    The sidecar lives next to the trace spool and is only used when a request
+    limit is configured. fcntl locking keeps read-modify-write atomic across
+    processes; without fcntl the recorder falls back to per-process counting.
+    """
+
+    def __init__(self, spool_path):
+        self._path = spool_path + COUNTER_SUFFIX
+        self._disabled = fcntl is None or not spool_path
+        self._fallback = {}
+
+    def admit(self, host, method, path):
+        key = "%s %s %s" % (method, host, path)
+
+        def update(data):
+            interfaces = data.get("interfaces")
+            if not isinstance(interfaces, dict):
+                interfaces = {}
+                data["interfaces"] = interfaces
+            count = int(interfaces.get(key, 0) or 0) + 1
+            interfaces[key] = count
+            data["total"] = int(data.get("total", 0) or 0) + 1
+            hosts = data.get("hosts")
+            if not isinstance(hosts, dict):
+                hosts = {}
+                data["hosts"] = hosts
+            hosts[host] = int(hosts.get(host, 0) or 0) + 1
+            return count
+
+        result = self._mutate(update)
+        if result is not None:
+            return result
+        count = self._fallback.get(key, 0) + 1
+        self._fallback[key] = count
+        return count
+
+    def complete(self, error):
+        if not error:
+            return
+
+        def update(data):
+            data["errors"] = int(data.get("errors", 0) or 0) + 1
+
+        self._mutate(update)
+
+    def abort(self, interface, count, limit):
+        def update(data):
+            data["aborted"] = True
+            data["abortInterface"] = interface
+            data["abortCount"] = count
+            data["limit"] = limit
+
+        self._mutate(update)
+
+    def _mutate(self, callback):
+        if self._disabled:
+            return None
+        try:
+            fd = os.open(self._path, os.O_RDWR | os.O_CREAT, 0o600)
+        except OSError:
+            self._disabled = True
+            return None
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            try:
+                raw = os.read(fd, MAX_COUNTER_BYTES)
+                try:
+                    data = json.loads(raw.decode("utf-8")) if raw else {}
+                except ValueError:
+                    data = {}
+                if not isinstance(data, dict):
+                    data = {}
+                result = callback(data)
+                _sync_top_interfaces(data)
+                encoded = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                os.lseek(fd, 0, os.SEEK_SET)
+                os.ftruncate(fd, 0)
+                os.write(fd, encoded)
+                return result
+            finally:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+        except (OSError, ValueError):
+            self._disabled = True
+            return None
+        finally:
+            os.close(fd)
+
+
+def _sync_top_interfaces(data):
+    interfaces = data.get("interfaces")
+    if not isinstance(interfaces, dict):
+        return
+    entries = []
+    for key, count in interfaces.items():
+        parts = str(key).split(" ", 2)
+        if len(parts) != 3:
+            continue
+        entries.append({
+            "method": parts[0],
+            "host": parts[1],
+            "path": parts[2],
+            "count": int(count or 0),
+        })
+    entries.sort(key=lambda item: (-item["count"], item["host"], item["method"], item["path"]))
+    data["topInterfaces"] = entries[:TOP_INTERFACE_LIMIT]
+
 
 
 class TraceRecorder:
@@ -56,6 +174,7 @@ class TraceRecorder:
         self._truncated = False
         self._aborted = False
         self._summary_written = False
+        self._shared = _SharedCounter(spool_path) if limit > 0 and spool_path else None
 
     # -- request lifecycle ------------------------------------------------- #
 
@@ -73,9 +192,14 @@ class TraceRecorder:
                 self._counts[key] = count
                 self._hosts[host] = self._hosts.get(host, 0) + 1
                 self._track_burst_locked()
-                if self._limit and count > self._limit:
+                shared_count = self._shared.admit(host, method, path) if self._shared else None
+                effective = shared_count if shared_count is not None else count
+                if self._limit and effective > self._limit:
                     self._aborted = True
-                    self._write_abort_locked(host, method, path, count)
+                    interface = "%s %s %s" % (method, host, path)
+                    self._write_abort_locked(host, method, path, effective)
+                    if self._shared is not None:
+                        self._shared.abort(interface, effective, self._limit)
                     self._write_summary_locked()
                     terminate_now = True
         if terminate_now or already_aborted:
@@ -104,6 +228,8 @@ class TraceRecorder:
                     self._details += 1
             else:
                 self._truncated = True
+        if self._shared is not None:
+            self._shared.complete(status is None or status >= 400)
 
     # -- spool ------------------------------------------------------------- #
 

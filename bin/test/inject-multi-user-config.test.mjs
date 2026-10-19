@@ -93,6 +93,32 @@ test("Runtime DTO accepts traditional Skill grants without version metadata", ()
   assert.equal(parsed.skills.agents[0].allowed[0].version, "");
 });
 
+test("renderer derives the exact business host allowlist from platform baseUrl", () => {
+  const runtime = parseRuntimeConfig(fixtureText);
+  runtime.platforms = [
+    {
+      id: "mssw",
+      displayName: "MSSW",
+      baseUrl: "https://MSSW.example.internal:8443/console",
+      config: {},
+    },
+    {
+      id: "mssp",
+      displayName: "MSSP",
+      baseUrl: "https://mssw.example.internal:8443",
+      config: {},
+    },
+    { id: "plain", displayName: "Plain", config: {} },
+  ];
+
+  const output = renderOpenClawConfig(runtime, {});
+
+  assert.deepEqual(
+    output.plugins.entries["muad-runtime-guard"].config.businessHosts,
+    ["mssw.example.internal:8443"],
+  );
+});
+
 test("renderer produces strict routes, isolated profiles, providers and plugin entries", () => {
   const runtime = parseRuntimeConfig(fixtureText);
   const baseline = {

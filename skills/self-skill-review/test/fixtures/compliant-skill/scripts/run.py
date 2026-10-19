@@ -4,9 +4,10 @@ import os
 import subprocess
 import sys
 
-from muad_skill_http import platform_request
+import requests
 
 SKILL_NAME = "compliant-skill"
+PLATFORM = "demo_platform"
 
 
 def resolve_state_file():
@@ -23,7 +24,18 @@ def resolve_state_file():
 
 
 def fetch_items(state_file):
-    return platform_request("demo_platform", "GET", "/api/v1/items", state_file=state_file)
+    with open(state_file, "r", encoding="utf-8") as handle:
+        state = json.load(handle)
+    section = (state.get("platforms") or {}).get(PLATFORM) or {}
+    cookies = section.get("cookies") or []
+    cookie_header = "; ".join(
+        "%s=%s" % (item.get("name"), item.get("value"))
+        for item in cookies
+        if isinstance(item, dict) and item.get("name") and item.get("value") is not None
+    )
+    base_url = str((section.get("requestProfile") or {}).get("baseUrl") or "").rstrip("/")
+    headers = {"Cookie": cookie_header} if cookie_header else {}
+    return requests.get(base_url + "/api/v1/items", headers=headers, timeout=30)
 
 
 def main():

@@ -17,8 +17,8 @@ func (s *Store) CreatePlatformConfigAndMarkPods(config PlatformConfig) ([]string
 	}
 	defer func() { _ = tx.Rollback() }()
 	_, err = tx.Exec(`INSERT INTO platform_configs
-		(platform, display_name, enabled, updated_at) VALUES (?, ?, ?, ?)`,
-		config.Platform, strings.TrimSpace(config.DisplayName),
+		(platform, display_name, base_url, enabled, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		config.Platform, strings.TrimSpace(config.DisplayName), strings.TrimSpace(config.BaseURL),
 		boolToInt(config.Enabled), formatTime(time.Now().UTC()))
 	if isUniqueConstraint(err) {
 		return nil, ErrPlatformExists
@@ -30,7 +30,7 @@ func (s *Store) CreatePlatformConfigAndMarkPods(config PlatformConfig) ([]string
 }
 
 func (s *Store) UpdatePlatformConfigAndMarkPods(
-	platform, displayName string, enabled bool,
+	platform, displayName, baseURL string, enabled bool,
 ) ([]string, error) {
 	if !validPlatform(platform) || strings.TrimSpace(displayName) == "" {
 		return nil, ErrInvalidPlatform
@@ -41,8 +41,8 @@ func (s *Store) UpdatePlatformConfigAndMarkPods(
 	}
 	defer func() { _ = tx.Rollback() }()
 	result, err := tx.Exec(`UPDATE platform_configs SET display_name = ?,
-		enabled = ?, updated_at = ? WHERE platform = ?`,
-		strings.TrimSpace(displayName), boolToInt(enabled),
+		base_url = ?, enabled = ?, updated_at = ? WHERE platform = ?`,
+		strings.TrimSpace(displayName), strings.TrimSpace(baseURL), boolToInt(enabled),
 		formatTime(time.Now().UTC()), platform)
 	if err := affectedOrNotFound(result, err, "update platform config"); err != nil {
 		return nil, err

@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
-"""One-shot MSSW platform smoke through the shared skill SDK."""
+"""One-shot MSSW platform smoke through requests + Runtime Guard compat."""
 
 import json
 import os
 import sys
 import uuid
 
-from muad_skill_http import platform_request
+import requests
 
 from _common import (
     EXIT_NOT_SKILL_EXECUTION,
     PING_PATH,
     PLATFORM,
     SkillExecutionRequired,
+    cookie_header,
+    platform_base_url,
+    platform_state,
     require_skill_execution,
     resolve_state_file,
 )
@@ -20,7 +23,14 @@ from _common import (
 
 def main():
     require_skill_execution()
-    response = platform_request(PLATFORM, "GET", PING_PATH, state_file=resolve_state_file())
+    section = platform_state(resolve_state_file())
+    headers = {}
+    cookie = cookie_header(section)
+    if cookie:
+        headers["Cookie"] = cookie
+    response = requests.get(
+        platform_base_url(section) + PING_PATH, headers=headers, timeout=30
+    )
     if response.status_code != 200:
         raise RuntimeError("%s ping returned HTTP %d" % (PLATFORM, response.status_code))
     payload = response.json()

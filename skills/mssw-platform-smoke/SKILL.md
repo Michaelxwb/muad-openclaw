@@ -1,23 +1,23 @@
 ---
 name: mssw-platform-smoke
-description: "MANDATORY before claiming the MSSW platform request path works. Trigger on: 验证 mssw 会话/Cookie、Traceid、platform_request、请求限额（CSRF 需状态变更接口，不在本 Skill 范围）。"
+description: "MANDATORY before claiming the MSSW platform request path works. Trigger on: 验证 mssw 会话/Cookie、TraceId、请求限额（CSRF 需状态变更接口，不在本 Skill 范围）。"
 ---
 
 # MSSW 平台冒烟
 
-验证 `mssw` 平台的登录态与请求链路。脚本先调用 `session-manager get-state` 获取登录态，再把 `sessionStateFile` 传给 `muad_skill_http.platform_request`；SDK 从状态文件构造 Cookie、CSRF、Host、平台静态头和每请求 `Traceid`。单请求 GET 冒烟断言 HTTP 状态、用户、响应 `path` 与 `Traceid` 的 UUID 格式，`limit_probe.py` 进一步断言多次请求的 `Traceid` 互不相同。CSRF 的实际校验需要状态变更接口，GET 冒烟不对此下结论。
+验证 `mssw` 平台的登录态与请求链路。脚本先调用 `session-manager get-state` 获取登录态，从状态文件读取 cookies 与 `requestProfile.baseUrl`，用 `requests` 发请求；Runtime Guard 对 Console 配置的 mssw `baseUrl` 主机自动注入每请求 `TraceId`/`X-Csrftoken` 并计数。单请求 GET 冒烟断言 HTTP 状态、用户、响应 `path` 与 `Traceid` 的 UUID 格式，`limit_probe.py` 进一步断言多次请求的 `Traceid` 互不相同。CSRF 的实际校验需要状态变更接口，GET 冒烟不对此下结论。
 
 ## 何时使用
 
-- 修改了 `tools/muad-skill-sdk`、`tools/session-manager` 的 mssw/mssp 适配器后；
+- 修改了 `tools/muad-skill-sdk`、`tools/session-manager` 的 mssw/mssp 适配器或 requests compat 层后；
 - 需要确认 fake MSSW 平台或真实 MSSW 平台的登录态是否可用；
-- 需要验证 SDK 的请求限额会在第 N+1 次请求前终止执行。
+- 需要验证 Runtime Guard 的请求限额会在第 N+1 次请求前终止执行。
 
 ## 前置条件
 
 - 平台 `mssw` 已在 Console 配置，并给当前用户绑定凭据；
 - 凭据 `baseUrl` 指向目标 MSSW（本地测试时指向 fake platform）；
-- 运行时已安装 `muad_skill_http`（app 镜像构建时安装）。
+- 运行时已安装 `muad_skill_http`（app 镜像构建时安装）且 Guard 已启用 requests compat。
 
 本地 fake MSSW 启动方式（脚本路径仅在开发仓库内可用；运行时 Pod 不含 `tools/`）：
 
@@ -74,11 +74,11 @@ python3 scripts/limit_probe.py
 python3 scripts/limit_probe.py --count 2
 ```
 
-- 上限由 guard 注入的 `MUAD_SKILL_REQUEST_LIMIT` 决定；脚本与 SDK 读取同一个变量，未注入（或配置为 0）时双方都按“不限”处理，脚本不做限额判断；
+- 上限由 guard 注入的 `MUAD_SKILL_REQUEST_LIMIT` 决定；compat 层与脚本读取同一个变量，未注入（或配置为 0）时双方都按“不限”处理，脚本不做限额判断；
 - 进度写 stderr；成功或限额触发路径的 stdout 只有一条汇总 JSON，参数错误/HTTP 失败/缺 Traceid 等失败路径只写 stderr；
 - 每次响应的 `traceId` 会校验 UUID 格式并收集，断言互不相同，重复时退出码 3；
 - 显式 `--count` 在 1–50 之间；不传时由脚本按 `min(limit+1, 50)` 自动选择，`limit` 在 1–49 时默认执行即触发上限；`limit` 为 0 或 ≥50 时不会触发，需显式指定次数或调整 Console 请求上限；
-- 达到上限时，脚本会在第 N+1 次请求前先输出汇总，SDK 随后 `exit(86)`：
+- 达到上限时，脚本会在第 N+1 次请求前先输出汇总，compat 层随后 `exit(86)`：
 
 ```json
 {"status":"LIMIT_TRIGGERED","path":"/api/v1/ping","requested":4,"sent":3,"limit":3,"traceCount":3,"traceIdsUnique":true}
@@ -90,7 +90,7 @@ python3 scripts/limit_probe.py --count 2
 {"status":"LIMIT_NOT_TRIGGERED","path":"/api/v1/ping","requested":4,"sent":4,"limit":0,"traceCount":4,"traceIdsUnique":true}
 ```
 
-`--path` 只允许 `/api/v1/ping` 或 `/api/v1/targets`。若已到预期限额但 SDK 没有终止，脚本会写 stderr 并 exit 1，stdout 仍然只有一条 JSON。
+`--path` 只允许 `/api/v1/ping` 或 `/api/v1/targets`。若已到预期限额但 compat 层没有终止，脚本会写 stderr 并 exit 1，stdout 仍然只有一条 JSON。
 
 ## 退出码
 
@@ -101,11 +101,11 @@ python3 scripts/limit_probe.py --count 2
 | `2` | `limit_probe.py` | 参数错误 |
 | `3` | `limit_probe.py` | 连续请求复用了同一个 Traceid |
 | `4` | `run.py` / `limit_probe.py` | 未通过 Skill 执行（`MUAD_SKILL_NAME` 缺失或不匹配） |
-| `86` | `limit_probe.py` | SDK 触发单接口请求上限，本次执行被终止 |
+| `86` | `limit_probe.py` | compat 层触发单接口请求上限，本次执行被终止 |
 
 ## 注意
 
-- 不要手工拼 `Cookie`/CSRF/`Traceid`，全部由 SDK 构造；
+- 不要手工拼 CSRF/`TraceId`，compat 层会自动覆盖；Cookie 从状态文件读取；
 - 不要把 cookie、CSRF、请求头写入 stdout 或日志；
 - 失败必须写 stderr 并 exit 非 0；
 - 限额终止是预期路径：退出码 `86` + abort spool，不是普通异常；此时 stderr 最多只有进度行，没有错误输出。

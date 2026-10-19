@@ -69,6 +69,10 @@ RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5
     -i https://pypi.tuna.tsinghua.edu.cn/simple -r /opt/muad/requirements.txt \
     && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86"
 
+# Skills keep using `import requests`; compat is activated per exec by the guard
+# (MUAD_REQUESTS_COMPAT=1 + MUAD_BUSINESS_HOSTS) and is a no-op otherwise.
+RUN python3 -c "import site, pathlib; p = pathlib.Path(site.getsitepackages()[0]) / 'muad_requests_compat.pth'; p.write_text('import muad_skill_http.compat\n', encoding='utf-8')"
+
 COPY --from=session-manager-builder /build/session-manager/dist /opt/muad/session-manager/dist
 COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \
     tools/session-manager/openclaw.plugin.json /opt/muad/session-manager/
