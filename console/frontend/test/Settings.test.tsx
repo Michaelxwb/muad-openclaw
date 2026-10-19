@@ -16,6 +16,9 @@ const apiMocks = vi.hoisted(() => ({
   setResources: vi.fn(),
   getAgentGuidance: vi.fn(),
   setAgentGuidance: vi.fn(),
+  getNotifySettings: vi.fn(),
+  setNotifySettings: vi.fn(),
+  testNotifySettings: vi.fn(),
   listPlatforms: vi.fn(),
 }));
 
@@ -29,6 +32,7 @@ const resources = {
   memLimit: "4g",
   cpuLimit: "2",
   restartPolicy: "unless-stopped",
+  skillRequestLimit: 0,
   globalOverrides: {
     memLimit: "4g",
     cpuLimit: "2",
@@ -73,6 +77,13 @@ beforeEach(() => {
     main: "",
     updatedAt: "",
   });
+  apiMocks.getNotifySettings.mockResolvedValue({ enabled: false, webhook: "", updatedAt: "" });
+  apiMocks.setNotifySettings.mockResolvedValue({
+    enabled: false,
+    webhook: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=abcd****wxyz",
+    updatedAt: "2026-10-17T00:00:00Z",
+  });
+  apiMocks.testNotifySettings.mockResolvedValue({ ok: true, errcode: 0, errmsg: "ok" });
   apiMocks.listPlatforms.mockResolvedValue({ items: [], total: 0 });
 });
 
@@ -101,6 +112,7 @@ describe("Settings", () => {
         maxSkillConcurrency: 2,
         maxBrowserConcurrency: 1,
         maxLongTaskConcurrency: 2,
+        skillRequestLimit: 0,
       }),
     );
     expect(await screen.findByText(/1 个 Pod 等待应用/)).toBeInTheDocument();
@@ -136,5 +148,96 @@ describe("Settings", () => {
         }),
       ),
     );
+  });
+
+  it("shows the unlimited hint and saves a zero request limit", async () => {
+    render(<Settings />);
+    await screen.findByLabelText("全局 Pod 内存上限");
+
+    expect(await screen.findByText("不限制")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "保存资源默认值" }));
+    await waitFor(() =>
+      expect(apiMocks.setResources).toHaveBeenCalledWith(
+        expect.objectContaining({ skillRequestLimit: 0 }),
+      ),
+    );
+  });
+
+  it("rejects negative and non-integer request limits without sending", async () => {
+    render(<Settings />);
+    const limit = await screen.findByLabelText("Skill 单次请求上限");
+
+    fireEvent.change(limit, { target: { value: "-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存资源默认值" }));
+    expect(await screen.findByText("请求上限必须为 0-1000000 之间的整数")).toBeInTheDocument();
+    expect(apiMocks.setResources).not.toHaveBeenCalled();
+
+    fireEvent.change(limit, { target: { value: "1.5" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存资源默认值" }));
+    expect(await screen.findByText("请求上限必须为整数")).toBeInTheDocument();
+    expect(apiMocks.setResources).not.toHaveBeenCalled();
+  });
+
+  it("shows the masked webhook, keeps the input empty, and saves without overwriting", async () => {
+    apiMocks.getNotifySettings.mockResolvedValue({
+      enabled: true,
+      webhook: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=abcd****wxyz",
+      updatedAt: "2026-10-17T00:00:00Z",
+    });
+    apiMocks.setNotifySettings.mockResolvedValue({
+      enabled: true,
+      webhook: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=abcd****wxyz",
+      updatedAt: "2026-10-17T00:00:00Z",
+    });
+    render(<Settings />);
+
+    expect(await screen.findByText(/key=abcd\*{4}wxyz/)).toBeInTheDocument();
+    const input = screen.getByLabelText("告警 Webhook 地址") as HTMLInputElement;
+    expect(input.value).toBe("");
+
+    fireEvent.click(screen.getByRole("button", { name: "保存告警设置" }));
+    await waitFor(() => expect(apiMocks.setNotifySettings).toHaveBeenCalledWith({ enabled: true }));
+    expect(await screen.findByText("告警设置已保存")).toBeInTheDocument();
+
+    fireEvent.change(input, {
+      target: { value: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=new-secret" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存告警设置" }));
+    await waitFor(() =>
+      expect(apiMocks.setNotifySettings).toHaveBeenLastCalledWith({
+        enabled: true,
+        webhook: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=new-secret",
+      }),
+    );
+  });
+
+  it("shows the test failure reason inline and keeps the typed webhook", async () => {
+    apiMocks.testNotifySettings.mockResolvedValue({
+      ok: false,
+      errcode: 93000,
+      errmsg: "invalid webhook url",
+    });
+    render(<Settings />);
+
+    const input = await screen.findByLabelText("告警 Webhook 地址");
+    fireEvent.change(input, { target: { value: "https://example.test/hook" } });
+    fireEvent.click(screen.getByRole("button", { name: "测试告警通道" }));
+
+    expect(await screen.findByText(/93000/)).toBeInTheDocument();
+    expect(screen.getByText(/invalid webhook url/)).toBeInTheDocument();
+    expect(input).toHaveValue("https://example.test/hook");
+  });
+
+  it("shows notify save errors from the backend inline", async () => {
+    apiMocks.setNotifySettings.mockRejectedValueOnce(
+      new ApiError("启用告警前必须配置 Webhook", 400, 40012, "webhook required"),
+    );
+    render(<Settings />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "保存告警设置" }));
+
+    expect(await screen.findByText("启用告警前必须配置 Webhook")).toBeInTheDocument();
+    expect(screen.getByText("技术详情")).toBeInTheDocument();
   });
 });

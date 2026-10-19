@@ -1,0 +1,901 @@
+# Tasks: Skill 执行链路审计与限额终止
+
+- **Source**: `.code-flow/tasks/2026-10-17/skill-execution-control-and-review/skill-execution-control-and-review.backend.design.md`, `.code-flow/tasks/2026-10-17/skill-execution-control-and-review/skill-execution-control-and-review.frontend.design.md`
+- **Created**: 2026-10-17
+- **Updated**: 2026-10-17
+
+## Proposal
+
+为自建 Skill 建立可回放的执行链路（exec + 业务接口 + 产出 + 汇总指标），在单一接口请求超限时只终止本次执行并通知用户与管理员；同时把平台请求头（Cookie / CSRF / Host / Traceid）收敛到 `muad_skill_http.platform_request`，新增 `self-skill-review` 与 creator 的 Python 收敛。所有新增能力均为 opt-in，未迁移的旧 Skill 保持原行为，支持分批迁移。
+
+---
+
+## Acceptance Coverage
+
+| 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 |
+|--------|---------|---------|-------------|---------|------|
+| S-01 | backend.design.md#2.5.2 功能验收场景 | E2E | Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API | TASK-012 | verified |
+| S-02 | backend.design.md#2.5.2 功能验收场景 | E2E | helper 退出 → guard abort → IM 通知 → Console 入库 → 通知分发 | TASK-012 | verified |
+| S-03 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → resource_config → runtimeconfig builder → renderer → 配置字节 | TASK-004 | verified |
+| S-04 | backend.design.md#2.5.2 功能验收场景 | integration | 设置 API → 加密存储 → dispatcher → WeCom HTTP（httptest） | TASK-003 | verified |
+| S-05 | backend.design.md#2.5.2 功能验收场景 | E2E | 执行数据 → stats SQL → 查询 API → UI 列表 | TASK-012 | verified |
+| S-06 | backend.design.md#2.5.2 功能验收场景 | E2E | 审阅脚本 → 目标目录 → 报告输出（不执行目标代码） | TASK-008 | verified |
+| S-07 | backend.design.md#2.5.2 功能验收场景 | integration | 下载 API → 私有上传 API → 管理员工作区 | TASK-009 | verified |
+| S-08 | backend.design.md#2.5.2 功能验收场景 | integration | Skill 文档与模板文件内容 | TASK-008 | verified |
+| S-09 | backend.design.md#2.5.2 功能验收场景 | integration | helper → spool 文件 | TASK-007 | verified |
+| S-10 | backend.design.md#2.5.2 功能验收场景 | integration | helper 计数与 env | TASK-007 | verified |
+| S-11 | backend.design.md#2.5.2 功能验收场景 | integration | settings API → audit | TASK-003 | verified |
+| S-12 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager 状态文件 → platform_request → HTTP（httptest） | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
+| S-13 | backend.design.md#2.5.2 功能验收场景 | integration | mssp 状态文件 → platform_request | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
+| S-14 | backend.design.md#2.5.2 功能验收场景 | E2E | 两个用户并发 → 两份 spool → Console → 告警/统计 | TASK-012 | verified |
+| S-15 | backend.design.md#2.5.2 功能验收场景 | integration | 共享 gateway hook → 异步队列 → 其他用户 turn | TASK-005 | verified |
+| S-16 | backend.design.md#2.5.2 功能验收场景 | E2E | 旧 Skill（raw requests + 手工头）→ 新镜像 → 执行 | TASK-012 | verified |
+| S-17 | backend.design.md#2.5.2 功能验收场景 | integration | 混合 Skill（helper + raw requests） | TASK-007 | verified |
+| E-01 | backend.design.md#2.5.2 功能验收场景 | integration | Console 内部接口 → repo | TASK-002 | verified |
+| E-02 | backend.design.md#2.5.2 功能验收场景 | integration | dispatcher → WeCom HTTP（errcode≠0） | TASK-003 | verified |
+| E-03 | backend.design.md#2.5.2 功能验收场景 | integration | guard 上传失败 → 保留 spool → 下个 hook 重试 | TASK-005 | verified |
+| E-04 | backend.design.md#2.5.2 功能验收场景 | integration | 脚本绕过 helper 直接发请求 | TASK-007 | verified |
+| E-05 | backend.design.md#2.5.2 功能验收场景 | unit | 并发计数锁 | TASK-007 | verified |
+| E-06 | backend.design.md#2.5.2 功能验收场景 | integration | IM 投递（mock 通道） | TASK-005 | verified |
+| E-07 | backend.design.md#2.5.2 功能验收场景 | integration | settings API 校验 | TASK-004 | verified |
+| E-08 | backend.design.md#2.5.2 功能验收场景 | integration | session-manager → 状态文件 → platform_request | TASK-007 | verified |
+| E-09 | backend.design.md#2.5.2 功能验收场景 | integration | cross-user-guard → 文件路径 | TASK-005 | verified |
+| E-10 | backend.design.md#2.5.2 功能验收场景 | integration | platform_request → HTTP 401 | TASK-007 | verified |
+| E-11 | backend.design.md#2.5.2 功能验收场景 | integration | 升级顺序/版本错配 | TASK-012 | verified |
+| B-01 | backend.design.md#2.5.2 功能验收场景 | unit | helper 计数 | TASK-007 | verified |
+| B-02 | backend.design.md#2.5.2 功能验收场景 | integration | helper spool + guard 解析 | TASK-005 | verified |
+| B-03 | backend.design.md#2.5.2 功能验收场景 | unit | 路径归一化 | TASK-007 | verified |
+| B-04 | backend.design.md#2.5.2 功能验收场景 | unit | 上限 0 | TASK-007 | verified |
+| B-05 | backend.design.md#2.5.2 功能验收场景 | integration | 告警通道关闭 | TASK-003 | verified |
+| B-06 | backend.design.md#2.5.2 功能验收场景 | unit | Traceid 生成 | TASK-007 | verified |
+| B-07 | backend.design.md#2.5.2 功能验收场景 | integration | 多平台 header profile | TASK-007 | verified | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] |
+| B-08 | backend.design.md#2.5.2 功能验收场景 | integration | stats 分组维度 | TASK-002 | verified |
+| B-09 | backend.design.md#2.5.2 功能验收场景 | unit | 告警去重键 | TASK-003 | verified |
+| B-10 | backend.design.md#2.5.2 功能验收场景 | integration | 旧状态文件（无 requestProfile） | TASK-007 | verified |
+| S-21 | frontend.design.md#2.4 验收条件 | E2E | API → 状态 → 抽屉渲染 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| S-22 | frontend.design.md#2.4 验收条件 | integration | 状态 → UI | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| S-23 | frontend.design.md#2.4 验收条件 | E2E | 表单 → api.ts → 后端 → 回显 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
+| S-24 | frontend.design.md#2.4 验收条件 | E2E | API → 列表 → 钻取 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| S-25 | frontend.design.md#2.4 验收条件 | integration | API 返回 truncated | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| E-21 | frontend.design.md#2.4 验收条件 | integration | 请求失败 → 错误态 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| E-22 | frontend.design.md#2.4 验收条件 | integration | 表单校验 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
+| E-23 | frontend.design.md#2.4 验收条件 | integration | 测试接口返回 errcode≠0 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
+| E-24 | frontend.design.md#2.4 验收条件 | integration | 空数据 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| E-25 | frontend.design.md#2.4 验收条件 | integration | 权限/404 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| B-21 | frontend.design.md#2.4 验收条件 | unit | 表单映射 | TASK-010 | verified | ["npm", "test", "--", "--run", "Settings"] | console/frontend | 300 |
+| B-22 | frontend.design.md#2.4 验收条件 | unit | 时间线渲染 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| B-23 | frontend.design.md#2.4 验收条件 | integration | 健康列表分组 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+| B-24 | frontend.design.md#2.4 验收条件 | integration | 旧 Skill 时间线 | TASK-011 | verified | ["npm", "test", "--", "--run", "Audit"] | console/frontend | 300 |
+
+> 覆盖后端 38 个、前端 14 个场景；RULE-01~13 与高影响 RISK 均在对应任务 Checklist 或场景中映射。E2E 场景统一由 TASK-012 在全部功能任务完成后执行，不在编码期降级。
+
+---
+
+
+
+
+
+
+
+
+## TASK-001: Console 数据模型与迁移
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**:
+- **Source**: `skill-execution-control-and-review.backend.design.md#3.3 数据设计`, `skill-execution-control-and-review.backend.design.md#4.4 数据迁移`
+- **Spec-Refs**: backend-database#RULE-backend-database-001, backend-database#RULE-backend-no-select-star-001
+- **Acceptance-Refs**: N/A（数据模型迁移由 schema 测试覆盖，无独立 design 场景）
+
+### Description
+
+新增 `skill_trace_events`、`skill_execution_metrics`、`notify_channels` 三张表与索引，并在 `resource_config` 增加 `skill_request_limit` 列。迁移必须幂等、可重复执行、不破坏已有数据；repo 层提供 trace 事件写入/查询、metrics 单调 upsert、stats 分组查询和 notify 通道 CRUD。
+
+### Checklist
+
+- [x] 新建迁移文件：三张表 DDL + 索引 + `resource_config.skill_request_limit`（`IF NOT EXISTS` 或列检测，幂等）。
+- [x] 实现 repo：事件按 `event_id` 幂等插入；metrics `aborted` 只升不降（`max(existing, excluded)`）；按 `(execution_id, seq)` 排序查询；stats 按 `(skill_name, skill_scope, human_user_id)` 分组。
+- [x] 实现 notify 通道 repo：加密配置存取、enabled 切换、单通道读取。
+- [x] [verifier][integration] `backend-database#RULE-backend-database-001`：所有 SQL 参数化且限定在 `internal/repo`；迁移在已有旧库上重复执行不报错、不丢数据。
+- [x] [verifier][integration] `backend-database#RULE-backend-no-select-star-001`：审查/正则确认无 `SELECT *`。
+- [x] 编写 schema 升级、外键级联、幂等迁移、metrics 单调性测试并记录 RED/GREEN。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| RULE-backend-database-001 | integration | 真实 SQLite 文件、迁移脚本 | 旧库升级成功；重复执行幂等；行数与关联保留 | `console/backend/test/schema_test.go` | `cd console/backend && go test ./test -run Schema -count=1` | verified |
+| RULE-backend-no-select-star-001 | unit | 生产 SQL 文本 | 无 `SELECT *` | repo 测试 + 正则扫描 | `cd console/backend && go test ./internal/repo -count=1` | verified |
+
+### Acceptance Evidence
+
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| RULE-backend-database-001 | `go test ./test -run Schema...` FAIL：`skill_trace_events`/`skill_execution_metrics`/`notify_channels` 未创建、`resource_global.skill_request_limit` 不存在、旧库升级后表缺失 | PASS：`go test ./test -run Schema -count=1`；`go test ./internal/repo ./test -count=1`；`go test ./... -count=1` | `test/schema_test.go:TestSchemaCreatesSkillTraceAndNotifyTables`、`TestSchemaSkillTraceForeignKeysCascade`、`TestSchemaUpgradesLegacyDatabaseForSkillTrace` | 真实 SQLite 文件（modernc.org/sqlite）；旧库 fixture 删除三张表并重建旧版 `resource_global`，连续两次 `repo.Open` 验证幂等、执行行与原配置保留 | verified |
+| RULE-backend-no-select-star-001 | repo 包编译失败（模型/方法未定义），正则扫描无目标 | PASS：`go test ./internal/repo -count=1` | `internal/repo/skill_trace_test.go:TestRepoSQLHasNoSelectStar`（扫描包内非测试 `.go` 文件）、`TestInsertSkillTraceEventsIsIdempotent`、`TestUpsertSkillExecutionMetricsKeepsAbortedMonotonic`、`TestQuerySkillExecutionStatsGroupsPrivateSkillPerUser`、`TestNotifyChannelCRUD` | 全部 SQL 使用 `?` 占位符并限定 `internal/repo`；事件按 `event_id` 幂等、`(execution_id, seq)` 升序、metrics `aborted=max(...)`、stats 按三字段分组 | verified |
+
+注：仓库现有资源表名为 `resource_global`（Go 类型 `ResourceConfig`），迁移落在 `resource_global.skill_request_limit`，未新建平行 `resource_config` 表。
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] completed (done)
+- [2026-10-17] started
+
+---
+
+## TASK-002: Console trace 写入、查询与健康统计 API
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-001
+- **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
+- **Spec-Refs**: backend-code-quality-performance#RULE-backend-quality-001, backend-code-quality-performance#RULE-backend-write-err-001, backend-platform-rules#RULE-backend-http-envelope-001
+- **Acceptance-Refs**: E-01, B-08, RULE-05, RULE-12
+
+### Description
+
+实现 `POST /internal/v1/skill-executions/{executionId}/trace`、`GET /api/v1/skill-executions/{executionId}/trace`、`GET /api/v1/skill-executions/stats`。内部写入按 pod token + execution 归属校验，事件幂等、metrics 单调；stats 按用户维度分组；所有响应走 `writeJSON`/`writeErr`，新增错误码进 errcode/errorCatalog/AllCodes。
+
+### Checklist
+
+- [x] 注册路由与 handler；内部接口校验 pod token 与 execution 归属，跨 Pod 返回稳定冲突码。
+- [x] trace 写入使用单事务批量 insert/upsert；事件 `event_id` 幂等；metrics `aborted` 只升不降；请求体与事件数量设上限（2000）。
+- [x] 查询接口按 `seq` 升序返回最多 2000 条；404 走既有 notfound。
+- [x] stats 按 `(skillName, skillScope, humanUserId)` 分组，支持 `window`/`limit`/`scope`/`humanUserId`；标记阈值集中常量。
+- [x] 新增错误码并补 `errorCatalog`、`errcode.AllCodes` 与双向守卫测试。
+- [x] [verifier][integration] `backend-code-quality-performance#RULE-backend-quality-001`：读写均带 context 超时；`go vet`/`go test` 通过。
+- [x] [verifier][unit] `backend-code-quality-performance#RULE-backend-write-err-001`：错误响应只传 errcode 常量，无字符串 message。
+- [x] [verifier][integration] `backend-platform-rules#RULE-backend-http-envelope-001`：所有响应经 `writeJSON`/`writeErr`，无 handler 直写 `json.NewEncoder`。
+- [x] 先写 API 测试（httptest + fake store/真实 SQLite）并记录 RED。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| E-01 | integration | HTTP → handler → repo → SQLite | 跨 Pod executionId 被拒绝；无数据泄漏；错误码稳定 | `console/backend/test/skill_executions_api_test.go` | ["go","-C","console/backend","test","./test","-run","SkillExecutionTrace","-count=1"] | verified |
+| B-08 | integration | stats SQL → 查询 API | 两用户同名私有 Skill 返回两行，humanUserId 不同 | 同上 | ["go","-C","console/backend","test","./test","-run","SkillExecutionTrace","-count=1"] | verified |
+| RULE-backend-write-err-001 | unit | handler 错误路径 | 只传 errcode 常量 | `console/backend/internal/api` 测试 | `cd console/backend && go test ./internal/api -run TestHTTPEncoder -count=1` | verified |
+
+### Acceptance Evidence
+
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| E-01 | `go test ./test -run SkillExecutionTrace` FAIL：`POST /internal/v1/skill-executions/{id}/trace` 与 `GET .../trace` 均为 404，跨 Pod 用例无法触发冲突码 | PASS：`go test ./internal/api ./test -count=1`；`go test ./... -count=1` | `test/skill_executions_api_test.go:TestSkillExecutionTraceRejectsCrossPodOwner`、`TestSkillExecutionTraceRejectsInvalidPayloads` | httptest → 真实 Server handler → repo → 临时 SQLite；Pod B token + Pod A executionId 返回 409/40535，Pod A 冒用 agentId 同样 409，未知 executionId 返回 404/40901，被拒请求不落 metrics/events | verified |
+| B-08 | 同上 FAIL：`GET /api/v1/skill-executions/stats` 404 | PASS：`go test ./test -run SkillExecutionTraceStats -count=1` | `test/skill_executions_api_test.go:TestSkillExecutionTraceStatsGroupsPrivateSkillPerUser` | 两用户同名私有 Skill 各 1 次执行 → 2 行且 humanUserId 不同；`humanUserId` 过滤、`window/limit/scope` 非法参数返回 400/40509；统计含 flaggedCount、errorRate 与 Top 接口 | verified |
+| RULE-backend-write-err-001 | api 包编译失败：新增 errcode/handler 未定义 | PASS：`go test ./internal/api -run 'TestSkillTrace|TestSkillHealth|TestErrorCatalog|TestHTTPEncoder' -count=1` | `internal/api/skill_trace_test.go:TestSkillTraceErrorCodesInCatalog`、`TestSkillHealthFlagRequestThreshold`；既有 `TestErrorCatalogCoversAllCodes` 双向守卫 | 新增 `InvalidSkillTrace=40534`、`ConflictSkillTraceOwner=40535` 同时进入 errcode、AllCodes、errorCatalog；所有错误响应经 writeErr/writeRepoError，handler 无 `json.NewEncoder` | verified |
+
+健康标记阈值集中在 `internal/api/skill_trace.go` 常量：`skillHealthFlagMaxRequests=200`、`skillHealthFlagLimitRatio=0.2`、`skillHealthFlagErrorRate=0.2`；请求上限为 0（不限制）时阈值回退为 200。
+- E-01: failed — automated command failed; run_id=6511cd455bad4f36bf334dbed923b571 (confirmed_by: runner)
+- B-08: failed — automated command failed; run_id=6511cd455bad4f36bf334dbed923b571 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=d9db27575f024b4bacb2b1026a227975 (confirmed_by: runner)
+- B-08: verified — automated command passed; run_id=d9db27575f024b4bacb2b1026a227975 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=a170fbcb71c24d6eb7547b8d14580eaa (confirmed_by: runner)
+- B-08: verified — automated command passed; run_id=a170fbcb71c24d6eb7547b8d14580eaa (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-08: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] RED：S-01 缺 exec 事件；S-02 abort 事件状态被 schema 拒绝（400/40534）且管理员告警未触发；S-16 空 spool 不上报
+- [2026-10-17] GREEN：补齐 guard exec 事件、abort 状态映射、Console aborted→notify.Publish；新增 Node/Python/Go 跨边界 E2E 与真实 HTTP UI E2E
+- [2026-10-17] 将 TASK-012 Contract 命令改为可执行 argv JSON，按 ID 保留既有 runtime evidence 重锁 manifest（valid=true）
+- [2026-10-17] `cf_acceptance_runner.py --include-e2e --write-evidence` decision=pass（52/52）
+- [2026-10-17] RED：新增 trace 写入/查询/跨 Pod 冲突/非法负载/stats 集成测试后，路由返回 404、api 包因新错误码未定义编译失败
+- [2026-10-17] GREEN：实现三个接口、ctx 超时、单事务 metrics upsert + 事件批量幂等、错误码与双向守卫；`go test ./internal/api ./test -count=1`、`go test ./... -count=1`、`go vet ./...` 全部通过
+- [2026-10-17] started
+- [2026-10-17] completed (done)
+
+---
+
+## TASK-003: 通用通知能力与企微通道
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-001
+- **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
+- **Spec-Refs**: backend-directory-structure#RULE-backend-directory-001, backend-logging#RULE-backend-logging-001, backend-logging#RULE-backend-redact-001, runtime-isolation-and-security#RULE-runtime-security-001
+- **Acceptance-Refs**: S-04, S-11, E-02, B-05, B-09, RULE-06, RULE-07
+
+### Description
+
+新增 `internal/notify` 包：Event/Channel/Dispatcher，异步有界队列、按 `(pod, user, skill, interface)` 去重 5 分钟、通道限速 10 条/分钟、网络失败重试一次、业务错误不重试。v1 实现企微群机器人通道；新增 settings notify 读取/保存/测试接口，webhook 加密落库、查询打码、变更记 `settings.update` 审计。
+
+### Checklist
+
+- [x] 实现 Event/Channel/Dispatcher 与关闭时的 goroutine 收敛；`Publish` 非阻塞，队列满丢弃并记日志。
+- [x] 实现 WeCom channel：`errcode != 0` 视为失败；5s 超时；拒绝跨 host 重定向；仅允许 `qyapi.weixin.qq.com`。
+- [x] 实现 notify 配置读写与测试接口；webhook 用 `Cipher.Encrypt` 落库，GET 打码，PUT 校验域名；变更写 `settings.update` 审计。
+- [x] 实现去重与限速；dedupKey 含 pod + user + skill + interface。
+- [x] [verifier][integration] `backend-directory-structure#RULE-backend-directory-001`：notify 包不直连 DB/HTTP handler，分层正确。
+- [x] [verifier][integration] `backend-logging#RULE-backend-logging-001`：告警日志结构化，不含 webhook/key；操作审计与 skill telemetry 分离。
+- [x] [verifier][integration] `backend-logging#RULE-backend-redact-001`：上游错误进日志/响应前经 `RedactDiagnostic`。
+- [x] [verifier][integration] `runtime-isolation-and-security#RULE-runtime-security-001`：webhook 不落明文、不进镜像；配置读取仅服务端。
+- [x] 先写 httptest 用例（成功、errcode≠0、超时、去重、限速）并记录 RED。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-04 | integration | settings API → 加密存储 → dispatcher → httptest | 测试消息 errcode=0；GET 打码 | `console/backend/test/notify_api_test.go` | ["sh","-c","cd console/backend && go test ./test -run Notify -count=1"] | verified |
+| S-11 | integration | settings API → audit → DB | 产生 settings.update；库中密文；响应打码 | 同上 | ["sh","-c","cd console/backend && go test ./test -run Notify -count=1"] | verified |
+| E-02 | integration | dispatcher → httptest（errcode≠0） | 标记失败、不重试业务错误；去重/限速生效 | `console/backend/internal/notify` 测试 | ["sh","-c","cd console/backend && go test ./internal/notify -count=1"] | verified |
+| B-05 | integration | 通道关闭 | 不发 webhook；trace/用户通知不受影响 | 同上 | ["sh","-c","cd console/backend && go test ./internal/notify -count=1"] | verified |
+| B-09 | unit | 去重键生成 | 不同用户生成不同 dedupKey | `console/backend/internal/notify` 测试 | ["sh","-c","cd console/backend && go test ./internal/notify -count=1"] | verified |
+
+### Acceptance Evidence
+
+- **RED**：
+  - `go test ./internal/notify -count=1` → `build failed`（`undefined: Event/Channel/Dispatcher/WeComChannel` 等），先落测试后实现。
+  - `go test ./test -run Notify -count=1` → `build failed`（`internal/notify: no non-test Go files`，且 `WithNotifyChannelFactory` 未实现）。
+- **GREEN**：
+  - `go test ./internal/notify -count=1` → `ok`。
+  - `go test ./test -run Notify -count=1` → `ok`。
+  - `go test ./internal/notify ./internal/api ./test -count=1` → 三个包全部 `ok`。
+  - `go vet ./...` → 无输出。
+- **断言位置 / 真实边界**：
+  - S-04/E-02：`internal/notify/notify_test.go::TestWeComChannelSendsTextMessageAndSucceeds`、`TestDispatcherDoesNotRetryBusinessError`（真实 `httptest` HTTP，`WithHTTPClient` 仅替换 transport，webhook 域名校验仍生效）。
+  - S-04：`test/notify_api_test.go::TestNotifyTestDeliversThroughDispatcher`（PUT → DB 密文 → provider 解密 → WeCom channel → httptest；GET/PUT 响应打码）。
+  - S-11：`test/notify_api_test.go::TestNotifySettingsEncryptsMasksAndAudits`（`Cipher.Decrypt` 校验落库密文，`QueryAudit` 校验 `settings.update`）。
+  - E-02：`TestDispatcherRetriesNetworkFailureOnce`（网络失败恰好重试一次）、`TestDispatcherDoesNotRetryBusinessError`（errcode≠0 不重试）、`TestDispatcherDeduplicatesWithinWindow`、`TestDispatcherRateLimitsTenPerMinute`。
+  - B-05：`TestDispatcherSkipsWhenChannelDisabled`、`test/notify_api_test.go::TestNotifyDisabledChannelSendsNothing`（禁用通道零 webhook 请求）。
+  - B-09：`TestDedupKeyIncludesIdentityFields`（不同用户/接口产生不同 dedupKey）。
+  - 安全：`TestWeComChannelRejectsInvalidWebhook`、`TestWeComChannelRejectsCrossHostRedirect`、`TestWeComChannelTimeout`、`TestNotifyTestUpstreamFailureIsRedacted`（错误不包含 webhook key）。
+- S-04: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- B-05: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- B-09: verified — automated command passed; run_id=7fdf23f464ff47bd8ff7008dfc23a951 (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-11: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-05: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-09: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] implemented internal/notify + WeCom + settings notify API; tests RED→GREEN; `go test ./internal/notify ./internal/api ./test` 与 `go vet ./...` 通过
+- [2026-10-17] completed (done)
+
+---
+
+## TASK-004: 请求上限设置链路
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-001
+- **Source**: `skill-execution-control-and-review.backend.design.md#2.3.2 字段约束`, `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#4.2 发布与回滚`
+- **Spec-Refs**: backend-platform-rules#RULE-backend-platform-001, backend-platform-rules#RULE-backend-model-pool-001, runtime-config-and-apply#RULE-runtime-config-001, runtime-config-and-apply#RULE-runtime-validate-before-write-001
+- **Acceptance-Refs**: S-03, E-07, RULE-02
+
+### Description
+
+把 `skillRequestLimit` 从系统设置贯通到 runtime 配置：settings handler → `SaveResourcesAndMarkPods` → builder → renderer → `runtime-config-schema` → guard 配置。默认 1000，0=不限制，范围 0~1,000,000；未变化不触发 apply；不新增/修改 Human User 创建与模型绑定路径。
+
+### Checklist
+
+- [x] 扩展 `GET/PUT /api/v1/settings/resources` 与前端契约字段 `skillRequestLimit`，校验范围并映射稳定错误码。
+- [x] `SaveResourcesAndMarkPods` 增加参数与变更检测；builder/renderer/schema 同步字段；无效值拒绝写入。
+- [x] [verifier][integration] `backend-platform-rules#RULE-backend-platform-001`：多用户隔离、秘密注入、generation apply 语义不变；不新增模型回退链。
+- [x] [verifier][unit] `backend-platform-rules#RULE-backend-model-pool-001`：非回归检查，确认未改动 CreateHumanUser / model_config_id 绑定路径。
+- [x] [verifier][integration] `runtime-config-and-apply#RULE-runtime-config-001`：配置经 runtimeapply 事务链路，失败可回滚。
+- [x] [verifier][integration] `runtime-config-and-apply#RULE-runtime-validate-before-write-001`：写入前 `validateRuntimeConfig`，generation 单调。
+- [x] 先写设置保存→配置字节的失败用例并记录 RED。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-03 | integration | handler → repo → builder → renderer | 配置含 `skillRequestLimit:50`；generation 前移；guard env 可见 | `console/backend/test/settings_resources_test.go`：`TestSettingsResourcesSkillRequestLimitFlowsToRuntimeConfig` | ["go","-C","console/backend","test","./test","-run","SettingsResources","-count=1"] | verified |
+| E-07 | integration | settings API 校验 | 负数/非数字返回稳定错误码且不落库 | 同上：`TestSettingsResourcesSkillRequestLimitValidation` | ["go","-C","console/backend","test","./test","-run","SettingsResources","-count=1"] | verified |
+| RULE-runtime-validate-before-write-001 | integration | schema + atomic write | 非法配置不写盘；generation 单调 | `bin/test/runtime-config-schema.test.mjs`、`bin/test/inject-multi-user-config.test.mjs` | ["node","--test","bin/test/runtime-config-schema.test.mjs","bin/test/inject-multi-user-config.test.mjs"] | verified |
+
+### Acceptance Evidence
+
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-03 | `go test ./test -run SettingsResources` 编译失败：`RuntimeGuard has no field SkillRequestLimit` | PASS：["go","-C","console/backend","test","./test","-run","SettingsResources","-count=1"]；`go test ./test ./internal/api ./internal/runtimeconfig ./internal/repo -count=1` 全绿 | `test/settings_resources_test.go`：`TestSettingsResourcesSkillRequestLimitFlowsToRuntimeConfig` | 真实 httptest settings handler → 真实 SQLite repo（`resource_global.skill_request_limit`）→ 真实 `runtimeconfig.Builder` 在 build 时读取全局配置 → Go DTO 经 stdin 交给真实 Node `runtime-config-schema.mjs` + `openclaw-config-renderer.mjs`，断言渲染后 guard config 含 `"skillRequestLimit":50`；重复保存同一值 generation 不前移 | verified |
+| E-07 | 同一次编译失败；实现前负数/非数字会通过校验 | PASS：["go","-C","console/backend","test","./test","-run","SettingsResources","-count=1"] | `test/settings_resources_test.go`：`TestSettingsResourcesSkillRequestLimitValidation` | 真实 settings API：`-1`、`1000001`、`"abc"` 均返回 HTTP 400 + `code:40003`（`errcode.InvalidResourceLimits`）；`GetResourceGlobal` 仍为 `ErrNotFound`（未落库），Pod generation 未前移 | verified |
+| RULE-runtime-validate-before-write-001 | `node --test ...` FAIL：合法值报 `runtime.guard contains unknown field: skillRequestLimit`；非法值未被拒绝 | PASS：["node","--test","bin/test/runtime-config-schema.test.mjs","bin/test/inject-multi-user-config.test.mjs"] → 35/35；`node --test bin/test/*.test.mjs` → 121/123（2 项预存在失败：缺少本地 `node_modules` 的 offline-safe 断言与千流 recipe 断言，与本次改动无关） | `bin/test/runtime-config-schema.test.mjs`（0/50/1000000 接受；缺省兼容旧 Console；-1/1000001/1.5/"50"/null 拒绝）、`bin/test/inject-multi-user-config.test.mjs`（renderer 写 guard config，旧 DTO 缺省回落 1000） | 真实 `parseRuntimeConfig`/`validateRuntimeConfig` 严格校验路径；renderer 输出经既有 `bin/test` 原子写与 transaction 测试回归；guard 插件 manifest `configSchema` 同步新增 `skillRequestLimit`（0~1000000） | verified |
+- S-03: verified — automated command passed; run_id=42166c55c81f44cca405d2dc208657eb (confirmed_by: runner)
+- E-07: verified — automated command passed; run_id=42166c55c81f44cca405d2dc208657eb (confirmed_by: runner)
+- S-03: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-07: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] RED：Go 测试因 `RuntimeGuard.SkillRequestLimit` 未定义编译失败；Node schema 拒绝新字段、非法值未被拒。
+- [2026-10-17] GREEN：repo/API/builder/renderer/schema 贯通；`go test ./...` 与 `go vet ./...` 通过；目标 Node 测试 35/35。
+- [2026-10-17] 完成：稳定错误码 40003；未变化不触发 apply；未改动 Human User 创建与 model_config_id 绑定路径。
+- [2026-10-17] completed (done)
+
+---
+
+## TASK-005: runtime guard trace 归属、回传与隔离
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-002, TASK-004, TASK-007
+- **Source**: `skill-execution-control-and-review.backend.design.md#3.2 架构设计`, `skill-execution-control-and-review.backend.design.md#3.4 接口设计`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
+- **Spec-Refs**: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001, runtime-skill-execution#RULE-runtime-skill-001, runtime-skill-execution#RULE-runtime-log-injection-001, runtime-skill-execution#RULE-runtime-log-prefix-001
+- **Acceptance-Refs**: S-15, E-03, E-06, E-09, B-02, RULE-03, RULE-04, RULE-08, RULE-12
+
+### Description
+
+在 `muad-runtime-guard` 内增加执行归属映射与 trace 管道：按 `sessionKey + runId` 维护 `executionId → {skillName, route}`，缺失时 fail-closed；向 exec 注入 `MUAD_EXECUTION_ID`、`MUAD_TRACE_SPOOL`、`MUAD_SKILL_REQUEST_LIMIT`；exec 结束后读取 spool、解析 summary/events、异步批量回传 Console；识别 abort 后向用户 IM 通知；spool 目录 0700/文件 0600，加入 cross-user-guard 路径拦截，启动清理 24h 孤儿文件。
+
+### Checklist
+
+- [x] 实现执行归属映射（session/turn 隔离，长任务 taskId），冲突/缺失不注入 env。
+- [x] `resolve_exec_env` 注入 trace env；spool 路径只用 UUID，目录 0700、文件 0600。
+- [x] exec 结束读取 spool：解析 summary 与事件、限制 2000 条、批量 POST 内部接口；失败保留 spool 并在下个 hook 重试；成功删除。
+- [x] abort 时通过共享 `notifyUser` 异步通知用户；IM 失败只记日志，不影响终止与 trace。
+- [x] 异步有界队列；hook 内只入队；队列满丢弃并记日志，不阻塞其他用户 turn。
+- [x] cross-user-guard 增加 trace spool 路径拦截；启动清理 24h 孤儿文件。
+- [x] [verifier][integration] `runtime-isolation-and-security#RULE-runtime-secret-file-mode-001`：目录 0700、文件 0600、原子写。
+- [x] [verifier][integration] `runtime-skill-execution#RULE-runtime-skill-001`：不改变 skill 分层、激活、并发租约。
+- [x] [verifier][unit] `runtime-skill-execution#RULE-runtime-log-injection-001`：注入 log，无散落 `console.*`。
+- [x] [verifier][unit] `runtime-skill-execution#RULE-runtime-log-prefix-001`：日志前缀 `[muad-runtime-guard][skill-trace]`。
+- [x] 先写 spool 解析/上传/重试与多用户隔离测试并记录 RED。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-15 | integration | guard hook → 队列 → 其他 turn | hook 50ms 内返回；不阻塞；最终入库 | `tools/muad-runtime-guard/test/skill-trace.test.mjs` | ["node","--test","--test-name-pattern=SkillTrace","tools/muad-runtime-guard/test/skill-trace.test.mjs"] | verified |
+| E-03 | integration | 真实 spool 文件 + 失败上传 | 保留并重试；事件不重复 | 同上 | ["node","--test","--test-name-pattern=SkillTrace","tools/muad-runtime-guard/test/skill-trace.test.mjs"] | verified |
+| E-06 | integration | notifyUser fake | 投递失败不影响终止/trace | 同上 | ["node","--test","--test-name-pattern=SkillTrace","tools/muad-runtime-guard/test/skill-trace.test.mjs"] | verified |
+| E-09 | integration | cross-user-guard 路径扫描 | 命令含 spool 路径被拒绝 | `tools/muad-runtime-guard/test/cross-user-guard.test.mjs` | ["node","--test","--test-name-pattern=trace spool","tools/muad-runtime-guard/test/cross-user-guard.test.mjs"] | verified |
+| B-02 | integration | helper spool + guard 解析 | 500 条明细 + 汇总 600 + truncated | `tools/muad-runtime-guard/test/skill-trace.test.mjs` | ["node","--test","--test-name-pattern=SkillTrace","tools/muad-runtime-guard/test/skill-trace.test.mjs"] | verified |
+
+### Acceptance Evidence
+
+- **RED**：
+  - `node --test --test-name-pattern=SkillTrace tools/muad-runtime-guard/test/skill-trace.test.mjs` → `ERR_MODULE_NOT_FOUND`（`src/skill-trace-executions.mjs` 未实现），12 个用例全部无法加载。
+  - `node --test --test-name-pattern="trace spool" tools/muad-runtime-guard/test/cross-user-guard.test.mjs` → FAIL：spool 路径命令返回 `undefined`（未被拦截）。
+- **GREEN**：
+  - `cd tools/muad-runtime-guard && npm test` → `tests 300 / pass 298 / fail 0 / skipped 2`（worktree 内先 `npm ci`；`tests/muad-progress` 同样 `npm ci` 后 e2e 可跑）。
+  - 定向命令：`node --test --test-name-pattern=SkillTrace tools/muad-runtime-guard/test/skill-trace.test.mjs` → 16/16；`node --test --test-name-pattern="trace spool" tools/muad-runtime-guard/test/cross-user-guard.test.mjs` → 1/1。
+- **断言位置 / 真实边界**：
+  - S-15：`tools/muad-runtime-guard/test/skill-trace.test.mjs::SkillTrace hook enqueues upload work and returns within 50ms while the queue is blocked`（真实 spool 文件 + 被阻塞的上传 worker；hook 实测 <50ms 返回，解阻后批量请求到达 `report(executionId, payload)`）；`SkillTrace drops work when the bounded queue is full...`（队列满丢弃并记日志）。
+  - E-03：`SkillTrace keeps the spool and retries the identical batch after a failed upload`（真实 `mkdtemp` spool 文件；首次上传抛 retryable 失败后文件保留，下个 `after_tool_call` 重试；两次 payload 的 `eventId` 序列一致，成功后文件删除）。
+  - E-06：`SkillTrace aborted executions notify the mapped user without blocking trace upload`（abort summary → `notifyUser` fake 收到 wecom/wx-1 与 Skill 名）；`SkillTrace notification failure is logged and does not affect the trace upload`（IM 抛错只记日志，trace 仍上传）。
+  - E-09：`tools/muad-runtime-guard/test/cross-user-guard.test.mjs::cross-user guard blocks trace spool path access`（exec 读/删目录与 write 内容含 `/tmp/muad-runtime-queues/skill-trace/` 均被拒绝；文件名 UUID）。
+  - B-02：`SkillTrace parses 500 helper events plus a 600-request summary without leaking trace ids`（500 条 `http` + summary `totalRequests=600`/`truncated=true` → 500 events、requestCount=600、detailTruncated=true；容忍 `platform` 回退 host、忽略 `traceId`）；`SkillTrace caps parsed events at 2000...`。
+  - 归属隔离：`SkillTrace resolve_exec_env fails closed for missing, conflicting, or unidentified mappings`（缺失/冲突/无 runId 均不注入）；`SkillTrace uses the taskId as executionId for long task sessions`；`SkillTrace audit dispatch promotes the same execution when the run starts`（dispatch 无 runId → before_agent_run 补登记；后续同 run 上报复用同一 executionId，不制造冲突）。
+  - 文件模式：`SkillTrace resolve_exec_env injects execution env and creates a 0700/0600 spool`（真实 `statSync`：目录 `0700`、文件 `0600`，路径仅 `<uuid>.jsonl`）。
+  - 日志：`SkillTrace logs every diagnostic with the stable module prefix`（所有注入 log 行以 `[muad-runtime-guard][skill-trace]` 开头）。
+  - 上传客户端：`SkillTrace client posts the batch to the internal trace endpoint with the pod token`（`POST /internal/v1/skill-executions/{id}/trace`、Bearer pod token）；`SkillTrace client retries server failures but not deterministic rejections`（5xx retryable，409 不可重试）。
+  - 真实 HTTP 未连 Console：上传客户端以注入 `fetch` 验证 URL/头/JSON；spool 解析使用真实 helper 形态文件；`notifyUser` 按 E-06 约定注入 fake。
+- **Spec 规则**：
+  - `RULE-runtime-secret-file-mode-001`：`ensureSkillTraceSpool` 创建/强制目录 0700、文件 0600；跨用户路径拦截；证据见上。
+  - `RULE-runtime-skill-001`：仅新增 `resolve_exec_env`/`after_tool_call` 注入与审计登记，未改 skill 解析、激活门禁、并发租约；`npm test` 全绿含既有 lease/preflight 用例。
+  - `RULE-runtime-log-injection-001`：新模块全部通过注入 `log`（默认 no-op），无 `console.*`。
+  - `RULE-runtime-log-prefix-001`：全部日志稳定前缀 `[muad-runtime-guard][skill-trace]`。
+- S-15: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- E-09: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=9d0c823270ee4343a61bd65e728153cb (confirmed_by: runner)
+- S-15: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-06: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-09: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] RED：skill-trace 测试模块缺失；cross-user spool 拦截用例失败。
+- [2026-10-17] GREEN：新增归属映射/spool 解析/上传客户端/有界队列/abort 通知/启动清理/cross-user 拦截；`npm test` 299 tests（297 pass / 2 skipped）。
+- [2026-10-17] 将 TASK-005 Acceptance Contract 执行命令改为可执行 argv JSON 并重锁 manifest；仅本任务行变更。
+- [2026-10-17] completed (done)
+
+---
+
+## TASK-006: session-manager 平台 request profile
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**:
+- **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（平台 request profile）
+- **Spec-Refs**:
+- **Acceptance-Refs**: N/A（profile 输出由 TASK-007 的 S-12/S-13/B-07 端到端覆盖；本任务以 profile 测试验证）
+
+### Description
+
+在 session-manager 的 `PlatformAdapter` 增加可选 `requestProfile(credential)`，由 `get-state` 写入的私有状态文件在 `platforms.<platform>` 下追加 `requestProfile`：`baseUrl`、`hostHeader`、`referer`、`csrf` 映射、`staticHeaders`（如 mssp 的 `X-CSRFToken` 与 `timezone`）、`traceHeader`。只追加字段，不改已有 `cookies`/`storageState` 与 CLI stdout。
+
+### Checklist
+
+- [x] 扩展 `PlatformAdapter` 可选方法；mssw/mssp 实现 profile；静态头值来自凭据，不写死在代码。
+- [x] 状态文件追加 `requestProfile`；已有字段、文件路径与 0600 模式不变。
+- [x] 旧凭据/缺省字段的 profile 回退策略：缺静态头时给默认值并记录诊断，不崩溃。
+- [x] 先写 profile 输出与旧字段兼容测试并记录 RED/GREEN。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-12 | integration | session-manager → 状态文件 | mssw profile 含 csrf 映射与 Host；旧字段不变 | `tools/session-manager/test/session-store.test.mjs` | `cd tools/session-manager && npm test -- --test-name-pattern=requestProfile` | verified |
+| S-13 | integration | session-manager → 状态文件 | mssp profile 含静态头与 timezone | 同上 | 同上 | verified |
+| B-07 | integration | 两平台状态文件 | 两平台 profile 不串 | 同上 | 同上 | verified |
+
+### Acceptance Evidence
+
+- RED: `cd tools/session-manager && npm test -- --test-name-pattern=requestProfile` → 5 个 `requestProfile*` 用例失败（`requestProfile` 为 `undefined`），其余既有用例通过。
+- GREEN: `cd tools/session-manager && npm test` → `tests 107 / pass 107 / fail 0`；定向命令同样通过。
+- 断言位置：`tools/session-manager/test/session-store.test.mjs` 的 5 个 `requestProfile:` 用例（L19 mssw profile、L72 mssp 静态头、L102 双平台隔离、L145 旧凭据回退、L174 默认 profile）。
+- 真实边界证据：`SessionStore` + `mkdtempSync` 真实临时目录、真实 `MSSWSessionAdapter`/`MSSPSessionAdapter`、真实 `<skill>.session.json` 落盘读取，未 mock 状态文件写入；断言旧字段 `cookies`/`storageState`/`expiresAt`/`credentialFingerprint` 逐项不变、文件 mode `0o600`、CLI stdout 不含 `requestProfile`。
+- 旧凭据缺省证据：mssp 凭据无 `csrfToken`/`timezone` 时 profile `staticHeaders={}` 且日志含 `request profile fallback missing=staticHeaders...`，`get-state` 仍成功。
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] implemented request profile + tests (RED → GREEN)
+- [2026-10-17] completed (done)
+
+---
+
+## TASK-007: Python SDK `muad_skill_http`
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-006
+- **Source**: `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（形态 C、SDK 环境契约、spool 契约、请求头构造顺序）`, `skill-execution-control-and-review.backend.design.md#3.5 质量实现方案`
+- **Spec-Refs**: runtime-directory-structure#RULE-runtime-directory-001
+- **Acceptance-Refs**: S-09, S-10, S-12, S-13, S-17, E-04, E-05, E-08, E-10, B-01, B-03, B-04, B-06, B-07, B-10, RULE-01, RULE-02, RULE-11
+
+### Description
+
+新增 `tools/muad-skill-sdk` Python 包（构建时安装进镜像 site-packages）：`request`/`get/post/...`/`session` 透传 `requests`；每请求写 spool（明细上限 500 + 全量计数 + summary）；按归一化接口计数，超限第 N+1 次不发出并 `os._exit(86)`；`platform_request` 读取状态文件、组装 Cookie/CSRF/Host/静态头/Traceid，401 仅对幂等请求刷新重试一次；无 helper 的旧 Skill 零影响。
+
+### Checklist
+
+- [x] 建立包与测试；构建阶段安装到 site-packages；不新增运行时依赖（`requests` 已有）。
+- [x] 实现通用请求、spool JSONL、路径归一化、接口计数锁、500 条明细上限、summary 全量。
+- [x] 实现超限判定：第 N+1 次不发送、flush abort/summary、`os._exit(86)`；0 表示不限制。
+- [x] 实现 `platform_request`/`platform`：状态文件缓存、Cookie/CSRF/Host/静态头、`Traceid` 每请求 UUID v4、强制头不可覆盖、`extra_headers` 逃生口。
+- [x] 实现 401/403 刷新策略（GET/HEAD 重试一次），缺 profile 回退默认并记诊断。
+- [x] [verifier][unit] `runtime-directory-structure#RULE-runtime-directory-001`：SDK 放 `tools/muad-skill-sdk`，不 fork 上游、不散落 bin。
+- [x] 先写计数/终止/归一化/header/Traceid 测试并记录 RED/GREEN。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-09 | integration | helper → 真实 spool 文件 | 成功/失败都计数；errorCount 正确 | `tools/muad-skill-sdk/test/test_http.py` | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| S-10 | integration | helper 计数与 env | limit=0 不终止；requestCount=1000 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| S-12 | integration | 状态文件 → httptest | Cookie/CSRF/Host 正确；Traceid 两次不同 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| S-13 | integration | mssp 状态文件 → httptest | 静态头/timezone 正确；不带 mssw 头 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| S-17 | integration | helper + raw requests 混合 | helper 计数、raw 不计；都成功 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| E-04 | integration | raw requests 直连 | 无接口事件但脚本正常 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| E-05 | unit | 多线程计数 | 恰好放行 N 次，不超发 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| E-08 | integration | 缺登录态 | 刷新一次；仍失败 fail loud | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| E-10 | integration | 401/403 | GET 重试一次；POST 返回原响应 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-01 | unit | 上限 N=1 | 第 1 次放行、第 2 次终止 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-03 | unit | 路径归一化 | 数字/UUID 归为同一接口 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-04 | unit | 上限 0 | 永不终止 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-06 | unit | Traceid | 1000 次无重复 UUID | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-07 | integration | 多平台 profile | 头不串平台 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+| B-10 | integration | 旧状态文件 | 回退默认 profile，不崩溃 | 同上 | ["python3", "-m", "pytest", "-q", "tools/muad-skill-sdk/test"] | verified |
+
+### Acceptance Evidence
+
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-09/S-10/B-01/B-04/E-05 | 首次运行 `python3 -m pytest -q` → `ModuleNotFoundError: No module named 'muad_skill_http'`（测试先于实现）；首次实现后 17 passed / 12 failed（本机代理劫持 127.0.0.1、并发汇总预期偏差） | `cd tools/muad-skill-sdk && . .venv/bin/activate && python3 -m pytest -q` → `29 passed in 12.44s` | `test_spool_records_success_and_failure_with_error_count`、`test_limit_zero_is_unlimited_and_detail_caps_at_500`、`test_limit_one_allows_first_and_terminates_second`、`test_missing_limit_env_does_not_limit`、`test_threaded_counting_admits_exactly_limit` | 真实本地 HTTP server（ThreadingHTTPServer）+ 真实 JSONL spool 文件；200/500 都落事件、errorCount=1；limit=0 时 1000 次全放行、明细 500 条 + summary totalRequests=1000/truncated=true；limit=1 时第 2 次未到达 server、abort/summary 先 flush；20 线程并发恰好 5 次到达 server | verified |
+| B-03/B-06 | 同包导入失败 | 同上 | `test_path_normalization`（5 组）、`test_traceid_is_unique_uuid4_and_always_rotates` | 数字/UUID/长 hex 段均归一为 `{id}`，query 丢弃；1000 次 header 构造的 Traceid 全不重复且 UUID version=4 | verified |
+| S-12/S-13/B-07/B-10 | 同包导入失败 | 同上 | `test_mssw_platform_request_headers`、`test_mssp_static_headers_do_not_leak_to_mssw`、`test_extra_headers_cannot_override_mandatory_headers`、`test_old_state_file_without_profile_falls_back`、`test_profile_can_disable_trace_header` | 真实 `<skill>.session.json` 状态文件 + PATH 上真实可执行的 `session-manager`；server 实收 Cookie/`x-csrf-token`/`Host`/mssp `X-CSRFToken`+`timezone`；两平台头不串；旧文件回退并输出 `request profile fallback missing=requestProfile`；spool 与 stderr 均不含 cookie/CSRF 值 | verified |
+| E-08/E-10 | 同包导入失败 | 同上 | `test_idempotent_401_403_refreshes_and_retries_once[4 组]`、`test_post_401_is_returned_without_retry`、`test_second_401_after_refresh_is_returned`、`test_refresh_failure_fails_loud_without_sending`、`test_401_refresh_failure_fails_loud` | GET/HEAD 401/403 各触发 1 次 `get-state` 刷新并仅重试 1 次；POST 401 原样返回且不刷新；刷新失败抛 `PlatformSessionError` 且未发出业务请求 | verified |
+| S-17/E-04 | 同包导入失败 | 同上 | `test_mixed_helper_and_raw_requests_only_count_helper`、`test_raw_requests_bypass_the_helper` | 同一本地 server 上 raw `requests` 直连成功且 spool 无 http 事件；helper + raw 混合时仅 helper 计数（1 条） | verified |
+| 构建安装 | Dockerfile 未含 SDK 时镜像内无 `muad_skill_http` | `docker build --check` → `Check complete, no warnings found`；在 `muad-openclaw-base:2026.7.1`（Python 3.11.2 / setuptools 66.1.1）中执行 Dockerfile 同一 `pip3 install --no-deps --no-build-isolation` 成功构建并安装包 | `Dockerfile` SDK 安装段；`tools/muad-skill-sdk/pyproject.toml` | 构建期安装到 site-packages，`requests` 仍来自 `requirements.txt`，无新增运行时依赖；Dockerfile 以 `import muad_skill_http` + `EXIT_REQUEST_LIMIT == 86` 自检 | verified |
+- S-09: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-12: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-13: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-17: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- E-08: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- E-10: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-07: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- B-10: verified — automated command passed; run_id=ee773a174bb0452f9c4935da741e69e8 (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-12: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-13: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-17: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-08: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-10: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-07: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-10: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] added tools/muad-skill-sdk (pyproject + muad_skill_http package) and test/test_http.py; RED (ModuleNotFoundError) → GREEN 29 passed
+- [2026-10-17] Dockerfile installs SDK into site-packages at build time; docker build --check clean; install verified on base image
+- [2026-10-17] completed (implementation + tests)
+- [2026-10-17] completed (done)
+
+---
+## TASK-008: `self-skill-review` 与 creator Python 收敛
+
+- **Status**: verified
+- **Priority**: P1
+- **Depends**: TASK-007
+- **Source**: `skill-execution-control-and-review.backend.design.md#2.3.1 功能清单`, `skill-execution-control-and-review.backend.design.md#3.4 接口设计`（存量与文档收敛）
+- **Spec-Refs**: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+- **Acceptance-Refs**: S-06, S-08, RULE-09, RULE-10
+
+### Description
+
+新增 `skills/self-skill-review` system Skill：只读目标目录、不执行被审代码，先跑确定性 AST/文件检查，再由模型做语义审查，输出带 `file:line` 的检查表。同步把 `self-skill-creator` 与模板收敛为 Python，`http-headers.md` 改为使用 `muad_skill_http.platform_request`；上传链路不做硬拦截。
+
+### Checklist
+
+- [x] 新建 SKILL.md、references/rules.md、scripts/check.py；检查项覆盖文件类型、manifest/frontmatter 一致、entrypoint `.py`、必须使用 platform_request、禁止手工 Cookie/CSRF、禁止 subprocess 发业务请求、stderr + 非 0、SKILL_OUTPUT_DIR、session-manager skill 名一致、凭据/内部 URL。
+- [x] `check.py` 只读 AST/文本，不 import/执行目标代码；忽略代码内指令；输出 JSON/Markdown 检查表。
+- [x] 更新 creator：删除语言选择、只保留 Python、示例改为 platform_request；下线/标记 TS/Shell 模板；更新 `_templates/README.md`。
+- [x] [verifier][integration] `runtime-skill-execution#RULE-runtime-skill-fail-loud-001`：review 规则检查失败写 stderr + 非 0；示例与模板一致。
+- [x] 先写 check.py 的违规/合规 fixture 测试并记录 RED/GREEN。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-06 | E2E | Skill 进程 → 目标目录 → 报告 | 报告列出违规与 file:line；目标脚本未执行 | `skills/self-skill-review/test/test_check.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | verified |
+| S-08 | integration | 模板/文档文件扫描 | 无 TS/Shell 模板与示例；creator 只引导 Python | `skills/_templates/test/test_template_scan.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | verified |
+| RULE-runtime-skill-fail-loud-001 | integration | review 规则与示例 | 违规能被检出；示例 fail loud | `skills/self-skill-review/test/test_check.py` | ["python3","-m","pytest","skills/self-skill-review/test","skills/_templates/test","-q"] | verified |
+
+### Acceptance Evidence
+
+- RED `python3 -m pytest skills/self-skill-review/test skills/_templates/test -q` → 14 failed（check.py 不存在；creator/templates 仍含 TS/Shell）。
+- GREEN 同命令 → 14 passed（checker 7 + template scan 7）。
+- S-06：`test_review_never_executes_target_code` 用真实子进程审查 `fixtures/no-execute-skill`，哨兵 `executed` 文件未出现；违规 fixture 断言 `SS-R001 scripts/run.sh:1`、`SS-R004 muad.skill.json:<entrypoint 行>`、`SS-R005/006/007/008/009/010/011/012 scripts/run.py:<对应行>`，Markdown 报告含 `file:line`。
+- S-08：`skills/_templates/test/test_template_scan.py` 扫描真实 `skills/_templates` 与 creator references：无 `.js/.mjs/.ts/.sh`，仅 `business-skill-python`，模板与 creator 均使用 `platform_request`，无 TS/Shell 示例。
+- fail loud：违规目标退出码 1 且 stderr 有汇总；合规目标退出码 0；目标不存在退出码 2 且仅写 stderr。Python 模板冒烟：成功 stdout 单行 JSON，失败 stderr + rc=1。
+- `node --check tools/muad-progress/test/template-integration.test.mjs` 通过；本机无 `dist/` 与 node_modules，未执行 `npm test`（模板运行语义已用 Python stub 冒烟验证）。
+- S-06: e2e_deferred — automated command e2e_deferred; run_id=da1361136cd74d6ba82b6f49af62e17e (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=da1361136cd74d6ba82b6f49af62e17e (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-08: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-06: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] RED: 14 failed（check.py 缺失 + 模板未收敛）
+- [2026-10-17] GREEN: 14 passed（checker fixtures + template scan）
+- [2026-10-17] completed (implementation + tests)
+- [2026-10-17] completed (done)
+
+---
+
+## TASK-009: 管理员 review 流程验证
+
+- **Status**: verified
+- **Priority**: P1
+- **Depends**: TASK-008
+- **Source**: `skill-execution-control-and-review.backend.design.md#2.3.1 功能清单`（FEAT-13）, `skill-execution-control-and-review.backend.design.md#2.2 痛点与价值`（US-06）
+- **Spec-Refs**: runtime-skill-execution#RULE-runtime-skill-layering-001
+- **Acceptance-Refs**: S-07
+
+### Description
+
+复用既有下载、私有上传、删除端点，验证管理员把待审用户 Skill 临时装到自己 Human User 名下进行 review 的完整流程；补充操作 runbook，不新增生产代码。确认私有 Skill 分层、同名冲突与跨用户隔离语义不变。
+
+### Checklist
+
+- [x] 编写集成测试：下载待审 bundle → 上传到管理员 human user → installer 同步到 `workspace-<agent>/skills` → 删除临时副本。
+- [x] 验证原用户工作区无感知、无跨用户读取；同名冲突仍按既有策略拒绝。
+- [x] [verifier][integration] `runtime-skill-execution#RULE-runtime-skill-layering-001`：system/public/private 解析与 allow_override 策略不变。
+- [x] 更新管理员 review runbook（步骤、前置条件、清理动作）。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-07 | integration | 下载/上传/删除 API → 管理员工人工作区 | 管理员 agent 可读；原用户无感知；删除后清理 | `console/backend/test/admin_skill_review_test.go`（`TestAdminSkillReviewFlow_S07`） | ["go","-C","console/backend","test","./test","-run","AdminSkillReview","-count=1"] | verified |
+
+### Acceptance Evidence
+
+- 既有能力验证，无 RED：S-07 复用已合并的下载、私有上传、删除端点与 skillsync installer，流程本身不新增生产代码，测试首跑即 GREEN（`go -C console/backend test ./test -run AdminSkillReview -count=1` → `ok`）。未伪造 RED。
+- 断言位置（`console/backend/test/admin_skill_review_test.go`）：
+  - 下载：`GET /api/v1/skills/{skillId}/download` 返回 `application/gzip` + `<name>.tar.gz`，解包后 `SKILL.md` 含 `REVIEW_ONLY_MARKER`。
+  - 上传：管理员 Human User 下创建 active private asset；同 user 重复上传返回 409；Public 同名无 allow_override 返回 409，显式 allow_override 返回 201；System 同名即使 allow_override 仍返回 400。
+  - installer：`SyncPod` 仅对 admin agent 执行 `install`（`--expected-name=review-target`，stdin bundle 含 marker），fake driver 记录 admin agent 安装哈希；全程无 alice agent 的 installer 调用。
+  - 隔离：alice 资产保持 pending、暂存目录内容逐字节不变、有效视图仍指向原 skillId；用 alice 路径删除 admin 副本返回 404。
+  - 清理：DELETE 后管理员暂存目录删除、资产状态 deleted；再次 `SyncPod` 仅对 admin agent 执行 `delete`，admin 有效视图不再包含该 Skill，alice 资产与目录不变。
+- 真实边界：httptest 走真实 HTTP handler + 真实 repo/skillsync，仅 RuntimeDriver 用 fake（不接真实 Docker/K8s）；installer 的 `workspace-<agent>/skills` 目标路径由 `bin/private-skill-installer.mjs` 承担。
+- Runbook：`docs/skill-admin-review-runbook.md`（前置条件、步骤、反向检查、清理动作），并从 `console/README.md` 链接。
+- S-07: verified — automated command passed; run_id=c6498fea53484d77848782e67fc66e50 (confirmed_by: runner)
+- S-07: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] GREEN: `go -C console/backend test ./test -run AdminSkillReview -count=1` → ok（既有能力，无 RED）。
+- [2026-10-17] 新增管理员 review runbook 并链接 console README。
+- [2026-10-17] S-07 命令改为 argv JSON 并重锁 manifest。
+- [2026-10-17] completed (done)
+
+---
+
+## TASK-010: 前端系统设置（上限 + 告警推送）
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-003, TASK-004
+- **Source**: `skill-execution-control-and-review.frontend.design.md#3.3 组件设计`, `skill-execution-control-and-review.frontend.design.md#3.5 状态与数据流`, `skill-execution-control-and-review.frontend.design.md#3.9 文案与 i18n`
+- **Spec-Refs**: frontend-component-specs#RULE-frontend-semi-shell-001, frontend-directory-structure#RULE-frontend-directory-001, frontend-directory-structure#RULE-frontend-api-types-001, frontend-quality-standards#RULE-frontend-api-client-001
+- **Acceptance-Refs**: S-23, E-22, E-23, B-21, RULE-07
+
+### Description
+
+在系统设置页新增 `skillRequestLimit` 字段与「告警推送」区块（启用、打码 webhook、测试、保存）。类型与请求分别收敛到 `types/api.ts`、`api.ts`；表单三态与字段校验完整；新增文案 zh/en 同步；webhook 留空表示不修改，不回填完整 key。
+
+### Checklist
+
+- [x] 扩展 `types/api.ts` 与 `api.ts`：资源设置字段、notify 读取/保存/测试方法。
+- [x] 实现 `NotifySettings`/`NotifySettingsForm` 与 `ResourceForm` 新字段；保存/测试 busy 态与错误就地展示。
+- [x] webhook 打码回显；输入框留空不修改；PUT 校验失败展示字段错误。
+- [x] [verifier][integration] `frontend-component-specs#RULE-frontend-semi-shell-001`：Semi + 全局 ConfigProvider，无页面级重复包裹。
+- [x] [verifier][integration] `frontend-directory-structure#RULE-frontend-directory-001`：文件位于 console/frontend，HTTP 经 api.ts。
+- [x] [verifier][integration] `frontend-directory-structure#RULE-frontend-api-types-001`：类型集中 types/api.ts，api.ts re-export，无漂移 DTO。
+- [x] [verifier][unit] `frontend-quality-standards#RULE-frontend-api-client-001`：无裸 fetch/axios。
+- [x] 先写表单校验与保存/测试交互测试并记录 RED。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-23 | E2E | 表单 → api.ts → 后端 → 回显 | 保存成功；刷新回显；webhook 打码；测试结果就地展示 | `console/frontend/test/Settings.test.tsx` | ["npm", "test", "--", "--run", "Settings"] | verified |
+| E-22 | integration | 表单校验 | 负数/非整数提示，不发请求 | 同上 | ["npm", "test", "--", "--run", "Settings"] | verified |
+| E-23 | integration | 测试接口 errcode≠0 | 保留输入并展示失败原因 | 同上 | ["npm", "test", "--", "--run", "Settings"] | verified |
+| B-21 | unit | 上限 0 | 显示"不限制"，保存成功 | 同上 | ["npm", "test", "--", "--run", "Settings"] | verified |
+
+### Acceptance Evidence
+
+- RED (2026-10-17): `cd console/frontend && npm test -- --run Settings` → 6 failed / 9 passed。新增与更新的用例先于实现失败（缺少 `skillRequestLimit` 字段、「告警推送」区块与 notify API 方法）。
+- GREEN (2026-10-17): `cd console/frontend && npm test -- --run Settings` → 2 files / 15 tests passed。
+- FULL GATE (2026-10-17): `cd console/frontend && npm run check` → `tsc --noEmit` + eslint + prettier + vitest 全绿，26 files / 199 tests passed。
+- 断言位置（`console/frontend/test/Settings.test.tsx`）：
+  - S-23：`shows the masked webhook, keeps the input empty, and saves without overwriting`（打码地址回显、输入框为空、留空保存 payload 不含 webhook、保存成功提示）。
+  - E-22：`rejects negative and non-integer request limits without sending`（`-1` 显示范围错误、`1.5` 显示整数错误，`setResources` 均未调用）。
+  - E-23：`shows the test failure reason inline and keeps the typed webhook`（errcode 93000 与 errmsg 就地展示，输入保留）。
+  - B-21：`shows the unlimited hint and saves a zero request limit`（0 显示“不限制”，保存 payload `skillRequestLimit: 0`）。
+- 真实组件证据：`Settings` 渲染 `ResourceForm`（新增 `skillRequestLimit` 字段）与 `NotifySettings` 容器（`console/frontend/src/components/settings/NotifySettings.tsx`）→ `NotifySettingsForm`（`console/frontend/src/components/settings/NotifySettingsForm.tsx`）；请求经 `api.getNotifySettings/setNotifySettings/testNotifySettings`，无裸 fetch。
+- 边界说明：TASK-003/TASK-004 已合并 `GET/PUT /api/v1/settings/notify`、`POST /api/v1/settings/notify/test` 与 `settings/resources.skillRequestLimit`。本任务 vitest 按项目约定在 `api.ts` 边界 mock；S-23 的真实全链路 E2E 由 TASK-012 在全部功能任务完成后终验。
+- S-23: e2e_deferred — automated command e2e_deferred; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
+- E-22: verified — automated command passed; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
+- E-23: verified — automated command passed; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
+- B-21: verified — automated command passed; run_id=bd340f0c86524066bc110049ee24c0fa (confirmed_by: runner)
+- S-23: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-22: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-23: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-21: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-23: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-23: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] TASK-010 acceptance commands 改为 argv JSON（`["npm","test","--","--run","Settings"]`，cwd `console/frontend`）并重锁 manifest。
+- [2026-10-17] RED 6 failed / 9 passed；编码后 GREEN 15 passed；`npm run check` 199 passed。
+- [2026-10-17] done
+- [2026-10-17] completed (done)
+
+---
+
+## TASK-011: 前端执行时间线与 Skill 健康
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-002
+- **Source**: `skill-execution-control-and-review.frontend.design.md#3.3 组件设计`, `skill-execution-control-and-review.frontend.design.md#3.5 状态与数据流`, `skill-execution-control-and-review.frontend.design.md#3.6 UI 状态`
+- **Spec-Refs**: frontend-component-specs#RULE-frontend-component-001, frontend-quality-standards#RULE-frontend-quality-001, frontend-quality-standards#RULE-frontend-i18n-001
+- **Acceptance-Refs**: S-21, S-22, S-24, S-25, E-21, E-24, E-25, B-22, B-23, B-24
+
+### Description
+
+在执行日志行展开抽屉：汇总头（请求数/错误数/耗时/Top 接口/aborted/truncated 徽标）+ 事件时间线；旧 Skill 仅有 exec 事件时显示提示。审计页新增「Skill 健康」页签：按窗口聚合、用户维度、异常排序、钻取到该用户执行日志。所有请求经 api.ts，异步三态完整。
+
+### Checklist
+
+- [x] 实现 `ExecutionTraceDrawer`、`TraceSummaryHeader`、`TraceTimeline`；稳定 key=`eventId`；abort/truncated 高亮。
+- [x] 实现 `SkillHealthTab`/`SkillHealthTable`：窗口切换后台刷新不闪；用户列；行点击钻取并带 `humanUserId`。
+- [x] 覆盖 loading/empty/error/success 与旧 Skill exec-only 提示。
+- [x] [verifier][integration] `frontend-component-specs#RULE-frontend-component-001`：容器/展示分离、props 类型化、无展示组件请求。
+- [x] [verifier][integration] `frontend-quality-standards#RULE-frontend-quality-001`：strict TS、三态、vitest 通过。
+- [x] [verifier][integration] `frontend-quality-standards#RULE-frontend-i18n-001`：新增 key zh/en 同步，列配置 `useMemo(...,[t])`。
+- [x] 先写时间线与健康列表交互测试并记录 RED。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-21 | E2E | API → 状态 → 抽屉渲染 | 汇总与事件按序显示；http 字段正确 | `console/frontend/test/AuditTrace.test.tsx` | ["npm", "test", "--", "--run", "Audit"] | verified |
+| S-22 | integration | 状态 → UI | aborted 徽标/事件高亮 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| S-24 | E2E | API → 列表 → 钻取 | 用户维度两行；钻取带 humanUserId | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| S-25 | integration | truncated 数据 | 顶部提示"明细已截断，共 N 次" | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| E-21 | integration | 请求失败 | Banner + ErrorDetail + 重试 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| E-24 | integration | 空数据 | 空态文案 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| E-25 | integration | 404 | 显示"执行不存在" | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| B-22 | unit | 2000 条事件 | 首屏可用，不卡顿 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| B-23 | integration | 同名私有 Skill 两用户 | 两行分别显示用户 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+| B-24 | integration | 旧 Skill exec-only | 提示"未使用统一客户端"，无错误 | 同上 | ["npm", "test", "--", "--run", "Audit"] | verified |
+
+### Acceptance Evidence
+
+| 场景ID | RED | GREEN | 断言位置 | 真实边界证据 | 状态 |
+|--------|-----|-------|---------|-------------|------|
+| S-21 | `npm test -- --run AuditTrace` FAIL：`Failed to resolve import "../src/pages/audit/TraceTimeline"` | PASS：请求数/错误数/耗时 2.1s、Top 接口 ×2、事件顺序 `["event-1","event-2","event-3"]` | `test/AuditTrace.test.tsx:renders metrics and events in seq order with stable event ids` | 组件测试经 `src/api.ts` mock 层驱动 `SkillExecutionTrace` → Drawer 状态 → DOM；跨进程真实 API E2E 由 TASK-012 执行 | verified |
+| S-22 | 同上（组件不存在） | PASS：`已因请求超限终止` + 接口/1001 次；abort 行 `data-highlighted=true` | `test/AuditTrace.test.tsx:highlights aborted executions and abort events` | metrics.aborted/abortInterface/abortCount → 徽标与时间线高亮 | verified |
+| S-24 | 同上（组件不存在） | PASS：同名私有 Skill 两行（张三/李四）；点击后 `listSkillExecutions` 收到 `humanUserId=user-a`、`skillName=mss-report-skill` 并切页签 | `test/AuditTrace.test.tsx:lists both users of the same private Skill and drills down with humanUserId` | 健康行 → Audit 页签状态 → 执行日志查询参数；HTTP E2E 由 TASK-012 执行 | verified |
+| S-25 | 同上 | PASS：`明细已截断，共 1000 次请求` | `test/AuditTrace.test.tsx:keeps the truncated banner visible with the request count` | metrics.detailTruncated/requestCount 直接渲染 | verified |
+| E-21 | 同上 | PASS：Banner message + `技术详情`；点击重试后渲染成功，调用 2 次 | `test/AuditTrace.test.tsx:renders a banner, technical detail and retry when the request fails`、`shows a banner and retry when health data fails` | `ApiError(500, detail)` → error/errorDetail 三态 → 重试 | verified |
+| E-24 | 同上 | PASS：`该窗口内暂无 Skill 执行数据` | `test/AuditTrace.test.tsx:loads the default 7d window and shows the empty state` | 空 items → Table empty 槽 | verified |
+| E-25 | 同上 | PASS：`执行不存在` | `test/AuditTrace.test.tsx:maps a missing execution to the not-found state` | `ApiError(status=404)` 分支映射，不白屏 | verified |
+| B-22 | 同上 | PASS：2000 条事件仅首屏渲染 200 条，出现 `加载更多`，末条未渲染 | `test/AuditTrace.test.tsx:renders 2000 events progressively so the first screen stays responsive` | 时间线分页步进 200 条，稳定 key=eventId | verified |
+| B-23 | 同上 | PASS：两个用户同名 private Skill 各 1 行，分别显示张三/李四 | `test/AuditTrace.test.tsx:lists both users of the same private Skill and drills down with humanUserId` | 后端分组字段 humanUserName/humanUserId 直出 | verified |
+| B-24 | 同上 | PASS：仅 exec 事件显示 `未使用统一客户端` 提示，exec 事件正常渲染，无错误 Banner | `test/AuditTrace.test.tsx:shows a legacy hint instead of an error when only exec events exist` | metrics=null + 全 exec 事件 → legacy 分支 | verified |
+
+补充验证：`npx tsc --noEmit` 通过；`npx eslint src/` 通过；`npm test`（全量 27 文件 211 用例）通过。
+- S-21: e2e_deferred — automated command e2e_deferred; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- S-22: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- S-24: e2e_deferred — automated command e2e_deferred; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- S-25: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- E-21: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- E-24: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- E-25: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- B-22: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- B-23: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- B-24: verified — automated command passed; run_id=015384433cbc4f579de9b80300150771 (confirmed_by: runner)
+- S-21: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-22: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-24: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-25: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-21: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-24: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-25: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-22: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-23: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- B-24: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-21: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-24: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-21: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-24: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started (RED: `npm test -- --run AuditTrace` 无法解析 `TraceTimeline`，0 用例执行)
+- [2026-10-17] completed (GREEN: `npm test -- --run Audit` 25 用例、全量 211 用例、tsc/eslint 均通过)
+- [2026-10-17] completed (done)
+
+---
+
+## TASK-012: 跨边界 E2E 与兼容性验收
+
+- **Status**: verified
+- **Priority**: P0
+- **Depends**: TASK-005, TASK-006, TASK-007, TASK-008, TASK-010, TASK-011
+- **Source**: `skill-execution-control-and-review.backend.design.md#2.5.2 功能验收场景`, `skill-execution-control-and-review.backend.design.md#3.2 架构设计`（兼容性与渐进迁移）, `skill-execution-control-and-review.backend.design.md#4.2 发布与回滚`
+- **Spec-Refs**:
+- **Acceptance-Refs**: S-01, S-02, S-05, S-14, S-16, E-11, RULE-13
+
+### Description
+
+在所有功能任务完成后执行跨边界验收：正常执行全链路、超限终止全链路、健康视图数据链路、两用户并发隔离、旧 Skill 零改造、版本错配/升级顺序。E2E 不得降级为 mock 后的 unit/integration。
+
+### Checklist
+
+- [x] [S-01][E2E] 编写全链路用例（真实边界：Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API），断言事件、汇总与脱敏。
+- [x] [S-02][E2E] 编写超限用例（helper 退出 → guard abort → IM 通知 → Console → 通知分发），断言第 N+1 次未发出、退出码 86、用户/管理员通知。
+- [x] [S-05][E2E] 验证 stats 数据 → API → UI 列表与异常标记。
+- [x] [S-14][E2E] 两用户并发同名 public Skill：trace 分离、告警按用户、统计两行。
+- [x] [S-16][E2E] 旧 Skill（raw requests + 手工头）升级后原样执行；只有 exec 事件；不触发限额。
+- [x] [E-11][integration] 版本错配/升级顺序：新 guard + 旧 Console、旧 guard + 新 Console 只降级不崩溃。
+- [x] [verifier][integration] RULE-13 兼容约束：确认未改 requests、CLI stdout、状态文件已有字段与旧链路行为。
+- [x] 执行 `cf_acceptance_runner.py --manifest <需求目录>/.acceptance-manifest.json --root . --include-e2e --write-evidence` 并记录证据。
+
+### Acceptance Contract
+
+| 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
+|--------|---------|--------------------|---------|----------------|---------|------|
+| S-01 | E2E | 全链路（脚本/helper/guard/API/DB） | 事件与汇总完整；无敏感头 | `console/backend/test/skill_trace_e2e_test.go` | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S01$","-count=1","-v"] | verified |
+| S-02 | E2E | 全链路 + 通知 | 超限终止、IM、管理员告警 | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S02$","-count=1","-v"] | verified |
+| S-05 | E2E | 数据 → API → UI | 健康视图与异常标记 | 同上 + `console/frontend/test-e2e/skill-health.e2e.tsx` | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S05$","-count=1","-v"] | verified |
+| S-14 | E2E | 两用户并发 | trace/告警/统计隔离 | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S14$","-count=1","-v"] | verified |
+| S-16 | E2E | 旧 Skill → 新镜像 | 原行为不变；仅 exec trace | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_S16$","-count=1","-v"] | verified |
+| E-11 | integration | 版本错配 | 降级不崩溃；spool 重试 | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_E11$","-count=1","-v"] | verified |
+| RULE-13 | integration | 兼容面 | requests/CLI/状态文件/旧链路不变 | 同上 | ["go","-C","console/backend","test","-tags","e2e","./test","-run","^TestSkillTraceE2E_RULE13$","-count=1","-v"] | verified |
+
+### Acceptance Evidence
+
+**RED（先写 E2E，确认缺口真实存在）**
+
+| 场景 | 命令 | 失败原因 |
+|------|------|---------|
+| S-01 | `go test -tags e2e ./test -run TestSkillTraceE2E_S01 -count=1` | trace 只有 3 条 `http` 事件，缺 `exec` 事件（guard 从未产出 exec 事件） |
+| S-02 | 同上 `-run TestSkillTraceE2E_S02` | trace 上报返回 400/40534：abort 事件 `status="aborted"` 不被 Console schema（ok/error）接受；管理员告警未触发（handler 未调用 `notify.Publish`） |
+| S-05/S-14 | 同上 | 依赖 S-01/S-02 的同一缺口；stats/UI 链路无法得到 aborted 数据 |
+| S-16 | 同上 `-run TestSkillTraceE2E_S16` | 空 spool 直接 return，旧 Skill 完全没有 trace（设计要求仅 exec 事件） |
+
+**GREEN（真实跨边界实现，未降级为 mock）**
+
+- 修复 TASK-002/005 遗留的三处集成缺口（本任务发现并补齐，均有上述 RED 用例覆盖）：
+  1. guard 每执行产出一条 `exec` 事件（`skill-trace.mjs:execTraceEvent`，seq=1，helper 事件统一 +1），旧 Skill 因此得到仅 exec 的 trace；
+  2. abort 事件状态改为 schema 允许的 `error`（`kind=abort` 保留语义），trace 可正常入库；
+  3. Console trace 写入在 `metrics.aborted` 时调用 `notify.Publish`，经真实 Dispatcher + WeCom 通道分发管理员告警（5 分钟去重）。
+- `console/backend/test/skill_trace_e2e_test.go`：临时 SQLite + 真实 `api.Server` httptest → 真实 HTTP 创建 execution/写 trace/查 trace/stats；Node 直接加载 `tools/muad-runtime-guard/src` 的归属映射、spool 解析、有界队列、SkillTraceClient；Python 子进程真实执行 `muad_skill_http`（helper）或裸 `requests`（legacy）；业务平台为本地 httptest 记录真实请求；WeCom 为本地 httptest（保留 `qyapi.weixin.qq.com` 白名单与真实 dispatcher）。
+- S-01：exit 0；exec env（EXECUTION_ID/TRACE_SPOOL/LIMIT）正确；spool 0700/0600 且上传后删除；trace 4 事件（exec + 3 http）、requestCount=3、errorCount=0、Top 接口 `{host}/api/v1/targets/{id}`×3；响应/DB 不含 `e2e-secret-header`/`e2e-secret-body`/`Cookie`（业务服务器确实收到了这些值）。
+- S-02：limit=3 / 4 次请求 → 业务服务器只收到 3 次（第 4 次未发出）、进程 exit 86；trace aborted=true、abortReason=request_limit、abortCount=4；事件 exec+3 http+abort；guard 用户通知（wecom/wx-alice，fake）1 条；Console 管理员 WeCom 告警 1 条且含 humanUserId/skill。
+- S-05：stats SQL 返回 abortedCount=1、flaggedCount=1、maxRequests=4、Top 接口正确；`console/frontend/test-e2e/skill-health.e2e.tsx` 以真实 HTTP 渲染 Audit 健康表（skill 行、aborted/flagged=1、maxRequests=4），点击钻取后执行日志页签从真实 `/skill-executions` 查询出该 executionId。
+- S-14：同 Pod 两用户并发（limit=2 / 3 次）→ 两进程均 exit 86；两份 trace 按 executionId 分离（所有 eventId 带各自前缀），各自 abortedCount=3；guard 用户通知按 peer 区分；管理员收到 2 条含不同 humanUserId 的告警；stats 返回两行（同 public skill，不同 humanUserId）。
+- S-16：limit=1 但裸 `requests` 3 次全部成功（业务服务器收到 3 次，带手工 `Cookie`/`X-Manual-Csrf`），进程 exit 0、无用户通知；trace 仅 1 条 exec 事件、requestCount=0、aborted=false；旧状态文件（仅 cookies/storageState）读取正常。
+- E-11：新 guard + 旧 Console（404）→ Skill 正常 exit 0、spool 保留；Console 升级后同一 spool 重放上传成功并删除；旧 guard + 新 Console（仅 execution 记录、无 trace）→ trace 接口 200 返回空 metrics/events、stats 正常降级，无 5xx。
+- RULE-13：`python3 -m pytest -q tools/muad-skill-sdk/test` + `node --test --test-name-pattern=SkillTrace tools/muad-runtime-guard/test/skill-trace.test.mjs` 全绿（覆盖 raw requests 绕过、混合请求、旧状态文件回退、requests 未被替换）。
+
+**回归**
+
+- `go test ./... -count=1`（console/backend）全绿；`go test -tags e2e ./test -run TestSkillTraceE2E -count=1` 全绿。
+- `npm test -- --run`（console/frontend）27 文件 / 211 用例全绿（E2E 文件不在默认 include）。
+- `node --test --test-name-pattern=SkillTrace tools/muad-runtime-guard/test/skill-trace.test.mjs` 18/18。
+- `cf_acceptance_runner.py --manifest ... --root . --include-e2e --write-evidence` → decision=pass（52/52，含 S-06/S-21/S-23/S-24 重跑）。
+
+**未自动化 / 边界说明**
+
+- `output` 事件：本需求实现（TASK-005）没有产出文件事件的生产者，S-01 按实际链路断言 exec + http + 汇总；这是设计（§2.5.2 列出的 exec/http/output）与实现的已知差异，未用伪造事件掩盖。
+- 真实 OpenClaw gateway 进程/真实企微服务器：本环境不可用；guard 以真实模块 + 真实 Node 子进程驱动，WeCom 以保留 host 白名单的本地 httptest 替代（设计允许）。
+- session-manager CLI stdout 字段兼容未在本任务重跑（需 TS 构建）；状态文件旧字段兼容由 SDK `B-10` 用例覆盖，CLI 行为由 TASK-006 既有测试守护。
+- 用户 IM 投递在 guard 侧按 E-06 契约注入 fake（不阻塞 trace/终止）。
+
+- S-01: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-14: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- E-11: verified — automated command passed; run_id=7ac710b3a90640008c58fc2afa2bfc96 (confirmed_by: runner)
+- RULE-13: verified — command `go test -tags e2e ./test -run '^TestSkillTraceE2E_RULE13$' -count=1 -v` passed（pytest + guard node suite）
+- S-01: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-14: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=b4ff26f7543e49699a9b435980d1681b (confirmed_by: runner)
+- S-01: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-02: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-14: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+- S-16: verified — automated command passed; run_id=9e40beb1f0324081bea3e122f8324620 (confirmed_by: runner)
+
+### Log
+
+- [2026-10-17] created (draft)
+- [2026-10-17] started
+- [2026-10-17] completed (done)

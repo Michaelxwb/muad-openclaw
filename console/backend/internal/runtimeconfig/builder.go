@@ -56,18 +56,25 @@ type Builder struct {
 }
 
 type sourceData struct {
-	pod        repo.Pod
-	users      []repo.HumanUser
-	identities []repo.UserIdentity
-	platforms  []repo.PlatformConfig
-	models     []repo.LLMModelConfig
-	guidance   repo.AgentGuidance
+	pod               repo.Pod
+	users             []repo.HumanUser
+	identities        []repo.UserIdentity
+	platforms         []repo.PlatformConfig
+	models            []repo.LLMModelConfig
+	guidance          repo.AgentGuidance
+	skillRequestLimit int
 }
 
 // GuidanceSource is implemented by Stores that expose admin-configured agent
 // workspace guidance; builders fall back to renderer defaults when absent.
 type GuidanceSource interface {
 	GetAgentGuidance() (repo.AgentGuidance, error)
+}
+
+// ResourceLimitSource is implemented by Stores that expose global resource
+// settings; builders without it fall back to the documented defaults.
+type ResourceLimitSource interface {
+	GetResourceGlobal() (repo.ResourceConfig, error)
 }
 
 type skillState struct {
@@ -126,6 +133,7 @@ func (builder *Builder) Build(podID string) (Result, error) {
 	}
 	config := builder.assemble(data.pod, users, routes, links, providers, models, platforms, channels, skills)
 	config.Guidance = runtimeGuidance(data.guidance)
+	config.Guard.SkillRequestLimit = data.skillRequestLimit
 	return finish(config)
 }
 
@@ -165,10 +173,32 @@ func (builder *Builder) load(podID string) (sourceData, error) {
 			guidance = loaded
 		}
 	}
+	skillRequestLimit, err := builder.loadSkillRequestLimit()
+	if err != nil {
+		return sourceData{}, err
+	}
 	return sourceData{
 		pod: pod, users: users, identities: identities,
 		platforms: platforms, models: models, guidance: guidance,
+		skillRequestLimit: skillRequestLimit,
 	}, nil
+}
+
+// loadSkillRequestLimit reads the global request cap at build time so settings
+// changes take effect on the next apply without restarting the console.
+func (builder *Builder) loadSkillRequestLimit() (int, error) {
+	source, ok := builder.source.(ResourceLimitSource)
+	if !ok {
+		return driver.DefaultSkillRequestLimit, nil
+	}
+	global, err := source.GetResourceGlobal()
+	if errors.Is(err, repo.ErrNotFound) {
+		return driver.DefaultSkillRequestLimit, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("load global resource config: %w", err)
+	}
+	return global.SkillRequestLimit, nil
 }
 
 func (builder *Builder) assemble(

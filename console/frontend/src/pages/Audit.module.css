@@ -1,3 +1,195 @@
 .tabs :global(.semi-tabs-bar) {
   margin-bottom: 16px;
 }
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.error :global(.semi-banner) {
+  flex: 1;
+}
+
+.detailLoading {
+  display: flex;
+  min-height: 200px;
+  align-items: center;
+  justify-content: center;
+}
+
+.traceDrawer {
+  min-width: 0;
+}
+
+.traceSummary {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--semi-color-fill-0);
+  border-radius: 6px;
+}
+
+.traceBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.traceAbortDetail {
+  display: block;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+
+.traceMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+.traceMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.traceMetricLabel {
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+}
+
+.traceMetricValue {
+  color: var(--semi-color-text-0);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.traceInterfaces {
+  margin-top: 16px;
+}
+
+.traceInterfaceList {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.traceInterfaceList li {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 4px 0;
+  color: var(--semi-color-text-1);
+  overflow-wrap: anywhere;
+}
+
+.traceInterfaceCount {
+  flex: none;
+  color: var(--semi-color-text-2);
+}
+
+.traceTimeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.traceEvent {
+  display: grid;
+  grid-template-columns: 84px auto auto minmax(0, 1fr) 64px;
+  gap: 8px;
+  align-items: start;
+  padding: 8px 10px;
+  background: var(--semi-color-bg-1);
+  border: 1px solid var(--semi-color-border);
+  border-radius: 4px;
+}
+
+.traceEventAbort {
+  background: var(--semi-color-danger-light-default);
+  border-color: var(--semi-color-danger);
+}
+
+.traceEventError {
+  border-color: var(--semi-color-warning);
+}
+
+.traceTime {
+  color: var(--semi-color-text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.traceEventBody {
+  min-width: 0;
+}
+
+.traceEventSummary {
+  overflow-wrap: anywhere;
+  color: var(--semi-color-text-0);
+  font-weight: 500;
+}
+
+.traceEventTraceId {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  font-family: var(--semi-font-family-mono);
+  font-size: 12px;
+  user-select: text;
+}
+
+.traceEventDetail {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--semi-color-text-1);
+  font-family: var(--semi-font-family-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.traceDuration {
+  color: var(--semi-color-text-2);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.traceMore {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.traceLegacyHint {
+  margin-bottom: 12px;
+}
+
+.healthToolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.primary {
+  color: var(--semi-color-text-0);
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .traceMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .traceEvent {
+    grid-template-columns: 1fr auto;
+  }
+
+  .traceEventBody {
+    grid-column: 1 / -1;
+  }
+}

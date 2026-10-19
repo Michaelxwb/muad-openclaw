@@ -94,3 +94,27 @@ test("schema still rejects provider keys outside the allow-list", () => {
     /unknown field/,
   );
 });
+
+function runtimeWithSkillRequestLimit(value) {
+  const runtime = JSON.parse(fixtureText);
+  runtime.guard.skillRequestLimit = value;
+  return runtime;
+}
+
+test("schema accepts skillRequestLimit boundaries and legacy DTOs without it", () => {
+  // 0 = 不限制；1000000 = 上限。缺省字段（旧 Console）必须继续可解析。
+  assert.equal(parseRuntimeConfig(fixtureText).guard.skillRequestLimit, undefined);
+  for (const value of [0, 50, 1000000]) {
+    assert.equal(parseRuntimeConfig(runtimeWithSkillRequestLimit(value)).guard.skillRequestLimit, value);
+  }
+});
+
+test("schema rejects skillRequestLimit outside 0..1000000 or non-integer", () => {
+  for (const value of [-1, 1000001, 1.5, "50", null]) {
+    assert.throws(
+      () => parseRuntimeConfig(runtimeWithSkillRequestLimit(value)),
+      /runtime\.guard\.skillRequestLimit/,
+      `skillRequestLimit=${JSON.stringify(value)} must be rejected`,
+    );
+  }
+});

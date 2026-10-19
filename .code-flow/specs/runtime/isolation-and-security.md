@@ -50,6 +50,11 @@ writeFileSync(file, secretsJson) // 默认 umask，可能过宽
 - 原子写：先写临时文件再 rename，避免半截密钥文件
 - 长任务队列状态落 0600 JSONL（`.tmp` + rename 原子收敛，模式与目标文件都 0600）；接受取消前先可靠写入取消请求与单调 revision；重启保留 cancelling 墓碑——不重新执行、不猜测停止
 - **installer 长名处理**：解析 GNU `L` / PAX `x/g` 长名数据段、对解析出的真实路径/linkpath 做路径校验后放行，不裸 reject；裸 reject 会破坏自身 Go 重打包工具链（`archive/tar` 对 >100 字节路径段产 PAX 头），且长名真实路径必须过 `assertSafeArchivePath`
+- **trace spool 隔离**：guard 自管 spool 目录 0700、文件 0600，文件名只用 UUID executionId；目录加入 cross-user-guard 路径拦截，启动清理 >24h 孤儿文件。
+- **trace 事件序列与幂等**：同一 execution 内的 exec/http 事件统一使用 `<executionId>:<seq>` 作为 event_id，seq 由 guard 按批次单调分配；禁止使用固定 `:exec`，否则同一 execution 的第二条 exec 会被 `ON CONFLICT(event_id) DO NOTHING` 静默丢弃。
+- **execution metrics 累计**：每个 exec 进程的 summary 由 guard 按 execution 累加后再上报，后端保持 latest 语义；后一个 exec 的计数不得覆盖前面批次。
+- **执行归属 fail-closed**：trace 归属优先按 `agentId + sessionKey + runId`（长任务 taskId）精确匹配；`resolve_exec_env` 缺少 runId 时，仅当同一 `agentId + sessionKey` 下恰好一条 active execution 才允许会话级回退，多个候选、跨 agent 或映射缺失时一律不注入 trace env，宁可无 trace 也不串到其他用户。归属 TTL 24h 且 resolve/reserve/metrics 时滑动续期；turn 结束时 audit `agent_end` 从会话索引移除已完成 execution（`byExecution`/`byKey` 保留供重试与 metrics），避免下一 turn 的会话回退被上一个 turn 的 execution 污染成 `mapping_conflict`；audit 的 runId+skill 去重同样 24h，避免长 turn 重复读 SKILL.md 生成第二个 execution。
+- **异步回传与通知**：hook 内只读 spool/入队，HTTP 上传与 IM 通知走异步有界队列；不得在共享 gateway 的 hook 里同步发请求或阻塞其他用户 turn。
 
 ## Patterns
 - inject-env / inject-channels / inject-multi-user-config 作为注入单一入口

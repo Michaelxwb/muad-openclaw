@@ -1,0 +1,4546 @@
+{
+  "schema": 2,
+  "task_file": "skill-execution-control-and-review.md",
+  "task_sha256": "83ee573cfcab1b6b41a50bd02e6efc8827019640cbd2c497b591afc40e8ce1e7",
+  "scenarios": [
+    {
+      "id": "S-01",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "Skill 脚本 → helper → spool → guard → 内部 API → SQLite → 查询 API",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S01$",
+        "-count=1",
+        "-v"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "runs": [
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S01$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        },
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "b4ff26f7543e49699a9b435980d1681b",
+          "executed_at": "2026-10-17T12:18:07.379070+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S01$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "9e40beb1f0324081bea3e122f8324620",
+          "executed_at": "2026-10-17T12:19:16.499126+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S01$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 3,
+      "evidence": {
+        "id": "S-01",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 3,
+        "run_id": "9e40beb1f0324081bea3e122f8324620",
+        "executed_at": "2026-10-17T12:19:16.499126+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S01$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
+    },
+    {
+      "id": "S-02",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "helper 退出 → guard abort → IM 通知 → Console 入库 → 通知分发",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S02$",
+        "-count=1",
+        "-v"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "runs": [
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S02$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "b4ff26f7543e49699a9b435980d1681b",
+          "executed_at": "2026-10-17T12:18:07.379070+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S02$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "9e40beb1f0324081bea3e122f8324620",
+          "executed_at": "2026-10-17T12:19:16.499126+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S02$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 3,
+      "evidence": {
+        "id": "S-02",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 3,
+        "run_id": "9e40beb1f0324081bea3e122f8324620",
+        "executed_at": "2026-10-17T12:19:16.499126+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S02$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
+    },
+    {
+      "id": "S-03",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "设置 API → resource_config → runtimeconfig builder → renderer → 配置字节",
+      "owner": "TASK-004",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "./test",
+        "-run",
+        "SettingsResources",
+        "-count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "SettingsResources",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "42166c55c81f44cca405d2dc208657eb",
+          "executed_at": "2026-10-17T11:45:35.341812+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SettingsResources",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+        },
+        {
+          "id": "S-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SettingsResources",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-04",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "设置 API → 加密存储 → dispatcher → WeCom HTTP（httptest）",
+      "owner": "TASK-003",
+      "status": "verified",
+      "command": [
+        "sh",
+        "-c",
+        "cd console/backend && go test ./test -run Notify -count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "sh",
+          "-c",
+          "cd console/backend && go test ./test -run Notify -count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
+          "executed_at": "2026-10-17T11:40:43.609275+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./test -run Notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./test -run Notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-05",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "执行数据 → stats SQL → 查询 API → UI 列表",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S05$",
+        "-count=1",
+        "-v"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "runs": [
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S05$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        },
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "b4ff26f7543e49699a9b435980d1681b",
+          "executed_at": "2026-10-17T12:18:07.379070+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S05$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-05",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "9e40beb1f0324081bea3e122f8324620",
+          "executed_at": "2026-10-17T12:19:16.499126+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S05$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 3,
+      "evidence": {
+        "id": "S-05",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 3,
+        "run_id": "9e40beb1f0324081bea3e122f8324620",
+        "executed_at": "2026-10-17T12:19:16.499126+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S05$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
+    },
+    {
+      "id": "S-06",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "审阅脚本 → 目标目录 → 报告输出（不执行目标代码）",
+      "owner": "TASK-008",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "skills/self-skill-review/test",
+        "skills/_templates/test",
+        "-q"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 4,
+      "evidence": {
+        "id": "S-06",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 4,
+        "run_id": "9e40beb1f0324081bea3e122f8324620",
+        "executed_at": "2026-10-17T12:19:16.499126+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "skills/self-skill-review/test",
+          "skills/_templates/test",
+          "-q"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "da1361136cd74d6ba82b6f49af62e17e",
+          "executed_at": "2026-10-17T11:53:23.223325+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "b4ff26f7543e49699a9b435980d1681b",
+          "executed_at": "2026-10-17T12:18:07.379070+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "9e40beb1f0324081bea3e122f8324620",
+          "executed_at": "2026-10-17T12:19:16.499126+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-07",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "下载 API → 私有上传 API → 管理员工作区",
+      "owner": "TASK-009",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "./test",
+        "-run",
+        "AdminSkillReview",
+        "-count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "AdminSkillReview",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "c6498fea53484d77848782e67fc66e50",
+          "executed_at": "2026-10-17T11:58:03.487238+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "AdminSkillReview",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "d9ce3c5699397e18b12ba818870e3f6701ebc0bd9732c329b29b18fce66beb3d"
+        },
+        {
+          "id": "S-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "AdminSkillReview",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-08",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Skill 文档与模板文件内容",
+      "owner": "TASK-008",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "skills/self-skill-review/test",
+        "skills/_templates/test",
+        "-q"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "skills/self-skill-review/test",
+          "skills/_templates/test",
+          "-q"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "da1361136cd74d6ba82b6f49af62e17e",
+          "executed_at": "2026-10-17T11:53:23.223325+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "d9e9cd0587160a0f28e40b3937fca7160d5968c99d99f27ff52712a4d7a62a85"
+        },
+        {
+          "id": "S-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "skills/self-skill-review/test",
+            "skills/_templates/test",
+            "-q"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-09",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "helper → spool 文件",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-10",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "helper 计数与 env",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-11",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "settings API → audit",
+      "owner": "TASK-003",
+      "status": "verified",
+      "command": [
+        "sh",
+        "-c",
+        "cd console/backend && go test ./test -run Notify -count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "sh",
+          "-c",
+          "cd console/backend && go test ./test -run Notify -count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
+          "executed_at": "2026-10-17T11:40:43.609275+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./test -run Notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "S-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./test -run Notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-12",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "session-manager 状态文件 → platform_request → HTTP（httptest）",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-12",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-12",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-13",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "mssp 状态文件 → platform_request",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-13",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-13",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-13",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-14",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "两个用户并发 → 两份 spool → Console → 告警/统计",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S14$",
+        "-count=1",
+        "-v"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "runs": [
+        {
+          "id": "S-14",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S14$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        },
+        {
+          "id": "S-14",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "b4ff26f7543e49699a9b435980d1681b",
+          "executed_at": "2026-10-17T12:18:07.379070+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S14$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-14",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "9e40beb1f0324081bea3e122f8324620",
+          "executed_at": "2026-10-17T12:19:16.499126+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S14$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 3,
+      "evidence": {
+        "id": "S-14",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 3,
+        "run_id": "9e40beb1f0324081bea3e122f8324620",
+        "executed_at": "2026-10-17T12:19:16.499126+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S14$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
+    },
+    {
+      "id": "S-15",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "共享 gateway hook → 异步队列 → 其他用户 turn",
+      "owner": "TASK-005",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=SkillTrace",
+        "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-15",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=SkillTrace",
+          "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-15",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "S-15",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-16",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "旧 Skill（raw requests + 手工头）→ 新镜像 → 执行",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_S16$",
+        "-count=1",
+        "-v"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "runs": [
+        {
+          "id": "S-16",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S16$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        },
+        {
+          "id": "S-16",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "b4ff26f7543e49699a9b435980d1681b",
+          "executed_at": "2026-10-17T12:18:07.379070+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S16$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-16",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "9e40beb1f0324081bea3e122f8324620",
+          "executed_at": "2026-10-17T12:19:16.499126+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_S16$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 3,
+      "evidence": {
+        "id": "S-16",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 3,
+        "run_id": "9e40beb1f0324081bea3e122f8324620",
+        "executed_at": "2026-10-17T12:19:16.499126+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_S16$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
+    },
+    {
+      "id": "S-17",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "混合 Skill（helper + raw requests）",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-17",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-17",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "S-17",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-01",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "Console 内部接口 → repo",
+      "owner": "TASK-002",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "./test",
+        "-run",
+        "SkillExecutionTrace",
+        "-count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 3,
+      "evidence": {
+        "id": "E-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 3,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "SkillExecutionTrace",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "d9db27575f024b4bacb2b1026a227975",
+          "executed_at": "2026-10-17T11:40:26.647588+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "a170fbcb71c24d6eb7547b8d14580eaa",
+          "executed_at": "2026-10-17T11:40:32.180731+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-02",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "dispatcher → WeCom HTTP（errcode≠0）",
+      "owner": "TASK-003",
+      "status": "verified",
+      "command": [
+        "sh",
+        "-c",
+        "cd console/backend && go test ./internal/notify -count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "sh",
+          "-c",
+          "cd console/backend && go test ./internal/notify -count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
+          "executed_at": "2026-10-17T11:40:43.609275+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./internal/notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./internal/notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-03",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "guard 上传失败 → 保留 spool → 下个 hook 重试",
+      "owner": "TASK-005",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=SkillTrace",
+        "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=SkillTrace",
+          "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-04",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "脚本绕过 helper 直接发请求",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-05",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "并发计数锁",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "E-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-06",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "IM 投递（mock 通道）",
+      "owner": "TASK-005",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=SkillTrace",
+        "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=SkillTrace",
+          "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "E-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-07",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "settings API 校验",
+      "owner": "TASK-004",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "./test",
+        "-run",
+        "SettingsResources",
+        "-count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "SettingsResources",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "42166c55c81f44cca405d2dc208657eb",
+          "executed_at": "2026-10-17T11:45:35.341812+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SettingsResources",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "2954291c42fa242cf2bdf7d3bd69b85039ee460889300881a025a25b6b63227e"
+        },
+        {
+          "id": "E-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SettingsResources",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-08",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "session-manager → 状态文件 → platform_request",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "E-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-09",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "cross-user-guard → 文件路径",
+      "owner": "TASK-005",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=trace spool",
+        "tools/muad-runtime-guard/test/cross-user-guard.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=trace spool",
+          "tools/muad-runtime-guard/test/cross-user-guard.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=trace spool",
+            "tools/muad-runtime-guard/test/cross-user-guard.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "E-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=trace spool",
+            "tools/muad-runtime-guard/test/cross-user-guard.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-10",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "platform_request → HTTP 401",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "E-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-11",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "升级顺序/版本错配",
+      "owner": "TASK-012",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "-tags",
+        "e2e",
+        "./test",
+        "-run",
+        "^TestSkillTraceE2E_E11$",
+        "-count=1",
+        "-v"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "runs": [
+        {
+          "id": "E-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "-tags",
+            "e2e",
+            "./test",
+            "-run",
+            "^TestSkillTraceE2E_E11$",
+            "-count=1",
+            "-v"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ],
+      "revision": 1,
+      "evidence": {
+        "id": "E-11",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 1,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "-tags",
+          "e2e",
+          "./test",
+          "-run",
+          "^TestSkillTraceE2E_E11$",
+          "-count=1",
+          "-v"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      }
+    },
+    {
+      "id": "B-01",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "helper 计数",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-01",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-02",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "helper spool + guard 解析",
+      "owner": "TASK-005",
+      "status": "verified",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=SkillTrace",
+        "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-02",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=SkillTrace",
+          "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "9d0c823270ee4343a61bd65e728153cb",
+          "executed_at": "2026-10-17T11:55:15.986655+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "63508c168df955077ff8373d76852558017bd8a310f749a8f62f3c2bb95cab27"
+        },
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "node",
+            "--test",
+            "--test-name-pattern=SkillTrace",
+            "tools/muad-runtime-guard/test/skill-trace.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-03",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "路径归一化",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-03",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-04",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "上限 0",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-04",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-05",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "告警通道关闭",
+      "owner": "TASK-003",
+      "status": "verified",
+      "command": [
+        "sh",
+        "-c",
+        "cd console/backend && go test ./internal/notify -count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-05",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "sh",
+          "-c",
+          "cd console/backend && go test ./internal/notify -count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
+          "executed_at": "2026-10-17T11:40:43.609275+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./internal/notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "B-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./internal/notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-06",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "Traceid 生成",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-06",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-07",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "多平台 header profile",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-07",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-08",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "stats 分组维度",
+      "owner": "TASK-002",
+      "status": "verified",
+      "command": [
+        "go",
+        "-C",
+        "console/backend",
+        "test",
+        "./test",
+        "-run",
+        "SkillExecutionTrace",
+        "-count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 3,
+      "evidence": {
+        "id": "B-08",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 3,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "go",
+          "-C",
+          "console/backend",
+          "test",
+          "./test",
+          "-run",
+          "SkillExecutionTrace",
+          "-count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "d9db27575f024b4bacb2b1026a227975",
+          "executed_at": "2026-10-17T11:40:26.647588+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "B-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "a170fbcb71c24d6eb7547b8d14580eaa",
+          "executed_at": "2026-10-17T11:40:32.180731+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "f04bdb9078413c11eb6c9e2d93a18091b76e945bad882edbb5ae97ba6f910d28"
+        },
+        {
+          "id": "B-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./test",
+            "-run",
+            "SkillExecutionTrace",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-09",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "告警去重键",
+      "owner": "TASK-003",
+      "status": "verified",
+      "command": [
+        "sh",
+        "-c",
+        "cd console/backend && go test ./internal/notify -count=1"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-09",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "sh",
+          "-c",
+          "cd console/backend && go test ./internal/notify -count=1"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "7fdf23f464ff47bd8ff7008dfc23a951",
+          "executed_at": "2026-10-17T11:40:43.609275+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./internal/notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "aa95a4cc13ef580a246b40f25128eb840a955545d83b385be634ac239d52e9e3"
+        },
+        {
+          "id": "B-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "sh",
+            "-c",
+            "cd console/backend && go test ./internal/notify -count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-10",
+      "source": "backend.design.md#2.5.2 功能验收场景",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "旧状态文件（无 requestProfile）",
+      "owner": "TASK-007",
+      "status": "verified",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/muad-skill-sdk/test"
+      ],
+      "cwd": ".",
+      "timeout": 60.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-10",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "tools/muad-skill-sdk/test"
+        ],
+        "cwd": ".",
+        "timeout": 60.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "ee773a174bb0452f9c4935da741e69e8",
+          "executed_at": "2026-10-17T11:41:52.542641+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "b33597585f62b54eac9bc02435f23a193bbb451465131507431113f40a5376af"
+        },
+        {
+          "id": "B-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "tools/muad-skill-sdk/test"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-21",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "API → 状态 → 抽屉渲染",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 4,
+      "evidence": {
+        "id": "S-21",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 4,
+        "run_id": "9e40beb1f0324081bea3e122f8324620",
+        "executed_at": "2026-10-17T12:19:16.499126+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-21",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0
+        },
+        {
+          "id": "S-21",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        },
+        {
+          "id": "S-21",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "b4ff26f7543e49699a9b435980d1681b",
+          "executed_at": "2026-10-17T12:18:07.379070+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0
+        },
+        {
+          "id": "S-21",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "9e40beb1f0324081bea3e122f8324620",
+          "executed_at": "2026-10-17T12:19:16.499126+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-22",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "状态 → UI",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "S-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-23",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "表单 → api.ts → 后端 → 回显",
+      "owner": "TASK-010",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Settings"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 4,
+      "evidence": {
+        "id": "S-23",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 4,
+        "run_id": "9e40beb1f0324081bea3e122f8324620",
+        "executed_at": "2026-10-17T12:19:16.499126+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-23",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "bd340f0c86524066bc110049ee24c0fa",
+          "executed_at": "2026-10-17T11:52:18.964520+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0
+        },
+        {
+          "id": "S-23",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        },
+        {
+          "id": "S-23",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "b4ff26f7543e49699a9b435980d1681b",
+          "executed_at": "2026-10-17T12:18:07.379070+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0
+        },
+        {
+          "id": "S-23",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "9e40beb1f0324081bea3e122f8324620",
+          "executed_at": "2026-10-17T12:19:16.499126+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-24",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "E2E",
+      "kind": "e2e",
+      "boundary": "API → 列表 → 钻取",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 4,
+      "evidence": {
+        "id": "S-24",
+        "kind": "e2e",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 4,
+        "run_id": "9e40beb1f0324081bea3e122f8324620",
+        "executed_at": "2026-10-17T12:19:16.499126+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-24",
+          "kind": "e2e",
+          "status": "e2e_deferred",
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0
+        },
+        {
+          "id": "S-24",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        },
+        {
+          "id": "S-24",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "b4ff26f7543e49699a9b435980d1681b",
+          "executed_at": "2026-10-17T12:18:07.379070+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0
+        },
+        {
+          "id": "S-24",
+          "kind": "e2e",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 4,
+          "run_id": "9e40beb1f0324081bea3e122f8324620",
+          "executed_at": "2026-10-17T12:19:16.499126+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "S-25",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "API 返回 truncated",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "S-25",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "S-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "S-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-21",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "请求失败 → 错误态",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-21",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "E-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-22",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "表单校验",
+      "owner": "TASK-010",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Settings"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "bd340f0c86524066bc110049ee24c0fa",
+          "executed_at": "2026-10-17T11:52:18.964520+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        },
+        {
+          "id": "E-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-23",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "测试接口返回 errcode≠0",
+      "owner": "TASK-010",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Settings"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-23",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "bd340f0c86524066bc110049ee24c0fa",
+          "executed_at": "2026-10-17T11:52:18.964520+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        },
+        {
+          "id": "E-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-24",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "空数据",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-24",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "E-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "E-25",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "权限/404",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "E-25",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "E-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "E-25",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-21",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "表单映射",
+      "owner": "TASK-010",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Settings"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-21",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Settings"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "bd340f0c86524066bc110049ee24c0fa",
+          "executed_at": "2026-10-17T11:52:18.964520+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "f7489e4e914d6c00243a7e86fb313e4dc597581e64ec6f39ce48be891282a3a9"
+        },
+        {
+          "id": "B-21",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Settings"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-22",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "unit",
+      "kind": "functional",
+      "boundary": "时间线渲染",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-22",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "B-22",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-23",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "健康列表分组",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-23",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "B-23",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    },
+    {
+      "id": "B-24",
+      "source": "frontend.design.md#2.4 验收条件",
+      "level": "integration",
+      "kind": "functional",
+      "boundary": "旧 Skill 时间线",
+      "owner": "TASK-011",
+      "status": "verified",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--run",
+        "Audit"
+      ],
+      "cwd": "console/frontend",
+      "timeout": 300.0,
+      "depends_on": [],
+      "revision": 2,
+      "evidence": {
+        "id": "B-24",
+        "kind": "functional",
+        "status": "passed",
+        "exit_code": 0,
+        "revision": 2,
+        "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+        "executed_at": "2026-10-17T12:08:15.985785+00:00",
+        "command": [
+          "npm",
+          "test",
+          "--",
+          "--run",
+          "Audit"
+        ],
+        "cwd": "console/frontend",
+        "timeout": 300.0,
+        "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+      },
+      "runs": [
+        {
+          "id": "B-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 1,
+          "run_id": "015384433cbc4f579de9b80300150771",
+          "executed_at": "2026-10-17T11:58:43.891345+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6f8c01753036efa789017b6d85ef6e1df476b64a6b5b76f5b35404976c74b94d"
+        },
+        {
+          "id": "B-24",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 2,
+          "run_id": "7ac710b3a90640008c58fc2afa2bfc96",
+          "executed_at": "2026-10-17T12:08:15.985785+00:00",
+          "command": [
+            "npm",
+            "test",
+            "--",
+            "--run",
+            "Audit"
+          ],
+          "cwd": "console/frontend",
+          "timeout": 300.0,
+          "fingerprint": "6498e1d5b2a38fbe93dd5c302382be9e922f44b0741f65ad8d1cf9b16dc6d729"
+        }
+      ]
+    }
+  ]
+}

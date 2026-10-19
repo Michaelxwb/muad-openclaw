@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError } from "../../api";
 import type { SkillExecution, SkillExecutionQuery } from "../../api";
 import { DEFAULT_PAGE_SIZE } from "../../components/Pagination";
@@ -7,18 +7,26 @@ import { errorMessage } from "../../utils/error";
 import { normalizePage } from "../../utils/pageClamp";
 import {
   EMPTY_SKILL_EXECUTION_FILTERS,
+  type SkillExecutionDrilldown,
   type SkillExecutionFilters,
   type SkillExecutionRecordsState,
 } from "./skillExecutionTypes";
 
+type AppliedExecutionFilters = SkillExecutionFilters & Partial<SkillExecutionDrilldown>;
+
 export function useSkillExecutionRecords(
   active: boolean,
+  drilldown?: SkillExecutionDrilldown | null,
 ): SkillExecutionRecordsState & { errorDetail?: string } {
   const result = useExecutionResultState();
   const filters = useExecutionFilterState();
+  const effectiveFilters = useMemo<AppliedExecutionFilters>(
+    () => (drilldown ? { ...filters.filters, ...drilldown } : filters.filters),
+    [drilldown, filters.filters],
+  );
   const loader = useExecutionLoader(
     active,
-    filters.filters,
+    effectiveFilters,
     filters.page,
     filters.pageSize,
     result,
@@ -125,7 +133,7 @@ type ExecutionResultState = ReturnType<typeof useExecutionResultState>;
 
 function useExecutionLoader(
   active: boolean,
-  filters: SkillExecutionFilters,
+  filters: AppliedExecutionFilters,
   page: number,
   pageSize: number,
   result: ExecutionResultState,
@@ -188,13 +196,15 @@ function useExecutionRefreshEffects(
 }
 
 function buildExecutionQuery(
-  filters: SkillExecutionFilters,
+  filters: AppliedExecutionFilters,
   page: number,
   pageSize: number,
 ): SkillExecutionQuery {
   const query: SkillExecutionQuery = { page, pageSize };
   if (filters.q) query.q = filters.q;
   if (filters.scope) query.scope = filters.scope;
+  if (filters.humanUserId) query.humanUserId = filters.humanUserId;
+  if (filters.skillName) query.skillName = filters.skillName;
   const startedFrom = toRFC3339(filters.startedFrom);
   const startedTo = toRFC3339(filters.startedTo);
   if (startedFrom) query.startedFrom = startedFrom;

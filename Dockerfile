@@ -1,5 +1,5 @@
 # muad-openclaw 应用镜像
-# 在基础镜像上叠加业务插件代码（bin/ tools/ skills/ entrypoint）
+# 在基础镜像上叠加业务插件代码（bin/ tools/ entrypoint）
 # 变更频率：每次业务代码发布
 #
 # 构建参数:
@@ -67,6 +67,14 @@ COPY requirements.txt /opt/muad/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5 \
     -i https://pypi.tuna.tsinghua.edu.cn/simple -r /opt/muad/requirements.txt
 
+# Skill Python SDK（构建期安装到 site-packages；requests 来自 requirements.txt）。
+COPY tools/muad-skill-sdk/pyproject.toml /opt/muad/muad-skill-sdk/pyproject.toml
+COPY tools/muad-skill-sdk/muad_skill_http /opt/muad/muad-skill-sdk/muad_skill_http
+RUN pip3 install --no-cache-dir --break-system-packages --no-deps --no-build-isolation \
+      /opt/muad/muad-skill-sdk \
+    && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86" \
+    && rm -rf /opt/muad/muad-skill-sdk
+
 COPY --from=session-manager-builder /build/session-manager/dist /opt/muad/session-manager/dist
 COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \
     tools/session-manager/openclaw.plugin.json /opt/muad/session-manager/
@@ -79,7 +87,6 @@ COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
 COPY --from=runtime-guard-deps /build/runtime-guard/node_modules /opt/muad/muad-runtime-guard/node_modules
 COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
 COPY tools/shared /opt/muad/shared
-COPY skills /opt/openclaw-skills
 COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh
 
 RUN set -eux; \
@@ -92,7 +99,7 @@ RUN set -eux; \
     chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-progress \
       /opt/muad/muad-runtime-guard /opt/muad/shared; \
     chown -R node:node /opt/muad/session-manager /opt/muad/muad-progress /opt/muad/muad-runtime-guard \
-      /opt/muad/shared /opt/openclaw-skills; \
+      /opt/muad/shared; \
     su node -c "node /opt/muad/runtime-image-self-check.mjs --image-only"
 
 USER node

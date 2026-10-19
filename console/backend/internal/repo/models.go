@@ -277,6 +277,96 @@ type SkillExecutionRecord struct {
 	CreatedAt   time.Time
 }
 
+// Skill trace event kinds and statuses persisted in skill_trace_events.
+const (
+	SkillTraceKindExec   = "exec"
+	SkillTraceKindHTTP   = "http"
+	SkillTraceKindOutput = "output"
+	SkillTraceKindAbort  = "abort"
+
+	SkillTraceStatusOK    = "ok"
+	SkillTraceStatusError = "error"
+
+	MaxSkillTraceEvents = 2000
+)
+
+// SkillTraceEvent is one already-redacted execution timeline entry.
+type SkillTraceEvent struct {
+	EventID     string
+	ExecutionID string
+	Seq         int
+	OccurredAt  time.Time
+	Kind        string
+	Status      string
+	DurationMS  *int
+	Summary     string
+	Detail      string
+	// TraceID is the platform request identifier for HTTP events; empty for
+	// other kinds or for events recorded before the column existed.
+	TraceID string
+}
+
+// SkillExecutionMetrics summarizes one execution's outbound request profile.
+// Aborted is monotonic: recovery upserts must not clear an earlier abort.
+type SkillExecutionMetrics struct {
+	ExecutionID       string
+	RequestCount      int
+	ErrorCount        int
+	DistinctHosts     int
+	MaxBurstPer10s    int
+	TopInterfacesJSON string
+	DetailTruncated   bool
+	Aborted           bool
+	AbortReason       string
+	AbortInterface    string
+	AbortCount        *int
+	UpdatedAt         time.Time
+}
+
+// SkillExecutionStatsFilter scopes the grouped Skill health query. The flag
+// thresholds are supplied by the API layer so the rule stays in one place.
+type SkillExecutionStatsFilter struct {
+	Since                time.Time
+	Limit                int
+	Scope                string
+	HumanUserID          string
+	FlagRequestThreshold int
+	FlagErrorRate        float64
+}
+
+// SkillExecutionStat is one (skill_name, skill_scope, human_user_id) group.
+type SkillExecutionStat struct {
+	SkillName         string
+	SkillScope        string
+	HumanUserID       string
+	HumanUserName     string
+	Executions        int
+	AbortedCount      int
+	FlaggedCount      int
+	SumRequests       int64
+	SumErrors         int64
+	MaxRequests       int
+	TopInterfacesJSON string
+	LastExecutionAt   time.Time
+}
+
+// NotifyChannel types supported by the alert dispatcher.
+const (
+	NotifyChannelTypeWecom = "wecom"
+)
+
+// NotifyChannel stores one alert target. ConfigEnc is opaque ciphertext
+// produced by the caller; plaintext webhook secrets never reach this layer.
+type NotifyChannel struct {
+	ChannelID string
+	Type      string
+	Name      string
+	ConfigEnc string
+	Enabled   bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 // LongTaskTask mirrors the runtime guard background-task queue for operator
 // visibility. The Console is the only database writer; Skill execution audit
 // remains in skill_execution_records.
@@ -373,6 +463,7 @@ type ResourceConfig struct {
 	MaxSkillConcurrency    int
 	MaxBrowserConcurrency  int
 	MaxLongTaskConcurrency int
+	SkillRequestLimit      int
 	UpdatedAt              time.Time
 }
 

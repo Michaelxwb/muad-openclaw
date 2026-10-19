@@ -264,6 +264,53 @@ export interface IdentityDeleteResult {
   deleted: boolean;
 }
 
+export interface SessionCancelProcess {
+  pid: number;
+  pgid: number;
+  startTime: number;
+  uid: number;
+  leader: boolean;
+  ageSeconds: number;
+  cmdline: string;
+  fingerprint: string;
+}
+
+export interface SessionCancelSkipped {
+  notOwner: number;
+  envMismatch: number;
+  permissionDenied: number;
+}
+
+export interface SessionCancelPreview {
+  sessionKey: string;
+  agentId: string;
+  activeRun: { active: boolean; sessionId?: string };
+  processes: SessionCancelProcess[];
+  skipped: SessionCancelSkipped;
+}
+
+export interface SessionCancelExpected {
+  pid: number;
+  fingerprint: string;
+}
+
+export type SessionCancelOutcome = "terminated" | "killed" | "skipped";
+
+export interface SessionCancelProcessResult {
+  pid: number;
+  outcome: SessionCancelOutcome;
+  reason?: string;
+}
+
+export interface SessionCancelResultData {
+  aborted: boolean;
+  drained: boolean;
+  confirmed: boolean;
+  killed: number;
+  remaining: number[];
+  processes: SessionCancelProcessResult[];
+}
+
 export interface BindingCode {
   bindingCodeId: string;
   codeHint: string;
@@ -527,6 +574,71 @@ export interface SkillExecutionQuery extends PageQuery {
   startedTo?: string;
 }
 
+export interface SkillTraceInterface {
+  host: string;
+  method: string;
+  path: string;
+  count: number;
+}
+
+export interface SkillTraceEvent {
+  eventId: string;
+  seq: number;
+  occurredAt: string;
+  kind: string;
+  status: string;
+  durationMs?: number;
+  summary: string;
+  detail?: string;
+  traceId?: string;
+}
+
+export interface SkillExecutionMetrics {
+  requestCount: number;
+  errorCount: number;
+  distinctHosts: number;
+  maxBurstPer10s: number;
+  topInterfaces: SkillTraceInterface[];
+  detailTruncated: boolean;
+  aborted: boolean;
+  abortReason?: string;
+  abortInterface?: string;
+  abortCount?: number;
+  updatedAt: string;
+}
+
+export interface SkillExecutionTrace {
+  metrics?: SkillExecutionMetrics | null;
+  events: SkillTraceEvent[];
+}
+
+export type SkillHealthWindow = "24h" | "7d" | "30d";
+
+export interface SkillHealthQuery {
+  window?: SkillHealthWindow;
+  limit?: number;
+  scope?: SkillScope;
+  humanUserId?: string;
+}
+
+export interface SkillHealthItem {
+  skillName: string;
+  skillScope: SkillScope;
+  humanUserId: string;
+  humanUserName: string;
+  executions: number;
+  abortedCount: number;
+  flaggedCount: number;
+  maxRequests: number;
+  errorRate: number;
+  topInterfaces: SkillTraceInterface[];
+  lastExecutionAt: string;
+}
+
+export interface SkillHealthResult {
+  items: SkillHealthItem[];
+}
+
 export interface ResourceValues {
   memLimit: string;
   cpuLimit: string;
@@ -543,6 +655,7 @@ export interface ResourceConfig {
   maxSkillConcurrency?: number;
   maxBrowserConcurrency?: number;
   maxLongTaskConcurrency?: number;
+  skillRequestLimit?: number;
 }
 
 export interface AgentGuidance {
@@ -560,7 +673,25 @@ export interface AgentGuidanceInput {
   globalPrompt?: string;
 }
 
+export interface NotifySettings {
+  enabled: boolean;
+  webhook: string;
+  updatedAt: string;
+}
+
+export interface NotifySettingsInput {
+  enabled: boolean;
+  webhook?: string;
+}
+
+export interface NotifyTestResult {
+  ok: boolean;
+  errcode: number;
+  errmsg: string;
+}
+
 export interface GlobalResourceConfig extends ResourceConfig {
+  skillRequestLimit: number;
   configured: boolean;
   globalOverrides: ResourceValues;
   runtimeDefaults: ResourceValues;

@@ -51,6 +51,8 @@ const (
 	ActionRuntimeGuardReject       Action = "runtime_guard.reject"
 	ActionPodServiceTokenRotate    Action = "pod_service_token.rotate"
 	ActionLongTaskCancel           Action = "long_task.cancel"
+	ActionSessionCancel            Action = "session.cancel"
+	ActionSettingsUpdate           Action = "settings.update"
 )
 
 var validActions = map[Action]struct{}{
@@ -67,19 +69,28 @@ var validActions = map[Action]struct{}{
 	ActionPodConfigFail: {}, ActionRuntimeGuardBind: {}, ActionRuntimeGuardReject: {},
 	ActionPodServiceTokenRotate: {},
 	ActionLongTaskCancel:        {},
+	ActionSessionCancel:         {},
+	ActionSettingsUpdate:        {},
 }
 
 // Metadata deliberately exposes no free-form secret-bearing field.
 type Metadata struct {
-	PodID             string `json:"podId,omitempty"`
-	HumanUserID       string `json:"humanUserId,omitempty"`
-	AgentID           string `json:"agentId,omitempty"`
-	IdentityID        string `json:"identityId,omitempty"`
-	BindingCodeID     string `json:"bindingCodeId,omitempty"`
-	Platform          string `json:"platform,omitempty"`
-	SkillID           string `json:"skillId,omitempty"`
-	SkillName         string `json:"skillName,omitempty"`
-	Fingerprint       string `json:"fingerprint,omitempty"`
+	PodID         string `json:"podId,omitempty"`
+	HumanUserID   string `json:"humanUserId,omitempty"`
+	AgentID       string `json:"agentId,omitempty"`
+	IdentityID    string `json:"identityId,omitempty"`
+	BindingCodeID string `json:"bindingCodeId,omitempty"`
+	Platform      string `json:"platform,omitempty"`
+	SkillID       string `json:"skillId,omitempty"`
+	SkillName     string `json:"skillName,omitempty"`
+	Fingerprint   string `json:"fingerprint,omitempty"`
+	// Session cancel outcome: target session plus counts only. Never carries
+	// cmdline, environ, or credentials (RULE-backend-redact-001).
+	SessionKey        string `json:"sessionKey,omitempty"`
+	Aborted           bool   `json:"aborted,omitempty"`
+	Drained           bool   `json:"drained,omitempty"`
+	Killed            int    `json:"killed,omitempty"`
+	Remaining         int    `json:"remaining,omitempty"`
 	Status            string `json:"status,omitempty"`
 	ErrorCode         string `json:"errorCode,omitempty"`
 	Generation        int64  `json:"generation,omitempty"`

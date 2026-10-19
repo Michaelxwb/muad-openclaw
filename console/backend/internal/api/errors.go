@@ -88,6 +88,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.InvalidDeleteState: {http.StatusBadRequest, "deleteState 必须为 true 或 false", "deleteState must be true or false"},
 	// invalid.allow_override
 	errcode.InvalidAllowOverride: {http.StatusBadRequest, "allowOverride 参数不合法", "Invalid allowOverride"},
+	// invalid.notify_webhook
+	errcode.InvalidNotifyWebhook: {http.StatusBadRequest, "告警 Webhook 不合法，必须是 https://qyapi.weixin.qq.com/ 地址", "Invalid alert webhook; it must be an https://qyapi.weixin.qq.com/ URL"},
 	// invalid.credentials
 	errcode.InvalidCredentials: {http.StatusUnauthorized, "账号或密码错误", "Invalid credentials"},
 	// unauthorized
@@ -146,6 +148,10 @@ var errorCatalog = map[int]errorDef{
 	errcode.InvalidSkillExecutionFilter: {http.StatusBadRequest, "Skill 执行过滤条件不合法", "Invalid Skill execution filter"},
 	// invalid.long_task_status
 	errcode.InvalidLongTaskStatus: {http.StatusBadRequest, "Long Task 状态不合法", "Invalid Long Task status"},
+	// invalid.skill_trace
+	errcode.InvalidSkillTrace: {http.StatusBadRequest, "Skill 执行 trace 数据不合法", "Invalid Skill execution trace"},
+	// conflict.skill_trace_owner
+	errcode.ConflictSkillTraceOwner: {http.StatusConflict, "executionId 不属于该 Pod/Agent", "executionId does not belong to this Pod/Agent"},
 	// invalid.public_skill_storage_not_configured
 	errcode.InvalidPublicSkillStorageNotConfigured: {http.StatusBadRequest, "Public Skill 存储未配置", "Public Skill storage is not configured"},
 	// invalid.skill_platform_dependency
@@ -194,6 +200,10 @@ var errorCatalog = map[int]errorDef{
 	errcode.SkillUploadTimeout: {http.StatusRequestTimeout, "Skill 包上传超时，请检查网络后重试", "Skill bundle upload timed out; check your network and retry"},
 	// internal.skill_upload_deadline
 	errcode.InternalSkillUploadDeadline: {http.StatusInternalServerError, "无法设置 Skill 上传读取期限", "Unable to set the Skill upload read deadline"},
+	// internal.read_notify_config
+	errcode.InternalReadNotifyConfig: {http.StatusInternalServerError, "读取告警配置失败", "Failed to read alert configuration"},
+	// internal.save_notify_config
+	errcode.InternalSaveNotifyConfig: {http.StatusInternalServerError, "保存告警配置失败", "Failed to save alert configuration"},
 	// invalid.platform_not_found
 	errcode.InvalidPlatformNotFound: {http.StatusBadRequest, "业务平台不存在", "Platform not found"},
 	// invalid.platform_display_name
@@ -254,6 +264,14 @@ var errorCatalog = map[int]errorDef{
 	errcode.LongTaskCancelUnavailable: {http.StatusServiceUnavailable, "Worker 取消服务暂不可用，请稍后重试", "Task cancellation service is temporarily unavailable"},
 	// internal.long_task_cancel_state
 	errcode.LongTaskCancelStateFailed: {http.StatusInternalServerError, "取消记录保存失败，任务未被标记为已取消", "Failed to persist the cancellation; the task was not marked cancelled"},
+	// session.cancel_unsupported
+	errcode.SessionCancelUnsupported: {http.StatusConflict, "当前 Worker 不支持会话终止", "This Worker does not support session cancellation"},
+	// not_found.session
+	errcode.NotFoundSession: {http.StatusNotFound, "会话或身份不存在", "Session or identity not found"},
+	// conflict.session_preview_stale
+	errcode.ConflictSessionPreviewStale: {http.StatusConflict, "进程列表已变化，请重新预览", "The process list has changed; preview again"},
+	// session.cancel_failed
+	errcode.SessionCancelFailed: {http.StatusBadGateway, "会话终止失败", "Session cancellation failed"},
 	// rate_limited.login
 	errcode.RateLimitedLogin: {http.StatusTooManyRequests, "登录尝试过于频繁，请稍后再试", "Too many login attempts, please try again later"},
 	// rate_limited.binding
@@ -352,6 +370,8 @@ var errorCatalog = map[int]errorDef{
 	errcode.RuntimeApplyFailed: {http.StatusBadGateway, "绑定已保存，但运行时配置应用失败", "Binding saved but runtime config apply failed"},
 	// runtime.upgrade_rollback_failed
 	errcode.RuntimeUpgradeRollbackFailed: {http.StatusBadGateway, "Pod 升级失败，且自动回滚也未成功", "Pod upgrade failed and automatic rollback did not succeed"},
+	// upstream.notify_failed
+	errcode.UpstreamNotifyFailed: {http.StatusBadGateway, "告警发送失败", "Failed to deliver alert"},
 	// unavailable.binding_code_service
 	errcode.UnavailableBindingCodeService: {http.StatusServiceUnavailable, "绑定码服务暂不可用", "Binding code service is temporarily unavailable"},
 	// unavailable.runtime_reconciler

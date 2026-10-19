@@ -370,7 +370,7 @@ func (h *runtimeFileE2E) uploadSkill(userID, name, marker string, files int, lon
 		bundle[fmt.Sprintf("%s/scripts/%03d-%s.mjs", name, i, strings.Repeat("f", 90))] = []byte("export const fixture = true;\n")
 	}
 	if longTask {
-		bundle[name+"/muad.skill.json"] = []byte(`{"name":"` + name + `","version":"1.0.0","runtime":"script","entrypoint":"scripts/run.mjs","longTask":true}`)
+		bundle[name+"/muad.skill.json"] = []byte(`{"name":"` + name + `","author":"Test Author","version":"1.0.0","runtime":"script","entrypoint":"scripts/run.mjs","longTask":true}`)
 	}
 	result := h.postSkillBundle(userID, name, makeZipWithFiles(h.t, bundle))
 	asset := e2eData[struct{ Skill struct{ SkillID string } }](h.t, result)

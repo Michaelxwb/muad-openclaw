@@ -88,7 +88,7 @@ func TestInspectSkillBundlePreservesManagedManifest(t *testing.T) {
 		t.Fatalf("create managed Skill directory: %v", err)
 	}
 	writeSkillBundleTestFile(t, filepath.Join(skillDir, "SKILL.md"), "---\nname: managed-skill\ndescription: Managed Skill.\n---\n# Managed\n")
-	writeSkillBundleTestFile(t, filepath.Join(skillDir, "muad.skill.json"), `{"name":"managed-skill","runtime":"script"}`)
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "muad.skill.json"), `{"name":"managed-skill","author":"Test Author","runtime":"script"}`)
 	writeSkillBundleTestFile(t, filepath.Join(skillDir, "scripts", "run.py"), "print('ok')\n")
 
 	result, err := readSkillBundleMetadata(skillDir, "public")
@@ -98,6 +98,19 @@ func TestInspectSkillBundlePreservesManagedManifest(t *testing.T) {
 	if result.EntryType != "managed" {
 		t.Fatalf("entry type = %q, want managed", result.EntryType)
 	}
+}
+
+func TestInspectSkillBundleRejectsMissingAuthor(t *testing.T) {
+	skillDir := filepath.Join(t.TempDir(), "managed-skill")
+	if err := os.MkdirAll(filepath.Join(skillDir, "scripts"), 0o700); err != nil {
+		t.Fatalf("create managed Skill directory: %v", err)
+	}
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "SKILL.md"), "---\nname: managed-skill\ndescription: Managed Skill.\n---\n# Managed\n")
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "muad.skill.json"), `{"name":"managed-skill","runtime":"script"}`)
+	writeSkillBundleTestFile(t, filepath.Join(skillDir, "scripts", "run.py"), "print('ok')\n")
+
+	_, err := readSkillBundleMetadata(skillDir, "public")
+	assertSkillBundleIssue(t, err, errcode.SkillBundleInvalidManifest, "author")
 }
 
 func TestInspectSkillBundleRejectsSymlinkScript(t *testing.T) {

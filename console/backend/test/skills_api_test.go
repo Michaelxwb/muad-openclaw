@@ -947,7 +947,7 @@ func TestSkillAPI_PublicUploadIgnoresZipMetadataEntries(t *testing.T) {
 	rr := e.publicSkillUpload("mssw-public.zip", makeZipWithFiles(t, map[string][]byte{
 		"mssw-public/":                           {},
 		"mssw-public/SKILL.md":                   []byte("---\nname: mssw-public\ndescription: MSSW public Skill.\n---\n# MSSW\n"),
-		"mssw-public/muad.skill.json":            []byte(`{"name":"mssw-public","platform":"mssw"}`),
+		"mssw-public/muad.skill.json":            []byte(`{"name":"mssw-public","author":"Test Author","platform":"mssw"}`),
 		"mssw-public/.DS_Store":                  []byte("metadata"),
 		"__MACOSX/mssw-public/._SKILL.md":        []byte("metadata"),
 		"__MACOSX/mssw-public/._muad.skill.json": []byte("metadata"),
@@ -964,7 +964,7 @@ func TestSkillAPI_PublicUploadUsesSkillMarkdownFrontmatterName(t *testing.T) {
 
 	rr := e.publicSkillUpload("web-tools-guide-1.0.2.zip", makeZipWithFiles(t, map[string][]byte{
 		"web-tools-guide-1.0.2/SKILL.md":        []byte("---\nname: web-tools-guide\ndescription: test\n---\n# Web\n"),
-		"web-tools-guide-1.0.2/muad.skill.json": []byte(`{"platform":"mssw"}`),
+		"web-tools-guide-1.0.2/muad.skill.json": []byte(`{"author":"Test Author","platform":"mssw"}`),
 	}))
 	assertStatus(t, rr, http.StatusCreated)
 	created := decodeAPIData[struct {
@@ -987,7 +987,7 @@ func TestSkillAPI_PublicUploadRejectsMissingOpenClawFrontmatter(t *testing.T) {
 
 	rr := e.publicSkillUpload("policy-check.zip", makeZipWithFiles(t, map[string][]byte{
 		"policy-check/SKILL.md":        []byte("# Policy Check\n"),
-		"policy-check/muad.skill.json": []byte(`{"name":"policy-check"}`),
+		"policy-check/muad.skill.json": []byte(`{"name":"policy-check","author":"Test Author"}`),
 	}))
 
 	assertStatus(t, rr, http.StatusBadRequest)
@@ -1004,7 +1004,7 @@ func TestSkillAPI_PublicUploadRejectsManifestFrontmatterNameMismatch(t *testing.
 
 	rr := e.publicSkillUpload("policy-check.zip", makeZipWithFiles(t, map[string][]byte{
 		"policy-check/SKILL.md":        []byte("---\nname: policy-check\ndescription: Policy check Skill.\n---\n# Policy\n"),
-		"policy-check/muad.skill.json": []byte(`{"name":"extract"}`),
+		"policy-check/muad.skill.json": []byte(`{"name":"extract","author":"Test Author"}`),
 	}))
 
 	assertStatus(t, rr, http.StatusBadRequest)
@@ -1094,7 +1094,7 @@ func TestSkillAPI_PrivateUploadRejectsExistingPrivateWithoutReplacingFiles(t *te
 	rr := e.privateSkillUploadFile(alice.HumanUserID, "xdr-private", "xdr-private.zip", makeZipWithFiles(
 		t, map[string][]byte{
 			"xdr-private/SKILL.md":        []byte("# new\n"),
-			"xdr-private/muad.skill.json": []byte(`{"name":"xdr-private","runtime":"script"}`),
+			"xdr-private/muad.skill.json": []byte(`{"name":"xdr-private","author":"Test Author","runtime":"script"}`),
 		},
 	))
 	assertStatus(t, rr, http.StatusConflict)
@@ -1253,6 +1253,9 @@ func (e *testEnv) publicSkillUploadWithPlatforms(
 
 func makeSkillBundle(t *testing.T, name string, manifest map[string]any) []byte {
 	t.Helper()
+	if _, ok := manifest["author"]; !ok {
+		manifest["author"] = "Test Author"
+	}
 	var body bytes.Buffer
 	gz := gzip.NewWriter(&body)
 	tarball := tar.NewWriter(gz)
@@ -1273,6 +1276,9 @@ func makeSkillBundle(t *testing.T, name string, manifest map[string]any) []byte 
 
 func makeZipSkillBundle(t *testing.T, name string, manifest map[string]any) []byte {
 	t.Helper()
+	if _, ok := manifest["author"]; !ok {
+		manifest["author"] = "Test Author"
+	}
 	var body bytes.Buffer
 	archive := zip.NewWriter(&body)
 	writeZipFile(t, archive, name+"/SKILL.md", []byte(skillMarkdownFixture(name)))

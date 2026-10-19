@@ -131,7 +131,8 @@ func TestSaveResourcesAndMarkPods_IsAtomic(t *testing.T) {
 	podIDs, err := store.SaveResourcesAndMarkPods(repo.ResourceConfig{
 		MemLimit: "3g", CPULimit: "2", RestartPolicy: "always",
 		MaxSkillConcurrency: 2, MaxBrowserConcurrency: 1, MaxLongTaskConcurrency: 3,
-	}, true, false, false, false, false, false)
+		SkillRequestLimit: 1000,
+	}, true, false, false, false, false, false, false)
 	if err != nil {
 		t.Fatalf("SaveResourcesAndMarkPods: %v", err)
 	}
@@ -139,7 +140,8 @@ func TestSaveResourcesAndMarkPods_IsAtomic(t *testing.T) {
 		t.Fatalf("affected Pod IDs = %v, want [pod-b]", podIDs)
 	}
 	global, err := store.GetResourceGlobal()
-	if err != nil || global.MemLimit != "3g" || global.MaxSkillConcurrency != 2 {
+	if err != nil || global.MemLimit != "3g" || global.MaxSkillConcurrency != 2 ||
+		global.SkillRequestLimit != 1000 {
 		t.Fatalf("global resources after save = %+v, %v", global, err)
 	}
 	after, err := store.GetPod("pod-b")

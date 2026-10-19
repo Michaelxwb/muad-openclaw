@@ -20,6 +20,11 @@ const (
 	DefaultQuarantineCDPPort = 18801
 	DefaultRuntimeUID        = 1000
 	DefaultRuntimeGID        = 1000
+	// DefaultSkillRequestLimit is the per-execution, per-interface request cap
+	// applied when the control plane has not persisted an explicit value.
+	DefaultSkillRequestLimit = 1000
+	// MaxSkillRequestLimit bounds the configurable per-execution request cap.
+	MaxSkillRequestLimit = 1000000
 )
 
 type RuntimeStartupMode string
@@ -277,6 +282,9 @@ type RuntimeGuard struct {
 	MainAgentID       string                `json:"mainAgentId"`
 	QuarantineProfile string                `json:"quarantineProfile"`
 	AgentProfiles     []RuntimeAgentProfile `json:"agentProfiles"`
+	// SkillRequestLimit is the per-execution request cap enforced by the guard
+	// when injecting MUAD_SKILL_REQUEST_LIMIT; 0 means unlimited.
+	SkillRequestLimit int `json:"skillRequestLimit"`
 }
 
 type RuntimeAgentProfile struct {
@@ -297,6 +305,9 @@ func (config RuntimeConfigV1) Validate() error {
 		return ErrInvalidRuntimeConfig
 	}
 	if !validLocale(config.Locale) {
+		return ErrInvalidRuntimeConfig
+	}
+	if config.Guard.SkillRequestLimit < 0 || config.Guard.SkillRequestLimit > MaxSkillRequestLimit {
 		return ErrInvalidRuntimeConfig
 	}
 	if err := validateRuntimeChannels(config.Channels); err != nil {

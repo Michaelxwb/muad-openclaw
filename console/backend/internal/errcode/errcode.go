@@ -25,6 +25,7 @@ const (
 	InvalidQrcodeWechatOnly = 40009
 	InvalidDeleteState      = 40010
 	InvalidAllowOverride    = 40011
+	InvalidNotifyWebhook    = 40012
 	// 401xx — 认证授权
 	InvalidCredentials   = 40101
 	Unauthorized         = 40102
@@ -82,6 +83,8 @@ const (
 	SkillBundleEmpty                       = 40531
 	SkillBundleUnexpectedName              = 40532
 	SkillUploadTimeout                     = 40533
+	InvalidSkillTrace                      = 40534
+	ConflictSkillTraceOwner                = 40535
 	// 406xx — 平台 Platform
 	InvalidPlatformNotFound    = 40601
 	InvalidPlatformDisplayName = 40602
@@ -117,6 +120,14 @@ const (
 	LongTaskRunUnverifiable   = 41004
 	LongTaskCancelUnavailable = 41005
 	LongTaskCancelStateFailed = 41006
+	// SessionCancelUnsupported: 会话终止能力未知/过期/不可用。
+	SessionCancelUnsupported = 41007
+	// NotFoundSession: identity 不属于路径用户或用户不在运行 Pod。
+	NotFoundSession = 41008
+	// ConflictSessionPreviewStale: 所有 expected 指纹均失效，需要重新预览。
+	ConflictSessionPreviewStale = 41009
+	// SessionCancelFailed: 会话终止 RPC 失败/超时/响应不可解析。
+	SessionCancelFailed = 41010
 	// 429xx — 限流
 	RateLimitedLogin   = 42901
 	RateLimitedBinding = 42902
@@ -154,6 +165,8 @@ const (
 	InternalListLongTasks             = 50032
 	InternalUpsertLongTasks           = 50033
 	InternalSkillUploadDeadline       = 50034
+	InternalReadNotifyConfig          = 50035
+	InternalSaveNotifyConfig          = 50036
 	// 502xx — 运行时失败
 	RuntimeReadPodLogs               = 50201
 	RuntimeWechatLogin               = 50202
@@ -170,6 +183,7 @@ const (
 	RuntimeTokenRotation             = 50213
 	RuntimeApplyFailed               = 50214
 	RuntimeUpgradeRollbackFailed     = 50215
+	UpstreamNotifyFailed             = 50216
 	// 503xx — 依赖不可用
 	UnavailableBindingCodeService     = 50301
 	UnavailableRuntimeReconciler      = 50302
@@ -182,7 +196,7 @@ const (
 // TestErrorCatalogCoversAllCodes) so a newly added code cannot silently lack a
 // catalog entry and fall back to internal.error at runtime.
 var AllCodes = []int{
-	40001, 40003, 40004, 40005, 40006, 40007, 40008, 40009, 40010, 40011,
+	40001, 40003, 40004, 40005, 40006, 40007, 40008, 40009, 40010, 40011, 40012,
 	40101, 40102, 40103,
 	40201, 40202, 40203, 40204, 40205, 40206, 40207, 40208,
 	40301, 40302, 40303,
@@ -190,17 +204,18 @@ var AllCodes = []int{
 	40501, 40502, 40503, 40504, 40505, 40506, 40507, 40509, 40510,
 	40511, 40512, 40513, 40514, 40515, 40516, 40517, 40518, 40519, 40520,
 	40521, 40522, 40523, 40524, 40525, 40526, 40527, 40528, 40529, 40530,
-	40531, 40532, 40533,
+	40531, 40532, 40533, 40534, 40535,
 	40601, 40602, 40603, 40604, 40605, 40606, 40607,
 	40701, 40702, 40703, 40704, 40705, 40706, 40707, 40708, 40709, 40710, 40711,
 	40801, 40802,
 	40901, 40902, 40903, 40904,
-	41001, 41002, 41003, 41004, 41005, 41006,
+	41001, 41002, 41003, 41004, 41005, 41006, 41007, 41008, 41009, 41010,
 	42901, 42902,
 	50001, 50002, 50003, 50004, 50006, 50007, 50008, 50009, 50010,
 	50011, 50012, 50013, 50014, 50015, 50016, 50017, 50018, 50019, 50020,
 	50021, 50022, 50023, 50024, 50025, 50026, 50027, 50028, 50029, 50030, 50031, 50032, 50033, 50034,
+	50035, 50036,
 	50201, 50202, 50203, 50204, 50205, 50206, 50207, 50208, 50209, 50210,
-	50211, 50212, 50213, 50214, 50215,
+	50211, 50212, 50213, 50214, 50215, 50216,
 	50301, 50302, 50303, 50304,
 }
