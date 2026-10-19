@@ -14,12 +14,13 @@ from _common import (
     PLATFORM,
     SkillExecutionRequired,
     require_skill_execution,
+    resolve_state_file,
 )
 
 
 def main():
     require_skill_execution()
-    response = platform_request(PLATFORM, "GET", PING_PATH)
+    response = platform_request(PLATFORM, "GET", PING_PATH, state_file=resolve_state_file())
     if response.status_code != 200:
         raise RuntimeError("%s ping returned HTTP %d" % (PLATFORM, response.status_code))
     payload = response.json()

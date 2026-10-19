@@ -24,7 +24,7 @@ Skill 激活按用户消息轮次隔离：
 
 怎么写一个 Skill（目录结构、`SKILL.md` frontmatter、managed manifest、脚本自助、关键提醒）见 [`_templates/README.md`](./_templates/README.md)。
 
-自建 Skill 统一使用 Python，业务平台请求经 `muad_skill_http.platform_request` 统一构造 Cookie/CSRF/Host 与每请求 `Traceid`。managed Skill 必须在 `muad.skill.json` 写非空 `author`（作者姓名/工号/用户名），上传时 Console 会校验。上线前可用内置 `self-skill-review` 做只读检查；上传链路不做语言硬拦截，最终由管理员审批。
+自建 Skill 统一使用 Python。业务平台请求先由 Skill 调用 `session-manager get-state` 获取登录态，再把返回的 `sessionStateFile` 交给 `muad_skill_http.platform_request`；SDK 统一构造 Cookie/CSRF/Host 与每请求 `Traceid`，并记录统计与上报。managed Skill 必须在 `muad.skill.json` 写非空 `author`（作者姓名/工号/用户名），上传时 Console 会校验。上线前可用内置 `self-skill-review` 做只读检查；上传链路不做语言硬拦截，最终由管理员审批。
 
 ## 本地开发环境
 
@@ -32,10 +32,10 @@ Skill 脚本依赖 `muad_skill_http`（公网 PyPI 包 `muad-skill-http`）。Po
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install "muad-skill-http==0.1.0"   # 版本与仓库 requirements.txt 保持一致
+.venv/bin/pip install "muad-skill-http==0.2.0"   # 版本与仓库 requirements.txt 保持一致
 ```
 
-IDE 的解释器指向该 venv 即可获得补全和断点调试。注意 `platform_request` 仍需要 `MUAD_SKILL_NAME` 和 `session-manager` 返回的登录态；本地联调请使用 `tools/fake-business-platform`，真实平台请在 Pod 内执行。
+IDE 的解释器指向该 venv 即可获得补全和断点调试。本地运行 `platform_request` 不需要安装 session-manager：用 `muad_skill_http.build_local_state("<平台名>", "Cookie: ...", base_url="https://...")` 从浏览器 Cookie 生成状态文件，写到固定路径 `~/.muad-local/session-state.json` 即可。多平台 Skill 用 `muad_skill_http.merge_local_states(...)` 把多个平台合并到同一个文件。该分支只在 `MUAD_SESSION_KEY` 不存在时生效（Pod 内 Guard 一定会注入该变量，因此仍走 session-manager）；真实平台请在 Pod 内执行。
 
 ## 长任务反馈
 

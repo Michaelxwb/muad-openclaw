@@ -513,7 +513,8 @@ def _check_platform_usage(target: Path, manifest, parsed) -> list[Finding]:
     if not isinstance(platforms, list) or not platforms:
         return []
     has_import = False
-    has_call = False
+    has_get_state = False
+    platform_calls = []
     first_python = None
     for path, source, tree in parsed:
         if first_python is None:
@@ -524,14 +525,34 @@ def _check_platform_usage(target: Path, manifest, parsed) -> list[Finding]:
             elif isinstance(node, ast.ImportFrom) and (node.module or "").startswith("muad_skill_http"):
                 has_import = True
             elif isinstance(node, ast.Call) and _dotted_name(node.func).split(".")[-1] == "platform_request":
-                has_call = True
-    if has_import and has_call:
-        return []
-    location = first_python or (target / "muad.skill.json")
-    return [_finding(
-        "SS-R005", location, target, 1,
-        "platforms declared but muad_skill_http.platform_request is not used",
-    )]
+                platform_calls.append((path, node))
+            elif isinstance(node, ast.Call) and _dotted_name(node.func) in SUBPROCESS_FUNCS:
+                strings = _string_constants(node)
+                if any("get-state" in item for item in strings) and any("--skill-name" in item for item in strings):
+                    has_get_state = True
+    if not has_import or not platform_calls:
+        location = first_python or (target / "muad.skill.json")
+        return [_finding(
+            "SS-R005", location, target, 1,
+            "platforms declared but muad_skill_http.platform_request is not used",
+        )]
+    missing_state_file = [
+        (path, call) for path, call in platform_calls
+        if not any(keyword.arg == "state_file" for keyword in call.keywords)
+    ]
+    if missing_state_file:
+        path, call = missing_state_file[0]
+        return [_finding(
+            "SS-R005", path, target, call.lineno,
+            "platform_request must receive state_file from session-manager get-state",
+        )]
+    if not has_get_state:
+        path, call = platform_calls[0]
+        return [_finding(
+            "SS-R005", path, target, call.lineno,
+            "platform_request state_file must come from session-manager get-state",
+        )]
+    return []
 
 
 def _check_python(path: Path, target: Path, source: str, tree, expected_name) -> list[Finding]:
