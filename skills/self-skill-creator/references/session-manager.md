@@ -1,6 +1,6 @@
 # 平台登录态：Skill 先调 session-manager get-state
 
-Skill 访问受保护业务平台时，自己调用 `session-manager get-state --skill-name <skill>` 获取登录态，再把返回的 `sessionStateFile` 传给 `muad_skill_http.platform_request`。SDK 只负责构造请求头、发送请求和统计/trace，**不再内部解析登录态，也不执行 session-manager**。
+Skill 访问受保护业务平台时，自己调用 `session-manager get-state --skill-name <skill>` 获取登录态文件，然后直接读该文件发 `requests` 请求。`muad_skill_http` 不再解析登录态，也不执行 session-manager。
 
 ## 脚本写法
 
@@ -8,9 +8,10 @@ Skill 访问受保护业务平台时，自己调用 `session-manager get-state -
 import json
 import subprocess
 
-from muad_skill_http import platform_request
+import requests
 
 SKILL_NAME = "my-skill"  # 必须与 muad.skill.json 的 name 一致
+PLATFORM = "smoke_platform"
 
 
 def resolve_state_file():
@@ -26,22 +27,27 @@ def resolve_state_file():
     return json.loads(completed.stdout)["sessionStateFile"]
 
 
-state_file = resolve_state_file()
-response = platform_request(
-    "smoke_platform", "GET", "/api/v1/items", state_file=state_file,
+with open(resolve_state_file(), "r", encoding="utf-8") as handle:
+    state = json.load(handle)
+section = state["platforms"][PLATFORM]
+base_url = section["requestProfile"]["baseUrl"].rstrip("/")
+cookie = "; ".join(
+    "%s=%s" % (item["name"], item["value"])
+    for item in section.get("cookies") or []
 )
+response = requests.get(base_url + "/api/v1/items", headers={"Cookie": cookie}, timeout=30)
 ```
 
 - `SKILL_NAME` 必须是硬编码字符串，且等于 `muad.skill.json` 的 `name`（`self-skill-review` 的 SS-R011 会检查）。
-- `smoke_platform` 是 `muad.skill.json` 的 `platforms` 中的平台名，必须是字面量。
-- 平台未配置、登录态缺失/过期、状态文件里没有对应平台时，`platform_request` 抛出 `PlatformSessionError`；脚本按 fail loud 处理（stderr + 非 0）。
-- 401/403 不会由 SDK 自动刷新登录态；重新执行 `get-state` 后再发起请求。
+- `PLATFORM` 是 `muad.skill.json` 的 `platforms` 中的平台名，必须是字面量。
+- 状态文件缺少对应平台、`baseUrl` 为空时 fail loud（stderr + 非 0）。
+- 401/403 不会自动刷新登录态；重新执行 `get-state` 后再发起请求。
 
-## 为什么登录不再放进 SDK
+## 本地开发
 
-- 登录态获取是 `session-manager` 的职责；SDK 只封装“带登录态调用平台接口 + 统计/trace”。
-- 旧的 `requests` 写法也是先取登录态、再发请求；拆分后 Skill 的结构与之前一致，只把请求那一行换成 `platform_request`。
-- 需要排查登录态时，先看 `session-manager get-state` 的 stderr/返回码，再看 SDK 的 `PlatformSessionError` 文案。
+本地没有 session-manager。模板在 `MUAD_SESSION_KEY` 不存在时直接读
+`~/.muad-local/session-state.json`。用 SDK 的 `build_local_state` /
+`merge_local_states` 从浏览器复制的 Cookie 生成该文件即可；不要提交填好的状态文件。
 
 ## browser 能力
 
@@ -50,4 +56,4 @@ response = platform_request(
 ## 不需要在 SKILL.md 里做的事
 
 - 不要让模型直接调 `session_get_state` 工具——该工具需要 `skillName` 参数，模型容易传成平台名。
-- 不要指导用户手工保存 cookie 或 token；登录态由 `session-manager` 管理。
+- 不要指导用户手工保存 cookie 或 token；登录态由 `session-manager` 管理（本地开发文档除外）。

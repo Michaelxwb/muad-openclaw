@@ -34,7 +34,7 @@ python3 scripts/check.py --target <skill-dir> --format json
    - 脚本是否只在关键节点调用 `muad-progress`，是否 best-effort 吞错、不传收件人。
    - 失败路径是否同时写 stderr 与 exit 非 0，成功 stdout 是否保持单一机器可读结果。
    - 报告/临时文件是否写入 `SKILL_OUTPUT_DIR`，是否避免 `/tmp` 与 Skill 根目录。
-   - 声明平台时是否先调用 `session-manager get-state`，再把 `sessionStateFile` 传给 `muad_skill_http.platform_request`，且没有手工 Cookie/CSRF/Traceid。
+   - 声明平台时是否通过 `session-manager get-state` 获取登录态并使用 `requests`；Runtime Guard 会为业务 host 自动补 `TraceId`/`X-Csrftoken`，不需要手工拼装。
    - 平台/SDK 类 Skill 额外按 `references/rules.md` 的“语义审查清单”核对：文档声明与实际断言、Traceid 唯一性、stdout/退出码契约、`--path`/`--count` 边界，以及 SDK 限额 `os._exit(86)` 下汇总必须在终止请求前输出。
 4. 输出检查表：先写清楚**问题是什么、影响是什么**，再给 `file:line`、严重级别和修复建议；规则 ID 只放在括号里做追踪，不要只给 `SS-Rxxx`。
 5. 审查是**建议性**的：上传链路不做语言或内容硬拦截，最终由管理员审批决定。

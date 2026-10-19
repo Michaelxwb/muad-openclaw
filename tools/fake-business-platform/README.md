@@ -41,7 +41,7 @@ exposes which account it belongs to.
 ## MSSW mode
 
 `--platform mssw` models the MSSW gateway contract closely enough to exercise
-the real `MSSWSessionAdapter` and `muad_skill_http.platform_request`:
+the real `MSSWSessionAdapter` and the Runtime Guard `requests` compat layer:
 
 ```bash
 python3 tools/fake-business-platform/server.py --platform mssw --port 18080 \

@@ -2,9 +2,9 @@
 import json
 import subprocess
 
-from muad_skill_http import platform_request
+import httpx
 
-SKILL_NAME = "missing-state-file-skill"
+SKILL_NAME = "missing-requests-skill"
 
 
 def main():
@@ -17,9 +17,7 @@ def main():
     )
     if completed.returncode != 0:
         raise RuntimeError("session-manager get-state failed")
-    json.loads(completed.stdout)["sessionStateFile"]
-    # Deliberately omits state_file: self-skill-review must flag SS-R005.
-    return platform_request("demo_platform", "GET", "/api/v1/items")
+    return httpx.get("http://127.0.0.1/api/v1/items", timeout=30)
 
 
 if __name__ == "__main__":

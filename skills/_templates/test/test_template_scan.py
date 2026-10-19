@@ -32,7 +32,7 @@ def test_only_python_business_template_remains() -> None:
     assert business_templates == ["business-skill-python"]
 
 
-def test_python_template_uses_platform_request() -> None:
+def test_python_template_uses_requests() -> None:
     script = (TEMPLATES / "business-skill-python" / "scripts" / "run.py").read_text(
         encoding="utf-8"
     )
@@ -40,11 +40,13 @@ def test_python_template_uses_platform_request() -> None:
         encoding="utf-8"
     )
 
-    assert "platform_request" in script
+    assert "import requests" in script
+    assert "requests.get" in script
     assert "session-manager" in script
-    assert "state_file" in script
     assert "session-state.json" in script
-    assert "platform_request" in readme
+    assert "platform_request" not in script
+    assert "platform_request" not in readme
+    assert "requests" in readme
 
 
 def test_template_manifest_matches_skill_frontmatter() -> None:
@@ -67,7 +69,9 @@ def test_creator_guides_python_only() -> None:
     text = (CREATOR / "SKILL.md").read_text(encoding="utf-8")
 
     assert "Python" in text
-    assert "platform_request" in text
+    assert "session-manager get-state" in text
+    assert "requests" in text
+    assert "platform_request" not in text
     assert "TypeScript" not in text
     assert "三选一" not in text
     assert "run.mjs" not in text
@@ -78,7 +82,9 @@ def test_creator_guides_python_only() -> None:
 def test_http_headers_reference_is_sdk_constraint() -> None:
     text = (CREATOR / "references" / "http-headers.md").read_text(encoding="utf-8")
 
-    assert "platform_request" in text
+    assert "session-manager get-state" in text
+    assert "requests" in text
+    assert "platform_request" not in text
     assert "extract_cookie_value" not in text
     assert 'headers["Cookie"]' not in text
 

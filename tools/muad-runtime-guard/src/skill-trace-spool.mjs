@@ -5,7 +5,7 @@
 // the only component that uploads or deletes spool files.
 
 import {
-  chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, statSync, unlinkSync,
+  chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, statSync, unlinkSync,
 } from "node:fs";
 import path from "node:path";
 
@@ -18,6 +18,8 @@ export const SPOOL_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 // else must not reach the filesystem.
 const EXECUTION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const SPOOL_FILE_PATTERN = /^[0-9a-f-]{36}\.jsonl$/iu;
+const COUNTER_FILE_PATTERN = /^[0-9a-f-]{36}\.jsonl\.limit\.json$/iu;
+export const COUNTER_SUFFIX = ".limit.json";
 const MAX_INTERFACE_PATH = 200;
 const MAX_SUMMARY_LENGTH = 200;
 const MAX_TRACE_ID_LENGTH = 128;
@@ -37,7 +39,26 @@ export function ensureSkillTraceSpool({ rootDir = SKILL_TRACE_SPOOL_ROOT, execut
   return file;
 }
 
-export function parseSkillTraceSpool(source, { executionId = "", now = Date.now() } = {}) {
+export function spoolFileFor(rootDir, executionId) {
+  return path.join(rootDir, `${executionId}.jsonl`);
+}
+
+export function counterFileFor(rootDir, executionId) {
+  // Must match the SDK sidecar name: it appends ".limit.json" to the spool path
+  // (<execution>.jsonl), so the file is <execution>.jsonl.limit.json.
+  return spoolFileFor(rootDir, executionId) + COUNTER_SUFFIX;
+}
+
+export function readSkillTraceCounter({ rootDir = SKILL_TRACE_SPOOL_ROOT, executionId } = {}) {
+  if (!isSafeExecutionId(executionId)) return null;
+  try {
+    return JSON.parse(readFileSync(counterFileFor(rootDir, executionId), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+export function parseSkillTraceSpool(source, { executionId = "", now = Date.now(), counter = null } = {}) {
   const records = parseLines(source);
   const summary = lastRecord(records, "summary");
   const abort = records.find((record) => record.kind === "abort") ?? null;
@@ -56,22 +77,43 @@ export function parseSkillTraceSpool(source, { executionId = "", now = Date.now(
     events.push(toEvent(record, seq, executionId, now));
   }
 
-  const hosts = normalizeHosts(summary?.hosts) ?? hostsFrom(httpRecords);
-  const topInterfaces = normalizeInterfaces(summary?.topInterfaces) ?? topInterfacesFrom(httpRecords);
-  const aborted = summary?.aborted === true || abort !== null;
+  let hosts = normalizeHosts(summary?.hosts) ?? hostsFrom(httpRecords);
+  let topInterfaces = normalizeInterfaces(summary?.topInterfaces) ?? topInterfacesFrom(httpRecords);
+  let requestCount = integer(summary?.totalRequests) ?? httpRecords.length;
+  let errorCount = integer(summary?.errorCount) ?? httpRecords.filter(isErrorRecord).length;
+  let aborted = summary?.aborted === true || abort !== null;
+  let abortInterface = aborted ? (text(summary?.abortInterface) || text(abort?.interface)) : "";
+  let abortCount = integer(summary?.abortCount) ?? integer(abort?.count);
+  let cumulative = false;
+
+  if (isRecord(counter)) {
+    requestCount = integer(counter.total) ?? requestCount;
+    errorCount = integer(counter.errors) ?? errorCount;
+    cumulative = Number.isInteger(counter.total);
+    const counterHosts = normalizeHosts(counter.hosts);
+    if (counterHosts) hosts = counterHosts;
+    const counterTop = normalizeInterfaces(counter.topInterfaces);
+    if (counterTop) topInterfaces = counterTop;
+    if (counter.aborted === true) {
+      aborted = true;
+      abortInterface = text(counter.abortInterface) || abortInterface;
+      abortCount = integer(counter.abortCount) ?? abortCount;
+    }
+  }
+
   const metrics = {
-    requestCount: integer(summary?.totalRequests) ?? httpRecords.length,
-    errorCount: integer(summary?.errorCount) ?? httpRecords.filter(isErrorRecord).length,
+    requestCount,
+    errorCount,
     distinctHosts: Object.keys(hosts).length,
     maxBurstPer10s: integer(summary?.maxBurst10s) ?? 0,
     topInterfaces,
     detailTruncated: summary?.truncated === true || dropped > 0,
     aborted,
     abortReason: aborted ? (text(summary?.abortReason) || text(abort?.reason) || "request_limit") : "",
-    abortInterface: aborted ? (text(summary?.abortInterface) || text(abort?.interface)) : "",
+    abortInterface: aborted ? abortInterface : "",
     abortCount: null,
+    cumulative,
   };
-  const abortCount = integer(summary?.abortCount) ?? integer(abort?.count);
   if (aborted && abortCount !== null) metrics.abortCount = abortCount;
 
   return { metrics, events, aborted, hasSummary: summary !== null, hosts, interfaces: topInterfaces };
@@ -89,7 +131,7 @@ export function cleanupSkillTraceSpools({
   }
   let removed = 0;
   for (const name of names) {
-    if (!SPOOL_FILE_PATTERN.test(name)) continue;
+    if (!SPOOL_FILE_PATTERN.test(name) && !COUNTER_FILE_PATTERN.test(name)) continue;
     const file = path.join(rootDir, name);
     try {
       if (now - statSync(file).mtimeMs <= maxAgeMs) continue;
@@ -242,10 +284,6 @@ function isRecord(value) {
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-export function spoolFileFor(rootDir, executionId) {
-  return path.join(rootDir, `${executionId}.jsonl`);
 }
 
 export function spoolExists(file) {

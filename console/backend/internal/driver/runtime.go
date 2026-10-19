@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"path"
 	"regexp"
 	"strings"
@@ -243,6 +244,7 @@ type RuntimeProvider struct {
 type RuntimePlatform struct {
 	ID          string          `json:"id"`
 	DisplayName string          `json:"displayName"`
+	BaseURL     string          `json:"baseUrl,omitempty"`
 	Config      json.RawMessage `json:"config"`
 }
 
@@ -543,6 +545,12 @@ func validatePlatforms(platforms []RuntimePlatform) error {
 	for _, platform := range platforms {
 		if platform.ID == "" || platform.DisplayName == "" || !json.Valid(platform.Config) {
 			return ErrInvalidRuntimeConfig
+		}
+		if platform.BaseURL != "" {
+			parsed, err := url.Parse(platform.BaseURL)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+				return ErrInvalidRuntimeConfig
+			}
 		}
 		if _, duplicate := seen[platform.ID]; duplicate {
 			return ErrInvalidRuntimeConfig

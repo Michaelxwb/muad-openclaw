@@ -1,5 +1,5 @@
 {
-  "name": "missing-state-file-skill",
+  "name": "missing-requests-skill",
   "platforms": ["demo_platform"],
   "runtime": "script",
   "version": "0.1.0",

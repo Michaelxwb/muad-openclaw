@@ -4,6 +4,11 @@ import json
 import os
 import subprocess
 
+try:  # Runtime Guard's .pth does this in the image; import is idempotent.
+    from muad_skill_http import compat as _compat  # noqa: F401
+except ImportError:  # pragma: no cover - local runs without the SDK installed
+    _compat = None
+
 # Must match skills/mssw-platform-smoke/muad.skill.json platforms.
 PLATFORM = "mssw"
 SKILL_NAME = "mssw-platform-smoke"
@@ -66,4 +71,30 @@ def resolve_state_file():
         return json.loads(completed.stdout)["sessionStateFile"]
     except (ValueError, KeyError, TypeError) as error:
         raise RuntimeError("session-manager output is invalid: %s" % error)
+
+
+def platform_state(state_file):
+    """Return the platform section from a skill-scoped session state file."""
+    with open(state_file, "r", encoding="utf-8") as handle:
+        state = json.load(handle)
+    section = (state.get("platforms") or {}).get(PLATFORM)
+    if not isinstance(section, dict):
+        raise RuntimeError("session state has no platform %s" % PLATFORM)
+    return section
+
+
+def cookie_header(section):
+    cookies = section.get("cookies") or []
+    return "; ".join(
+        "%s=%s" % (item.get("name"), item.get("value"))
+        for item in cookies
+        if isinstance(item, dict) and item.get("name") and item.get("value") is not None
+    )
+
+
+def platform_base_url(section):
+    base_url = str((section.get("requestProfile") or {}).get("baseUrl") or "").rstrip("/")
+    if not base_url:
+        raise RuntimeError("platform %s has no baseUrl in session state" % PLATFORM)
+    return base_url
 

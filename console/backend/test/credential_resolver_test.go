@@ -62,7 +62,7 @@ func TestCredentialResolver_ScopesActiveUserAndReturnsMinimalCredential(t *testi
 		`{"agentId":"charlie","skillName":"xdr-query","purpose":"session_get_state"}`,
 		http.StatusNotFound, 40606)
 
-	if err := env.store.UpdatePlatformConfig("xdr", "XDR", false); err != nil {
+	if err := env.store.UpdatePlatformConfig("xdr", "XDR", "", false); err != nil {
 		t.Fatalf("disable platform: %v", err)
 	}
 	assertResolveError(t, env, tokenA, resolveBody, http.StatusConflict, 40605)

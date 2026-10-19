@@ -2,7 +2,7 @@
 
 These functions never send requests and never log cookie values. They exist so
 a developer can paste the ``Cookie`` request header from DevTools and produce a
-file that ``platform_request(..., state_file=...)`` accepts.
+session state file that business skills read directly.
 
 Not for runtime use: production sessions are resolved by ``session-manager``.
 """
@@ -51,8 +51,8 @@ def build_local_state(
     """Build a session state dict from a copied ``Cookie`` header.
 
     ``base_url`` is required for relative request paths. ``csrf`` is a list of
-    ``{"cookie": "<cookie name>", "header": "<header name>"}`` mappings. The
-    result can be written with ``json.dump`` and passed as ``state_file``.
+    ``{"cookie": "<cookie name>", "header": "<header name>"}`` mappings kept for
+    state-file parity. The result can be written with ``json.dump``.
     """
     name = str(platform or "").strip()
     if not name:

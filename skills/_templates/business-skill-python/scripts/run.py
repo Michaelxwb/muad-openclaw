@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-from muad_skill_http import platform_request
+import requests
 
 PLATFORM = "example_platform"
 SKILL_NAME = "business-skill-python-template"
@@ -13,14 +13,11 @@ SKILL_NAME = "business-skill-python-template"
 LOCAL_STATE_FILE = os.path.expanduser("~/.muad-local/session-state.json")
 
 
-def get_session_state():
-    """Resolve the Skill's login state through session-manager.
+def get_state_file():
+    """Resolve the Skill session state file.
 
-    The SDK no longer resolves sessions itself: pass the returned state file to
-    platform_request. The skill name must match muad.skill.json.
-
-    Local development without session-manager: if MUAD_SESSION_KEY is absent
-    (never in a pod) and ~/.muad-local/session-state.json exists, use it.
+    Local development without session-manager reads LOCAL_STATE_FILE directly;
+    a pod (MUAD_SESSION_KEY present) asks session-manager for fresh state.
     """
     if not os.environ.get("MUAD_SESSION_KEY") and os.path.isfile(LOCAL_STATE_FILE):
         return LOCAL_STATE_FILE
@@ -46,6 +43,25 @@ def get_session_state():
         raise RuntimeError("session-manager output is invalid: %s" % error)
 
 
+def load_platform_state(state_file):
+    with open(state_file, "r", encoding="utf-8") as handle:
+        state = json.load(handle)
+    section = (state.get("platforms") or {}).get(PLATFORM)
+    if not isinstance(section, dict):
+        raise RuntimeError("session state has no platform %s" % PLATFORM)
+    profile = section.get("requestProfile") or {}
+    base_url = str(profile.get("baseUrl") or "").rstrip("/")
+    if not base_url:
+        raise RuntimeError("platform %s has no baseUrl in session state" % PLATFORM)
+    cookies = section.get("cookies") or []
+    cookie_header = "; ".join(
+        "%s=%s" % (item.get("name"), item.get("value"))
+        for item in cookies
+        if isinstance(item, dict) and item.get("name") and item.get("value") is not None
+    )
+    return base_url, cookie_header
+
+
 def report_progress(command, text, code=None):
     args = ["muad-progress", command, "--stage", "execute", "--text", text]
     if code:
@@ -63,14 +79,19 @@ def report_progress(command, text, code=None):
     return result.returncode == 0
 
 
-def fetch_example(state_file):
-    return platform_request(PLATFORM, "GET", "/api/v1/example", state_file=state_file)
+def fetch_example(base_url, cookie_header):
+    headers = {}
+    if cookie_header:
+        headers["Cookie"] = cookie_header
+    # Runtime Guard adds TraceId/X-Csrftoken and accounting for business hosts.
+    return requests.get(base_url + "/api/v1/example", headers=headers, timeout=30)
 
 
 def main():
     report_progress("stage", "开始处理业务请求")
-    state_file = get_session_state()
-    response = fetch_example(state_file)
+    state_file = get_state_file()
+    base_url, cookie_header = load_platform_state(state_file)
+    response = fetch_example(base_url, cookie_header)
     if response.status_code >= 400:
         raise RuntimeError(f"example platform returned {response.status_code}")
     # 写文件用 SKILL_OUTPUT_DIR（guard 注入的 per-agent 目录）；别写 Skill 根目录（只读）或 /tmp

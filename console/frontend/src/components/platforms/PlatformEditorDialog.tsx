@@ -18,6 +18,7 @@ interface Props {
 interface Form {
   platform: string;
   displayName: string;
+  baseUrl: string;
   enabled: boolean;
 }
 
@@ -25,6 +26,7 @@ function initialForm(platform: Platform | null): Form {
   return {
     platform: platform?.platform ?? "",
     displayName: platform?.displayName ?? "",
+    baseUrl: platform?.baseUrl ?? "",
     enabled: platform?.enabled ?? true,
   };
 }
@@ -83,12 +85,14 @@ function usePlatformEditor(props: Props) {
       if (props.platform) {
         await api.patchPlatform(props.platform.platform, {
           displayName: form.displayName.trim(),
+          baseUrl: form.baseUrl.trim(),
           enabled: form.enabled,
         });
       } else {
         await api.createPlatform({
           platform: form.platform,
           displayName: form.displayName.trim(),
+          baseUrl: form.baseUrl.trim(),
           enabled: form.enabled,
         });
       }
@@ -131,6 +135,14 @@ function PlatformFields({
           aria-label={t("platform.displayNameAria")}
           value={form.displayName}
           onChange={(displayName) => setForm({ ...form, displayName })}
+        />
+      </Field>
+      <Field label={t("platform.baseUrl")}>
+        <Input
+          aria-label={t("platform.baseUrlAria")}
+          value={form.baseUrl}
+          placeholder={t("platform.baseUrlPlaceholder")}
+          onChange={(baseUrl) => setForm({ ...form, baseUrl })}
         />
       </Field>
       <Field label={t("platform.enabled")}>

@@ -20,8 +20,9 @@ import pytest
 import requests
 
 import muad_skill_http as sdk
-from muad_skill_http import _platform as sdk_platform
 from muad_skill_http import _trace as sdk_trace
+from muad_skill_http import _normalize as sdk_normalize
+from muad_skill_http import compat as sdk_compat
 
 
 class Terminated(BaseException):
@@ -138,56 +139,6 @@ def events(path, kind):
     return [item for item in read_spool(path) if item.get("kind") == kind]
 
 
-def cookie(name, value):
-    return {"name": name, "value": value, "domain": "127.0.0.1", "path": "/"}
-
-
-def write_state_file(tmp_path, platforms, filename="test-skill.session.json"):
-    expiry = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
-    path = tmp_path / filename
-    path.write_text(
-        json.dumps(
-            {
-                "version": 1,
-                "agentId": "agent-1",
-                "skillName": "test-skill",
-                "humanUserId": "u_1",
-                "podId": "pod-1",
-                "platforms": {
-                    name: dict(section, expiresAt=section.get("expiresAt", expiry))
-                    for name, section in platforms.items()
-                },
-            }
-        ),
-        encoding="utf-8",
-    )
-    return path
-
-
-def mssw_profile(base_url):
-    return {
-        "baseUrl": base_url,
-        "hostHeader": {"Host": "mssw.sangfor.com.cn"},
-        "referer": base_url + "/index.html",
-        "csrf": [{"cookie": "csrf_token", "header": "x-csrf-token"}],
-        "staticHeaders": {},
-        "traceHeader": "Traceid",
-        "extraAllowed": True,
-    }
-
-
-def mssp_profile(base_url):
-    return {
-        "baseUrl": base_url,
-        "hostHeader": {"Host": "mssp.sangfor.com.cn"},
-        "referer": base_url + "/index.html",
-        "csrf": [{"cookie": "csrf_token", "header": "x-csrf-token"}],
-        "staticHeaders": {"X-CSRFToken": "mssp-static-token", "timezone": "+08:00"},
-        "traceHeader": "Traceid",
-        "extraAllowed": True,
-    }
-
-
 # --------------------------------------------------------------------------- #
 # S-09 / B-01 / spool contract
 # --------------------------------------------------------------------------- #
@@ -295,20 +246,7 @@ def test_spool_failure_is_silent(server, trace_env, monkeypatch):
 )
 def test_path_normalization(raw, expected):
     """B-03: numeric/UUID/hex segments collapse to {id}; query is dropped."""
-    assert sdk_platform.normalize_path(raw) == expected
-
-
-def test_traceid_is_unique_uuid4_and_always_rotates():
-    """B-06: 1000 header builds produce distinct UUID v4 values."""
-    profile = mssw_profile("http://inner.example.com")
-    cookies = [cookie("csrf_token", "csrf-value")]
-    values = []
-    for _ in range(1000):
-        headers, trace_id = sdk_platform.build_platform_headers(profile, cookies)
-        assert headers["Traceid"] == trace_id
-        values.append(trace_id)
-    assert len(set(values)) == 1000
-    assert all(uuid.UUID(value).version == 4 for value in values)
+    assert sdk_normalize.normalize_path(raw) == expected
 
 
 # --------------------------------------------------------------------------- #
@@ -343,46 +281,6 @@ def test_threaded_counting_admits_exactly_limit(server, trace_env, terminate, mo
 
 
 # --------------------------------------------------------------------------- #
-# S-12 / S-13 / B-07 / B-10 / E-08 platform flow
-# --------------------------------------------------------------------------- #
-
-def test_mssw_platform_request_headers(server, trace_env, tmp_path, monkeypatch):
-    """S-12: Cookie/CSRF/Host come from the state file; Traceid rotates."""
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssw": {
-                "cookies": [cookie("soc-token", "soc-secret"), cookie("csrf_token", "csrf-secret")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": mssw_profile(server.base_url),
-            }
-        },
-    )
-    monkeypatch.setenv("MUAD_SKILL_REQUEST_LIMIT", "10")
-
-    first = sdk.platform_request("mssw", "GET", "/api/v1/targets", state_file=state)
-    second = sdk.platform_request("mssw", "GET", "/api/v1/targets", state_file=state)
-    assert first.status_code == 200 and second.status_code == 200
-
-    first_headers = server.records[0]["headers"]
-    assert "soc-token=soc-secret" in header(server.records[0], "Cookie")
-    assert "csrf_token=csrf-secret" in header(server.records[0], "Cookie")
-    assert header(server.records[0], "x-csrf-token") == "csrf-secret"
-    assert header(server.records[0], "Host") == "mssw.sangfor.com.cn"
-    assert header(server.records[0], "Traceid") != header(server.records[1], "Traceid")
-    assert uuid.UUID(header(server.records[1], "Traceid")).version == 4
-    assert "Referer" in first_headers
-
-    sdk._flush_summary()
-    spool_text = trace_env.read_text(encoding="utf-8")
-    assert "soc-secret" not in spool_text
-    assert "csrf-secret" not in spool_text
-    http_events = events(trace_env, "http")
-    assert http_events[0]["platform"] == "mssw"
-    assert http_events[0]["traceId"] == header(server.records[0], "Traceid")
-
-
-# --------------------------------------------------------------------------- #
 # Local development helpers
 # --------------------------------------------------------------------------- #
 
@@ -398,23 +296,19 @@ def test_cookies_from_header_parses_browser_cookie_header():
     assert sdk.cookies_from_header("") == []
 
 
-def test_build_local_state_is_usable_by_platform_request(server, tmp_path):
+def test_build_local_state_shape():
     state = sdk.build_local_state(
         "mssw",
         "Cookie: soc-token=soc-secret; csrf_token=csrf-secret",
-        base_url=server.base_url,
+        base_url="https://mssw.example",
         host_header={"Host": "mssw.sangfor.com.cn"},
         csrf=[{"cookie": "csrf_token", "header": "x-csrf-token"}],
     )
-    state_path = tmp_path / "local-state.json"
-    state_path.write_text(json.dumps(state), encoding="utf-8")
-
-    response = sdk.platform_request("mssw", "GET", "/api/v1/targets", state_file=state_path)
-
-    assert response.status_code == 200
-    assert "soc-token=soc-secret" in header(server.records[0], "Cookie")
-    assert header(server.records[0], "x-csrf-token") == "csrf-secret"
-    assert header(server.records[0], "Host") == "mssw.sangfor.com.cn"
+    section = state["platforms"]["mssw"]
+    assert [item["name"] for item in section["cookies"]] == ["soc-token", "csrf_token"]
+    assert section["requestProfile"]["baseUrl"] == "https://mssw.example"
+    assert section["requestProfile"]["hostHeader"] == {"Host": "mssw.sangfor.com.cn"}
+    assert section["requestProfile"]["csrf"] == [{"cookie": "csrf_token", "header": "x-csrf-token"}]
 
 
 def test_build_local_state_validates_required_inputs():
@@ -437,253 +331,121 @@ def test_merge_local_states_combines_platforms():
         sdk.merge_local_states({})
 
 
-def test_merged_local_state_serves_multiple_platforms(server, tmp_path):
+def test_merged_local_state_shape():
     mssw = sdk.build_local_state(
         "mssw",
         "soc-token=mssw-cookie",
-        base_url=server.base_url,
+        base_url="https://mssw.example",
         host_header={"Host": "mssw.sangfor.com.cn"},
         csrf=[{"cookie": "csrf_token", "header": "x-csrf-token"}],
     )
     mssp = sdk.build_local_state(
         "mssp",
         "soc-token=mssp-cookie",
-        base_url=server.base_url,
+        base_url="https://mssp.example",
         host_header={"Host": "mssp.sangfor.com.cn"},
         static_headers={"X-CSRFToken": "mssp-static-token", "timezone": "+08:00"},
     )
-    state_path = tmp_path / "merged-state.json"
-    state_path.write_text(json.dumps(sdk.merge_local_states(mssw, mssp)), encoding="utf-8")
-
-    assert sdk.platform_request("mssw", "GET", "/api/v1/a", state_file=state_path).status_code == 200
-    assert sdk.platform_request("mssp", "GET", "/api/v1/b", state_file=state_path).status_code == 200
-
-    assert header(server.records[0], "Host") == "mssw.sangfor.com.cn"
-    assert "mssw-cookie" in header(server.records[0], "Cookie")
-    assert header(server.records[1], "Host") == "mssp.sangfor.com.cn"
-    assert "mssp-cookie" in header(server.records[1], "Cookie")
-    assert header(server.records[1], "X-CSRFToken") == "mssp-static-token"
+    merged = sdk.merge_local_states(mssw, mssp)
+    assert set(merged["platforms"]) == {"mssw", "mssp"}
+    assert merged["platforms"]["mssw"]["cookies"][0]["value"] == "mssw-cookie"
+    assert merged["platforms"]["mssp"]["cookies"][0]["value"] == "mssp-cookie"
 
 
-def test_platform_client_binds_state_file(server, trace_env, tmp_path):
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssw": {
-                "cookies": [cookie("soc-token", "soc")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": mssw_profile(server.base_url),
-            }
-        },
-    )
+# --------------------------------------------------------------------------- #
+# requests compat
+# --------------------------------------------------------------------------- #
 
-    client = sdk.platform("mssw", state)
-    assert client.get("/api/v1/client").status_code == 200
-    assert header(server.records[0], "Host") == "mssw.sangfor.com.cn"
-
-    with sdk.platform("mssw", state) as scoped:
-        assert scoped.get("/api/v1/client").status_code == 200
+def _secondary_server():
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    httpd.records = []
+    httpd.plans = {}
+    httpd.default = (200, '{"ok":true}')
+    httpd.lock = threading.Lock()
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    return httpd, thread
 
 
-def test_mssp_static_headers_do_not_leak_to_mssw(server, trace_env, tmp_path):
-    """S-13/B-07: mssp static headers and timezone stay on the mssp profile."""
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssw": {
-                "cookies": [cookie("soc-token", "mssw-cookie")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": mssw_profile(server.base_url),
-            },
-            "mssp": {
-                "cookies": [cookie("soc-token", "mssp-cookie")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": mssp_profile(server.base_url),
-            },
-        },
-    )
+def test_compat_instruments_only_allowlisted_hosts(server, trace_env, monkeypatch):
+    monkeypatch.setenv("MUAD_REQUESTS_COMPAT", "1")
+    monkeypatch.setenv("MUAD_BUSINESS_HOSTS", "127.0.0.1:%d" % server.server_port)
+    other, other_thread = _secondary_server()
+    try:
+        assert sdk_compat.install() is True
 
-    sdk.platform_request("mssp", "GET", "/api/v1/assets", state_file=state)
-    sdk.platform_request("mssw", "GET", "/api/v1/assets", state_file=state)
+        allowed = requests.get(server.base_url + "/business")
+        assert allowed.status_code == 200
+        allowed_trace = header(server.records[0], "TraceId")
+        allowed_csrf = header(server.records[0], "X-Csrftoken")
+        assert uuid.UUID(allowed_trace).version == 4
+        assert uuid.UUID(allowed_csrf).version == 4
 
-    assert header(server.records[0], "X-CSRFToken") == "mssp-static-token"
-    assert header(server.records[0], "timezone") == "+08:00"
-    assert header(server.records[0], "Host") == "mssp.sangfor.com.cn"
-    assert header(server.records[1], "X-CSRFToken") is None
-    assert header(server.records[1], "timezone") is None
-    assert header(server.records[1], "Host") == "mssw.sangfor.com.cn"
-    assert "mssp-cookie" in header(server.records[0], "Cookie")
-    assert "mssw-cookie" in header(server.records[1], "Cookie")
-    assert header(server.records[0], "Traceid") != header(server.records[1], "Traceid")
+        other_url = "http://127.0.0.1:%d/non-business" % other.server_port
+        assert requests.get(other_url).status_code == 200
+        assert header(other.records[0], "TraceId") is None
+        assert header(other.records[0], "X-Csrftoken") is None
+
+        sdk._flush_summary()
+        http_events = events(trace_env, "http")
+        assert [item["path"] for item in http_events] == ["/business"]
+        assert http_events[0]["traceId"] == allowed_trace
+    finally:
+        sdk_compat.uninstall()
+        other.shutdown()
+        other.server_close()
+        other_thread.join(timeout=2)
 
 
-def test_extra_headers_cannot_override_mandatory_headers(server, trace_env, tmp_path):
-    """S-12: Cookie / CSRF / Traceid are written last and win over caller headers."""
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssw": {
-                "cookies": [cookie("soc-token", "real-cookie"), cookie("csrf_token", "real-csrf")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": mssw_profile(server.base_url),
-            }
-        },
-    )
-
-    sdk.platform_request(
-        "mssw",
-        "GET",
-        "/api/v1/targets",
-        state_file=state,
-        headers={"Cookie": "evil=1", "traceid": "evil-trace", "x-csrf-token": "evil-csrf"},
-        extra_headers={"Traceid": "evil-extra", "cookie": "evil-extra"},
-    )
-
-    record = server.records[0]
-    assert "real-cookie" in header(record, "Cookie")
-    assert "evil" not in header(record, "Cookie")
-    assert header(record, "Traceid") != "evil-trace"
-    assert header(record, "Traceid") != "evil-extra"
-    assert header(record, "x-csrf-token") == "real-csrf"
+def test_compat_overrides_existing_trace_and_csrf_headers(server, trace_env, monkeypatch):
+    monkeypatch.setenv("MUAD_REQUESTS_COMPAT", "1")
+    monkeypatch.setenv("MUAD_BUSINESS_HOSTS", "127.0.0.1:%d" % server.server_port)
+    try:
+        assert sdk_compat.install() is True
+        response = requests.get(
+            server.base_url + "/override",
+            headers={"Traceid": "old-trace", "X-Csrftoken": "old-csrf"},
+        )
+        assert response.status_code == 200
+        record = server.records[0]
+        assert header(record, "TraceId") != "old-trace"
+        assert header(record, "X-Csrftoken") != "old-csrf"
+        assert uuid.UUID(header(record, "TraceId")).version == 4
+        assert uuid.UUID(header(record, "X-Csrftoken")).version == 4
+    finally:
+        sdk_compat.uninstall()
 
 
-@pytest.mark.parametrize("method,status", [("GET", 401), ("GET", 403), ("HEAD", 401), ("HEAD", 403)])
-def test_idempotent_401_403_is_returned_without_retry(server, tmp_path, method, status):
-    """E-08: the SDK does not refresh state; the Skill re-runs get-state."""
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssw": {
-                "cookies": [cookie("soc-token", "soc")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": mssw_profile(server.base_url),
-            }
-        },
-    )
-    server.plans["/api/v1/retry"] = [(status, "{}")]
-
-    response = sdk.platform_request("mssw", method, "/api/v1/retry", state_file=state)
-
-    assert response.status_code == status
-    assert len(server.records) == 1
+def test_compat_does_not_double_count_sdk_helpers(server, trace_env, monkeypatch):
+    monkeypatch.setenv("MUAD_REQUESTS_COMPAT", "1")
+    monkeypatch.setenv("MUAD_BUSINESS_HOSTS", "127.0.0.1:%d" % server.server_port)
+    try:
+        assert sdk_compat.install() is True
+        assert sdk.get(server.base_url + "/helper").status_code == 200
+        sdk._flush_summary()
+        summary = events(trace_env, "summary")[-1]
+        assert summary["totalRequests"] == 1
+        assert len(events(trace_env, "http")) == 1
+    finally:
+        sdk_compat.uninstall()
 
 
-def test_post_401_is_returned_without_retry(server, tmp_path):
-    """E-08: non-idempotent methods never auto-retry."""
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssw": {
-                "cookies": [cookie("soc-token", "soc")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": mssw_profile(server.base_url),
-            }
-        },
-    )
-    server.default = (401, '{"error":"unauthorized"}')
+def test_shared_limit_counter_is_shared_between_recorders(tmp_path, terminate):
+    spool = tmp_path / "exec.jsonl"
+    first = sdk_trace.TraceRecorder(str(spool), "exec-shared", 2)
+    second = sdk_trace.TraceRecorder(str(spool), "exec-shared", 2)
 
-    response = sdk.platform_request("mssw", "POST", "/api/v1/write", json={"a": 1}, state_file=state)
+    first.admit("host", "GET", "/shared")
+    first.admit("host", "GET", "/shared")
+    with pytest.raises(Terminated) as excinfo:
+        second.admit("host", "GET", "/shared")
+    assert excinfo.value.code == 86
 
-    assert response.status_code == 401
-    assert len(server.records) == 1
-
-
-def test_missing_state_file_fails_loud_without_sending(server, tmp_path):
-    """E-08: no state file means no business request leaves the process."""
-    with pytest.raises(sdk.PlatformSessionError):
-        sdk.platform_request("mssw", "GET", "/api/v1/targets", state_file=tmp_path / "missing.json")
-
-    assert server.records == []
-
-
-def test_missing_platform_section_fails_loud(server, tmp_path):
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssp": {
-                "cookies": [cookie("soc-token", "soc")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": mssp_profile(server.base_url),
-            }
-        },
-    )
-
-    with pytest.raises(sdk.PlatformSessionError):
-        sdk.platform_request("mssw", "GET", "/api/v1/targets", state_file=state)
-
-    assert server.records == []
-
-
-def test_non_object_platforms_section_fails_loud(server, tmp_path):
-    state_path = tmp_path / "bad-state.json"
-    state_path.write_text(json.dumps({"platforms": []}), encoding="utf-8")
-
-    with pytest.raises(sdk.PlatformSessionError):
-        sdk.platform_request("mssw", "GET", "/api/v1/targets", state_file=state_path)
-
-    assert server.records == []
-
-
-def test_expired_state_file_fails_loud(server, tmp_path):
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssw": {
-                "cookies": [cookie("soc-token", "soc")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": mssw_profile(server.base_url),
-                "expiresAt": "2000-01-01T00:00:00Z",
-            }
-        },
-    )
-
-    with pytest.raises(sdk.PlatformSessionError):
-        sdk.platform_request("mssw", "GET", "/api/v1/targets", state_file=state)
-
-    assert server.records == []
-
-
-def test_old_state_file_without_profile_falls_back(server, tmp_path, capsys):
-    """B-10: legacy state file (cookies only) keeps working with a default profile."""
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssw": {
-                "cookies": [cookie("soc-token", "legacy-cookie")],
-                "storageState": {"cookies": [], "origins": []},
-            }
-        },
-    )
-
-    response = sdk.platform_request("mssw", "GET", server.base_url + "/api/v1/legacy", state_file=state)
-
-    assert response.status_code == 200
-    record = server.records[0]
-    assert "legacy-cookie" in header(record, "Cookie")
-    assert header(record, "Traceid")
-    assert header(record, "x-csrf-token") is None
-    captured = capsys.readouterr()
-    assert "request profile fallback missing=requestProfile" in captured.err
-    assert "legacy-cookie" not in captured.err
-
-
-def test_profile_can_disable_trace_header(server, tmp_path):
-    profile = mssw_profile(server.base_url)
-    profile["traceHeader"] = None
-    state = write_state_file(
-        tmp_path,
-        {
-            "mssw": {
-                "cookies": [cookie("soc-token", "soc")],
-                "storageState": {"cookies": [], "origins": []},
-                "requestProfile": profile,
-            }
-        },
-    )
-
-    sdk.platform_request("mssw", "GET", "/api/v1/no-trace", state_file=state)
-
-    assert header(server.records[0], "Traceid") is None
+    counter = json.loads((tmp_path / "exec.jsonl.limit.json").read_text(encoding="utf-8"))
+    assert counter["total"] == 3
+    assert counter["interfaces"]["GET host /shared"] == 3
+    assert counter["aborted"] is True
+    assert counter["abortCount"] == 3
 
 
 # --------------------------------------------------------------------------- #

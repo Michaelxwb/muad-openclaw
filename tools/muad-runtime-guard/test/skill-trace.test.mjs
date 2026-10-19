@@ -9,10 +9,14 @@ import test from "node:test";
 import { createSkillAuditHooks } from "../src/skill-audit-hooks.mjs";
 import { createSkillTraceExecutions } from "../src/skill-trace-executions.mjs";
 import { createSkillTraceHooks } from "../src/skill-trace.mjs";
+import { createTraceMetricsAccumulator } from "../src/skill-trace-metrics.mjs";
 import { SkillTraceClient } from "../src/skill-trace-client.mjs";
 import {
   cleanupSkillTraceSpools,
+  counterFileFor,
   parseSkillTraceSpool,
+  readSkillTraceCounter,
+  spoolFileFor,
 } from "../src/skill-trace-spool.mjs";
 
 const EXECUTION_ID = "11111111-2222-4333-8444-555555555555";
@@ -32,6 +36,118 @@ test("SkillTrace resolve_exec_env injects execution env and creates a 0700/0600 
   assert.equal(env.MUAD_SKILL_REQUEST_LIMIT, "50");
   assert.equal(statSync(root).mode & 0o777, 0o700);
   assert.equal(statSync(env.MUAD_TRACE_SPOOL).mode & 0o777, 0o600);
+});
+
+test("SkillTrace aggregates multi-process counts from the SDK sidecar", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "skill-trace-"));
+  // The SDK appends ".limit.json" to the spool file path; the guard must read
+  // exactly that file, otherwise it falls back to one process's summary.
+  assert.equal(
+    counterFileFor(root, EXECUTION_ID),
+    spoolFileFor(root, EXECUTION_ID) + ".limit.json",
+  );
+  writeFileSync(counterFileFor(root, EXECUTION_ID), JSON.stringify({
+    interfaces: { "GET mssw:18080 /api/v1/ping": 6 },
+    total: 6,
+    errors: 1,
+    hosts: { "mssw:18080": 6 },
+    topInterfaces: [{ method: "GET", host: "mssw:18080", path: "/api/v1/ping", count: 6 }],
+    aborted: true,
+    abortInterface: "GET mssw:18080 /api/v1/ping",
+    abortCount: 6,
+    limit: 3,
+  }));
+
+  const counter = readSkillTraceCounter({ rootDir: root, executionId: EXECUTION_ID });
+  const spool = [
+    JSON.stringify({ v: 1, kind: "http", host: "mssw:18080", method: "GET", path: "/api/v1/ping", status: 200 }),
+    // One process's summary only knows about its own request.
+    JSON.stringify({ v: 1, kind: "summary", totalRequests: 1, errorCount: 0, aborted: false }),
+  ].join("\n");
+  const parsed = parseSkillTraceSpool(spool, { executionId: EXECUTION_ID, counter });
+
+  assert.equal(parsed.metrics.cumulative, true);
+  assert.equal(parsed.metrics.requestCount, 6);
+  assert.equal(parsed.metrics.errorCount, 1);
+  assert.equal(parsed.metrics.aborted, true);
+  assert.equal(parsed.metrics.abortCount, 6);
+  assert.deepEqual(parsed.metrics.topInterfaces, [
+    { method: "GET", host: "mssw:18080", path: "/api/v1/ping", count: 6 },
+  ]);
+});
+
+test("cumulative counter snapshots are merged idempotently across upload batches", () => {
+  const accumulator = createTraceMetricsAccumulator();
+  const snapshot = {
+    cumulative: true,
+    hasSummary: true,
+    requestCount: 4,
+    errorCount: 0,
+    maxBurstPer10s: 4,
+    detailTruncated: false,
+    hosts: { "mssw:18080": 4 },
+    topInterfaces: [{ host: "mssw:18080", method: "GET", path: "/api/v1/ping", count: 4 }],
+    aborted: true,
+    abortReason: "request_limit",
+    abortInterface: "GET mssw:18080 /api/v1/ping",
+    abortCount: 4,
+  };
+
+  // The same cumulative snapshot is uploaded after each exec; it must not add up.
+  accumulator.merge(snapshot);
+  accumulator.merge(snapshot);
+  accumulator.merge(snapshot);
+  const merged = accumulator.snapshot();
+
+  assert.equal(merged.requestCount, 4);
+  assert.equal(merged.errorCount, 0);
+  assert.equal(merged.aborted, true);
+  assert.equal(merged.abortCount, 4);
+  assert.deepEqual(merged.topInterfaces, snapshot.topInterfaces);
+});
+
+test("incremental summaries without a sidecar still add up", () => {
+  const accumulator = createTraceMetricsAccumulator();
+  const batch = (count) => ({
+    hasSummary: true,
+    requestCount: count,
+    errorCount: 0,
+    hosts: { "mssw:18080": count },
+    topInterfaces: [{ host: "mssw:18080", method: "GET", path: "/api/v1/ping", count }],
+  });
+  accumulator.merge(batch(2));
+  accumulator.merge(batch(3));
+
+  const merged = accumulator.snapshot();
+  assert.equal(merged.requestCount, 5);
+  assert.deepEqual(merged.topInterfaces, [
+    { host: "mssw:18080", method: "GET", path: "/api/v1/ping", count: 5 },
+  ]);
+});
+
+test("SkillTrace resolve_exec_env injects the requests compat env for configured business hosts", async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "skill-trace-"));
+  const { hooks, executions } = setup({
+    spoolRoot: root,
+    config: { businessHosts: ["mssw.example.internal:8443", "mssp.example.internal"] },
+  });
+  register(executions, { executionId: EXECUTION_ID, skillName: "xdr-query" });
+
+  const env = await hooks.resolveExecEnv(event(), context());
+
+  assert.equal(env.MUAD_REQUESTS_COMPAT, "1");
+  assert.equal(env.MUAD_BUSINESS_HOSTS, "mssw.example.internal:8443,mssp.example.internal");
+});
+
+test("SkillTrace leaves requests untouched when no business host is configured", async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "skill-trace-"));
+  const { hooks, executions } = setup({ spoolRoot: root, config: { businessHosts: [] } });
+  register(executions, { executionId: EXECUTION_ID, skillName: "xdr-query" });
+
+  const env = await hooks.resolveExecEnv(event(), context());
+
+  assert.equal(env.MUAD_REQUESTS_COMPAT, undefined);
+  assert.equal(env.MUAD_BUSINESS_HOSTS, undefined);
 });
 
 test("SkillTrace resolve_exec_env fails closed for missing, conflicting, or unidentified mappings", async () => {

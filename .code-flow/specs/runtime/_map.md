@@ -31,7 +31,7 @@
 | `tools/muad-runtime-guard/src/long-task-command-policy.mjs` | 长任务前台命令判定（Shell AST：cd/包装器/find -exec/awk/sed） |
 | `tools/muad-runtime-guard/src/long-task-cancel-state.mjs` | 长任务取消状态（0600 JSONL、单调 revision、取消墓碑） |
 | `tools/session-manager/` | 业务平台会话/凭证解析 |
-| `tools/muad-skill-sdk/` | Skill Python SDK（requests 透传、审计、限额、platform_request） |
+| `tools/muad-skill-sdk/` | Skill Python SDK（requests 透传、审计、限额、业务主机 requests compat） |
 | `tools/muad-progress/` | 进度 CLI（Go） |
 | `skills/` | system skill 种子与开发模板 |
 | `skills/self-skill-review/` | 用户自建 Skill 只读审查（确定性检查 + 语义审查） |

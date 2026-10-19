@@ -21,6 +21,7 @@ vi.mock("../src/api", async (importOriginal) => {
 const xdr: Platform = {
   platform: "xdr",
   displayName: "XDR",
+  baseUrl: "",
   enabled: true,
   updatedAt: "2026-07-11T00:00:00Z",
 };
@@ -28,6 +29,7 @@ const xdr: Platform = {
 const sdsp: Platform = {
   platform: "sdsp",
   displayName: "SDSP",
+  baseUrl: "",
   enabled: false,
   updatedAt: "2026-07-11T00:00:00Z",
 };
@@ -69,6 +71,7 @@ describe("PlatformSettings", () => {
       expect(apiMocks.createPlatform).toHaveBeenCalledWith({
         platform: "soar",
         displayName: "SOAR",
+        baseUrl: "",
         enabled: true,
       }),
     );
@@ -114,6 +117,7 @@ describe("PlatformSettings", () => {
     await waitFor(() =>
       expect(apiMocks.patchPlatform).toHaveBeenCalledWith("xdr", {
         displayName: "XDR",
+        baseUrl: "",
         enabled: false,
       }),
     );

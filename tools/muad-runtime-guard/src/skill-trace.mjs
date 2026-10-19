@@ -13,7 +13,7 @@ import { existsSync, readFileSync, statSync, unlinkSync } from "node:fs";
 import { notifyUser } from "../../shared/notify-user.mjs";
 import {
   SKILL_TRACE_LOG_PREFIX, SKILL_TRACE_SPOOL_ROOT, cleanupSkillTraceSpools,
-  ensureSkillTraceSpool, isSafeExecutionId, parseSkillTraceSpool, spoolFileFor,
+  ensureSkillTraceSpool, isSafeExecutionId, parseSkillTraceSpool, readSkillTraceCounter, spoolFileFor,
 } from "./skill-trace-spool.mjs";
 
 const DEFAULT_QUEUE_LIMIT = 100;
@@ -67,12 +67,18 @@ export function createSkillTraceHooks({
       diag(`action=spool outcome=failed executionId=${entry.executionId}`);
       return undefined;
     }
-    return {
+    const env = {
       MUAD_EXECUTION_ID: entry.executionId,
       MUAD_SKILL_NAME: entry.skillName,
       MUAD_TRACE_SPOOL: spoolPath,
       MUAD_SKILL_REQUEST_LIMIT: String(requestLimit(getConfig())),
     };
+    const hosts = Array.isArray(getConfig()?.businessHosts) ? getConfig().businessHosts : [];
+    if (hosts.length > 0) {
+      env.MUAD_BUSINESS_HOSTS = hosts.join(",");
+      env.MUAD_REQUESTS_COMPAT = "1";
+    }
+    return env;
   }
 
   function afterToolCall(event, ctx) {
@@ -126,6 +132,7 @@ export function createSkillTraceHooks({
 
     const parsed = parseSkillTraceSpool(newText, {
       executionId: entry.executionId, now: now(),
+      counter: readSkillTraceCounter({ rootDir: spoolRoot, executionId: entry.executionId }),
     });
     const baseSeq = reserveBaseSeq(entry.executionId, 1 + parsed.events.length);
     if (!baseSeq) {
