@@ -1,4 +1,8 @@
-"""Platform request client: session state, headers, refresh and retry.
+"""Platform request client: headers and trace-aware business requests.
+
+The caller resolves the platform session with ``session-manager get-state`` and
+passes the returned ``sessionStateFile`` here. This module never runs
+``session-manager`` and never reads credentials from the environment.
 
 Header order follows the backend design:
 browser defaults -> hostHeader -> staticHeaders -> caller/extra headers ->
@@ -9,8 +13,6 @@ reach the trace spool or diagnostics.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 import threading
 import uuid
@@ -29,19 +31,13 @@ __all__ = [
     "platform",
 ]
 
-SESSION_MANAGER_BIN = "session-manager"
-GET_STATE_TIMEOUT_SECONDS = 30
 DEFAULT_TRACE_HEADER = "Traceid"
-IDEMPOTENT_METHODS = frozenset({"GET", "HEAD"})
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
 _platform_session = requests.Session()
-_cache = {}
-_cache_lock = threading.Lock()
-_load_lock = threading.Lock()
 
 
 class PlatformSessionError(RuntimeError):
@@ -52,42 +48,43 @@ class PlatformSessionError(RuntimeError):
 # public API
 # --------------------------------------------------------------------------- #
 
-def platform_request(platform, method, path, **kwargs):
-    """Send a business request with platform headers and trace accounting."""
+def platform_request(platform, method, path, *, state_file, **kwargs):
+    """Send a business request with platform headers and trace accounting.
+
+    ``state_file`` is the ``sessionStateFile`` returned by
+    ``session-manager get-state``; it must contain ``platforms.<platform>``
+    with cookies and an optional ``requestProfile``.
+    """
     method = str(method).upper()
-    for attempt in (0, 1):
-        call_kwargs = dict(kwargs)
-        extra_headers = call_kwargs.pop("extra_headers", None)
-        caller_headers = call_kwargs.pop("headers", None)
-        context = _get_context(platform)
-        url = _resolve_url(platform, context["profile"], path)
-        headers, trace_id = build_platform_headers(
-            context["profile"], context["cookies"], caller_headers, extra_headers, call_kwargs
-        )
-        call_kwargs["headers"] = headers
-        extra = {"platform": platform}
-        if trace_id:
-            extra["traceId"] = trace_id
-        response = _http._send(
-            _platform_session.request, method, url, _trace_extra=extra, **call_kwargs
-        )
-        if attempt == 0 and method in IDEMPOTENT_METHODS and response.status_code in (401, 403):
-            _invalidate(platform)
-            continue
-        return response
+    context = _load_state_file(state_file, platform)
+    call_kwargs = dict(kwargs)
+    extra_headers = call_kwargs.pop("extra_headers", None)
+    caller_headers = call_kwargs.pop("headers", None)
+    url = _resolve_url(platform, context["profile"], path)
+    headers, trace_id = build_platform_headers(
+        context["profile"], context["cookies"], caller_headers, extra_headers, call_kwargs
+    )
+    call_kwargs["headers"] = headers
+    extra = {"platform": platform}
+    if trace_id:
+        extra["traceId"] = trace_id
+    return _http._send(
+        _platform_session.request, method, url, _trace_extra=extra, **call_kwargs
+    )
 
 
-def platform(name):
-    """Return a reusable client bound to one platform profile."""
-    return PlatformClient(name)
+def platform(name, state_file):
+    """Return a reusable client bound to one platform profile and state file."""
+    return PlatformClient(name, state_file)
 
 
 class PlatformClient:
-    def __init__(self, name):
+    def __init__(self, name, state_file):
         self.platform = name
+        self.state_file = state_file
 
     def request(self, method, path, **kwargs):
-        return platform_request(self.platform, method, path, **kwargs)
+        return platform_request(self.platform, method, path, state_file=self.state_file, **kwargs)
 
     def get(self, path, **kwargs):
         return self.request("GET", path, **kwargs)
@@ -216,72 +213,35 @@ def _cookie_values(cookies):
 # session state
 # --------------------------------------------------------------------------- #
 
-def _get_context(name):
-    with _cache_lock:
-        context = _cache.get(name)
-    if context is not None and not _expired(context["expires_at"]):
-        return context
-    with _load_lock:
-        with _cache_lock:
-            context = _cache.get(name)
-            if context is not None and not _expired(context["expires_at"]):
-                return context
-        context = _load_state(name)
-        with _cache_lock:
-            _cache[name] = context
-        return context
-
-
-def _invalidate(name):
-    with _cache_lock:
-        _cache.pop(name, None)
-
-
 def reset_cache():
-    with _cache_lock:
-        _cache.clear()
     with _diagnosed_lock:
         _diagnosed.clear()
 
 
-def _load_state(name):
-    skill_name = (os.environ.get("MUAD_SKILL_NAME") or "").strip()
-    if not skill_name:
+def _load_state_file(state_file, name):
+    path = str(state_file or "").strip()
+    if not path:
         raise PlatformSessionError(
-            "platform session unavailable for %s: MUAD_SKILL_NAME is not set" % name
+            "platform session unavailable for %s: state_file is required" % name
         )
     try:
-        completed = subprocess.run(
-            [SESSION_MANAGER_BIN, "get-state", "--skill-name", skill_name],
-            capture_output=True,
-            text=True,
-            timeout=GET_STATE_TIMEOUT_SECONDS,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise PlatformSessionError(
-            "platform session unavailable for %s: session-manager could not run" % name
-        ) from exc
-    if completed.returncode != 0:
-        detail = _first_line(completed.stderr)
-        message = "platform session unavailable for %s: session-manager get-state exited %d" % (
-            name,
-            completed.returncode,
-        )
-        if detail:
-            message += " (%s)" % detail
-        raise PlatformSessionError(message)
-
-    try:
-        payload = json.loads(completed.stdout)
-        state_file = payload["sessionStateFile"]
-        with open(state_file, "r", encoding="utf-8") as handle:
+        with open(path, "r", encoding="utf-8") as handle:
             state = json.load(handle)
-    except (ValueError, KeyError, TypeError, OSError) as exc:
+    except (ValueError, OSError) as exc:
         raise PlatformSessionError(
             "platform session unavailable for %s: session state file is unreadable" % name
         ) from exc
+    if not isinstance(state, dict):
+        raise PlatformSessionError(
+            "platform session unavailable for %s: session state file is unreadable" % name
+        )
 
-    section = (state.get("platforms") or {}).get(name)
+    platforms = state.get("platforms")
+    if not isinstance(platforms, dict):
+        raise PlatformSessionError(
+            "platform session unavailable for %s: no credentials in session state" % name
+        )
+    section = platforms.get(name)
     if not isinstance(section, dict):
         raise PlatformSessionError(
             "platform session unavailable for %s: no credentials in session state" % name
@@ -289,7 +249,7 @@ def _load_state(name):
     expires_at = _parse_expiry(section.get("expiresAt"))
     if _expired(expires_at):
         raise PlatformSessionError(
-            "platform session unavailable for %s: session state expired after refresh" % name
+            "platform session unavailable for %s: session state expired" % name
         )
     return {
         "platform": name,
@@ -376,16 +336,6 @@ def _expired(expires_at):
     if expires_at is None:
         return False
     return expires_at <= datetime.now(timezone.utc)
-
-
-def _first_line(text):
-    if not isinstance(text, str):
-        return ""
-    for line in text.splitlines():
-        line = line.strip()
-        if line:
-            return line[:200]
-    return ""
 
 
 _diagnosed = set()

@@ -5,7 +5,7 @@ description: "MANDATORY before claiming the MSSW platform request path works. Tr
 
 # MSSW 平台冒烟
 
-验证 `mssw` 平台经 `muad_skill_http.platform_request` 的会话与请求链路。Cookie、CSRF、Host、平台静态头和每请求 `Traceid` 都由 SDK 构造；单请求 GET 冒烟断言 HTTP 状态、用户、响应 `path` 与 `Traceid` 的 UUID 格式，`limit_probe.py` 进一步断言多次请求的 `Traceid` 互不相同。CSRF 的实际校验需要状态变更接口，GET 冒烟不对此下结论。
+验证 `mssw` 平台的登录态与请求链路。脚本先调用 `session-manager get-state` 获取登录态，再把 `sessionStateFile` 传给 `muad_skill_http.platform_request`；SDK 从状态文件构造 Cookie、CSRF、Host、平台静态头和每请求 `Traceid`。单请求 GET 冒烟断言 HTTP 状态、用户、响应 `path` 与 `Traceid` 的 UUID 格式，`limit_probe.py` 进一步断言多次请求的 `Traceid` 互不相同。CSRF 的实际校验需要状态变更接口，GET 冒烟不对此下结论。
 
 ## 何时使用
 

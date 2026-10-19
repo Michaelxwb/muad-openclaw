@@ -39,14 +39,18 @@ skill 名描述功能，平台名是 Console 里的标识，两者语义不同�
 
 ## 脚本里怎么写
 
-`platform_request` 的平台名必须与 `muad.skill.json` 的 `platforms` 一致；skill 名只用于 manifest、SKILL.md 与目录名，不传给平台请求。
+`platform_request` 的平台名必须与 `muad.skill.json` 的 `platforms` 一致；skill 名只用于 manifest、SKILL.md、目录名和 `session-manager get-state --skill-name`，不作为平台名传给 `platform_request`。
 
 ```python
 from muad_skill_http import platform_request
 
-# ✅ 对：平台名与 manifest platforms 一致
-response = platform_request("smoke_platform", "GET", "/api/v1/items")
+# ✅ 对：平台名与 manifest platforms 一致；state_file 来自 session-manager
+response = platform_request(
+    "smoke_platform", "GET", "/api/v1/items", state_file=state_file,
+)
 
 # ❌ 错：把 skill 名当平台名
-response = platform_request("smoke-platform-query", "GET", "/api/v1/items")
+response = platform_request(
+    "smoke-platform-query", "GET", "/api/v1/items", state_file=state_file,
+)
 ```
