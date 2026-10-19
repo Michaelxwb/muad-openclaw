@@ -25,14 +25,14 @@ ALLOWED_SUFFIXES = {
 RETIRED_SUFFIXES = {".js", ".mjs", ".cjs", ".ts", ".tsx", ".sh", ".bash"}
 TEXT_SUFFIXES = {".md", ".json", ".py", ".yaml", ".yml", ".txt"}
 DIRECT_HTTP_MODULES = {
-    "requests", "httpx", "aiohttp", "urllib.request", "http.client",
+    "httpx", "aiohttp", "urllib.request", "http.client",
 }
 SUBPROCESS_FUNCS = {
     "subprocess.run", "subprocess.Popen", "subprocess.call",
     "subprocess.check_call", "subprocess.check_output", "os.system", "os.popen",
 }
 SENSITIVE_HEADERS = {
-    "cookie", "set-cookie", "x-csrftoken", "x-csrf-token", "csrf-token",
+    "x-csrftoken", "x-csrf-token", "csrf-token",
     "csrftoken", "traceid", "x-trace-id",
 }
 # SS-R007 must distinguish request header construction from ordinary response
@@ -285,12 +285,12 @@ def _check_direct_http(path: Path, target: Path, tree) -> list[Finding]:
                 if alias.name in DIRECT_HTTP_MODULES:
                     findings.append(_finding(
                         "SS-R006", path, target, node.lineno,
-                        f"direct HTTP client import {alias.name!r}; use muad_skill_http",
+                        f"direct HTTP client import {alias.name!r}; use requests",
                     ))
         elif isinstance(node, ast.ImportFrom) and node.module in DIRECT_HTTP_MODULES:
             findings.append(_finding(
                 "SS-R006", path, target, node.lineno,
-                f"direct HTTP client import from {node.module!r}; use muad_skill_http",
+                f"direct HTTP client import from {node.module!r}; use requests",
             ))
     return findings
 
@@ -342,7 +342,7 @@ def _check_manual_headers(path: Path, target: Path, tree) -> list[Finding]:
                 if _header_key(key) in SENSITIVE_HEADERS:
                     findings.append(_finding(
                         "SS-R007", path, target, node.lineno,
-                        f"manual sensitive header {_header_key(key)!r}; platform_request builds Cookie/CSRF/Traceid",
+                        f"manual sensitive header {_header_key(key)!r}; Runtime Guard injects CSRF/TraceId for business hosts",
                         severity="warning",
                     ))
         elif isinstance(node, ast.Assign):
@@ -355,7 +355,7 @@ def _check_manual_headers(path: Path, target: Path, tree) -> list[Finding]:
                     continue
                 findings.append(_finding(
                     "SS-R007", path, target, node.lineno,
-                    f"manual sensitive header {_header_key(assigned.slice)!r}; platform_request builds Cookie/CSRF/Traceid",
+                    f"manual sensitive header {_header_key(assigned.slice)!r}; Runtime Guard injects CSRF/TraceId for business hosts",
                     severity="warning",
                 ))
     return findings
@@ -376,7 +376,7 @@ def _check_subprocess_requests(path: Path, target: Path, tree) -> list[Finding]:
         if any(NETWORK_ARG_RE.search(value) for value in _string_constants(node)):
             findings.append(_finding(
                 "SS-R008", path, target, node.lineno,
-                "subprocess sends a business request; use muad_skill_http.platform_request",
+                "subprocess sends a business request; use requests (Runtime Guard instruments business hosts)",
             ))
     return findings
 
@@ -512,45 +512,41 @@ def _check_platform_usage(target: Path, manifest, parsed) -> list[Finding]:
     platforms = manifest.get("platforms") if isinstance(manifest, dict) else None
     if not isinstance(platforms, list) or not platforms:
         return []
-    has_import = False
+    has_requests_import = False
+    has_requests_call = False
     has_get_state = False
-    platform_calls = []
     first_python = None
+    call_location = None
     for path, source, tree in parsed:
         if first_python is None:
             first_python = path
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
-                has_import = has_import or any(alias.name == "muad_skill_http" for alias in node.names)
-            elif isinstance(node, ast.ImportFrom) and (node.module or "").startswith("muad_skill_http"):
-                has_import = True
-            elif isinstance(node, ast.Call) and _dotted_name(node.func).split(".")[-1] == "platform_request":
-                platform_calls.append((path, node))
+                has_requests_import = has_requests_import or any(
+                    alias.name == "requests" for alias in node.names
+                )
+            elif isinstance(node, ast.ImportFrom) and node.module == "requests":
+                has_requests_import = True
+            elif isinstance(node, ast.Call) and _dotted_name(node.func).startswith("requests."):
+                has_requests_call = True
+                if call_location is None:
+                    call_location = (path, node.lineno)
             elif isinstance(node, ast.Call) and _dotted_name(node.func) in SUBPROCESS_FUNCS:
                 strings = _string_constants(node)
                 if any("get-state" in item for item in strings) and any("--skill-name" in item for item in strings):
                     has_get_state = True
-    if not has_import or not platform_calls:
-        location = first_python or (target / "muad.skill.json")
+    if not has_requests_import or not has_requests_call:
+        location = call_location[0] if call_location else (first_python or (target / "muad.skill.json"))
+        line = call_location[1] if call_location else 1
         return [_finding(
-            "SS-R005", location, target, 1,
-            "platforms declared but muad_skill_http.platform_request is not used",
-        )]
-    missing_state_file = [
-        (path, call) for path, call in platform_calls
-        if not any(keyword.arg == "state_file" for keyword in call.keywords)
-    ]
-    if missing_state_file:
-        path, call = missing_state_file[0]
-        return [_finding(
-            "SS-R005", path, target, call.lineno,
-            "platform_request must receive state_file from session-manager get-state",
+            "SS-R005", location, target, line,
+            "platforms declared but requests is not used",
         )]
     if not has_get_state:
-        path, call = platform_calls[0]
+        location = call_location[0]
         return [_finding(
-            "SS-R005", path, target, call.lineno,
-            "platform_request state_file must come from session-manager get-state",
+            "SS-R005", location, target, call_location[1],
+            "platforms declared but session-manager get-state is not used",
         )]
     return []
 

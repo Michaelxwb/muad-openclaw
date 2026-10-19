@@ -3,6 +3,7 @@ package api
 import (
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -15,17 +16,20 @@ import (
 type createPlatformRequest struct {
 	Platform    string `json:"platform"`
 	DisplayName string `json:"displayName"`
+	BaseURL     string `json:"baseUrl"`
 	Enabled     *bool  `json:"enabled"`
 }
 
 type patchPlatformRequest struct {
 	DisplayName *string `json:"displayName"`
+	BaseURL     *string `json:"baseUrl"`
 	Enabled     *bool   `json:"enabled"`
 }
 
 type platformView struct {
 	Platform    string    `json:"platform"`
 	DisplayName string    `json:"displayName"`
+	BaseURL     string    `json:"baseUrl"`
 	Enabled     bool      `json:"enabled"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
@@ -58,6 +62,7 @@ func (s *Server) handleCreatePlatform(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.Platform, request.DisplayName = strings.TrimSpace(request.Platform), strings.TrimSpace(request.DisplayName)
+	request.BaseURL = strings.TrimSpace(request.BaseURL)
 	if err := validateCreatePlatformRequest(request); err != nil {
 		writeInputValidationError(w, r, errcode.InvalidPlatformConfig, err)
 		return
@@ -68,7 +73,7 @@ func (s *Server) handleCreatePlatform(w http.ResponseWriter, r *http.Request) {
 	}
 	podIDs, err := s.store.CreatePlatformConfigAndMarkPods(repo.PlatformConfig{
 		Platform: request.Platform, DisplayName: request.DisplayName,
-		Enabled: enabled,
+		BaseURL: request.BaseURL, Enabled: enabled,
 	})
 	if err != nil {
 		writeRepoError(w, r, err)
@@ -102,7 +107,7 @@ func (s *Server) handlePatchPlatform(w http.ResponseWriter, r *http.Request) {
 	}
 	if changed {
 		podIDs, err := s.store.UpdatePlatformConfigAndMarkPods(
-			next.Platform, next.DisplayName, next.Enabled,
+			next.Platform, next.DisplayName, next.BaseURL, next.Enabled,
 		)
 		if err != nil {
 			writeRepoError(w, r, err)
@@ -149,13 +154,20 @@ func (s *Server) applyPlatformPatch(
 	if request.DisplayName != nil {
 		next.DisplayName = strings.TrimSpace(*request.DisplayName)
 	}
+	if request.BaseURL != nil {
+		next.BaseURL = strings.TrimSpace(*request.BaseURL)
+	}
 	if request.Enabled != nil {
 		next.Enabled = *request.Enabled
 	}
 	if err := validatePlatformDisplayName(next.DisplayName); err != nil {
 		return repo.PlatformConfig{}, false, err
 	}
-	changed := next.DisplayName != current.DisplayName || next.Enabled != current.Enabled
+	if err := validatePlatformBaseURL(next.BaseURL); err != nil {
+		return repo.PlatformConfig{}, false, err
+	}
+	changed := next.DisplayName != current.DisplayName ||
+		next.BaseURL != current.BaseURL || next.Enabled != current.Enabled
 	return next, changed, nil
 }
 
@@ -167,7 +179,26 @@ func validateCreatePlatformRequest(request createPlatformRequest) error {
 			"platform must start with a lowercase letter and contain lowercase letters, digits, or underscores, max 64 characters",
 		)
 	}
-	return validatePlatformDisplayName(request.DisplayName)
+	if err := validatePlatformDisplayName(request.DisplayName); err != nil {
+		return err
+	}
+	return validatePlatformBaseURL(request.BaseURL)
+}
+
+func validatePlatformBaseURL(raw string) error {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return nil
+	}
+	parsed, err := url.Parse(value)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return newInputValidationError(
+			errcode.InvalidPlatformConfig,
+			"baseUrl 必须是 http/https URL，且包含主机名",
+			"baseUrl must be an http/https URL with a host",
+		)
+	}
+	return nil
 }
 
 func validatePlatformDisplayName(displayName string) error {
@@ -184,7 +215,7 @@ func validatePlatformDisplayName(displayName string) error {
 func makePlatformView(config repo.PlatformConfig) platformView {
 	return platformView{
 		Platform: config.Platform, DisplayName: config.DisplayName,
-		Enabled:   config.Enabled,
+		BaseURL: config.BaseURL, Enabled: config.Enabled,
 		UpdatedAt: config.UpdatedAt,
 	}
 }

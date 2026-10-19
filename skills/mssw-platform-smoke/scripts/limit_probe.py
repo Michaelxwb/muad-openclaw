@@ -13,7 +13,7 @@ import os
 import sys
 import uuid
 
-from muad_skill_http import platform_request
+import requests
 
 from _common import (
     ALLOWED_PATHS,
@@ -23,6 +23,9 @@ from _common import (
     PING_PATH,
     PLATFORM,
     SkillExecutionRequired,
+    cookie_header,
+    platform_base_url,
+    platform_state,
     require_skill_execution,
     resolve_state_file,
 )
@@ -87,14 +90,19 @@ def main():
 
     trace_ids = []
     sent = 0
-    state_file = resolve_state_file()
+    section = platform_state(resolve_state_file())
+    headers = {}
+    cookie = cookie_header(section)
+    if cookie:
+        headers["Cookie"] = cookie
+    url = platform_base_url(section) + args.path
     for index in range(count):
         expected_trigger = limit > 0 and index + 1 > limit
         if expected_trigger:
-            # The SDK will call os._exit(86) inside platform_request before the
-            # request is sent; emit the single stdout result first.
+            # Runtime Guard compat calls os._exit(86) before sending the N+1
+            # request; emit the single stdout result first.
             _summary("LIMIT_TRIGGERED", args.path, count, sent, limit, trace_ids)
-        response = platform_request(PLATFORM, "GET", args.path, state_file=state_file)
+        response = requests.get(url, headers=headers, timeout=30)
         if expected_trigger:
             # One summary has already been printed; never emit a second stdout
             # document if the limit was not actually enforced by the runtime.

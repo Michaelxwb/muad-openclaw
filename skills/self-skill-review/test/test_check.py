@@ -65,14 +65,15 @@ def test_review_fingerprint_is_stable_for_unchanged_target() -> None:
     assert first_fingerprint == second_fingerprint
 
 
-def test_platform_request_requires_state_file() -> None:
-    target = FIXTURES / "missing-state-file-skill"
+def test_platform_skill_requires_requests_and_session_manager() -> None:
+    target = FIXTURES / "missing-requests-skill"
     result = run_check(target, "--format", "json")
 
     assert result.returncode == 1
     grouped = findings_by_rule(json.loads(result.stdout))
     assert "SS-R005" in grouped
-    assert any("state_file" in finding["message"] for finding in grouped["SS-R005"])
+    assert "SS-R006" in grouped
+    assert any("requests" in finding["message"] for finding in grouped["SS-R005"])
 
 
 def test_violating_skill_reports_rules_with_file_line() -> None:
@@ -88,8 +89,6 @@ def test_violating_skill_reports_rules_with_file_line() -> None:
         "SS-R001",  # Shell file type
         "SS-R003",  # frontmatter/manifest/dir name mismatch
         "SS-R004",  # entrypoint is not .py
-        "SS-R005",  # platforms declared but no platform_request
-        "SS-R006",  # direct requests usage
         "SS-R007",  # manual Cookie/CSRF headers
         "SS-R008",  # subprocess sends business request
         "SS-R009",  # exception path writes stdout
@@ -105,8 +104,6 @@ def test_violating_skill_reports_rules_with_file_line() -> None:
     expected_locations = {
         "SS-R001": ("scripts/run.sh", 1),
         "SS-R004": ("muad.skill.json", line_of(manifest, "entrypoint")),
-        "SS-R005": ("scripts/run.py", 1),
-        "SS-R006": ("scripts/run.py", line_of(run_py, "import requests")),
         "SS-R007": ("scripts/run.py", line_of(run_py, '"Cookie"')),
         "SS-R008": ("scripts/run.py", line_of(run_py, '"curl"')),
         "SS-R009": ("scripts/run.py", line_of(run_py, 'print("failed")')),
@@ -147,13 +144,13 @@ def test_embedded_instructions_are_ignored() -> None:
 
 
 def test_markdown_report_contains_file_line() -> None:
-    result = run_check(FIXTURES / "violating-skill", "--format", "markdown")
+    result = run_check(FIXTURES / "missing-requests-skill", "--format", "markdown")
 
     assert result.returncode == 1
     assert "FAIL" in result.stdout
     assert "scripts/run.py:" in result.stdout
     assert "SS-R005" in result.stdout
-    assert "平台请求没有走统一 SDK" in result.stdout
+    assert "requests" in result.stdout
     assert "规则 ID 仅用于追踪" in result.stdout
 
 

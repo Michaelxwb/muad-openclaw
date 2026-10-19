@@ -33,6 +33,10 @@
     ],
     "properties": {
       "generation": { "type": "integer", "minimum": 1 },
+      "businessHosts": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
       "mainAgentId": { "type": "string" },
       "quarantineProfile": { "type": "string" },
       "agentProfiles": {

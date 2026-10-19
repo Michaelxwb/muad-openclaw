@@ -349,7 +349,7 @@ func TestEffectiveSkillResolver_DisablePolicyAndPlatformDisabled(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpsertUserPlatformCredential: %v", err)
 	}
-	if err := store.UpdatePlatformConfig("soar", "SOAR", false); err != nil {
+	if err := store.UpdatePlatformConfig("soar", "SOAR", "", false); err != nil {
 		t.Fatalf("UpdatePlatformConfig: %v", err)
 	}
 	skills, _, err := store.ResolveEffectiveSkills(alice.HumanUserID, repo.EffectiveSkillFilter{})

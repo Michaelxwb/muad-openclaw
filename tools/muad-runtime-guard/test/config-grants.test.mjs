@@ -59,6 +59,24 @@ test("per-Skill grants still enforce the Skill-name pattern", () => {
   assert.equal(parseGuardConfig(config).valid, false, "per-Skill 必须匹配 SKILL_NAME_PATTERN");
 });
 
+test("business hosts accept an optional exact host:port allowlist", () => {
+  const missing = validConfig();
+  assert.deepEqual(parseGuardConfig(missing).businessHosts, []);
+  assert.equal(parseGuardConfig(missing).valid, true);
+
+  const hosts = validConfig();
+  hosts.businessHosts = [" MSSW.Example.Internal:8443 ", "mssw.example.internal:8443", "mssp.example.internal"];
+  const parsed = parseGuardConfig(hosts);
+  assert.equal(parsed.valid, true);
+  assert.deepEqual(parsed.businessHosts, ["mssw.example.internal:8443", "mssp.example.internal"]);
+
+  for (const invalid of [["host with space"], ["host,port"], [123], "mssw.example.internal"]) {
+    const config = validConfig();
+    config.businessHosts = invalid;
+    assert.equal(parseGuardConfig(config).valid, false, JSON.stringify(invalid));
+  }
+});
+
 test("older per-Skill grants without the dir marker remain valid (backward compatible)", () => {
   const legacy = validConfig();
   for (const grant of legacy.skillAuditGrants) {

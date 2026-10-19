@@ -133,15 +133,14 @@ test("S-06 Qianliu recipe carries prebuilt muad-progress dist through cache into
 
   assert.match(app, /chmod -R a\+rX[^;]*\/opt\/muad\/muad-progress/u);
   assert.match(app, /chown -R node:node[^;]*\/opt\/muad\/muad-progress/u);
-  // runtime-guard-deps 是专用依赖阶段：构建期 npm ci 打包 guard 生产依赖（离线化，S-12 契约）。
-  assert.match(app, /AS runtime-guard-deps[\s\S]*?RUN npm ci --omit=dev --ignore-scripts/u);
-  // 最终镜像阶段仍不得出现任何 npm 安装：工具 dist 必须来自 Task0 预构建缓存。
+  // runtime guard 生产依赖由 Task0 预装、经千流缓存由 task4 恢复，最终镜像只做 COPY。
+  assert.equal(
+    app.includes("COPY tools/muad-runtime-guard/node_modules /opt/muad/muad-runtime-guard/node_modules"),
+    true,
+  );
+  // 最终镜像阶段不得出现任何 npm 安装：工具 dist 必须来自 Task0 预构建缓存。
   const finalStage = app.split(/\nFROM \$\{BASE_IMAGE\}:\$\{BASE_TAG\}\n/u).pop() ?? "";
   assert.doesNotMatch(finalStage, /(?:RUN|&&|;)\s+npm (?:ci|install)\b/u);
-  assert.match(
-    finalStage,
-    /COPY --from=runtime-guard-deps \/build\/runtime-guard\/node_modules \/opt\/muad\/muad-runtime-guard\/node_modules/u,
-  );
   assert.doesNotMatch(app, /COPY tools\/muad-progress\/(?:node_modules|test)(?:\s|$)/u);
 });
 

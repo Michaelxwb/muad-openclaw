@@ -124,6 +124,7 @@ CREATE INDEX IF NOT EXISTS idx_binding_codes_expiry ON binding_codes(status, exp
 CREATE TABLE IF NOT EXISTS platform_configs (
 	platform TEXT PRIMARY KEY,
 	display_name TEXT NOT NULL,
+	base_url TEXT NOT NULL DEFAULT '',
 	enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0,1)),
 	updated_at TEXT NOT NULL
 );
@@ -311,6 +312,25 @@ func (s *Store) migrate() error {
 	}
 	if err := s.migrateLongTaskTasks(); err != nil {
 		return err
+	}
+	if err := s.migratePlatformBaseURL(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// migratePlatformBaseURL adds the platform base URL used for the business-host
+// allowlist injected into skill executions.
+func (s *Store) migratePlatformBaseURL() error {
+	exists, err := columnExists(s.db, "platform_configs", "base_url")
+	if err != nil {
+		return fmt.Errorf("inspect platform_configs base_url column: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	if _, err := s.db.Exec(`ALTER TABLE platform_configs ADD COLUMN base_url TEXT NOT NULL DEFAULT ''`); err != nil {
+		return fmt.Errorf("add platform_configs base_url column: %w", err)
 	}
 	return nil
 }

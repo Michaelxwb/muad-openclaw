@@ -129,7 +129,7 @@ session-manager 的登录逻辑以 `PlatformAdapter` 形式接入，按平台名
 ### 平台 request profile（session 文件扩展）
 
 `get-state` 写出的 `<skill>.session.json` 在每个平台 section 追加 `requestProfile`，
-供 `muad_skill_http.platform_request` 组装业务请求头；CLI stdout 不包含该字段。
+供业务 Skill 读取 `baseUrl` 等地址信息；CLI stdout 不包含该字段。
 
 ```json
 {

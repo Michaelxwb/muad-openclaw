@@ -25,7 +25,7 @@ var (
 	platformPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 )
 
-const platformColumns = `platform, display_name, enabled, updated_at`
+const platformColumns = `platform, display_name, base_url, enabled, updated_at`
 
 // PlatformCredentialSummary carries administrator-visible platform credential data.
 type PlatformCredentialSummary struct {
@@ -49,8 +49,8 @@ func (s *Store) CreatePlatformConfig(config PlatformConfig) error {
 		return err
 	}
 	_, err := s.db.Exec(`INSERT INTO platform_configs
-		(platform, display_name, enabled, updated_at) VALUES (?, ?, ?, ?)`,
-		config.Platform, strings.TrimSpace(config.DisplayName),
+		(platform, display_name, base_url, enabled, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		config.Platform, strings.TrimSpace(config.DisplayName), strings.TrimSpace(config.BaseURL),
 		boolToInt(config.Enabled), formatTime(time.Now().UTC()))
 	if isUniqueConstraint(err) {
 		return ErrPlatformExists
@@ -88,13 +88,13 @@ func (s *Store) ListPlatformConfigs() ([]PlatformConfig, error) {
 }
 
 // UpdatePlatformConfig updates mutable platform fields; the platform ID is immutable.
-func (s *Store) UpdatePlatformConfig(platform, displayName string, enabled bool) error {
+func (s *Store) UpdatePlatformConfig(platform, displayName, baseURL string, enabled bool) error {
 	if !validPlatform(platform) || strings.TrimSpace(displayName) == "" {
 		return ErrInvalidPlatform
 	}
 	res, err := s.db.Exec(`UPDATE platform_configs SET display_name = ?,
-		enabled = ?, updated_at = ? WHERE platform = ?`,
-		strings.TrimSpace(displayName), boolToInt(enabled),
+		base_url = ?, enabled = ?, updated_at = ? WHERE platform = ?`,
+		strings.TrimSpace(displayName), strings.TrimSpace(baseURL), boolToInt(enabled),
 		formatTime(time.Now().UTC()), platform)
 	return affectedOrNotFound(res, err, "update platform config")
 }
@@ -333,7 +333,7 @@ func scanPlatformConfig(sc scanner) (PlatformConfig, error) {
 	var config PlatformConfig
 	var enabled int
 	var updatedAt string
-	err := sc.Scan(&config.Platform, &config.DisplayName, &enabled, &updatedAt)
+	err := sc.Scan(&config.Platform, &config.DisplayName, &config.BaseURL, &enabled, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PlatformConfig{}, ErrNotFound
 	}
