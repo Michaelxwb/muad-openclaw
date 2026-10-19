@@ -59,7 +59,7 @@ RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5
     --progress-bar off \
     -i http://mirrors.sangfor.org/pypi/simple --trusted-host mirrors.sangfor.org \
     -r /opt/muad/requirements.txt \
-    && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86"
+    && python3 -c "import muad_skill_http, muad_skill_http.compat; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86"
 
 # Skills 继续 `import requests`；compat 只在 guard 注入 MUAD_REQUESTS_COMPAT=1
 # 和 MUAD_BUSINESS_HOSTS 的 skill exec 中生效，其它 Python 进程不 patch。
