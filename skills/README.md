@@ -28,13 +28,14 @@ Skill 激活按用户消息轮次隔离：
 
 ## 本地开发环境
 
-Skill 脚本依赖 `muad_skill_http`（公网 PyPI 包 `muad-skill-http`），运行中的 Pod 镜像通过 `requirements.txt` 按固定版本安装；在本地解释器里直接调试时安装同一版本：
+Skill 脚本依赖 `muad_skill_http`（公网 PyPI 包 `muad-skill-http`）。Pod 镜像通过 `requirements.txt` 按固定版本安装，本地统一用同样方式，在独立 venv 里安装：
 
 ```bash
-pip install "muad-skill-http==0.1.0"   # 版本与仓库 requirements.txt 保持一致
+python3 -m venv .venv
+.venv/bin/pip install "muad-skill-http==0.1.0"   # 版本与仓库 requirements.txt 保持一致
 ```
 
-只做语法检查或单元测试时，也可以在仓库根用 `PYTHONPATH="$PWD/tools/muad-skill-sdk" python3 scripts/run.py`，无需安装。注意 `platform_request` 仍需要 `MUAD_SKILL_NAME` 和 `session-manager` 返回的登录态；本地联调请使用 `tools/fake-business-platform`，真实平台请在 Pod 内执行。
+IDE 的解释器指向该 venv 即可获得补全和断点调试。注意 `platform_request` 仍需要 `MUAD_SKILL_NAME` 和 `session-manager` 返回的登录态；本地联调请使用 `tools/fake-business-platform`，真实平台请在 Pod 内执行。
 
 ## 长任务反馈
 

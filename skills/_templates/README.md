@@ -18,6 +18,7 @@
 - 可在 Skill 自己选择的关键节点调用 `muad-progress stage|done|error`；进度是 best-effort 文本，最终结果继续走 OpenClaw 原生最终回复。
 - 脚本使用 argv 参数，不拼接 shell 字符串。
 - 读文件（`SKILL.md`、config、模板）路径保持在 Skill 根目录内；写文件（报告、临时结果）写 `SKILL_OUTPUT_DIR`（guard 注入的 per-agent 目录），别写 Skill 根目录（只读）或 `/tmp`（不隔离不持久）。
+- 本地调试统一在独立 venv 里 `pip install "muad-skill-http==<requirements.txt 中的版本>"`，不要依赖 `PYTHONPATH` 或复制 SDK 源码；Skill 里也不要写 import fallback 或手工拼请求头。
 
 ## 最小目录
 
