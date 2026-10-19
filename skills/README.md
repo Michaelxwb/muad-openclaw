@@ -35,22 +35,7 @@ python3 -m venv .venv
 .venv/bin/pip install "muad-skill-http==0.1.0"   # 版本与仓库 requirements.txt 保持一致
 ```
 
-IDE 的解释器指向该 venv 即可获得补全和断点调试。
-
-### 联调真实业务环境（内网推荐）
-
-把真实平台 cookie 保存成本地 state 文件（格式见 `tools/dev/local-state.example.json`），然后用仓库自带的 `session-manager` shim 接入：
-
-```bash
-export PATH="$PWD/tools/dev/bin:$PATH"          # 提供本地 session-manager 命令
-export MUAD_LOCAL_SESSION_STATE="$HOME/muad-local/mssw.json"
-export MUAD_SKILL_NAME=<skill-name>
-python3 scripts/run.py
-```
-
-SDK 代码不变，仍然执行 `session-manager get-state --skill-name <name>`；shim 返回本地 state 文件的路径，不访问 Console。需要统计和限流时，再设置 `MUAD_EXECUTION_ID` / `MUAD_TRACE_SPOOL` / `MUAD_SKILL_REQUEST_LIMIT`。
-
-`tools/fake-business-platform` 仅用于仓库测试（`tools/fake-business-platform/test_mssw_skill_smoke.py`），不用于内网真实业务联调。
+IDE 的解释器指向该 venv 即可获得补全和断点调试。注意 `platform_request` 仍需要 `MUAD_SKILL_NAME` 和 `session-manager` 返回的登录态；本地联调请使用 `tools/fake-business-platform`，真实平台请在 Pod 内执行。
 
 ## 长任务反馈
 
