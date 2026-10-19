@@ -24,8 +24,16 @@ export function createTraceMetricsAccumulator() {
         nonNegative(snapshot.errorCount) === 0) {
       return takeSnapshot();
     }
-    requestCount += nonNegative(snapshot.requestCount);
-    errorCount += nonNegative(snapshot.errorCount);
+    // A sidecar counter snapshot already covers the whole execution. Incremental
+    // batches (no counter: legacy SDK or no request limit) must still add up.
+    const cumulative = snapshot.cumulative === true;
+    if (cumulative) {
+      requestCount = Math.max(requestCount, nonNegative(snapshot.requestCount));
+      errorCount = Math.max(errorCount, nonNegative(snapshot.errorCount));
+    } else {
+      requestCount += nonNegative(snapshot.requestCount);
+      errorCount += nonNegative(snapshot.errorCount);
+    }
     maxBurstPer10s = Math.max(maxBurstPer10s, nonNegative(snapshot.maxBurstPer10s));
     detailTruncated = detailTruncated || snapshot.detailTruncated === true;
 
@@ -33,7 +41,9 @@ export function createTraceMetricsAccumulator() {
     for (const [host, count] of Object.entries(incomingHosts)) {
       const name = text(host);
       if (!name) continue;
-      hosts.set(name, (hosts.get(name) ?? 0) + nonNegative(count));
+      const current = hosts.get(name) ?? 0;
+      const value = nonNegative(count);
+      hosts.set(name, cumulative ? Math.max(current, value) : current + value);
     }
     if (Object.keys(incomingHosts).length === 0) {
       // Older/failed summaries may only carry topInterfaces; preserve the
@@ -52,7 +62,7 @@ export function createTraceMetricsAccumulator() {
       if (!host || !method || !itemPath || count === 0) continue;
       const key = JSON.stringify([host, method, itemPath]);
       const current = interfaces.get(key) ?? { host, method, path: itemPath, count: 0 };
-      current.count += count;
+      current.count = cumulative ? Math.max(current.count, count) : current.count + count;
       interfaces.set(key, current);
     }
 

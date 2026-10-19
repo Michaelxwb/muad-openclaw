@@ -21,6 +21,7 @@ export function parseGuardConfig(value) {
   const maxSkillConcurrency = input.maxSkillConcurrency;
   const maxLongTaskConcurrency = input.maxLongTaskConcurrency;
   const skillRequestLimit = input.skillRequestLimit;
+  const businessHosts = parseBusinessHosts(input.businessHosts);
   const valid = Number.isInteger(generation) && generation > 0 && mainAgentId === "main" &&
     ID_PATTERN.test(quarantineProfile) && validURL(consoleInternalURL) &&
     serviceTokenFile === POD_SERVICE_TOKEN_FILE && agentProfiles !== null && sessionAgentIds !== null &&
@@ -31,6 +32,7 @@ export function parseGuardConfig(value) {
     agentProfiles.every((mapping) => mapping.profile !== quarantineProfile) &&
     supportedLocale(locale) &&
     validSkillRequestLimit(skillRequestLimit) &&
+    businessHosts !== null &&
     positiveInteger(maxBrowserConcurrency) && positiveInteger(maxSkillConcurrency) &&
     positiveInteger(maxLongTaskConcurrency);
   return {
@@ -52,7 +54,22 @@ export function parseGuardConfig(value) {
     skillRequestLimit: validSkillRequestLimit(skillRequestLimit) && skillRequestLimit !== undefined
       ? skillRequestLimit
       : DEFAULT_SKILL_REQUEST_LIMIT,
+    businessHosts: businessHosts ?? [],
   };
+}
+
+function parseBusinessHosts(value) {
+  // Optional for legacy consoles: a missing field means no host instrumentation.
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) return null;
+  const hosts = [];
+  for (const item of value) {
+    if (typeof item !== "string") return null;
+    const host = item.trim().toLowerCase();
+    if (!host || host.length > 255 || /\s|,/u.test(host)) return null;
+    hosts.push(host);
+  }
+  return Array.from(new Set(hosts));
 }
 
 function validSkillRequestLimit(value) {

@@ -335,6 +335,7 @@ export interface BindingCodeCreateResult {
 export interface Platform {
   platform: string;
   displayName: string;
+  baseUrl: string;
   enabled: boolean;
   updatedAt: string;
 }
@@ -342,11 +343,13 @@ export interface Platform {
 export interface CreatePlatformInput {
   platform: string;
   displayName: string;
+  baseUrl?: string;
   enabled?: boolean;
 }
 
 export interface PatchPlatformInput {
   displayName?: string;
+  baseUrl?: string;
   enabled?: boolean;
 }
 

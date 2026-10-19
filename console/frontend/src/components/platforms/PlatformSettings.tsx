@@ -179,7 +179,7 @@ function filterPlatforms(
     if (status === "enabled" && !platform.enabled) return false;
     if (status === "disabled" && platform.enabled) return false;
     if (keyword === "") return true;
-    return [platform.platform, platform.displayName]
+    return [platform.platform, platform.displayName, platform.baseUrl]
       .filter((value): value is string => Boolean(value))
       .some((value) => value.toLowerCase().includes(keyword));
   });
@@ -199,6 +199,9 @@ function platformColumns(
         <div className={styles.tableCellStack}>
           <strong className={styles.tableCellPrimary}>{platform.displayName}</strong>
           <div className={`mono ${styles.tableCellMeta}`}>{platform.platform}</div>
+          {platform.baseUrl ? (
+            <div className={styles.tableCellMeta}>{platform.baseUrl}</div>
+          ) : null}
         </div>
       ),
     },

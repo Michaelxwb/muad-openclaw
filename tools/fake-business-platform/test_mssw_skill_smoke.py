@@ -38,6 +38,7 @@ LOGIN_PATH = "/gateway/mss-auth-acl-service/v1/certification/login_agent"
 SIGN_PATH = "/v1/certification/login_agent"
 CSRF_HEADER = "x-csrftoken"
 TRACE_HEADER = "Traceid"
+BASE_HOST = ""
 
 
 def start_server() -> tuple[subprocess.Popen[str], dict[str, object]]:
@@ -162,6 +163,9 @@ def skill_env(bin_dir: Path, spool: Path, limit: int, execution_id: str) -> dict
     env["MUAD_EXECUTION_ID"] = execution_id
     env["MUAD_TRACE_SPOOL"] = str(spool)
     env["MUAD_SKILL_REQUEST_LIMIT"] = str(limit)
+    env["MUAD_REQUESTS_COMPAT"] = "1"
+    if BASE_HOST:
+        env["MUAD_BUSINESS_HOSTS"] = BASE_HOST
     return env
 
 
@@ -177,8 +181,10 @@ def run_skill(args: list[str], env: dict[str, str]) -> subprocess.CompletedProce
 
 
 def main() -> int:
+    global BASE_HOST
     process, ready = start_server()
     base_url = str(ready["baseUrl"])
+    BASE_HOST = urlparse(base_url).netloc
     try:
         session = login(base_url, str(ready["ak"]), str(ready["sk"]))
         with tempfile.TemporaryDirectory(prefix="mssw-skill-smoke-") as temporary:

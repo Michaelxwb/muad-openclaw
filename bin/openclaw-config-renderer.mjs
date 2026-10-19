@@ -402,6 +402,7 @@ function renderPlugins(output, runtime) {
           maxSkillConcurrency: runtime.concurrency.maxSkills,
           maxLongTaskConcurrency: runtime.concurrency.maxLongTasksPerUserAgent,
           skillRequestLimit: runtime.guard.skillRequestLimit ?? 1000,
+          businessHosts: renderBusinessHosts(runtime),
           locale: runtime.locale || "zh",
           consoleInternalURL: runtime.consoleInternalUrl,
           serviceTokenFile: runtime.serviceTokenFile,
@@ -411,8 +412,21 @@ function renderPlugins(output, runtime) {
   };
 }
 
-function activePluginEntries(entries) {
-  return Object.fromEntries(
+function renderBusinessHosts(runtime) {
+  const hosts = new Set();
+  for (const platform of runtime.platforms ?? []) {
+    if (typeof platform.baseUrl !== "string" || !platform.baseUrl.trim()) continue;
+    try {
+      const host = new URL(platform.baseUrl).host.toLowerCase();
+      if (host) hosts.add(host);
+    } catch {
+      // Invalid baseUrl is rejected by runtime-config-schema before rendering.
+    }
+  }
+  return [...hosts].sort();
+}
+
+function activePluginEntries(entries) {  return Object.fromEntries(
     Object.entries(entries).filter(([id]) => !DEPRECATED_RUNTIME_PLUGINS.has(id)),
   );
 }

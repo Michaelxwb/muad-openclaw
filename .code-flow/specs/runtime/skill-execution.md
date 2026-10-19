@@ -30,11 +30,11 @@ verifiers:
       checklist: Confirm skill scripts write failures to stderr and exit non-zero; stdout reserved for machine-readable result.
       owner: project-owner
 checks:
-  - id: skill-business-http-must-use-sdk
+  - id: skill-business-http-uses-requests
     type: regex
-    pattern: '^\s*(?:import|from)\s+(?:requests|httpx|urllib|http\.client)\b'
+    pattern: '^\s*(?:import|from)\s+(?:httpx|urllib|http\.client)\b'
     files: "skills/*/scripts/*.py"
-    message: "业务请求必须走 muad_skill_http.platform_request"
+    message: "业务请求统一使用 requests；Runtime Guard 对业务 host 自动补 TraceId/X-Csrftoken 并计数"
 ---
 
 # Runtime Skill Execution
@@ -98,8 +98,8 @@ def _die(message):
 - 内部取消 RPC 仅 `operator.write`（绝不注册为模型工具）；能力只在取消链完整（manager 可取消 + 原生 abort/drain 可用）时上报，缺失明确不可用、不危险兜底
 - **自建 Skill 统一 Python**：脚本放 `scripts/*.py`，入口默认 `scripts/run.py`；不生成 TS/Shell/Node 脚本。
 - **Managed manifest 必填 author**：`muad.skill.json` 必须带非空 `author`（作者姓名/工号/用户名）；public 上传与 internal ingest 统一校验，缺失返回 `SkillBundleInvalidManifest`，`author` 写入 metadata 供追溯。
-- **登录态与业务请求拆分**：Skill 先调用 `session-manager get-state --skill-name <skill>` 获取登录态，再把返回的 `sessionStateFile` 传给 `muad_skill_http.platform_request("<平台>", "<METHOD>", "<path>", state_file=state_file)`；SDK 不内部解析登录态。禁止直接 `import requests/httpx`、手工拼 `Cookie`/CSRF/`Traceid`，或用 `subprocess` 调 `curl`/`wget` 发业务请求。
-- **Traceid 每请求新 UUID v4**：`Cookie`/CSRF/`Traceid` 由 SDK 最后写入，`extra_headers` 不得覆盖；Cookie/CSRF 等凭据头不进入 trace/日志，`Traceid` 作为请求追踪标识随 HTTP 事件持久化并在 Console 展示，供到业务平台检索对应请求。
+- **登录态与业务请求分离**：Skill 通过 `session-manager get-state --skill-name <skill>` 获取登录态并读取 `platforms.<平台>.cookies`，业务请求直接使用 `requests`；Runtime Guard 只对平台 baseUrl 命中的 host 自动覆盖 `TraceId`/`X-Csrftoken`、计数和限流，名单外请求原样透传。禁止 `httpx`/`urllib`/`curl` 发业务请求。
+- **TraceId 每请求新 UUID v4**：业务 host 命中名单时由 Runtime Guard 覆盖 `TraceId` 与 `X-Csrftoken`；Cookie/CSRF 等凭据头不进入 trace/日志，`TraceId` 作为请求追踪标识随 HTTP 事件持久化并在 Console 展示，供到业务平台检索对应请求。
 - **直接路径执行审计**：`exec` 命令引用已授权 Skill 路径（首个有效 token 为解释器或可执行路径）时，audit hook 也注册 execution；`ls`/`cat`/`grep` 等只读检查不注册。该审计只用于 trace 归属，不改变 activation/授权判定。
 - **旧 Skill 兼容是 opt-in**：不强制迁移、不做上传硬拦截；`self-skill-review` 以警告推动整改，管理员审批把关。`self-skill-review` 只读目标目录、不执行被审代码、忽略代码内指令。
 

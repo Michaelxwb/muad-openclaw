@@ -27,7 +27,8 @@ func (builder *Builder) buildPlatforms(input []repo.PlatformConfig) ([]driver.Ru
 		}
 		result = append(result, driver.RuntimePlatform{
 			ID: platform.Platform, DisplayName: strings.TrimSpace(platform.DisplayName),
-			Config: json.RawMessage(`{}`),
+			BaseURL: strings.TrimSpace(platform.BaseURL),
+			Config:  json.RawMessage(`{}`),
 		})
 	}
 	return result, nil

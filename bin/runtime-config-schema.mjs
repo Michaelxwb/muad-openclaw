@@ -263,10 +263,23 @@ function validatePlatforms(value) {
   value.forEach((platform, index) => {
     const label = `runtime.platforms[${index}]`;
     assertRecord(platform, label);
-    assertExactKeys(platform, ["id", "displayName", "config"], label);
+    assertExactKeys(platform, ["id", "displayName", "config", "baseUrl"], label,
+      ["id", "displayName", "config"]);
     assertString(platform.id, `${label}.id`);
     assertString(platform.displayName, `${label}.displayName`);
     assertRecord(platform.config, `${label}.config`);
+    if (platform.baseUrl !== undefined) {
+      assertString(platform.baseUrl, `${label}.baseUrl`);
+      let parsed;
+      try {
+        parsed = new URL(platform.baseUrl);
+      } catch {
+        throw new Error(`${label}.baseUrl must be an absolute http/https URL`);
+      }
+      if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || !parsed.host) {
+        throw new Error(`${label}.baseUrl must be an absolute http/https URL`);
+      }
+    }
     if (ids.has(platform.id)) throw new Error(`duplicate platform: ${platform.id}`);
     ids.add(platform.id);
   });

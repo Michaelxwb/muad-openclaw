@@ -225,6 +225,7 @@ type BindingCode struct {
 type PlatformConfig struct {
 	Platform    string
 	DisplayName string
+	BaseURL     string
 	Enabled     bool
 	UpdatedAt   time.Time
 }

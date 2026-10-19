@@ -1,69 +1,73 @@
-# 对接平台的请求头：统一使用 SDK
+# 对接平台的请求头：requests + Runtime Guard
 
-自建 Skill 访问受保护业务平台时，**不得手工拼装请求头**。登录态用 `session-manager get-state` 获取，所有平台请求必须经 `muad_skill_http.platform_request` 并传入返回的 `sessionStateFile`：
+自建 Skill 访问受保护业务平台时，继续使用 `requests` 发请求。Skill 只负责两件事：
+
+1. 用 `session-manager get-state --skill-name <skill>` 取登录态文件；
+2. 从状态文件读 `platforms.<平台名>.cookies` 拼 `Cookie` 头，读 `requestProfile.baseUrl` 作为 URL 前缀。
+
+`TraceId` 与 `X-Csrftoken` 不需要 Skill 处理：镜像启动钩子会加载
+`muad_skill_http.compat`，Runtime Guard 注入 `MUAD_REQUESTS_COMPAT=1` 与本 Pod
+所有启用平台的 `host:port` 白名单后，发往白名单主机的 `requests` 请求会被自动
+覆盖为新的 UUID v4，并计入执行级请求统计与限额。非白名单主机原样放行。
 
 ```python
 import json
 import subprocess
 
-from muad_skill_http import platform_request
+import requests
 
-completed = subprocess.run(
-    ["session-manager", "get-state", "--skill-name", "my-skill"],
-    check=False, capture_output=True, text=True, timeout=30,
+SKILL_NAME = "my-skill"  # 必须与 muad.skill.json 的 name 一致
+PLATFORM = "mssw"        # 必须与 muad.skill.json 的 platforms 一致
+
+
+def resolve_state_file():
+    completed = subprocess.run(
+        ["session-manager", "get-state", "--skill-name", SKILL_NAME],
+        check=False, capture_output=True, text=True, timeout=30,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError("session-manager get-state failed")
+    return json.loads(completed.stdout)["sessionStateFile"]
+
+
+with open(resolve_state_file(), "r", encoding="utf-8") as handle:
+    state = json.load(handle)
+section = state["platforms"][PLATFORM]
+base_url = section["requestProfile"]["baseUrl"].rstrip("/")
+cookie = "; ".join(
+    "%s=%s" % (item["name"], item["value"])
+    for item in section.get("cookies") or []
 )
-state_file = json.loads(completed.stdout)["sessionStateFile"]
-response = platform_request("mssw", "GET", "/api/v1/targets", state_file=state_file)
+
+response = requests.get(
+    base_url + "/api/v1/targets",
+    headers={"Cookie": cookie},
+    timeout=30,
+)
 ```
 
-## SDK 负责什么
+## Runtime Guard 负责什么
 
-`platform_request` 从传入的状态文件中读取当前平台的 cookies 与 request profile，构造请求头，顺序固定：
+对白名单主机上的每个 `requests` 请求：
 
-1. 浏览器默认头（Accept / Accept-Language / Content-Type / User-Agent / X-Requested-With / Referer）。
-2. 平台 `hostHeader`（nginx 按 Host 路由）。
-3. 平台 `staticHeaders`（平台级固定头，如 timezone）。
-4. Skill 传入的 `headers` / `extra_headers`（**不得覆盖敏感头**）。
-5. `Cookie`：由登录态 cookies 拼装。
-6. CSRF：按 profile 的 `csrf` 映射从 cookie 提取到对应 header。
-7. `Traceid`：每个请求生成新的 UUID v4。
-8. 最后重写一次 Cookie / CSRF / Traceid，确保前面传入的头无法覆盖。
+1. `TraceId`：覆盖为新的 UUID v4；
+2. `X-Csrftoken`：覆盖为新的 UUID v4（MSSW/SOAR 只校验 header 存在）；
+3. 按归一化接口计数，超过 `MUAD_SKILL_REQUEST_LIMIT` 时拒绝发出下一个请求并以
+   86 退出；
+4. 写 trace spool 供 Console 审计展示。
 
-因此 Skill 代码里**不需要也不允许**出现：
+Cookie 值不进入 trace spool。
 
-- 手工读取登录态文件拼 cookie；
-- 手工从 cookie 提取 CSRF 并写 header；
-- 硬编码 `Host`、`Traceid`、平台固定 token；
-- `Source` 请求头（平台会校验失败）。
+## Skill 不应做的事
+
+- 不要手工从 cookie 提取 CSRF 再写 header——Guard 会覆盖，且平台只要求 header 存在。
+- 不要硬编码 `TraceId`；每次请求必须不同。
+- 不要用 `httpx` / `urllib.request` / `http.client` 直连业务接口（不会被注入和统计）。
+- 不要用 `subprocess` 调 `curl`/`wget` 发业务请求——既不计入执行 trace，也不受请求上限约束。
+- 不要把 cookie / CSRF token 写进 stdout、日志或错误信息。
 
 ## 平台差异放哪里
 
-平台之间的 Host、referer、CSRF cookie 名、静态头差异由 session-manager 输出的 `requestProfile` 描述，属于平台配置，不写进 Skill 代码。Skill 只传平台名和业务 path。
-
-## extra_headers 逃生口
-
-个别接口需要额外非敏感头时：
-
-```python
-response = platform_request(
-    "mssp",
-    "POST",
-    "/api/v1/query",
-    state_file=state_file,
-    json={"keyword": "demo"},
-    extra_headers={"X-Biz-Tag": "weekly-report"},
-)
-```
-
-约束：
-
-- 只放业务自定义头，不放 Cookie、CSRF、Host、Traceid、Authorization 等敏感头。
-- 不要放凭据或内部 URL。
-- 平台 `extraAllowed: false` 时 SDK 会忽略这些头。
-
-## 不要做的事
-
-- **不要**手工拼装 Cookie/CSRF/Traceid，也不要复制平台前端的请求头代码。
-- **不要**用 `requests`、`httpx`、`urllib.request` 直连业务接口。
-- **不要**用 `subprocess` 调 `curl`/`wget` 发业务请求——既不计入执行 trace，也不受请求上限约束。
-- **不要**把 cookie / CSRF token 写进 stdout、日志或错误信息。
+平台 `baseUrl` 在 Console 的平台设置里配置，决定白名单主机。Cookie / CSRF
+的 cookie 名、Host、静态头等平台差异仍由登录态（session-manager 输出）表达，
+不写进 Skill 代码。

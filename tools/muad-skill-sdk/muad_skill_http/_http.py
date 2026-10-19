@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import threading
 import time
 
 import requests
 
 from . import _trace
 from ._normalize import split_target
+
+_local = threading.local()
+
+
+def internal_request():
+    """True while an SDK helper is issuing its own requests call."""
+    return bool(getattr(_local, "active", False))
 
 
 def _duration_ms(started):
@@ -21,11 +29,15 @@ def _send(call, method, url, **kwargs):
     host, path = split_target(url)
     recorder.admit(host, method, path)
     started = time.monotonic()
+    previous = getattr(_local, "active", False)
+    _local.active = True
     try:
         response = call(method, url, **kwargs)
     except requests.RequestException as exc:
         recorder.complete(host, method, path, None, _duration_ms(started), type(exc).__name__, extra)
         raise
+    finally:
+        _local.active = previous
     status = response.status_code
     error_class = "http_%d" % status if status >= 400 else ""
     recorder.complete(host, method, path, status, _duration_ms(started), error_class, extra)

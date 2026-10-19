@@ -7,7 +7,7 @@ Two modes:
   session-manager smoke tests. Behaviour is unchanged.
 - ``mssw``: models the MSSW gateway contract closely enough to exercise the
   real ``MSSWSessionAdapter`` (SigV4-style AK/SK login, CSRF cookie/header,
-  health endpoint) and the ``muad_skill_http.platform_request`` SDK
+  health endpoint) and the Runtime Guard ``requests`` compat layer
   (Cookie/CSRF/Host/static headers/Traceid).
 
 The service intentionally has no session-manager import; it is a plain HTTP
@@ -263,16 +263,14 @@ class Handler(BaseHTTPRequestHandler):
         return result
 
     def _csrf_valid(self) -> bool:
-        cookie_value = self._cookie_value("csrf_token")
-        # The adapter's login uses x-csrftoken; the requestProfile used for
-        # business calls uses x-csrf-token (MSSW's canonical spelling). Accept
-        # both so the fake matches either client path.
+        # Real MSSW/SOAR only require the header to be present; Runtime Guard
+        # compat overrides it with a fresh UUID for business hosts.
         header_value = (
             self.headers.get("x-csrftoken")
             or self.headers.get("x-csrf-token")
             or ""
         )
-        return bool(cookie_value and header_value and hmac.compare_digest(cookie_value, header_value))
+        return bool(header_value)
 
     def _cookie_value(self, name: str) -> str:
         jar = cookies.SimpleCookie()

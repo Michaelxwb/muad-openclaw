@@ -23,7 +23,7 @@ func TestPlatformConfig_EmptyByDefaultAndCRUD(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CreatePlatformConfig: %v", err)
 	}
-	if err := store.UpdatePlatformConfig("custom_api", "Custom", false); err != nil {
+	if err := store.UpdatePlatformConfig("custom_api", "Custom", "", false); err != nil {
 		t.Fatalf("UpdatePlatformConfig: %v", err)
 	}
 	config, err := store.GetPlatformConfig("custom_api")
@@ -49,7 +49,7 @@ func TestPlatformConfig_UpdateAndPodGenerationAreAtomic(t *testing.T) {
 	createTestPod(t, store, "pod-a", 2)
 	createTestPod(t, store, "pod-b", 2)
 	createTestPlatform(t, store, "xdr", "XDR")
-	podIDs, err := store.UpdatePlatformConfigAndMarkPods("xdr", "XDR Updated", true)
+	podIDs, err := store.UpdatePlatformConfigAndMarkPods("xdr", "XDR Updated", "", true)
 	if err != nil || len(podIDs) != 2 {
 		t.Fatalf("UpdatePlatformConfigAndMarkPods = %v, %v", podIDs, err)
 	}
@@ -165,7 +165,7 @@ func TestPlatformCredential_DisabledAndCorruptDataFailClosed(t *testing.T) {
 	createTestPod(t, store, "pod-a", 10)
 	createTestPlatform(t, store, "xdr", "XDR")
 	alice := createTestHumanUser(t, store, "pod-a", "alice", repo.HumanUserStatusActive)
-	if err := store.UpdatePlatformConfig("xdr", "XDR", false); err != nil {
+	if err := store.UpdatePlatformConfig("xdr", "XDR", "", false); err != nil {
 		t.Fatalf("disable xdr: %v", err)
 	}
 	if _, err := store.UpsertUserPlatformCredential(alice.HumanUserID, "xdr", map[string]any{
