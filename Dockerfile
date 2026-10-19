@@ -63,17 +63,11 @@ COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
 
 # 业务 Python 依赖（脚本类 skill 运行时）；基础镜像已含 python3-pip。
 # 变更 requirements.txt 只需重建 app 镜像，无需重建基础镜像。
+# Skill Python SDK（muad-skill-http）也在其中，按固定版本从 PyPI 安装。
 COPY requirements.txt /opt/muad/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5 \
-    -i https://pypi.tuna.tsinghua.edu.cn/simple -r /opt/muad/requirements.txt
-
-# Skill Python SDK（构建期安装到 site-packages；requests 来自 requirements.txt）。
-COPY tools/muad-skill-sdk/pyproject.toml /opt/muad/muad-skill-sdk/pyproject.toml
-COPY tools/muad-skill-sdk/muad_skill_http /opt/muad/muad-skill-sdk/muad_skill_http
-RUN pip3 install --no-cache-dir --break-system-packages --no-deps --no-build-isolation \
-      /opt/muad/muad-skill-sdk \
-    && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86" \
-    && rm -rf /opt/muad/muad-skill-sdk
+    -i https://pypi.tuna.tsinghua.edu.cn/simple -r /opt/muad/requirements.txt \
+    && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86"
 
 COPY --from=session-manager-builder /build/session-manager/dist /opt/muad/session-manager/dist
 COPY tools/session-manager/package.json tools/session-manager/openclaw-plugin.mjs \

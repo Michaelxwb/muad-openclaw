@@ -3,7 +3,9 @@
 # 与仓库根 Dockerfile 的区别：
 #   - 根 Dockerfile 供外网 GitHub Actions 使用，BASE_IMAGE 默认 muad-openclaw-base，npm/pip 走公网源
 #   - 本 Dockerfile 供内网千流 CI 使用，BASE_IMAGE 默认指向内网仓库，npm/pip 走内网镜像源
-# 两者结构一致，仅 ARG 默认值与依赖源不同；改动一处时请同步另一处。
+# 两版业务逻辑一致，差异在依赖获取方式：npm/pip 源不同，且内网版的 npm 产物
+# （session-manager/muad-progress dist、runtime-guard node_modules）由千流 Task0
+# 预构建后 COPY，不在 docker build 内执行 node。改动业务逻辑时请同步另一处。
 #
 # 千流 Task4 (docker:latest 镜像) 执行步骤：
 #   1. docker login docker.sangfor.com
@@ -14,7 +16,8 @@
 #
 # 构建上下文：仓库根（需包含 bin/、tools/、requirements.txt、
 #              console/backend/internal/crypto/binding_code_spec.json 等业务代码，
-#              以及 task4 脚本恢复的 tools/session-manager/dist/、tools/muad-progress/dist/）
+#              以及 task4 脚本恢复的 tools/session-manager/dist/、tools/muad-progress/dist/、
+#              tools/muad-runtime-guard/node_modules/）
 #
 # 前置条件（base 镜像人工中转）：
 #   ghcr.io/openclaw/openclaw:<OPENCLAW_VERSION> 需先人工中转到
@@ -27,16 +30,11 @@
 ARG BASE_IMAGE=docker.sangfor.com/mss-base/muad-openclaw-base
 ARG BASE_TAG=2026.7.1
 
-# ── runtime guard（锁定生产解析依赖；与根 Dockerfile 同步） ──
-# bash-parser 等生产依赖在构建期 npm ci 打进镜像，运行期不再触发 npm install（离线化）。
-# npm ci 只做包安装，不加载 OpenClaw worker，不受下方 cgroup pids 限制问题影响。
-FROM ${BASE_IMAGE}:${BASE_TAG} AS runtime-guard-deps
-
-USER root
-WORKDIR /build/runtime-guard
-COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
-
+# ── runtime guard（生产依赖由 Task0 预装，构建期不跑 npm） ──
+# 千流 docker build 容器受 cgroup pids 限制，node 启动 WorkerThreadsTaskRunner 会触发
+# `uv_thread_create` 断言失败（exit 134）。因此 runtime-guard 的 npm install 放在
+# Task0（mss-fe-node:20.9.0）执行，node_modules 随千流缓存由 task4 恢复到构建上下文，
+# 这里只做 COPY；运行期不再触发 npm install（离线化）。
 FROM ${BASE_IMAGE}:${BASE_TAG}
 
 LABEL io.muad.image.role="app"
@@ -54,19 +52,14 @@ COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
 # 走内网 pypi 镜像源（http，需 --trusted-host）。
 # --progress-bar off：禁用 rich 进度条，避免其在 docker build 容器（cgroup pids 限制）下
 # 启动刷新线程失败导致 `RuntimeError: can't start new thread`。千流 CI 多次复现。
+# Skill Python SDK（muad-skill-http）也在 requirements.txt 中，与根 Dockerfile 一致，
+# 按固定版本从镜像源安装，不再 COPY 仓库源码。
 COPY requirements.txt /opt/muad/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5 \
     --progress-bar off \
     -i http://mirrors.sangfor.org/pypi/simple --trusted-host mirrors.sangfor.org \
-    -r /opt/muad/requirements.txt
-
-# Skill Python SDK（与根 Dockerfile 同步；构建期安装到 site-packages；requests 来自 requirements.txt）。
-COPY tools/muad-skill-sdk/pyproject.toml /opt/muad/muad-skill-sdk/pyproject.toml
-COPY tools/muad-skill-sdk/muad_skill_http /opt/muad/muad-skill-sdk/muad_skill_http
-RUN pip3 install --no-cache-dir --break-system-packages --progress-bar off \
-      --no-deps --no-build-isolation /opt/muad/muad-skill-sdk \
-    && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86" \
-    && rm -rf /opt/muad/muad-skill-sdk
+    -r /opt/muad/requirements.txt \
+    && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86"
 
 # runtime CLI dist 由 Task0 预构建，task4 从千流缓存恢复。
 # 这里直接 COPY 已构建的 dist，不在镜像内跑 npm（避免 base 镜像里 node worker thread abort）
@@ -79,7 +72,7 @@ COPY tools/muad-progress/package.json /opt/muad/muad-progress/
 COPY tools/muad-runtime-guard/package.json tools/muad-runtime-guard/openclaw.plugin.json \
     /opt/muad/muad-runtime-guard/
 COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
-COPY --from=runtime-guard-deps /build/runtime-guard/node_modules /opt/muad/muad-runtime-guard/node_modules
+COPY tools/muad-runtime-guard/node_modules /opt/muad/muad-runtime-guard/node_modules
 COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
 COPY tools/shared /opt/muad/shared
 COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh

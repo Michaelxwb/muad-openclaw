@@ -63,26 +63,50 @@ function testSetup(t, includeProgress = true) {
   return { root, binDir, stubDir };
 }
 
-function runTemplate(template, setup, failPlatform, withEvents) {
+function runTemplate(template, setup, failPlatform, withEvents, extraEnv = {}) {
   const templateRoot = path.join(templatesRoot, template.dir);
   const eventsFile = path.join(setup.root, `${template.name}-${failPlatform ? "fail" : "ok"}.jsonl`);
   const outputDir = path.join(setup.root, `${template.name}-output`);
   const pythonPath = [setup.stubDir, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter);
   const env = {
     ...process.env,
+    HOME: setup.root,
+    USERPROFILE: setup.root,
     PATH: `${setup.binDir}${path.delimiter}${process.env.PATH ?? ""}`,
     PYTHONPATH: pythonPath,
     SKILL_OUTPUT_DIR: outputDir,
     PLATFORM_STUB_FAIL: failPlatform ? "1" : "0",
+    ...extraEnv,
   };
   if (withEvents) env.MUAD_PROGRESS_EVENTS_FILE = eventsFile;
   const result = spawnSync(template.command, [template.script], { cwd: templateRoot, env, encoding: "utf8" });
   return { ...result, eventsFile };
 }
 
+test("template falls back to ~/.muad-local/session-state.json without session-manager", (t) => {
+  const setup = testSetup(t);
+  rmSync(path.join(setup.binDir, "session-manager"));
+  const statePath = path.join(setup.root, ".muad-local", "session-state.json");
+  mkdirSync(path.dirname(statePath), { recursive: true });
+  writeFileSync(statePath, JSON.stringify({ version: 1, platforms: {} }));
+  for (const template of templates) {
+    const result = runTemplate(template, setup, false, false, {
+      MUAD_SESSION_KEY: "",
+      PLATFORM_STUB_STATE_FILE: statePath,
+    });
+    assert.equal(result.status, 0, `${template.name}: ${result.stderr}`);
+    assert.equal(JSON.parse(result.stdout).ok, true);
+  }
+});
+
 function createTestBin(root, includeProgress) {
   const binDir = path.join(root, "bin");
   mkdirSync(binDir, { recursive: true, mode: 0o700 });
+  const statePath = path.join(root, "session-state.json");
+  writeFileSync(statePath, JSON.stringify({ version: 1, platforms: {} }));
+  writeFileSync(path.join(binDir, "session-manager"),
+    `#!/usr/bin/env python3\nimport json\nprint(json.dumps({"sessionStateFile": ${JSON.stringify(statePath)}}))\n`,
+    { mode: 0o755 });
   if (includeProgress) {
     writeFileSync(path.join(binDir, "muad-progress"),
       `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(cliPath)} "$@"\n`, { mode: 0o755 });
@@ -104,6 +128,9 @@ class _Response:
 def platform_request(platform, method, path, **kwargs):
     if os.environ.get("PLATFORM_STUB_FAIL") == "1":
         raise PlatformSessionError("platform session unavailable")
+    expected = os.environ.get("PLATFORM_STUB_STATE_FILE")
+    if expected and kwargs.get("state_file") != expected:
+        raise RuntimeError("unexpected state_file: %r" % (kwargs.get("state_file"),))
     return _Response()
 `);
   return stubDir;

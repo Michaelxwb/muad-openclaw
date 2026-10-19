@@ -65,6 +65,16 @@ def test_review_fingerprint_is_stable_for_unchanged_target() -> None:
     assert first_fingerprint == second_fingerprint
 
 
+def test_platform_request_requires_state_file() -> None:
+    target = FIXTURES / "missing-state-file-skill"
+    result = run_check(target, "--format", "json")
+
+    assert result.returncode == 1
+    grouped = findings_by_rule(json.loads(result.stdout))
+    assert "SS-R005" in grouped
+    assert any("state_file" in finding["message"] for finding in grouped["SS-R005"])
+
+
 def test_violating_skill_reports_rules_with_file_line() -> None:
     target = FIXTURES / "violating-skill"
     result = run_check(target, "--format", "json")

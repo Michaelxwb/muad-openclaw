@@ -18,6 +18,7 @@
 - 可在 Skill 自己选择的关键节点调用 `muad-progress stage|done|error`；进度是 best-effort 文本，最终结果继续走 OpenClaw 原生最终回复。
 - 脚本使用 argv 参数，不拼接 shell 字符串。
 - 读文件（`SKILL.md`、config、模板）路径保持在 Skill 根目录内；写文件（报告、临时结果）写 `SKILL_OUTPUT_DIR`（guard 注入的 per-agent 目录），别写 Skill 根目录（只读）或 `/tmp`（不隔离不持久）。
+- 本地调试统一在独立 venv 里 `pip install "muad-skill-http==<requirements.txt 中的版本>"`，不要依赖 `PYTHONPATH` 或复制 SDK 源码；Skill 里也不要写 import fallback 或手工拼请求头。
 
 ## 最小目录
 
@@ -72,9 +73,7 @@ description: "MANDATORY before calling web_search, web_fetch, browser, or opencl
 
 上传时 Console 会校验非空平台依赖均已存在。无平台依赖的 Skill 可直接作为通用 Skill 使用；声明平台依赖的 Skill 通过 `session-manager get-state --skill-name <skill>` 解析，一次返回该 Skill 声明的全部平台凭证；任一平台未配置时调用失败（不做部分降级）。
 
-脚本类 Skill 通过 `muad_skill_http.platform_request` 访问业务平台：SDK 内部读取登录态、
-拼装 Cookie/CSRF/Host/平台静态头，并为每个请求生成新的 `Traceid`。Skill 只传平台名与业务 path，
-不需要直接调用 `session-manager`，也不需要手工拼请求头。cookie 不进入模型上下文。
+脚本类 Skill 先通过 `session-manager get-state --skill-name <skill>` 获取登录态，再把返回的 `sessionStateFile` 传给 `muad_skill_http.platform_request`；SDK 只负责拼装 Cookie/CSRF/Host/平台静态头、发送请求并记录统计/trace。Skill 不需要手工拼请求头，cookie 不进入模型上下文。
 需要浏览器能力（`capabilities: ["browser"]`）的 Skill 仍走
 `session_get_state` 模型工具，因为只有插件工具能调用 `browser.request`。
 
@@ -89,7 +88,7 @@ description: "MANDATORY before calling web_search, web_fetch, browser, or opencl
 
 ### 脚本自助：平台名硬编码 + 失败 fail loud
 
-- 脚本里 `platform_request("<平台名>", ...)` 的平台名**硬编码**，与 `muad.skill.json` 的 `platforms` 一致（不要把 skill 名当平台名）。
+- 脚本里 `platform_request("<平台名>", ...)` 的平台名和 `session-manager get-state --skill-name <skill>` 的 skill 名都**硬编码**：平台名与 `muad.skill.json` 的 `platforms` 一致，skill 名与 `muad.skill.json` 的 `name` 一致（不要把两者混用）。
 - 脚本失败必须写 **stderr** 并 **exit 非 0**（fail loud）；错误写 stdout 会导致 exec 失败日志转发不到，排查链路断掉。
 
 ### 引导模型跑脚本，而非直接调工具

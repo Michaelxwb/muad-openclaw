@@ -1,16 +1,24 @@
 # 对接平台的请求头：统一使用 SDK
 
-自建 Skill 访问受保护业务平台时，**不得手工拼装请求头**。所有平台请求必须经 `muad_skill_http.platform_request`：
+自建 Skill 访问受保护业务平台时，**不得手工拼装请求头**。登录态用 `session-manager get-state` 获取，所有平台请求必须经 `muad_skill_http.platform_request` 并传入返回的 `sessionStateFile`：
 
 ```python
+import json
+import subprocess
+
 from muad_skill_http import platform_request
 
-response = platform_request("mssw", "GET", "/api/v1/targets")
+completed = subprocess.run(
+    ["session-manager", "get-state", "--skill-name", "my-skill"],
+    check=False, capture_output=True, text=True, timeout=30,
+)
+state_file = json.loads(completed.stdout)["sessionStateFile"]
+response = platform_request("mssw", "GET", "/api/v1/targets", state_file=state_file)
 ```
 
 ## SDK 负责什么
 
-`platform_request` 从 session-manager 的登录态与平台 request profile 中构造请求头，顺序固定：
+`platform_request` 从传入的状态文件中读取当前平台的 cookies 与 request profile，构造请求头，顺序固定：
 
 1. 浏览器默认头（Accept / Accept-Language / Content-Type / User-Agent / X-Requested-With / Referer）。
 2. 平台 `hostHeader`（nginx 按 Host 路由）。
@@ -41,6 +49,7 @@ response = platform_request(
     "mssp",
     "POST",
     "/api/v1/query",
+    state_file=state_file,
     json={"keyword": "demo"},
     extra_headers={"X-Biz-Tag": "weekly-report"},
 )

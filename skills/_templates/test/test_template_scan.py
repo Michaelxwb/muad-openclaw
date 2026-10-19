@@ -41,7 +41,9 @@ def test_python_template_uses_platform_request() -> None:
     )
 
     assert "platform_request" in script
-    assert "session-manager" not in script
+    assert "session-manager" in script
+    assert "state_file" in script
+    assert "session-state.json" in script
     assert "platform_request" in readme
 
 
