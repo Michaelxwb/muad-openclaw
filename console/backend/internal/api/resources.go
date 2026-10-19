@@ -34,6 +34,13 @@ type podResourceRequest struct {
 	MaxLongTaskConcurrency *int `json:"maxLongTaskConcurrency"`
 }
 
+// globalResourceRequest adds the global-only Skill request cap; Pod-level
+// settings deliberately do not accept it.
+type globalResourceRequest struct {
+	podResourceRequest
+	SkillRequestLimit *int `json:"skillRequestLimit"`
+}
+
 type resourceValues struct {
 	MemLimit               string `json:"memLimit"`
 	CPULimit               string `json:"cpuLimit"`
@@ -134,8 +141,22 @@ func validatePodResourceRequest(request podResourceRequest) error {
 	return validateConcurrency(request)
 }
 
+func validateSkillRequestLimit(value *int) error {
+	if value == nil {
+		return nil
+	}
+	if *value < 0 || *value > driver.MaxSkillRequestLimit {
+		return newInputValidationError(
+			errcode.InvalidResourceLimits,
+			"skillRequestLimit 必须为 0-1000000 之间的整数（0 = 不限制）",
+			"skillRequestLimit must be an integer between 0 and 1000000 (0 = unlimited)",
+		)
+	}
+	return nil
+}
+
 func (s *Server) handleGetResources(w http.ResponseWriter, r *http.Request) {
-	global, configured, err := s.readGlobalResources()
+	global, skillRequestLimit, configured, err := s.readGlobalResources()
 	if err != nil {
 		writeErr(w, r, errcode.InternalReadResourceConfig)
 		return
@@ -144,39 +165,50 @@ func (s *Server) handleGetResources(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"configured": configured, "memLimit": effective.MemLimit,
 		"cpuLimit": effective.CPULimit, "restartPolicy": effective.RestartPolicy,
-		"globalOverrides": toResourceValues(global),
-		"runtimeDefaults": toResourceValues(s.resourceFallback()),
-		"effective":       toResourceValues(effective),
+		"skillRequestLimit": skillRequestLimit,
+		"globalOverrides":   toResourceValues(global),
+		"runtimeDefaults":   toResourceValues(s.resourceFallback()),
+		"effective":         toResourceValues(effective),
 	})
 }
 
 func (s *Server) handleSetResources(w http.ResponseWriter, r *http.Request) {
-	current, _, err := s.readGlobalResources()
+	current, currentSkillRequestLimit, _, err := s.readGlobalResources()
 	if err != nil {
 		writeErr(w, r, errcode.InternalReadResourceConfig)
 		return
 	}
-	var request podResourceRequest
+	var request globalResourceRequest
 	if err := decodeJSONBody(w, r, &request); err != nil {
 		writeErr(w, r, errcode.InvalidResourceLimits)
 		return
 	}
 	request.MemLimit = normalizeMemLimitPtr(request.MemLimit)
-	if err := validatePodResourceRequest(request); err != nil {
+	if err := validatePodResourceRequest(request.podResourceRequest); err != nil {
 		writeInputValidationError(w, r, errcode.InvalidResourceLimits, err)
 		return
 	}
-	next := applyGlobalRequest(current, request)
+	if err := validateSkillRequestLimit(request.SkillRequestLimit); err != nil {
+		writeInputValidationError(w, r, errcode.InvalidResourceLimits, err)
+		return
+	}
+	next := applyGlobalRequest(current, request.podResourceRequest)
+	nextSkillRequestLimit := currentSkillRequestLimit
+	if request.SkillRequestLimit != nil {
+		nextSkillRequestLimit = *request.SkillRequestLimit
+	}
 	podIDs, err := s.store.SaveResourcesAndMarkPods(repo.ResourceConfig{
 		MemLimit: next.MemLimit, CPULimit: next.CPULimit, RestartPolicy: next.RestartPolicy,
 		MaxSkillConcurrency: next.MaxSkillConcurrency, MaxBrowserConcurrency: next.MaxBrowserConcurrency,
 		MaxLongTaskConcurrency: next.MaxLongTaskConcurrency,
+		SkillRequestLimit:      nextSkillRequestLimit,
 	},
 		current.MemLimit != next.MemLimit, current.CPULimit != next.CPULimit,
 		current.RestartPolicy != next.RestartPolicy,
 		current.MaxSkillConcurrency != next.MaxSkillConcurrency,
 		current.MaxBrowserConcurrency != next.MaxBrowserConcurrency,
 		current.MaxLongTaskConcurrency != next.MaxLongTaskConcurrency,
+		currentSkillRequestLimit != nextSkillRequestLimit,
 	)
 	if err != nil {
 		writeErr(w, r, errcode.InternalSaveResourceConfig)
@@ -251,7 +283,7 @@ func (s *Server) handleSetPodResources(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) podResourceView(pod repo.Pod) (map[string]any, error) {
-	global, _, err := s.readGlobalResources()
+	global, _, _, err := s.readGlobalResources()
 	if err != nil {
 		return nil, err
 	}
@@ -271,19 +303,19 @@ func (s *Server) podResourceView(pod repo.Pod) (map[string]any, error) {
 	}, nil
 }
 
-func (s *Server) readGlobalResources() (driver.ResourceSpec, bool, error) {
+func (s *Server) readGlobalResources() (driver.ResourceSpec, int, bool, error) {
 	global, err := s.store.GetResourceGlobal()
 	if errors.Is(err, repo.ErrNotFound) {
-		return driver.ResourceSpec{}, false, nil
+		return driver.ResourceSpec{}, driver.DefaultSkillRequestLimit, false, nil
 	}
 	if err != nil {
-		return driver.ResourceSpec{}, false, err
+		return driver.ResourceSpec{}, 0, false, err
 	}
 	return driver.ResourceSpec{
 		MemLimit: global.MemLimit, CPULimit: global.CPULimit, RestartPolicy: global.RestartPolicy,
 		MaxSkillConcurrency: global.MaxSkillConcurrency, MaxBrowserConcurrency: global.MaxBrowserConcurrency,
 		MaxLongTaskConcurrency: global.MaxLongTaskConcurrency,
-	}, true, nil
+	}, global.SkillRequestLimit, true, nil
 }
 
 func (s *Server) resourceFallback() driver.ResourceSpec {

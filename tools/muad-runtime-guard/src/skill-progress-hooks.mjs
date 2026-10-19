@@ -92,7 +92,7 @@ export function createSkillProgressHooks(options = {}) {
   };
 
   const resolveExecEnv = async (event, ctx) => {
-    if (text(event?.toolName) !== "exec" || closed) return undefined;
+    if (!["exec", "bash"].includes(text(event?.toolName)) || closed) return undefined;
     pruneExpired(active, pending, turnSenders, now(), manager, log);
     const record = resolveForegroundRecord(active, {
       runId: event?.runId ?? ctx?.runId,
@@ -129,6 +129,18 @@ export function createSkillProgressHooks(options = {}) {
   };
 
   const sweep = () => pruneExpired(active, pending, turnSenders, now(), manager, log);
+  // Trusted sender cached from before_agent_run. Multi-user gateways use the
+  // agent id as the session-key tail, so other hooks must not fall back to it.
+  const trustedSender = (agentId, sessionKey) => {
+    const key = JSON.stringify([text(agentId), text(sessionKey)]);
+    const record = turnSenders.get(key);
+    if (!record) return "";
+    if (record.expiresAt <= now()) {
+      turnSenders.delete(key);
+      return "";
+    }
+    return record.senderId;
+  };
   const close = () => {
     if (closed) return;
     closed = true;
@@ -144,7 +156,7 @@ export function createSkillProgressHooks(options = {}) {
     timer = (options.setIntervalFn ?? setInterval)(sweep, intervalMs);
     timer?.unref?.();
   }
-  return { activate, beforeAgentRun, resolveExecEnv, agentEnd, sweep, close };
+  return { activate, beforeAgentRun, resolveExecEnv, agentEnd, sweep, close, trustedSender };
 
   function rememberPending(input, at, ttl) {
     const agentId = text(input.agentId);

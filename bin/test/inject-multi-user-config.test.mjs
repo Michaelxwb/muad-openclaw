@@ -457,3 +457,19 @@ test("reasoning coexists with compat.supportsTools on the same model row", () =>
   assert.equal(provider.models[0].reasoning, true);
   assert.equal(provider.models[0].compat.supportsTools, false);
 });
+
+test("renderer writes runtime.guard.skillRequestLimit into guard config", () => {
+  const defaultRuntime = parseRuntimeConfig(fixtureText);
+  assert.equal(
+    renderOpenClawConfig(defaultRuntime).plugins.entries["muad-runtime-guard"].config.skillRequestLimit,
+    1000,
+    "old console DTO without skillRequestLimit must render the documented default",
+  );
+
+  const runtime = parseRuntimeConfig(fixtureText);
+  runtime.guard.skillRequestLimit = 50;
+  assert.equal(
+    renderOpenClawConfig(runtime).plugins.entries["muad-runtime-guard"].config.skillRequestLimit,
+    50,
+  );
+});

@@ -20,6 +20,9 @@ test("SkillProgressHooks E-04 activates only an authorized explicit direct Skill
   const env = await progress.resolveExecEnv({ toolName: "exec", runId: "run-1" }, ctx);
   assert.match(env.MUAD_PROGRESS_EVENTS_FILE, /events\.jsonl$/u);
   assert.equal(env.MUAD_SKILL_NAME, "xdr-query");
+  const bashEnv = await progress.resolveExecEnv({ toolName: "bash", runId: "run-1" }, ctx);
+  assert.match(bashEnv.MUAD_PROGRESS_EVENTS_FILE, /events\.jsonl$/u);
+  assert.equal(bashEnv.MUAD_SKILL_NAME, "xdr-query");
   assert.equal((await progress.resolveExecEnv(
     { toolName: "exec", runId: "run-2" }, { ...ctx, runId: "run-2" },
   )), undefined);
@@ -204,6 +207,67 @@ test("SkillProgressHooks expires abandoned foreground runs through the shared TT
   assert.deepEqual(finished, ["opaque-execution"]);
   assert.equal(await progress.resolveExecEnv({ toolName: "exec", runId: "run-1" }, context()), undefined);
   progress.close();
+});
+
+test("SkillProgressHooks injects env for the first exec when the prompt names the Skill path", async (t) => {
+  const publicRoot = mkdtempSync(path.join(tmpdir(), "muad-progress-prompt-skill-"));
+  const skillDir = path.join(publicRoot, "mssw-platform-smoke");
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(path.join(skillDir, "SKILL.md"), "# MSSW\n");
+  t.after(() => rmSync(publicRoot, { recursive: true, force: true }));
+  const fixture = createFixture();
+  t.after(fixture.cleanup);
+  const progress = createSkillProgressHooks({ manager: fixture.manager, autoStart: false });
+  t.after(() => progress.close());
+  const audit = createSkillAuditHooks({
+    config: auditConfig([
+      { agentId: "alice", name: "openclaw-skills", rootPath: publicRoot, source: "public", dir: true },
+    ]),
+    client: null,
+    onSkillActivated: progress.activate,
+  });
+  const ctx = context({ runId: "run-first" });
+
+  // 复现 01:18 的失败场景：用户直接在 prompt 里给出 Skill 路径，模型首条 exec
+  // 不再 read SKILL.md。before_agent_run 必须先把执行上下文登记好。
+  await audit.beforeAgentRun({
+    runId: "run-first",
+    prompt: `用 mssw-platform-smoke 在 skill 目录下执行：\ncd ${skillDir} && python3 -c "print(1)"`,
+  }, ctx);
+
+  const env = await progress.resolveExecEnv({ toolName: "exec", runId: "run-first" }, ctx);
+  assert.equal(env.MUAD_SKILL_NAME, "mssw-platform-smoke");
+  assert.match(env.MUAD_PROGRESS_EVENTS_FILE, /events\.jsonl$/u);
+});
+
+test("SkillProgressHooks does not guess a Skill from ambiguous or unrelated prompts", async (t) => {
+  const publicRoot = mkdtempSync(path.join(tmpdir(), "muad-progress-prompt-ambiguous-"));
+  for (const name of ["skill-a", "skill-b"]) {
+    mkdirSync(path.join(publicRoot, name), { recursive: true });
+    writeFileSync(path.join(publicRoot, name, "SKILL.md"), `# ${name}\n`);
+  }
+  t.after(() => rmSync(publicRoot, { recursive: true, force: true }));
+  const fixture = createFixture();
+  t.after(fixture.cleanup);
+  const progress = createSkillProgressHooks({ manager: fixture.manager, autoStart: false });
+  t.after(() => progress.close());
+  const audit = createSkillAuditHooks({
+    config: auditConfig([
+      { agentId: "alice", name: "openclaw-skills", rootPath: publicRoot, source: "public", dir: true },
+    ]),
+    client: null,
+    onSkillActivated: progress.activate,
+  });
+  const ctx = context({ runId: "run-ambiguous" });
+
+  await audit.beforeAgentRun({
+    runId: "run-ambiguous",
+    prompt: `执行 ${path.join(publicRoot, "skill-a")} 和 ${path.join(publicRoot, "skill-b")}`,
+  }, ctx);
+  assert.equal(await progress.resolveExecEnv({ toolName: "exec", runId: "run-ambiguous" }, ctx), undefined);
+
+  await audit.beforeAgentRun({ runId: "run-plain", prompt: "看一下系统状态" }, ctx);
+  assert.equal(await progress.resolveExecEnv({ toolName: "exec", runId: "run-plain" }, ctx), undefined);
 });
 
 function createFixture() {

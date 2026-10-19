@@ -35,7 +35,7 @@ description: "MANDATORY before calling <工具/场景>. Trigger on: <触发场�
 - **祈使句**：`Extract text with pdfplumber:` 而不是 `This skill extracts text with pdfplumber.`
 - **渐进式披露**：核心流程放 SKILL.md，大段规范/示例放 `references/`，在 SKILL.md 里链接过去。
 - **控制在 500 行以内**：接近就拆分到 `references/`。
-- **引导模型跑脚本，而非直接调工具**：顶部用「快速调用速查」直接列出脚本命令（如 `node scripts/run.mjs`），不要让模型直接调 `session_get_state` 工具。
+- **引导模型跑脚本，而非直接调工具**：顶部用「快速调用速查」直接列出脚本命令（如 `python3 scripts/run.py`），不要让模型直接调 `session_get_state` 工具。
 
 ### 渐进式披露三种模式
 

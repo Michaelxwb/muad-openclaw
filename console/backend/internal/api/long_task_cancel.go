@@ -46,8 +46,8 @@ func (s *Server) handleCancelLongTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 能力未知/过期/不支持一律不可取消（不推断 canCancel=true），也不执行危险兜底。
-	capability, known := s.longTaskCapabilities.Lookup(task.PodID)
-	if !known || !capability.Available {
+	capability, known := s.cancelCapabilities.Lookup(task.PodID)
+	if !known || !capability.LongTask.Available {
 		s.auditLongTaskCancel(r, task, "rejected", "cancel_unavailable")
 		writeErr(w, r, errcode.LongTaskCancelUnsupported)
 		return

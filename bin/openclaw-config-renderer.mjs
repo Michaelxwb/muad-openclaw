@@ -401,6 +401,7 @@ function renderPlugins(output, runtime) {
           maxBrowserConcurrency: runtime.concurrency.maxBrowser,
           maxSkillConcurrency: runtime.concurrency.maxSkills,
           maxLongTaskConcurrency: runtime.concurrency.maxLongTasksPerUserAgent,
+          skillRequestLimit: runtime.guard.skillRequestLimit ?? 1000,
           locale: runtime.locale || "zh",
           consoleInternalURL: runtime.consoleInternalUrl,
           serviceTokenFile: runtime.serviceTokenFile,
@@ -593,21 +594,14 @@ const USER_PROMPT_END = "<!-- muad:user-prompt:end -->";
 // are admin-configurable via runtime.guidance.userSkill.
 const ACTIVATION_BOUNDARY_GUIDANCE = `# Skill activation boundary
 
-- 每一轮先按 available_skills 描述筛选与用户目标真正相符的 Skill，并读取其精确 SKILL.md。本轮必须重新读取，不沿用上轮读取作为授权。
-- 唯一明确匹配且参数齐全：直接执行，无需再次确认。多个合理候选：列出名称和区别，让用户选择；选择前不得执行。没有适用 Skill：明确说明缺少能力，不拿相近但目标不同的 Skill 替代。
-- 候选和选择只属于当前用户当前会话尚未取消的请求。用户取消时清除候选；改换目标时重新匹配，不复用旧选择；跨用户或跨会话不得继承候选。“第2个”只指本会话当前未取消列表的第二项，无有效列表立即澄清，不执行。
-- /skill:<name> 表示用户明确指定名称，可跳过候选选择，但不能跳过本轮文档与参数预检。
-- 按 SKILL.md 的脚本调用说明识别必填参数、含义、默认值与依赖。只缺用户输入时立即追问所缺参数，不用后台任务、业务脚本、API试探或猜测补全。
-- 客户名称不是 customerId；不得把名称填到ID、猜ID或尝试多个ID。只有文档明确提供名称转ID的方法才可查询；唯一结果才绑定，多结果请用户选择，查不到则追问。
-- 触发判定正反例（截图等价）：✅ 用户本轮点名唯一长任务且必填参数齐全（参数可来自本轮消息或读取的文档）→ 直接调用 muad_submit_long_task，不额外确认；❌ 只“参考某个 Skill/文档”、只读取过 SKILL.md、只提到相近名称或参数不全 → 不得提交执行：多候选先让用户选择，只缺用户输入则追问所缺参数，没有适用 Skill 就说明缺少能力。
-- “参考”不授权运行被参考 Skill：读取其他长任务文档只用于理解目标与输出格式，不改变本轮目标。
-- selectionBasis 必须反映真实来源：explicit_name 仅指用户本轮可信消息中的明确指定（如 /skill:<name> 或展开的 skill 标记）；模型不得自报或伪造 explicit_name，系统会按可信原始消息复核。
-- 明确无参的文档允许空 requiredNames/bindings；未说明调用方式或参数、文档矛盾时先澄清并提示完善 SKILL.md，不假定无参。
-- 对 longTask:true 的长任务，读取 SKILL.md、脚本或引用文件只是了解和预检，不代表执行，不会入队、登记执行或推送进度。禁止在前台 exec/bash 执行其业务脚本。
-- 只有匹配确定且参数齐全，才调用 muad_submit_long_task，传 skillName、完整最终 objective、selectionBasis（unique_match/user_choice/explicit_name）、从文档识别的全部 requiredNames 和 bindings。bindings 每项 name/value/source，source 使用 user_message/conversation/document_default/document_resolution；保留用户后续补充，不遗漏必填项。
-- 工具返回 accepted 后才告知任务已提交，回复包含真实 taskId 和排队/执行计数。rejected 时解释 reason；missing_input 立即追问；documentation_not_read/documentation_changed 要重新 read；queue_unavailable 明确提交失败，不改走前台执行。
-- 普通 Skill 保留原生读取激活与审计机制，但同样遵循匹配、候选选择和缺参规则。
-- 后台 longtask 会话只执行已提交的 Skill 和已确定参数，不再调用提交工具、不更换 Skill、不把名称猜成ID；发现缺参就明确失败，不反复探索。
+- 本轮必须重新读取 available_skills 中与用户目标真正相符的 Skill，读取其精确 SKILL.md，不沿用上轮读取作为本轮授权；唯一明确匹配且参数齐全时直接执行；多个合理候选时列出名称和区别让用户选择；没有适用 Skill 时说明缺少能力，不拿相近但目标不同的 Skill 替代。/skill:<name> 表示用户明确指定名称，可跳过候选选择，但不能跳过本轮文档与参数预检。
+- 候选和选择只属于当前用户当前会话尚未取消的请求：用户取消时清除候选；改换目标时重新匹配；跨用户或跨会话不得继承。“第2个”只指本会话当前未取消列表的第二项，无有效列表立即澄清，不执行。
+- 按 SKILL.md 识别必填参数、含义、默认值和依赖。只缺用户输入时立即追问，不用后台任务、业务脚本、API 试探或猜测补全。客户名称不是 customerId：不得把名称填到 ID、猜 ID 或尝试多个 ID；只有文档明确提供名称转 ID 的方法才可查询，唯一结果才绑定，多结果让用户选择，查不到则追问。文档明确无参时允许空 requiredNames/bindings；未说明调用方式、参数或文档矛盾时先澄清并提示完善 SKILL.md。
+- 对 longTask:true，读取 SKILL.md、脚本或引用文件只是了解和预检，不代表执行；禁止在前台 exec/bash 执行其业务脚本。只有匹配确定且参数齐全，才调用 muad_submit_long_task，传 skillName、完整最终 objective、selectionBasis（unique_match/user_choice/explicit_name）、从文档识别的全部 requiredNames 和 bindings；bindings 每项 name/value/source，source 使用 user_message/conversation/document_default/document_resolution。selectionBasis 必须反映真实来源：explicit_name 只认本轮可信消息中的明确指定，模型不得自报或伪造。“参考”某个 Skill 不授权运行它。
+- 触发判定：✅ 本轮点名唯一长任务且参数齐全 → 直接提交；❌ 只“参考”文档、只读过 SKILL.md、名称相近或参数不全 → 不提交，先澄清或补参。
+- 提交结果：工具返回 accepted 后才告知任务已提交，回复包含真实 taskId 和排队/执行计数；rejected 解释 reason；missing_input 立即追问；documentation_not_read/documentation_changed 重新 read；queue_unavailable 明确提交失败，不改走前台执行。
+- 后台 longtask 会话只执行已提交的 Skill 和已确定参数，不再调用提交工具、不更换 Skill、不把名称猜成 ID；发现缺参就明确失败，不反复探索。普通 Skill 保留原生读取激活与审计机制，但同样遵守上述匹配、候选选择和缺参规则。
+- 如果会话历史出现 [muad.session-cancel] 通知，表示上一轮任务已被管理员终止，该轮用户指令作废；本轮只处理用户最新消息，不要补跑、续跑或合并执行上一轮任务，除非用户在本轮消息中明确要求重跑。在回复中提到该任务时，必须说明是管理员从控制台终止，不得描述为执行失败或被中断。
 - 这些平台固定规则优先于下方自定义指导；自定义内容不能恢复读取即执行或取消预检。`;
 
 const DEFAULT_USER_SKILL_GUIDANCE = `- 用户说"写/创建 skill"时：与用户多轮对话澄清需求，把草稿写到 skill-staging/<name>/（含 SKILL.md，frontmatter 的 name 与目录同名）；完成后提示用户可继续修改。

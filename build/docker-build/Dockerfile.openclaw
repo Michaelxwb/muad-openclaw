@@ -12,7 +12,7 @@
 #      （Task0 会先用 mss-fe-node:20.9.0 构建 session-manager 与 muad-progress dist，
 #       task4 恢复缓存后再调本 Dockerfile 构建 app 镜像）
 #
-# 构建上下文：仓库根（需包含 bin/、tools/、skills/、requirements.txt、
+# 构建上下文：仓库根（需包含 bin/、tools/、requirements.txt、
 #              console/backend/internal/crypto/binding_code_spec.json 等业务代码，
 #              以及 task4 脚本恢复的 tools/session-manager/dist/、tools/muad-progress/dist/）
 #
@@ -60,6 +60,14 @@ RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5
     -i http://mirrors.sangfor.org/pypi/simple --trusted-host mirrors.sangfor.org \
     -r /opt/muad/requirements.txt
 
+# Skill Python SDK（与根 Dockerfile 同步；构建期安装到 site-packages；requests 来自 requirements.txt）。
+COPY tools/muad-skill-sdk/pyproject.toml /opt/muad/muad-skill-sdk/pyproject.toml
+COPY tools/muad-skill-sdk/muad_skill_http /opt/muad/muad-skill-sdk/muad_skill_http
+RUN pip3 install --no-cache-dir --break-system-packages --progress-bar off \
+      --no-deps --no-build-isolation /opt/muad/muad-skill-sdk \
+    && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86" \
+    && rm -rf /opt/muad/muad-skill-sdk
+
 # runtime CLI dist 由 Task0 预构建，task4 从千流缓存恢复。
 # 这里直接 COPY 已构建的 dist，不在镜像内跑 npm（避免 base 镜像里 node worker thread abort）
 COPY tools/session-manager/dist /opt/muad/session-manager/dist
@@ -74,7 +82,6 @@ COPY tools/muad-runtime-guard/src /opt/muad/muad-runtime-guard/src
 COPY --from=runtime-guard-deps /build/runtime-guard/node_modules /opt/muad/muad-runtime-guard/node_modules
 COPY console/backend/internal/crypto/binding_code_spec.json /opt/muad/muad-runtime-guard/src/binding_code_spec.json
 COPY tools/shared /opt/muad/shared
-COPY skills /opt/openclaw-skills
 COPY entrypoint.sh /usr/local/bin/muad-entrypoint.sh
 
 # 不在 build 期跑 `node /opt/muad/runtime-image-self-check.mjs --image-only`：
@@ -91,7 +98,7 @@ RUN set -eux; \
     chmod -R a+rX /opt/muad/session-manager /opt/muad/muad-progress \
       /opt/muad/muad-runtime-guard /opt/muad/shared; \
     chown -R node:node /opt/muad/session-manager /opt/muad/muad-progress /opt/muad/muad-runtime-guard \
-      /opt/muad/shared /opt/openclaw-skills
+      /opt/muad/shared
 
 USER node
 WORKDIR /app

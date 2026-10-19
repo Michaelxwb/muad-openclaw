@@ -221,13 +221,15 @@ func (s *Store) MarkAllPodsConfigPending() ([]string, error) {
 
 // MarkPodsInheritingResourcesPending updates all Pods affected by global changes.
 func (s *Store) MarkPodsInheritingResourcesPending(
-	memChanged, cpuChanged, restartChanged, skillChanged, browserChanged, longTaskChanged bool,
+	memChanged, cpuChanged, restartChanged, skillChanged, browserChanged, longTaskChanged,
+	requestLimitChanged bool,
 ) ([]string, error) {
-	if !memChanged && !cpuChanged && !restartChanged && !skillChanged && !browserChanged && !longTaskChanged {
+	if !memChanged && !cpuChanged && !restartChanged && !skillChanged && !browserChanged &&
+		!longTaskChanged && !requestLimitChanged {
 		return []string{}, nil
 	}
 	return markInheritingPodsPendingTx(s.db, memChanged, cpuChanged, restartChanged,
-		skillChanged, browserChanged, longTaskChanged)
+		skillChanged, browserChanged, longTaskChanged, requestLimitChanged)
 }
 
 // podQueryer abstracts *sql.DB and *sql.Tx for the shared Pod-pending helpers.
@@ -237,8 +239,11 @@ type podQueryer interface {
 
 func markInheritingPodsPendingTx(
 	db podQueryer,
-	memChanged, cpuChanged, restartChanged, skillChanged, browserChanged, longTaskChanged bool,
+	memChanged, cpuChanged, restartChanged, skillChanged, browserChanged, longTaskChanged,
+	requestLimitChanged bool,
 ) ([]string, error) {
+	// skillRequestLimit is global-only (no Pod override), so a change applies to
+	// every Pod; the other columns only bump Pods that inherit the global value.
 	rows, err := db.Query(`UPDATE pods SET config_generation = config_generation + 1,
 		last_apply_status = 'pending', last_apply_error = '', updated_at = ?
 		WHERE (? AND mem_limit = '')
@@ -247,8 +252,9 @@ func markInheritingPodsPendingTx(
 			OR (? AND max_skill_concurrency = 0)
 			OR (? AND max_browser_concurrency = 0)
 			OR (? AND max_long_task_concurrency = 0)
+			OR ?
 		RETURNING pod_id`, formatTime(time.Now().UTC()), memChanged, cpuChanged, restartChanged,
-		skillChanged, browserChanged, longTaskChanged)
+		skillChanged, browserChanged, longTaskChanged, requestLimitChanged)
 	if err != nil {
 		return nil, fmt.Errorf("mark inheriting Pods pending: %w", err)
 	}

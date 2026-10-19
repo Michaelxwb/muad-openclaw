@@ -22,6 +22,16 @@ import {
   newWorkerInstanceId,
 } from "./long-task-cancel-rpc.mjs";
 import { createLongTaskRunController } from "./long-task-run-controller.mjs";
+import {
+  SESSION_CANCEL_CAPABILITY_VERSION,
+  SESSION_CANCEL_LOG,
+  SESSION_CANCEL_METHOD,
+  SESSION_CANCEL_SCOPE,
+  SESSION_PREVIEW_METHOD,
+  createSessionCancelHandler,
+  createSessionPreviewHandler,
+  installSessionCancelCapability,
+} from "./session-cancel-rpc.mjs";
 import { LongTaskStateClient, LongTaskStateClientError } from "./long-task-state-client.mjs";
 import { createMainBindingReply } from "./main-binding-reply.mjs";
 import { createModelConfigDispatch } from "./model-config-reply.mjs";
@@ -31,6 +41,9 @@ import { SkillAuditClient, SkillAuditClientError } from "./skill-audit-client.mj
 import { createSkillLeaseHooks } from "./skill-hooks.mjs";
 import { createSkillOutputHooks } from "./skill-output-hooks.mjs";
 import { createSkillProgressHooks } from "./skill-progress-hooks.mjs";
+import { createSkillTraceHooks, installSkillTraceCleanup } from "./skill-trace.mjs";
+import { SkillTraceClient, SkillTraceClientError } from "./skill-trace-client.mjs";
+import { installSkillTraceExecutions } from "./skill-trace-executions.mjs";
 import { SharedSkillLeaseManager } from "./skill-lease.mjs";
 import { SkillProgressManager } from "./skill-progress-manager.mjs";
 import {
@@ -55,6 +68,15 @@ const plugin = {
       manager: skillProgressManager,
       log: (message) => api.logger?.warn?.(message),
     });
+    const skillTraceExecutions = installSkillTraceExecutions(globalThis);
+    const skillTraceHooks = createSkillTraceHooks({
+      getConfig: () => latestGuardConfig(config),
+      executions: skillTraceExecutions,
+      client: createSkillTraceClient(config),
+      trustedSender: skillProgressHooks.trustedSender,
+      log: (message) => api.logger?.warn?.(message),
+    });
+    installSkillTraceCleanup(globalThis, { log: (message) => api.logger?.warn?.(message) });
     const longTaskManager = installLongTaskManager(
       config.maxLongTaskConcurrency,
       globalThis,
@@ -71,6 +93,33 @@ const plugin = {
       capability: cancelCapability,
       log: (message) => api.logger?.warn?.(message),
     }), { scope: LONG_TASK_CANCEL_SCOPE });
+    // 会话终止 RPC：同样只走 operator.write 控制面；能力以原生 abort/drain 是否
+    // 加载成功为准，绝不注册为模型工具。
+    const sessionCancelCapability = installSessionCancelCapability(globalThis, {
+      available: false, version: 0, reason: "native_unavailable",
+    });
+    const sessionCancelRuntime = { native: null };
+    const sessionCancelLog = (message) => api.logger?.warn?.(message);
+    void wireSessionCancelRuntime({
+      api, capability: sessionCancelCapability, runtime: sessionCancelRuntime,
+    });
+    const sessionCancelOptions = {
+      getConfig: () => latestGuardConfig(config),
+      capability: sessionCancelCapability,
+      runtime: sessionCancelRuntime,
+      progress: skillProgressManager,
+      log: sessionCancelLog,
+    };
+    api.registerGatewayMethod(
+      SESSION_PREVIEW_METHOD,
+      createSessionPreviewHandler(sessionCancelOptions),
+      { scope: SESSION_CANCEL_SCOPE },
+    );
+    api.registerGatewayMethod(
+      SESSION_CANCEL_METHOD,
+      createSessionCancelHandler(sessionCancelOptions),
+      { scope: SESSION_CANCEL_SCOPE },
+    );
     installLongTaskStatePush(longTaskManager, config, api);
     registerMainBindingReply(api, config);
     registerModelConfigDispatch(api, config);
@@ -80,8 +129,9 @@ const plugin = {
     const longTaskHooks = registerLongTaskHooks(api, () => latestGuardConfig(config), longTaskManager);
     registerSkillOutputHooks(api, longTaskManager, skillProgressManager);
     registerSkillProgressHooks(api, skillProgressHooks);
+    registerSkillTraceHooks(api, skillTraceHooks);
     registerCrossUserGuard(api, config);
-    registerSkillAuditHooks(api, config, createSkillAuditClient(config), skillProgressHooks.activate, longTaskManager);
+    registerSkillAuditHooks(api, config, createSkillAuditClient(config), skillProgressHooks.activate, longTaskManager, skillTraceExecutions);
     api.on("after_tool_call", longTaskHooks.afterToolCall, { priority: 900, timeoutMs: 1_000 });
     registerExecFailureLog(api);
     registerReloadPolicy(api);
@@ -240,6 +290,11 @@ function registerSkillProgressHooks(api, hooks) {
   api.on("agent_end", hooks.agentEnd, { priority: 850, timeoutMs: 5_000 });
 }
 
+function registerSkillTraceHooks(api, hooks) {
+  api.on("resolve_exec_env", hooks.resolveExecEnv, { priority: -780, timeoutMs: 1_000 });
+  api.on("after_tool_call", hooks.afterToolCall, { priority: 950, timeoutMs: 1_000 });
+}
+
 function registerCrossUserGuard(api, config) {
   const hooks = createCrossUserGuard({
     config,
@@ -249,18 +304,20 @@ function registerCrossUserGuard(api, config) {
   api.on("reply_payload_sending", hooks.replyPayloadSending, { priority: -850, timeoutMs: 1_000 });
 }
 
-function registerSkillAuditHooks(api, config, client, onSkillActivated, manager) {
+function registerSkillAuditHooks(api, config, client, onSkillActivated, manager, executions) {
   const hooks = createSkillAuditHooks({
     config,
     getConfig: () => latestGuardConfig(config),
     manager,
     client,
+    executions,
     onSkillActivated,
     log: (message) => api.logger?.warn?.(`[muad-runtime-guard]${message}`),
   });
   api.on("before_dispatch", hooks.beforeDispatch, { priority: -100, timeoutMs: 1_000 });
   api.on("before_agent_run", hooks.beforeAgentRun, { priority: -100, timeoutMs: 1_000 });
   api.on("before_tool_call", hooks.beforeToolCall, { priority: -100, timeoutMs: 1_000 });
+  api.on("agent_end", hooks.agentEnd, { priority: 900, timeoutMs: 1_000 });
 }
 
 function resolveWorkspace(api, agentId) {
@@ -306,6 +363,21 @@ async function wireLongTaskCancelRuntime({ api, manager, capability }) {
   });
   manager.attachRunController?.(controller);
   Object.assign(capability, { available: true, version: LONG_TASK_CANCEL_CAPABILITY_VERSION, reason: "" });
+}
+
+// 会话终止链装配：原生 abort/drain 加载成功后注入运行时并上报能力（version=1）；
+// 失败时能力明确不可用并记录稳定 reason，不危险兜底。
+async function wireSessionCancelRuntime({ api, capability, runtime }) {
+  const loaded = await loadNativeCancelRuntime();
+  if (!loaded.available) {
+    Object.assign(capability, { available: false, version: 0, reason: loaded.reason });
+    api.logger?.warn?.(`${SESSION_CANCEL_LOG} native runtime unavailable reason=${loaded.reason}`);
+    return;
+  }
+  runtime.native = loaded.native;
+  Object.assign(capability, {
+    available: true, version: SESSION_CANCEL_CAPABILITY_VERSION, reason: "",
+  });
 }
 
 export function installLongTaskManager(
@@ -422,6 +494,16 @@ function createSkillAuditClient(config) {
     return { report: async () => { throw new SkillAuditClientError("service_unavailable", true); } };
   }
   return new SkillAuditClient({
+    baseURL: config.consoleInternalURL,
+    tokenFile: config.serviceTokenFile,
+  });
+}
+
+function createSkillTraceClient(config) {
+  if (!config.valid) {
+    return { report: async () => { throw new SkillTraceClientError("service_unavailable", true); } };
+  }
+  return new SkillTraceClient({
     baseURL: config.consoleInternalURL,
     tokenFile: config.serviceTokenFile,
   });

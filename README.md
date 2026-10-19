@@ -24,7 +24,7 @@ Worker 镜像包含：
 - Mattermost 插件 `@openclaw/mattermost`。
 - `muad-runtime-guard` 和 `session-manager`。
 - 多用户配置渲染、Private Skill installer 和配置事务工具。
-- `/opt/openclaw-skills` 下的内置 Skill 种子。
+- `/opt/openclaw-skills` 由控制面 public Skill 存储挂载提供；镜像不再内置 Skill，可用 Skill 由 public + private 组成（测试与业务 Skill 均经 Console 上传）。
 
 通道凭证、LLM API Key、平台 API Key 和 Pod service token 均在运行时注入，不进入镜像。
 

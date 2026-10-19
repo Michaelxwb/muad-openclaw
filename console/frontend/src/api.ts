@@ -36,6 +36,9 @@ import type {
   LongTaskListResult,
   LongTaskCancelResult,
   LongTaskQuery,
+  NotifySettings,
+  NotifySettingsInput,
+  NotifyTestResult,
   PageResult,
   PatchHumanUserInput,
   PatchPlatformInput,
@@ -66,6 +69,12 @@ import type {
   SkillAssetUpdateInput,
   SkillExecution,
   SkillExecutionQuery,
+  SkillExecutionTrace,
+  SkillHealthQuery,
+  SkillHealthResult,
+  SessionCancelExpected,
+  SessionCancelPreview,
+  SessionCancelResultData,
   SkillPolicy,
   SkillPolicyInput,
   SkillReloadResult,
@@ -281,6 +290,18 @@ export const api = {
       "DELETE",
       `${humanUserPath(humanUserId)}/identities/${segment(identityId)}`,
     ),
+  previewSessionCancel: (humanUserId: string, identityId: string) =>
+    request<SessionCancelPreview>(
+      "POST",
+      `${humanUserPath(humanUserId)}/identities/${segment(identityId)}/session/preview`,
+      {},
+    ),
+  cancelSession: (humanUserId: string, identityId: string, expected: SessionCancelExpected[]) =>
+    request<SessionCancelResultData>(
+      "POST",
+      `${humanUserPath(humanUserId)}/identities/${segment(identityId)}/session/cancel`,
+      { expected },
+    ),
 
   createBindingCode: (humanUserId: string, input: ActivationInput) =>
     request<BindingCodeCreateResult>("POST", `${humanUserPath(humanUserId)}/binding-codes`, input),
@@ -446,6 +467,18 @@ export const api = {
         startedTo: query.startedTo,
       }),
     ),
+  getSkillExecutionTrace: (executionId: string) =>
+    request<SkillExecutionTrace>("GET", `/skill-executions/${segment(executionId)}/trace`),
+  listSkillHealth: (query: SkillHealthQuery = {}) =>
+    request<SkillHealthResult>(
+      "GET",
+      withQuery("/skill-executions/stats", {
+        window: query.window,
+        limit: query.limit,
+        scope: query.scope,
+        humanUserId: query.humanUserId,
+      }),
+    ),
   listLongTasks: (query: LongTaskQuery = {}) =>
     request<LongTaskListResult>(
       "GET",
@@ -464,6 +497,10 @@ export const api = {
   cancelLongTask: (taskId: string) =>
     request<LongTaskCancelResult>("POST", `/long-tasks/${encodeURIComponent(taskId)}/cancel`, {}),
   getResources: () => request<GlobalResourceConfig>("GET", "/settings/resources"),
+  getNotifySettings: () => request<NotifySettings>("GET", "/settings/notify"),
+  setNotifySettings: (input: NotifySettingsInput) =>
+    request<NotifySettings>("PUT", "/settings/notify", input),
+  testNotifySettings: () => request<NotifyTestResult>("POST", "/settings/notify/test", {}),
   getAgentGuidance: () => request<AgentGuidance>("GET", "/settings/agent-guidance"),
   setAgentGuidance: (input: AgentGuidanceInput) =>
     request<AgentGuidance>("PUT", "/settings/agent-guidance", input),

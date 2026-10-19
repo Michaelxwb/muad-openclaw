@@ -1,0 +1,10 @@
+{
+  "name": "mssw-platform-smoke",
+  "platforms": [
+    "mssw"
+  ],
+  "runtime": "script",
+  "version": "0.2.0",
+  "entrypoint": "scripts/run.py",
+  "author": "muad-team"
+}

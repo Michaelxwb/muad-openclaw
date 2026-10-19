@@ -7,19 +7,36 @@ import { explicitSkillName } from "./skill-hooks.mjs";
 // 审计只记录 who-when-what（谁在什么时间执行了什么 skill），上报最小契约：
 // { executionId, agentId, skillName, skillScope, startedAt }。结果、耗时、进度都不记录。
 const TURN_CONTEXT_TTL_MS = 10 * 60_000;
+// Execution attribution outlives one turn: a long turn can read SKILL.md again
+// after the turn-context TTL and must not create a second execution for the
+// same runId + skill (that would make the trace mapping ambiguous).
+const REPORTED_TTL_MS = 24 * 60 * 60_000;
 const READ_PATH_KEYS = ["path", "file_path", "filePath", "file"];
+const EXEC_COMMAND_KEYS = ["command", "script", "cmd"];
 
 export function createSkillAuditHooks({
-  config, getConfig = () => config, manager, client, now = () => Date.now(),
+  config, getConfig = () => config, manager, client, executions, now = () => Date.now(),
   log = () => {}, onSkillActivated = () => {},
 }) {
-  const state = { getConfig, manager, client, now, onSkillActivated,
-    turns: new Map(), reported: new Map(), diag: message => log(`[skill-audit] ${message}`) };
+  const state = { getConfig, manager, client, executions, now, onSkillActivated,
+    turns: new Map(), reported: new Map(), pendingExecutions: new Map(),
+    diag: message => log(`[skill-audit] ${message}`) };
   return {
     beforeDispatch: async (event, ctx) => auditDispatch(state, event, ctx),
     beforeAgentRun: async (event, ctx) => auditAgentRun(state, event, ctx),
     beforeToolCall: async (event, ctx) => auditToolCall(state, event, ctx),
+    agentEnd: async (event, ctx) => auditAgentEnd(state, event, ctx),
   };
+}
+
+function auditAgentEnd(state, event, ctx) {
+  if (!state.executions || typeof state.executions.endSession !== "function") return;
+  if (isLongTaskSession(event, ctx)) return;
+  state.executions.endSession({
+    agentId: resolveAgentId(event, ctx),
+    sessionKey: textValue(event?.sessionKey) || textValue(ctx?.sessionKey),
+    runId: resolveRunId(event, ctx),
+  });
 }
 
 function auditDispatch(state, event, ctx) {
@@ -36,22 +53,84 @@ function auditAgentRun(state, event, ctx) {
   pruneExpired(state.turns, state.now());
   if (isLongTaskSession(event, ctx)) return auditBackground(state, event, ctx);
   const runId = resolveRunId(event, ctx);
-  if (runId) rememberTurn(state.turns, runId, { agentId: resolveAgentId(event, ctx) }, state.now());
+  if (runId) {
+    rememberTurn(state.turns, runId, { agentId: resolveAgentId(event, ctx) }, state.now());
+    promotePendingExecution(state, event, ctx, runId);
+  }
+  activatePromptSkill(state, event, ctx);
+}
+
+// OpenClaw 在 before_tool_call 之前就已执行 exec 的 prepareBeforeToolCallParams
+// （resolve_exec_env 在此运行），所以一轮的第一条 exec 若直接执行 Skill、没有先
+// read SKILL.md，等 before_tool_call 登记已经太晚，该条命令拿不到 MUAD_SKILL_NAME。
+// before_agent_run 能看到本轮 prompt 且早于任何工具：这里按 prompt 中出现的 Skill
+// 显式命令/路径预登记执行上下文；只做环境登记，审计仍由实际 read/exec 触发。
+function activatePromptSkill(state, event, ctx) {
+  const prompt = promptText(event);
+  if (!prompt) return;
+  const config = state.getConfig(), agentId = resolveAgentId(event, ctx);
+  const match = findPromptSkill(config, agentId, prompt);
+  if (!match || isLongTaskSkill(config, agentId, match.skillName)) return;
+  activateProgress(state.onSkillActivated,
+    activationInput(config, event, ctx, agentId, match.skillName), state.diag);
+}
+
+// 只接受两种可信信号：显式 Skill 命令，或 prompt 中真实存在的 Skill 根路径。
+// 多个候选时不猜，宁可本轮不注入，也不把执行错误归属到某个 Skill。
+function findPromptSkill(config, agentId, prompt) {
+  const explicit = explicitSkillName(prompt);
+  if (explicit) return findDispatchGrant(config, agentId, explicit);
+  const names = new Set();
+  for (const grant of config?.skillAuditGrants ?? []) {
+    if (grant.agentId !== agentId) continue;
+    if (grant.dir !== true) {
+      if (containsPath(prompt, grant.rootPath)) names.add(grant.name);
+      continue;
+    }
+    const candidates = skillNamesFromCommand(prompt, grant.rootPath);
+    for (const name of candidates) {
+      if (fs.existsSync(path.join(grant.rootPath, name, "SKILL.md"))) names.add(name);
+    }
+  }
+  if (names.size !== 1) return null;
+  return findDispatchGrant(config, agentId, [...names][0]);
+}
+
+function skillNamesFromCommand(command, rootPath) {
+  const root = textValue(rootPath).replace(/[/\\]+$/u, "");
+  const names = new Set();
+  if (!root) return names;
+  let from = 0;
+  for (;;) {
+    const index = command.indexOf(root, from);
+    if (index < 0) return names;
+    from = index + root.length;
+    const rest = command.slice(from).replace(/^[/\\]+/u, "");
+    const name = rest.split(/[/\\\s"'`;|&<>()]+/u)[0] ?? "";
+    if (/^[A-Za-z0-9_.-]+$/u.test(name) && !name.startsWith(".")) names.add(name);
+  }
 }
 
 function auditToolCall(state, event, ctx) {
   pruneExpired(state.reported, state.now());
-  if (isLongTaskSession(event, ctx) || event?.toolName !== "read") return;
-  const config = state.getConfig(), read = auditRead(config, event, ctx);
-  if (!read || isLongTaskSkill(config, read.agentId, read.skillName)) return;
-  auditForeground(state, config, event, ctx, read.agentId, read);
+  if (isLongTaskSession(event, ctx)) return;
+  const config = state.getConfig();
+  const match = event?.toolName === "read"
+    ? auditRead(config, event, ctx)
+    : ["exec", "bash"].includes(event?.toolName) ? auditExec(config, event, ctx) : null;
+  if (!match || isLongTaskSkill(config, match.agentId, match.skillName)) return;
+  auditForeground(state, config, event, ctx, match.agentId, match);
 }
 
 function auditForeground(state, config, event, ctx, agentId, match) {
   const runId = resolveRunId(event, ctx);
   if (runId && alreadyReported(state.reported, runId, match.skillName)) return;
   activateProgress(state.onSkillActivated, activationInput(config, event, ctx, agentId, match.skillName), state.diag);
-  reportOnce(state.client, match.grant, agentId, match.skillName, state.now(), state.diag);
+  reportOnce(state, match.grant, agentId, match.skillName, state.now(), state.diag, randomUUID(), {
+    agentId,
+    sessionKey: textValue(event?.sessionKey) || textValue(ctx?.sessionKey),
+    runId,
+  });
   if (runId) rememberReported(state.reported, runId, match.skillName, state.now());
 }
 
@@ -64,7 +143,10 @@ function auditBackground(state, event, ctx) {
   const config = state.getConfig();
   const grant = findGrantBySkillPath(config, agentId, resolveExistingPath(path.join(task.skillRoot, "SKILL.md")));
   if (!grant) return;
-  reportOnce(state.client, grant, agentId, task.skillName, state.now(), state.diag, task.taskId);
+  reportOnce(state, grant, agentId, task.skillName, state.now(), state.diag, task.taskId, {
+    agentId,
+    taskId: task.taskId,
+  });
   rememberReported(state.reported, task.taskId, task.skillName, state.now());
 }
 
@@ -95,8 +177,10 @@ function activationInput(config, event, ctx, agentId, skillName) {
 }
 
 // 上报是 fire-and-forget：失败只记日志，不阻塞 turn（审计不能影响执行）。
-function reportOnce(client, grant, agentId, skillName, now, diag, executionId = randomUUID()) {
-  if (!client || typeof client.report !== "function") return;
+// 同时把 executionId 登记到 trace 归属映射：runId 可用时直接登记；dispatch
+// 发生在 run 创建之前时先缓存，待 before_agent_run 拿到 runId 后补登记。
+function reportOnce(state, grant, agentId, skillName, now, diag, executionId = randomUUID(), identity = {}) {
+  if (!state.client || typeof state.client.report !== "function") return;
   const startedAt = new Date(now).toISOString();
   const request = {
     executionId,
@@ -105,14 +189,86 @@ function reportOnce(client, grant, agentId, skillName, now, diag, executionId = 
     skillScope: grant.source,
     startedAt,
   };
+  registerExecution(state, identity, request);
   Promise.resolve()
-    .then(() => client.report(request))
+    .then(() => state.client.report(request))
     .then(() => diag(`reported executionId=${request.executionId} agent=${agentId} skill=${skillName}`))
     .catch((error) => {
       const code = error?.code ?? "unknown";
       const retryable = error?.retryable === true;
       diag(`report failed agent=${agentId} skill=${skillName} code=${code} retryable=${retryable}`);
     });
+}
+
+function registerExecution(state, identity, request) {
+  if (!state.executions || typeof state.executions.register !== "function") return;
+  const agentId = textValue(identity.agentId) || request.agentId;
+  const runId = textValue(identity.runId);
+  if (runId) {
+    // dispatch（无 runId）与 read-SKILL.md 可能各自上报一次审计；归属必须
+    // 复用先登记的那条 execution，额外上报不能再登记同键第二个 execution，
+    // 否则会制造自己制造的 mapping_conflict。不同 Skill 则保留冲突语义。
+    const existing = state.executions.resolve?.({ agentId, sessionKey: identity.sessionKey, runId });
+    if (existing?.skillName === request.skillName) return;
+    state.executions.register({
+      agentId,
+      sessionKey: identity.sessionKey,
+      runId,
+      skillName: request.skillName,
+      executionId: request.executionId,
+    });
+    return;
+  }
+  const taskId = textValue(identity.taskId);
+  if (taskId) {
+    state.executions.register({
+      agentId,
+      taskId,
+      skillName: request.skillName,
+      executionId: request.executionId,
+    });
+    return;
+  }
+  rememberPendingExecution(state, agentId, identity.sessionKey, request);
+}
+
+function rememberPendingExecution(state, agentId, sessionKey, request) {
+  const session = textValue(sessionKey);
+  if (!agentId || !session) return;
+  const key = JSON.stringify([agentId, session]);
+  const at = state.now();
+  const existing = state.pendingExecutions.get(key);
+  if (existing && !existing.conflicted && existing.executionId !== request.executionId) {
+    // Two Skills dispatched before the run existed: attribution is ambiguous,
+    // so drop it instead of risking a trace on the wrong execution.
+    state.pendingExecutions.set(key, { conflicted: true, expiresAt: at + TURN_CONTEXT_TTL_MS });
+    return;
+  }
+  state.pendingExecutions.set(key, {
+    conflicted: false,
+    executionId: request.executionId,
+    skillName: request.skillName,
+    expiresAt: at + TURN_CONTEXT_TTL_MS,
+  });
+}
+
+function promotePendingExecution(state, event, ctx, runId) {
+  const agentId = resolveAgentId(event, ctx);
+  const sessionKey = textValue(event?.sessionKey) || textValue(ctx?.sessionKey);
+  if (!agentId || !sessionKey) return;
+  pruneExpired(state.pendingExecutions, state.now());
+  const key = JSON.stringify([agentId, sessionKey]);
+  const pending = state.pendingExecutions.get(key);
+  if (!pending) return;
+  state.pendingExecutions.delete(key);
+  if (pending.conflicted) return;
+  state.executions?.register?.({
+    agentId,
+    sessionKey,
+    runId,
+    skillName: pending.skillName,
+    executionId: pending.executionId,
+  });
 }
 
 function auditRead(config, event, ctx) {
@@ -128,6 +284,75 @@ function auditRead(config, event, ctx) {
     : grant.name;
   if (!skillName) return null;
   return { agentId, grant, skillName, candidate };
+}
+
+// Direct path execution (for example `python3 /opt/openclaw-skills/<name>/scripts/run.py`
+// without a prior SKILL.md read) still needs an execution record so the trace
+// pipeline can attribute the exec. Match only the agent's own grants; a
+// command that does not reference a granted Skill path is ignored.
+function auditExec(config, event, ctx) {
+  const command = execCommandText(event);
+  if (!command || !looksExecutable(command)) return null;
+  const agentId = resolveAgentId(event, ctx);
+  if (!agentId) return null;
+  const cwd = resolveExistingPath(textValue(event?.params?.cwd) || textValue(event?.params?.workdir));
+  for (const grant of config?.skillAuditGrants ?? []) {
+    if (grant.agentId !== agentId) continue;
+    if (grant.dir !== true) {
+      if (containsPath(command, grant.rootPath) || (cwd && isWithin(grant.rootPath, cwd))) {
+        return { agentId, grant, skillName: grant.name };
+      }
+      continue;
+    }
+    const skillName = skillNameFromCommand(command, grant.rootPath) ||
+      (cwd ? skillNameFromDirGrant(grant, cwd) : "");
+    if (skillName && fs.existsSync(path.join(grant.rootPath, skillName, "SKILL.md"))) {
+      return { agentId, grant, skillName };
+    }
+  }
+  return null;
+}
+
+function execCommandText(event) {
+  for (const key of EXEC_COMMAND_KEYS) {
+    const value = textValue(event?.params?.[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
+// Keep inspection commands (`ls`, `cat`, `grep`) from starting an execution
+// record; a direct Skill run is an interpreter or an executable path.
+function looksExecutable(command) {
+  const interpreter = /^(?:python(?:\d+(?:\.\d+)*)?|node|bash|sh|zsh|bun|deno|perl|ruby|php|java|env)$/u;
+  for (const segment of command.split(/[;&|()]+/u)) {
+    const tokens = segment.trim().split(/\s+/u).filter(Boolean);
+    while (tokens.length > 0 && /^[A-Za-z_][A-Za-z0-9_]*=/u.test(tokens[0])) tokens.shift();
+    const token = tokens[0] ?? "";
+    if (!token) continue;
+    if (interpreter.test(path.basename(token))) return true;
+    if (token.startsWith("./") || token.startsWith("/")) return true;
+  }
+  return false;
+}
+
+function containsPath(command, rootPath) {
+  const root = textValue(rootPath).replace(/[/\\]+$/u, "");
+  if (!root) return false;
+  const index = command.indexOf(root);
+  if (index < 0) return false;
+  const next = command[index + root.length] ?? "";
+  return next === "" || /[/\\\s"'`;|&<>()]/u.test(next);
+}
+
+function skillNameFromCommand(command, rootPath) {
+  const root = textValue(rootPath).replace(/[/\\]+$/u, "");
+  if (!root) return "";
+  const index = command.indexOf(root);
+  if (index < 0) return "";
+  const rest = command.slice(index + root.length).replace(/^[/\\]+/u, "");
+  const name = rest.split(/[/\\\s"'`;|&<>()]+/u)[0] ?? "";
+  return /^[A-Za-z0-9_.-]+$/u.test(name) && !name.startsWith(".") ? name : "";
 }
 
 // 显式调用：先精确匹配 per-Skill grant（system 保持精确），再回退到目录 grant。
@@ -233,10 +458,10 @@ function rememberReported(map, runId, skillName, now) {
   const record = map.get(runId);
   if (record) {
     record.skills.add(skillName);
-    record.expiresAt = now + TURN_CONTEXT_TTL_MS;
+    record.expiresAt = now + REPORTED_TTL_MS;
     return;
   }
-  map.set(runId, { skills: new Set([skillName]), expiresAt: now + TURN_CONTEXT_TTL_MS });
+  map.set(runId, { skills: new Set([skillName]), expiresAt: now + REPORTED_TTL_MS });
   if (map.size <= 1000) return;
   const first = map.keys().next().value;
   if (first) map.delete(first);

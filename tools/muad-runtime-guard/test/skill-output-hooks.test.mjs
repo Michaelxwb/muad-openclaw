@@ -13,6 +13,12 @@ test("resolve_exec_env injects trusted MUAD_SESSION_KEY and SKILL_OUTPUT_DIR for
 
   assert.deepEqual(env, { MUAD_SESSION_KEY: "agent:alice:longtask:task-9", SKILL_OUTPUT_DIR: "/state/workspace-alice/skill-outputs/wx-9" });
   assert.deepEqual(mkdirs, [{ dir: "/state/workspace-alice/skill-outputs/wx-9", opts: { recursive: true, mode: 0o700 } }]);
+
+  const bashEnv = await hooks.resolveExecEnv(
+    { toolName: "bash", sessionKey: "agent:alice:longtask:task-9" },
+    context(),
+  );
+  assert.deepEqual(bashEnv, env);
 });
 
 test("resolve_exec_env merges progress env only for a running long task owned by the trusted agent", async () => {
@@ -86,15 +92,29 @@ test("resolve_exec_env fails closed when the session key agent mismatches the tr
   assert.equal(fromCtx, undefined);
 });
 
-test("resolve_exec_env skips non-exec tools", async () => {
+test("resolve_exec_env skips non-shell tools", async () => {
   const { hooks } = setupHooks();
+
+  const env = await hooks.resolveExecEnv(
+    { toolName: "read", sessionKey: "agent:alice:wecom:direct:wx-1" },
+    context(),
+  );
+
+  assert.equal(env, undefined);
+});
+
+test("resolve_exec_env injects for the bash tool as well as exec", async () => {
+  const { hooks } = setupHooks({ manager: { resolvePeerForTaskId: () => "user:wx-1" } });
 
   const env = await hooks.resolveExecEnv(
     { toolName: "bash", sessionKey: "agent:alice:wecom:direct:wx-1" },
     context(),
   );
 
-  assert.equal(env, undefined);
+  assert.deepEqual(env, {
+    MUAD_SESSION_KEY: "agent:alice:wecom:direct:wx-1",
+    SKILL_OUTPUT_DIR: "/state/workspace-alice/skill-outputs/wx-1",
+  });
 });
 
 test("resolve_exec_env still injects MUAD_SESSION_KEY when no output dir is derivable", async () => {

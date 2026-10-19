@@ -51,6 +51,8 @@ db.Query("SELECT * FROM pods WHERE id = '" + id + "'")
 - 迁移可重复执行（IF NOT EXISTS / 版本号）
 - 共享列清单用 const SQL 片段（如 `humanUserColumns`）避免漂移
 - 运行态镜像（如 `long_task_tasks`）按 `state_revision` 单向合并：只接受较新 revision 的合法前进、同 revision 幂等、旧格式（rev=0）沿用状态机兼容；终态（cancelled/succeeded/failed）不被快照改写，乱序/回退快照只推进 last_seen，不伪造 failed
+- trace metrics 的 `aborted` 必须只升不降（`max(existing, excluded)`）；迟到的非 abort 快照不得覆盖已有终止记录，abort 详情仅由 abort 侧写入
+- Skill 健康统计按 `(skill_name, skill_scope, human_user_id)` 分组；私有 Skill 同名跨用户不得合并
 
 ## Avoid
 - 禁止 SQL 字符串拼接用户输入

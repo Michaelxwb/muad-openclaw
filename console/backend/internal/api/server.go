@@ -18,6 +18,7 @@ import (
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/driver"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/gateway"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/monitor"
+	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/notify"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/repo"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/skillsync"
 	"github.com/Michaelxwb/muad-openclaw/console/backend/internal/web"
@@ -39,9 +40,12 @@ type Server struct {
 	skillUploadMu  sync.Mutex
 	bindingLimiter *bindingAttemptLimiter
 	loginLimiter   *bindingAttemptLimiter
-	// longTaskCapabilities 是各 Pod 的长任务取消能力快照缓存：由 health probe
-	// 更新（collector 接线），列表与取消入口只读查询，避免逐行 RPC。
-	longTaskCapabilities *gateway.LongTaskCapabilityCache
+	// cancelCapabilities 是各 Pod 的取消能力快照缓存（长任务 + 会话终止）：由
+	// health probe 更新（collector 接线），列表与取消入口只读查询，避免逐行 RPC。
+	cancelCapabilities *gateway.CancelCapabilityCache
+	// notifier dispatches operator alerts asynchronously; Close converges it.
+	notifier             *notify.Dispatcher
+	notifyChannelFactory func(webhook string) (notify.Channel, error)
 }
 
 // ReconcileEnqueuer receives Pod IDs whose desired runtime generation changed.
@@ -76,10 +80,14 @@ func NewServer(
 ) *Server {
 	server := &Server{
 		cfg: cfg, store: store, cipher: cipher, drv: drv, cache: cache, skillSyncer: skillSyncer,
-		bindingLimiter:       newBindingAttemptLimiter(10*time.Minute, 10, 4096),
-		loginLimiter:         newBindingAttemptLimiter(10*time.Minute, 5, 4096),
-		longTaskCapabilities: gateway.NewLongTaskCapabilityCache(0),
+		bindingLimiter:     newBindingAttemptLimiter(10*time.Minute, 10, 4096),
+		loginLimiter:       newBindingAttemptLimiter(10*time.Minute, 5, 4096),
+		cancelCapabilities: gateway.NewCancelCapabilityCache(0),
+		notifyChannelFactory: func(webhook string) (notify.Channel, error) {
+			return notify.NewWeComChannel(webhook)
+		},
 	}
+	server.notifier = notify.New(notify.Options{Provider: server.resolveNotifyChannel})
 	if cfg != nil {
 		codec, err := crypto.NewBindingCodeCodec(cfg.MasterKey)
 		if err != nil {
@@ -104,17 +112,34 @@ func (s *Server) WithCleanupWaker(waker CleanupWaker) *Server {
 	return s
 }
 
-// LongTaskCapabilities exposes the per-Pod cancel capability cache: the health
-// probe (collector) updates it, cancel/list paths only read it.
-func (s *Server) LongTaskCapabilities() *gateway.LongTaskCapabilityCache {
-	return s.longTaskCapabilities
+// WithNotifyChannelFactory overrides how a stored webhook becomes a delivery
+// channel. Tests use it to inject an HTTP transport; the webhook host
+// allow-list still applies.
+func (s *Server) WithNotifyChannelFactory(factory func(string) (notify.Channel, error)) *Server {
+	if factory != nil {
+		s.notifyChannelFactory = factory
+	}
+	return s
 }
 
-// WithLongTaskCapabilities shares the process-wide capability cache between the
+// Close converges the asynchronous notify worker. It is idempotent.
+func (s *Server) Close() {
+	if s.notifier != nil {
+		s.notifier.Close()
+	}
+}
+
+// CancelCapabilities exposes the per-Pod cancel capability cache: the health
+// probe (collector) updates it, list/cancel paths only read it.
+func (s *Server) CancelCapabilities() *gateway.CancelCapabilityCache {
+	return s.cancelCapabilities
+}
+
+// WithCancelCapabilities shares the process-wide capability cache between the
 // collector (writer) and the API (readers).
-func (s *Server) WithLongTaskCapabilities(cache *gateway.LongTaskCapabilityCache) *Server {
+func (s *Server) WithCancelCapabilities(cache *gateway.CancelCapabilityCache) *Server {
 	if cache != nil {
-		s.longTaskCapabilities = cache
+		s.cancelCapabilities = cache
 	}
 	return s
 }

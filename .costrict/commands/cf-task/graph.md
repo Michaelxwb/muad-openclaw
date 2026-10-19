@@ -13,6 +13,12 @@
 
 ## 执行步骤
 
+### 0. 程序计算（推荐）
+
+用 `code-flow task index --task-file <file> --dag --json` 直接输出拓扑批次与独立分组，不要全文手算。单 worktree 一次仅激活一个 TASK；批次内的独立任务由 cf-task:start 在各自 worktree 中并行派发子 agent（预检失败自动回退串行），详见 cf-task:start 步骤 4。
+
+`batches` 是组内可独立开发的拓扑批次；`dependency_components` 是依赖连通分组，只保证组与组之间独立，组内仍有先后依赖。`independent_groups` 仅为后者的兼容别名，不要把它显示成组内并行。
+
 ### 1. 读取任务数据
 
 - 指定文件：Glob 定位后 Read
@@ -65,9 +71,20 @@ Layer 2:
 按子任务状态标注：
 - `[draft]` — 待启动
 - `[in-progress]` — 进行中
-- `[done]` — 已完成
+- `[done]` — 实现完成，E2E 可能仍待终验
+- `[verified]` — 终验完成
 - `[blocked]` — 被阻塞（附原因）
 
 ### 5. 多文件模式
 
 当显示所有文件时，按文件分组输出，每个文件一个独立的 DAG。
+
+<!-- code-flow:runtime-commands start -->
+
+运行时命令示例（由命令契约生成；实际参数见各命令 --help）：
+
+```bash
+code-flow task index --help
+```
+
+<!-- code-flow:runtime-commands end -->

@@ -96,7 +96,7 @@ func TestLongTaskControlE03CancelRouteRejectsUntrustedRequestsWithoutRunCalls(t 
 	user := createTestHumanUser(t, e.store, pod.PodID, "alice", repo.HumanUserStatusActive)
 	seedE03LongTask(t, e, pod.PodID, user.HumanUserID, "task-live", repo.LongTaskRunning)
 	seedE03LongTask(t, e, pod.PodID, user.HumanUserID, "task-done", repo.LongTaskSucceeded)
-	e.srv.LongTaskCapabilities().Update(pod.PodID, gateway.LongTaskCancelCapability{Available: true, Version: 1})
+	e.srv.CancelCapabilities().Update(pod.PodID, gateway.CancelCapability{LongTask: gateway.LongTaskCancelCapability{Available: true, Version: 1}})
 
 	// 未登录：401，零运行调用。
 	anon := httptest.NewRequest(http.MethodPost, "/api/v1/long-tasks/task-live/cancel", nil)
@@ -142,7 +142,7 @@ func TestLongTaskControlE03CancelRouteRejectsUntrustedRequestsWithoutRunCalls(t 
 	}
 
 	// 能力未知：503 明确不支持，零运行调用，且不得把 Store 改成已取消。
-	e.srv.LongTaskCapabilities().Invalidate(pod.PodID)
+	e.srv.CancelCapabilities().Invalidate(pod.PodID)
 	unknownCap := e.do(http.MethodPost, "/api/v1/long-tasks/task-live/cancel", "")
 	if unknownCap.Code != http.StatusServiceUnavailable {
 		t.Fatalf("unknown capability status = %d, want 503", unknownCap.Code)
@@ -159,7 +159,7 @@ func TestLongTaskControlE03CancelRouteRejectsUntrustedRequestsWithoutRunCalls(t 
 	}
 
 	// 正常取消：202 仅表达已接受；argv 单载荷 JSON 且归属字段来自 Store。
-	e.srv.LongTaskCapabilities().Update(pod.PodID, gateway.LongTaskCancelCapability{Available: true, Version: 1})
+	e.srv.CancelCapabilities().Update(pod.PodID, gateway.CancelCapability{LongTask: gateway.LongTaskCancelCapability{Available: true, Version: 1}})
 	e.drv.cancelExecOut = `{"ok":true,"outcome":"cancel_requested","status":"cancelling","stateRevision":3}`
 	accepted := e.do(http.MethodPost, "/api/v1/long-tasks/task-live/cancel", "")
 	if accepted.Code != http.StatusAccepted {

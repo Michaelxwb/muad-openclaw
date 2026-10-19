@@ -13,10 +13,12 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.equal(registration.command.acceptsArgs, true);
   assert.equal(registration.command.requireAuth, false);
   assert.deepEqual(registration.methods.map((entry) => entry.method), [
-    "muad.long-task.cancel", "muad.runtime.health", "muad.runtime.verify-routes",
+    "muad.long-task.cancel", "muad.session.preview", "muad.session.cancel",
+    "muad.runtime.health", "muad.runtime.verify-routes",
   ]);
   assert.deepEqual(registration.methods.map((entry) => entry.options), [
-    { scope: "operator.write" }, { scope: "operator.read" }, { scope: "operator.read" },
+    { scope: "operator.write" }, { scope: "operator.write" }, { scope: "operator.write" },
+    { scope: "operator.read" }, { scope: "operator.read" },
   ]);
   assert.deepEqual(registration.reloadPolicy, {
     noopPrefixes: ["plugins.entries.muad-runtime-guard.config.generation"],
@@ -29,12 +31,14 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     "before_agent_run", "agent_end", "before_dispatch", "before_agent_run",
     "before_tool_call", "before_agent_finalize", "reply_payload_sending", "agent_end",
     "resolve_exec_env", "resolve_exec_env", "before_agent_run", "agent_end",
-    "before_tool_call", "reply_payload_sending",
-    "before_dispatch", "before_agent_run", "before_tool_call", "after_tool_call", "after_tool_call",
+    "resolve_exec_env", "after_tool_call", "before_tool_call", "reply_payload_sending",
+    "before_dispatch", "before_agent_run", "before_tool_call", "agent_end",
+    "after_tool_call", "after_tool_call",
   ]);
-  assert.deepEqual(registration.hooks[18].options, { priority: -100, timeoutMs: 1_000 });
-  assert.deepEqual(registration.hooks[19].options, { priority: -100, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[20].options, { priority: -100, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[21].options, { priority: -100, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[22].options, { priority: -100, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[23].options, { priority: 900, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[0].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[1].options, { priority: -1000, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[4].options, { priority: -1000, timeoutMs: 35_000 });
@@ -49,8 +53,10 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
   assert.deepEqual(registration.hooks[13].options, { priority: -790, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[14].options, { priority: -80, timeoutMs: 1_000 });
   assert.deepEqual(registration.hooks[15].options, { priority: 850, timeoutMs: 5_000 });
-  assert.deepEqual(registration.hooks[16].options, { priority: -950, timeoutMs: 1_000 });
-  assert.deepEqual(registration.hooks[17].options, { priority: -850, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[16].options, { priority: -780, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[17].options, { priority: 950, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[18].options, { priority: -950, timeoutMs: 1_000 });
+  assert.deepEqual(registration.hooks[19].options, { priority: -850, timeoutMs: 1_000 });
   assert.equal(registration.hooks[0].handler({}, { agentId: "main" }).handled, true);
   assert.equal(registration.hooks[0].handler({}, { agentId: "alice" }), undefined);
   assert.equal(registration.hooks[1].handler({}, { agentId: "alice" }), undefined);
@@ -67,6 +73,7 @@ test("plugin registers unauthenticated /bind and operator-scoped runtime health"
     skill: { active: 0, queued: 0, limit: 4 },
     longTask: { active: 0, queued: 0, limit: 2 },
     longTaskCancel: { available: false, version: 0 },
+    sessionCancel: { available: false, version: 0, reason: "native_unavailable" },
   });
   assert.equal(JSON.stringify(health).includes("pod-service-token"), false);
 });
@@ -162,6 +169,7 @@ function registerPlugin(t, config) {
     delete globalThis[Symbol.for("muad.longtask.manager")];
     delete globalThis[Symbol.for("muad.skill.progress.manager")];
     delete globalThis[Symbol.for("muad.longtask.cancel")];
+    delete globalThis[Symbol.for("muad.session.cancel")];
     delete globalThis[Symbol.for("muad.longtask.worker-instance")];
   });
   return registration;
