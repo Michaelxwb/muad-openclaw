@@ -8,7 +8,7 @@
 | SS-R002 | error | `muad.skill.json` 存在、JSON 合法；`name` 非空；`runtime` 只能是 `script`；`version` 为 semver；`platforms` 为字符串数组 |
 | SS-R003 | error | `SKILL.md` frontmatter 的 `name`、manifest `name`、目录名三者一致 |
 | SS-R004 | error | `entrypoint` 声明时必须指向存在的 `.py` 文件 |
-| SS-R005 | error | 声明了 `platforms` 的 Skill 必须 import 并调用 `muad_skill_http.platform_request` |
+| SS-R005 | error | 声明了 `platforms` 的 Skill 必须 import 并调用 `muad_skill_http.platform_request`；每次调用必须传 `state_file`，且脚本通过 `session-manager get-state` 获取该状态文件 |
 | SS-R006 | error | 禁止 `requests` / `httpx` / `aiohttp` / `urllib.request` / `http.client` 直连业务接口 |
 | SS-R007 | warning | 禁止手工拼装 `Cookie` / CSRF / `Traceid` 等敏感头（仅检查 headers/cookies 容器；普通响应字段如 `{"traceId": ...}` 不告警）；由 `platform_request` 统一构造 |
 | SS-R008 | error | 禁止用 `subprocess` / `os.system` 调用 `curl`、`wget`、`http` 或 `requests` 发业务请求 |
@@ -26,7 +26,8 @@
 ```python
 from muad_skill_http import platform_request
 
-response = platform_request("demo_platform", "GET", "/api/v1/items")
+state_file = ...  # session-manager get-state --skill-name <skill>
+response = platform_request("demo_platform", "GET", "/api/v1/items", state_file=state_file)
 ```
 
 ❌ 手工拼 Cookie/CSRF、直连 requests

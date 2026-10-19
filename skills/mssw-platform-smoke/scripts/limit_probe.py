@@ -24,6 +24,7 @@ from _common import (
     PLATFORM,
     SkillExecutionRequired,
     require_skill_execution,
+    resolve_state_file,
 )
 
 
@@ -86,13 +87,14 @@ def main():
 
     trace_ids = []
     sent = 0
+    state_file = resolve_state_file()
     for index in range(count):
         expected_trigger = limit > 0 and index + 1 > limit
         if expected_trigger:
             # The SDK will call os._exit(86) inside platform_request before the
             # request is sent; emit the single stdout result first.
             _summary("LIMIT_TRIGGERED", args.path, count, sent, limit, trace_ids)
-        response = platform_request(PLATFORM, "GET", args.path)
+        response = platform_request(PLATFORM, "GET", args.path, state_file=state_file)
         if expected_trigger:
             # One summary has already been printed; never emit a second stdout
             # document if the limit was not actually enforced by the runtime.

@@ -1,0 +1,8 @@
+{
+  "name": "missing-state-file-skill",
+  "platforms": ["demo_platform"],
+  "runtime": "script",
+  "version": "0.1.0",
+  "entrypoint": "scripts/run.py",
+  "author": "Test Author"
+}
