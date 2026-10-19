@@ -26,6 +26,16 @@ Skill 激活按用户消息轮次隔离：
 
 自建 Skill 统一使用 Python，业务平台请求经 `muad_skill_http.platform_request` 统一构造 Cookie/CSRF/Host 与每请求 `Traceid`。managed Skill 必须在 `muad.skill.json` 写非空 `author`（作者姓名/工号/用户名），上传时 Console 会校验。上线前可用内置 `self-skill-review` 做只读检查；上传链路不做语言硬拦截，最终由管理员审批。
 
+## 本地开发环境
+
+Skill 脚本依赖 `muad_skill_http`（公网 PyPI 包 `muad-skill-http`），运行中的 Pod 镜像通过 `requirements.txt` 按固定版本安装；在本地解释器里直接调试时安装同一版本：
+
+```bash
+pip install "muad-skill-http==0.1.0"   # 版本与仓库 requirements.txt 保持一致
+```
+
+只做语法检查或单元测试时，也可以在仓库根用 `PYTHONPATH="$PWD/tools/muad-skill-sdk" python3 scripts/run.py`，无需安装。注意 `platform_request` 仍需要 `MUAD_SKILL_NAME` 和 `session-manager` 返回的登录态；本地联调请使用 `tools/fake-business-platform`，真实平台请在 Pod 内执行。
+
 ## 长任务反馈
 
 普通 Skill 与 `longTask:true` Skill 都可在自己选择的关键业务节点执行语言无关的 `muad-progress` CLI，主动发送 stage/done/error 文本。Skill 不持有收件人：Runtime Guard 从可信前台会话或后台 task 决定企微/Mattermost 目标；事件和诊断只在 execution 生命周期内保存，不写 Console 数据库。
