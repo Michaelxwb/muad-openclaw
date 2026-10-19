@@ -367,6 +367,32 @@ def _secondary_server():
     return httpd, thread
 
 
+def test_compat_instruments_every_http_method(server, trace_env, monkeypatch):
+    monkeypatch.setenv("MUAD_REQUESTS_COMPAT", "1")
+    monkeypatch.setenv("MUAD_BUSINESS_HOSTS", "127.0.0.1:%d" % server.server_port)
+    assert sdk_compat.install() is True
+    try:
+        calls = [
+            ("GET", lambda: requests.get(server.base_url + "/methods")),
+            ("POST", lambda: requests.post(server.base_url + "/methods")),
+            ("PUT", lambda: requests.put(server.base_url + "/methods")),
+            ("PATCH", lambda: requests.patch(server.base_url + "/methods")),
+            ("DELETE", lambda: requests.delete(server.base_url + "/methods")),
+            ("HEAD", lambda: requests.head(server.base_url + "/methods")),
+        ]
+        for _, call in calls:
+            assert call().status_code == 200
+
+        sdk._flush_summary()
+        http_events = events(trace_env, "http")
+        assert [item["method"] for item in http_events] == [name for name, _ in calls]
+        for item in http_events:
+            assert uuid.UUID(item["traceId"]).version == 4
+        assert len({item["traceId"] for item in http_events}) == len(calls)
+    finally:
+        sdk_compat.uninstall()
+
+
 def test_compat_instruments_only_allowlisted_hosts(server, trace_env, monkeypatch):
     monkeypatch.setenv("MUAD_REQUESTS_COMPAT", "1")
     monkeypatch.setenv("MUAD_BUSINESS_HOSTS", "127.0.0.1:%d" % server.server_port)

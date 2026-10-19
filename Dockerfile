@@ -67,7 +67,7 @@ COPY bin/inject-channels.mjs /opt/muad/inject-channels.mjs
 COPY requirements.txt /opt/muad/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages --timeout 60 --retries 5 \
     -i https://pypi.tuna.tsinghua.edu.cn/simple -r /opt/muad/requirements.txt \
-    && python3 -c "import muad_skill_http; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86"
+    && python3 -c "import muad_skill_http, muad_skill_http.compat; assert muad_skill_http.EXIT_REQUEST_LIMIT == 86"
 
 # Skills keep using `import requests`; compat is activated per exec by the guard
 # (MUAD_REQUESTS_COMPAT=1 + MUAD_BUSINESS_HOSTS) and is a no-op otherwise.
