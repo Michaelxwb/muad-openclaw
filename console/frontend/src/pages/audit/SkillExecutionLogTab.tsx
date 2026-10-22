@@ -6,7 +6,6 @@ import { ErrorDetail } from "../../utils/error";
 import { ExecutionTraceDrawer } from "./ExecutionTraceDrawer";
 import { SkillExecutionTable } from "./SkillExecutionTable";
 import { SkillExecutionToolbar } from "./SkillExecutionToolbar";
-import { useHumanUserNames } from "../../hooks/useHumanUserNames";
 import { usePodNames } from "../../hooks/usePodNames";
 import { useSkillExecutionRecords } from "./useSkillExecutionRecords";
 import type { SkillExecutionDrilldown } from "./skillExecutionTypes";
@@ -22,7 +21,6 @@ interface Props {
 export function SkillExecutionLogTab({ active, onOpenPod, drilldown, onClearDrilldown }: Props) {
   const { t } = useTranslation();
   const state = useSkillExecutionRecords(active, drilldown);
-  const userNames = useHumanUserNames(active);
   const podNames = usePodNames(active);
   const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
   const clearDrilldown = () => {
@@ -68,7 +66,6 @@ export function SkillExecutionLogTab({ active, onOpenPod, drilldown, onClearDril
       )}
       <SkillExecutionTable
         state={state}
-        userNames={userNames}
         podNames={podNames}
         onOpenPod={onOpenPod}
         onOpenTrace={setSelectedExecutionId}

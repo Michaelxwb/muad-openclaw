@@ -431,6 +431,7 @@ export interface SkillAsset {
   name: string;
   scope: SkillScope;
   humanUserId?: string;
+  humanUserName?: string;
   podId?: string;
   displayName: string;
   version: string;
@@ -560,6 +561,7 @@ export interface SkillExecution {
   executionId: string;
   podId: string;
   humanUserId: string;
+  humanUserName?: string;
   agentId: string;
   skillName: string;
   skillScope: SkillScope;
@@ -811,6 +813,7 @@ export interface AuditEntry {
   action: string;
   target: string;
   targetType: "pod" | "human_user" | "identity" | "binding_code" | "platform" | "skill" | "generic";
+  humanUserName?: string;
   payload: string;
   metadata: AuditMetadata;
   ts: string;

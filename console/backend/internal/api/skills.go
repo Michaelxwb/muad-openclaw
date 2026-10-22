@@ -60,6 +60,7 @@ type skillAssetView struct {
 	Name              string    `json:"name"`
 	Scope             string    `json:"scope"`
 	HumanUserID       string    `json:"humanUserId,omitempty"`
+	HumanUserName     string    `json:"humanUserName"`
 	DisplayName       string    `json:"displayName"`
 	Version           string    `json:"version"`
 	Status            string    `json:"status"`
@@ -165,8 +166,17 @@ func (s *Server) handleListSkills(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, r, errcode.InternalListSkills)
 		return
 	}
+	userIDs := make([]string, 0, len(assets))
+	for _, asset := range assets {
+		userIDs = append(userIDs, asset.HumanUserID)
+	}
+	userNames, err := s.store.ListHumanUserDisplayNames(userIDs)
+	if err != nil {
+		writeErr(w, r, errcode.InternalListSkills)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items": skillAssetViews(assets), "total": total, "page": page, "pageSize": pageSize,
+		"items": skillAssetViews(assets, userNames), "total": total, "page": page, "pageSize": pageSize,
 	})
 }
 
@@ -186,7 +196,7 @@ func (s *Server) handleScanSkills(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.auditSkill(r, auditlog.ActionSkillAssetScan, repo.SkillAsset{}, "scanned", total)
-	writeJSON(w, http.StatusOK, map[string]any{"scanned": total, "items": skillAssetViews(assets)})
+	writeJSON(w, http.StatusOK, map[string]any{"scanned": total, "items": skillAssetViews(assets, nil)})
 }
 
 func (s *Server) handleUploadPublicSkill(w http.ResponseWriter, r *http.Request) {
@@ -1154,10 +1164,12 @@ func skillAssetFilterFromRequest(
 	}, page, pageSize, true
 }
 
-func skillAssetViews(assets []repo.SkillAsset) []skillAssetView {
+func skillAssetViews(assets []repo.SkillAsset, userNames map[string]string) []skillAssetView {
 	views := make([]skillAssetView, 0, len(assets))
 	for _, asset := range assets {
-		views = append(views, skillAssetToView(asset))
+		view := skillAssetToView(asset)
+		view.HumanUserName = userNames[asset.HumanUserID]
+		views = append(views, view)
 	}
 	return views
 }

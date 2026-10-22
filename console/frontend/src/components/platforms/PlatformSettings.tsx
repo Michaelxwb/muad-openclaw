@@ -199,9 +199,7 @@ function platformColumns(
         <div className={styles.tableCellStack}>
           <strong className={styles.tableCellPrimary}>{platform.displayName}</strong>
           <div className={`mono ${styles.tableCellMeta}`}>{platform.platform}</div>
-          {platform.baseUrl ? (
-            <div className={styles.tableCellMeta}>{platform.baseUrl}</div>
-          ) : null}
+          {platform.baseUrl ? <div className={styles.tableCellMeta}>{platform.baseUrl}</div> : null}
         </div>
       ),
     },

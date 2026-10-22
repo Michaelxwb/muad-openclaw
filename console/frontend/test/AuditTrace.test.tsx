@@ -33,6 +33,7 @@ const execution = {
   executionId: "run-a",
   podId: "pod-a",
   humanUserId: "user-a",
+  humanUserName: "张三",
   agentId: "agent-a",
   skillName: "mss-report-skill",
   skillScope: "private" as const,

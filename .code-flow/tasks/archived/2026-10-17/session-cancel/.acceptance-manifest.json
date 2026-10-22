@@ -1,31 +1,24 @@
 {
   "schema": 2,
   "task_file": "session-cancel.md",
-  "task_sha256": "613ae929d9a1f289de1523d4d37cecdb08bf9e8fdbc0acffe9ba4321fdbed6df",
+  "task_sha256": "929bfb9f29234b13154404ed8b880643b086c68133f0c05ad2e6fd06e3df10dc",
   "scenarios": [
     {
       "id": "S-01",
       "source": "session-cancel.backend.design.md#2.5 验收条件",
-      "level": "E2E",
-      "kind": "e2e",
+      "level": "manual (E2E)",
+      "kind": "manual",
       "boundary": "Console API → Gateway Exec → 真实 /proc",
       "owner": "TASK-006",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
-        "id": "S-01",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
+        "confirmed_by": "user:jahan",
+        "evidence": "2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。"
       },
       "runs": [
         {
@@ -46,6 +39,17 @@
           "revision": 2,
           "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
           "executed_at": "2026-10-17T16:24:50.509705+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-01",
+          "kind": "e2e",
+          "status": "not_configured",
+          "revision": 3,
+          "run_id": "dc7c9dd91a9d404b988fd1d691b8d784",
+          "executed_at": "2026-10-20T09:02:57.464574+00:00",
           "command": null,
           "cwd": ".",
           "timeout": 60.0
@@ -55,26 +59,19 @@
     {
       "id": "S-02",
       "source": "session-cancel.backend.design.md#2.5 验收条件",
-      "level": "E2E",
-      "kind": "e2e",
+      "level": "manual (E2E)",
+      "kind": "manual",
       "boundary": "API → RPC → 真实信号 → 进程退出",
       "owner": "TASK-006",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
-        "id": "S-02",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
+        "confirmed_by": "user:jahan",
+        "evidence": "2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。"
       },
       "runs": [
         {
@@ -95,6 +92,17 @@
           "revision": 2,
           "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
           "executed_at": "2026-10-17T16:24:50.509705+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-02",
+          "kind": "e2e",
+          "status": "not_configured",
+          "revision": 3,
+          "run_id": "dc7c9dd91a9d404b988fd1d691b8d784",
+          "executed_at": "2026-10-20T09:02:57.464574+00:00",
           "command": null,
           "cwd": ".",
           "timeout": 60.0
@@ -104,26 +112,19 @@
     {
       "id": "S-03",
       "source": "session-cancel.backend.design.md#2.5 验收条件",
-      "level": "E2E",
-      "kind": "e2e",
+      "level": "manual (E2E)",
+      "kind": "manual",
       "boundary": "真实 /proc + 双 agent 同时运行",
       "owner": "TASK-006",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
-        "id": "S-03",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
+        "confirmed_by": "user:jahan",
+        "evidence": "2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。"
       },
       "runs": [
         {
@@ -144,6 +145,17 @@
           "revision": 2,
           "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
           "executed_at": "2026-10-17T16:24:50.509705+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-03",
+          "kind": "e2e",
+          "status": "not_configured",
+          "revision": 3,
+          "run_id": "dc7c9dd91a9d404b988fd1d691b8d784",
+          "executed_at": "2026-10-20T09:02:57.464574+00:00",
           "command": null,
           "cwd": ".",
           "timeout": 60.0
@@ -172,15 +184,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "S-04",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "go",
           "-C",
@@ -194,7 +206,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -242,6 +254,29 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "S-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/gateway",
+            "./internal/collector",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -267,15 +302,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "S-05",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "go",
           "-C",
@@ -289,7 +324,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -337,32 +372,48 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "S-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api",
+            "./test",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
     {
       "id": "S-06",
       "source": "session-cancel.backend.design.md#2.5 验收条件",
-      "level": "E2E",
-      "kind": "e2e",
+      "level": "manual (E2E)",
+      "kind": "manual",
       "boundary": "真实 Worker + 企微通道 + 队列",
       "owner": "TASK-006",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
-        "id": "S-06",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
+        "confirmed_by": "user:jahan",
+        "evidence": "2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。"
       },
       "runs": [
         {
@@ -383,6 +434,17 @@
           "revision": 2,
           "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
           "executed_at": "2026-10-17T16:24:50.509705+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-06",
+          "kind": "e2e",
+          "status": "not_configured",
+          "revision": 3,
+          "run_id": "dc7c9dd91a9d404b988fd1d691b8d784",
+          "executed_at": "2026-10-20T09:02:57.464574+00:00",
           "command": null,
           "cwd": ".",
           "timeout": 60.0
@@ -411,15 +473,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-01",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "go",
           "-C",
@@ -433,7 +495,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -481,6 +543,29 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api",
+            "./test",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -500,15 +585,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-02",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "node",
           "--test",
@@ -516,7 +601,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -552,6 +637,23 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -577,15 +679,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-03",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "go",
           "-C",
@@ -599,7 +701,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -647,6 +749,29 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api",
+            "./test",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -672,15 +797,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-04",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "go",
           "-C",
@@ -694,7 +819,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -742,6 +867,29 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/api",
+            "./test",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -766,15 +914,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-05",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "go",
           "-C",
@@ -787,7 +935,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -833,32 +981,47 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-05",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "go",
+            "-C",
+            "console/backend",
+            "test",
+            "./internal/gateway",
+            "-run",
+            "SessionCancel",
+            "-count=1"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
     {
       "id": "E-06",
       "source": "session-cancel.backend.design.md#2.5 验收条件",
-      "level": "E2E",
-      "kind": "e2e",
+      "level": "manual (E2E)",
+      "kind": "manual",
       "boundary": "真实信号",
       "owner": "TASK-006",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
-        "id": "E-06",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
+        "confirmed_by": "user:jahan",
+        "evidence": "2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。"
       },
       "runs": [
         {
@@ -882,6 +1045,17 @@
           "command": null,
           "cwd": ".",
           "timeout": 60.0
+        },
+        {
+          "id": "E-06",
+          "kind": "e2e",
+          "status": "not_configured",
+          "revision": 3,
+          "run_id": "dc7c9dd91a9d404b988fd1d691b8d784",
+          "executed_at": "2026-10-20T09:02:57.464574+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
         }
       ]
     },
@@ -901,15 +1075,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "B-01",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "node",
           "--test",
@@ -917,7 +1091,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -953,6 +1127,23 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "B-01",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -972,15 +1163,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "B-02",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "node",
           "--test",
@@ -988,7 +1179,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1024,6 +1215,23 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "B-02",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -1043,15 +1251,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "B-03",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "node",
           "--test",
@@ -1059,7 +1267,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1095,6 +1303,23 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "B-03",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -1114,15 +1339,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "B-04",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "node",
           "--test",
@@ -1130,7 +1355,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1166,32 +1391,42 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "B-04",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "node",
+            "--test",
+            "tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
     {
       "id": "B-05",
       "source": "session-cancel.backend.design.md#2.5 验收条件",
-      "level": "E2E",
-      "kind": "e2e",
+      "level": "manual (E2E)",
+      "kind": "manual",
       "boundary": "企微队列",
       "owner": "TASK-006",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
-        "id": "B-05",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
+        "confirmed_by": "user:jahan",
+        "evidence": "2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。"
       },
       "runs": [
         {
@@ -1212,6 +1447,17 @@
           "revision": 2,
           "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
           "executed_at": "2026-10-17T16:24:50.509705+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "B-05",
+          "kind": "e2e",
+          "status": "not_configured",
+          "revision": 3,
+          "run_id": "dc7c9dd91a9d404b988fd1d691b8d784",
+          "executed_at": "2026-10-20T09:02:57.464574+00:00",
           "command": null,
           "cwd": ".",
           "timeout": 60.0
@@ -1221,26 +1467,19 @@
     {
       "id": "S-07",
       "source": "session-cancel.frontend.design.md#2.4 验收条件",
-      "level": "E2E",
-      "kind": "e2e",
+      "level": "manual (E2E)",
+      "kind": "manual",
       "boundary": "用户详情 → API → 真实 Worker",
       "owner": "TASK-006",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
-        "id": "S-07",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
+        "confirmed_by": "user:jahan",
+        "evidence": "2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。"
       },
       "runs": [
         {
@@ -1261,6 +1500,17 @@
           "revision": 2,
           "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
           "executed_at": "2026-10-17T16:24:50.509705+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-07",
+          "kind": "e2e",
+          "status": "not_configured",
+          "revision": 3,
+          "run_id": "dc7c9dd91a9d404b988fd1d691b8d784",
+          "executed_at": "2026-10-20T09:02:57.464574+00:00",
           "command": null,
           "cwd": ".",
           "timeout": 60.0
@@ -1270,26 +1520,19 @@
     {
       "id": "S-08",
       "source": "session-cancel.frontend.design.md#2.4 验收条件",
-      "level": "E2E",
-      "kind": "e2e",
+      "level": "manual (E2E)",
+      "kind": "manual",
       "boundary": "弹窗 → API → Worker 信号 → UI",
       "owner": "TASK-006",
-      "status": "e2e_deferred",
+      "status": "verified",
       "command": null,
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
-        "id": "S-08",
-        "kind": "e2e",
-        "status": "e2e_deferred",
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
-        "command": null,
-        "cwd": ".",
-        "timeout": 60.0
+        "confirmed_by": "user:jahan",
+        "evidence": "2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。"
       },
       "runs": [
         {
@@ -1310,6 +1553,17 @@
           "revision": 2,
           "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
           "executed_at": "2026-10-17T16:24:50.509705+00:00",
+          "command": null,
+          "cwd": ".",
+          "timeout": 60.0
+        },
+        {
+          "id": "S-08",
+          "kind": "e2e",
+          "status": "not_configured",
+          "revision": 3,
+          "run_id": "dc7c9dd91a9d404b988fd1d691b8d784",
+          "executed_at": "2026-10-20T09:02:57.464574+00:00",
           "command": null,
           "cwd": ".",
           "timeout": 60.0
@@ -1336,15 +1590,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "S-09",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -1356,7 +1610,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1400,6 +1654,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "S-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -1423,15 +1698,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "S-10",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -1443,7 +1718,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1487,6 +1762,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "S-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -1510,15 +1806,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-07",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -1530,7 +1826,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1574,6 +1870,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -1597,15 +1914,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-08",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -1617,7 +1934,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1661,6 +1978,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -1684,15 +2022,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-09",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -1704,7 +2042,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1748,6 +2086,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-09",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -1771,15 +2130,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-10",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -1791,7 +2150,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1835,6 +2194,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-10",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -1858,15 +2238,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "E-11",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -1878,7 +2258,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -1922,6 +2302,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "E-11",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -1945,15 +2346,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "B-06",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -1965,7 +2366,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -2009,6 +2410,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "B-06",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -2032,15 +2454,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "B-07",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -2052,7 +2474,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -2096,6 +2518,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "B-07",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     },
@@ -2119,15 +2562,15 @@
       "cwd": ".",
       "timeout": 60.0,
       "depends_on": [],
-      "revision": 2,
+      "revision": 3,
       "evidence": {
         "id": "B-08",
         "kind": "functional",
         "status": "passed",
         "exit_code": 0,
-        "revision": 2,
-        "run_id": "2c185efe2e1e42dc954b391f61a04b8d",
-        "executed_at": "2026-10-17T16:24:50.509705+00:00",
+        "revision": 3,
+        "run_id": "5d065650602d4842ae9f0b6934e90730",
+        "executed_at": "2026-10-20T09:09:56.508256+00:00",
         "command": [
           "npm",
           "-C",
@@ -2139,7 +2582,7 @@
         ],
         "cwd": ".",
         "timeout": 60.0,
-        "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
       },
       "runs": [
         {
@@ -2183,6 +2626,27 @@
           "cwd": ".",
           "timeout": 60.0,
           "fingerprint": "4c042966bf012bb3a55ec54fb62bab71a2a0db7f055a9b09539b0fbe29d7978b"
+        },
+        {
+          "id": "B-08",
+          "kind": "functional",
+          "status": "passed",
+          "exit_code": 0,
+          "revision": 3,
+          "run_id": "5d065650602d4842ae9f0b6934e90730",
+          "executed_at": "2026-10-20T09:09:56.508256+00:00",
+          "command": [
+            "npm",
+            "-C",
+            "console/frontend",
+            "run",
+            "test",
+            "--",
+            "test/SessionCancelDialog.test.tsx"
+          ],
+          "cwd": ".",
+          "timeout": 60.0,
+          "fingerprint": "4fa1347daf7c4beaab7ff4c11f94370de8398701b4e9f53b3a6854cc463a6113"
         }
       ]
     }

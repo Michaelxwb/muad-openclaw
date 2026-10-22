@@ -34,7 +34,6 @@ import {
 import { requestAlertsRefresh } from "../components/NotificationBell";
 import { FeedbackBanner, ListToolbar, PageHeader, PageSection } from "../components/ConsolePage";
 import { useMountedRef } from "../hooks/useMountedRef";
-import { useHumanUserNames } from "../hooks/useHumanUserNames";
 import { normalizePage } from "../utils/pageClamp";
 import { PublicSkillUploadDialog } from "./skills/PublicSkillUploadDialog";
 import styles from "./Skills.module.css";
@@ -69,7 +68,6 @@ export function Skills() {
   const { t } = useTranslation();
   const state = useSkillAssets();
   const storage = usePublicSkillStorage();
-  const userNames = useHumanUserNames(true);
   const [selected, setSelected] = useState<SkillAsset | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<SkillStatusAction | null>(null);
@@ -173,12 +171,7 @@ export function Skills() {
           onUpload={() => setUploadOpen(true)}
         />
         <PublicStorageNotice storage={storage} />
-        <SkillTable
-          state={state}
-          userNames={userNames}
-          onOpen={setSelected}
-          onStatusAction={setPendingAction}
-        />
+        <SkillTable state={state} onOpen={setSelected} onStatusAction={setPendingAction} />
       </PageSection>
       <SkillDetailDrawer skill={selected} onClose={() => setSelected(null)} />
       <SkillStatusActionDialog
@@ -534,19 +527,17 @@ function publicStorageDescription(status: PublicSkillStorageStatus) {
 
 function SkillTable({
   state,
-  userNames,
   onOpen,
   onStatusAction,
 }: {
   state: SkillAssetsState;
-  userNames: ReadonlyMap<string, string>;
   onOpen: (skill: SkillAsset) => void;
   onStatusAction: (action: SkillStatusAction) => void;
 }) {
   const { t } = useTranslation();
   return (
     <Table
-      columns={skillColumns(t, onOpen, onStatusAction, userNames) as never}
+      columns={skillColumns(t, onOpen, onStatusAction) as never}
       dataSource={state.items}
       rowKey="skillId"
       loading={state.loading}
@@ -571,7 +562,6 @@ function skillColumns(
   t: TFunction,
   onOpen: (skill: SkillAsset) => void,
   onStatusAction: (action: SkillStatusAction) => void,
-  userNames: ReadonlyMap<string, string>,
 ) {
   return [
     {
@@ -635,7 +625,7 @@ function skillColumns(
       title: t("skill.owner"),
       key: "owner",
       width: 210,
-      render: (_: unknown, skill: SkillAsset) => <SkillOwner skill={skill} userNames={userNames} />,
+      render: (_: unknown, skill: SkillAsset) => <SkillOwner skill={skill} />,
     },
     {
       title: t("common.actions"),
@@ -648,20 +638,12 @@ function skillColumns(
   ];
 }
 
-function SkillOwner({
-  skill,
-  userNames,
-}: {
-  skill: SkillAsset;
-  userNames: ReadonlyMap<string, string>;
-}) {
+function SkillOwner({ skill }: { skill: SkillAsset }) {
   const { t } = useTranslation();
   if (skill.scope === "system") return <span>{t("skill.ownerSystem")}</span>;
   if (skill.scope === "public") return <span>{t("skill.ownerPublic")}</span>;
 
-  // 归属展示用户名称（humanUserId → displayName 映射）；映射缺失（拉取失败或
-  // 用户已删除）时回退显示 humanUserId，绝不回退到 skill 自身的 displayName。
-  const ownerName = userNames.get(skill.humanUserId ?? "") || skill.humanUserId || "-";
+  const ownerName = skill.humanUserName || skill.humanUserId || "-";
   return (
     <div>
       <div>{t("skill.ownerPrivate")}</div>
