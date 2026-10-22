@@ -15,6 +15,7 @@ const apiMocks = vi.hoisted(() => ({
   uploadPublicSkill: vi.fn(),
   updateSkill: vi.fn(),
   applySkills: vi.fn(),
+  listAllHumanUsers: vi.fn(),
 }));
 
 vi.mock("../src/api", async (importOriginal) => {
@@ -43,6 +44,12 @@ const skill = {
 };
 
 beforeEach(() => {
+  apiMocks.listAllHumanUsers.mockReset().mockResolvedValue({
+    items: [{ humanUserId: "user-a", displayName: "旧缓存名" }],
+    total: 1,
+    page: 1,
+    pageSize: 100,
+  });
   apiMocks.listSkills.mockReset().mockResolvedValue({
     items: [skill],
     total: 1,
@@ -89,6 +96,41 @@ beforeEach(() => {
 });
 
 describe("Skills", () => {
+  it.each(["张三", ""])("renders private Skill owner %j from the list response", async (name) => {
+    apiMocks.listSkills.mockResolvedValue({
+      items: [{ ...skill, scope: "private", humanUserId: "user-a", humanUserName: name }],
+      total: 1,
+      page: 1,
+      pageSize: 10,
+    });
+    render(<Skills />);
+
+    expect(await screen.findByText(name || "user-a")).toBeInTheDocument();
+    expect(apiMocks.listAllHumanUsers).not.toHaveBeenCalled();
+  });
+
+  it("updates the private Skill owner when the list is refreshed", async () => {
+    const ownedSkill = { ...skill, scope: "private", humanUserId: "user-a", humanUserName: "张三" };
+    apiMocks.listSkills.mockResolvedValue({ items: [ownedSkill], total: 1, page: 1, pageSize: 10 });
+    render(<Skills />);
+    await screen.findByText("张三");
+
+    apiMocks.listSkills.mockResolvedValue({
+      items: [{ ...ownedSkill, humanUserName: "李四" }],
+      total: 1,
+      page: 1,
+      pageSize: 10,
+    });
+    fireEvent.change(screen.getByPlaceholderText("名称、ID 或路径"), {
+      target: { value: "xdr" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "查询 Skill" }));
+
+    expect(await screen.findByText("李四")).toBeInTheDocument();
+    expect(screen.queryByText("张三")).not.toBeInTheDocument();
+    expect(apiMocks.listAllHumanUsers).not.toHaveBeenCalled();
+  });
+
   it("lists Skill assets and opens the detail drawer", async () => {
     render(<Skills />);
 

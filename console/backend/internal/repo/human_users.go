@@ -148,14 +148,19 @@ func (s *Store) ListHumanUsers(filter HumanUserListFilter) ([]HumanUser, int, er
 // callers can fall back to the raw id.
 func (s *Store) ListHumanUserDisplayNames(humanUserIDs []string) (map[string]string, error) {
 	names := make(map[string]string, len(humanUserIDs))
-	if len(humanUserIDs) == 0 {
-		return names, nil
-	}
-	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(humanUserIDs)), ",")
+	seen := make(map[string]bool, len(humanUserIDs))
 	args := make([]any, 0, len(humanUserIDs))
 	for _, id := range humanUserIDs {
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
 		args = append(args, id)
 	}
+	if len(args) == 0 {
+		return names, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(args)), ",")
 	rows, err := s.db.Query(
 		`SELECT human_user_id, display_name FROM human_users WHERE human_user_id IN (`+placeholders+`)`,
 		args...)

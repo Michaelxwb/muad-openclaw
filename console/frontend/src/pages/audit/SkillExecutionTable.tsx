@@ -9,15 +9,14 @@ import styles from "./SkillExecutions.module.css";
 
 interface Props {
   state: SkillExecutionRecordsState;
-  userNames: ReadonlyMap<string, string>;
   podNames: ReadonlyMap<string, string>;
   onOpenPod?: (podId: string) => void;
   onOpenTrace?: (executionId: string) => void;
 }
 
-export function SkillExecutionTable({ state, userNames, podNames, onOpenPod, onOpenTrace }: Props) {
+export function SkillExecutionTable({ state, podNames, onOpenPod, onOpenTrace }: Props) {
   const { t } = useTranslation();
-  const columns = executionColumns(t, userNames, podNames, onOpenPod, onOpenTrace);
+  const columns = executionColumns(t, podNames, onOpenPod, onOpenTrace);
   return (
     <Table
       columns={columns as never}
@@ -48,7 +47,6 @@ export function SkillExecutionTable({ state, userNames, podNames, onOpenPod, onO
 
 function executionColumns(
   t: TFunction,
-  userNames: ReadonlyMap<string, string>,
   podNames: ReadonlyMap<string, string>,
   onOpenPod?: (podId: string) => void,
   onOpenTrace?: (executionId: string) => void,
@@ -58,8 +56,8 @@ function executionColumns(
       title: t("execution.user"),
       flex: 2,
       render: (_: unknown, row: SkillExecution) => {
-        const name = userNames.get(row.humanUserId) || row.humanUserId;
-        const secondary = userNames.has(row.humanUserId) ? row.humanUserId : "";
+        const name = row.humanUserName || row.humanUserId;
+        const secondary = row.humanUserName ? row.humanUserId : "";
         return <TwoLine primary={name} secondary={secondary} />;
       },
     },

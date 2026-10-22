@@ -20,14 +20,15 @@ type skillExecutionUpsertRequest struct {
 }
 
 type skillExecutionView struct {
-	ExecutionID string    `json:"executionId"`
-	PodID       string    `json:"podId"`
-	HumanUserID string    `json:"humanUserId"`
-	AgentID     string    `json:"agentId"`
-	SkillName   string    `json:"skillName"`
-	SkillScope  string    `json:"skillScope"`
-	StartedAt   time.Time `json:"startedAt"`
-	CreatedAt   time.Time `json:"createdAt"`
+	ExecutionID   string    `json:"executionId"`
+	PodID         string    `json:"podId"`
+	HumanUserID   string    `json:"humanUserId"`
+	HumanUserName string    `json:"humanUserName"`
+	AgentID       string    `json:"agentId"`
+	SkillName     string    `json:"skillName"`
+	SkillScope    string    `json:"skillScope"`
+	StartedAt     time.Time `json:"startedAt"`
+	CreatedAt     time.Time `json:"createdAt"`
 }
 
 func (s *Server) handleUpsertSkillExecution(w http.ResponseWriter, r *http.Request) {
@@ -115,8 +116,17 @@ func (s *Server) handleListSkillExecutions(w http.ResponseWriter, r *http.Reques
 		writeErr(w, r, errcode.InternalListSkillExecutions)
 		return
 	}
+	userIDs := make([]string, 0, len(records))
+	for _, record := range records {
+		userIDs = append(userIDs, record.HumanUserID)
+	}
+	userNames, err := s.store.ListHumanUserDisplayNames(userIDs)
+	if err != nil {
+		writeErr(w, r, errcode.InternalListSkillExecutions)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"items": skillExecutionViews(records), "total": total, "page": page, "pageSize": pageSize,
+		"items": skillExecutionViews(records, userNames), "total": total, "page": page, "pageSize": pageSize,
 	})
 }
 
@@ -192,10 +202,12 @@ func validOptionalSkillExecutionScope(scope string) bool {
 		scope == repo.SkillScopePublic || scope == repo.SkillScopePrivate
 }
 
-func skillExecutionViews(records []repo.SkillExecutionRecord) []skillExecutionView {
+func skillExecutionViews(records []repo.SkillExecutionRecord, userNames map[string]string) []skillExecutionView {
 	views := make([]skillExecutionView, 0, len(records))
 	for _, record := range records {
-		views = append(views, skillExecutionToView(record))
+		view := skillExecutionToView(record)
+		view.HumanUserName = userNames[record.HumanUserID]
+		views = append(views, view)
 	}
 	return views
 }

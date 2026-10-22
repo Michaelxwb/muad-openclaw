@@ -180,7 +180,11 @@ function auditColumns(t: TFunction) {
       width: 210,
       render: (_: unknown, entry: AuditEntry) => (
         <div>
-          <span className="mono">{entry.target || "-"}</span>
+          <span className="mono" title={entry.target}>
+            {(entry.target && entry.target === entry.metadata.humanUserId && entry.humanUserName) ||
+              entry.target ||
+              "-"}
+          </span>
           <div>
             <Tag size="small">{targetTypeLabel(entry.targetType)}</Tag>
           </div>
@@ -215,9 +219,12 @@ function targetTypeLabel(type: AuditEntry["targetType"]): string {
 }
 
 function auditContext(entry: AuditEntry) {
+  const user = entry.humanUserName
+    ? `${entry.humanUserName} (${entry.metadata.humanUserId})`
+    : entry.metadata.humanUserId;
   const values = [
     entry.metadata.podId && `pod=${entry.metadata.podId}`,
-    entry.metadata.humanUserId && `user=${entry.metadata.humanUserId}`,
+    entry.metadata.humanUserId && `user=${user}`,
     entry.metadata.agentId && `agent=${entry.metadata.agentId}`,
     entry.metadata.identityId && `identity=${entry.metadata.identityId}`,
     entry.metadata.bindingCodeId && `code=${entry.metadata.bindingCodeId}`,
