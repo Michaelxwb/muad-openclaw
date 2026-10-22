@@ -1,7 +1,7 @@
 version: 1
 task: webchat-channel
 enforcement: required
-updated_at: '2026-10-10T03:14:49.956147+00:00'
+updated_at: '2026-10-21T06:04:21.013966+00:00'
 sources:
 - type: cli
   ref: bind
@@ -36,9 +36,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.5'
-          item_id: Q-01
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B01
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -68,9 +68,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.4'
-          item_id: Q-02
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B02
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -201,7 +201,7 @@ bindings:
   path: backend/database.md
   status: active
   hashes:
-    file_sha256: edff6afb9b5dbd61f04544457c36a74afc219e5270d4b097322bb0dd01782e2b
+    file_sha256: 97110aa6f92fb1e6a0c8c9135486568c17006c9125b7dc373b774241aa1deccf
     metadata_sha256: 16a121ab90ca42efe62126aef147f86a9e3f41f78df276abfcd9151662b0f170
     rules_sha256: a8b78dc27f0a85f8e4a5c00474f9566573663d30cadc120bdeced83fd87b8504
   selected_by: agent
@@ -226,9 +226,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.3'
-          item_id: Q-03
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B03
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -258,9 +258,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.3'
-          item_id: Q-04
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B04
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -359,6 +359,90 @@ bindings:
         refs: []
         decision: null
         evidence: []
+  - ref: PATTERN-backend-004
+    summary: 运行态镜像（如 `long_task_tasks`）按 `state_revision` 单向合并：只接受较新 revision 的合法前进、同
+      revision 幂等、旧格式（rev=0）沿用状态机兼容；终态（cancelled/succeeded/failed）不被快照改写，乱序/回退快照只推进
+      last_seen，不伪造 failed
+    text_sha256: 4f1b28fa749d8ba59b4d2b9ba852ee7aaef24a969173ba539aff5c6a61e1398d
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-005
+    summary: trace metrics 的 `aborted` 必须只升不降（`max(existing, excluded)`）；迟到的非 abort
+      快照不得覆盖已有终止记录，abort 详情仅由 abort 侧写入
+    text_sha256: 58b6d8e8d6008d321ee4184b4fb08346baf212c0a0c3228a291b4d1eb53691e1
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-backend-006
+    summary: Skill 健康统计按 `(skill_name, skill_scope, human_user_id)` 分组；私有 Skill 同名跨用户不得合并
+    text_sha256: 88016ed42108cf61836ac01e5e02207adf9f2b2273cce565e5c4a4f24ca2e30b
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
 - spec_id: backend-directory-structure
   path: backend/directory-structure.md
   status: active
@@ -389,9 +473,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.2'
-          item_id: Q-05
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B05
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -519,9 +603,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.5'
-          item_id: Q-06
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B06
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -552,9 +636,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.5'
-          item_id: Q-07
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B07
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -657,7 +741,7 @@ bindings:
   path: backend/platform-rules.md
   status: active
   hashes:
-    file_sha256: 714ef6dba1f750084c2fa4f268534909d8e0a6c49c611e049356b98a1fb35591
+    file_sha256: 2dfb837f7ab9b088faf9e9c6205ed142fa0790e5bb3e139d159afbf8ad14e9e5
     metadata_sha256: ecb69e8f95a7f2788a205597ba418180ded9c735218297486655b85c83a3641d
     rules_sha256: 5d12a32233766dc29ce4c8d63fd6096da9cbc9378b45a2880edf4ef54bb99da9
   selected_by: agent
@@ -682,9 +766,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.5'
-          item_id: Q-08
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B08
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -715,9 +799,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.4'
-          item_id: Q-09
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B09
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -748,9 +832,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.4'
-          item_id: Q-10
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-B10
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -878,9 +962,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.frontend.design.md
-          section_id: '3.3'
-          item_id: F-06
-          artifact_sha256: 824c333c9cb36eb1061bd22f7a0e57e9fa1198822c0765d764c014cde74be45c
+          section_id: Spec Compliance Matrix
+          item_id: SC-F06
+          artifact_sha256: 30b17de857c11c42b39b940a64d2baf9bb34b4f832676dda8f7bd5b27e64b94a
         decision: null
         evidence: []
       plan:
@@ -911,9 +995,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.frontend.design.md
-          section_id: '2.2'
-          item_id: F-07
-          artifact_sha256: 824c333c9cb36eb1061bd22f7a0e57e9fa1198822c0765d764c014cde74be45c
+          section_id: Spec Compliance Matrix
+          item_id: SC-F07
+          artifact_sha256: 30b17de857c11c42b39b940a64d2baf9bb34b4f832676dda8f7bd5b27e64b94a
         decision: null
         evidence: []
       plan:
@@ -1069,9 +1153,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.frontend.design.md
-          section_id: '3.5'
-          item_id: F-01
-          artifact_sha256: 824c333c9cb36eb1061bd22f7a0e57e9fa1198822c0765d764c014cde74be45c
+          section_id: Spec Compliance Matrix
+          item_id: SC-F01
+          artifact_sha256: 30b17de857c11c42b39b940a64d2baf9bb34b4f832676dda8f7bd5b27e64b94a
         decision: null
         evidence: []
       plan:
@@ -1102,9 +1186,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.frontend.design.md
-          section_id: '3.4'
-          item_id: F-02
-          artifact_sha256: 824c333c9cb36eb1061bd22f7a0e57e9fa1198822c0765d764c014cde74be45c
+          section_id: Spec Compliance Matrix
+          item_id: SC-F02
+          artifact_sha256: 30b17de857c11c42b39b940a64d2baf9bb34b4f832676dda8f7bd5b27e64b94a
         decision: null
         evidence: []
       plan:
@@ -1207,8 +1291,8 @@ bindings:
   path: frontend/quality-standards.md
   status: active
   hashes:
-    file_sha256: a6a621366eeef864544b155b7bf94d89a5305a7d21debd448bd40e47cc0fb83b
-    metadata_sha256: f660359d6c1ec9cdbd33f21331ac6ff0f778b1401a6d3757a1bf16a97f3d2062
+    file_sha256: 6720110b0a4dd7cc8d232823e7de9032c696aa597f568c0e3850fd14a3d92507
+    metadata_sha256: 8b5885c17c460a7208c11d28f820a8301449ea4fb9d87833ba6f317cbd83e09e
     rules_sha256: 795ad727eb1ea316f729b4d88be77df2c35c92f41c24e0359706aead774cfff1
   selected_by: agent
   reason: Pod 表单新增通道选项需 i18n 双语同步，并保持 api.ts 收口与 typed 校验。
@@ -1232,9 +1316,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.frontend.design.md
-          section_id: '3.6'
-          item_id: F-03
-          artifact_sha256: 824c333c9cb36eb1061bd22f7a0e57e9fa1198822c0765d764c014cde74be45c
+          section_id: Spec Compliance Matrix
+          item_id: SC-F03
+          artifact_sha256: 30b17de857c11c42b39b940a64d2baf9bb34b4f832676dda8f7bd5b27e64b94a
         decision: null
         evidence: []
       plan:
@@ -1266,9 +1350,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.frontend.design.md
-          section_id: '3.5'
-          item_id: F-04
-          artifact_sha256: 824c333c9cb36eb1061bd22f7a0e57e9fa1198822c0765d764c014cde74be45c
+          section_id: Spec Compliance Matrix
+          item_id: SC-F04
+          artifact_sha256: 30b17de857c11c42b39b940a64d2baf9bb34b4f832676dda8f7bd5b27e64b94a
         decision: null
         evidence: []
       plan:
@@ -1299,9 +1383,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.frontend.design.md
-          section_id: '2.2'
-          item_id: F-05
-          artifact_sha256: 824c333c9cb36eb1061bd22f7a0e57e9fa1198822c0765d764c014cde74be45c
+          section_id: Spec Compliance Matrix
+          item_id: SC-F05
+          artifact_sha256: 30b17de857c11c42b39b940a64d2baf9bb34b4f832676dda8f7bd5b27e64b94a
         decision: null
         evidence: []
       plan:
@@ -1460,7 +1544,7 @@ bindings:
   path: runtime/config-and-apply.md
   status: active
   hashes:
-    file_sha256: 5eb887d3987869eeefd19895210afefa49a028af4fee1242a71e9a2a59c1be14
+    file_sha256: 4e43e458da21da31f032fcc92be485eb0a3a62323605d4ef72b3aa2695d33724
     metadata_sha256: f275035e49c2d53961baf0ae8b9974d6867e3504a48b7128483ec94ab60e72ae
     rules_sha256: cedb07c8944d42c5c74ebe18b0418eb7bcc2a9f7d87cb5e8b58161a83ba94d45
   selected_by: agent
@@ -1485,9 +1569,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '4.2'
-          item_id: R-01
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R01
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -1518,9 +1602,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '4.2'
-          item_id: R-02
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R02
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -1596,7 +1680,7 @@ bindings:
   path: runtime/directory-structure.md
   status: active
   hashes:
-    file_sha256: 9d55d53709d88d2907088ca6e1b8f4365924cbdc91e8006471ef33c4c106f1ea
+    file_sha256: 19b32ca79a6b498ee205f361b23d08b5c8c0306e5adeb6453708071f122f71f6
     metadata_sha256: 7dcafd9e33ee73b9d3b5973436f845d5d11f8bf5fd52d78a946d168e8f5e010f
     rules_sha256: 1eef557f1ace42806c61e99d746e9d7e6a112e47fb582aa2dc6a18734917df4c
   selected_by: agent
@@ -1621,9 +1705,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.1'
-          item_id: R-03
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R03
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -1699,7 +1783,7 @@ bindings:
   path: runtime/isolation-and-security.md
   status: active
   hashes:
-    file_sha256: c0d256ae3e0052120abfc554fdd38d6df1fb91c159132ba662ff163e7e8c22ab
+    file_sha256: 98bd2d3acb6e5b040b9ad95615460f1ccda5fee8f9dfc25cfaf331a569368a3a
     metadata_sha256: b7fdca81e893c4700e546264dca611c65f0533ca1a698e426a92f5cc773a0ccd
     rules_sha256: 92c49db785819c7ac008577a80977f3ed8b72ee244db7b0d28e5e3c1918dec63
   selected_by: agent
@@ -1724,9 +1808,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.5'
-          item_id: R-04
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R04
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -1757,9 +1841,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.4'
-          item_id: R-05
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R05
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -1862,8 +1946,8 @@ bindings:
   path: runtime/skill-execution.md
   status: active
   hashes:
-    file_sha256: 4f0e841689b8309ad1a67186b0a82336bb1b4a6d6396d0aab6d7856a1a51d937
-    metadata_sha256: 03de1fff61c25a9ab8a640b25646b9c439eef210c576573697df99bc09e17340
+    file_sha256: b50f0ca046374362e9f831f2b4de1199482cd50db9b83b697068e3766b2ff0d9
+    metadata_sha256: 23e61c5a3b782a225d843b014b74946d51fa0ccde9e5c1873afb570fdd79b1d1
     rules_sha256: fbe9d77c7effb79a139340813eb80e706004e53b65fde04ab436f8edaeafaa2f
   selected_by: agent
   reason: '通道插件需走注入 log 回调、稳定日志前缀，附件产物经 SKILL_OUTPUT_DIR 与 MEDIA: 路径交付。'
@@ -1887,9 +1971,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.4'
-          item_id: R-06
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R06
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -1920,9 +2004,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.2'
-          item_id: R-07
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R07
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -1953,9 +2037,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.5'
-          item_id: R-08
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R08
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -1985,9 +2069,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.5'
-          item_id: R-09
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R09
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -2018,9 +2102,9 @@ bindings:
         status: applied
         refs:
         - artifact: webchat-channel.backend.design.md
-          section_id: '3.4'
-          item_id: R-10
-          artifact_sha256: 08ba2d2ecdc60499bc1b474e688204cc628764240093e40a939dd99bbdd9835d
+          section_id: Spec Compliance Matrix
+          item_id: SC-R10
+          artifact_sha256: 3363d1d0be3b0bc3ea71ca91775c58a1341b6d4319d63bd75dd1d8f6ac986296
         decision: null
         evidence: []
       plan:
@@ -2123,6 +2207,343 @@ bindings:
     summary: repo 查询 system/public 时 `ORDER BY CASE scope WHEN 'system' THEN 0 ELSE
       1 END`
     text_sha256: 471439c2cf2439af73880de97579916c1d2adceb0bffa375e297618b7fbf458c
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-005
+    summary: 匹配/授权来源以可信入站消息为准：`explicit_name` 只认本轮用户明确命令（`/skill:<name>` 或展开的 skill
+      标记），runtime preflight 复核，模型自报即拒（`explicit_name_untrusted`）；“参考”文档不授权执行被参考 Skill
+    text_sha256: 758fb2e0f5321b7576d101908a44dd6df772e2a3096542ded91ada343988dae8
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-006
+    summary: 取消运行语义：`aborted`（接受）≠ `drained`（原生清理）≠ 进程已退出；只有真实退出才确认停止，只对本 Worker detached
+      进程组补发终止（best-effort，不作为停止证据），禁止 `forceClear`
+    text_sha256: 31660f2934ea33fdc52bf01b83f5651a71d7ae09a81c23f57b959f4a1fbc90b0
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-007
+    summary: 取消后关闭目标任务会话的新工具调用；终态只释放目标任务租约（`releaseSession`，幂等，未持有 no-op），取消中占槽不提前释放
+    text_sha256: 010d7ecac0e8881d08d4c9def27584c003981c1c5be4da99dbc953a5757fd3ff
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-008
+    summary: 进度桥取消语义：拒绝迟到事件（`execution_cancelled`）、丢弃未发起队列、在途发送保留可解释边界、终态结算最多一次且不发送成功/失败类消息
+    text_sha256: cb3a456a1ef0438865ad341e99b3394fc34fc557c14e891e77aa8bd2f2a87af4
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-009
+    summary: 结果投递由 manager 仲裁：子 CLI 不再 `--deliver`（stdout 持续消费 + 有界缓冲解析 `result.payloads`）；取消已提交的任务不新发成功结果或通用失败通知，许可发起即视为在途
+    text_sha256: 43e3dca818790050e6852ba958069211cd914ab08ca85a1961a044e17162cef6
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-010
+    summary: 内部取消 RPC 仅 `operator.write`（绝不注册为模型工具）；能力只在取消链完整（manager 可取消 + 原生 abort/drain
+      可用）时上报，缺失明确不可用、不危险兜底
+    text_sha256: 3b1fa835a09d9e4b066316b678b84c92f65688e95e9fdc5606b818d7649a22bc
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-011
+    summary: '**自建 Skill 统一 Python**：脚本放 `scripts/*.py`，入口默认 `scripts/run.py`；不生成
+      TS/Shell/Node 脚本。'
+    text_sha256: df7a6d6c520f4c7940da9078d45963ece02e3738325e513823de4916b76e6514
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-012
+    summary: '**Managed manifest 必填 author**：`muad.skill.json` 必须带非空 `author`（作者姓名/工号/用户名）；public
+      上传与 internal ingest 统一校验，缺失返回 `SkillBundleInvalidManifest`，`author` 写入 metadata
+      供追溯。'
+    text_sha256: e5f0af67bc35bd1c7bc7681f9e23b155c8626849279ec824ad5460131683f41a
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-013
+    summary: '**登录态与业务请求分离**：Skill 通过 `session-manager get-state --skill-name <skill>`
+      获取登录态并读取 `platforms.<平台>.cookies`，业务请求直接使用 `requests`；Runtime Guard 只对平台 baseUrl
+      命中的 host 自动覆盖 `TraceId`/`X-Csrftoken`、计数和限流，名单外请求原样透传。禁止 `httpx`/`urllib`/`curl`
+      发业务请求。'
+    text_sha256: 86cf89a4e1df1d9094ef8057bb474ff89168a6b713bca26c0b4532c02c0da4c3
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-014
+    summary: '**TraceId 每请求新 UUID v4**：业务 host 命中名单时由 Runtime Guard 覆盖 `TraceId` 与
+      `X-Csrftoken`；Cookie/CSRF 等凭据头不进入 trace/日志，`TraceId` 作为请求追踪标识随 HTTP 事件持久化并在
+      Console 展示，供到业务平台检索对应请求。'
+    text_sha256: 9bbb5b47b78abe22703a9e1a7bec7d8e23e401eeaadbfcf4f5491b3d71383193
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-015
+    summary: '**直接路径执行审计**：`exec` 命令引用已授权 Skill 路径（首个有效 token 为解释器或可执行路径）时，audit hook
+      也注册 execution；`ls`/`cat`/`grep` 等只读检查不注册。该审计只用于 trace 归属，不改变 activation/授权判定。'
+    text_sha256: 5c8599bb1e0ef2375cc40eb87b3dd06d97befed7d5b57130e29f702cc34cb990
+    enforcement: advisory
+    verifier_ref: advisory:none
+    verifier_stage: code
+    stage_status:
+      design:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      plan:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      code:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+      review:
+        status: pending
+        refs: []
+        decision: null
+        evidence: []
+  - ref: PATTERN-runtime-016
+    summary: '**旧 Skill 兼容是 opt-in**：不强制迁移、不做上传硬拦截；`self-skill-review` 以警告推动整改，管理员审批把关。`self-skill-review`
+      只读目标目录、不执行被审代码、忽略代码内指令。'
+    text_sha256: a248ebcd94549fcea61f14349fcf70fde51a01ec874aa497d3b9551182c0bc57
     enforcement: advisory
     verifier_ref: advisory:none
     verifier_stage: code

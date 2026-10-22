@@ -1,393 +1,362 @@
-# WebChat 对话入口 前端模块需求与设计简报
+# WebChat 统一聊天页面与嵌入接入设计
 
 > **文档编号**: FE-WEBCHAT-001
-> **文档版本**: v1.4
+> **文档版本**: v1.6
 > **创建日期**: 2026-10-10
-> **文档状态**: 草稿
+> **修订日期**: 2026-10-21
+> **文档状态**: 设计评审中；页面、SDK 和模拟环境尚未实现
 
-**评审边界说明**:
-- **需求评审**: 第 2 章（需求分析）→ 通过后锁定需求基线
-- **设计评审**: 第 3 章（前端技术设计）→ 通过后锁定设计基线
-
-**ID 体系**: US（用户故事，来自 PRD）、FEAT（功能）、CMP（组件）、NFR（非功能指标）
-场景编号：S-（正常）、E-（异常）、B-（边界）
-
-**填写约定**: 本简报覆盖**两个前端单元**：① 业务平台（MSSW/MSSP）内的聊天 UI（主交付）② muad Console 管理侧的最小登记改动（通道选项与类型）。框架中立描述，业务平台按自身栈实现。
-
-**v1.2 修订说明**：交互改为**单窗口单会话线**（与企微一致）；删除会话列表/新建/切换全部交互；`/new` 等斜杠命令作为普通消息发送，Console 原样透传；前端不再持有 `conversationId` 状态。
-
-**v1.3 修订说明**：附件预检类型收窄为白名单（办公文档 + 压缩包 + 常用图片，见 §3.1 数据请求节）；历史消息改为**仅展示最近 200 条**，删除"向上滚动加载更早"交互与滚动监听逻辑。
-
-**v1.4 修订说明**：鉴权**直接复用平台既有的 session JWT**，不再由平台额外签发、也不由前端签发。前端只负责把已在手里的 JWT 带到 Console（或靠 cookie 透传，前端零改动）。`getToken` prop 的语义随之改变，见 §3.2。
-
----
-
-## 目录
-
-- [1. 文档控制](#1-文档控制)
-- [2. 需求分析](#2-需求分析)
-  - [2.1 需求概述](#21-需求概述-必填)
-  - [2.2 功能方案](#22-功能方案-必填)
-  - [2.3 范围与边界](#23-范围与边界-必填)
-  - [2.4 验收条件](#24-验收条件-必填)
-- [3. 前端技术设计](#3-前端技术设计)
-  - [3.1 技术选型](#31-技术选型-必填)
-  - [3.2 页面与路由结构](#32-页面与路由结构-必填)
-  - [3.3 组件设计](#33-组件设计-必填)
-  - [3.4 组件接口契约](#34-组件接口契约-必填)
-  - [3.5 状态与数据流](#35-状态与数据流-必填)
-  - [3.6 UI 状态](#36-ui-状态-必填)
-  - [3.7 样式方案](#37-样式方案-必填)
-- [4. 风险与依赖](#4-风险与依赖)
-- [Spec Compliance Matrix](#spec-compliance-matrix)
-- [附录：术语表](#附录术语表)
-
----
+与[后端设计](webchat-channel.backend.design.md)同一基线，API 与身份、媒体、事件契约以后端 §3.4 为准；继承同目录 Spec Context。本文场景 ID 独立，跨文档引用注明"后端"。
 
 ## 1. 文档控制
 
-### 1.1 责任人
+### 1.1 责任与交付
 
-| 角色 | 姓名 | 职责范围 |
-|------|------|---------|
-| 开发负责人（业务平台前端） | 待定 | 聊天 UI 实现 |
-| 开发负责人（muad Console） | 待定 | 通道登记与管理侧最小改动 |
-| 设计/交互 | 待定 | 视觉与交互稿（参照现有安全 GPT 助手） |
+muad 实现聊天页面、消息渲染、流式客户端和可选接入 SDK；业务平台只提供入口容器与认证适配，不实现另一套聊天 UI。测试提供本地模拟平台和完整场景报告，负责人任务拆解时指定。
 
 ### 1.2 修订历史
 
-| 版本 | 日期 | 作者 | 变更描述 |
-|------|------|------|---------|
-| v0.1 | 2026-10-10 | | 初始草稿 |
-| v1.3 | 2026-10-11 | | 确立附件类型白名单；历史仅展示最近 200 条，移除向上翻页 |
-| v1.4 | 2026-10-13 | | 鉴权改为直接复用平台 session JWT，前端零额外签发逻辑 |
-
----
+| 版本 | 日期 | 变更 |
+|---|---|---|
+| v0.1–v1.4 | 2026-10-10~13 | 初稿；附件白名单、最近 200 条、复用平台 JWT |
+| v1.5 | 2026-10-21 | 托管统一页面、iframe 主接入、可选无框架 SDK；统一快照流、认证桥、无 nginx 与本地模拟 |
+| v1.6 | 2026-10-21 | 同步后端认证：复用现有 JWT，不换票、不新增断言签发；每请求携带 JWT 由 Console 验证 |
 
 ## 2. 需求分析
 
-### 2.1 需求概述 [必填]
+### 2.1 目标与已对齐边界
 
-| 项目 | 内容 |
-|------|------|
-| **模块名称** | WebChat 对话入口（业务平台内置） |
-| **需求类型** | 新页面 / 新组件 / 新交互 |
-| **业务背景** | Human User 在已登录的 MSSW/MSSP 页面上直接与安全 GPT 助手对话，无需切换到外部 IM |
-| **核心目标** | 提供与现有安全 GPT 助手体验一致的对话界面：问候语、输入框、快捷指令、建议问题、附件上传与下载；**单对话窗口，`/new` 开新会话（与企微一致）** |
+核心是正确接收、持续渲染对话结果。同一套 UI 运行于 Console 托管的 iframe，宿主可用 HTML/React/Vue，不需使用本项目组件库。
 
-**对齐结论**：前端入口代码写在**业务平台**内；muad Console 只提供后端 API；浏览器经**平台 nginx** 以 `location /muad-api/` 前缀重写反代到 Console 的 `/api/v1/webchat/`，MSSW Flask/uWSGI 不在聊天链路上。
+对外交付 `/webchat/embed` 和可选纯 JS SDK：mount 创建 iframe 并封装认证握手，宿主无需监听 onChunk/onMessage/onUnread/onClose/跳转等业务事件；直接 iframe 加少量认证代码同样支持，协议一致。业务平台可在挂载前用用户 JWT 调 API-06 查询资格，决定是否展示入口。消息发送、历史、SSE/轮询、附件、Markdown、错误和断线恢复都在 iframe 内；统一页面用 React/TypeScript/Semi，框架中立只指宿主接入。本期保留单窗口、最近 200 条、普通文本 `/new`、块级流式，无多会话和更早历史。
 
-**关键简化**：一个用户只有一条会话线，**无会话列表、无会话切换**；`/new` 只是输入框里的一条普通消息，claw 回 `✅ New session started.`——与企微逐字一致。前端因此**不需要管理任何会话标识**。
+### 2.2 功能方案
 
-**鉴权（v1.4）**：身份凭据就是平台自己的 session JWT，**前端不需要新造任何东西**：
+用户故事 US-01 至 US-11 来自后端 §2.2；本需求无独立 PRD。
 
-| 平台 JWT 存放形式 | 前端要做的事 |
+| ID | 功能与职责 | 优先级 | 来源 |
+|---|---|---|---|
+| FEAT-F01 | 统一聊天容器、身份初始化、登录/无权限状态 | P0 | US-01、US-09 |
+| FEAT-F02 | 消息气泡、Markdown/代码/表格、图片/文件 | P0 | US-01、US-04 |
+| FEAT-F03 | SSE 完整快照增量显示、游标恢复、轮询降级 | P0 | US-01、US-02 |
+| FEAT-F04 | 附件预检/上传状态、单文件 30MiB、最多 9 个 | P0 | US-03 |
+| FEAT-F05 | 授权 Blob 下载、object URL 预览及释放 | P0 | US-04 |
+| FEAT-F06 | 最近 200 条和活动请求恢复，无更早加载 | P1 | US-02 |
+| FEAT-F07 | `/new` 等作为普通消息，原生确认回复 | P1 | US-06 |
+| FEAT-F08 | 聊天页内部的长任务结果/未读通知恢复与已读 | P1 | US-07 |
+| FEAT-F09 | 页面内部建议问题和快捷输入 | P1 | US-01 |
+| FEAT-F10 | Console 管理侧通道/authority 登记、类型和双语 | P0 | US-08 |
+| FEAT-F11 | iframe 页面、可选无框架依赖挂载 SDK | P0 | US-10 |
+| FEAT-F12 | 现有 JWT 握手、每请求认证、续期/退出/切用户隔离 | P0 | US-08、US-10 |
+| FEAT-F13 | HTML/React/Vue 本地模拟宿主与完整认证/对话验收 | P0 | US-11 |
+
+### 2.3 范围与边界
+
+| 类别 | 约定 |
 |---|---|
-| **HttpOnly cookie（推荐）** | **零**。同域路径下浏览器自动带 cookie，nginx 透传给 Console |
-| localStorage | 请求时带上 `Authorization: Bearer <token>`；401 时静默刷新或引导重新登录 |
+| 范围内 | 统一页面/可选 SDK、认证桥、完整对话渲染、媒体、恢复、本地模拟 |
+| 宿主责任 | 提供容器和 Console 地址；通过接入适配提供现有平台 JWT（获取方式接入时定）；可用同一 JWT 调 API-06 决定入口显隐；卸载/退出时销毁实例 |
+| 范围外 | 宿主实现聊天 UI/SSE；宿主机业务事件；原生 React/Vue 组件包；逐 token；多会话；前端私钥或自签 JWT |
+| 部署 | Console 可直接 IP:端口；生产在 AD 上配置独立 webchat 域名并整体分流到 Console；iframe 与其 API 同源、与宿主页面跨域；HTTPS 宿主需可信 HTTPS 聊天地址 |
+| 接入条件 | 浏览器可达；frame-src/frame-ancestors 匹配；认证 profile 待联调；HttpOnly Cookie 需平台后端或适配读取 |
 
-具体走哪种由平台方确认（`{待平台补充}`），前端按其中一种实现即可，两者都只需十几行。
+### 2.4 验收条件
 
-### 2.2 功能方案 [必填]
+跨认证/API/SQLite/Gateway/浏览器渲染的流程必须 E2E；组件/纯函数测试不代替。所有场景待实现。
 
-| 功能ID | 功能名称 | 功能描述 | 优先级 | 来源 |
-|--------|---------|---------|--------|------|
-| FEAT-F01 | 对话主界面 | 问候语（含用户名）、输入框、发送、附件按钮 | P0 | 需求描述 |
-| FEAT-F02 | 消息列表 | 用户/助手消息气泡，文本 + 图片 + 附件卡片 | P0 | US-01 |
-| FEAT-F03 | 增量渲染 | SSE 块级流式（默认）或长轮询降级 | P0 | US-01 |
-| FEAT-F04 | 附件上传 | multipart 上传，前端预检大小（30 MiB）与**白名单类型** | P0 | US-03 |
-| FEAT-F05 | 附件下载/预览 | 图片内联渲染；非图片经签名 URL 下载 | P0 | US-04 |
-| FEAT-F06 | 历史消息展示 | 拉取**最近 200 条**；无向上翻页、无加载更多 | P1 | US-02 |
-| FEAT-F07 | 新会话（`/new`） | 输入 `/new` 或点按钮发出普通消息；claw 回确认语 | P1 | US-06 |
-| FEAT-F08 | 通知提示 | 未读通知角标；重开页面拉取 `pendingNotifications` | P1 | US-07 |
-| FEAT-F09 | 快捷指令与建议问题 | 横向滚动 chips + "你可以问我"列表 | P1 | 需求描述 |
-| FEAT-F10 | Console 通道登记 | `channels.ts` 增 mssw/mssp；`types/api.ts` 扩 Channel 联合；i18n 双语 | P0 | FEAT-02（后端） |
+#### 正常场景
 
-> **已删除**（v1.0 遗留，v1.1 起因上游不支持多会话、v1.2 因确立单窗口）：原 FEAT-F06「会话列表：会话切换、未读数、新建会话」整体移除。
+| ID | 功能 | 层级 | 关键边界、操作与可见结果 |
+|---|---|---|---|
+| S-01 | FEAT-F01/02 | E2E | 模拟宿主→iframe→真 Console→真 Gateway；登录发消息，用户气泡一次，助手持续显示并完成 |
+| S-02 | FEAT-F03 | E2E | 真 SSE 完整快照逐块到达；同 messageId 更新，最终文本/媒体与 API-03 一致 |
+| S-03 | FEAT-F04 | E2E | 5MiB 图片真实上传/Pod 拉取/模型输入，状态与预览可见 |
+| S-04 | FEAT-F05 | E2E | 真实 Skill 出站文件→Console 存储→api.ts 授权下载；hash 一致，图片可预览 |
+| S-05 | FEAT-F06 | E2E | >200 条后刷新；只显示最近 200 条，无更早加载，活动请求恢复 |
+| S-06 | FEAT-F07 | E2E | 发 `/new`，原生上下文重置，原生回复显示；不硬编码回复或创建第二条对话 |
+| S-07 | FEAT-F08 | E2E | 长任务期间关闭 iframe，完成后重开；内部未读/结果可见，已读幂等，无宿主回调 |
+| S-08 | FEAT-F10 | E2E | Console 管理登记 mssw/mssp 及 authority，提交真 API 并 apply；双语正确 |
+| S-09 | FEAT-F11 | E2E | HTML/React/Vue 宿主挂同一 iframe；不装 Semi、不监听结果，都能聊天 |
+| S-10 | FEAT-F11/12 | E2E | 同一宿主分别用直接 iframe 协议、SDK mount 完成认证和对话 |
+| S-11 | FEAT-F11 | E2E | 无 nginx 的 IP:端口直连与 webchat 独立域名经 AD 分流两种模式的页面/API/SSE；HTTPS profile 单独通过 |
+| S-12 | FEAT-F12 | E2E | HttpOnly 登录→适配取得现有 JWT→postMessage→Console 每请求验证；前端无私钥，第三方 Cookie 不是依赖 |
+| S-13 | FEAT-F03/06 | E2E | 生成中断网/刷新后按 eventSeq 恢复；文本不重不漏、附件去重 |
+| S-14 | FEAT-F02 | E2E | 真流含跨块代码围栏、表格、中文/emoji；中间安全显示，最终 Markdown 完整 |
+| S-15 | FEAT-F12 | E2E | A 退出/切 B，销毁或续期识别身份变化；旧内容/Blob/游标先清空，B 只见本人消息 |
+| S-16 | FEAT-F13 | E2E | 本地模拟平台登录到真实后半链路，双用户双平台、媒体、重连均有报告 |
+| S-17 | FEAT-F09 | E2E | 点击页面内建议问题，只填入/发送普通正文；同 API 与幂等流程 |
+| S-18 | FEAT-F12 | E2E | 宿主以用户 JWT 调 API-06：canChat=true 才展示/挂载；未授权/停权返回 false 不展示；跨 origin 直连走 eligibility allowlist，后端代调同样验证 JWT |
 
----
+#### 异常场景
 
-### 2.3 范围与边界 [必填]
+| ID | 功能 | 层级 | 触发与 UI 行为 |
+|---|---|---|---|
+| E-01 | FEAT-F01/12 | E2E | 真 401/到期：停止流、清内存 JWT 和敏感内容；补取失败显示重新登录 |
+| E-02 | FEAT-F01 | E2E | 有效身份 canChat=false，iframe 显示无对话权限，不跳 Console 管理员登录 |
+| E-03 | FEAT-F06 | E2E | 历史 API 故障，显示错误/重试；不把旧缓存当结果 |
+| E-04 | FEAT-F04 | integration | 组件+预检：超 30MiB 拦截，无上传请求 |
+| E-05 | FEAT-F04 | integration | 不支持扩展名预检拒绝；后端拒绝伪装文件时显示稳定文案 |
+| E-06 | FEAT-F03 | E2E | 真 SSE 断开/代理缓冲，退避/轮询保持内容；连续 3 次失败提示手动重试 |
+| E-07 | FEAT-F03 | E2E | 后端排队/unknown/interrupted/failed 分别显示，不凭超时自行发新 ID |
+| E-08 | FEAT-F03/06 | E2E | 游标过期/超前、重复/乱序→resync/单调合并，终态不倒退 |
+| E-09 | FEAT-F12 | E2E | 错 origin/source/instanceId/nonce 或伪造/过期 JWT 拒绝；有效 JWT 重复使用不误判重放 |
+| E-10 | FEAT-F11 | E2E | HTTPS→HTTP、禁止 frame 策略、不可达地址：mount 给明确失败，不假装连接成功 |
+| E-11 | FEAT-F02 | integration | Markdown 含脚本、事件属性、危险链接；不执行、不产生危险 URL |
+| E-12 | FEAT-F05 | E2E | 用他人 mediaId 下载 403/404；登录失效清 Blob URL |
+| E-13 | FEAT-F03 | E2E | POST 已入库但响应丢失，同 clientMessageId 重试，Agent 只启动一次 |
+| E-14 | FEAT-F12 | E2E | 对话中停权或续期失败：关连接、清内容，不转轮询绕过鉴权 |
+| E-15 | FEAT-F13 | integration | 生产构建无模拟宿主路由/测试私钥/模拟 issuer 信任 |
+| E-16 | FEAT-F03 | integration | SSE 字节解析错误/缓冲超限：明确错误并重拉，不截断当成功 |
 
-| 类别 | 内容 |
-|------|------|
-| **范围（In Scope）** | ① 业务平台聊天页（组件树 / 契约 / 状态 / 四态）② 附件上传下载交互 ③ SSE + 长轮询双模客户端 ④ **单窗口 + `/new` 透传** ⑤ 历史消息分页 ⑥ 通知角标 ⑦ muad Console 侧通道登记（`channels.ts`/`types/api.ts`/i18n） |
-| **非范围（Out of Scope）** | ① muad Console 托管聊天 SPA（已否决）② 业务平台侧会话存储 ③ 逐字 token 级流式 ④ 后端 API 实现（见后端设计简报）⑤ 视觉设计稿产出（仅给结构与状态规范）⑥ **会话列表 / 会话切换 / 会话新建**（上游只有一条会话线，UI 给出即误导）⑦ 斜杠命令的包装、解释或白名单（原样透传） |
-| **有意妥协 / 技术债** | ① 块级流式（1 s 内增量），非逐字 ② 长轮询降级路径作为 SSE 不可用时的兜底 ③ 附件预览仅图片内联，其余走下载 ④ `/new` 后旧消息仍可见（与企微一致），由用户自行理解新会话语义 |
+#### 边界场景
 
-### 2.4 验收条件 [必填]
+| ID | 功能 | 层级 | 输入与断言 |
+|---|---|---|---|
+| B-01 | FEAT-F04 | unit | 30MiB/30MiB+1 接受/拒绝 |
+| B-02 | FEAT-F04 | unit | 9/10 个附件接受/拒绝 |
+| B-03 | FEAT-F01 | unit | TextEncoder 测 UTF-8 64KiB 和多字节越界，不按字符数 |
+| B-04 | FEAT-F03 | unit | 退避上限与连续失败 3 次停止，卸载取消 timer/fetch |
+| B-05 | FEAT-F07 | unit | `/new` 与普通文本均原样进入 sendMessage |
+| B-06 | FEAT-F04 | unit | 扩展名/大小预检，最终类型以后端为准 |
+| B-07 | FEAT-F03 | unit | UTF-8 跨字节、CRLF、跨 chunk 的 data、多行 data、注释/空行正确解析 |
+| B-08 | FEAT-F03 | unit | 重复 revision 幂等、旧 revision 丢弃、同 ID 映射、终态不倒退 |
+| B-09 | FEAT-F11 | integration | 重复 mount/destroy、握手超时、容器移除无残留监听器/iframe |
+| B-10 | FEAT-F02 | integration | 200 消息、长代码/宽表格、窄屏和中文输入法；可滚动且不误发送 |
 
-**正常场景**
+#### 非功能目标
 
-| 场景ID | 功能ID | 优先级 | 测试层级 | 关键真实边界 | 操作步骤 | 预期 UI 结果 |
-|--------|--------|--------|---------|-------------|---------|-------------|
-| S-01 | FEAT-F01/F02 | P0 | E2E | Browser → nginx → Console API → UI | 已登录平台，打开聊天页，输入问题并发送（JWT 随请求自动/显式携带） | 用户消息立即上屏（右对齐）；助手回复以块级增量出现；发送按钮在 in-flight 期间禁用 |
-| S-02 | FEAT-F03 | P0 | E2E | Browser → SSE → UI | 发送消息后保持页面打开 | 回复分块持续渲染；done 后输入框恢复可用 |
-| S-03 | FEAT-F04 | P0 | E2E | Browser → Console 上传 → UI | 选择 5 MiB `.png` 随消息发送 | 上传进度可见；消息带图片缩略图；助手回复引用该图 |
-| S-04 | FEAT-F05 | P0 | E2E | Browser → 签名 URL → UI | 助手回复含附件 | 图片内联渲染；非图片显示下载卡片，点击经签名 URL 下载 |
-| S-05 | FEAT-F06 | P1 | E2E | Browser → Console → UI | 已有超过 200 条历史；退出平台重新登录 | 显示**最近 200 条**；**无「加载更多」按钮、无向上滚动加载**；更早消息不可见 |
-| S-06 | FEAT-F07 | P1 | E2E | Browser → Console → 真实 Pod | 输入 `/new` 并发送 | `/new` 作为右对齐消息气泡上屏；claw 回 `✅ New session started.`（左对齐 + 内容由AI生成）；**与企微逐字一致，无额外分隔线 UI** |
-| S-07 | FEAT-F08 | P1 | E2E | Browser → Console → UI | 长任务运行期间关闭页面，完成后重开 | 未读角标显示；点击通知跳到消息位置并看到结果 |
-| S-08 | FEAT-F10 | P0 | E2E | Console 前端 → Console API | 管理员在新建 Pod 表单勾选 mssw/mssp | 复选框与标识正常渲染；Pod 创建请求 channels 含新通道 |
+| ID | 目标 | 验证 |
+|---|---|---|
+| NFR-F01 | 内网首次可交互≤2s，认证耗时单独记录 | 实测，不作为已达成 |
+| NFR-F02 | Pod 可投递块到显示≤1s，块级而非逐字 | 与后端 NFR-PERF-04 同口径 |
+| NFR-F03 | 最近 200 条渲染/滚动可用，无每块全屏 loading | B-10、浏览器性能记录 |
+| NFR-F04 | 凭据仅内存，宿主无需业务事件订阅 | S-09/12、E-09/14 |
 
-**异常场景**
+## 3. 前端技术设计
 
-| 场景ID | 功能ID | 测试层级 | 关键真实边界 | 触发条件 | UI 表现 |
-|--------|--------|---------|-------------|---------|---------|
-| E-01 | FEAT-F01 | integration | Service → UI | JWT 过期或验签失败（401） | 提示"登录已过期，请重新登录"，不展示任何历史内容 |
-| E-02 | FEAT-F01 | integration | Service → UI | 已登录但未授权（eligibility 返回 canChat:false） | **不渲染聊天入口**（平台侧根本不展示） |
-| E-03 | FEAT-F02 | integration | Service → UI | 历史消息接口失败 | 错误文案 + 重试按钮 |
-| E-04 | FEAT-F04 | integration | Service → UI | 附件超 30 MiB | 上传前即拦截，提示大小上限，不发起请求 |
-| E-05 | FEAT-F04 | integration | Service → UI | 附件类型不在白名单 | 选择后即提示不支持该类型 |
-| E-06 | FEAT-F03 | E2E | Browser → SSE | SSE 连接中断（网络/nginx） | 自动降级为长轮询；顶部提示"连接不稳定，已切换兼容模式" |
-| E-07 | FEAT-F03 | E2E | Browser → Console | Pod 不可用（`pod_unavailable`） | 消息已上屏但标记"服务恢复中"；不丢消息 |
-| E-08 | FEAT-F06 | integration | Service → UI | 历史消息接口失败/游标异常 | 展示已加载部分并提示刷新重试；不做无限重试 |
+### 3.1 技术选型（F-STACK）
 
-**边界场景**
+| 部分 | 选型与理由 |
+|---|---|
+| 聊天页 | console/frontend 的 React 18、TypeScript strict、Vite、Semi，版本以锁文件为准 |
+| 宿主 | 任意框架/普通 HTML；只依赖 iframe 和 postMessage |
+| SDK | 独立纯 TS/JS 小入口，仅 DOM/认证握手，不打包 React/Semi |
+| 状态 | 页面局部状态与 hooks，无宿主全局 store 或事件总线 |
+| HTTP | src/api.ts 的显式 WebChat 客户端；DTO 在 src/types/api.ts 并 re-export |
+| 流 | fetch streaming + 增量 UTF-8/SSE 解析；bearer 不放 query，不用 EventSource 自定义 header |
+| 样式 | Semi token + CSS Modules，iframe 与宿主 CSS 隔离 |
+| Markdown | 成熟渲染器，支持代码/表格；默认禁原始 HTML，过滤链接协议；版本实施时验证 |
 
-| 场景ID | 测试层级 | 关键真实边界 | 字段/条件 | 边界值 | 预期行为 |
-|--------|---------|-------------|----------|--------|---------|
-| B-01 | unit | 上传预检函数 | 附件大小 | 30 MiB / 30 MiB+1 | 前者放行，后者拦截且不发请求 |
-| B-02 | unit | 上传预检函数 | 附件数量 | 9 / 10 | 9 放行；10 拦截 |
-| B-03 | unit | 文本长度 | text 字符数 | 64 KiB / 64 KiB+1 | 输入框计数提示；超出禁止发送 |
-| B-06 | unit | 附件类型预检 | 扩展名 + 大小 | `.png` / `.exe` / 30 MiB+1 | `.png` 放行；`.exe` 直接拦截不发请求；超限拦截 |
-| B-04 | unit | 轮询退避 | 连续失败次数 | 3 次 | 停止轮询并提示重试，避免打爆接口 |
-| B-05 | unit | 命令识别 | text 以 `/` 开头 | `/new` / 普通文本 | `/new` 仍按普通消息发出（**前端不解释、不拦截命令**） |
+### 3.2 页面、路由与产物（F-ROUTES）
 
-**非功能指标**
+| 页面/产物 | 路由/目录 | 说明 |
+|---|---|---|
+| 统一嵌入页 | `/webchat/embed`，src/pages/WebChat/ | 单栏聊天，脱离管理员 AppShell/登录守卫 |
+| 可选 SDK | src/webchat/embed.ts，产物 `/webchat/sdk.js` | mount/destroy、认证握手 |
+| 消息展示组件 | src/components/webchat/ | 容器/展示分离 |
+| hooks | src/hooks/webchat/ | 请求、流、认证、媒体生命周期 |
+| 协议/类型 | src/types/api.ts；src/api.ts | API/事件/握手类型集中 |
+| 本地宿主 | test/webchat/ | HTML/React/Vue fixture，测试构建独立 |
 
-| 指标ID | 指标名称 | 目标值 | 测量方法 |
-|--------|---------|-------|---------|
-| NFR-PERF-01 | 首屏可交互 | ≤ 2 s（内网） | Lighthouse / 实测 |
-| NFR-PERF-02 | 发送到首字上屏 | ≤ 3 s（不含模型耗时） | 实测 |
-| NFR-PERF-03 | 长列表滚动 | 50 条无卡顿 | 实测 |
-| NFR-SEC-01 | JWT 不在前端新造/不落额外存储 | 不自行生成、不修改、不另存 token；`authMode='cookie'` 时前端完全接触不到 JWT | 代码审查 |
+main.tsx 统一挂 ConfigProvider/i18n/theme，按路由选择 WebChat 根或管理根；聊天页不读管理员 token、不弹管理员登录、不要求 Console 管理权限。
 
----
+embed URL 只含 platform、parentOrigin、instanceId（SDK 生成）；Go handler 按 allowlist 校验并注入 bootstrap，这些参数不构成身份。生产在 AD 上配置独立 webchat 域名并整体指向 Console，API base 默认同源 `/api/v1/webchat`；iframe 与其 API 同源，宿主页面是另一 origin，postMessage 按 parentOrigin allowlist 校验。业务平台直连 eligibility 属跨 origin，仅该路由开 CORS allowlist，也可由平台后端代调。Console 直连 HTTP 仅用于本地验证；生产 HTTPS 宿主需可信 HTTPS 入口；宿主 frame-src 与 embed 的 frame-ancestors 均须匹配。
 
-### 3.1 技术选型 [必填]
+### 3.3 组件设计（F-COMPONENTS）
 
-| 类别 | 选型 | 版本 | 选型理由 |
-|------|------|------|---------|
-| 框架（业务平台） | 按其现有栈 | — | 不引入新框架；本文档只定义契约与行为 |
-| 框架（muad Console） | React 18 + TypeScript + Vite | 沿用 | 仅加通道登记，不动架构 |
-| 状态管理（业务平台） | 页面/组件局部状态 | — | 聊天状态不跨页共享；单窗口无需会话级 store |
-| 路由（业务平台） | 平台现有路由，新增 `/assistant`（或既有入口） | — | 入口在业务平台内 |
-| 样式方案 | 平台现有样式体系 + 设计 tokens | — | 与业务平台视觉一致 |
-| 数据请求 | 平台现有封装，新增 `webchatService` | — | 统一收口，组件内禁止裸 fetch；`webchatService` 负责按 `authMode` 附带 JWT |
-| 流式 | SSE（`EventSource` 或 `fetch` + ReadableStream） | — | `EventSource` 无法带 `Authorization` 头，故**默认用 `fetch` streaming** |
-| UI 组件库（muad Console） | Semi Design | 沿用 | `channels.ts` 复用既有 `ChannelDef` |
+| ID | 单元 | 职责 |
+|---|---|---|
+| CMP-01 | WebchatPage | 认证/资格/编排，身份变化清空用户状态 |
+| CMP-03 | MessageThread | 按 seq 展示最近 200 条与当前回复，无会话侧栏/分页 |
+| CMP-04 | MessageBubble/MarkdownBody | 纯展示、消息状态、安全渲染 |
+| CMP-05 | useWebchatStream | SSE 解析、eventSeq 恢复、按 revision 合并，无匿名 currentReply |
+| CMP-06 | ImageAttachment/FileCard+useMedia | 容器负责授权拉取和 URL 生命周期，展示组件无网络 IO |
+| CMP-07 | Composer | 字节/数量预检、输入与发送，不裸 fetch |
+| CMP-08 | SuggestedPrompts | 内部快捷输入，无宿主事件 |
+| CMP-09 | useWebchatAuth | 握手、JWT 获取/传递、受控续期、销毁 |
+| CMP-10 | useMessages | 快照、乐观消息/服务端 ID 合并、活动请求 |
+| CMP-11 | api.webchat | 全部聊天 HTTP/SSE/文件唯一出口 |
+| CMP-12 | 管理侧 ChannelDef | mssw/mssp 及 authority 字段、双语 |
+| CMP-13 | embed SDK | 无框架依赖的 iframe 挂载与认证协议 |
 
-**关于 SSE 客户端的重要约束**：`new EventSource(url)` **不支持自定义请求头**，而本方案必须带 `Authorization: Bearer <token>`。因此默认实现用 `fetch` + `response.body.getReader()` 手动解析 `data:` 行。若平台更倾向 `EventSource`，则需改为 query 传 token（会进 nginx access log，不推荐）或 nginx 转 cookie。
+### 3.4 接入与组件契约
 
-### 3.2 页面与路由结构 [必填]
+#### 3.4.1 对外最小 SDK（F-EMBED）
 
-| 页面 | 路由 | 布局 | 说明 |
-|------|------|------|------|
-| 安全 GPT 助手（弹层/抽屉） | 平台现有入口触发 | **单栏消息流**（桌面与窄屏一致，无侧栏） | 参照现有设计：问候语 + 输入框 + 快捷指令 + 建议问题；`/new` 即一条普通消息 |
-| 会话历史（可选独立页） | `/assistant/history` | 列表 | 若产品要独立历史页则启用 |
+以下为拟实现接口，不代表已有可安装包。
 
-> 布局与现有"安全 GPT 助手"保持一致：时间问候语（上午好/下午好）+ 用户名 + 副标题；中部建议问题列表（"你可以问我"）；底部输入框 + 附件 + 发送；输入框上方横向滚动快捷指令 chips；右下/底部"历史会话"入口。
-
-### 3.3 组件设计 [必填]
-
-**组件树**
-
-```
-<AssistantPage>                      # 容器：鉴权、会话解析、编排（无会话状态）
-├─ <MessageThread>                   # 容器：消息分页 + 滚动加载
-│  ├─ <MessageBubble>                # 展示：role 决定左右对齐
-│  │  ├─ <TextBody>                  # 展示
-│  │  ├─ <ImageAttachment>           # 展示：签名 URL 懒加载
-│  │  └─ <FileCard>                  # 展示：名称/大小/下载
-│  └─ <StreamingBubble>              # 展示：整体替换 currentReply
-├─ <QuickPrompts>                    # 展示：横向 chips
-├─ <SuggestedPrompts>                # 展示：建议问题列表
-└─ <Composer>                        # 容器：输入 + 附件 + 发送（/new 即普通文本）
-   ├─ <AttachmentPreview>            # 展示：待发送附件列表
-   └─ <UploadProgress>               # 展示
-```
-
-> **已删除**（v1.2）：`<SessionSidebar>` / `<SessionItem>` / `<NewSessionButton>` 及"会话切换"全部交互——上游只有一条会话线，UI 不给切换入口（RULE-12）。
-
-| 组件ID | 组件名 | 类型 | 复用来源/去向 | 职责 |
-|--------|--------|------|--------------|------|
-| CMP-01 | AssistantPage | 容器 | 新建 | 鉴权初始化、唯一会话解析、编排 |
-| CMP-03 | MessageThread | 容器 | 新建 | 消息分页、游标、滚动加载 |
-| CMP-04 | MessageBubble | 展示 | 新建 | role 样式、文本、媒体分发 |
-| CMP-05 | StreamingBubble | 展示 | 新建 | 整体替换 `currentReply`，不自增 append |
-| CMP-06 | ImageAttachment / FileCard | 展示 | 新建 | 签名 URL 懒加载、下载 |
-| CMP-07 | Composer / AttachmentPreview / UploadProgress | 容器+展示 | 新建 | 输入、附件预检、上传进度、发送 |
-| CMP-08 | QuickPrompts / SuggestedPrompts | 展示 | 新建 | 指令与建议问题 |
-| CMP-09 | useWebchatStream | hook | 新建 | SSE 连接、自动降级轮询、退避 |
-| CMP-10 | useMessages | hook | 新建 | 历史消息分页与游标 |
-| CMP-11 | webchatService | service | 新建 | 全部 HTTP 调用的唯一出口 |
-| CMP-12 | ChannelDef(mssw/mssp) | 配置 | 改 `console/frontend/src/channels.ts` | Console 通道登记 |
-
-> **分层纪律**：容器组件负责数据与状态，展示组件纯 UI（props in / events out）。`webchatService` 是唯一发请求的地方，组件/hook 不得裸 `fetch`。
-
-### 3.4 组件接口契约 [必填]
-
-**CMP-01 `<AssistantPage>`**
-
-| Props | 类型 | 必填 | 默认 | 说明 |
-|-------|------|------|------|------|
-| platform | `'mssw' \| 'mssp'` | Y | — | 平台标识 |
-| authMode | `'cookie' \| 'bearer'` | Y | — | 由平台 JWT 存放形式决定 |
-| checkEligibility | `() => Promise<boolean>` | Y | — | 平台侧决定是否展示入口 |
-| containerMode | `'modal' \| 'page'` | N | `'modal'` | 弹层或独立页 |
-| entryText | string | N | — | 外部传入的待发送首条消息（从建议问题进入） |
-
-| Events / 回调 | 载荷类型 | 触发时机 |
-|--------------|---------|---------|
-| `onUnreadChange` | `{count}` | 未读数变化 |
-
-> **无会话相关 Props/Events**：一个用户只有一条会话线，前端不持有任何会话标识。
-> **无 `getToken` Prop**：v1.4 起不再需要前端换取 token——`authMode` 已足够描述两种透传方式。
-
-**CMP-04 `<MessageBubble>`**
-
-| Props | 类型 | 必填 | 默认 | 说明 |
-|-------|------|------|------|------|
-| message | `WebchatMessage` | Y | — | 消息对象 |
-| selfUserId | string | Y | — | 判断 role=user 时靠右 |
-| resolveMediaUrl | `(mediaId) => Promise<string>` | Y | — | 取签名 URL |
-
-| Events | 载荷类型 | 触发时机 |
-|--------|---------|---------|
-| `onRetry` | `{messageId}` | 失败消息点击重试 |
-| `onDownload` | `{mediaId, fileName}` | 点击下载 |
-
-**CMP-07 `<Composer>`**
-
-| Props | 类型 | 必填 | 默认 | 说明 |
-|-------|------|------|------|------|
-| disabled | boolean | N | false | in-flight 期间禁用 |
-| maxTextBytes | number | N | 65536 | 64 KiB |
-| maxAttachments | number | N | 9 | |
-| maxAttachmentBytes | number | N | 31457280 | 30 MiB |
-| acceptedExtensions | string[] | N | `['.txt','.md','.doc','.docx','.xls','.xlsx','.ppt','.pptx','.zip','.tar.gz','.tgz','.png','.jpg','.jpeg','.gif','.webp','.bmp']` | 附件类型白名单（§3.1 数据请求节）；后端以嗅探 MIME 为最终判据 |
-
-| Events | 载荷类型 | 触发时机 |
-|--------|---------|---------|
-| `onSend` | `{text, files: File[]}` | 点击发送 |
-| `onAttachmentRejected` | `{reason, fileName}` | 预检失败 |
-
-> 组件内**禁止直接修改 props**；改值通过事件上抛。附件预检（大小/数量/类型）在 `Composer` 内完成，不合法则不发请求（B-01/B-02/B-03）。
-
-**CMP-09 `useWebchatStream`**
-
-| 返回值 | 类型 | 说明 |
-|--------|------|------|
-| status | `'idle' \| 'streaming' \| 'polling' \| 'error'` | 当前模式 |
-| currentReply | string | 已累积回复文本（整体替换） |
-| connect / disconnect | `() => void` | 手动控制 |
-| error | `ApiError \| null` | 最近错误 |
-
-> 内部行为：优先建 SSE；断线/失败自动切长轮询（`GET .../{id}?after=cursor`）；长轮询连续失败 3 次退避停止（B-04）。
-
-### 3.5 状态与数据流 [必填]
-
-**状态划分**
-
-| 状态 | 作用域 | 形状 | 读写方 |
-|------|--------|------|--------|
-| messages | 页面级 | `{items[], nextSeq, loading}` | useMessages（无 `hasMore`：不做更早分页） |
-| currentReply | 页面级 | `{runId, text, inFlight}` | useWebchatStream |
-| attachments | 组件级 | `{pending: File[], uploading: Record<string, number>}` | Composer |
-| unread | 页面级 | `number` | useNotifications |
-| token | 内存（不落 localStorage） | `{value, expiresAt}` | AssistantPage |
-
-> **无 `session` / `conversations` 状态**：会话由 Console 按登录用户唯一解析，前端零会话管理负担。
-
-**数据流**
-
-```
-用户操作 → 事件处理 → webchatService(API 封装) → 页面 State → 重渲染
-                                          ↑
-                              SSE / 轮询推送 currentReply
+```ts
+type Platform = "mssw" | "mssp";
+type AuthChallenge = {
+  platform: Platform;
+  nonce: string;
+  consoleOrigin: string;
+  parentOrigin: string;
+};
+type MountOptions = {
+  container: HTMLElement;
+  consoleUrl: string;
+  platform: Platform;
+  getToken: (challenge: AuthChallenge) => Promise<string | null>;
+  locale?: "zh" | "en";
+  theme?: "light" | "dark";
+};
+type WebchatHandle = { destroy: () => void };
+declare function mount(options: MountOptions): Promise<WebchatHandle>;
 ```
 
-**数据获取层**
+getToken 由宿主现有认证封装提供当前平台 JWT（如从平台后端或接入适配取得），不在浏览器签名；返回 null 表示无登录态。mount Promise 覆盖加载/握手错误，聊天中的业务状态由 iframe 展示；直接 iframe 按同一协议写初始化代码；destroy 用于卸载/退出/切用户，不是监听聊天关闭。
 
-| Service 方法 | 对应后端接口 | 调用方组件/hook |
-|-------------|-------------|----------------|
-| `checkEligibility()` | `GET /webchat/v1/eligibility`（带 JWT） | AssistantPage（入口展示判断） |
-| `uploadAttachment(file)` | `POST /webchat/v1/attachments` | Composer |
-| `listMessages(afterSeq?, limit?)` | `GET /webchat/v1/messages`（带 JWT） | useMessages（`limit` ≤ 200；无 `afterSeq` 时返回最近 200 条） |
-| `sendMessage(payload)` | `POST /webchat/v1/messages`（带 JWT） | Composer（`/new` 即 `{text:"/new"}`） |
-| `openStream(onEvent)` | `GET /webchat/v1/stream`（带 JWT） | useWebchatStream |
-| `resolveMediaUrl(mediaId)` | `GET /webchat/v1/attachments/{mediaId}/content` | MessageBubble |
+#### 3.4.2 内部握手与认证（F-AUTH）
 
-> 斜杠命令不走独立 service：`sendMessage({text:"/new"})` 即可，claw 的确认语经 `listMessages`/`openStream` 同路返回。
+宿主可在挂载前用用户 JWT 调 API-06 查询资格决定是否展示入口；该调用不替代 iframe 内的资格检查，也不产生业务事件。
 
-### 3.6 UI 状态 [必填]
+1. SDK 校验 URL，注册监听后创建 iframe；URL 含 platform、parentOrigin、随机 instanceId，不含 token/userId/sessionKey。
+2. embed handler 验证宿主配置；iframe 生成随机 nonce，经 targetOrigin 发送 `webchat.ready {version,instanceId,nonce}`。
+3. 父页校验 event.origin、event.source、instanceId 和结构；getToken 取得现有 JWT 后以 `webchat.auth` 发回 consoleOrigin。
+4. iframe 校验 event.origin/source、instanceId/nonce/version，将 JWT 仅存内存；每个请求带 `Authorization: Bearer <JWT>` 与 `X-Webchat-Platform` 调 API-06/API-03/API-05。服务端独立验证签名/解密/时效/claims；postMessage 来源不作身份凭证。
+5. API-06 检查资格后取 API-03 快照并连流；iframe 用 `webchat.initialized {version,instanceId,nonce,ok,errorCode?}` 确认初始化，SDK 内部完成 mount，不向宿主广播业务事件；认证失效时 SDK 内部重新握手/取 JWT 一次。
 
-| 视图/交互 | loading | empty | error | success |
-|----------|---------|-------|-------|---------|
-| 消息线程 | 首屏骨架 | 空会话显示问候语 + 建议问题 | 错误 Banner + 重试 | 最近 200 条消息气泡流（无翻页控件） |
-| 增量回复 | StreamingBubble 呼吸动效 | — | `error` 帧提示 + 重试按钮 | 文本逐块增长 |
-| 附件上传 | 进度条 + 百分比 | — | 大小/类型拦截提示（不发请求） | 预览缩略图 / FileCard |
-| 附件下载 | 按钮 loading | — | 下载失败提示 | 浏览器下载或图片放大 |
-| 通知角标 | — | 无未读不显示 | 拉取失败静默（不打扰对话） | 角标数字 |
+拒绝 `targetOrigin="*"`、错误窗口、旧 nonce、重复初始化和无界重试；握手超时 15 秒并报明确错误。刷新 iframe 产生新 nonce；JWT 可重复使用，不是一次性断言；完整消息/附件不经 postMessage 回父页。
 
-### 3.7 样式方案 [必填]
+API-06 返回 principalRef；续期或 401 后若 principalRef/platform 改变，先 abort 流/下载、清消息/草稿/tickets/Blob/游标，再按新身份初始化；宿主漏做 destroy 也不复用旧视图。JWT 到期只补取一次；拒绝/停权进入登录/无权限态，不用轮询绕过。凭据寿命即 JWT 有效期；平台退出即时生效范围取决于平台撤销机制（接入时定）；webchat 独立域名下业务 Cookie 不随 iframe 请求发送；HttpOnly Cookie 由平台后端或适配读取后交给 iframe，iframe 不直接读取，第三方 Cookie 不是依赖。
 
-| 维度 | 约定 |
-|------|------|
-| **样式与逻辑分离** | 业务平台按自身规范；muad Console 侧仅通道登记，无新增样式 |
-| **设计 tokens** | 间距/颜色/字号引用平台 design token，不散落魔法值 |
-| **响应式断点** | 单栏布局，≥768px 与 <768px 仅调整输入区与气泡最大宽度，不改变结构 |
-| **滚动行为** | 消息区自动滚底；因仅有最近 200 条、无向上翻页，**不实现滚动位置恢复与「回到底部」悬浮按钮**（v1.3 简化） |
-| **可访问性** | 语义标签（`<main>`/`<ul>`/`<li>`）；图片 `alt`；输入框 `aria-label`；焦点管理（打开弹层聚焦输入框，关闭还原焦点）；键盘可达（Enter 发送、Shift+Enter 换行） |
+#### 3.4.3 内部 UI 契约（F-PROPS）
 
----
+共享 DTO 引用 types/api.ts。WebchatMessage 含 messageId/seq/revision/role/textBody/status/runId/attachments；父页不能输入 sessionKey 或用户身份覆盖认证。
 
-## 4. 风险与依赖 [按需]
+| 单元 | Props/内部回调 | 约束 |
+|---|---|---|
+| MessageBubble | message、mediaView、onDownload | 仅内部 UI 回调；无请求、无 props 修改 |
+| Composer | disabled、busy、maxTextBytes=65536、maxAttachments=9、maxAttachmentBytes=31457280、onSend | busy→try/catch/finally；预检后交容器发送 |
+| ConnectionStatus | connectionMode、activeRequest、error | queued/running/unknown/failed 清晰区分 |
+| useWebchatStream | JWT 提供器、eventSeq、mergeEvent；返回 connectionMode/error | 卸载 abort，认证错不自动降级 |
+| useMedia | mediaId、认证 epoch | 经 api.ts 取 Blob，防身份切换后旧结果回填 |
 
-| 风险ID | 描述 | 影响 | 应对 | 验证场景 |
-|--------|------|------|------|---------|
-| RISK-F01 | `EventSource` 不能带 Authorization 头 | 无法直接用于鉴权 | 用 `fetch` streaming；或改 query/cookie | S-02 |
-| RISK-F02 | nginx 无法关 buffering / 调 timeout | SSE 不可用 | 前端自动降级长轮询 | E-05 |
-| RISK-F03 | 平台前端框架与 SSE/ReadableStream 兼容问题 | 流式不可用 | 降级长轮询（同一接口） | E-05 |
-| RISK-F04 | 附件预检规则与产品预期不一致 | 用户体验 | 白名单与上限做成 props 可配，产品确认后调整 | B-01/B-02 |
-| RISK-F05 | JWT 存 localStorage 遭 XSS 窃取 | 安全 | 优先推动平台用 HttpOnly cookie（前端零接触）；若只能是 localStorage，则不另存副本、只读用 | NFR-SEC-01 |
-| RISK-F09 | 平台 JWT 无用户 `_id` claim 或 claim 名与约定不符 | 高 | 方案立项前已确认含 user_id；实现时由后端以配置声明 claim 名并对样例 token 启动校验 | S-01 |
-| RISK-F10 | 平台轮换签名密钥后 Console 公钥失效 | 全量 401 | 后端支持多公钥按 `kid` 并存；平台轮换前先推新公钥 | E-01 |
-| RISK-F06 | 块级流式观感粗于预期 | 体验 | 实测粒度；必要时与后端协商逐字方案 | S-02 |
-| RISK-F07 | 用户误以为 `/new` 后历史被删除 | 困惑/重复提问 | 旧消息仍可见且 `/new` 气泡即分隔，与企微一致；可在首次使用时加一次引导 | S-06 |
-| RISK-F08 | 用户需要 200 条以前的上下文 | 无法追溯 | 产品已确认只需最近 200 条；如确有需要再由后端评估提高上限（镜像表全量落库，数据仍在） | S-05 |
+### 3.5 状态、流协议与数据获取
 
----
+#### 3.5.1 客户端边界（F-API）
+
+所有请求经 src/api.ts 的 WebChat 客户端，base path `/api/v1`；成功 `code===0` 解包 data，失败抛 ApiError（status/code/detail/requestId），Accept-Language 沿用 i18n。管理 client 用现有 token helper；webchat client 用注入的内存 JWT，绝不读取/回退管理员 token。全部聊天请求带 `Authorization: Bearer <JWT>` 与 `X-Webchat-Platform`。401 清当前 scope 凭据并派发 UNAUTHORIZED_EVENT（携带 scope）；管理根只处理 admin scope，WebChat 根只处理 webchat scope，聊天 root 回认证提示或重新握手，不跳管理员登录页。SSE/二进制解析属于 api.ts 或纯解析 helper，pages/components/hooks 不裸 fetch；JSON/SSE/文件错误统一转 ApiError，通知失败可重试。
+
+| 方法 | 接口 | 使用者 |
+|---|---|---|
+| checkEligibility | API-06 | WebchatPage / 宿主入口 |
+| getSnapshot / pollEvents | API-03 | useMessages/useWebchatStream |
+| sendMessage | API-04 | 容器发送流程 |
+| openStream | API-05 | useWebchatStream |
+| uploadAttachment / downloadMedia | API-01/02 | 上传/媒体容器 |
+| listNotifications / markRead | API-11/12 | iframe 内部通知 |
+
+#### 3.5.2 状态和发送（F-STATE）
+
+| 状态 | 内容 | 生命周期 |
+|---|---|---|
+| auth | jwt/expiresAt/principalRef/platform/authEpoch | 仅内存，失效/切用户清理 |
+| messages | Map(messageId→完整消息)、按 seq 排序 | 最近 200 条；较新 revision 覆盖 |
+| optimistic | clientMessageId→待确认用户气泡 | 同一次发送复用 ID，ACK 后合并正式 messageId |
+| activeRequest | requestId/state/runId 或 null | 来源服务端，不凭 UI 计时猜完成 |
+| stream | eventSeq/mode/retry/error | SSE 和轮询共用位点，切身份清零 |
+| uploads/media | 上传状态、ticket、BlobURL 及 owner epoch | 卸载/切身份 abort 并释放 |
+| notifications | items/unread/read | iframe 内部，无宿主共享 store |
+
+发送：预检→上传→固定 clientMessageId→POST→合并 ACK→等服务端快照。网络结果未知时重试同 ID；明确失败且用户发起新一轮才生成新 ID，不能因超时自动重跑；unknown 保持发送互斥并显示待核实。
+
+#### 3.5.3 流接收和恢复（F-STREAM）
+
+1. 首屏 API-03 取一致 snapshot 和 eventSeq，保存完整消息后按该游标建 SSE。
+2. fetch 流经 TextDecoder 增量解码；SSE 解析处理跨 chunk 行、CRLF、多行 data、空行、注释心跳；一个网络 chunk 不等于一个事件。
+3. message.snapshot 携带 eventSeq 与完整 message，仅较新 revision 替换，不 append textBody；request.state 带真实 runId；notification 只更新内部通知。
+4. 帧处理成功后才推进 eventSeq；重复丢弃；缺口/resync_required/游标过期按 API-03 重拉；超 24 小时恢复窗用完整快照；无匿名 currentReply 旁路。
+5. 终态消息先持久显示再解除对应请求 busy；最终内容以服务端快照为准，不因流关闭显示成功。
+6. 网络故障按 1/2/4…30 秒退避；45 秒无帧视为失活；SSE 不可用时长轮询 `afterEventSeq/waitMs=25000`，每批 200 事件有积压立即续取；连续 3 次失败停止并提示重试。
+7. 401/403、auth.expired/auth.revoked 走认证流程，不轮询兜底；后台刷新不设首载 loading；解析缓冲有界，超限提示并重同步；销毁/切身份取消读流、timer 和迟到 setState。
+
+#### 3.5.4 渲染与媒体（F-RENDER）
+
+- Markdown 始终用当前完整 textBody；流中未闭合围栏/表格可暂按文本，后续快照重新解析。
+- 禁执行代码/原始 HTML/事件属性；链接只允许约定安全协议，新窗口加 noopener/noreferrer；动态媒体只用授权下载的 object URL，不把正文 URL 当资源。
+- 稳定 messageId 为 key，禁止数组 index；按 revision 避免重算已完成消息；长代码/表格在气泡内横向滚动。
+- api.ts 带 JWT 取 Blob；图片懒加载、文件点击下载，及时 revoke；单文件 ≤30MiB，避免预加载全部附件。
+- 用户位于底部时随新块滚动，上翻查阅时保持位置；本期无更早历史加载。
+
+### 3.6 UI 四态（F-UI）
+
+| 视图 | loading | empty | error | success |
+|---|---|---|---|---|
+| 身份初始化 | 正在连接/认证 | 等待平台登录凭据 | 未登录/无权限/配置错误 | 进入聊天 |
+| 消息 | 首屏骨架 | 问候与建议问题 | 错误+重试 | 最近 200 条 |
+| 回复 | queued/running | 无活动请求 | failed/interrupted/unknown 分别提示 | complete 完整内容 |
+| 连接 | 重连/轮询提示 | 未建立连接 | 停止重试/重新登录 | 正常收块 |
+| 上传 | 每文件状态，可显示真实进度 | 无附件 | 预检/后端错误可操作 | ticket 就绪 |
+| 下载 | 按钮 loading | 无媒体 | 授权/网络失败 | 预览/下载 |
+| 内部通知 | 后台加载不挡聊天 | 无未读 | 非阻塞错误+重试 | 摘要/结果/已读 |
+
+上传如无法提供真实百分比，用不确定进度，不伪造；queued 不显示为模型已开始回复；unknown 不提供无条件"重新生成"。
+
+### 3.7 样式与可访问性（F-STYLE）
+
+iframe 尺寸由宿主容器决定，内部响应式单栏；沿用 Semi token/CSS Modules，不依赖父页 CSS，不接受任意 CSS/脚本注入。locale/theme 仅支持定义枚举，在 main.tsx 统一 Provider。文本走 useTranslation/i18n.t，同步 zh/en；技术 detail 沿 ErrorDetail 折叠，禁裸堆栈/路径。输入框/按钮可键盘操作，图片 alt、语义列表、状态 aria-live；Enter 发送、Shift+Enter 换行，IME 组合期间不发送；iframe 有明确 title。
+
+## 4. 本地模拟与风险
+
+### 4.1 本地模拟交付（F-LOCAL）
+
+提供独立启动说明/入口和配置样例，运行模拟平台后端、HTML/React/Vue 宿主页、真实 Console 和目标 OpenClaw 容器；不同宿主端口模拟跨 origin；AD 网关/域名分流模式用本地反向代理或多端口/多 host 模拟 webchat 域名与业务域名；TLS 测试用浏览器信任的证书。模拟后端设置 HttpOnly 登录 Cookie，登录 A/B/未授权/停用账户；签发真实测试 JWT（测试 profile），支持退出、切用户、过期、错签名/claims、key 轮换；有效 JWT 可重复使用。
+
+完整场景覆盖认证→资格→发送→真实原生通道→流式 Markdown/代码/表格→双向媒体→刷新/断网/重启。宿主只挂载和认证，测试需断言宿主没有聊天 API/SSE 请求或结果事件处理器。测试密钥临时生成、数据独立，模拟端与 fixture 不进生产产物；协议测试可用标注的 provider 替身，目标模型和 Skill 按后端 D-LOCAL 另行验收。
+
+### 4.2 风险与依赖
+
+| ID | 风险 | 应对 | 场景 |
+|---|---|---|---|
+| RISK-F01 | bearer 流式认证 | fetch streaming，凭据不放 query | S-02、S-12 |
+| RISK-F02 | SSE 中断/缓冲 | 同契约轮询/游标恢复 | E-06、S-13 |
+| RISK-F03 | 宿主技术栈不同 | iframe + 纯 JS SDK，无框架依赖 | S-09、S-10 |
+| RISK-F04 | 前后端文件规则差异 | 后端最终验证，预检只改善体验 | E-04、E-05、B-06 |
+| RISK-F05 | 凭据/身份串用 | 内存 JWT、准确窗口来源、认证 epoch 清理 | E-09、S-15 |
+| RISK-F06 | 块级与逐字预期不同 | 目标镜像实测；只承诺收块即更新 | S-02 |
+| RISK-F07 | `/new` 误认为删历史 | 原生回复展示，旧消息可见 | S-06 |
+| RISK-F08 | 需要更早历史 | 本期明确最近 200 条 | S-05 |
+| RISK-F09 | 认证算法/凭据获取未定 | 复用 JWT + 测试 profile，每请求验证；接入前定获取方式 | S-12、E-01 |
+| RISK-F10 | 续期/轮换失败 | 一次受控重取后提示登录 | E-01、E-14 |
+| RISK-F11 | HTTP/HTTPS、跨域嵌入及 AD 网关缓冲 | 可信 HTTPS/域名分流、embed 独立策略；AD 网关关闭 SSE 缓冲并放宽上传/长连接 | S-11、E-10 |
+| RISK-F12 | Markdown/SSE 边界损坏 | 安全渲染、完整快照、真字节解析 | S-14、E-11、E-16、B-07 |
+| RISK-F13 | 重试重复执行 | clientMessageId 稳定、unknown 不盲重发 | E-07、E-13 |
+| RISK-F14 | 模拟泄漏生产 | fixture/构建/私钥隔离 | E-15 |
+
+## 5. 需求追溯
+
+| 功能 | 后端契约/设计落点 | 验收 |
+|---|---|---|
+| FEAT-F01 | API-06、F-AUTH/F-UI | S-01、E-01、E-02 |
+| FEAT-F02 | API-03/05、F-RENDER | S-02、S-14、E-11 |
+| FEAT-F03 | API-03/04/05、F-STREAM | S-13、E-06、E-08、E-13、B-07/08 |
+| FEAT-F04 | API-01、F-PROPS | S-03、E-04、E-05 |
+| FEAT-F05 | API-02、F-RENDER | S-04、E-12 |
+| FEAT-F06 | API-03、F-STATE | S-05、E-03 |
+| FEAT-F07 | API-04 原文、F-STATE | S-06、B-05 |
+| FEAT-F08 | API-09/11/12、内部通知 | S-07 |
+| FEAT-F09 | API-04、CMP-08 | S-17 |
+| FEAT-F10 | 管理登记、F-ROUTES | S-08 |
+| FEAT-F11 | embed/SDK、F-EMBED | S-09、S-10、S-11、B-09 |
+| FEAT-F12 | API-06、F-AUTH/F-API | S-12、S-15、S-18、E-09、E-14 |
+| FEAT-F13 | F-LOCAL、后端 D-LOCAL | S-16、E-15 |
 
 ## Spec Compliance Matrix
 
-| Spec/Rule | enforcement | 设计影响 | 设计落点 | 验证场景 | 状态/N/A 理由 |
-|-----------|-------------|---------|---------|---------|----------------|
-| `frontend-directory-structure#RULE-frontend-directory-001` | required | muad Console 新增通道必须登记在 `src/channels.ts`，HTTP 经 `api.ts`；业务平台侧要求等价收敛（`webchatService`） | FEAT-F10；§3.3 CMP-11/CMP-12；§3.5 数据获取层 | S-08 | applied |
-| `frontend-directory-structure#RULE-frontend-api-types-001` | required | webchat 契约类型集中定义并 re-export，避免页面重复定义漂移 DTO | §3.4 各组件 Props 类型引用统一契约；FEAT-F10 | S-01, S-08 | applied |
-| `frontend-quality-standards#RULE-frontend-quality-001` | required | strict typing；异步必须显式 loading/error/success 三态 | §3.6 UI 状态表（每个视图四态齐备） | S-01, E-02 | applied |
-| `frontend-quality-standards#RULE-frontend-api-client-001` | required | Console 侧如有管理页必须走 `api.ts`（`/api/v1`、`code===0` 解包、401 清 token + `UNAUTHORIZED_EVENT`）；业务平台侧按等价约定 | §3.5 数据获取层；FEAT-F10 | S-08 | applied |
-| `frontend-quality-standards#RULE-frontend-i18n-001` | required | 新增 `channel.mssw`/`channel.mssp` 及 hint key 须同步 `locales/zh.ts` 与 `en.ts` | FEAT-F10 | S-08 | applied |
-| `frontend-component-specs#RULE-frontend-component-001` | required | props 必须类型化；展示组件不含网络 IO；列表 key 稳定；布局优先组件库而非 inline style | §3.3 分层纪律；§3.4 Props 表 | S-01 | applied |
-| `frontend-component-specs#RULE-frontend-semi-shell-001` | required | muad Console 侧沿用 `ConfigProvider`（`main.tsx`），不新包一层 | FEAT-F10（零架构改动） | S-08 | applied |
+applied 表示约束已进入设计，不表示实现/测试完成；后端/Runtime 规则矩阵见后端设计。
 
-> `PATTERN-*` 为 advisory，仅作参考实践。
+| Spec/Rule | enforcement | 设计影响与落点 | item ID | 验证 | 状态 |
+|---|---|---|---|---|---|
+| frontend-directory-structure#RULE-frontend-directory-001 | required | §3.2 F-ROUTES 分层；§3.5 F-API 统一请求 | SC-F01 | S-01、S-08、目录审查 | applied |
+| frontend-directory-structure#RULE-frontend-api-types-001 | required | §3.4 F-PROPS、§3.5 F-API，types/api.ts 与 re-export | SC-F02 | S-02、B-07、类型检查 | applied |
+| frontend-quality-standards#RULE-frontend-quality-001 | required | §3.1 strict、§3.6 F-UI 四态，tsc/lint/format/vitest | SC-F03 | E-01、E-03、E-06 | applied |
+| frontend-quality-standards#RULE-frontend-api-client-001 | required | §3.5 F-API，code===0/ApiError、scope 凭据清理 + UNAUTHORIZED_EVENT | SC-F04 | E-01、E-14、S-15 | applied |
+| frontend-quality-standards#RULE-frontend-i18n-001 | required | §3.7 F-STYLE，全页面/SDK 错误 zh/en、i18n key | SC-F05 | S-08、S-09、双语切换 | applied |
+| frontend-component-specs#RULE-frontend-component-001 | required | §3.3 F-COMPONENTS、§3.4 F-PROPS，纯展示/稳定 key/CSS Modules | SC-F06 | S-14、B-08、B-10 | applied |
+| frontend-component-specs#RULE-frontend-semi-shell-001 | required | §3.1 F-STACK、§3.2 F-ROUTES，main.tsx 统一 ConfigProvider | SC-F07 | S-08、S-09、主题/语言回归 | applied |
 
----
+## 附录：术语
 
-## 附录：术语表
-
-| 术语 | 定义 |
-|------|------|
-| CMP | Component，组件 |
-| 容器组件 | 负责数据获取与状态的组件 |
-| 展示组件 | 纯 UI、props 驱动、事件上抛的组件 |
-| SSE | Server-Sent Events，服务端推送 |
-| 块级流式 | 以 `reply_payload_sending` 粒度的增量推送，非逐字 |
-| 签名 URL | 带 HMAC 签名与过期时间的媒体访问地址 |
-| 降级长轮询 | SSE 不可用时改用 `GET .../{id}?after=cursor` 轮询 |
-
----
-
-*文档结束*
+前端 SDK 是可选的 iframe 挂载/认证封装；统一聊天组件是 iframe 内复用的 UI；块级流式是收到可交付块后显示完整消息新版本；eventSeq 用于恢复，revision 用于单消息单调更新；principalRef 是服务端返回的非秘密主体标识，用于避免切用户时复用旧视图，不作鉴权凭据。
