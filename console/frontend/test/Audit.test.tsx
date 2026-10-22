@@ -37,6 +37,7 @@ const entry: AuditEntry = {
   action: "identity.create",
   target: "identity-a",
   targetType: "identity",
+  humanUserName: "张三",
   payload: '{"status":"active"}',
   metadata: {
     podId: "pod-a",
@@ -51,6 +52,7 @@ const execution = {
   executionId: "run-a",
   podId: "pod-a",
   humanUserId: "user-a",
+  humanUserName: "张三",
   agentId: "agent-a",
   skillName: "mss-report-skill",
   skillScope: "private" as const,
@@ -88,8 +90,47 @@ describe("Audit", () => {
     expect(screen.getByText("identity.create")).toBeInTheDocument();
     expect(screen.getByText("Identity")).toBeInTheDocument();
     expect(screen.getByText(/pod=pod-a/)).toBeInTheDocument();
-    expect(screen.getByText(/user=user-a/)).toBeInTheDocument();
+    expect(screen.getByText(/user=张三 \(user-a\)/)).toBeInTheDocument();
+    expect(listAllHumanUsersMock).not.toHaveBeenCalled();
   });
+
+  it("uses the audit response name for user targets and retains the raw ID", async () => {
+    auditMock.mockResolvedValue({
+      items: [{ ...entry, target: "user-a", targetType: "human_user", humanUserName: "李四" }],
+      total: 1,
+    });
+    render(<Audit />);
+
+    expect(await screen.findByText("李四")).toHaveAttribute("title", "user-a");
+    expect(screen.getByText(/user=李四 \(user-a\)/)).toBeInTheDocument();
+    expect(listAllHumanUsersMock).not.toHaveBeenCalled();
+  });
+
+  it("retains audit user IDs when the response has no resolved name", async () => {
+    auditMock.mockResolvedValue({ items: [{ ...entry, humanUserName: "" }], total: 1 });
+    render(<Audit />);
+
+    expect(await screen.findByText(/user=user-a/)).toBeInTheDocument();
+    expect(listAllHumanUsersMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["李四", ""])(
+    "renders execution response name %j without a user lookup",
+    async (name) => {
+      window.history.replaceState(null, "", "/audit?tab=skill-executions");
+      listSkillExecutionsMock.mockResolvedValue({
+        items: [{ ...execution, humanUserName: name }],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+      });
+      render(<Audit />);
+
+      expect(await screen.findByText(name || "user-a")).toBeInTheDocument();
+      expect(screen.getByText("user-a")).toBeInTheDocument();
+      expect(listAllHumanUsersMock).not.toHaveBeenCalled();
+    },
+  );
 
   it("submits actor, action, and target filters through the typed API", async () => {
     render(<Audit />);

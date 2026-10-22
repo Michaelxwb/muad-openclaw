@@ -37,25 +37,40 @@ func (s *Server) handleAuditQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	items := make([]auditItem, 0, len(entries))
+	userIDs := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		items = append(items, makeAuditItem(entry))
+		item := makeAuditItem(entry)
+		items = append(items, item)
+		userIDs = append(userIDs, item.Metadata.HumanUserID)
+	}
+	userNames, err := s.store.ListHumanUserDisplayNames(userIDs)
+	if err != nil {
+		writeErr(w, r, errcode.InternalQueryAudit)
+		return
+	}
+	for index := range items {
+		items[index].HumanUserName = userNames[items[index].Metadata.HumanUserID]
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
 }
 
 type auditItem struct {
-	ID         int64             `json:"id"`
-	Actor      string            `json:"actor"`
-	Action     string            `json:"action"`
-	Target     string            `json:"target"`
-	TargetType string            `json:"targetType"`
-	Payload    string            `json:"payload"`
-	Metadata   auditlog.Metadata `json:"metadata"`
-	TS         time.Time         `json:"ts"`
+	ID            int64             `json:"id"`
+	Actor         string            `json:"actor"`
+	Action        string            `json:"action"`
+	Target        string            `json:"target"`
+	TargetType    string            `json:"targetType"`
+	HumanUserName string            `json:"humanUserName"`
+	Payload       string            `json:"payload"`
+	Metadata      auditlog.Metadata `json:"metadata"`
+	TS            time.Time         `json:"ts"`
 }
 
 func makeAuditItem(entry repo.AuditEntry) auditItem {
 	metadata, payload := safeAuditPayload(entry.Payload)
+	if metadata.HumanUserID == "" && strings.HasPrefix(entry.Action, "human_user.") {
+		metadata.HumanUserID = entry.Target
+	}
 	return auditItem{
 		ID: entry.ID, Actor: entry.Actor, Action: entry.Action,
 		Target: entry.Target, TargetType: auditTargetType(entry.Action, metadata),
