@@ -2,9 +2,11 @@
 
 - **Source**: `.code-flow/tasks/2026-10-17/session-cancel/session-cancel.backend.design.md`, `.code-flow/tasks/2026-10-17/session-cancel/session-cancel.frontend.design.md`
 - **Created**: 2026-10-17
-- **Updated**: 2026-10-18
+- **Updated**: 2026-10-20
 
 > **场景 ID 说明**：后端/运行时 design 使用 S-01..S-06、E-01..E-06、B-01..B-05；前端 design 从 S-07、E-07、B-06 起编号，避免两份 design 的 ID 冲突。
+
+> **人工验收确认（2026-10-20）**：用户 jahan 明确回复“直接标记完成，已经手动验证过了”。S-01、S-02、S-03、S-06、E-06、B-05、S-07、S-08 按人工 E2E 登记，保留来源 design 的全部真实边界和关键断言；已有实测记录见 TASK-006 Acceptance Evidence。TASK-004 遗漏的 Checklist 勾选依据既有 verified 集成测试证据及本次用户确认补齐。
 
 ## Proposal
 
@@ -26,25 +28,25 @@
 
 | 场景ID | 来源设计 | 测试层级 | 关键真实边界 | 负责任务 | 状态 | 执行命令 |
 |--------|---------|---------|-------------|---------|------|---------|
-| S-01 | session-cancel.backend.design.md#2.5 验收条件 | E2E | Console API → Gateway Exec → 真实 /proc | TASK-006 | e2e_deferred | - |
-| S-02 | session-cancel.backend.design.md#2.5 验收条件 | E2E | API → RPC → 真实信号 → 进程退出 | TASK-006 | e2e_deferred | - |
-| S-03 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 /proc + 双 agent 同时运行 | TASK-006 | e2e_deferred | - |
+| S-01 | session-cancel.backend.design.md#2.5 验收条件 | manual (E2E) | Console API → Gateway Exec → 真实 /proc | TASK-006 | verified | - |
+| S-02 | session-cancel.backend.design.md#2.5 验收条件 | manual (E2E) | API → RPC → 真实信号 → 进程退出 | TASK-006 | verified | - |
+| S-03 | session-cancel.backend.design.md#2.5 验收条件 | manual (E2E) | 真实 /proc + 双 agent 同时运行 | TASK-006 | verified | - |
 | S-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | health probe → capability cache → API gate | TASK-003 | verified | ["go","-C","console/backend","test","./internal/gateway","./internal/collector","-run","SessionCancel","-count=1"] |
 | S-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → audit store | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
-| S-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实 Worker + 企微通道 + 队列 | TASK-006 | verified | - |
+| S-06 | session-cancel.backend.design.md#2.5 验收条件 | manual (E2E) | 真实 Worker + 企微通道 + 队列 | TASK-006 | verified | - |
 | E-01 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC + handler | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-02 | session-cancel.backend.design.md#2.5 验收条件 | integration | RPC → 真实进程指纹复核 | TASK-002 | verified | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
 | E-03 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → capability | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-04 | session-cancel.backend.design.md#2.5 验收条件 | integration | handler → repo | TASK-004 | verified | ["go","-C","console/backend","test","./internal/api","./test","-run","SessionCancel","-count=1"] |
 | E-05 | session-cancel.backend.design.md#2.5 验收条件 | integration | gateway Exec | TASK-003 | verified | ["go","-C","console/backend","test","./internal/gateway","-run","SessionCancel","-count=1"] |
-| E-06 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 真实信号 | TASK-006 | e2e_deferred | - |
+| E-06 | session-cancel.backend.design.md#2.5 验收条件 | manual (E2E) | 真实信号 | TASK-006 | verified | - |
 | B-01 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（PID 复用） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
 | B-02 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（UID/EPERM） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
 | B-03 | session-cancel.backend.design.md#2.5 验收条件 | unit | fake procRoot（非组长） | TASK-001 | verified | ["node","--test","tools/muad-runtime-guard/test/session-process-sweeper.test.mjs"] |
 | B-04 | session-cancel.backend.design.md#2.5 验收条件 | unit | RPC 校验（longtask/PID1/self） | TASK-002 | verified | ["node","--test","tools/muad-runtime-guard/test/session-cancel-rpc.test.mjs"] |
-| B-05 | session-cancel.backend.design.md#2.5 验收条件 | E2E | 企微队列 | TASK-006 | verified | - |
-| S-07 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 用户详情 → API → 真实 Worker | TASK-006 | verified | - |
-| S-08 | session-cancel.frontend.design.md#2.4 验收条件 | E2E | 弹窗 → API → Worker 信号 → UI | TASK-006 | verified | - |
+| B-05 | session-cancel.backend.design.md#2.5 验收条件 | manual (E2E) | 企微队列 | TASK-006 | verified | - |
+| S-07 | session-cancel.frontend.design.md#2.4 验收条件 | manual (E2E) | 用户详情 → API → 真实 Worker | TASK-006 | verified | - |
+| S-08 | session-cancel.frontend.design.md#2.4 验收条件 | manual (E2E) | 弹窗 → API → Worker 信号 → UI | TASK-006 | verified | - |
 | S-09 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock → UI | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
 | S-10 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock → UI | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
 | E-07 | session-cancel.frontend.design.md#2.4 验收条件 | integration | API mock | TASK-005 | verified | ["npm","-C","console/frontend","run","test","--","test/SessionCancelDialog.test.tsx"] |
@@ -108,7 +110,7 @@
 
 ## TASK-001: Guard 进程扫描与安全终止模块
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**:
 - **Source**: session-cancel.backend.design.md#3.4 接口设计（安全不变量）, session-cancel.backend.design.md#3.5 质量实现方案, session-cancel.backend.design.md#2.5 验收条件
@@ -157,6 +159,9 @@
 - B-01: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - B-02: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - B-03: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
+- B-01: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- B-02: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- B-03: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
 
 ### Log
 
@@ -169,7 +174,7 @@
 
 ## TASK-002: Guard session-cancel RPC 与能力注册
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001
 - **Source**: session-cancel.backend.design.md#3.4 接口设计（RPC）, session-cancel.backend.design.md#3.2 架构设计（模块落点）, session-cancel.backend.design.md#5.2 风险识别
@@ -216,6 +221,8 @@
 - B-04: verified — automated command passed; run_id=8d0a2d1a0584433b8113f8f0e9f4f2fb (confirmed_by: runner)
 - E-02: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - B-04: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
+- E-02: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- B-04: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
 
 ### Log
 
@@ -228,7 +235,7 @@
 
 ## TASK-003: Console gateway 适配器与能力缓存
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**:
 - **Source**: session-cancel.backend.design.md#3.2 架构设计（模块落点）, session-cancel.backend.design.md#3.4 接口设计（错误码）, session-cancel.backend.design.md#3.5 质量实现方案
@@ -269,6 +276,8 @@
 - E-05: verified — automated command passed; run_id=f6b8ab441e7f47d48821333eaa7dc0cc (confirmed_by: runner)
 - S-04: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - E-05: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
+- S-04: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- E-05: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
 
 ### Log
 
@@ -282,7 +291,7 @@
 
 ## TASK-004: Console API、错误码与审计
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-003
 - **Source**: session-cancel.backend.design.md#3.4 接口设计（HTTP API）, session-cancel.backend.design.md#3.3 数据设计（审计）, session-cancel.backend.design.md#2.5 验收条件
@@ -295,21 +304,21 @@
 
 ### Checklist
 
-- [ ] 实现 identity 归属校验与 session key 推导（channel/peerKind/lowercase），拒绝 `:longtask:`
-- [ ] 实现 preview/cancel handler，统一 `writeJSON`/`writeErr`，context deadline
-- [ ] 新增 errcode（41007/41008/41009/41010）与 audit `session.cancel`
-- [ ] 审计只写计数/指纹前缀/错误码，不写 cmdline 原文
-- [ ] [S-05][integration] 断言审计记录字段与脱敏
-- [ ] [E-01][integration] 空预览返回空集合且不报错
-- [ ] [E-03][integration] 能力未知/过期返回 41007
-- [ ] [E-04][integration] identity 不属于用户/跨 Pod/longtask 返回 404 或 400，且不调用 RPC
-- [ ] [RULE-backend-write-err-001][verifier] 断言所有错误响应走 `writeErr`/`writeRuntimeFailure` 且只传 errcode 常量；`rg "json.NewEncoder" console/backend/internal/api/session_cancel.go` 为空
-- [ ] [RULE-backend-logging-001][verifier] 断言审计记录含 pod/user/agent/sessionKey/计数且可排障；测试查询 audit store
-- [ ] [RULE-backend-redact-001][verifier] 断言审计与诊断不含 cmdline 原文、environ、Token；测试断言字段不存在
-- [ ] [RULE-backend-platform-001][verifier] 断言跨用户/跨 Pod 请求被拒绝，能力门禁不越权；运行 `go -C console/backend test ./internal/api ./test -run SessionCancel -count=1`
-- [ ] [RULE-backend-http-envelope-001][verifier] 断言响应统一 `{code,message,data}`，错误码来自 errcode；测试断言
-- [ ] [RULE-backend-model-pool-001][verifier] 断言未改动 Human User 创建/模型绑定路径；`git diff --stat` 检查并运行既有 `go test ./internal/api -run HumanUser -count=1`
-- [ ] 运行 `go -C console/backend test ./internal/api ./test -run SessionCancel -count=1`
+- [x] 实现 identity 归属校验与 session key 推导（channel/peerKind/lowercase），拒绝 `:longtask:`
+- [x] 实现 preview/cancel handler，统一 `writeJSON`/`writeErr`，context deadline
+- [x] 新增 errcode（41007/41008/41009/41010）与 audit `session.cancel`
+- [x] 审计只写计数/指纹前缀/错误码，不写 cmdline 原文
+- [x] [S-05][integration] 断言审计记录字段与脱敏
+- [x] [E-01][integration] 空预览返回空集合且不报错
+- [x] [E-03][integration] 能力未知/过期返回 41007
+- [x] [E-04][integration] identity 不属于用户/跨 Pod/longtask 返回 404 或 400，且不调用 RPC
+- [x] [RULE-backend-write-err-001][verifier] 断言所有错误响应走 `writeErr`/`writeRuntimeFailure` 且只传 errcode 常量；`rg "json.NewEncoder" console/backend/internal/api/session_cancel.go` 为空
+- [x] [RULE-backend-logging-001][verifier] 断言审计记录含 pod/user/agent/sessionKey/计数且可排障；测试查询 audit store
+- [x] [RULE-backend-redact-001][verifier] 断言审计与诊断不含 cmdline 原文、environ、Token；测试断言字段不存在
+- [x] [RULE-backend-platform-001][verifier] 断言跨用户/跨 Pod 请求被拒绝，能力门禁不越权；运行 `go -C console/backend test ./internal/api ./test -run SessionCancel -count=1`
+- [x] [RULE-backend-http-envelope-001][verifier] 断言响应统一 `{code,message,data}`，错误码来自 errcode；测试断言
+- [x] [RULE-backend-model-pool-001][verifier] 断言未改动 Human User 创建/模型绑定路径；`git diff --stat` 检查并运行既有 `go test ./internal/api -run HumanUser -count=1`
+- [x] 运行 `go -C console/backend test ./internal/api ./test -run SessionCancel -count=1`
 
 ### Acceptance Contract
 
@@ -331,6 +340,10 @@
 - E-01: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - E-03: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - E-04: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
+- S-05: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- E-01: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- E-03: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- E-04: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
 
 ### Log
 
@@ -342,7 +355,7 @@
 
 ## TASK-005: 前端会话终止交互与数据层
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-004
 - **Source**: session-cancel.frontend.design.md#3.3 组件设计, session-cancel.frontend.design.md#3.4 组件接口契约, session-cancel.frontend.design.md#3.5 状态与数据流, session-cancel.frontend.design.md#3.6 UI 状态
@@ -427,6 +440,16 @@
 - B-06: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - B-07: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - B-08: verified — automated command passed; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
+- S-09: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- S-10: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- E-07: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- E-08: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- E-09: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- E-10: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- E-11: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- B-06: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- B-07: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
+- B-08: verified — automated command passed; run_id=5d065650602d4842ae9f0b6934e90730 (confirmed_by: runner)
 
 ### Log
 
@@ -439,7 +462,7 @@
 
 ## TASK-006: E2E 隔离、解锁与结果验证
 
-- **Status**: done
+- **Status**: verified
 - **Priority**: P0
 - **Depends**: TASK-001, TASK-002, TASK-003, TASK-004, TASK-005
 - **Source**: session-cancel.backend.design.md#2.5 验收条件, session-cancel.frontend.design.md#2.4 验收条件, session-cancel.backend.design.md#5.2 风险识别
@@ -467,14 +490,14 @@
 
 | 场景ID | 测试层级 | 不得 Mock 的真实边界 | 关键断言 | 测试文件 / 用例 | 执行命令 | 状态 |
 |--------|---------|--------------------|---------|----------------|---------|------|
-| S-01 | E2E | Console API、Gateway、真实 /proc | 预览只含目标会话进程 | manual runbook | - | e2e_deferred |
-| S-02 | E2E | API、RPC、真实信号 | run 中止 + 进程退出 + 审计 | manual runbook | - | e2e_deferred |
-| S-03 | E2E | 双 agent、真实 /proc、gateway | A 进程消失、B 进程存活、B 可回复、gateway 存活 | manual runbook | - | e2e_deferred |
-| S-06 | E2E | 企微通道、队列 | 新消息 10s 内回复 | manual runbook | - | verified |
-| E-06 | E2E | 真实信号 | 忽略 TERM 的进程被 KILL，remaining 正确 | manual runbook | - | e2e_deferred |
-| B-05 | E2E | 企微队列 | 排队消息按序处理，无丢失 | manual runbook | - | verified |
-| S-07 | E2E | 浏览器、路由、API | 弹窗内容与进程清单一致 | manual runbook | - | verified |
-| S-08 | E2E | 浏览器、API、Worker | 结果展示与关闭行为正确 | manual runbook | - | verified |
+| S-01 | manual (E2E) | Console API、Gateway、真实 /proc | 预览只含目标会话进程 | manual runbook | - | verified |
+| S-02 | manual (E2E) | API、RPC、真实信号 | run 中止 + 进程退出 + 审计 | manual runbook | - | verified |
+| S-03 | manual (E2E) | 双 agent、真实 /proc、gateway | A 进程消失、B 进程存活、B 可回复、gateway 存活 | manual runbook | - | verified |
+| S-06 | manual (E2E) | 企微通道、队列 | 新消息 10s 内回复 | manual runbook | - | verified |
+| E-06 | manual (E2E) | 真实信号 | 忽略 TERM 的进程被 KILL，remaining 正确 | manual runbook | - | verified |
+| B-05 | manual (E2E) | 企微队列 | 排队消息按序处理，无丢失 | manual runbook | - | verified |
+| S-07 | manual (E2E) | 浏览器、路由、API | 弹窗内容与进程清单一致 | manual runbook | - | verified |
+| S-08 | manual (E2E) | 浏览器、API、Worker | 结果展示与关闭行为正确 | manual runbook | - | verified |
 
 ### Acceptance Evidence
 
@@ -505,6 +528,22 @@
 - B-05: e2e_deferred — automated command e2e_deferred; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - S-07: e2e_deferred — automated command e2e_deferred; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
 - S-08: e2e_deferred — automated command e2e_deferred; run_id=2c185efe2e1e42dc954b391f61a04b8d (confirmed_by: runner)
+- S-01: not_configured — automated command not_configured; run_id=dc7c9dd91a9d404b988fd1d691b8d784 (confirmed_by: runner)
+- S-02: not_configured — automated command not_configured; run_id=dc7c9dd91a9d404b988fd1d691b8d784 (confirmed_by: runner)
+- S-03: not_configured — automated command not_configured; run_id=dc7c9dd91a9d404b988fd1d691b8d784 (confirmed_by: runner)
+- S-06: not_configured — automated command not_configured; run_id=dc7c9dd91a9d404b988fd1d691b8d784 (confirmed_by: runner)
+- E-06: not_configured — automated command not_configured; run_id=dc7c9dd91a9d404b988fd1d691b8d784 (confirmed_by: runner)
+- B-05: not_configured — automated command not_configured; run_id=dc7c9dd91a9d404b988fd1d691b8d784 (confirmed_by: runner)
+- S-07: not_configured — automated command not_configured; run_id=dc7c9dd91a9d404b988fd1d691b8d784 (confirmed_by: runner)
+- S-08: not_configured — automated command not_configured; run_id=dc7c9dd91a9d404b988fd1d691b8d784 (confirmed_by: runner)
+- S-01: verified — 2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。 (confirmed_by: user:jahan)
+- S-02: verified — 2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。 (confirmed_by: user:jahan)
+- S-03: verified — 2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。 (confirmed_by: user:jahan)
+- S-06: verified — 2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。 (confirmed_by: user:jahan)
+- E-06: verified — 2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。 (confirmed_by: user:jahan)
+- B-05: verified — 2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。 (confirmed_by: user:jahan)
+- S-07: verified — 2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。 (confirmed_by: user:jahan)
+- S-08: verified — 2026-10-20 用户 jahan 明确确认已手动验证完成；保留 design 的真实边界与关键断言，实测 Pod、双用户隔离、TERM→KILL、企微队列恢复及浏览器交互记录见 session-cancel.md TASK-006 Acceptance Evidence。 (confirmed_by: user:jahan)
 
 ### Log
 

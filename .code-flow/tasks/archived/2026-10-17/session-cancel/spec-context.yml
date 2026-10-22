@@ -1,7 +1,7 @@
 version: 1
 task: session-cancel
 enforcement: required
-updated_at: '2026-10-17T16:18:32.187297+00:00'
+updated_at: '2026-10-20T09:07:17.174994+00:00'
 sources:
 - type: cli
   ref: bind
@@ -38,7 +38,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.4'
           item_id: SC-API-01
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -47,7 +47,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -56,10 +56,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-code-quality-performance#RULE-backend-quality-001
+          executed_at: '2026-10-20T09:02:53.366991+00:00'
+          status: verified
+          rule_text_sha256: 6e013de6a3b7102799cea846e67c5c439ff3e68229e22feb883b48ebe15093c2
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-backend-write-err-001
     summary: HTTP 错误响应必须走 `writeErr` / `writeRuntimeFailure` / `writeRepoError` 且只传
       `errcode` 常量；禁止旧签名 `writeErr(w, r, status, code, msg)` 或传字符串 message。
@@ -74,7 +91,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.4'
           item_id: SC-API-ERR
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -83,7 +100,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -134,6 +151,17 @@ bindings:
           error_code: null
           details:
             checked_files: 0
+            violations: []
+        - verifier_ref: backend-code-quality-performance#RULE-backend-write-err-001
+          executed_at: '2026-10-20T09:02:53.383436+00:00'
+          status: verified
+          rule_text_sha256: e477dfd2db892a5bc6004823b5fa65c3a6813ae70df9b8b6d0eca5d3a725102d
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: 2caa4a9735fc8f56979f21934d0db13e5f97fba4218d562fa085a14c9e2829dd
+          error_code: null
+          details:
+            checked_files: 55
             violations: []
       review:
         status: pending
@@ -281,7 +309,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-DATA-NO-SQL
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -290,7 +318,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -299,10 +327,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-database#RULE-backend-database-001
+          executed_at: '2026-10-20T09:02:53.385559+00:00'
+          status: verified
+          rule_text_sha256: 271a8d50f306d28f18a4c75db949f3d3dbe8cfbbef330dfbf14e34752a361d79
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-backend-no-select-star-001
     summary: Queries must list explicit columns; do not use `SELECT *` in production
       SQL.
@@ -317,7 +362,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-DATA-NO-SQL
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -326,7 +371,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -366,6 +411,17 @@ bindings:
           error_code: null
           details:
             checked_files: 0
+            violations: []
+        - verifier_ref: backend-database#RULE-backend-no-select-star-001
+          executed_at: '2026-10-20T09:02:53.431057+00:00'
+          status: verified
+          rule_text_sha256: e79cf84dfe56ac5ae802934859989b84698af26407b1619a44285cccff7464b3
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: 3fb06c2b25f3330c6315ae4b32cb9d1bd19ef557b218eda6d550d98f15fc8ff8
+          error_code: null
+          details:
+            checked_files: 221
             violations: []
       review:
         status: pending
@@ -568,7 +624,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.2'
           item_id: SC-MODULES
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -577,7 +633,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-003
           item_id: TASK-003
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -586,10 +642,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-directory-structure#RULE-backend-directory-001
+          executed_at: '2026-10-20T09:02:53.432881+00:00'
+          status: verified
+          rule_text_sha256: bf6ffac46356c602f4de1f6df416c9777ce01dee32f8393de89682dcddc19422
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-backend-001
     summary: 新资源：`api` 路由 + `repo` 模型 +（如需）`driver`/`runtimeconfig` 扩展
     text_sha256: ffd0a9492109b8da27e9d19f2666829f1fb0e829a290835b239902b4e4700010
@@ -702,7 +775,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-AUDIT
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -711,7 +784,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -720,10 +793,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-logging#RULE-backend-logging-001
+          executed_at: '2026-10-20T09:02:53.433744+00:00'
+          status: verified
+          rule_text_sha256: 66df1eb1fb216358fe95f5c2e07a4f0d589a3d34cfab99924dd3a850e75b2ee3
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-backend-redact-001
     summary: Error strings written to logs, audit details, apply-failure fields, or
       user-visible diagnostics that may embed internal context must pass `auditlog.RedactDiagnostic`
@@ -739,7 +829,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-AUDIT-REDACT
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -748,7 +838,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -757,10 +847,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-logging#RULE-backend-redact-001
+          executed_at: '2026-10-20T09:02:53.433755+00:00'
+          status: verified
+          rule_text_sha256: ed1b22a3697079e92a7a6cfe8cee467fec53e3529d5fab3b66677a19eb3b6bf8
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-backend-001
     summary: handler 入口记录关键 id，apply 流水按 stage 打点
     text_sha256: c79a6ef9bcaea5daf6590e157b5cb1232553e19bdd981d6749814bf96288f919
@@ -873,7 +980,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.4'
           item_id: SC-SEC-INVARIANTS
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -882,7 +989,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -891,10 +998,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-platform-001
+          executed_at: '2026-10-20T09:02:53.435010+00:00'
+          status: verified
+          rule_text_sha256: 1132efbe981923b9f606fb135dbf8ec4e4b220ef74b775d6a140207674eb0749
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-backend-http-envelope-001
     summary: All Console HTTP handlers must emit responses via `writeJSON` / `writeErr`
       with stable `code*` constants; do not call `json.NewEncoder` (or ad-hoc maps)
@@ -910,7 +1034,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.4'
           item_id: SC-API-ENVELOPE
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -919,7 +1043,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -981,6 +1105,48 @@ bindings:
             stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
             output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
               0.540s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-20T09:02:57.085762+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: f738a495b96d30eb459ea64cfffc9718aa6ad18fee3db1299f304b168a6137de
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: d98fe4a2c67a3c2f1c8324b734f1432089e0be458e77f630809032531c338fb2
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.575s\n"
+        - verifier_ref: backend-platform-rules#RULE-backend-http-envelope-001
+          executed_at: '2026-10-20T09:07:21.606682+00:00'
+          status: verified
+          rule_text_sha256: 15cb5de807ea6faa91cc37f651b0fe3996e96e769466a75fae1a5a7041954ab7
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: 8d92e373a2799f20713791c6d10cd002286ab962029a24eee2ef471346c56bdc
+          error_code: null
+          details:
+            argv:
+            - go
+            - test
+            - ./internal/api
+            - -run
+            - TestHTTPEncoder
+            - -count=1
+            exit_code: 0
+            stdout_sha256: 3a6ba28e378c7a263268d450f0ca8735dcee8985e9eb6fd265ffe2c2c70f3559
+            stderr_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+            output: "ok  \tgithub.com/Michaelxwb/muad-openclaw/console/backend/internal/api\t\
+              0.390s\n"
       review:
         status: pending
         refs: []
@@ -1001,7 +1167,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '2.4'
           item_id: SC-OUT-OF-SCOPE
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -1010,7 +1176,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-004
           item_id: TASK-004
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1019,10 +1185,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: backend-platform-rules#RULE-backend-model-pool-001
+          executed_at: '2026-10-20T09:02:57.085909+00:00'
+          status: verified
+          rule_text_sha256: 23c293f00680e409de4b6c712152fa0bc9e812273399c72c135ccdaf9082ee9f
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-backend-001
     summary: 新平台能力先扩 registry/repo，再暴露 api，最后才动 driver
     text_sha256: eafb41a91eb99ea17792558908c621c53f131b38106301e23ffca005a2ccc9b3
@@ -1144,7 +1327,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1153,10 +1336,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: frontend-component-specs#RULE-frontend-component-001
+          executed_at: '2026-10-20T09:02:57.087316+00:00'
+          status: verified
+          rule_text_sha256: e79c828738826162955fd6db0e99331d699d286fcf701c839b351b0c833ed119
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-frontend-semi-shell-001
     summary: Console UI must use `@douyinfe/semi-ui` as the primary component library;
       locale/theme shell is configured via `ConfigProvider` in `main.tsx` (and App-level
@@ -1181,7 +1381,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1190,10 +1390,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: frontend-component-specs#RULE-frontend-semi-shell-001
+          executed_at: '2026-10-20T09:02:57.087329+00:00'
+          status: verified
+          rule_text_sha256: e9c32b34e6df5722515bab5fe2feaca80478baadc99eab5d878ab7e3de3b2a7c
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-frontend-001
     summary: 容器组件拉数，展示组件只渲染
     text_sha256: 7ed7f61abf755563673e9138a88c4c5265cd6d2fca0aab8cc9efacf47a9c1ac2
@@ -1342,7 +1559,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1351,10 +1568,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: frontend-directory-structure#RULE-frontend-directory-001
+          executed_at: '2026-10-20T09:02:57.088227+00:00'
+          status: verified
+          rule_text_sha256: 66966dac0eb450b2ddde672de79b7855ccf19b371bc18776d8d0ecb196341a8f
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-frontend-api-types-001
     summary: Shared request/response types live in `src/types/api.ts` and are re-exported
       from `api.ts`; pages/components must not redefine drifting DTOs or hard-code
@@ -1379,7 +1613,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1388,10 +1622,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: frontend-directory-structure#RULE-frontend-api-types-001
+          executed_at: '2026-10-20T09:02:57.088238+00:00'
+          status: verified
+          rule_text_sha256: da31561ab47f66800d4351fcaf04e354795189e6966f19bd5b78dcb91f2638cc
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-frontend-001
     summary: 页面 = 容器（拉数 + 编排）+ 展示组件（props 驱动）
     text_sha256: ff31dee928f5c12da2035b5d9fedd6f92dad91c8fa833f6f71b90422ded403b6
@@ -1513,7 +1764,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1522,10 +1773,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: frontend-quality-standards#RULE-frontend-quality-001
+          executed_at: '2026-10-20T09:02:57.089387+00:00'
+          status: verified
+          rule_text_sha256: d02c28f2c041bfa9eea4ffc592e5352a37e8884776ec581eea954e1f49b6a4c0
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-frontend-api-client-001
     summary: 'All Console HTTP must go through `console/frontend/src/api.ts`: base
       path `/api/v1`, success only when response `code === 0` then unwrap `data`,
@@ -1551,7 +1819,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1603,6 +1871,17 @@ bindings:
           details:
             checked_files: 0
             violations: []
+        - verifier_ref: frontend-quality-standards#RULE-frontend-api-client-001
+          executed_at: '2026-10-20T09:02:57.114863+00:00'
+          status: verified
+          rule_text_sha256: f72980fb8ff80823ef0306b736ff3dfcc9216a23d166c4b3ef9f0c3283c1aafd
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: 6dee099ff23149d275ceeb72d063c6371036f9972a705fd38539680abc20c2fb
+          error_code: null
+          details:
+            checked_files: 91
+            violations: []
       review:
         status: pending
         refs: []
@@ -1632,7 +1911,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-005
           item_id: TASK-005
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1641,10 +1920,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: frontend-quality-standards#RULE-frontend-i18n-001
+          executed_at: '2026-10-20T09:02:57.089397+00:00'
+          status: verified
+          rule_text_sha256: f7949e0627700b461018be02191edc4b983370e1968d47b5c5f0376b04c4e019
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-frontend-001
     summary: 页面只调用 `api.*`，错误用 `Toast` / Banner 展示 `ApiError`，技术细节经 `ErrorDetail`
       折叠
@@ -1813,7 +2109,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-NO-CONFIG-WRITE
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -1822,7 +2118,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1831,10 +2127,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-config-001
+          executed_at: '2026-10-20T09:02:57.116765+00:00'
+          status: verified
+          rule_text_sha256: fdbc36b85264932ade68f9fd3bd20f62a6b6f2f2e016fad3115f0bff680cf8e9
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-runtime-validate-before-write-001
     summary: Any renderer/inject path that materializes runtime config must call `validateRuntimeConfig`
       (or shared schema helper) before atomic write; desired state carries a monotonic
@@ -1850,7 +2163,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-NO-CONFIG-WRITE
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -1859,7 +2172,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1868,10 +2181,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-config-and-apply#RULE-runtime-validate-before-write-001
+          executed_at: '2026-10-20T09:02:57.116779+00:00'
+          status: verified
+          rule_text_sha256: aa379c27e3e0151ce7e9602816bccd55f6785b776cb2bd8456d04794e97eb8f5
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-runtime-001
     summary: 控制面构建 desired DTO，Worker 执行 transaction script
     text_sha256: 969b322dbf270438aaa0869abd0db76afeee170b3edf9baa4a61e607612a5765
@@ -1957,7 +2287,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.2'
           item_id: SC-MODULES
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -1966,7 +2296,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -1975,10 +2305,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-directory-structure#RULE-runtime-directory-001
+          executed_at: '2026-10-20T09:02:57.117410+00:00'
+          status: verified
+          rule_text_sha256: 0569a96dbc4930eafe25db1ce219544571eec8978149232a480ee2b3b4b73ddc
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-runtime-001
     summary: 控制面改行为 → backend；Worker 内执行 → tools/bin
     text_sha256: 8b0c2519d72b83bd812f4458edf5989a0735cdfbb1d021cdd6c9a60e3cc25a9c
@@ -2064,7 +2411,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.5'
           item_id: SC-SEC-DESIGN
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -2073,7 +2420,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -2082,10 +2429,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-security-001
+          executed_at: '2026-10-20T09:02:57.118275+00:00'
+          status: verified
+          rule_text_sha256: 6308e11ce4fba0e814980a69964ab198cc01b3d8152e0986165937b85f24b769
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-runtime-secret-file-mode-001
     summary: Files that materialize config, bundles, or secrets on disk must use restrictive
       modes (`0o600` for written config/bundle material; Pod service token files `0400`
@@ -2101,7 +2465,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.3'
           item_id: SC-NO-FILE
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -2110,7 +2474,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-001
           item_id: TASK-001
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -2119,10 +2483,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-isolation-and-security#RULE-runtime-secret-file-mode-001
+          executed_at: '2026-10-20T09:02:57.118290+00:00'
+          status: verified
+          rule_text_sha256: 68470fa4c95177861075fe937fc24ada6f7fa92a1298f07201c620092b6e0480
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-runtime-001
     summary: inject-env / inject-channels / inject-multi-user-config 作为注入单一入口
     text_sha256: a7979f71c77a2fa895f00623ff5eab9de188d4f0db0688f72902e7ed677916d9
@@ -2208,8 +2589,8 @@ bindings:
   path: runtime/skill-execution.md
   status: active
   hashes:
-    file_sha256: 8a276c8fd19436c6a4de7556cfc0dc7ed6e8c34b7eeb99605b35a76fb4f3c6a6
-    metadata_sha256: 91a3e90bacc83a174be74e3485c313ca2a9f051de2ef02821dc91fb8a811b86b
+    file_sha256: b50f0ca046374362e9f831f2b4de1199482cd50db9b83b697068e3766b2ff0d9
+    metadata_sha256: 23e61c5a3b782a225d843b014b74946d51fa0ccde9e5c1873afb570fdd79b1d1
     rules_sha256: fbe9d77c7effb79a139340813eb80e706004e53b65fde04ab436f8edaeafaa2f
   selected_by: agent
   reason: 复用取消语义（aborted/drained/真实退出）、operator.write 内部 RPC 与能力上报约束。
@@ -2235,7 +2616,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '2.4'
           item_id: SC-OUT-OF-SCOPE
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -2244,7 +2625,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -2253,10 +2634,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-001
+          executed_at: '2026-10-20T09:02:57.120177+00:00'
+          status: verified
+          rule_text_sha256: 039218a3e9b680320eeff842363b1b83913a25da06a1670cd68db938e4d20db4
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-runtime-skill-layering-001
     summary: Resolution order prefers system (`system_protected`) over public/private;
       public/private name conflicts must not silently overwrite—override only via
@@ -2272,7 +2670,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '2.4'
           item_id: SC-OUT-OF-SCOPE
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -2281,7 +2679,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -2290,10 +2688,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-layering-001
+          executed_at: '2026-10-20T09:02:57.120187+00:00'
+          status: verified
+          rule_text_sha256: e1d142969bb59f32871b956bdad41a8c8df13a8ab556a432aa0fd7f71db48b1d
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-runtime-log-injection-001
     summary: Tool/plugin modules must receive logging via an injected `log` callback
       (default no-op) instead of scattered `console.*`; the openclaw plugin path injects
@@ -2309,7 +2724,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.5'
           item_id: SC-LOGGING
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -2318,7 +2733,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -2327,10 +2742,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-injection-001
+          executed_at: '2026-10-20T09:02:57.120197+00:00'
+          status: verified
+          rule_text_sha256: 8102b528b4a0f6b06a0e1077bd6c82b9d7b31a69d5265f2c7afd9a7ade9b3819
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-runtime-log-prefix-001
     summary: Log lines must carry a stable module prefix (`[session-manager]`, `[muad-runtime-guard]`)
       with `[<module>-<action>]` sub-tags for grep-ability.
@@ -2345,7 +2777,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '3.5'
           item_id: SC-LOGGING
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -2354,7 +2786,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -2363,10 +2795,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-log-prefix-001
+          executed_at: '2026-10-20T09:02:57.120205+00:00'
+          status: verified
+          rule_text_sha256: 84b4b9c18f1f42a2cecaa2387092bf8baf24869019e2428d2718d9c97a82c666
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: RULE-runtime-skill-fail-loud-001
     summary: Skill scripts must report failures to stderr and exit non-zero (fail
       loud); stdout is reserved for the machine-readable result. Errors written to
@@ -2382,7 +2831,7 @@ bindings:
         - artifact: session-cancel.backend.design.md
           section_id: '2.4'
           item_id: SC-OUT-OF-SCOPE
-          artifact_sha256: 9c802bc70c92f24c15667cbc1296cee551d5490d556ddd47aadab57acf913154
+          artifact_sha256: 4bd35b4e4391eccad800ae3055f4dcca85c1b8dd30a185c9ac2ebfd6c85629ad
         decision: null
         evidence: []
       plan:
@@ -2391,7 +2840,7 @@ bindings:
         - artifact: session-cancel.md
           section_id: TASK-002
           item_id: TASK-002
-          artifact_sha256: 9e40bcfaa17aebbdb7c775e961dd127f85f3ee632432c8a15625a4492c85c902
+          artifact_sha256: cfaf28a309f2e42a0d7bb0274e54e6f9072a2bf1ab62c2be264ea0e3c3018c5c
         decision: null
         evidence: []
       code:
@@ -2400,10 +2849,27 @@ bindings:
         decision: null
         evidence: []
       review:
-        status: pending
+        status: verified
         refs: []
-        decision: null
-        evidence: []
+        decision:
+          kind: manual_verification
+          reason: 需求级人工验收确认
+          confirmed_by: user:jahan
+          confirmed_at: '2026-10-20T09:02:27.077854+00:00'
+          source: 直接标记完成，已经手动验证过了
+          expires_at: null
+        evidence:
+        - verifier_ref: runtime-skill-execution#RULE-runtime-skill-fail-loud-001
+          executed_at: '2026-10-20T09:02:57.120213+00:00'
+          status: verified
+          rule_text_sha256: b0860aedc9c0022936eec559fe27a75ad510e768b8b597e2ce0169c0d9a26414
+          artifact_sha256: null
+          diff_sha256: head:b66a6b21cd215472c69a624735d51c9646400e42
+          result_sha256: b80c209888de539262e57342a8b911f687bff0a59cf1093dee52f8b2682d505a
+          error_code: null
+          details:
+            source: 直接标记完成，已经手动验证过了
+            owner: project-owner
   - ref: PATTERN-runtime-001
     summary: 先 policy/activation gate，再 runner
     text_sha256: 22fad8cba0a207a4c85636e47ee58891b2eff905817e0faba4910158f86a5ebb
@@ -2736,59 +3202,61 @@ bindings:
         decision: null
         evidence: []
   - ref: PATTERN-runtime-013
-    summary: '**业务平台请求只走 SDK**：使用 `muad_skill_http.platform_request("<平台>", "<METHOD>",
-      "<path>")`，禁止直接 `import requests/httpx`、手工拼 `Cookie`/CSRF/`Traceid`，或用 `subprocess`
-      调 `curl`/`wget` 发业务请求。'
-    text_sha256: f9640ea42778c61151e6cd99962c825d83cf2f3021bcd3fffec8c06d46243184
+    summary: '**登录态与业务请求分离**：Skill 通过 `session-manager get-state --skill-name <skill>`
+      获取登录态并读取 `platforms.<平台>.cookies`，业务请求直接使用 `requests`；Runtime Guard 只对平台 baseUrl
+      命中的 host 自动覆盖 `TraceId`/`X-Csrftoken`、计数和限流，名单外请求原样透传。禁止 `httpx`/`urllib`/`curl`
+      发业务请求。'
+    text_sha256: 86cf89a4e1df1d9094ef8057bb474ff89168a6b713bca26c0b4532c02c0da4c3
     enforcement: advisory
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
       design:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       code:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       review:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
   - ref: PATTERN-runtime-014
-    summary: '**Traceid 每请求新 UUID v4**：`Cookie`/CSRF/`Traceid` 由 SDK 最后写入，`extra_headers`
-      不得覆盖；Cookie/CSRF 等凭据头不进入 trace/日志，`Traceid` 作为请求追踪标识随 HTTP 事件持久化并在 Console 展示，供到业务平台检索对应请求。'
-    text_sha256: d00cd35d1d1f539b870813ad0f538fe0eddfa72e17bef73b17666285b63cafa3
+    summary: '**TraceId 每请求新 UUID v4**：业务 host 命中名单时由 Runtime Guard 覆盖 `TraceId` 与
+      `X-Csrftoken`；Cookie/CSRF 等凭据头不进入 trace/日志，`TraceId` 作为请求追踪标识随 HTTP 事件持久化并在
+      Console 展示，供到业务平台检索对应请求。'
+    text_sha256: 9bbb5b47b78abe22703a9e1a7bec7d8e23e401eeaadbfcf4f5491b3d71383193
     enforcement: advisory
     verifier_ref: advisory:none
     verifier_stage: code
     stage_status:
       design:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       plan:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       code:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
       review:
-        status: pending
+        status: stale
         refs: []
         decision: null
         evidence: []
