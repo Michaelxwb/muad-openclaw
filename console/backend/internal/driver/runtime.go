@@ -84,6 +84,137 @@ func buildRuntimeFileEnv(spec PodSpec) (map[string]string, error) {
 	return env, nil
 }
 
+// SkillEnvFilePath is the env var the runtime and business Skills read to
+// locate their .env file. Kept in sync with OpenClaw Skill conventions.
+const SkillEnvFilePathEnvVar = "MSS_ENV_PATH"
+
+// MaxSkillEnvFileContentBytes caps the inline Secret content. A .env file is a
+// few KiB at most; the limit keeps a mistyped paste from bloating every
+// Deployment reconcile and from approaching the 1 MiB Secret ceiling. The
+// config loader enforces the same number, so both layers must agree.
+const MaxSkillEnvFileContentBytes = 64 * 1024
+
+// ValidateSkillEnvFile accepts empty (= feature disabled) or an absolute file
+// path inside a dedicated directory. A bare "/" or a top-level path would
+// mount the whole read-only Secret over a system directory. Exported so the
+// config loader rejects the same values at startup instead of at Pod creation.
+func ValidateSkillEnvFile(value string) error {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	// A tab survives TrimSpace but makes the path unaddressable and, in docker,
+	// reaches the "-v" argument as a single token no shell would have produced.
+	if !strings.HasPrefix(trimmed, "/") || strings.ContainsAny(trimmed, "\n\r\t\x00") {
+		return fmt.Errorf("%w: skill env file must be an absolute path without control characters", ErrInvalidPodSpec)
+	}
+	// The docker driver splices this path into a "-v host:container:ro" argument,
+	// so a ':' would silently split the fields: "/opt/x/.env.ppt:Z" is parsed as
+	// target "/opt/x/.env.ppt" with mode "Z:ro" instead of being rejected. K8s
+	// consumes the same DTO, so reject it once here for both drivers.
+	if strings.Contains(trimmed, ":") {
+		return fmt.Errorf("%w: skill env file must not contain ':'", ErrInvalidPodSpec)
+	}
+	// The overlap checks compare paths as strings, so a ".." segment would smuggle
+	// the mount into a reserved directory while looking innocent to them (e.g.
+	// /opt/x/../run/secrets/muad/.env.ppt). K8s resolves the path and rejects the
+	// resulting duplicate mountPath, leaving the Pod Pending, so reject any
+	// non-clean path outright instead of trying to normalise it.
+	if path.Clean(trimmed) != trimmed {
+		return fmt.Errorf("%w: skill env file must be a clean path without . or .. segments", ErrInvalidPodSpec)
+	}
+	if dir := skillEnvFileMountDir(trimmed); dir == "" || dir == "/" {
+		return fmt.Errorf("%w: skill env file must live in a dedicated directory", ErrInvalidPodSpec)
+	}
+	return nil
+}
+
+// validateSkillEnvFileContent checks the inline Secret content against the file
+// it is meant to fill. Content without a path can never reach a container, and a
+// NUL cannot survive the Secret round-trip, so both are rejected here rather
+// than becoming a silently empty or truncated .env inside the Pod.
+func validateSkillEnvFileContent(file, content string) error {
+	if content == "" {
+		return nil
+	}
+	if strings.TrimSpace(file) == "" {
+		return fmt.Errorf("%w: skill env content requires a file path", ErrInvalidPodSpec)
+	}
+	if strings.ContainsRune(content, 0) {
+		return fmt.Errorf("%w: skill env content must not contain NUL bytes", ErrInvalidPodSpec)
+	}
+	if len(content) > MaxSkillEnvFileContentBytes {
+		return fmt.Errorf("%w: skill env content exceeds %d bytes", ErrInvalidPodSpec, MaxSkillEnvFileContentBytes)
+	}
+	return nil
+}
+
+// skillEnvEnvValue is the value exported as MSS_ENV_PATH: the configured file
+// path, or empty when the feature is off.
+func skillEnvEnvValue(file string) string {
+	return strings.TrimSpace(file)
+}
+
+// pathIsInside reports whether p is equal to or below root. Both are container
+// paths, so only "/" is a separator.
+func pathIsInside(p, root string) bool {
+	p = strings.TrimSuffix(p, "/")
+	root = strings.TrimSuffix(root, "/")
+	if p == "" || root == "" {
+		return false
+	}
+	return p == root || strings.HasPrefix(p, root+"/")
+}
+
+// skillEnvReservedMounts lists the container directories that are always
+// occupied by another mount in the same Pod, whatever the runtime and the
+// configuration: the service-token Secret lives under /run/secrets/muad, and
+// file-mode runtime config lives under RuntimeConfigDirectory.
+//
+// Both drivers must reject a Skill env directory that overlaps any of these.
+// Keeping the list in one place is the point: when docker and k8s disagree, the
+// same config value is accepted by one driver and rejected by the other, which
+// means a Pod that "applies fine" locally can never start in the cluster.
+func skillEnvReservedMounts(spec PodSpec) []string {
+	reserved := []string{"/run/secrets/muad"}
+	if spec.MultiUser.Version != 0 {
+		reserved = append(reserved, RuntimeConfigDirectory)
+	}
+	return reserved
+}
+
+// validateSkillEnvMountDir rejects a Skill env file whose directory overlaps
+// (equal to, inside, or containing) any of the reserved container mounts.
+// The overlap is checked in both directions because equal paths are rejected as
+// a duplicate mountPath and nested paths as an unsupported overlap.
+func validateSkillEnvMountDir(file string, reserved []string) error {
+	dir := skillEnvFileMountDir(file)
+	if dir == "" {
+		return fmt.Errorf("%w: skill env file %q is not a file path", ErrInvalidPodSpec, file)
+	}
+	for _, mount := range reserved {
+		if mount == "" {
+			continue
+		}
+		if pathIsInside(dir, mount) || pathIsInside(mount, dir) {
+			return fmt.Errorf("%w: skill env file directory %q overlaps the reserved mount %q",
+				ErrInvalidPodSpec, dir, mount)
+		}
+	}
+	return nil
+}
+
+// skillEnvFileMountDir returns the directory the Secret must be mounted at so
+// that the env file lands exactly on the configured path.
+func skillEnvFileMountDir(file string) string {
+	trimmed := strings.TrimSpace(file)
+	idx := strings.LastIndex(trimmed, "/")
+	if idx <= 0 || idx == len(trimmed)-1 {
+		return ""
+	}
+	return trimmed[:idx]
+}
+
 var (
 	ErrInvalidPodSpec       = errors.New("driver: invalid Pod spec")
 	ErrInvalidRuntimeConfig = errors.New("driver: invalid runtime config")
@@ -103,7 +234,24 @@ type PodSpec struct {
 	MultiUser               RuntimeConfigV1
 	Resource                ResourceSpec
 	ServiceToken            SecretFileSpec
-	AdoptState              bool
+	// SkillEnvFile is the worker-side absolute path of the business Skill env
+	// file, e.g. /opt/openclaw-secret/.env.ppt. Non-empty = mount a per-Pod
+	// Secret there (read-only) and export MSS_ENV_PATH so Skills read their
+	// keys from it instead of the read-only Skill root. Empty keeps the
+	// previous behaviour unchanged.
+	SkillEnvFile string
+	// SkillEnvHostFile is the same file's path on the Console host. Only the
+	// docker driver uses it: k8s delivers the file through a Secret, while
+	// docker has no Secret equivalent and must bind-mount a host path. Required
+	// by the docker driver whenever SkillEnvFile is set.
+	SkillEnvHostFile string
+	// SkillEnvFileContent is the file content written into the k8s Secret. Empty
+	// means "leave whatever is there": the Secret is created as an empty
+	// placeholder and an existing one is never overwritten, so an operator who
+	// wrote the key by hand keeps it. Non-empty makes the configured content the
+	// single source of truth and replaces the Secret on each reconcile.
+	SkillEnvFileContent string
+	AdoptState          bool
 }
 
 // ResourceSpec contains already-resolved Pod resource and concurrency limits.
@@ -350,18 +498,34 @@ func validateRuntimeChannels(channels RuntimeChannels) error {
 	return nil
 }
 
-// Validate checks Pod deployment fields and its embedded Runtime DTO.
+// Validate checks Pod deployment fields and, in file mode, the embedded Runtime
+// DTO. It is safe to call for every spec: in env mode MultiUser is deliberately
+// zero (the workload boots from env vars), so only the parts that are meaningful
+// in that mode are enforced. Callers must not gate on Version themselves — a
+// gated call is how an env-mode spec used to reach the cluster unvalidated.
 func (spec PodSpec) Validate() error {
 	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
 		return ErrInvalidPodSpec
 	}
-	if spec.MultiUser.PodID != spec.PodID || spec.ServiceToken.ContainerPath != PodServiceTokenPath ||
+	if spec.ServiceToken.ContainerPath != PodServiceTokenPath ||
 		strings.TrimSpace(spec.ServiceToken.Value) == "" {
 		return ErrInvalidPodSpec
+	}
+	if err := ValidateSkillEnvFile(spec.SkillEnvFile); err != nil {
+		return err
+	}
+	if err := validateSkillEnvFileContent(spec.SkillEnvFile, spec.SkillEnvFileContent); err != nil {
+		return err
 	}
 	if spec.Resource.MaxSkillConcurrency <= 0 || spec.Resource.MaxBrowserConcurrency <= 0 ||
 		spec.Resource.MaxLongTaskConcurrency <= 0 ||
 		!IsValidRestartPolicy(spec.Resource.RestartPolicy) {
+		return ErrInvalidPodSpec
+	}
+	if spec.MultiUser.Version == 0 {
+		return nil
+	}
+	if spec.MultiUser.PodID != spec.PodID {
 		return ErrInvalidPodSpec
 	}
 	if err := spec.MultiUser.Validate(); err != nil {

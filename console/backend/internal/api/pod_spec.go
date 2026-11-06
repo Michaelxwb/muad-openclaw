@@ -74,6 +74,9 @@ func (s *Server) assemblePodSpec(pod repo.Pod, runtime runtimeconfig.Result) (dr
 		MultiUser:               runtime.Config,
 		Resource:                driver.ResolveResourceSpec(podResourceSpec(pod), global, s.resourceFallback()),
 		ServiceToken:            tokenSecret(serviceToken),
+		SkillEnvFile:            s.cfg.SkillEnvFilePath,
+		SkillEnvHostFile:        s.cfg.SkillEnvHostFilePath,
+		SkillEnvFileContent:     s.cfg.SkillEnvFileContent,
 	}
 	if err := spec.Validate(); err != nil {
 		return driver.PodSpec{}, err

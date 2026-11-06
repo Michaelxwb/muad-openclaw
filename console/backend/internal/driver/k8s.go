@@ -3,6 +3,7 @@ package driver
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -111,10 +112,11 @@ func (d *K8sDriver) Create(ctx context.Context, spec PodSpec) error {
 	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
 		return ErrInvalidPodSpec
 	}
-	if spec.MultiUser.Version != 0 {
-		if err := spec.Validate(); err != nil {
-			return err
-		}
+	if err := spec.Validate(); err != nil {
+		return err
+	}
+	if err := d.validateSkillEnvMount(spec); err != nil {
+		return err
 	}
 	name := ContainerName(spec.PodID)
 	if err := d.ensureStatePVC(ctx, spec.PodID, spec.AdoptState); err != nil {
@@ -126,12 +128,34 @@ func (d *K8sDriver) Create(ctx context.Context, spec PodSpec) error {
 	if err := d.upsertServiceTokenSecret(ctx, spec); err != nil {
 		return err
 	}
+	// The Skill env Secret is created only when configured. With inline content
+	// configured, config.yaml owns the payload and it is written on every
+	// reconcile; without content the Secret is create-if-missing so an operator's
+	// hand-written key survives an apply.
+	skillEnvSecretPreexisting, err := d.ensureSkillEnvSecret(ctx, spec)
+	if err != nil {
+		return err
+	}
 	if d.publicSkillsConfigured() {
 		if err := d.ensurePublicSkillsActiveDir(); err != nil {
 			return err
 		}
 	}
-	return d.upsertDeployment(ctx, spec, name)
+	if err := d.upsertDeployment(ctx, spec, name); err != nil {
+		return err
+	}
+	// A running container keeps the Secret it mounted at creation time, so a
+	// content change only takes effect on a new Pod. The Deployment written above
+	// is what makes that new Pod: on a first create it is brand new, so the
+	// startup cannot have an old payload and a restart would be a no-op that can
+	// still fail (RBAC without `patch` on deployments would mark a correctly
+	// provisioned Pod as errored). Only the existing-Secret case needs a bounce.
+	if skillEnvSecretPreexisting {
+		if err := d.Restart(ctx, spec.PodID); err != nil && !errors.Is(err, ErrWorkloadMissing) {
+			return err
+		}
+	}
+	return nil
 }
 
 // ReplaceRuntime rolls a Pod workload onto a new image/runtime DTO without a
@@ -144,10 +168,24 @@ func (d *K8sDriver) ReplaceRuntime(ctx context.Context, spec PodSpec) error {
 	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
 		return ErrInvalidPodSpec
 	}
+	if err := spec.Validate(); err != nil {
+		return err
+	}
 	if err := d.ensureStatePVC(ctx, spec.PodID, true); err != nil {
 		return err
 	}
+	if err := d.validateSkillEnvMount(spec); err != nil {
+		return err
+	}
 	if err := d.UpdateSpec(ctx, spec.PodID, spec); err != nil {
+		return err
+	}
+	// Keep the Skill env Secret in sync across image/runtime rollouts. The flag
+	// only reports an existing payload actually being replaced; a rollout whose
+	// template is otherwise unchanged must still bounce the Pod, otherwise the
+	// new key would sit in the Secret while the live container kept the old one.
+	skillEnvUpdated, err := d.ensureSkillEnvSecret(ctx, spec)
+	if err != nil {
 		return err
 	}
 	if spec.MultiUser.Version != 0 {
@@ -159,7 +197,15 @@ func (d *K8sDriver) ReplaceRuntime(ctx context.Context, spec PodSpec) error {
 			return err
 		}
 	}
-	return d.upsertDeployment(ctx, spec, ContainerName(spec.PodID))
+	if err := d.upsertDeployment(ctx, spec, ContainerName(spec.PodID)); err != nil {
+		return err
+	}
+	if skillEnvUpdated {
+		if err := d.Restart(ctx, spec.PodID); err != nil && !errors.Is(err, ErrWorkloadMissing) {
+			return err
+		}
+	}
+	return nil
 }
 
 func (d *K8sDriver) ensureStatePVC(ctx context.Context, podID string, adopt bool) error {
@@ -282,6 +328,86 @@ func (d *K8sDriver) upsertServiceTokenSecret(ctx context.Context, spec PodSpec) 
 	return d.upsertSecret(ctx, sec)
 }
 
+// skillEnvSecretName is the per-Pod Secret holding the business Skill env file
+// (typically OPENAI_API_KEY). Only the file name matters to Skills; the value
+// is operator-supplied out of band.
+func skillEnvSecretName(podID string) string {
+	return ContainerName(podID) + "-skill-env"
+}
+
+func skillEnvSecretKey(file string) string {
+	if idx := strings.LastIndex(file, "/"); idx >= 0 {
+		return file[idx+1:]
+	}
+	return file
+}
+
+// ensureSkillEnvSecret keeps the business Skill env file in sync with the
+// configured content.
+//
+// Empty content means "operator-owned": create an empty placeholder when the
+// Secret is absent and never touch an existing one, so a key written by hand
+// survives an apply/redeploy. Non-empty content means config.yaml is the single
+// source of truth: create or overwrite the payload on every reconcile.
+//
+// The first result reports whether an existing Secret's payload was replaced.
+// K8s never pushes Secret updates into a running container, so the caller must
+// recreate the Pod when that is true. A freshly created Secret does not count:
+// there is no older Pod that could hold a stale payload.
+func (d *K8sDriver) ensureSkillEnvSecret(ctx context.Context, spec PodSpec) (bool, error) {
+	file := strings.TrimSpace(spec.SkillEnvFile)
+	if file == "" {
+		return false, nil
+	}
+	key := skillEnvSecretKey(file)
+	if key == "" {
+		return false, ErrInvalidPodSpec
+	}
+	content := spec.SkillEnvFileContent
+	name := skillEnvSecretName(spec.PodID)
+	api := d.client.CoreV1().Secrets(d.namespace)
+	current, err := api.Get(ctx, name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		// Placeholder so the file exists and the Skill does not crash on a
+		// missing path; an operator fills in real content when configured empty.
+		sec := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.PodID)},
+			StringData: map[string]string{key: content},
+		}
+		_, err := api.Create(ctx, sec, metav1.CreateOptions{})
+		if apierrors.IsAlreadyExists(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if err != nil {
+		return false, err
+	}
+	if content == "" {
+		return false, nil
+	}
+	// Compare decoded bytes. A real API server converts StringData into base64
+	// Data, while the fake clientset keeps StringData verbatim, so consult both
+	// or the same payload would look changed forever and bounce the Pod on every
+	// reconcile.
+	if currentPayload, ok := current.Data[key]; ok {
+		if string(currentPayload) == content {
+			return false, nil
+		}
+	} else if current.StringData[key] == content {
+		return false, nil
+	}
+	desired := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: d.namespace, Labels: d.labels(spec.PodID)},
+		StringData: map[string]string{key: content},
+	}
+	desired.ResourceVersion = current.ResourceVersion
+	if _, err := api.Update(ctx, desired, metav1.UpdateOptions{}); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (d *K8sDriver) upsertSecret(ctx context.Context, desired *corev1.Secret) error {
 	api := d.client.CoreV1().Secrets(d.namespace)
 	current, err := api.Get(ctx, desired.Name, metav1.GetOptions{})
@@ -376,10 +502,10 @@ func (d *K8sDriver) deployment(spec PodSpec, name string) *appsv1.Deployment {
 						Image:           spec.ImageTag,
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						EnvFrom:         []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: name + "-env"}}}},
-						Env: []corev1.EnvVar{
+						Env: append([]corev1.EnvVar{
 							{Name: "TZ", Value: runtime.Timezone},
 							{Name: "OPENCLAW_STATE_DIR", Value: runtime.StateDir},
-						},
+						}, skillEnvVars(spec)...),
 						Ports: []corev1.ContainerPort{{ContainerPort: GatewayPort}},
 						SecurityContext: &corev1.SecurityContext{
 							AllowPrivilegeEscalation: ptr(false),
@@ -514,6 +640,11 @@ func (d *K8sDriver) Remove(ctx context.Context, podID string, keepState bool) er
 		return err
 	}
 	if err := d.client.CoreV1().Secrets(d.namespace).Delete(ctx, name+"-runtime-config", metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	// The skill env Secret holds the operator's key material; never leave it
+	// behind as an orphan once the Pod is gone.
+	if err := d.client.CoreV1().Secrets(d.namespace).Delete(ctx, skillEnvSecretName(podID), metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	if keepState {
@@ -730,6 +861,43 @@ func (d *K8sDriver) WorkloadBlocked(ctx context.Context, podID string) (bool, er
 	return false, nil
 }
 
+// validateSkillEnvMount rejects a Skill env file whose directory collides with
+// another mount in the same Pod. K8s refuses duplicate mountPath and leaves the
+// Pod Pending forever, so this must fail at apply time with a clear error
+// instead. Checked against the mounts actually emitted, because the state and
+// public-skills directories are configurable, not a fixed list.
+func (d *K8sDriver) validateSkillEnvMount(spec PodSpec) error {
+	file := strings.TrimSpace(spec.SkillEnvFile)
+	if file == "" {
+		return nil
+	}
+	dir := skillEnvFileMountDir(file)
+	if dir == "" {
+		return fmt.Errorf("%w: skill env file %q is not a file path", ErrInvalidPodSpec, file)
+	}
+	_, mounts := d.deploymentVolumes(PodSpec{PodID: spec.PodID, ServiceToken: spec.ServiceToken}, ContainerName(spec.PodID))
+	// Apply the shared reserved set explicitly instead of relying only on
+	// deploymentVolumes: the service-token mount appears there only when a token
+	// is present, yet a Skill env dir under /run/secrets/muad is never valid.
+	if err := validateSkillEnvMountDir(file, skillEnvReservedMounts(spec)); err != nil {
+		return err
+	}
+	// configureRuntimeFileDeployment adds this mount later, only in file mode,
+	// so deploymentVolumes does not report it.
+	if spec.MultiUser.Version != 0 {
+		mounts = append(mounts, corev1.VolumeMount{Name: "runtime-config", MountPath: RuntimeConfigDirectory})
+	}
+	for _, m := range mounts {
+		// Equal or nested in either direction both make the Deployment invalid:
+		// equal is a duplicate mountPath, nested is an unsupported overlap.
+		if pathIsInside(dir, m.MountPath) || pathIsInside(m.MountPath, dir) {
+			return fmt.Errorf("%w: skill env file directory %q overlaps the %q mount at %q",
+				ErrInvalidPodSpec, dir, m.Name, m.MountPath)
+		}
+	}
+	return nil
+}
+
 func (d *K8sDriver) deploymentVolumes(spec PodSpec, name string) ([]corev1.Volume, []corev1.VolumeMount) {
 	runtime := d.runtime.withDefaults()
 	vols := []corev1.Volume{{
@@ -746,6 +914,14 @@ func (d *K8sDriver) deploymentVolumes(spec PodSpec, name string) ([]corev1.Volum
 	if d.publicSkillsConfigured() {
 		vols = append(vols, publicSkillsVolume(d.skillsPVC))
 		mounts = append(mounts, d.publicSkillsVolumeMount())
+	}
+	if file := strings.TrimSpace(spec.SkillEnvFile); file != "" {
+		if dir := skillEnvFileMountDir(file); dir != "" {
+			vols = append(vols, skillEnvVolume(spec.PodID, skillEnvSecretKey(file)))
+			mounts = append(mounts, corev1.VolumeMount{
+				Name: "skill-env", MountPath: dir, ReadOnly: true,
+			})
+		}
 	}
 	return vols, mounts
 }

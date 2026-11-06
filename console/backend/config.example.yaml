@@ -46,6 +46,30 @@ runtime:
   stateDir: /home/node/.openclaw
   publicSkillsDir: /opt/openclaw-skills
 
+# 业务 Skill 的 .env 文件在 worker 内的绝对路径（env: CONSOLE_SKILL_ENV_FILE_PATH）。
+# 配置后控制面会为每个 Pod 创建一个 <pod>-skill-env Secret（文件模式 0600），以
+# 只读目录形式挂到该文件所在目录，并把本路径注入 MSS_ENV_PATH —— 业务 Skill
+# （如 v2-sangfor-report-downloader）据此读取 OPENAI_API_KEY，无需写进镜像或仓库。
+# 留空 = 不注入，沿用 Skill 自身的 SKILL_OUTPUT_DIR / Skill 根目录回落。
+# 也可写在 runtime: 块下；所在目录不能与 stateDir / publicSkillsDir / /run/secrets/muad /
+# /run/muad-config 重合或互相嵌套（K8s 拒绝重复 mountPath，Pod 会卡在 Pending）。
+# skillEnvFilePath: /opt/openclaw-secret/.env.ppt
+
+# 同一份文件在 Console 宿主机上的路径（env: CONSOLE_SKILL_ENV_HOST_FILE_PATH）。
+# 仅 docker 驱动使用：docker 没有 K8s Secret 对应物，只能 bind mount 宿主机文件，
+# 源路径（宿主机）与目标路径（上面的容器路径）必须分开配置。docker 模式下配置了
+# skillEnvFilePath 却没配本项会直接启动失败；k8s 模式忽略本项。
+# skillEnvHostFilePath: /etc/muad/.env.ppt
+
+# 直接写在此处的 .env 文件内容（无环境变量对应项，只能写在 config.yaml）。
+# 仅 k8s 驱动：配置后每次 reconcile 都会把内容写进 <pod>-skill-env Secret，
+# 内容变化时自动重启 Pod（运行中的容器不会读到 Secret 更新）。留空 = 保留
+# operator 手写的 Secret：Secret 不存在时只建空占位文件，已存在则不改动。
+# 需要同时配置 skillEnvFilePath；上限 64KiB；docker 模式下配置本项会启动失败。
+# 注意：明文同时存在于 config.yaml 与 Secret，请自行保护配置文件权限（0600）。
+# skillEnvFileContent: |
+#   OPENAI_API_KEY=sk-xxxx
+
 # Skill 上传限制（顶层配置，env: CONSOLE_MAX_SKILL_UPLOAD_BUNDLE_SIZE）
 # 上传 skill 压缩包（.tar.gz/.zip）的大小上限，单位支持 b/k/m/g（如 512k / 5m / 1g）。
 # 只限制上传的压缩包本身；解压后的内容不做大小限制。

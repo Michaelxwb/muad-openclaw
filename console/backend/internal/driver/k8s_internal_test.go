@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -761,6 +762,10 @@ func TestK8s_PodNameTreatsMissingPodAsNotReady(t *testing.T) {
 	}
 }
 
+// testPodSpec builds a spec with MultiUser left zero (= env startup mode). Tests
+// that care about file-mode behaviour must call fileRuntimeSpec or set
+// MultiUser themselves: PodSpec.Validate is mode-aware, so with a zero MultiUser
+// it only checks the env-mode fields and never exercises the embedded Runtime DTO.
 func testPodSpec(podID, image string) PodSpec {
 	return PodSpec{
 		PodID: podID, ImageTag: image, GatewayToken: "gateway-token",
@@ -1015,5 +1020,441 @@ func TestK8s_PodNameSkipsTerminatingPod(t *testing.T) {
 	}
 	if name, err := d.podName(ctx, "rotate"); err != nil || name != healthy.Name {
 		t.Fatalf("podName = %q, %v; want %q", name, err, healthy.Name)
+	}
+}
+
+// MSS_ENV_PATH wiring: a configured Skill env file must produce a read-only
+// Secret volume at the file's directory plus the env var, and the Secret must
+// survive redeploys with the operator's content intact.
+func TestK8s_SkillEnvFileMountsReadOnlySecretAndInjectsEnv(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	dep, err := d.client.AppsV1().Deployments("muad").Get(ctx, "muad-oc-alice", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get deployment: %v", err)
+	}
+	container := dep.Spec.Template.Spec.Containers[0]
+	if !hasVolumeMount(container.VolumeMounts, "skill-env", "/opt/openclaw-secret") {
+		t.Fatalf("skill-env mount missing: %+v", container.VolumeMounts)
+	}
+	if !hasVolume(dep.Spec.Template.Spec.Volumes, "skill-env", "muad-oc-alice-skill-env") {
+		t.Fatalf("skill-env volume missing: %+v", dep.Spec.Template.Spec.Volumes)
+	}
+	if got := envValue(container.Env, SkillEnvFilePathEnvVar); got != "/opt/openclaw-secret/.env.ppt" {
+		t.Fatalf("%s = %q, want configured path", SkillEnvFilePathEnvVar, got)
+	}
+	sec, err := d.client.CoreV1().Secrets("muad").Get(ctx, "muad-oc-alice-skill-env", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("skill env Secret: %v", err)
+	}
+	// ensureSkillEnvSecret creates the Secret with StringData, and the fake
+	// ObjectTracker stores it verbatim without the API server's conversion to
+	// Data, so the key lives in StringData here.
+	if _, ok := sec.StringData[".env.ppt"]; !ok {
+		t.Fatalf("Secret missing .env.ppt key: stringData=%+v data=%+v", sec.StringData, sec.Data)
+	}
+	// The key is the file's basename and KeyToPath must project it to that same
+	// name inside the mounted directory, or MSS_ENV_PATH points at nothing.
+	for _, vol := range dep.Spec.Template.Spec.Volumes {
+		if vol.Secret == nil || vol.Name != "skill-env" {
+			continue
+		}
+		items := vol.Secret.Items
+		if len(items) != 1 || items[0].Key != ".env.ppt" || items[0].Path != ".env.ppt" {
+			t.Fatalf("skill-env secret items = %+v, want key and path both .env.ppt", items)
+		}
+	}
+}
+
+func TestK8s_SkillEnvFileAbsentKeepsPreviousBehaviour(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	dep, err := d.client.AppsV1().Deployments("muad").Get(ctx, "muad-oc-alice", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get deployment: %v", err)
+	}
+	container := dep.Spec.Template.Spec.Containers[0]
+	for _, mount := range container.VolumeMounts {
+		if mount.Name == "skill-env" {
+			t.Fatalf("unexpected skill-env mount: %+v", mount)
+		}
+	}
+	if got := envValue(container.Env, SkillEnvFilePathEnvVar); got != "" {
+		t.Fatalf("%s = %q, want empty when unconfigured", SkillEnvFilePathEnvVar, got)
+	}
+	if _, err := d.client.CoreV1().Secrets("muad").Get(ctx, "muad-oc-alice-skill-env", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("skill env Secret should not exist, err = %v", err)
+	}
+}
+
+func TestK8s_EnsureSkillEnvSecretPreservesOperatorContent(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	// Operator fills in the key out of band.
+	sec, err := d.client.CoreV1().Secrets("muad").Get(ctx, "muad-oc-alice-skill-env", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get Secret: %v", err)
+	}
+	sec.Data = map[string][]byte{".env.ppt": []byte("OPENAI_API_KEY=real-key")}
+	if _, err := d.client.CoreV1().Secrets("muad").Update(ctx, sec, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("fill Secret: %v", err)
+	}
+	// A redeploy must not wipe it.
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("redeploy: %v", err)
+	}
+	after, err := d.client.CoreV1().Secrets("muad").Get(ctx, "muad-oc-alice-skill-env", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get Secret after redeploy: %v", err)
+	}
+	if got := string(after.Data[".env.ppt"]); got != "OPENAI_API_KEY=real-key" {
+		t.Fatalf(".env.ppt = %q, want operator value preserved", got)
+	}
+}
+
+// Inline content makes config.yaml the single source of truth: the Secret is
+// created with the payload, and a changed payload rewrites it.
+func TestK8s_EnsureSkillEnvSecretWritesConfiguredContent(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	spec.SkillEnvFileContent = "OPENAI_API_KEY=from-config"
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if got := skillEnvSecretString(t, d, ctx); got != "OPENAI_API_KEY=from-config" {
+		t.Fatalf(".env.ppt = %q, want configured content", got)
+	}
+	// A later deploy with new content must replace the payload.
+	spec.SkillEnvFileContent = "OPENAI_API_KEY=rotated"
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("redeploy: %v", err)
+	}
+	if got := skillEnvSecretString(t, d, ctx); got != "OPENAI_API_KEY=rotated" {
+		t.Fatalf(".env.ppt = %q, want rotated content", got)
+	}
+}
+
+// Same content on a repeated deploy must not rewrite the Secret, otherwise every
+// reconcile would bump the Deployment and bounce the Pod.
+func TestK8s_EnsureSkillEnvSecretStableContentIsNoOp(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	spec.SkillEnvFileContent = "OPENAI_API_KEY=stable"
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	before := skillEnvSecretResourceVersion(t, d, ctx)
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("redeploy: %v", err)
+	}
+	if after := skillEnvSecretResourceVersion(t, d, ctx); after != before {
+		t.Fatalf("resourceVersion changed %q -> %q, want unchanged payload left alone", before, after)
+	}
+}
+
+// Empty content keeps the operator-owned behaviour: an existing payload is
+// never overwritten, even when it was written by hand.
+func TestK8s_EnsureSkillEnvSecretEmptyContentKeepsOperatorValue(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	sec, err := d.client.CoreV1().Secrets("muad").Get(ctx, "muad-oc-alice-skill-env", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get Secret: %v", err)
+	}
+	sec.Data = map[string][]byte{".env.ppt": []byte("OPENAI_API_KEY=hand-written")}
+	if _, err := d.client.CoreV1().Secrets("muad").Update(ctx, sec, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("fill Secret: %v", err)
+	}
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("redeploy: %v", err)
+	}
+	if got := skillEnvSecretString(t, d, ctx); got != "OPENAI_API_KEY=hand-written" {
+		t.Fatalf(".env.ppt = %q, want hand-written value preserved", got)
+	}
+}
+
+// The fake client stores StringData verbatim, so read both maps.
+func skillEnvSecretString(t *testing.T, d *K8sDriver, ctx context.Context) string {
+	t.Helper()
+	sec, err := d.client.CoreV1().Secrets("muad").Get(ctx, "muad-oc-alice-skill-env", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get skill env Secret: %v", err)
+	}
+	if v, ok := sec.Data[".env.ppt"]; ok {
+		return string(v)
+	}
+	return sec.StringData[".env.ppt"]
+}
+
+func skillEnvSecretResourceVersion(t *testing.T, d *K8sDriver, ctx context.Context) string {
+	t.Helper()
+	sec, err := d.client.CoreV1().Secrets("muad").Get(ctx, "muad-oc-alice-skill-env", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get skill env Secret: %v", err)
+	}
+	return sec.ResourceVersion
+}
+
+func TestK8s_SkillEnvFileValidation(t *testing.T) {
+	// Validate is mode-aware: with Version != 0 it also checks MultiUser.PodID
+	// against PodID, so the file-mode fixture is used to keep the runtime DTO
+	// consistent. A zero MultiUser skips those fields entirely.
+	for _, value := range []string{
+		"/.env", "//.env", "/run", "relative/.env", "/opt/x/",
+		// A ".." segment normalises into the service-token mount, so the
+		// reserved-mount set must reject it rather than compare the literal string.
+		"/opt/openclaw-secret/../run/secrets/muad/.env.ppt",
+		"/x/../../../run/secrets/muad/.env.ppt",
+		"/opt/openclaw-secret/./.env.ppt",
+		// The docker driver splices the path into "-v host:container:ro", so a
+		// ':' would truncate the mount target instead of failing.
+		"/opt/openclaw-secret/.env.ppt:Z",
+		"/opt/openclaw-secret/.env.ppt:x",
+		// A tab survives TrimSpace and leaves an unaddressable path.
+		"/opt/openclaw-secret/.env\t.ppt",
+	} {
+		spec := fileRuntimeSpec(t, "alice")
+		spec.SkillEnvFile = value
+		if err := spec.Validate(); err == nil {
+			t.Fatalf("Validate accepted unsafe SkillEnvFile %q", value)
+		}
+	}
+	spec := fileRuntimeSpec(t, "alice")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	if err := spec.Validate(); err != nil {
+		t.Fatalf("Validate rejected valid SkillEnvFile: %v", err)
+	}
+}
+
+// Inline content is only useful when it names a file; content without a path
+// would be written nowhere while config.yaml claimed a key was configured.
+func TestPodSpec_ValidateSkillEnvFileContent(t *testing.T) {
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFileContent = "OPENAI_API_KEY=x"
+	if err := spec.Validate(); err == nil {
+		t.Fatal("Validate accepted skill env content without a file path")
+	}
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	if err := spec.Validate(); err != nil {
+		t.Fatalf("Validate rejected content with a valid path: %v", err)
+	}
+	spec.SkillEnvFileContent = "a\x00b"
+	if err := spec.Validate(); err == nil {
+		t.Fatal("Validate accepted a NUL byte in skill env content")
+	}
+	spec.SkillEnvFileContent = strings.Repeat("x", MaxSkillEnvFileContentBytes+1)
+	if err := spec.Validate(); err == nil {
+		t.Fatal("Validate accepted skill env content over the size cap")
+	}
+}
+
+// Provisioning a Pod with inline content must not be reported as failed just
+// because the restart patch could not be issued: the Deployment was written with
+// the fresh payload, so there is no stale Pod to bounce. Regression guard for a
+// create that returned an error (leaving the Pod in state "error") purely
+// because the ServiceAccount lacked `patch` on deployments.
+func TestK8s_CreateWithContentDoesNotRestart(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	spec.SkillEnvFileContent = "OPENAI_API_KEY=abc"
+	var restarts int
+	d.client.(*fake.Clientset).PrependReactor("patch", "deployments", func(k8stesting.Action) (bool, runtime.Object, error) {
+		restarts++
+		return true, nil, nil
+	})
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if restarts != 0 {
+		t.Fatalf("first Create issued %d deployment patches, want none", restarts)
+	}
+}
+
+// A payload change on an existing Pod still has to bounce it, since the mounted
+// Secret of a running container is never refreshed.
+func TestK8s_CreateWithChangedContentRestarts(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	spec.SkillEnvFileContent = "OPENAI_API_KEY=first"
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	var restarts int
+	d.client.(*fake.Clientset).PrependReactor("patch", "deployments", func(k8stesting.Action) (bool, runtime.Object, error) {
+		restarts++
+		return true, nil, nil
+	})
+	spec.SkillEnvFileContent = "OPENAI_API_KEY=second"
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("redeploy: %v", err)
+	}
+	if restarts != 1 {
+		t.Fatalf("changed payload issued %d deployment patches, want exactly 1", restarts)
+	}
+}
+
+// The cap is duplicated in the config package (which cannot import driver) and
+// here. They must agree, or a value accepted at startup would be rejected at Pod
+// creation time.
+func TestSkillEnvFileContentCapMatchesConfig(t *testing.T) {
+	if MaxSkillEnvFileContentBytes != 64*1024 {
+		t.Fatalf("driver cap = %d, want 65536 to match maxSkillEnvFileContentBytes", MaxSkillEnvFileContentBytes)
+	}
+}
+
+// Docker bind-mounts a host file and has nowhere to write inline content, so
+// accepting it would leave the container reading a different file than the one
+// config.yaml described.
+func TestDocker_RejectsSkillEnvFileContent(t *testing.T) {
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	spec := dockerTestPodSpec("pod-a", "token")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	spec.SkillEnvHostFile = "/etc/muad/.env.ppt"
+	spec.SkillEnvFileContent = "OPENAI_API_KEY=x"
+	if err := d.validateSkillEnvFile(spec); err == nil {
+		t.Fatal("docker accepted inline skill env content")
+	}
+}
+
+// The traversal rejection must reach both drivers, not just PodSpec.Validate:
+// Create is the path that actually writes the Deployment.
+func TestK8s_CreateRejectsTraversalSkillEnvFile(t *testing.T) {
+	d := newFakeK8s(t)
+	spec := fileRuntimeSpec(t, "alice")
+	spec.SkillEnvFile = "/opt/openclaw-secret/../run/secrets/muad/.env.ppt"
+	if err := d.Create(context.Background(), spec); err == nil {
+		t.Fatal("Create accepted a Skill env path that traverses into the service-token mount")
+	}
+}
+
+// Overlapping mounts make K8s reject the Deployment (duplicate mountPath) or
+// leave the container in CreateContainerConfigError, and the Pod never starts,
+// so every overlap must fail at apply time. Covers exact equality with a mount,
+// nesting under a configurable mount, and the runtime-config mount that
+// deploymentVolumes does not report.
+func TestK8s_SkillEnvFileRejectsOverlappingMountDir(t *testing.T) {
+	for _, file := range []string{
+		"/run/secrets/muad/.env.ppt",                 // equal to service-token mount
+		"/opt/openclaw-skills/.env.ppt",              // equal to public skills mount
+		"/home/node/.openclaw/skill-secret/.env.ppt", // nested under state dir
+		RuntimeConfigDirectory + "/.env.ppt",         // runtime-config mount
+	} {
+		d := newFakeK8s(t)
+		spec := testPodSpec("alice", "img:1")
+		spec.SkillEnvFile = file
+		// File mode (Version != 0) is when the runtime-config mount is added.
+		spec.MultiUser.Version = RuntimeConfigVersion
+		if err := d.validateSkillEnvMount(spec); err == nil {
+			t.Fatalf("Skill env dir %q accepted despite overlapping another mount", file)
+		}
+	}
+}
+
+// The helper above must actually be wired into the user-facing path.
+func TestK8s_CreateRejectsOverlappingSkillEnvDir(t *testing.T) {
+	d := newFakeK8s(t)
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFile = "/run/secrets/muad/.env.ppt"
+	if err := d.Create(context.Background(), spec); err == nil {
+		t.Fatal("Create accepted a Skill env dir overlapping the service-token mount")
+	}
+}
+
+// ReplaceRuntime rolls the workload onto a new runtime config without a
+// create gap, so it must apply the same spec validation as Create: otherwise a
+// mismatched PodID silently deploys a Pod whose env and runtime.json disagree.
+func TestK8s_ReplaceRuntimeValidatesSpec(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := fileRuntimeSpec(t, "alice")
+	// Version stays non-zero, so PodSpec.Validate() is in play; the runtime PodID
+	// no longer matches the workload the spec describes.
+	spec.MultiUser.PodID = "bob"
+	err := d.ReplaceRuntime(ctx, spec)
+	if !errors.Is(err, ErrInvalidPodSpec) {
+		t.Fatalf("ReplaceRuntime error = %v, want ErrInvalidPodSpec", err)
+	}
+}
+
+// A same-name replace must still succeed, proving the validation did not turn
+// into an unconditional rejection.
+func TestK8s_ReplaceRuntimeAcceptsMatchingSpec(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := fileRuntimeSpec(t, "alice")
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	spec.ImageTag = "worker:file-v2"
+	if err := d.ReplaceRuntime(ctx, spec); err != nil {
+		t.Fatalf("ReplaceRuntime on a valid spec: %v", err)
+	}
+	dep, err := d.client.AppsV1().Deployments(d.namespace).Get(ctx, ContainerName(spec.PodID), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get deployment: %v", err)
+	}
+	if got := dep.Spec.Template.Spec.Containers[0].Image; got != spec.ImageTag {
+		t.Fatalf("deployment image = %q, want %q", got, spec.ImageTag)
+	}
+}
+
+func envValue(env []corev1.EnvVar, name string) string {
+	for _, item := range env {
+		if item.Name == name {
+			return item.Value
+		}
+	}
+	return ""
+}
+
+func hasVolume(volumes []corev1.Volume, name, secretName string) bool {
+	for _, volume := range volumes {
+		if volume.Name == name && volume.Secret != nil && volume.Secret.SecretName == secretName {
+			return true
+		}
+	}
+	return false
+}
+
+func TestK8s_RemoveDeletesSkillEnvSecret(t *testing.T) {
+	d := newFakeK8s(t)
+	ctx := context.Background()
+	spec := testPodSpec("alice", "img:1")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	if err := d.Create(ctx, spec); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := d.Remove(ctx, "alice", false); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+	if _, err := d.client.CoreV1().Secrets("muad").Get(ctx, "muad-oc-alice-skill-env", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("skill env Secret should be deleted, err = %v", err)
 	}
 }

@@ -42,6 +42,9 @@ type yamlFile struct {
 	AutomationPlatformToken *string              `yaml:"automationPlatformToken"`
 	RuntimeDefaults         *runtimeDefaultsYAML `yaml:"runtimeDefaults"`
 	MediaMaxMb              *int                 `yaml:"mediaMaxMb"`
+	SkillEnvFilePath        *string              `yaml:"skillEnvFilePath"`
+	SkillEnvHostFilePath    *string              `yaml:"skillEnvHostFilePath"`
+	SkillEnvFileContent     *string              `yaml:"skillEnvFileContent"`
 	// k8s driver (used when runtimeDriver=k8s)
 	K8sNamespace          *string               `yaml:"k8sNamespace"`
 	K8sSkillsPVC          *string               `yaml:"k8sSkillsPVC"`
@@ -94,12 +97,15 @@ type serverYAML struct {
 }
 
 type runtimeYAML struct {
-	Driver          *string `yaml:"driver"`
-	DefaultImage    *string `yaml:"defaultImage"`
-	SkillsDir       *string `yaml:"skillsDir"`
-	Timezone        *string `yaml:"timezone"`
-	StateDir        *string `yaml:"stateDir"`
-	PublicSkillsDir *string `yaml:"publicSkillsDir"`
+	Driver           *string `yaml:"driver"`
+	DefaultImage     *string `yaml:"defaultImage"`
+	SkillsDir        *string `yaml:"skillsDir"`
+	Timezone         *string `yaml:"timezone"`
+	StateDir         *string `yaml:"stateDir"`
+	PublicSkillsDir  *string `yaml:"publicSkillsDir"`
+	SkillEnvFile        *string `yaml:"skillEnvFilePath"`
+	SkillEnvHostFile    *string `yaml:"skillEnvHostFilePath"`
+	SkillEnvFileContent *string `yaml:"skillEnvFileContent"`
 }
 
 type dockerYAML struct {
@@ -166,6 +172,9 @@ type Config struct {
 	SkillMaxUploadBundleSize  string // 原始字符串（如 "5m"），validate 时解析
 	SkillMaxUploadBundleBytes int64  // 解析后的上传压缩包大小上限（字节）
 	MediaMaxMb                int    // 媒体投递上限（MiB）；0 = 未配置，使用 openclaw 默认 5MB
+	SkillEnvFilePath          string // 业务 Skill 读取的 .env 文件在 worker 内的绝对路径；空 = 不注入
+	SkillEnvHostFilePath      string // 同一份文件在 Console 宿主机上的路径；仅 docker 驱动使用（k8s 从 Secret 挂载）
+	SkillEnvFileContent       string // Secret 里放入的文件内容；k8s 模式在 Pod 重建时写入 <pod>-skill-env
 	RuntimeTimezone           string
 	RuntimeStateDir           string
 	RuntimePublicSkillsDir    string
@@ -188,6 +197,10 @@ var validRestartPolicies = map[string]bool{
 const (
 	defaultSkillsDir        = "/var/lib/muad-console/skills"
 	k8sPublicSkillAssetsDir = ".muad-skill-assets"
+	// maxSkillEnvFileContentBytes caps skillEnvFileContent. A .env file is a few KiB
+	// at most; the limit exists so a mistyped paste cannot bloat every Deployment
+	// reconcile or exceed the Secret size limit (1 MiB).
+	maxSkillEnvFileContentBytes = 64 * 1024
 )
 
 var (
@@ -293,6 +306,9 @@ func applyLegacyYAML(c *Config, f *yamlFile) {
 	applyExplicitString(&c.SkillsDir, &c.skillsDirExplicit, f.SkillsDir)
 	applyString(&c.SkillMaxUploadBundleSize, f.SkillMaxUploadBundle)
 	applyInt(&c.MediaMaxMb, f.MediaMaxMb)
+	applyString(&c.SkillEnvFilePath, f.SkillEnvFilePath)
+	applyString(&c.SkillEnvHostFilePath, f.SkillEnvHostFilePath)
+	applyString(&c.SkillEnvFileContent, f.SkillEnvFileContent)
 	applyString(&c.MasterKey, f.MasterKey)
 	applyString(&c.ListenAddr, f.ListenAddr)
 	applyString(&c.LogDir, f.LogDir)
@@ -361,6 +377,9 @@ func applyRuntimeYAML(c *Config, src *runtimeYAML) {
 	applyString(&c.RuntimeTimezone, src.Timezone)
 	applyString(&c.RuntimeStateDir, src.StateDir)
 	applyString(&c.RuntimePublicSkillsDir, src.PublicSkillsDir)
+	applyString(&c.SkillEnvFilePath, src.SkillEnvFile)
+	applyString(&c.SkillEnvHostFilePath, src.SkillEnvHostFile)
+	applyString(&c.SkillEnvFileContent, src.SkillEnvFileContent)
 }
 
 func applyK8sYAML(c *Config, src *k8sYAML) {
@@ -489,6 +508,12 @@ func (c *Config) overrideFromEnv() error {
 	if err := envIntOverride(&c.MediaMaxMb, "CONSOLE_MEDIA_MAX_MB"); err != nil {
 		return err
 	}
+	envOverride(&c.SkillEnvFilePath, "CONSOLE_SKILL_ENV_FILE_PATH")
+	envOverride(&c.SkillEnvHostFilePath, "CONSOLE_SKILL_ENV_HOST_FILE_PATH")
+	// SkillEnvFileContent has no env override on purpose: it is multi-line key
+	// material, and anything placed in a process environment is readable from
+	// /proc/<pid>/environ and from `docker inspect`/Pod spec output. It comes from
+	// config.yaml only.
 	envOverride(&c.ListenAddr, "CONSOLE_LISTEN")
 	envOverride(&c.LogDir, "CONSOLE_LOG_DIR")
 	envOverride(&c.DBPath, "CONSOLE_DB")
@@ -585,6 +610,69 @@ func (c *Config) validate() error {
 	}
 	if err := validateRuntimePath("runtime.publicSkillsDir", c.RuntimePublicSkillsDir); err != nil {
 		return err
+	}
+	// 配置期就拦掉 Pod 起来才会报错的取值（相对路径、挂 "/" 这类系统目录）。
+	// driver.ValidateSkillEnvFile 是同一规则的权威实现；此处不 import driver
+	// 以免把 config 包（及其所有依赖方）绑成 Unix-only，规则刻意保持一字不差。
+	if strings.TrimSpace(c.SkillEnvFilePath) != "" {
+		trimmed := strings.TrimSpace(c.SkillEnvFilePath)
+		if !strings.HasPrefix(trimmed, "/") || strings.ContainsAny(trimmed, "\n\r\t\x00") {
+			return fmt.Errorf("skillEnvFilePath must be an absolute path without control characters")
+		}
+		// Must match driver.ValidateSkillEnvFile exactly: the working directory
+		// checks below compare paths as strings, so a ".."/"." segment would slip
+		// a mount into a reserved directory while looking innocent; require a
+		// clean path. path.Clean is the same function the driver uses.
+		if path.Clean(trimmed) != trimmed {
+			return fmt.Errorf("skillEnvFilePath must be a clean path without . or .. segments (got %q)", trimmed)
+		}
+		// Same reason as driver.ValidateSkillEnvFile: the docker driver builds
+		// "-v <host>:<container>:ro", where ':' silently splits the fields.
+		if strings.Contains(trimmed, ":") {
+			return fmt.Errorf("skillEnvFilePath must not contain ':' (got %q)", trimmed)
+		}
+		// The mount directory is everything before the last separator, and it must
+		// be a real directory, not "" ("/foo") and not "/" ("//.env").
+		idx := strings.LastIndex(trimmed, "/")
+		if dir := trimmed[:idx]; idx <= 0 || idx == len(trimmed)-1 || dir == "/" {
+			return fmt.Errorf("skillEnvFilePath must live in a dedicated directory (got %q)", trimmed)
+		}
+	}
+	// skillEnvHostFilePath is the host-side path bind-mounted by the docker
+	// driver. k8s ignores it (the file comes from a Secret), so it is only
+	// required — not merely allowed — when docker is the active driver.
+	if host := strings.TrimSpace(c.SkillEnvHostFilePath); host != "" {
+		if err := validateRuntimePath("skillEnvHostFilePath", host); err != nil {
+			return err
+		}
+		if strings.Contains(host, ":") {
+			return fmt.Errorf("skillEnvHostFilePath must not contain ':' (got %q)", host)
+		}
+	}
+	if c.RuntimeDriver == "docker" && strings.TrimSpace(c.SkillEnvFilePath) != "" &&
+		strings.TrimSpace(c.SkillEnvHostFilePath) == "" {
+		return fmt.Errorf("skillEnvHostFilePath is required by the docker driver when skillEnvFilePath is set")
+	}
+	// The content is written into the k8s Secret, which needs a mount path to
+	// appear at; without skillEnvFilePath there is nowhere to put it, and silently
+	// dropping the key would look like a working deploy that still falls back to
+	// mock. Reject it rather than accept a value that can never take effect.
+	if content := c.SkillEnvFileContent; content != "" {
+		if strings.TrimSpace(c.SkillEnvFilePath) == "" {
+			return fmt.Errorf("skillEnvFileContent requires skillEnvFilePath to be set")
+		}
+		if strings.ContainsRune(content, 0) {
+			// A NUL cannot survive the Secret encoding round-trip; fail loudly here
+			// instead of producing a truncated .env in the Pod.
+			return fmt.Errorf("skillEnvFileContent must not contain NUL bytes")
+		}
+		if len(content) > maxSkillEnvFileContentBytes {
+			return fmt.Errorf("skillEnvFileContent is %d bytes, limit is %d", len(content), maxSkillEnvFileContentBytes)
+		}
+		if c.RuntimeDriver == "docker" {
+			// docker has no Secret to write into; the operator bind-mounts the file.
+			return fmt.Errorf("skillEnvFileContent is not supported by the docker driver; place the file at skillEnvHostFilePath instead")
+		}
 	}
 	if strings.TrimSpace(c.K8sPublicSkillsMount) != "" {
 		if err := validateRuntimePath("k8s.publicSkillsMountPath", c.K8sPublicSkillsMount); err != nil {

@@ -666,3 +666,143 @@ func captureDockerStartup(t *testing.T, d *DockerDriver, spec PodSpec, recorder 
 		return recorder.run(ctx, args)
 	}
 }
+
+// A configured Skill env file must be bind-mounted read-only and exported as
+// MSS_ENV_PATH; leaving it empty must not change the run arguments at all.
+func TestDocker_SkillEnvFileBindsReadOnlyAndExportsEnv(t *testing.T) {
+	spec := dockerTestPodSpec("pod-a", "token")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	spec.SkillEnvHostFile = "/etc/muad/.env.ppt"
+	spec.ServiceToken.UID, spec.ServiceToken.GID = int64(os.Getuid()), int64(os.Getgid())
+	recorder := &dockerCallRecorder{}
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	var startupEnv string
+	captureDockerStartup(t, d, spec, recorder, &startupEnv)
+	if err := d.Create(context.Background(), spec); err != nil {
+		t.Fatal(err)
+	}
+	runArgs := findDockerCall(t, recorder.calls, "run")
+	// Host path on the left, container path on the right. Using the container
+	// path on both sides leaves the file invisible inside the container.
+	if !slices.Contains(runArgs, "/etc/muad/.env.ppt:/opt/openclaw-secret/.env.ppt:ro") {
+		t.Fatalf("Skill env file not bind-mounted host->container read-only: %v", runArgs)
+	}
+	if !slices.Contains(runArgs, SkillEnvFilePathEnvVar+"=/opt/openclaw-secret/.env.ppt") {
+		t.Fatalf("%s not exported: %v", SkillEnvFilePathEnvVar, runArgs)
+	}
+}
+
+func TestDocker_SkillEnvFileWithoutHostPathFails(t *testing.T) {
+	spec := dockerTestPodSpec("pod-a", "token")
+	spec.SkillEnvFile = "/opt/openclaw-secret/.env.ppt"
+	spec.ServiceToken.UID, spec.ServiceToken.GID = int64(os.Getuid()), int64(os.Getgid())
+	recorder := &dockerCallRecorder{}
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	captureDockerStartup(t, d, spec, recorder, new(string))
+	if err := d.Create(context.Background(), spec); err == nil {
+		t.Fatal("Create started a container without a host path for the Skill env file")
+	}
+}
+
+// A ':' inside either path would be spliced into "-v host:container:ro" and
+// silently split the fields, mounting at a truncated target; a control character
+// survives TrimSpace and yields an unusable mount source. Both must be rejected
+// before docker is invoked.
+func TestDocker_SkillEnvFileRejectsInjectionInPaths(t *testing.T) {
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	for _, tc := range []struct{ name, host, file string }{
+		{"colon in container path", "/etc/muad/.env.ppt", "/opt/openclaw-secret/.env.ppt:Z"},
+		{"colon in host path", "/etc/muad/.env.ppt:ro", "/opt/openclaw-secret/.env.ppt"},
+		// A newline survives TrimSpace, so without an explicit check it reaches the
+		// bind-mount argv and docker fails at container start with an opaque error.
+		{"newline in host path", "/etc/muad/.env.ppt\n--privileged", "/opt/openclaw-secret/.env.ppt"},
+		{"NUL in host path", "/etc/muad/.env.ppt\x00", "/opt/openclaw-secret/.env.ppt"},
+		// A newline *inside* the path is not trimmed and must be rejected; a
+		// trailing one is TrimSpace'd, which leaves a valid path and is accepted.
+		{"newline inside container path", "/etc/muad/.env.ppt", "/opt/openclaw-secret/.env\n.ppt"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := dockerTestPodSpec("pod-colon", "token")
+			spec.SkillEnvFile = tc.file
+			spec.SkillEnvHostFile = tc.host
+			spec.ServiceToken.UID, spec.ServiceToken.GID = int64(os.Getuid()), int64(os.Getgid())
+			recorder := &dockerCallRecorder{}
+			captureDockerStartup(t, d, spec, recorder, new(string))
+			if err := d.Create(context.Background(), spec); err == nil {
+				t.Fatalf("Create accepted colon in %s", tc.name)
+			}
+		})
+	}
+}
+
+// A bind mount nested under another mount cannot be created by docker, so it
+// must be rejected before `docker run` rather than crash-looping the container.
+// The reserved set must match the k8s driver exactly: a config docker accepts
+// but the cluster rejects is worse than a plain validation error.
+func TestDocker_SkillEnvFileNestedUnderReservedMountFails(t *testing.T) {
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	runtime := d.runtime.withDefaults()
+	for _, tc := range []struct {
+		name    string
+		file    string
+		version int
+	}{
+		{"state dir", runtime.StateDir + "/secret/.env.ppt", 0},
+		{"public skills", runtime.PublicSkillsDir + "/secret/.env.ppt", 0},
+		{"service token", "/run/secrets/muad/.env.ppt", 0},
+		// Runtime config is mounted only in file mode, so the same path must be
+		// accepted in env mode and rejected in file mode.
+		{"runtime config in file mode", RuntimeConfigDirectory + "/.env.ppt", RuntimeConfigVersion},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := dockerTestPodSpec("pod-a", "token")
+			spec.SkillEnvFile = tc.file
+			spec.SkillEnvHostFile = "/etc/muad/.env.ppt"
+			spec.MultiUser.Version = tc.version
+			if err := d.validateSkillEnvFile(spec); err == nil {
+				t.Fatalf("Skill env dir %q was accepted", tc.file)
+			}
+		})
+	}
+}
+
+// A Skill env directory that contains another mount is just as broken as one
+// nested inside it: docker hides the inner mount, so the file never appears.
+// This must be rejected identically to the k8s driver.
+func TestDocker_SkillEnvFileContainingReservedMountFails(t *testing.T) {
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	for _, file := range []string{
+		"/run/.env.ppt",  // dir /run contains /run/secrets/muad
+		"/home/.env.ppt", // dir /home contains the default state dir
+		"/opt/.env.ppt",  // dir /opt contains the default public skills dir
+	} {
+		spec := dockerTestPodSpec("pod-a", "token")
+		spec.SkillEnvFile = file
+		spec.SkillEnvHostFile = "/etc/muad/.env.ppt"
+		if err := d.validateSkillEnvFile(spec); err == nil {
+			t.Fatalf("Skill env dir containing another mount was accepted: %q", file)
+		}
+	}
+}
+
+func TestDocker_SkillEnvFileUnderRuntimeConfigAllowedOutsideFileMode(t *testing.T) {
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	spec := dockerTestPodSpec("pod-a", "token")
+	spec.SkillEnvFile = RuntimeConfigDirectory + "/.env.ppt"
+	spec.SkillEnvHostFile = "/etc/muad/.env.ppt"
+	if err := d.validateSkillEnvFile(spec); err != nil {
+		t.Fatalf("env mode does not mount %s, so it must stay usable: %v", RuntimeConfigDirectory, err)
+	}
+}
+
+func TestDocker_SkillEnvFileAbsentAddsNoArgs(t *testing.T) {
+	spec := dockerTestPodSpec("pod-a", "token")
+	spec.ServiceToken.UID, spec.ServiceToken.GID = int64(os.Getuid()), int64(os.Getgid())
+	d := &DockerDriver{secretDir: t.TempDir(), skillsDir: t.TempDir()}
+	args := d.createArgs(spec, "muad-oc-pod-a", "env-file", "")
+	for _, arg := range args {
+		if strings.Contains(arg, SkillEnvFilePathEnvVar) || strings.Contains(arg, ".env.ppt") {
+			t.Fatalf("unexpected Skill env argument when unconfigured: %q", arg)
+		}
+	}
+}

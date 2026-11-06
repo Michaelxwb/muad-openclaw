@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -563,5 +564,206 @@ func TestLoad_ConsoleInternalURLEnvOverrideAndValidation(t *testing.T) {
 	t.Setenv("CONSOLE_INTERNAL_URL", "console.internal")
 	if _, err := config.Load(); err == nil {
 		t.Fatal("internal URL without http scheme should fail")
+	}
+}
+
+// skillEnvFilePath is accepted both as a top-level key and under runtime:, and
+// the env var wins. Every path must actually land in Config — the yaml key was
+// once declared but never applied, which silently disabled the feature.
+func TestLoad_SkillEnvFilePathFromYAMLAndEnv(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+	// This test is about the container path landing in Config, not about the
+	// docker host-path requirement, so run as k8s (the default driver is docker
+	// and would reject a container path with no host path).
+	t.Setenv("RUNTIME_DRIVER", "k8s")
+
+	writeConfig := func(body string) {
+		if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(body), 0o644); err != nil {
+			t.Fatalf("write config: %v", err)
+		}
+	}
+
+	// Load returns (nil, err) on failure, so check err before touching the config.
+	load := func() *config.Config {
+		t.Helper()
+		loaded, err := config.Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		return loaded
+	}
+
+	writeConfig("skillEnvFilePath: /opt/openclaw-secret/.env.ppt\n")
+	if got := load().SkillEnvFilePath; got != "/opt/openclaw-secret/.env.ppt" {
+		t.Fatalf("top-level skillEnvFilePath = %q", got)
+	}
+
+	writeConfig("runtime:\n  skillEnvFilePath: /opt/runtime-secret/.env.ppt\n")
+	if got := load().SkillEnvFilePath; got != "/opt/runtime-secret/.env.ppt" {
+		t.Fatalf("runtime.skillEnvFilePath = %q", got)
+	}
+
+	t.Setenv("CONSOLE_SKILL_ENV_FILE_PATH", "/opt/env-secret/.env.ppt")
+	if got := load().SkillEnvFilePath; got != "/opt/env-secret/.env.ppt" {
+		t.Fatalf("CONSOLE_SKILL_ENV_FILE_PATH override = %q", got)
+	}
+
+	t.Setenv("CONSOLE_SKILL_ENV_HOST_FILE_PATH", "/etc/muad/.env.ppt")
+	if got := load().SkillEnvHostFilePath; got != "/etc/muad/.env.ppt" {
+		t.Fatalf("CONSOLE_SKILL_ENV_HOST_FILE_PATH override = %q", got)
+	}
+}
+
+// The docker driver can only bind-mount a host path, so the container path is
+// unusable without it. Fail at startup rather than at `docker run`.
+func TestLoad_DockerRequiresSkillEnvHostFilePath(t *testing.T) {
+	envOnly(t)
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("RUNTIME_DRIVER", "docker")
+	t.Setenv("CONSOLE_SKILL_ENV_FILE_PATH", "/opt/openclaw-secret/.env.ppt")
+	t.Setenv("CONSOLE_SKILL_ENV_HOST_FILE_PATH", "")
+	if _, err := config.Load(); err == nil {
+		t.Fatal("Load accepted a container Skill env path without a host path in docker mode")
+	}
+	t.Setenv("CONSOLE_SKILL_ENV_HOST_FILE_PATH", "/etc/muad/.env.ppt")
+	if _, err := config.Load(); err != nil {
+		t.Fatalf("Load rejected a complete docker Skill env config: %v", err)
+	}
+}
+
+// k8s delivers the file through a Secret, so the host path is optional there.
+func TestLoad_K8sDoesNotRequireSkillEnvHostFilePath(t *testing.T) {
+	envOnly(t)
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("RUNTIME_DRIVER", "k8s")
+	t.Setenv("CONSOLE_SKILL_ENV_FILE_PATH", "/opt/openclaw-secret/.env.ppt")
+	t.Setenv("CONSOLE_SKILL_ENV_HOST_FILE_PATH", "")
+	if _, err := config.Load(); err != nil {
+		t.Fatalf("k8s should not require a host path: %v", err)
+	}
+}
+
+// Inline content is the alternative to hand-writing the Secret; it must load
+// from config.yaml (top-level and runtime:) and must not be reachable from the
+// environment, since multi-line key material would then leak through
+// /proc/<pid>/environ and docker inspect.
+func TestLoad_SkillEnvFileContentFromYAML(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+	t.Setenv("RUNTIME_DRIVER", "k8s")
+	writeConfig := func(body string) {
+		if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(body), 0o600); err != nil {
+			t.Fatalf("write config: %v", err)
+		}
+	}
+	load := func() *config.Config {
+		t.Helper()
+		loaded, err := config.Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		return loaded
+	}
+
+	writeConfig("skillEnvFilePath: /opt/openclaw-secret/.env.ppt\nskillEnvFileContent: \"OPENAI_API_KEY=abc\"\n")
+	if got := load().SkillEnvFileContent; got != "OPENAI_API_KEY=abc" {
+		t.Fatalf("top-level skillEnvFileContent = %q", got)
+	}
+
+	writeConfig("runtime:\n  skillEnvFilePath: /opt/openclaw-secret/.env.ppt\n  skillEnvFileContent: \"OPENAI_API_KEY=def\"\n")
+	if got := load().SkillEnvFileContent; got != "OPENAI_API_KEY=def" {
+		t.Fatalf("runtime.skillEnvFileContent = %q", got)
+	}
+}
+
+// Content without a destination path can never reach a container; fail at
+// startup instead of writing a Secret nobody mounts.
+func TestLoad_SkillEnvFileContentRequiresPath(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+	t.Setenv("RUNTIME_DRIVER", "k8s")
+	body := "skillEnvFileContent: \"OPENAI_API_KEY=abc\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(body), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if _, err := config.Load(); err == nil {
+		t.Fatal("Load accepted skillEnvFileContent without skillEnvFilePath")
+	}
+}
+
+// docker has no Secret to write into; accepting the content would leave the
+// container reading a different file than the one described in config.yaml.
+func TestLoad_SkillEnvFileContentRejectedForDocker(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+	t.Setenv("RUNTIME_DRIVER", "docker")
+	body := "skillEnvFilePath: /opt/openclaw-secret/.env.ppt\n" +
+		"skillEnvHostFilePath: /etc/muad/.env.ppt\n" +
+		"skillEnvFileContent: \"OPENAI_API_KEY=abc\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(body), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if _, err := config.Load(); err == nil {
+		t.Fatal("Load accepted skillEnvFileContent in docker mode")
+	}
+}
+
+// A pasted block far larger than a real .env must not reach the API server,
+// where it would bloat every reconcile and approach the 1 MiB Secret ceiling.
+func TestLoad_SkillEnvFileContentSizeCap(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CONSOLE_MASTER_KEY", "mk")
+	t.Setenv("CONSOLE_CONFIG", filepath.Join(dir, "config.yaml"))
+	t.Setenv("RUNTIME_DRIVER", "k8s")
+	body := "skillEnvFilePath: /opt/openclaw-secret/.env.ppt\n" +
+		"skillEnvFileContent: \"" + strings.Repeat("x", 64*1024+1) + "\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(body), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if _, err := config.Load(); err == nil {
+		t.Fatal("Load accepted skillEnvFileContent over the size cap")
+	}
+}
+
+func TestLoad_RejectsInvalidSkillEnvFilePath(t *testing.T) {
+	// The ':' cases guard the docker bind-mount string: "-v host:container:ro"
+	// would otherwise treat the suffix as the mount mode rather than rejecting it.
+	for _, value := range []string{
+		"/.env", "//.env", "relative/.env", "/opt/x/",
+		"/opt/openclaw-secret/.env.ppt:Z",
+	} {
+		t.Setenv("CONSOLE_MASTER_KEY", "mk")
+		t.Setenv("CONSOLE_CONFIG", "/tmp/no-such-config-skill-env.yaml")
+		t.Setenv("CONSOLE_SKILL_ENV_FILE_PATH", value)
+		if _, err := config.Load(); err == nil {
+			t.Fatalf("Load accepted invalid skillEnvFilePath %q", value)
+		}
+	}
+}
+
+// NUL is not covered here on purpose: setenv refuses it, and the YAML parser
+// rejects control characters before config.validate runs, so no assertion at
+// this layer could exercise the check. The driver-side rejection in
+// DockerDriver.validateSkillEnvFile is the load-bearing one.
+func TestLoad_RejectsUnsafeSkillEnvHostFilePath(t *testing.T) {
+	for _, host := range []string{
+		"/etc/muad/.env.ppt:ro",
+		"/etc/muad/.env.ppt\n--privileged",
+	} {
+		t.Run(fmt.Sprintf("%q", host), func(t *testing.T) {
+			t.Setenv("CONSOLE_MASTER_KEY", "mk")
+			t.Setenv("CONSOLE_CONFIG", "/tmp/no-such-config-skill-env.yaml")
+			t.Setenv("RUNTIME_DRIVER", "docker")
+			t.Setenv("CONSOLE_SKILL_ENV_FILE_PATH", "/opt/openclaw-secret/.env.ppt")
+			t.Setenv("CONSOLE_SKILL_ENV_HOST_FILE_PATH", host)
+			if _, err := config.Load(); err == nil {
+				t.Fatalf("Load accepted unsafe skillEnvHostFilePath %q", host)
+			}
+		})
 	}
 }
