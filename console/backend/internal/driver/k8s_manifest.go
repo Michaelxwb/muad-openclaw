@@ -40,6 +40,27 @@ func serviceTokenVolumes(name string) []corev1.Volume {
 	}
 }
 
+// skillEnvVars exports MSS_ENV_PATH when a Skill env file is configured.
+func skillEnvVars(spec PodSpec) []corev1.EnvVar {
+	if value := skillEnvEnvValue(spec.SkillEnvFile); value != "" {
+		return []corev1.EnvVar{{Name: SkillEnvFilePathEnvVar, Value: value}}
+	}
+	return nil
+}
+
+// skillEnvVolume mounts the per-Pod Skill env Secret at the directory of the
+// configured env file. Mode 0600 keeps the key unreadable to other accounts.
+func skillEnvVolume(podID, key string) corev1.Volume {
+	mode := int32(0o600)
+	return corev1.Volume{
+		Name: "skill-env",
+		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{
+			SecretName: skillEnvSecretName(podID), DefaultMode: &mode,
+			Items: []corev1.KeyToPath{{Key: key, Path: key, Mode: &mode}},
+		}},
+	}
+}
+
 // resourceReqs maps the Pod limits to conservative requests and hard limits.
 // Requests default to 3 CPU / 8Gi but are clamped down to the resolved limits, so
 // requests never exceed limits — Kubernetes rejects any Deployment write with

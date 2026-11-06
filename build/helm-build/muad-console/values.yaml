@@ -113,4 +113,13 @@ configFile:
   #   namespace: muad
   #   skillsPVC: muad-skills
   #   publicSkillsMountPath: /public
+  #
+  # 业务 Skill 的 .env（如 OPENAI_API_KEY）。仅 k8s 驱动：内容会写进每个
+  # <pod>-skill-env Secret，内容变化时自动重启对应 Pod。留空 skillEnvFileContent
+  # 则不覆盖手工写入的 Secret。
+  # 注意 skillEnvFileContent 是明文密钥：请只在部署时通过私有 values / --set
+  # 注入，不要把真实 key 提交到仓库（会永久留在 git 历史里）。
+  # skillEnvFilePath: /opt/openclaw-secret/.env.ppt
+  # skillEnvFileContent: |
+  #   OPENAI_API_KEY=sk-xxxx
   content: ""

@@ -71,10 +71,11 @@ func (d *DockerDriver) prepareDockerContainer(ctx context.Context, spec PodSpec,
 	if !podIDPattern.MatchString(spec.PodID) || strings.TrimSpace(spec.ImageTag) == "" {
 		return "", "", nil, ErrInvalidPodSpec
 	}
-	if spec.MultiUser.Version != 0 {
-		if err := spec.Validate(); err != nil {
-			return "", "", nil, err
-		}
+	if err := spec.Validate(); err != nil {
+		return "", "", nil, err
+	}
+	if err := d.validateSkillEnvFile(spec); err != nil {
+		return "", "", nil, err
 	}
 	if err := d.ensureStateVolume(ctx, spec.PodID, adopt); err != nil {
 		return "", "", nil, err
@@ -354,6 +355,14 @@ func (d *DockerDriver) createArgs(spec PodSpec, containerName, envFile, secretPa
 	if secretPath != "" {
 		args = append(args, "-v", secretPath+":"+PodServiceTokenPath+":ro")
 	}
+	if file := strings.TrimSpace(spec.SkillEnvFile); file != "" {
+		// Docker 侧没有 k8s Secret，只能 bind mount 宿主机上的文件。目标路径必须是
+		// 容器内路径（与 k8s 的 MSS_ENV_PATH 一致），源路径是宿主机路径——
+		// 两者不能混用，否则容器里根本看不到文件。缺失时 validateSkillEnvFile
+		// 已在 prepareDockerContainer 里拦截，这里不会拿到空值。
+		args = append(args, "-v", strings.TrimSpace(spec.SkillEnvHostFile)+":"+file+":ro",
+			"-e", SkillEnvFilePathEnvVar+"="+file)
+	}
 	if spec.MultiUser.Version != 0 {
 		args = append(args, "-v", d.runtimeConfigDir(spec.PodID)+":"+RuntimeConfigDirectory+":ro")
 	}
@@ -364,6 +373,51 @@ func (d *DockerDriver) createArgs(spec PodSpec, containerName, envFile, secretPa
 		args = append(args, "-v", hostDir+":"+runtime.PublicSkillsDir+":ro")
 	}
 	return append(args, spec.ImageTag)
+}
+
+// validateSkillEnvFile rejects Skill env configurations the docker driver
+// cannot realise. The host path is mandatory: docker has no Secret equivalent,
+// so without it the file would never reach the container while MSS_ENV_PATH
+// still pointed at it, and the Skill would silently fall back to a mock.
+func (d *DockerDriver) validateSkillEnvFile(spec PodSpec) error {
+	file := strings.TrimSpace(spec.SkillEnvFile)
+	// Inline Secret content is a k8s concept: docker bind-mounts a host file and
+	// has nowhere to write it. Accepting it would leave the container reading
+	// whatever is at the host path while config.yaml claimed otherwise.
+	if strings.TrimSpace(spec.SkillEnvFileContent) != "" {
+		return fmt.Errorf("%w: SkillEnvFileContent is not supported by the docker driver; place the file at SkillEnvHostFile instead", ErrInvalidPodSpec)
+	}
+	if file == "" {
+		return nil
+	}
+	host := strings.TrimSpace(spec.SkillEnvHostFile)
+	if host == "" {
+		return fmt.Errorf("%w: SkillEnvHostFile is required by the docker driver", ErrInvalidPodSpec)
+	}
+	// Mirror the container-path check in ValidateSkillEnvFile: a control character
+	// survives TrimSpace and makes the mount source unusable, so fail here instead
+	// of letting docker reject it at container start with an opaque error.
+	if strings.ContainsAny(host, "\n\r\x00") {
+		return fmt.Errorf("%w: Skill env host path must not contain control characters", ErrInvalidPodSpec)
+	}
+	if !strings.HasPrefix(host, "/") || !strings.HasPrefix(file, "/") {
+		return fmt.Errorf("%w: Skill env paths must be absolute", ErrInvalidPodSpec)
+	}
+	// Both values are spliced into one "-v host:container:ro" argument, so a ':'
+	// in the host path splits the fields just as badly as one in the container
+	// path (ValidateSkillEnvFile already covers the latter).
+	if strings.Contains(host, ":") {
+		return fmt.Errorf("%w: Skill env host path must not contain ':'", ErrInvalidPodSpec)
+	}
+	// A bind mount nested inside another mount is rejected by docker ("cannot
+	// mount ... because its parent is already mounted"), and a directory that
+	// *contains* another mount is equally unusable (docker silently hides the
+	// inner mount, so the file would still be missing). Both directions are
+	// checked, exactly as the k8s driver does: the reserved set is shared so the
+	// same config cannot pass here and fail in the cluster.
+	runtime := d.runtime.withDefaults()
+	reserved := append(skillEnvReservedMounts(spec), runtime.StateDir, runtime.PublicSkillsDir)
+	return validateSkillEnvMountDir(file, reserved)
 }
 
 func (d *DockerDriver) publicSkillsHostDir() string {
